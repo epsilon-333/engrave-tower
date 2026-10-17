@@ -172,3 +172,14 @@ button.danger { background: #8a2a2a; }
 #cloudChip.st-saved span::before, #cloudChip.st-ready span::before { background: #7be38a; }
 #cloudChip.st-saving span::before { background: #ffcf5a; }
 #cloudChip.st-error span::before, #cloudChip.st-readonly span::before { background: #ff7a6a; }
+
+.login { min-height: 100%; display: grid; place-items: center; align-content: center; gap: 10px; padding: 40px max(16px, env(safe-area-inset-left, 0px)); text-align: center; }
+.login h1 { font-family: Galmuri14, Galmuri11, sans-serif; font-size: 56px; color: var(--accent); margin: 0; letter-spacing: 4px; text-shadow: 3px 3px 0 #5a2a00; }
+.login-box { display: grid; gap: 8px; width: min(360px, 100%); text-align: left; background: var(--panel); padding: 22px;
+  box-shadow: 0 0 0 3px #0d0b10, inset 0 0 0 2px var(--line); }
+.login-box label { font-size: 14px; color: var(--muted); }
+.login-box input { font: inherit; font-size: 16px; padding: 10px 12px; color: var(--text); background: #0d0b12; border: 0; box-shadow: inset 0 0 0 2px #3a3350; }
+.login-box input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.login-box .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.login-box .err { color: var(--warn); min-height: 1.2em; margin: 2px 0; font-size: 14px; }
+button.link { background: none; box-shadow: none; color: var(--muted); text-decoration: underline; padding: 6px 0; }

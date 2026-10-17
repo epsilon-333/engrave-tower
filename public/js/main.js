@@ -5,7 +5,7 @@ import { Renderer } from './render/renderer.js';
 import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
 import { newSave, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook } from './save.js';
-import { initCloud, cloudSave, cloudDelete, onCloud, cloudLabel, cloud } from './cloud.js';
+import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, cloud, isClaudePage, login, register, logout, errorText } from './cloud.js';
 import { ECHOES, ZONES } from './data/monsters.js';
 import { RACE_ART } from './data/art.js';
 import { buildPlaza } from './data/plaza.js';
@@ -49,6 +49,47 @@ function showRaceSelect() {
     requestAnimationFrame(anim);
   };
   anim();
+}
+
+// ───── 로그인 화면 (일반 웹 배포용) ─────
+function showLogin(onDone) {
+  gameEl.hidden = true; titleEl.hidden = false;
+  titleEl.innerHTML = `<div class="login">
+    <h1>각인의 탑</h1>
+    <p class="muted">계정으로 로그인하면 어느 기기에서든 이어서 할 수 있습니다.</p>
+    <form id="loginForm" class="login-box" autocomplete="on">
+      <label for="lgId">아이디</label>
+      <input id="lgId" name="username" autocomplete="username" maxlength="16" placeholder="2~16자 한글·영문·숫자" required>
+      <label for="lgPw">비밀번호</label>
+      <input id="lgPw" name="password" type="password" autocomplete="current-password" minlength="4" placeholder="4자 이상" required>
+      <p id="lgErr" class="err" role="alert"></p>
+      <div class="row"><button type="submit" id="lgLogin">로그인</button><button type="button" id="lgReg" class="ghost">회원가입</button></div>
+      <button type="button" id="lgGuest" class="link">로그인 없이 하기 (이 브라우저에만 저장)</button>
+    </form></div>`;
+  const $ = (id) => document.getElementById(id);
+  const go = async (fn) => {
+    const u = $('lgId').value, p = $('lgPw').value;
+    if (!u || !p) { $('lgErr').textContent = '아이디와 비밀번호를 입력하세요.'; return; }
+    $('lgErr').textContent = ''; $('lgLogin').disabled = $('lgReg').disabled = true;
+    try {
+      unlockAudio();
+      const remote = await fn(u, p);
+      sfx('levelup', { vol: 0.5 });
+      onDone(remote);
+    } catch (e) { $('lgErr').textContent = errorText(e); sfx('error', { vol: 0.5 }); }
+    finally { $('lgLogin').disabled = $('lgReg').disabled = false; }
+  };
+  $('loginForm').onsubmit = (e) => { e.preventDefault(); go(login); };
+  $('lgReg').onclick = () => go(register);
+  $('lgGuest').onclick = () => { try { localStorage.setItem('et-guest', '1'); } catch { /* 무시 */ } onDone(null); };
+  $('lgId').focus();
+}
+
+// 로그인 직후: 서버 저장이 있으면 그것, 없으면 지금 브라우저의 진행을 계정으로 올린다
+function afterLogin(remote) {
+  if (remote) save = remote;
+  else if (save && cloud.mode !== 'local') cloudSaveNow(save);
+  if (save) { refreshQuests(save); writeSave(save); enterPlaza(); } else showRaceSelect();
 }
 
 const buildNow = () => computeBuild(toLoadout(save));
@@ -119,6 +160,7 @@ function endRun(kind) {
   progressQuests(save, { zone: world.zone.id, kills: world.loot.kills, kept: res.kept, chests: world.loot.chests, explored: world.exploredPct() });
   refreshQuests(save);
   writeSave(save);
+  cloudSaveNow(save);
   const done = (save.quests || []).filter((q) => q.done).length;
   const title = { clear: '무사히 귀환했다', retreat: '긴급 귀환', dead: '쓰러졌다…' }[kind];
   const echoes = Object.entries(res.kept).map(([id, n]) => `<span class="echo" style="--c:${ECHOES[id].color}">◆ ${ECHOES[id].name} ×${n}</span>`).join('') || '<span class="muted">얻은 잔향 없음</span>';
@@ -149,8 +191,12 @@ function showPause() {
   showModal(`<h2>일시정지</h2>
     <button data-close>계속하기</button>
     ${field ? '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 계단으로 돌아가면 잔향을 전부 지킬 수 있습니다.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
-    ${volumeHtml()}`);
+    ${volumeHtml()}
+    ${isClaudePage() ? '' : cloud.mode === 'account' ? `<p class="muted">${esc(cloud.name)} 계정으로 로그인 중</p><button id="logoutBtn" class="ghost">로그아웃</button>` : '<button id="loginBtn" class="ghost">로그인 / 회원가입</button>'}`);
   bindVolume();
+  const lo = document.getElementById('logoutBtn'), li = document.getElementById('loginBtn');
+  if (lo) lo.onclick = async () => { await logout(); clearSave(); save = null; world = null; overlay.hidden = true; paused = false; modal = null; showLogin(afterLogin); };
+  if (li) li.onclick = () => { overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
   if (field) document.getElementById('retreat').onclick = () => { overlay.hidden = true; endRun('retreat'); };
   else document.getElementById('howto').onclick = () => showTutorial();
 }
@@ -239,6 +285,7 @@ function frame(ts) {
   requestAnimationFrame(frame);
 }
 
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 window.__game = { get world() { return world; }, renderer }; // 디버그용
 
 // 로그인·저장 상태 표시
@@ -260,6 +307,8 @@ onCloud(() => {
   if (remote && (!save || (remote.updatedAt || 0) >= (save.updatedAt || 0))) save = remote;
   setSaveHook(cloudSave);
   if (save && remote !== save) cloudSave(save);
+  let guest = false; try { guest = !!localStorage.getItem('et-guest'); } catch { /* 무시 */ }
+  if (!isClaudePage() && cloud.mode === 'local' && !guest) { showLogin(afterLogin); requestAnimationFrame(frame); return; }
   if (save) { refreshQuests(save); writeSave(save); enterPlaza(); } else showRaceSelect();
   requestAnimationFrame(frame);
 })();
