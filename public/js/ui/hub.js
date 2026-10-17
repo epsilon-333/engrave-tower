@@ -2,12 +2,13 @@
 import { BASE_STATS, STAT_INFO, SPECIAL_INFO, SLOT_INFO, GRADES, TIERS } from '../data/stats.js';
 import { RACES, xpToNext } from '../data/races.js';
 import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
-import { ITEMS, STYLES, SKILLS } from '../data/items.js';
+import { ITEMS, STYLES, WEAPON_SKILLS } from '../data/items.js';
 import { MONSTERS, ECHOES, ZONES } from '../data/monsters.js';
 import { computeBuild, encodeLoadout, decodeLoadout, SLOTS } from '../sim/build.js';
 import { condText, evalCond } from '../sim/conditions.js';
 import { toLoadout, writeSave, refreshQuests, claimQuest } from '../save.js';
 import { sfx } from '../audio.js';
+import { SKILLS, ROLE_COLOR, ENGRAVING_SKILLS } from '../data/skills.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -107,11 +108,11 @@ export class Hub {
   // ───── 공명 제단 ─────
   tab_altar(s, b) {
     const race = RACES[s.race];
-    const slots = SLOTS.filter((x) => x !== 'extra' || race.extraSlot);
+    const slots = SLOTS;
     const slotHtml = slots.map((sl) => {
       const id = s.slots[sl], e = id && ENGRAVINGS[id];
       return `<div class="slot ${e ? 'filled' : ''}" ${e ? `style="--g:${GRADES[e.grade].color}"` : ''}>
-        <div class="sl-name">${SLOT_INFO[sl]}</div>
+        <div class="sl-name">각인 칸 ${SLOTS.indexOf(sl) + 1}</div>
         ${e ? `<div class="sl-e">${e.name}</div><div class="sl-meta">부하 ${e.load}</div><button class="sm ghost" data-act="unequipE" data-slot="${sl}">빼기</button>` : '<div class="muted">비어 있음</div>'}
       </div>`;
     }).join('');
@@ -144,8 +145,9 @@ export class Hub {
     })();
 
     return `
+      ${this.skillPanel(s, b)}
       <section class="panel">
-        <h3>신체 각인 <small>부하 ${b.load} / ${b.derived.loadCap}${b.overload ? ' · <span class="warn">과부하!</span>' : ''}</small></h3>
+        <h3>각인 <small>아무 칸에나 넣을 수 있어요 · 부하 ${b.load} / ${b.derived.loadCap}${b.overload ? ' · <span class="warn">과부하!</span>' : ''}</small></h3>
         <div class="slots">${slotHtml}</div>
         <h4>보유 잔향</h4><div class="echoes">${echoInv}</div>
       </section>
@@ -155,6 +157,41 @@ export class Hub {
         ${goalHtml}
         ${groups || '<p class="muted">조건에 맞는 각인이 없습니다.</p>'}
       </section>`;
+  }
+
+  curSkills() { return computeBuild(toLoadout(this.s)).skills; }
+
+  skillPanel(s, b) {
+    const keys = ['Q', 'R', 'F'];
+    const resName = RACES[s.race].res.name;
+    const all = Object.entries(SKILLS).filter(([, sk]) => sk.race === s.race);
+    const card = (id, sk, locked) => {
+      const i = b.skills.indexOf(id), on = i >= 0;
+      const cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
+      const btn = locked ? `<span class="muted">${sk.unlock}레벨에 배움</span>`
+        : on ? `<button class="sm ghost" data-act="skillOff" data-id="${id}">빼기</button>` + (i > 0 ? `<button class="sm ghost" data-act="skillUp" data-id="${id}">앞으로</button>` : '')
+        : `<button class="sm" data-act="skillOn" data-id="${id}">장착</button>`;
+      return `<div class="skc ${on ? 'on' : ''} ${locked ? 'locked' : ''}" style="--c:${ROLE_COLOR[sk.role]}">
+        <div class="c-head"><b>${on ? `[${keys[i]}] ` : ''}${sk.name}</b><span class="role">${sk.role}</span></div>
+        <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''}${sk.cast ? ` · 시전 ${sk.cast}초` : ''}</div>
+        <div class="c-sum">${esc(sk.desc)}</div>
+        <div class="c-act">${btn}</div>
+      </div>`;
+    };
+    const race = all.map(([id, sk]) => card(id, sk, !b.available.includes(id))).join('');
+    const eng = b.available.filter((id) => id !== 'weapon' && !SKILLS[id].race).map((id) => card(id, SKILLS[id], false)).join('');
+    const wsk = WEAPON_SKILLS[b.weapon.skill];
+    let wcard = '';
+    if (wsk) {
+      const wi = b.skills.indexOf('weapon');
+      const wbtn = wi >= 0 ? '<button class="sm ghost" data-act="skillOff" data-id="weapon">빼기</button>' : '<button class="sm" data-act="skillOn" data-id="weapon">장착</button>';
+      wcard = `<div class="skc ${wi >= 0 ? 'on' : ''}" style="--c:#aab0c0"><div class="c-head"><b>${wi >= 0 ? `[${keys[wi]}] ` : ''}${wsk.name}</b><span class="role">무기</span></div><div class="c-sum">${esc(wsk.desc || '')}</div><div class="c-act">${wbtn}</div></div>`;
+    }
+    return `<section class="panel">
+      <h3>스킬 <small>최대 3개 · Q / R / F (모바일은 화면 버튼) · 준비 → 강화 → 마무리 순서로 쓰면 강해져요</small></h3>
+      <div class="skill-row">${race}</div>
+      <h4>각인·무기 스킬 <small>스킬이 붙은 각인을 장착하면 여기에 생겨요</small></h4><div class="skill-row">${eng}${wcard}</div>
+    </section>`;
   }
 
   goalPanel(s) {
@@ -207,17 +244,17 @@ export class Hub {
     }).join('');
     if (!known) {
       return `<div class="card unknown"><div class="c-head"><b>??? 미확인 각인</b><span class="grade" style="--g:${GRADES[e.grade].color}">${GRADES[e.grade].name}</span></div>
-        <div class="c-meta">${SLOT_INFO[e.slot]}</div><div class="recipe">${recipe}</div></div>`;
+        <div class="c-meta">각인</div><div class="recipe">${recipe}</div></div>`;
     }
     const stats = Object.entries(e.stats).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k]).name} ${v > 0 ? '+' : ''}${v}`).join(', ');
     const effs = e.effects.map((x) => `<li>${x.when ? `<em>[${esc(condText(x.when))}]</em> ` : ''}${esc(x.text)}</li>`).join('');
     const canEquip = owned > equipped;
-    const prev = canEquip || owned ? this.preview(s, (lo) => { lo.engravings = { ...lo.engravings, [e.slot]: id }; }) : '';
+    const prev = canEquip || owned ? this.preview(s, (lo) => { const free = SLOTS.find((x) => !lo.engravings[x]) || SLOTS[0]; lo.engravings = { ...lo.engravings, [free]: id }; }) : '';
     const goal = (s.goals || []).includes(id);
     const summary = e.effects.map((x) => x.text).join(' · ');
     return `<div class="card ${goal ? 'goal' : ''}" style="--g:${GRADES[e.grade].color}">
       <div class="c-head"><b>${e.name}</b><span><button class="star ${goal ? 'on' : ''}" data-act="goal" data-id="${id}" title="목표로 찜">★</button> <span class="grade">${GRADES[e.grade].name}</span></span></div>
-      <div class="c-meta">${SLOT_INFO[e.slot]} · 부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
+      <div class="c-meta">${ENGRAVING_SKILLS[id] ? `<b style="color:#ffd27a">스킬: ${SKILLS[ENGRAVING_SKILLS[id]].name}</b> · ` : ''}부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
       <div class="badges">${this.badges(id, s, b)}</div>
       <div class="c-sum">${esc(summary)}</div>
       <details><summary>자세히</summary><div class="c-stats">${stats}</div><ul class="c-eff">${effs}</ul></details>
@@ -362,12 +399,21 @@ export class Hub {
       }
       case 'equipE': {
         const e = ENGRAVINGS[id];
-        const target = e.slot;
+        const target = SLOTS.find((x) => !s.slots[x]);
+        if (!target) { this.toast('빈 각인 칸이 없습니다. 먼저 하나를 빼세요'); break; }
         s.slots[target] = id;
-        this.toast(`${SLOT_INFO[target]}에 ${e.name} 장착`);
+        this.toast(`${e.name} 장착${ENGRAVING_SKILLS[id] ? ` · 스킬 「${SKILLS[ENGRAVING_SKILLS[id]].name}」 사용 가능` : ''}`);
         break;
       }
       case 'unequipE': delete s.slots[slot]; break;
+      case 'skillOn': {
+        const cur = [...this.curSkills()];
+        if (cur.includes(id)) break;
+        if (cur.length >= 3) cur[2] = id; else cur.push(id);
+        s.skills = cur; break;
+      }
+      case 'skillOff': s.skills = this.curSkills().filter((x) => x !== id); break;
+      case 'skillUp': { const cur = [...this.curSkills()], i = cur.indexOf(id); if (i > 0) { [cur[i - 1], cur[i]] = [cur[i], cur[i - 1]]; s.skills = cur; } break; }
       case 'buy': {
         const it = ITEMS[id];
         if (s.gold >= it.price) { s.gold -= it.price; s.items.push(id); this.toast(`${it.name} 구매`); }
@@ -414,7 +460,7 @@ function zoneOfEcho(eid) {
 }
 
 function w2t(w) {
-  const sk = SKILLS[w.skill];
+  const sk = WEAPON_SKILLS[w.skill];
   return `${sk ? `Q: ${sk.name} (${sk.desc}) · ` : ''}${w.mana ? `마나 ${w.mana} · ` : ''}${w.kind === 'melee' ? '근접 (받는 피해 -20%, 적중 시 적 공격 끊기)' : '원거리 (쏘는 동안 이동 -35%, 근거리 피해 -30%, 먼 거리 +10%)'} · ${w.dmg === 'phys' ? '물리' : '마법'} · 피해 ×${w.mul} · 속도 ${w.speed}${w.count ? ` · ${w.count}발` : ''}${w.pierce ? ` · 관통 ${w.pierce}` : ''}`;
 }
 

@@ -2,7 +2,10 @@
 export const RACE_ART = {
   elf: { base: 'elf_m' },
   orc: { base: 'orc_warrior' },
-  beast: { base: 'lizard_m' },
+  dino: { base: 'lizard_m', tint: 'hue-rotate(-40deg) saturate(1.3)' },
+  assassin: { base: 'elf_f', tint: 'grayscale(0.5) brightness(0.6) hue-rotate(220deg) contrast(1.2)' },
+  golem: { base: 'ogre', tint: 'grayscale(0.9) brightness(1.15) sepia(0.3)', scale: 0.72 },
+  dragon: { base: 'lizard_f', tint: 'hue-rotate(-75deg) saturate(1.8) brightness(1.05)' },
   undead: { base: 'necromancer' },
   knight: { base: 'knight_m' },
   wizard: { base: 'wizzard_m' },

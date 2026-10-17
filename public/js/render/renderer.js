@@ -5,7 +5,9 @@ import { getSprite, drawEchoGem } from './sprites.js';
 import { sprite, frames } from './assets.js';
 import { renderMap, hash } from './tiles.js';
 import { ECHOES, AFFIXES } from '../data/monsters.js';
-import { SKILLS } from '../data/items.js';
+import { WEAPON_SKILLS } from '../data/items.js';
+import { SKILLS, ELEM, ROLE_COLOR } from '../data/skills.js';
+import { RACES } from '../data/races.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, WEAPON_ART } from '../data/art.js';
 import { sfx } from '../audio.js';
 
@@ -85,7 +87,8 @@ export class Renderer {
           this.texts.push({ x: ev.x + (Math.random() - 0.5) * 6, y: ev.y, text: fmt(ev.v), color: ev.color, t: 0.75, crit: ev.crit, heavy: ev.heavy, small: ev.small, vy: -34, vx: (Math.random() - 0.5) * 24, pop: ev.crit || ev.heavy ? 0.14 : 0.07 });
           if (ev.id != null) this.squash.set(ev.id, 0.14);
           if (ev.src === 'attack') {
-            this.sparkBurst(ev.x, ev.y + 8, ev.crit ? '#ffe060' : '#ffffff', ev.crit ? 8 : 4);
+            this.sparkBurst(ev.x, ev.y + 8, ev.crit ? '#ffe060' : '#ffffff', ev.crit ? 10 : 5);
+            this.fx.push({ k: 'impact', x: ev.x, y: ev.y + 8, r: ev.crit || ev.heavy ? 12 : 8, color: ev.crit ? '#ffe060' : ev.color, t: 0.12, max: 0.12 });
             sfx(ev.armored ? 'hitArmor' : ev.crit || ev.heavy ? 'hitHeavy' : 'hit', { vol: 0.75 });
           } else if (ev.src === 'aoe' || ev.src === 'reaction') sfx('hit', { vol: 0.4, rate: 1.2 });
           break;
@@ -100,7 +103,17 @@ export class Renderer {
           this.shake = Math.max(this.shake, 3); sfx('reaction', { vol: 0.5 });
           break;
         case 'ring': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: ev.color, t: 0.3, max: 0.3, w: 2 }); break;
-        case 'swing': this.fx.push({ k: 'slash', ...ev, t: ev.dur + 0.08, max: ev.dur + 0.08 }); sfx(ev.heavy ? 'heavySwing' : 'swing', { vol: 0.55 }); break;
+        case 'swing': {
+          this.fx.push({ k: 'slash', ...ev, t: ev.dur + 0.1, max: ev.dur + 0.1 });
+          const col = ev.heavy ? '#ffd050' : ev.type === 'mag' ? '#c9a8ff' : '#e8f0ff';
+          for (let i = 0; i < (ev.heavy ? 12 : 6); i++) {
+            const a = ev.ang + (Math.random() - 0.5) * (ev.arc || 1.5), rr = ev.range * (0.7 + Math.random() * 0.4);
+            this.parts.push({ x: ev.x + Math.cos(a) * rr, y: ev.y - 6 + Math.sin(a) * rr, vx: Math.cos(a) * 40, vy: Math.sin(a) * 40, t: 0.25, max: 0.25, color: col, g: 0, line: true });
+          }
+          if (ev.heavy) { this.shake = Math.max(this.shake, 2); this.burst(ev.x + Math.cos(ev.ang) * 18, ev.y + Math.sin(ev.ang) * 18, '#c8b898', 8, 60); }
+          sfx(ev.heavy ? 'heavySwing' : 'swing', { vol: 0.55 });
+          break;
+        }
         case 'shoot': sfx(ev.type === 'mag' ? 'cast' : 'shoot', { vol: 0.4, rate: ev.type === 'mag' ? 1.6 : 1.3 }); break;
         case 'spin': this.fx.push({ k: 'spin', ...ev, t: 0.32, max: 0.32 }); this.shake = 3; sfx('skill', { vol: 0.6 }); sfx('heavySwing', { vol: 0.7 }); break;
         case 'nova': this.fx.push({ k: 'nova', ...ev, t: 0.4, max: 0.4 }); this.burst(ev.x, ev.y, '#c9a8ff', 30, 160); this.shake = 4; sfx('skill', { vol: 0.6 }); sfx('reaction', { vol: 0.4, rate: 1.4 }); break;
@@ -148,11 +161,91 @@ export class Renderer {
         case 'emerge': this.burst(ev.x, ev.y + 2, '#8a7a5a', 18, 90); sfx('crack', { vol: 0.5, rate: 1.3 }); break;
         case 'summon': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 26, color: '#c45cff', t: 0.4, max: 0.4, w: 2 }); this.burst(ev.x, ev.y, '#c45cff', 12, 60); break;
         case 'camp': this.burst(ev.x, ev.y - 4, '#ffd88a', 16, 60); sfx('levelup', { vol: 0.4 }); break;
+        case 'skillFx': this.skillFx(ev); break;
+        case 'skillDash': {
+          const col = ELEM[ev.elem]?.color || '#ffffff';
+          this.fx.push({ k: 'trail', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, color: col, t: 0.35, max: 0.35, w: 10 });
+          for (let i = 0; i <= 6; i++) this.burst(ev.x1 + (ev.x2 - ev.x1) * i / 6, ev.y1 + (ev.y2 - ev.y1) * i / 6 - 4, col, 3, 50);
+          this.shake = Math.max(this.shake, 2); sfx('dash', { vol: 0.7 }); sfx('swing', { vol: 0.5, rate: 0.8 });
+          break;
+        }
+        case 'blink':
+          for (const [x, y] of [[ev.x1, ev.y1], [ev.x2, ev.y2]]) { this.burst(x, y - 6, '#5a4a8a', 18, 70); this.fx.push({ k: 'ring', x, y: y - 4, r: 14, color: '#8a6aff', t: 0.3, max: 0.3, w: 3 }); }
+          sfx('dash', { vol: 0.6, rate: 1.4 });
+          break;
+        case 'skillAoe': this.aoeFx(ev); break;
+        case 'skillCone': this.fx.push({ k: 'cone', ...ev, color: ELEM[ev.elem]?.color || (ev.fx === 'claws' ? '#ffffff' : '#ffb066'), t: ev.fx === 'breath' ? 0.15 : 0.22, max: ev.fx === 'breath' ? 0.15 : 0.22 });
+          if (ev.fx === 'claws') { this.fx.push({ k: 'claws', x: ev.x, y: ev.y, ang: ev.ang + (Math.random() - 0.5) * 0.6, r: ev.range, t: 0.18, max: 0.18 }); sfx('swing', { vol: 0.5, rate: 1.4 }); }
+          else if (ev.fx === 'breath') { for (let i = 0; i < 6; i++) { const a = ev.ang + (Math.random() - 0.5) * ev.angle, sp = 120 + Math.random() * 120; this.parts.push({ x: ev.x + Math.cos(a) * 8, y: ev.y - 6 + Math.sin(a) * 8, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0.5, max: 0.5, color: Math.random() < 0.5 ? '#ff7a2a' : '#ffd040', g: -30 }); } }
+          else { this.shake = Math.max(this.shake, 4); sfx('hitHeavy', { vol: 0.8, rate: 0.7 }); }
+          break;
+        case 'skillSingle': {
+          const col = ELEM[ev.elem]?.color || '#ffffff';
+          if (ev.fx === 'slashX') { this.fx.push({ k: 'slashX', x: ev.x, y: ev.y - 6, color: '#b89aff', t: 0.35, max: 0.35 }); this.burst(ev.x, ev.y - 6, '#8a6aff', 30, 160); }
+          else if (ev.fx === 'bite') { this.fx.push({ k: 'bite2', x: ev.x, y: ev.y - 6, t: 0.3, max: 0.3 }); this.burst(ev.x, ev.y - 6, '#e0445a', 24, 130); }
+          else { this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 30, color: col, t: 0.35, max: 0.35, w: 4 }); this.burst(ev.x, ev.y - 4, '#c8b898', 24, 140); }
+          this.shake = Math.max(this.shake, ev.big ? 7 : 4); this.hitstop = Math.max(this.hitstop, ev.big ? 0.1 : 0.05);
+          sfx('hitHeavy', { vol: 1, rate: ev.big ? 0.6 : 0.85 });
+          break;
+        }
+        case 'bolt': this.fx.push({ k: 'bolt', pts: ev.pts, color: ev.color, t: 0.22, max: 0.22, seed: Math.random() * 1000 }); for (const pt of ev.pts.slice(1)) this.sparkBurst(pt.x, pt.y, ev.color, 5); sfx('cast', { vol: 0.5, rate: 2 }); break;
+        case 'cast': this.fx.push({ k: 'castCircle', color: ELEM[ev.elem]?.color || '#9ab8ff', t: ev.dur, max: ev.dur }); sfx('cast', { vol: 0.4, rate: 0.8 }); break;
+        case 'parryStance': this.fx.push({ k: 'parryStance', t: ev.dur, max: ev.dur }); sfx('open', { vol: 0.5 }); break;
+        case 'parry': this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 40, color: '#ffffff', t: 0.4, max: 0.4, w: 5 }); this.burst(ev.x, ev.y - 6, '#fff6c0', 30, 160); this.texts.push({ x: ev.x, y: ev.y - 26, text: '받아치기!', color: '#ffe080', t: 1, vy: -14, vx: 0, label: true, size: 2 }); this.shake = 5; sfx('hitArmor', { vol: 1 }); sfx('reaction', { vol: 0.5, rate: 1.5 }); break;
+        case 'buff': this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 30, color: ev.color, t: 0.45, max: 0.45, w: 3 }); for (let i = 0; i < 16; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 16, y: ev.y, vx: 0, vy: -40 - Math.random() * 40, t: 0.7, max: 0.7, color: ev.color, g: -10 }); sfx('echo', { vol: 0.5 }); break;
+        case 'elemShift': this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 24, color: ELEM[ev.elem].color, t: 0.4, max: 0.4, w: 3 }); this.burst(ev.x, ev.y - 6, ELEM[ev.elem].color, 16, 80); this.texts.push({ x: ev.x, y: ev.y - 24, text: `${ELEM[ev.elem].name}${ev.weak ? ' · 약점!' : ''}`, color: ELEM[ev.elem].color, t: 1, vy: -12, vx: 0, label: true }); sfx('open', { vol: 0.5, rate: 1.2 }); break;
+        case 'summonFx': { const col = ev.elem ? ELEM[ev.elem].color : ev.kind === 'clone' ? '#8a6aff' : '#c45cff'; this.burst(ev.x, ev.y, col, ev.out ? 8 : 18, 70); if (!ev.out) { this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 16, color: col, t: 0.35, max: 0.35, w: 2 }); sfx('echo', { vol: 0.35, rate: 1.3 }); } break; }
+        case 'allyHit': this.sparkBurst(ev.x, ev.y - 4, ev.kind === 'clone' ? '#b89aff' : '#c45cff', 4); break;
+        case 'noRes':
+          if ((this.noResT || 0) < w.t) { this.noResT = w.t + 0.8; this.texts.push({ x: ev.x, y: ev.y - 22, text: `${ev.name} 부족`, color: '#ff8a80', t: 0.9, vy: -14, vx: 0, label: true }); sfx('step', { vol: 0.3 }); }
+          break;
         case 'crackBreak': this.burst(ev.x, ev.y, '#a89880', 30, 130); this.shake = 5; this.mapCanvas = renderMap(w); sfx('crack', { vol: 1, rate: 0.7 }); break;
       }
     }
     w.events.length = 0;
     if (w.revealed.length) this.applyReveal(false);
+  }
+
+  // 스킬 시작 연출 (시전자 쪽)
+  skillFx(ev) {
+    const col = ELEM[ev.elem]?.color || '#ffffff';
+    if (ev.fx === 'roar') { for (let i = 0; i < 3; i++) this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 50 + i * 18, color: i ? '#ffcf8a' : '#ffffff', t: 0.35 + i * 0.12, max: 0.35 + i * 0.12, w: 4 - i }); this.shake = 4; sfx('hitHeavy', { vol: 0.8, rate: 0.55 }); }
+    if (ev.fx === 'spin') { this.fx.push({ k: 'spin', x: ev.x, y: ev.y, r: 46, type: 'phys', t: 0.3, max: 0.3 }); }
+    this.texts.push({ x: ev.x, y: ev.y - 30, text: ev.name, color: col === '#ffffff' ? '#ffe8a8' : col, t: 0.9, vy: -10, vx: 0, label: true });
+  }
+
+  // 범위 스킬 연출 (맞는 쪽)
+  aoeFx(ev) {
+    const col = ELEM[ev.elem]?.color || '#ffe8a0';
+    const fx = ev.fx;
+    if (fx === 'pillar' || fx === 'meteor') {
+      this.fx.push({ k: 'pillar', x: ev.x, y: ev.y, r: ev.r, color: col, t: 0.5, max: 0.5 });
+      this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: col, t: 0.55, max: 0.55, w: 6 });
+      this.burst(ev.x, ev.y, col, 50, 200); this.burst(ev.x, ev.y, '#ffffff', 16, 120);
+      this.shake = Math.max(this.shake, 7); this.hitstop = Math.max(this.hitstop, 0.08);
+      sfx('reaction', { vol: 0.9, rate: 0.7 });
+    } else if (fx === 'quake' || fx === 'smash') {
+      this.fx.push({ k: 'cracks', x: ev.x, y: ev.y, r: ev.r, t: 0.8, max: 0.8, seed: Math.random() * 100 });
+      this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: '#e8d8b8', t: 0.4, max: 0.4, w: 5 });
+      this.burst(ev.x, ev.y, '#a89880', 40, 170);
+      this.shake = Math.max(this.shake, 8); sfx('hitHeavy', { vol: 1, rate: 0.5 });
+    } else if (fx === 'crystal' || fx === 'ice') {
+      this.fx.push({ k: 'shards', x: ev.x, y: ev.y, r: ev.r, color: fx === 'crystal' ? '#c8f0ff' : col, t: 0.5, max: 0.5, seed: Math.random() * 100 });
+      this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: '#c8f0ff', t: 0.4, max: 0.4, w: 3 });
+      sfx('freeze', { vol: 0.8 });
+    } else if (fx === 'burst' || fx === 'pop' || fx === 'rocks') {
+      this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: col, t: 0.35, max: 0.35, w: 4 });
+      this.burst(ev.x, ev.y, fx === 'rocks' ? '#a89880' : col, 26, 140);
+      sfx(fx === 'rocks' ? 'crack' : 'reaction', { vol: 0.6, rate: 1.2 });
+    } else if (fx === 'roar') {
+      // 시전자 연출에서 처리
+    } else if (fx === 'spin') {
+      this.sparkBurst(ev.x, ev.y - 4, '#ffffff', 6);
+    } else {
+      this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: col, t: 0.4, max: 0.4, w: 4 });
+      this.burst(ev.x, ev.y, col, 24, 120);
+      sfx('reaction', { vol: 0.5, rate: 1.1 });
+    }
   }
 
   burst(x, y, color, n, speed = 90) {
@@ -191,6 +284,20 @@ export class Renderer {
     this.drawLiquidAnim(w, cx, cy);
     if (w.mode === 'plaza') this.drawPlazaFloor(w);
 
+    for (const z of w.zones || []) {
+      const k = Math.min(1, z.t / 0.4);
+      if (z.kind === 'sanctuary') {
+        g.fillStyle = `rgba(255,230,140,${0.12 * k})`; ellipse(g, z.x, z.y, z.r, z.r * 0.6);
+        g.strokeStyle = `rgba(255,230,140,${0.6 * k})`; g.lineWidth = 2; g.beginPath(); g.ellipse(z.x, z.y, z.r, z.r * 0.6, 0, 0, Math.PI * 2); g.stroke();
+        for (let i = 0; i < 8; i++) { const a = w.t * 0.6 + i * 0.785; g.fillStyle = `rgba(255,240,180,${0.8 * k})`; g.fillRect(z.x + Math.cos(a) * z.r * 0.85 - 1, z.y + Math.sin(a) * z.r * 0.51 - 1, 3, 3); }
+        if (Math.random() < 0.3) this.parts.push({ x: z.x + (Math.random() - 0.5) * z.r * 1.6, y: z.y + (Math.random() - 0.5) * z.r, vx: 0, vy: -30, t: 0.8, max: 0.8, color: '#fff0b0', g: -5 });
+      } else {
+        const col = z.kind === 'fog' ? [140, 70, 200] : z.kind === 'poison' ? [140, 220, 90] : [255, 120, 40];
+        g.fillStyle = `rgba(${col},${0.22 * k})`; disc(g, z.x, z.y, z.r);
+        for (let i = 0; i < 5; i++) { const a = w.t * 0.8 + i * 1.3; g.fillStyle = `rgba(${col},${0.3 * k})`; disc(g, z.x + Math.cos(a) * z.r * 0.55, z.y + Math.sin(a * 1.3) * z.r * 0.4, 4 + (i % 3)); }
+        if (z.kind === 'fire' && Math.random() < 0.5) this.parts.push({ x: z.x + (Math.random() - 0.5) * z.r, y: z.y, vx: 0, vy: -40, t: 0.4, max: 0.4, color: Math.random() < 0.5 ? '#ff7a2a' : '#ffd040', g: -30 });
+      }
+    }
     for (const c of w.clouds) {
       const a = Math.min(1, c.t / 0.5) * 0.3;
       g.fillStyle = c.owner === 'p' ? `rgba(150,230,90,${a})` : `rgba(190,160,80,${a})`;
@@ -220,6 +327,7 @@ export class Renderer {
     for (const e of w.enemies) if (vis(e.x, e.y)) list.push({ e, y: e.y });
     for (const c of this.corpses) list.push({ c, y: c.y });
     list.push({ p, y: p.y });
+    for (const al of w.allies || []) list.push({ al, y: al.y });
     if (w.mode === 'plaza') {
       for (const pr of w.map.props) list.push({ prop: pr, y: (pr.y + pr.h) * TILE - 2 });
       for (const d of w.map.wallDeco) list.push({ wd: d, y: -1e9 + 1 });
@@ -233,6 +341,7 @@ export class Renderer {
       else if (it.c) this.drawCorpse(it.c, dt);
       else if (it.prop) this.drawProp(w, it.prop);
       else if (it.wd) this.drawWallDeco(w, it.wd);
+      else if (it.al) this.drawAlly(w, it.al);
     }
     this.corpses = this.corpses.filter((c) => c.t > 0);
 
@@ -368,6 +477,15 @@ export class Renderer {
     if (e.st.bleed) pips.push(['#e0445a', e.st.bleed.n]);
     if (e.st.chill) pips.push(['#9fe3ff', e.st.chill.n]);
     if (e.st.mark > 0) pips.push(['#ffe040', 0]);
+    if (e.st.curse) pips.push(['#c45cff', e.st.curse.n]);
+    if (e.st.shock > 0) pips.push(['#f8f070', 0]);
+    if (e.st.weak > 0) pips.push(['#ff3a3a', 0]);
+    if (e.st.fear > 0) pips.push(['#6a8aff', 0]);
+    if (e.st.elemMark > 0) { g.strokeStyle = `rgba(232,168,255,${0.5 + 0.3 * Math.sin(w.t * 6)})`; g.lineWidth = 1.5; g.beginPath(); g.ellipse(e.x, e.y + 3, 10, 4, 0, 0, Math.PI * 2); g.stroke(); }
+    if (e.st.stun > 0) {
+      if (e.prison) { g.fillStyle = 'rgba(190,240,255,0.45)'; g.fillRect(dx - 2, dy - 2, Math.round(w0) + 4, Math.round(h0) + 4); g.strokeStyle = 'rgba(230,250,255,0.9)'; g.lineWidth = 1; g.strokeRect(dx - 2, dy - 2, Math.round(w0) + 4, Math.round(h0) + 4); }
+      else for (let i = 0; i < 3; i++) { const a = w.t * 6 + i * 2.1; g.fillStyle = '#ffe060'; g.fillRect(Math.round(e.x + Math.cos(a) * 7), Math.round(dy - 4 + Math.sin(a) * 2), 2, 2); }
+    }
     if (e.st.septic > 0) pips.push(['#c8e04a', 0]);
     let px = Math.round(e.x - (pips.length * 6) / 2);
     const py = Math.round(e._top - 11);
@@ -434,8 +552,8 @@ export class Renderer {
     const lunge = sk > 0 ? Math.sin(sk * Math.PI) * 2.5 : 0;
     const ox = Math.cos(p.swingAng) * lunge, oy = Math.sin(p.swingAng) * lunge;
     if (p.shield > 0) { g.fillStyle = 'rgba(170,215,255,0.22)'; ellipse(g, p.x, p.y - 8, 12, 14); }
-    if (p.auraT > 0) { g.fillStyle = `rgba(255,216,74,${0.18 + 0.1 * Math.sin(w.t * 10)})`; ellipse(g, p.x, p.y - 8, 13, 16); if (Math.random() < 0.4) this.parts.push({ x: p.x + (Math.random() - 0.5) * 14, y: p.y - 4, vx: 0, vy: -30, t: 0.5, max: 0.5, color: '#ffd84a', g: -20 }); }
-    if (p.rageT > 0) { g.fillStyle = `rgba(255,50,30,${0.2 + 0.1 * Math.sin(w.t * 12)})`; ellipse(g, p.x, p.y - 8, 13, 16); }
+    { const bf = Object.values(p.buffs || {}).find((x) => x.color); if (bf) { g.fillStyle = hexA(bf.color, 0.16 + 0.08 * Math.sin(w.t * 10)); ellipse(g, p.x, p.y - 8, 13, 16); if (Math.random() < 0.3) this.parts.push({ x: p.x + (Math.random() - 0.5) * 14, y: p.y - 4, vx: 0, vy: -30, t: 0.5, max: 0.5, color: bf.color, g: -20 }); } }
+    if (p.parryT > 0) { g.strokeStyle = 'rgba(255,240,180,0.5)'; g.lineWidth = 1; g.beginPath(); g.ellipse(p.x, p.y - 8, 12, 15, 0, 0, Math.PI * 2); g.stroke(); }
     this.shadow(p.x, p.y + 4, 6);
     const pose = this.weaponPose(w, p);
     if (pose.behind) this.drawWeapon(w, p, pose, ox, oy);
@@ -511,8 +629,43 @@ export class Renderer {
     }
   }
 
+  drawAlly(w, al) {
+    const g = this.g, fade = Math.min(1, al.t / 0.5, (al.max - al.t) / 0.3 + 0.2);
+    if (al.kind === 'spirit') {
+      const col = ELEM[al.elem].color;
+      g.fillStyle = hexA(col, 0.25 * fade); disc(g, al.x, al.y, 8);
+      g.fillStyle = hexA(col, 0.9 * fade); disc(g, al.x, al.y, 4);
+      g.fillStyle = hexA('#ffffff', fade); disc(g, al.x - 1, al.y - 1, 1.5);
+      if (Math.random() < 0.5) this.parts.push({ x: al.x, y: al.y, vx: (Math.random() - 0.5) * 20, vy: 10, t: 0.4, max: 0.4, color: col, g: 0 });
+      return;
+    }
+    const base = al.kind === 'lich' ? 'big_zombie' : al.kind === 'clone' ? RACE_ART[w.b.race].base : 'necromancer';
+    const tint = al.kind === 'lich' ? 'hue-rotate(220deg) saturate(1.4) brightness(0.9)' : al.kind === 'clone' ? 'brightness(0.25) saturate(0) contrast(1.4)' : 'grayscale(0.6) brightness(1.4) hue-rotate(180deg)';
+    const img = sprite(this.animFrame(base, 'run', w.t + al.id, 10), tint, false, al.dir < 0);
+    if (!img) return;
+    g.globalAlpha = (al.kind === 'clone' ? 0.75 : 0.7) * fade;
+    const sc = al.kind === 'lich' ? 1.1 : 1;
+    g.drawImage(img, Math.round(al.x - img.width * sc / 2), Math.round(al.y + 4 - img.height * sc + Math.sin(w.t * 4 + al.id) * 1.5), img.width * sc, img.height * sc);
+    g.globalAlpha = 1;
+    if (Math.random() < 0.15) this.parts.push({ x: al.x, y: al.y - 4, vx: 0, vy: -20, t: 0.5, max: 0.5, color: al.kind === 'clone' ? '#8a6aff' : '#c45cff', g: -10 });
+  }
+
   drawProj(pr) {
     const g = this.g;
+    if (pr.kind === 'rock') {
+      g.fillStyle = '#0d0b10'; disc(g, pr.x, pr.y, 6.5); g.fillStyle = '#8a7a66'; disc(g, pr.x, pr.y, 5.5); g.fillStyle = '#b0a088'; disc(g, pr.x - 1.5, pr.y - 1.5, 2.5);
+      if (Math.random() < 0.4) this.parts.push({ x: pr.x, y: pr.y, vx: 0, vy: 0, t: 0.3, max: 0.3, color: '#a89880', g: 40 });
+      return;
+    }
+    if (pr.kind === 'skill' || pr.big) {
+      const col = pr.color;
+      for (let i = 1; i <= 5; i++) { g.fillStyle = hexA(col, 0.5 - i * 0.08); disc(g, pr.x - pr.vx * 0.012 * i, pr.y - pr.vy * 0.012 * i, 4.5 - i * 0.6); }
+      g.fillStyle = hexA(col, 0.35); disc(g, pr.x, pr.y, 7);
+      g.fillStyle = col; disc(g, pr.x, pr.y, 3.5);
+      g.fillStyle = '#ffffff'; disc(g, pr.x, pr.y, 1.5);
+      if (Math.random() < 0.6) this.parts.push({ x: pr.x, y: pr.y, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, t: 0.3, max: 0.3, color: col, g: 0 });
+      return;
+    }
     if (pr.kind === 'axe') {
       const img = sprite('weapon_throwing_axe');
       if (img) { g.save(); g.translate(Math.round(pr.x), Math.round(pr.y)); g.rotate(pr.spin || 0); g.drawImage(img, -Math.round(img.width / 2), -Math.round(img.height / 2)); g.restore(); return; }
@@ -526,6 +679,7 @@ export class Renderer {
       }
     }
     const x = Math.round(pr.x), y = Math.round(pr.y);
+    if (Math.random() < 0.35) this.parts.push({ x: pr.x, y: pr.y, vx: 0, vy: 0, t: 0.2, max: 0.2, color: pr.color, g: 0 });
     for (let i = 1; i <= 3; i++) {
       g.fillStyle = hexA(pr.color, 0.4 - i * 0.1);
       disc(g, x - pr.vx * 0.012 * i, y - pr.vy * 0.012 * i, 3 - i * 0.6);
@@ -565,6 +719,83 @@ export class Renderer {
         smear(g, px, py, R, (f.heavy ? 10 : 7), as, a1);
         g.fillStyle = hexA('#ffffff', 0.95 * alpha);
         smear(g, px, py, R, (f.heavy ? 4 : 2.5), as, a1);
+      } else if (f.k === 'trail') {
+        g.strokeStyle = hexA(f.color, k * 0.55); g.lineWidth = f.w * k + 2; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(f.x1, f.y1 - 6); g.lineTo(f.x2, f.y2 - 6); g.stroke();
+        g.strokeStyle = hexA('#ffffff', k * 0.8); g.lineWidth = 2;
+        g.beginPath(); g.moveTo(f.x1, f.y1 - 6); g.lineTo(f.x2, f.y2 - 6); g.stroke(); g.lineCap = 'butt';
+      } else if (f.k === 'impact') {
+        g.fillStyle = hexA(f.color || '#ffffff', k);
+        const r = f.r * (1.2 - k * 0.4);
+        g.beginPath();
+        for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2, rr = i % 2 ? r * 0.3 : r; g.lineTo(f.x + Math.cos(a) * rr, f.y - 8 + Math.sin(a) * rr); }
+        g.closePath(); g.fill();
+      } else if (f.k === 'bolt') {
+        // 번개: 지그재그 선 두 겹
+        for (const [wd, col] of [[4, hexA(f.color, k * 0.6)], [1.5, hexA('#ffffff', k)]]) {
+          g.strokeStyle = col; g.lineWidth = wd; g.beginPath();
+          f.pts.forEach((pt, i) => {
+            if (!i) { g.moveTo(pt.x, pt.y); return; }
+            const pv = f.pts[i - 1];
+            for (let j = 1; j <= 4; j++) {
+              const tt = j / 4, jx = (Math.sin(f.seed + i * 7 + j * 13 + this.world.t * 40) * 6) * (j < 4 ? 1 : 0);
+              g.lineTo(pv.x + (pt.x - pv.x) * tt + jx, pv.y + (pt.y - pv.y) * tt - jx * 0.6);
+            }
+          });
+          g.stroke();
+        }
+      } else if (f.k === 'cone') {
+        g.fillStyle = hexA(f.color, 0.28 * k);
+        g.beginPath(); g.moveTo(f.x, f.y - 6); g.arc(f.x, f.y - 6, f.range, f.ang - f.angle / 2, f.ang + f.angle / 2); g.closePath(); g.fill();
+      } else if (f.k === 'claws') {
+        g.strokeStyle = hexA('#ffffff', k); g.lineWidth = 2.5;
+        for (let i = -1; i <= 1; i++) {
+          const a = f.ang + Math.PI / 2, ox = Math.cos(a) * i * 6, oy = Math.sin(a) * i * 6;
+          const cx = f.x + Math.cos(f.ang) * f.r * 0.7, cy = f.y - 6 + Math.sin(f.ang) * f.r * 0.7;
+          g.beginPath(); g.moveTo(cx - Math.cos(f.ang + 0.9) * 12 + ox, cy - Math.sin(f.ang + 0.9) * 12 + oy); g.lineTo(cx + Math.cos(f.ang + 0.9) * 12 + ox, cy + Math.sin(f.ang + 0.9) * 12 + oy); g.stroke();
+        }
+      } else if (f.k === 'slashX') {
+        g.strokeStyle = hexA(f.color, k); g.lineWidth = 5 * k + 1;
+        const L = 22 * (1.3 - k * 0.3);
+        for (const s2 of [1, -1]) { g.beginPath(); g.moveTo(f.x - L, f.y - L * s2); g.lineTo(f.x + L, f.y + L * s2); g.stroke(); }
+        g.strokeStyle = hexA('#ffffff', k); g.lineWidth = 1.5;
+        for (const s2 of [1, -1]) { g.beginPath(); g.moveTo(f.x - L, f.y - L * s2); g.lineTo(f.x + L, f.y + L * s2); g.stroke(); }
+      } else if (f.k === 'bite2') {
+        g.fillStyle = hexA('#ffffff', k);
+        for (let i = 0; i < 5; i++) { const x = f.x - 12 + i * 6, o = (1 - k) * 6; g.beginPath(); g.moveTo(x, f.y - 12 + o); g.lineTo(x + 3, f.y - 3 + o); g.lineTo(x + 6, f.y - 12 + o); g.fill(); g.beginPath(); g.moveTo(x, f.y + 12 - o); g.lineTo(x + 3, f.y + 3 - o); g.lineTo(x + 6, f.y + 12 - o); g.fill(); }
+      } else if (f.k === 'pillar') {
+        const gr = g.createLinearGradient(0, f.y - 120, 0, f.y);
+        gr.addColorStop(0, hexA(f.color, 0)); gr.addColorStop(1, hexA(f.color, 0.7 * k));
+        g.fillStyle = gr; const pw = f.r * 0.8 * (0.5 + k * 0.5);
+        g.fillRect(f.x - pw / 2, f.y - 120, pw, 120);
+        g.fillStyle = hexA('#ffffff', 0.6 * k); g.fillRect(f.x - pw / 6, f.y - 120, pw / 3, 120);
+      } else if (f.k === 'cracks') {
+        g.strokeStyle = hexA('#2a2018', Math.min(1, k * 1.5)); g.lineWidth = 2;
+        for (let i = 0; i < 8; i++) {
+          let a = (i / 8) * Math.PI * 2 + f.seed, x = f.x, y = f.y;
+          g.beginPath(); g.moveTo(x, y);
+          for (let j = 0; j < 4; j++) { a += Math.sin(f.seed + i * 3 + j) * 0.5; x += Math.cos(a) * f.r / 4; y += Math.sin(a) * f.r / 4 * 0.6; g.lineTo(x, y); }
+          g.stroke();
+        }
+      } else if (f.k === 'shards') {
+        g.fillStyle = hexA(f.color, k);
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2 + f.seed, d2 = f.r * (0.3 + 0.6 * ((i * 37) % 10) / 10);
+          const x = f.x + Math.cos(a) * d2, y = f.y + Math.sin(a) * d2 * 0.6, h = 10 * k + 4;
+          g.beginPath(); g.moveTo(x, y - h); g.lineTo(x + 3, y); g.lineTo(x - 3, y); g.closePath(); g.fill();
+        }
+      } else if (f.k === 'castCircle') {
+        const p2 = this.world.player, rr = 18;
+        g.strokeStyle = hexA(f.color, 0.5 + 0.4 * Math.sin(this.world.t * 10)); g.lineWidth = 1.5;
+        g.beginPath(); g.ellipse(p2.x, p2.y + 3, rr, rr * 0.45, 0, 0, Math.PI * 2); g.stroke();
+        for (let i = 0; i < 6; i++) { const a = this.world.t * 3 + i; g.fillStyle = hexA(f.color, 0.8); g.fillRect(p2.x + Math.cos(a) * rr - 1, p2.y + 3 + Math.sin(a) * rr * 0.45 - 1, 2, 2); }
+        if (Math.random() < 0.5) this.parts.push({ x: p2.x + (Math.random() - 0.5) * 24, y: p2.y + 2, vx: 0, vy: -50, t: 0.5, max: 0.5, color: f.color, g: -10 });
+        if (this.world.player.castT <= 0) f.t = 0;
+      } else if (f.k === 'parryStance') {
+        const p2 = this.world.player;
+        g.strokeStyle = `rgba(255,240,180,${0.5 + 0.3 * Math.sin(this.world.t * 20)})`; g.lineWidth = 2;
+        g.beginPath(); g.arc(p2.x + p2.aimX * 6, p2.y - 7 + p2.aimY * 6, 13, Math.atan2(p2.aimY, p2.aimX) - 1.2, Math.atan2(p2.aimY, p2.aimX) + 1.2); g.stroke();
+        if (this.world.player.parryT <= 0) f.t = 0;
       } else if (f.k === 'tcircle') {
         g.fillStyle = `rgba(200,150,255,${0.15 + 0.25 * (1 - k)})`; disc(g, f.x, f.y, f.r);
         g.strokeStyle = 'rgba(230,200,255,0.8)'; g.lineWidth = 1.5;
@@ -907,35 +1138,36 @@ export class Renderer {
     g.fillStyle = '#ff6a6a'; g.fillRect(bx + u, m + u, (bw - 2 * u) * hpK, 2 * u);
     if (p.shield > 0) { g.fillStyle = '#a8d8ff'; g.fillRect(bx + u, m + bh - 3 * u, (bw - 2 * u) * Math.min(1, p.shield / d.maxHp), 2 * u); }
     this.text(`${Math.ceil(p.hp)} / ${d.maxHp}`, bx + bw / 2, m + bh / 2, u, '#ffffff', 'center');
-    // 자원 게이지: 마나(마법 무기·마법사·언데드) / 오러(기사) / 분노(오크)
+    // 종족 자원 게이지
     let ry = m + bh + 3 * u;
-    const gauge = (val, max, col, label, ready) => {
-      const gh = 6 * u;
+    const R = RACES[w.b.race]?.res;
+    if (R) {
+      const gh = 7 * u;
       this.panel(bx, ry, bw, gh);
       g.fillStyle = '#0d0b18'; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u);
-      g.fillStyle = col; g.fillRect(bx + u, ry + u, (bw - 2 * u) * Math.max(0, Math.min(1, val / max)), gh - 2 * u);
-      if (ready && Math.floor(w.t * 4) % 2) { g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u); }
-      this.text(label, bx + bw + 5 * u, ry + gh / 2, Math.max(1, u - 1), col, 'left');
+      const k = Math.max(0, Math.min(1, p.res / 100));
+      g.fillStyle = R.color; g.fillRect(bx + u, ry + u, (bw - 2 * u) * k, gh - 2 * u);
+      g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(bx + u, ry + u, (bw - 2 * u) * k, u);
+      for (const t of [0.25, 0.5, 0.75]) { g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(bx + u + (bw - 2 * u) * t, ry + u, u, gh - 2 * u); }
+      if (k >= 1 && Math.floor(w.t * 4) % 2) { g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u); }
+      this.text(`${R.name} ${Math.floor(p.res)}`, bx + bw / 2, ry + gh / 2, Math.max(1, u - 1), '#ffffff', 'center');
       ry += gh + 2 * u;
-    };
-    const usesMana = w.b.weapon.mana || SKILLS[w.b.weapon.skill]?.mana || w.b.race === 'wizard';
-    if (usesMana) gauge(p.mana, d.maxMana, '#4a8aff', `마나 ${Math.floor(p.mana)}`);
-    if (w.b.race === 'knight') gauge(p.auraT > 0 ? p.auraT : p.aura, p.auraT > 0 ? d.auraTime : 100, '#ffd84a', p.auraT > 0 ? '오러 개방 중' : p.aura >= 100 ? '오러 준비 (R)' : '오러', p.aura >= 100 && p.auraT <= 0);
-    if (w.b.race === 'orc') gauge(p.rageT > 0 ? p.rageT : p.rage, p.rageT > 0 ? 6 : 100, '#ff4a3a', p.rageT > 0 ? '광폭화!' : '분노');
-    // 대시 / 스킬
-    const dashMax = d.dashCd * (1 - d.cdr), dashK = p.dashCharges > 0 ? 1 : Math.min(1, 1 - p.dashRecharge / dashMax);
-    const sy0 = ry + u, box = 14 * u;
-    this.cooldownBox(bx, sy0, box, dashK, 'Space', '대시');
-    const sk = p.skillCd > 0 ? 1 - p.skillCd / p.skillMax : 1;
-    const skName = SKILLS[w.b.weapon.skill]?.name || '스킬';
-    this.cooldownBox(bx + box + 4 * u, sy0, box, sk, 'Q', skName);
-    if (w.b.race === 'beast') for (let i = 0; i < 2; i++) { g.fillStyle = i < p.dashCharges ? '#bfe8ff' : '#3a4050'; g.fillRect(bx + 2 * u + i * 5 * u, sy0 + box + 2 * u, 4 * u, 2 * u); }
-    this.text(skName, bx + (box + 4 * u) * 2 + 2 * u, sy0 + box / 2, Math.max(1, u - 1), '#b8b0c8');
+      if (w.b.race === 'wizard') { const el = ELEM[p.elem]; this.text(`속성: ${el.name}${w.zElem?.weak === p.elem ? ' (약점!)' : w.zElem?.resist === p.elem ? ' (내성)' : ''}`, bx, ry + 5 * u, Math.max(1, u - 1), el.color); ry += 10 * u; }
+    }
+    // 버프
+    let bxx = bx;
+    for (const [id, bf] of Object.entries(p.buffs)) {
+      if (id === 'nextCrit') { this.text('다음 치명타', bxx, ry + 5 * u, Math.max(1, u - 1), '#ffe040'); bxx += 50 * u; continue; }
+      const nm = Object.values(SKILLS).find((sk) => sk.do.some((o) => o.op === 'buff' && o.id === id))?.name || id;
+      this.text(`${nm} ${bf.t.toFixed(1)}`, bxx, ry + 5 * u, Math.max(1, u - 1), bf.color || '#ffffff');
+      bxx += 56 * u;
+    }
+    if (Object.keys(p.buffs).length) ry += 10 * u;
     // 상태이상
     const names = { burn: ['화상', '#ff7a2a'], poison: ['중독', '#9be15d'], bleed: ['출혈', '#e0445a'], chill: ['냉기', '#9fe3ff'] };
-    let sxx = bx + (box + 4 * u) * 2 + 4 * u + 60 * u;
-    for (const k of Object.keys(p.st)) { this.text(names[k][0], sxx, sy0 + box / 2, u, names[k][1]); sxx += 30 * u; }
-    if (w.b.race === 'beast' && p.momentum > 0) this.text(`사냥 본능 ×${p.momentum}`, sxx, sy0 + box / 2, u, '#ffcc22');
+    let sxx = bx;
+    for (const k of Object.keys(p.st)) { this.text(names[k][0], sxx, ry + 5 * u, u, names[k][1]); sxx += 30 * u; }
+    this.drawSkillBar(w);
 
     if (w.mode === 'field') this.drawMinimap(w);
     else if (!document.body.classList.contains('touch')) {
@@ -980,9 +1212,50 @@ export class Renderer {
     }
   }
 
-  cooldownBox(x, y, s, k, key, label) {
+  // 스킬바: 대시 + 장착 스킬 3칸 (화면 아래 가운데)
+  drawSkillBar(w) {
+    const g = this.g, p = w.player, d = w.d, u = this.u, v = Math.max(2, u), W = this.c.width, H = this.c.height;
+    const touch = document.body.classList.contains('touch');
+    const box = (touch ? 16 : 20) * v, gap = 12 * v;
+    const slots = w.b.skills || [];
+    const keys = ['Q', 'R', 'F'];
+    const n = slots.length + 1;
+    const total = n * box + (n - 1) * gap;
+    const x0 = touch ? 10 * u : (W - total) / 2, y0 = touch ? 10 * v + 70 * v : H - box - 12 * v;
+    // 대시
+    const dashMax = d.dashCd * (1 - d.cdr), dashK = p.dashCharges > 0 ? 1 : Math.min(1, 1 - p.dashRecharge / dashMax);
+    this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : 'Space', '');
+    slots.forEach((id, i) => {
+      const x = x0 + (i + 1) * (box + gap);
+      if (id === 'weapon') {
+        const k = p.skillCd > 0 ? 1 - p.skillCd / p.skillMax : 1;
+        this.cooldownBox(x, y0, box, k, keys[i], '');
+        this.text((WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기').slice(0, 4), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#d8d0e8', 'center');
+        return;
+      }
+      const sk = SKILLS[id];
+      const cd = p.cds[id] || 0, max = p.cdMax?.[id] || sk.cd;
+      const k = cd > 0 ? 1 - cd / max : 1;
+      const need = sk.costAll ? sk.costAll.min : sk.cost || 0;
+      const lack = need > p.res;
+      this.cooldownBox(x, y0, box, k, keys[i], '', ROLE_COLOR[sk.role]);
+      if (lack && k >= 1) { g.fillStyle = 'rgba(40,0,0,0.55)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); }
+      this.text(sk.name.slice(0, 4), x + box / 2, y0 + box + 7 * v, u, lack ? '#ff8a80' : '#d8d0e8', 'center');
+      if (need) this.text(String(need), x + box - 3 * v, y0 + 5 * v, Math.max(1, u - 1), lack ? '#ff8a80' : RACES[w.b.race].res.color, 'right');
+    });
+    // 시전바
+    if (p.castT > 0) {
+      const cw = 90 * v, cx = W / 2 - cw / 2, cy = touch ? H * 0.62 : y0 - 18 * v;
+      this.panel(cx, cy, cw, 7 * v);
+      g.fillStyle = '#7aa8ff'; g.fillRect(cx + u, cy + u, (cw - 2 * u) * (1 - p.castT / p.castMax), 5 * u);
+      this.text(`${p.castSkill?.def.name || ''} 시전 중`, W / 2, cy - 6 * v, u, '#c8d8ff', 'center');
+    }
+  }
+
+  cooldownBox(x, y, s, k, key, label, border) {
     const g = this.g, u = this.u;
     this.panel(x, y, s, s);
+    if (border) { g.fillStyle = border; g.fillRect(x, y + s - 2 * u, s, 2 * u); }
     if (k < 1) {
       g.fillStyle = 'rgba(0,0,0,0.6)';
       g.beginPath(); g.moveTo(x + s / 2, y + s / 2);

@@ -1,57 +1,91 @@
-// 종족: 기본 스탯, 레벨당 자동 성장, 고유 메커니즘, 강점과 약점
+// 종족: 기본 스탯, 레벨당 자동 성장, 종족 자원(스킬 콤보의 연료), 고유 특성
+// res: 자원 규칙 (max 100) — regen 초당, hit 적중당, kill 처치당, hurt 피격 시 (받은 피해/최대 HP)×값, dodge 회피당, decay 전투 밖 초당 감소
 export const RACES = {
-  knight: {
-    name: '기사', origin: '인간',
-    desc: '오러를 모았다가 터뜨린다. 오러 게이지가 가득 차면 R로 발동해 5초간 모든 공격이 적의 물리 저항 50%를 무시한다. 단단하지만 느리다.',
-    strong: '근력 · 체력 · 물리 저항', weak: '느림 · 마력 낮음',
-    base: { str: 15, mag: 3, agi: 6, vit: 15, sen: 8, spi: 8, pres: 14, mres: 8 },
-    growth: { pres: 1 },
-    passive: '오러', resource: 'aura',
+  dino: {
+    name: '공룡 수인', origin: '원시림',
+    desc: '사냥할수록 본능이 끓어오른다. 본능 50 이상이면 이동·공격 속도 +10%.',
+    strong: '근력 · 민첩', weak: '마법 저항 낮음',
+    base: { str: 14, mag: 3, agi: 13, vit: 12, sen: 9, spi: 5, pres: 6, mres: 4 },
+    growth: { str: 1 },
+    passive: '원시 본능',
+    res: { key: 'instinct', name: '본능', color: '#ff9a3a', hit: 3, kill: 6, decay: 4 },
   },
   wizard: {
     name: '마법사', origin: '인간',
-    desc: '주문을 증폭한다. 최대 마나 +50%, 마나 회복 +30%, 원소 반응 피해 +50%, 무기 스킬 쿨타임 -25%. 몸이 가장 약하다.',
-    strong: '마력 · 정신 · 마나', weak: '체력과 물리 저항이 가장 낮음',
+    desc: '마력으로 주문을 시전한다. 시전 중에는 움직일 수 없고, 강한 주문일수록 오래 걸린다. 원소 반응 피해 +50%.',
+    strong: '마력 · 정신', weak: '체력과 물리 저항이 가장 낮음',
     base: { str: 3, mag: 18, agi: 8, vit: 6, sen: 9, spi: 14, pres: 3, mres: 10 },
     growth: { mag: 1 },
-    passive: '주문 증폭', resource: 'mana',
+    passive: '주문 증폭',
+    res: { key: 'mana', name: '마력', color: '#4a8aff', regen: 9, kill: 4, start: 100 },
   },
-  elf: {
-    name: '엘프', origin: '숲',
-    desc: '정밀 사격. 멀리서 맞힐수록 투사체 피해가 커지고(최대 +30%), 쏘는 동안 느려지는 정도가 절반이다.',
-    strong: '민첩 · 감각', weak: '체력 낮음 · 가까이에서 약함',
-    base: { str: 7, mag: 11, agi: 16, vit: 7, sen: 14, spi: 9, pres: 4, mres: 8 },
-    growth: { agi: 1 },
-    passive: '정밀 사격',
+  knight: {
+    name: '기사', origin: '인간',
+    desc: '맞을수록 투지가 쌓이고, 투지를 심판의 일격으로 쏟아낸다. 받는 피해 -10%.',
+    strong: '근력 · 체력 · 물리 저항', weak: '느림 · 마력 낮음',
+    base: { str: 14, mag: 3, agi: 6, vit: 15, sen: 7, spi: 8, pres: 14, mres: 8 },
+    growth: { pres: 1 },
+    passive: '수호의 맹세',
+    res: { key: 'grit', name: '투지', color: '#ffd84a', hit: 2, kill: 3, hurt: 120, decay: 2 },
   },
   orc: {
     name: '오크', origin: '황야',
-    desc: '분노 게이지. 때리거나 맞으면 차오르고, 가득 차면 6초간 광폭화해 공격 속도 +30%, 흡혈 +8%.',
+    desc: '때리고 맞으며 분노가 차오른다. 분노로 광전사가 되거나 최후의 일격을 날린다.',
     strong: '근력 · 체력', weak: '마력 거의 없음 · 마법 저항 낮음',
     base: { str: 17, mag: 2, agi: 8, vit: 11, sen: 6, spi: 5, pres: 5, mres: 3 },
     growth: { vit: 1 },
-    passive: '분노', resource: 'rage',
-  },
-  beast: {
-    name: '수인', origin: '초원',
-    desc: '사냥 본능. 연타할수록 공격 속도(최대 +40%)와 피해(최대 +15%)가 오르고, 대시를 2번 연속 쓸 수 있다.',
-    strong: '민첩 · 감각', weak: '저항 전반이 낮음',
-    base: { str: 11, mag: 4, agi: 17, vit: 9, sen: 14, spi: 6, pres: 5, mres: 5 },
-    growth: { agi: 1 },
-    passive: '사냥 본능',
+    passive: '피의 분노',
+    res: { key: 'rage', name: '분노', color: '#ff4a3a', hit: 4, kill: 6, hurt: 160, decay: 6 },
   },
   undead: {
     name: '언데드', origin: '묘지',
-    desc: '썩은 몸. 독과 출혈에 면역이다. 마법 피해 +12%. 일반 회복은 절반만 받지만, 적을 처치할 때마다 생명력 6%와 마나를 흡수한다.',
+    desc: '영혼을 거둬 저주를 터뜨린다. 독과 출혈에 면역, 마법 피해 +12%. 일반 회복은 절반이지만 처치마다 생명력 6% 흡수.',
     strong: '정신 · 마력 · 독 면역', weak: '회복이 처치에 묶임 · 느림',
-    base: { str: 8, mag: 14, agi: 6, vit: 12, sen: 6, spi: 14, pres: 8, mres: 12 },
+    base: { str: 7, mag: 15, agi: 6, vit: 12, sen: 6, spi: 14, pres: 8, mres: 12 },
     growth: { mag: 1 },
     passive: '썩은 몸',
+    res: { key: 'soul', name: '영혼', color: '#c45cff', hit: 1, kill: 10, decay: 1 },
+  },
+  assassin: {
+    name: '암살자', origin: '뒷골목',
+    desc: '피하고 파고들며 그림자를 모은다. 회피·치명타·대시로 그림자가 쌓이고, 적의 등 뒤를 치면 피해 +30%.',
+    strong: '민첩 · 감각', weak: '체력 낮음 · 저항 낮음',
+    base: { str: 9, mag: 4, agi: 16, vit: 8, sen: 15, spi: 6, pres: 4, mres: 5 },
+    growth: { sen: 1 },
+    passive: '그림자 사냥꾼',
+    res: { key: 'shadow', name: '그림자', color: '#8a6aff', hit: 1, kill: 5, dodge: 15, crit: 5, dash: 8, decay: 2 },
+  },
+  elf: {
+    name: '엘프', origin: '숲',
+    desc: '정령과 함께 싸운다. 정령력이 저절로 차오르고, 멀리서 맞힐수록 투사체 피해 증가(최대 +30%).',
+    strong: '민첩 · 감각 · 마력', weak: '체력 낮음 · 가까이에서 약함',
+    base: { str: 6, mag: 12, agi: 15, vit: 7, sen: 13, spi: 10, pres: 4, mres: 8 },
+    growth: { agi: 1 },
+    passive: '정령의 벗',
+    res: { key: 'spirit', name: '정령력', color: '#7be38a', regen: 4, hit: 2, kill: 4 },
+  },
+  golem: {
+    name: '골렘족', origin: '산맥',
+    desc: '돌로 된 몸. 받는 물리 피해 -15%, 밀려나지 않는다. 맞을수록, 시간이 지날수록 암석 에너지가 쌓인다.',
+    strong: '체력 · 물리 저항 · 근력', weak: '아주 느림 · 회피 없음',
+    base: { str: 13, mag: 4, agi: 3, vit: 17, sen: 5, spi: 7, pres: 18, mres: 9 },
+    growth: { vit: 1 },
+    passive: '바위 몸',
+    res: { key: 'stone', name: '암석 에너지', color: '#c8b088', regen: 2, hit: 2, kill: 4, hurt: 100 },
+  },
+  dragon: {
+    name: '용족', origin: '화산',
+    desc: '불을 다루는 고대 혈통. 화상에 면역이고, 불타는 적에게 주는 피해 +15%. 불타는 적이 있을 때 용기가 차오른다.',
+    strong: '근력 · 마력 · 화염', weak: '냉기에 약함 (받는 냉기 피해·둔화 증가)',
+    base: { str: 12, mag: 12, agi: 8, vit: 11, sen: 7, spi: 7, pres: 8, mres: 7 },
+    growth: { str: 1 },
+    passive: '용의 피',
+    res: { key: 'dragon', name: '용기', color: '#ff6a2a', hit: 2, kill: 5, burnTick: 1, decay: 2 },
   },
 };
 
 // 예전 저장 데이터의 종족 이름 변환
-export const RACE_MIGRATE = { human: 'knight', dwarf: 'knight' };
+export const RACE_MIGRATE = { human: 'knight', dwarf: 'knight', beast: 'dino' };
 
 export const POINTS_PER_LEVEL = 3;
 export function xpToNext(level) { return 20 + level * 18; }

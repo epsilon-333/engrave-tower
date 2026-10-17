@@ -5,8 +5,9 @@ import { RACES, RACE_MIGRATE } from '../data/races.js';
 import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
 import { ITEMS } from '../data/items.js';
 import { evalCond, condText } from './conditions.js';
+import { SKILLS, ENGRAVING_SKILLS } from '../data/skills.js';
 
-export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back', 'extra'];
+export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back'];
 export const GEAR_SLOTS = ['weapon', 'armor', 'acc1', 'acc2'];
 
 // loadout: { race, level, alloc:{str..}, engravings:{slot:id}, gear:{slot:id} }
@@ -21,7 +22,7 @@ export function computeBuild(lo) {
   const sources = [];
   for (const s of SLOTS) {
     const id = lo.engravings?.[s];
-    if (id && ENGRAVINGS[id] && (s !== 'extra' || race.extraSlot)) sources.push({ kind: 'engraving', id, def: ENGRAVINGS[id] });
+    if (id && ENGRAVINGS[id]) sources.push({ kind: 'engraving', id, def: ENGRAVINGS[id] });
   }
   for (const s of GEAR_SLOTS) {
     const id = lo.gear?.[s];
@@ -138,6 +139,7 @@ export function computeBuild(lo) {
   if (lo.race === 'wizard') { d.maxMana *= 1.5; d.manaRegen *= 1.3; d.reactionMul *= 1.5; d.skillCdMul *= 0.75; }
   if (lo.race === 'knight') d.moveSpeed *= 0.92;
   if (lo.race === 'undead') d.moveSpeed *= 0.95;
+  if (lo.race === 'golem') d.moveSpeed *= 0.85;
   const flags = new Set();
   const triggers = { hit: [], kill: [], hurt: [], hurtMag: [], dodge: [], crit: [], dash: [] };
   for (const e of effects) {
@@ -167,18 +169,32 @@ export function computeBuild(lo) {
   if (wpn.crit) d.crit = Math.min(0.9, d.crit + wpn.crit);
   if (wpn.critDmg) d.critDmg += wpn.critDmg;
   if (flags.has('noAimSlow')) d.aimSlow = 1;
+  if (lo.race === 'golem') d.dodge = 0;
+
+  // 액티브 스킬: 종족 스킬(레벨 해금) + 장착한 각인의 스킬 + 무기 기술 → 최대 3개 장착
+  const available = Object.entries(SKILLS).filter(([, sk]) => sk.race === lo.race && (sk.unlock || 1) <= lo.level).map(([id]) => id);
+  for (const src of active) if (src.kind === 'engraving' && ENGRAVING_SKILLS[src.id] && !available.includes(ENGRAVING_SKILLS[src.id])) available.push(ENGRAVING_SKILLS[src.id]);
+  available.push('weapon');
+  let skills = (lo.skills || []).filter((id) => available.includes(id)).slice(0, 3);
+  if (!lo.skills) {
+    // 기본 장착: 준비/강화 → 공격 → 마무리 순으로 콤보가 되게
+    const race = available.filter((id) => SKILLS[id]);
+    const pick = (roles) => race.find((id) => roles.includes(SKILLS[id].role) && !skills.includes(id));
+    for (const roles of [['준비', '강화', '전환', '방어'], ['공격', '이동', '연타', '제어', '소환'], ['마무리']]) { const id = pick(roles); if (id) skills.push(id); }
+    for (const id of race) if (skills.length < 3 && !skills.includes(id)) skills.push(id);
+  }
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
   if (wpn.kind === 'melee') { d.dmgTakenMul *= 0.8; flags.add('stagger'); }
   else flags.add('aimSlow');
-  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId };
+  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, skills, available };
 }
 
 // 빌드 코드 (온라인 공유/고스트 대전용)
 export function encodeLoadout(lo) {
-  const json = JSON.stringify({ r: lo.race, l: lo.level, a: lo.alloc, e: lo.engravings, g: lo.gear });
+  const json = JSON.stringify({ r: lo.race, l: lo.level, a: lo.alloc, e: lo.engravings, g: lo.gear, k: lo.skills });
   return btoa(unescape(encodeURIComponent(json)));
 }
 export function decodeLoadout(code) {
   const o = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
-  return { race: o.r, level: o.l, alloc: o.a || {}, engravings: o.e || {}, gear: o.g || {} };
+  return { race: o.r, level: o.l, alloc: o.a || {}, engravings: o.e || {}, gear: o.g || {}, skills: o.k };
 }

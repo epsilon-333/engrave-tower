@@ -1,3 +1,4 @@
+import { SKILLS } from './data/skills.js';
 // 모바일 터치 조작: 왼쪽 조이스틱 이동, 오른쪽 조이스틱 조준+공격, 버튼(스킬·대시·상호작용·오러·메뉴)
 // 오른쪽 조이스틱을 쓰지 않을 때는 가까운 적을 자동으로 조준한다.
 export const isTouch = () => matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -8,10 +9,11 @@ export function setupTouch({ input, getWorld, onMenu, onBag }) {
   root.innerHTML = `
     <div class="stick left" data-stick="move"><div class="knob"></div></div>
     <div class="stick right" data-stick="aim"><div class="knob"></div><span>공격</span></div>
-    <button class="tb skill" data-btn="skill">Q</button>
+    <button class="tb s1" data-btn="s1">1</button>
+    <button class="tb s2" data-btn="s2">2</button>
+    <button class="tb s3" data-btn="s3">3</button>
     <button class="tb dash" data-btn="dash">대시</button>
     <button class="tb act" data-btn="interact" hidden>E</button>
-    <button class="tb aura" data-btn="aura" hidden>R</button>
     <button class="tb menu" data-btn="menu" aria-label="메뉴">≡</button>
     <button class="tb bag" data-btn="bag" hidden>캐릭터</button>`;
   document.getElementById('game').appendChild(root);
@@ -22,7 +24,7 @@ export function setupTouch({ input, getWorld, onMenu, onBag }) {
     const st = sticks[kind] = { el, knob, id: null, x: 0, y: 0, active: false };
     el.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      st.id = e.pointerId; st.active = true; el.setPointerCapture(e.pointerId);
+      st.id = e.pointerId; st.active = true; try { el.setPointerCapture(e.pointerId); } catch { /* 합성 이벤트 */ }
       move(st, e);
     });
     el.addEventListener('pointermove', (e) => { if (e.pointerId === st.id) move(st, e); });
@@ -90,8 +92,18 @@ export function setupTouch({ input, getWorld, onMenu, onBag }) {
       // 상황에 따라 보이는 버튼
       root.querySelector('[data-btn=interact]').hidden = !w.near;
       root.querySelector('[data-btn=interact]').textContent = w.near ? (w.near.kind === 'chest' ? '열기' : w.near.kind === 'gate' ? '입장' : '확인') : 'E';
-      root.querySelector('[data-btn=aura]').hidden = w.b.race !== 'knight';
-      root.querySelector('[data-btn=aura]').classList.toggle('ready', w.player.aura >= 100 && w.player.auraT <= 0);
+      const sks = w.b.skills || [];
+      for (let i = 0; i < 3; i++) {
+        const el = root.querySelector(`[data-btn=s${i + 1}]`), id = sks[i];
+        el.hidden = !id;
+        if (!id) continue;
+        const sk = SKILLS[id];
+        const nm = id === 'weapon' ? '무기' : sk.name.slice(0, 4);
+        if (el.textContent !== nm) el.textContent = nm;
+        const cd = id === 'weapon' ? p.skillCd : p.cds[id] || 0;
+        const need = sk ? (sk.costAll ? sk.costAll.min : sk.cost || 0) : 0;
+        el.classList.toggle('cool', cd > 0 || need > p.res);
+      }
       root.querySelector('[data-btn=bag]').hidden = w.mode !== 'plaza';
     },
     reset() { for (const st of Object.values(sticks)) { st.active = false; st.x = st.y = 0; st.knob.style.transform = 'translate(-50%, -50%)'; } input.attack = false; },

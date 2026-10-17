@@ -28,7 +28,7 @@ export function clearSave() {
 }
 
 export function toLoadout(s) {
-  return { race: s.race, level: s.level, alloc: s.alloc, engravings: s.slots, gear: s.gear };
+  return { race: s.race, level: s.level, alloc: s.alloc, engravings: s.slots, gear: s.gear, skills: s.skills };
 }
 
 // 사냥 결과 반영. keep = 잔향 보존 비율

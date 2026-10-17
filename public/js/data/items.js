@@ -4,7 +4,7 @@
 //   charge(당길수록 강해짐), boomerang(되돌아옴), onHit(상태이상), mana(마법 1회 소모), skill(Q)
 
 // 무기 스킬 (Q / 우클릭)
-export const SKILLS = {
+export const WEAPON_SKILLS = {
   spin: { name: '회전베기', desc: '주변을 한 바퀴 벤다', cd: 6 },
   slam: { name: '충전 일격', desc: '앞쪽을 강하게 내려찍어 큰 피해와 경직', cd: 10 },
   dashStab: { name: '돌진 찌르기', desc: '조준 방향으로 돌진하며 경로의 적을 찌른다 (돌진 중 무적)', cd: 5 },
@@ -87,13 +87,13 @@ export const ITEMS = {
 // 플레이 스타일 → 시작 무기 / 핵심 태그 / 추천 종족
 export const STYLES = {
   frost: { name: '서리 지배자', desc: '냉기를 쌓아 둔화시키고 얼려서 묶는다', tags: ['ice', 'curse'], weapon: 'apprenticeWand', stats: ['mag', 'spi'], races: { wizard: 2, elf: 1 } },
-  fire: { name: '화염술사', desc: '화상을 퍼뜨려 무리를 태운다', tags: ['fire'], weapon: 'oldTome', stats: ['mag'], races: { wizard: 2 } },
+  fire: { name: '화염술사', desc: '화상을 퍼뜨려 무리를 태운다', tags: ['fire'], weapon: 'oldTome', stats: ['mag'], races: { wizard: 2, dragon: 2 } },
   poison: { name: '독살자', desc: '강적 하나에 독을 깊게 쌓아 녹인다', tags: ['poison', 'curse'], weapon: 'mossStaff', stats: ['mag', 'toxicity'], races: { undead: 2, wizard: 1 } },
-  shadow: { name: '그림자 암살자', desc: '피하고 파고들어 치명타와 출혈로 벤다', tags: ['shadow', 'bleed'], weapon: 'dagger', stats: ['agi', 'sen'], races: { beast: 2, undead: 1 } },
-  wind: { name: '바람 사수', desc: '계속 움직이며 쏜다', tags: ['wind'], weapon: 'huntBow', stats: ['agi', 'sen'], races: { elf: 2, beast: 1 } },
-  giant: { name: '거인 파쇄자', desc: '높은 체력으로 버티며 긴 쿨타임의 큰 한 방', tags: ['giant', 'brawl'], weapon: 'heavySword', stats: ['str', 'vit'], races: { orc: 2, knight: 1 } },
-  blood: { name: '피의 광전사', desc: '맞으면서 흡혈로 버틴다', tags: ['drain', 'brawl'], weapon: 'handAxe', stats: ['str'], races: { orc: 2 } },
-  mirror: { name: '거울 수호자', desc: '맞을수록 적이 죽는 반사 탱커', tags: ['reflect', 'giant', 'slime'], weapon: 'knightSword', stats: ['pres', 'mres'], races: { knight: 2 } },
+  shadow: { name: '그림자 암살자', desc: '피하고 파고들어 치명타와 출혈로 벤다', tags: ['shadow', 'bleed'], weapon: 'dagger', stats: ['agi', 'sen'], races: { assassin: 2, dino: 1 } },
+  wind: { name: '바람 사수', desc: '계속 움직이며 쏜다', tags: ['wind'], weapon: 'huntBow', stats: ['agi', 'sen'], races: { elf: 2, assassin: 1 } },
+  giant: { name: '거인 파쇄자', desc: '높은 체력으로 버티며 긴 쿨타임의 큰 한 방', tags: ['giant', 'brawl'], weapon: 'heavySword', stats: ['str', 'vit'], races: { golem: 2, orc: 1, knight: 1 } },
+  blood: { name: '피의 광전사', desc: '맞으면서 흡혈로 버틴다', tags: ['drain', 'brawl'], weapon: 'handAxe', stats: ['str'], races: { orc: 2, dino: 2 } },
+  mirror: { name: '거울 수호자', desc: '맞을수록 적이 죽는 반사 탱커', tags: ['reflect', 'giant', 'slime'], weapon: 'knightSword', stats: ['pres', 'mres'], races: { knight: 2, golem: 1 } },
 };
 
 export const STARTER_ITEMS = ['rustySword'];
