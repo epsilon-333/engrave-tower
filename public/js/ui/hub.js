@@ -119,10 +119,14 @@ export class Hub {
     const echoInv = Object.entries(s.echoes).filter(([, n]) => n > 0)
       .map(([id, n]) => `<span class="echo" style="--c:${ECHOES[id].color}">◆ ${ECHOES[id].name} <b>${n}</b></span>`).join('') || '<span class="muted">잔향이 없습니다. 사냥터에서 몬스터를 사냥하세요.</span>';
 
+    const zonesOf = (id) => [...new Set(Object.keys(ENGRAVINGS[id].recipe).map(zoneOfEcho))];
     const groups = ZONES.map((z) => {
-      const ids = Object.keys(ENGRAVINGS).filter((id) => Object.keys(ENGRAVINGS[id].recipe).some((eid) => zoneOfEcho(eid) === z.id));
-      return `<h4>${z.name} <small>${z.floor}층</small></h4><div class="cards">${ids.map((id) => this.engravingCard(id, s, b)).join('')}</div>`;
-    }).join('');
+      const ids = Object.keys(ENGRAVINGS).filter((id) => { const zs = zonesOf(id); return zs.length === 1 && zs[0] === z.id; });
+      return `<h4>${z.name} <small>${z.floor}층 · ${ids.length}종</small></h4><div class="cards">${ids.map((id) => this.engravingCard(id, s, b)).join('')}</div>`;
+    }).join('') + (() => {
+      const ids = Object.keys(ENGRAVINGS).filter((id) => zonesOf(id).length > 1);
+      return `<h4>혼합 문양 <small>여러 지역의 잔향 · ${ids.length}종</small></h4><div class="cards">${ids.map((id) => this.engravingCard(id, s, b)).join('')}</div>`;
+    })();
 
     return `
       <section class="panel">
@@ -347,7 +351,7 @@ function zoneOfEcho(eid) {
 }
 
 function w2t(w) {
-  return `${w.kind === 'melee' ? '근접' : '원거리'} · ${w.dmg === 'phys' ? '물리' : '마법'} · 피해 ×${w.mul} · 속도 ${w.speed}${w.count ? ` · ${w.count}발` : ''}${w.pierce ? ` · 관통 ${w.pierce}` : ''}`;
+  return `${w.kind === 'melee' ? '근접 (받는 피해 -20%, 적중 시 적 공격 끊기)' : '원거리 (쏘는 동안 이동 -35%, 근거리 피해 -30%, 먼 거리 +10%)'} · ${w.dmg === 'phys' ? '물리' : '마법'} · 피해 ×${w.mul} · 속도 ${w.speed}${w.count ? ` · ${w.count}발` : ''}${w.pierce ? ` · 관통 ${w.pierce}` : ''}`;
 }
 
 // 종족 선택 화면

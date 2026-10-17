@@ -161,6 +161,9 @@ export function computeBuild(lo) {
   }
 
   const weaponId = disabled.has(lo.gear?.weapon) ? 'rustySword' : lo.gear?.weapon || 'rustySword';
+  // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
+  if (ITEMS[weaponId].weapon.kind === 'melee') { d.dmgTakenMul *= 0.8; flags.add('stagger'); }
+  else flags.add('aimSlow');
   return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId };
 }
 

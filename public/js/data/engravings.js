@@ -190,6 +190,293 @@ export const ENGRAVINGS = {
     ],
     recipe: { grave: 1, bone: 10, soul: 5 },
   },
+
+  // ════════ 추가 각인 ════════
+  // ── 이끼 동굴 ──
+  slimeArmor: {
+    name: '점액 갑주', slot: 'leg', grade: 1, load: 2, tags: ['slime', 'giant'],
+    stats: { vit: 3, pres: 5 },
+    effects: [{ when: { tag: 'slime', gte: 2 }, type: 'add', key: 'statusRes', v: 0.15, text: '상태이상 저항 +15%' }],
+    recipe: { goo: 5 },
+  },
+  wogolEye: {
+    name: '워골의 눈', slot: 'head', grade: 1, load: 2, tags: ['shadow'],
+    stats: { sen: 5 },
+    effects: [{ type: 'on', event: 'crit', chance: 0.4, action: { status: 'bleed', stacks: 1 }, text: '치명타 시 40% 출혈' }],
+    recipe: { wing: 5 },
+  },
+  goblinThrow: {
+    name: '고블린 투척술', slot: 'arm', grade: 2, load: 3, tags: ['bleed', 'wind'],
+    stats: { agi: 3, str: 3 },
+    effects: [{ type: 'on', event: 'dash', chance: 1, action: { shards: { n: 3, mul: 0.5, type: 'phys' } }, text: '대시할 때 단검 3개 투척' }],
+    recipe: { rust: 4, wing: 3 },
+  },
+  rustChain: {
+    name: '녹슨 쇠사슬', slot: 'back', grade: 2, load: 3, tags: ['giant', 'brawl'],
+    stats: { pres: 8, str: 3 },
+    effects: [{ when: { stat: 'pres', gte: 30 }, type: 'on', event: 'hurt', chance: 0.5, action: { aoe: { r: 40, mul: 0.7, type: 'phys' } }, text: '맞으면 50% 확률로 쇠사슬 휘두르기' }],
+    recipe: { rust: 6 },
+  },
+  chiefRoar: {
+    name: '족장의 함성', slot: 'head', grade: 3, load: 5, tags: ['brawl'],
+    stats: { str: 6, vit: 4 },
+    effects: [{ type: 'on', event: 'kill', chance: 1, action: { shield: 0.05 }, text: '처치 시 최대 HP 5% 보호막' }],
+    recipe: { chief: 1, goo: 4 },
+  },
+  // ── 독늪 ──
+  mudShell: {
+    name: '진흙 껍질', slot: 'leg', grade: 2, load: 3, tags: ['slime', 'poison'],
+    stats: { mres: 8, toxicity: 2 },
+    effects: [{ type: 'on', event: 'hurt', chance: 1, action: { status: 'poison', stacks: 2 }, text: '나를 때린 적 중독 2중첩' }],
+    recipe: { venom: 3, goo: 3 },
+  },
+  stingTail: {
+    name: '독침 꼬리', slot: 'back', grade: 2, load: 3, tags: ['poison', 'wind'],
+    stats: { agi: 4, toxicity: 2 },
+    effects: [{ type: 'on', event: 'dodge', chance: 1, action: { cloud: { r: 30, dur: 3 } }, text: '회피하면 독 구름' }],
+    recipe: { venom: 4, wing: 2 },
+  },
+  bloodOath: {
+    name: '피의 맹세', slot: 'heart', grade: 3, load: 5, tags: ['drain', 'brawl'],
+    stats: { str: 6, lifesteal: 5 },
+    effects: [{ when: { stat: 'lifesteal', gte: 10 }, type: 'mul', key: 'dmgMul', v: 1.12, text: '모든 피해 +12%' }],
+    recipe: { blood: 6, rust: 3 },
+  },
+  rotSporeHeart: {
+    name: '부패한 포자심', slot: 'heart', grade: 2, load: 3, tags: ['poison', 'undying'],
+    stats: { vit: 5, toxicity: 3 },
+    effects: [{ when: { race: 'undead' }, type: 'add', key: 'poisonCap', v: 8, text: '독 최대 중첩 +8' }],
+    recipe: { spore: 5 },
+  },
+  leechLordMaw: {
+    name: '거머리 군주의 입', slot: 'head', grade: 4, load: 7, tags: ['drain', 'bleed'],
+    stats: { lifesteal: 8, sen: 4 },
+    effects: [
+      { type: 'on', event: 'crit', chance: 1, action: { heal: 0.02 }, text: '치명타 시 HP 2% 회복' },
+      { type: 'flag', flag: 'lowHpDrain', text: 'HP 50% 이하일 때 흡혈 2배' },
+    ],
+    recipe: { queen: 1, blood: 8 },
+  },
+  giantHeart: {
+    name: '늪 거인의 심장', slot: 'heart', grade: 5, load: 10, tags: ['poison', 'giant'],
+    stats: { vit: 15, toxicity: 10 },
+    effects: [
+      { type: 'add', key: 'poisonCap', v: 10, text: '독 최대 중첩 +10' },
+      { when: { stat: 'vit', gte: 50 }, type: 'flag', flag: 'poisonBurst', text: '중독된 적이 죽으면 독 구름' },
+    ],
+    recipe: { queen: 2, venom: 6, spore: 6 },
+  },
+  // ── 화산 균열 ──
+  cinderGlove: {
+    name: '잿불 장갑', slot: 'arm', grade: 2, load: 3, tags: ['fire', 'brawl'],
+    stats: { str: 4 },
+    effects: [
+      { type: 'on', event: 'hit', chance: 0.25, action: { status: 'burn', stacks: 1 }, text: '공격 시 25% 화상' },
+      { when: { cmp: ['str', '>', 'mag'] }, type: 'mul', key: 'physAtk', v: 1.08, text: '물리 공격력 +8%' },
+    ],
+    recipe: { cinder: 3, ember: 3 },
+  },
+  demonHorn: {
+    name: '악귀의 뿔', slot: 'head', grade: 2, load: 3, tags: ['fire', 'curse'],
+    stats: { mag: 4, fireAff: 3 },
+    effects: [{ type: 'mul', key: 'statusDmgMul', v: 1.1, text: '상태이상 피해 +10%' }],
+    recipe: { ember: 5 },
+  },
+  magmaCore: {
+    name: '마그마 핵', slot: 'heart', grade: 3, load: 5, tags: ['fire', 'giant'],
+    stats: { vit: 6, pres: 6 },
+    effects: [{ type: 'on', event: 'hurt', chance: 0.6, action: { aoe: { r: 36, mul: 0.6, type: 'mag', status: 'burn' } }, text: '맞으면 60% 확률로 화염 분출' }],
+    recipe: { magma: 6, cinder: 2 },
+  },
+  impWings: {
+    name: '임프의 날개', slot: 'back', grade: 2, load: 3, tags: ['fire', 'wind'],
+    stats: { agi: 5 },
+    effects: [
+      { type: 'mul', key: 'dashCd', v: 0.8, text: '대시 쿨타임 -20%' },
+      { type: 'on', event: 'dash', chance: 1, action: { aoe: { r: 32, mul: 0.5, type: 'mag', status: 'burn' } }, text: '대시 위치에 불꽃' },
+    ],
+    recipe: { cinder: 5 },
+  },
+  riftShard: {
+    name: '균열 파편', slot: 'arm', grade: 4, load: 7, tags: ['fire', 'shadow'],
+    stats: { mag: 8, sen: 6 },
+    effects: [{ type: 'on', event: 'crit', chance: 1, action: { aoe: { r: 36, mul: 0.8, type: 'mag', status: 'burn' } }, text: '치명타 시 폭발' }],
+    recipe: { core: 1, ember: 6 },
+  },
+  volcanoRage: {
+    name: '화산의 분노', slot: 'heart', grade: 5, load: 11, tags: ['fire', 'brawl'],
+    stats: { str: 14, fireAff: 10 },
+    effects: [{ when: { stat: 'str', gte: 60 }, type: 'on', event: 'hit', chance: 1, action: { status: 'burn', stacks: 1 }, text: '모든 공격에 화상' }],
+    recipe: { core: 2, magma: 8 },
+  },
+  // ── 서리 회랑 ──
+  frostPlate: {
+    name: '서리 갑옷 조각', slot: 'leg', grade: 2, load: 3, tags: ['ice', 'giant'],
+    stats: { pres: 6, mres: 6 },
+    effects: [{ type: 'on', event: 'hurt', chance: 1, action: { status: 'chill', stacks: 1 }, text: '나를 때린 적에게 냉기' }],
+    recipe: { frost: 4, icecore: 2 },
+  },
+  deadBreath: {
+    name: '망자의 숨결', slot: 'head', grade: 2, load: 3, tags: ['ice', 'curse'],
+    stats: { mag: 4, iceAff: 4 },
+    effects: [{ type: 'on', event: 'kill', chance: 1, action: { aoe: { r: 40, mul: 0.3, type: 'mag', status: 'chill' } }, text: '처치 시 냉기 파동' }],
+    recipe: { frost: 5 },
+  },
+  mirrorPupil: {
+    name: '거울 눈동자', slot: 'head', grade: 3, load: 5, tags: ['reflect', 'shadow'],
+    stats: { sen: 6, reflect: 6 },
+    effects: [{ when: { stat: 'reflect', gte: 20 }, type: 'add', key: 'crit', v: 0.1, text: '치명타 확률 +10%' }],
+    recipe: { mirror: 5, wing: 3 },
+  },
+  ogreFist: {
+    name: '얼음 오우거의 주먹', slot: 'arm', grade: 3, load: 5, tags: ['ice', 'brawl'],
+    stats: { str: 8 },
+    effects: [
+      { type: 'on', event: 'hit', chance: 0.2, action: { status: 'chill', stacks: 1 }, text: '공격 시 20% 냉기' },
+      { when: { stat: 'iceAff', gte: 10 }, type: 'flag', flag: 'frozenVuln', text: '빙결된 적이 받는 피해 +50%' },
+    ],
+    recipe: { icecore: 5, rust: 3 },
+  },
+  freezeCrystal: {
+    name: '빙결 결정', slot: 'back', grade: 4, load: 7, tags: ['ice'],
+    stats: { iceAff: 10, spi: 5 },
+    effects: [{ type: 'add', key: 'freezeReduce', v: 1, text: '빙결에 필요한 냉기 -1' }],
+    recipe: { witch: 1, icecore: 4 },
+  },
+  witchCrown: {
+    name: '서리 마녀의 관', slot: 'head', grade: 5, load: 10, tags: ['ice', 'curse'],
+    stats: { mag: 14, iceAff: 12 },
+    effects: [
+      { type: 'on', event: 'hit', chance: 0.4, action: { status: 'chill', stacks: 1 }, text: '공격 시 40% 냉기' },
+      { when: { stat: 'mag', gte: 60 }, type: 'on', event: 'kill', chance: 1, action: { shards: { n: 4, mul: 0.5, type: 'mag' } }, text: '처치 시 얼음 파편 4개' },
+    ],
+    recipe: { witch: 2, frost: 8 },
+  },
+  // ── 그림자 묘지 ──
+  boneShield: {
+    name: '뼈 방패', slot: 'arm', grade: 2, load: 3, tags: ['giant', 'undying'],
+    stats: { pres: 10 },
+    effects: [{ type: 'on', event: 'hurt', chance: 0.25, action: { shield: 0.04 }, text: '맞으면 25% 확률로 보호막' }],
+    recipe: { bone: 5 },
+  },
+  soulFlame: {
+    name: '혼불', slot: 'back', grade: 2, load: 3, tags: ['shadow', 'curse'],
+    stats: { mag: 4, spi: 4 },
+    effects: [{ type: 'on', event: 'kill', chance: 0.5, action: { shards: { n: 2, mul: 0.6, type: 'mag' } }, text: '처치 시 50% 혼 탄환 2발' }],
+    recipe: { soul: 5 },
+  },
+  ghoulTeeth: {
+    name: '구울 이빨', slot: 'head', grade: 2, load: 3, tags: ['drain', 'poison'],
+    stats: { lifesteal: 4, toxicity: 3 },
+    effects: [{ type: 'on', event: 'hit', chance: 0.25, action: { status: 'poison', stacks: 1 }, text: '공격 시 25% 중독' }],
+    recipe: { rot: 5 },
+  },
+  wraithCloak: {
+    name: '망령의 망토', slot: 'back', grade: 3, load: 5, tags: ['shadow', 'wind'],
+    stats: { agi: 6, sen: 4 },
+    effects: [
+      { type: 'add', key: 'dodge', v: 0.05, text: '회피 +5%' },
+      { type: 'on', event: 'dodge', chance: 1, action: { aoe: { r: 34, mul: 0.7, type: 'phys', status: 'bleed' } }, text: '회피하면 그림자 베기' },
+    ],
+    recipe: { soul: 4, wing: 4 },
+  },
+  necroHeart: {
+    name: '사령의 심장', slot: 'heart', grade: 4, load: 7, tags: ['undying', 'curse'],
+    stats: { spi: 8, vit: 6 },
+    effects: [
+      { when: { race: 'undead' }, type: 'mul', key: 'dmgMul', v: 1.15, text: '모든 피해 +15%' },
+      { type: 'mul', key: 'statusDmgMul', v: 1.1, text: '상태이상 피해 +10%' },
+    ],
+    recipe: { grave: 1, bone: 4 },
+  },
+  graveScythe: {
+    name: '묘지기의 낫', slot: 'arm', grade: 5, load: 10, tags: ['shadow', 'bleed'],
+    stats: { str: 10, sen: 10 },
+    effects: [
+      { type: 'flag', flag: 'critBleed', text: '치명타가 출혈 2중첩' },
+      { when: { stat: 'sen', gte: 50 }, type: 'flag', flag: 'execute', text: 'HP 15% 이하 일반 적 처형' },
+    ],
+    recipe: { grave: 2, bone: 6 },
+  },
+  // ── 혼합 문양 (여러 지역의 잔향) ──
+  steamEngine: {
+    name: '증기 기관', slot: 'heart', grade: 4, load: 6, tags: ['fire', 'ice'],
+    stats: { mag: 6 },
+    effects: [{ type: 'mul', key: 'reactionMul', v: 1.3, text: '원소 반응 피해 +30%' }],
+    recipe: { ember: 5, frost: 5 },
+  },
+  toxicFlask: {
+    name: '독불 주머니', slot: 'back', grade: 3, load: 5, tags: ['poison', 'fire'],
+    stats: { toxicity: 4, fireAff: 4 },
+    effects: [
+      { type: 'on', event: 'hit', chance: 0.2, action: { status: 'poison', stacks: 1 }, text: '공격 시 20% 중독' },
+      { type: 'on', event: 'hit', chance: 0.2, action: { status: 'burn', stacks: 1 }, text: '공격 시 20% 화상' },
+    ],
+    recipe: { venom: 4, ember: 4 },
+  },
+  bloodFrost: {
+    name: '피얼음 칼날', slot: 'arm', grade: 3, load: 5, tags: ['bleed', 'ice'],
+    stats: { str: 4, iceAff: 4 },
+    effects: [
+      { type: 'on', event: 'hit', chance: 0.25, action: { status: 'bleed', stacks: 1 }, text: '공격 시 25% 출혈' },
+      { type: 'on', event: 'hit', chance: 0.25, action: { status: 'chill', stacks: 1 }, text: '공격 시 25% 냉기' },
+    ],
+    recipe: { blood: 4, frost: 4 },
+  },
+  septicClaw: {
+    name: '패혈의 손톱', slot: 'arm', grade: 3, load: 5, tags: ['poison', 'bleed'],
+    stats: { toxicity: 4, sen: 3 },
+    effects: [
+      { type: 'on', event: 'hit', chance: 0.25, action: { status: 'poison', stacks: 1 }, text: '공격 시 25% 중독' },
+      { type: 'on', event: 'hit', chance: 0.25, action: { status: 'bleed', stacks: 1 }, text: '공격 시 25% 출혈' },
+    ],
+    recipe: { blood: 4, venom: 4 },
+  },
+  balanceSigil: {
+    name: '균형의 문양', slot: 'heart', grade: 3, load: 4, tags: [],
+    stats: { pres: 5, mres: 5 },
+    effects: [{ when: { diff: ['pres', 'mres'], lte: 5 }, type: 'mul', key: 'dmgTakenMul', v: 0.85, text: '받는 피해 -15%' }],
+    recipe: { mirror: 3, bone: 3 },
+  },
+  allroundSigil: {
+    name: '만능의 문양', slot: 'head', grade: 4, load: 6, tags: [],
+    stats: { str: 3, mag: 3, agi: 3, vit: 3, sen: 3, spi: 3 },
+    effects: [{ when: { minBase: 25 }, type: 'mul', key: 'dmgMul', v: 1.2, text: '모든 피해 +20%' }],
+    recipe: { rust: 5, spore: 5, cinder: 5 },
+  },
+  extremeSigil: {
+    name: '극한의 문양', slot: 'back', grade: 4, load: 6, tags: ['brawl'],
+    stats: {},
+    effects: [
+      { when: { extreme: true }, type: 'mul', key: 'dmgMul', v: 1.22, text: '극한일 때 모든 피해 +22%' },
+      { type: 'mul', key: 'maxHp', v: 0.92, text: '대가: 최대 HP -8%' },
+    ],
+    recipe: { chief: 1, magma: 4, icecore: 4 },
+  },
+  berserkBlood: {
+    name: '광전사의 피', slot: 'heart', grade: 3, load: 5, tags: ['drain', 'brawl'],
+    stats: { lifesteal: 4, str: 4 },
+    effects: [
+      { type: 'flag', flag: 'lowHpDrain', text: 'HP 50% 이하일 때 흡혈 2배' },
+      { when: { race: 'orc' }, type: 'add', key: 'regen', v: 0.005, text: '초당 HP 0.5% 회복' },
+    ],
+    recipe: { blood: 5, rust: 5 },
+  },
+  hunterMark: {
+    name: '사냥꾼의 표식', slot: 'head', grade: 3, load: 5, tags: ['shadow', 'wind'],
+    stats: { sen: 5, agi: 3 },
+    effects: [{ type: 'flag', flag: 'markOnCrit', text: '치명타가 적에게 표식(+20% 피해)' }],
+    recipe: { wing: 5, frost: 3 },
+  },
+  echoAmplifier: {
+    name: '공명 증폭기', slot: 'back', grade: 4, load: 8, tags: ['curse'],
+    stats: { spi: 6, mag: 4 },
+    effects: [
+      { when: { tag: 'curse', gte: 2 }, type: 'mul', key: 'statusDmgMul', v: 1.2, text: '상태이상 피해 +20%' },
+      { when: { stat: 'spi', gte: 40 }, type: 'add', key: 'loadCap', v: 4, text: '각인 부하 한도 +4' },
+    ],
+    recipe: { soul: 4, spore: 4, mirror: 2 },
+  },
 };
 
 // 태그 시너지: 장착한 각인 + 장비의 태그 개수

@@ -161,7 +161,8 @@ export class World {
       p.dashT -= DT;
       this.move(p, p.dvx * DT, p.dvy * DT);
     } else {
-      const spd = d.moveSpeed * (1 - slow);
+      const aiming = this.f.has('aimSlow') && (inp.attack || p.atkCd > 0.05);
+      const spd = d.moveSpeed * (1 - slow) * (aiming ? 0.65 : 1);
       this.move(p, mx * spd * DT, my * spd * DT);
       if (inp.dash && p.dashCd <= 0) {
         const dx = ml > 0 ? mx : p.aimX, dy = ml > 0 ? my : p.aimY;
@@ -173,10 +174,12 @@ export class World {
       }
     }
 
+    p.attackHeld = !!inp.attack;
     if (p.pendingDouble >= 0) { p.pendingDouble -= DT; if (p.pendingDouble < 0) this.attack(0.12); }
     if (inp.attack && p.atkCd <= 0) {
       const mom = this.b.race === 'beast' ? 1 + p.momentum * 0.04 : 1;
       p.atkCd = 1 / (this.b.weapon.speed * d.atkSpeed * mom);
+      p.atkPeriod = p.atkCd;
       this.attack(0);
       if (f.has('doubleAttack') && this.rng.chance(0.3)) p.pendingDouble = 0.08;
     }
@@ -253,7 +256,7 @@ export class World {
         this.projs.push({
           owner: 'p', x: p.x + Math.cos(a) * 6, y: p.y + Math.sin(a) * 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
           life: (w.range * d.projMul) / sp, dmg: base, type, pierce: w.pierce || 0, hit: new Set(), heavy, splash: w.splash || 0,
-          color: type === 'mag' ? '#b58cff' : '#e8e2cf', kind: type === 'phys' ? 'arrow' : 'orb',
+          color: type === 'mag' ? '#b58cff' : '#e8e2cf', kind: type === 'phys' ? 'arrow' : 'orb', ox: p.x, oy: p.y,
         });
       }
       p.swingT = 0.1; p.swingMax = 0.1; p.swingAng = ang;
@@ -323,6 +326,10 @@ export class World {
       e.kbx += (dx / l) * kb * 3; e.kby += (dy / l) * kb * 3;
     }
     if (e.def.ai === 'dummy') e.wobble = 0.3;
+    if (f.has('stagger') && e.windT > 0 && !e.def.elite) {
+      e.windT = 0; e.atkCd = Math.max(e.atkCd, 0.7);
+      this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '경직', color: '#ffe080' });
+    }
     if (heavy || crit) this.emit({ t: 'hitstop', v: heavy ? 0.06 : 0.03 });
     if (this.b.race === 'beast') { p.momentum = Math.min(10, p.momentum + 1); p.momentumT = 1.5; }
     for (const tr of this.b.triggers.hit) if (this.rng.chance(tr.chance)) this.doAction(tr.action, e, e);
@@ -447,6 +454,7 @@ export class World {
     const d = this.d, s = this.s;
     if (a.status && target) this.applyStatus(target, a.status, a.stacks || 1);
     if (a.heal) this.heal(d.maxHp * a.heal, 'skill');
+    if (a.shield) { const p = this.player; p.shield = Math.min(d.maxHp * 0.4, p.shield + d.maxHp * a.shield); }
     if (a.aoe) {
       const base = (a.aoe.type === 'phys' ? d.physAtk : d.magAtk) * a.aoe.mul;
       this.emit({ t: 'ring', x: pos.x, y: pos.y, r: a.aoe.r, color: a.aoe.status ? STATUS_COLOR[a.aoe.status] : '#ffffff' });
@@ -854,7 +862,11 @@ export class World {
           if (Math.hypot(e.x - pr.x, e.y - pr.y) > e.r + 3) continue;
           pr.hit.add(e.id);
           if (pr.noTrigger) this.damageEnemy(e, pr.dmg, pr.type, { src: 'aoe' });
-          else this.hitEnemy(e, pr.dmg, pr.type, pr.heavy, true);
+          else {
+            const dist = pr.ox != null ? Math.hypot(e.x - pr.ox, e.y - pr.oy) : 100;
+            const range = dist < 40 ? 0.7 : dist > 70 ? 1.1 : 1;
+            this.hitEnemy(e, pr.dmg * range, pr.type, pr.heavy, true);
+          }
           if (pr.splash) { this.emit({ t: 'ring', x: pr.x, y: pr.y, r: pr.splash, color: pr.color }); for (const o of this.enemiesNear(pr.x, pr.y, pr.splash)) if (o !== e) this.damageEnemy(o, pr.dmg * 0.7, pr.type, { src: 'aoe' }); }
           if (pr.type === 'mag' && this.f.has('magicBurst') && !pr.noTrigger) this.doAction({ aoe: { r: 24, mul: 0.35, type: 'mag' } }, null, pr);
           if (pr.pierce-- <= 0) { pr.life = 0; break; }

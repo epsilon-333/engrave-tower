@@ -406,47 +406,71 @@ export class Renderer {
     const ox = Math.cos(p.swingAng) * lunge, oy = Math.sin(p.swingAng) * lunge;
     if (p.shield > 0) { g.fillStyle = 'rgba(170,215,255,0.22)'; ellipse(g, p.x, p.y - 8, 12, 14); }
     this.shadow(p.x, p.y + 4, 6);
-    const ang = this.weaponAngle(p, w.b.weapon);
-    const behind = Math.sin(ang) < -0.3;
-    if (behind) this.drawWeapon(w, p, ang, ox, oy);
+    const pose = this.weaponPose(w, p);
+    if (pose.behind) this.drawWeapon(w, p, pose, ox, oy);
     if (!blink && img) g.drawImage(img, Math.round(p.x - img.width / 2 + ox), Math.round(p.y + 5 - img.height + oy));
-    if (!behind) this.drawWeapon(w, p, ang, ox, oy);
+    if (!pose.behind) this.drawWeapon(w, p, pose, ox, oy);
   }
 
-  weaponAngle(p, wpn) {
-    const aim = Math.atan2(p.aimY, p.aimX);
-    if (p.spinT > 0) return aim + (1 - p.spinT / 0.3) * Math.PI * 2;
-    if (wpn.kind !== 'melee') return aim;
-    if (p.swingT > 0) {
-      const k = easeOut(1 - p.swingT / p.swingMax);
-      const half = wpn.arc / 2 + 0.25;
-      return p.swingAng - p.swingDir * half + p.swingDir * half * 2 * k;
+  // 무기 자세: 캐릭터가 바라보는 방향(좌/우) 기준 각도. 0 = 정면 수평, 음수 = 위쪽
+  weaponPose(w, p) {
+    const wpn = w.b.weapon, wa = WEAPON_ART[w.b.weaponId] || {};
+    const breathe = Math.sin(w.t * 3) * 0.05;
+    if (p.spinT > 0) return { a: -1.2 + (1 - p.spinT / 0.3) * Math.PI * 2, behind: false };
+    if (wa.bow) {
+      // 활: 공격 버튼을 누르는 동안 시위를 당기고, 쏘는 순간 놓는다
+      let pull = 0;
+      if (p.attackHeld && p.atkPeriod) pull = Math.min(1, 1 - p.atkCd / p.atkPeriod);
+      if (p.swingT > 0) pull = 0;
+      return { a: -0.15 + breathe * 0.5, pull, snap: p.swingT > 0 ? p.swingT / 0.1 : 0, behind: false };
     }
-    // 대기: 다음 휘두를 방향의 반대쪽으로 들고 있다
-    return aim - (p.atkCount % 2 ? -1 : 1) * (wpn.arc / 2) * 0.6;
+    const k = p.swingMax && p.swingT > 0 ? 1 - p.swingT / p.swingMax : -1;
+    if (wpn.kind === 'proj') {
+      // 지팡이: 들어 올렸다가 앞으로 뻗는다
+      if (k < 0) return { a: -1.25 + breathe, behind: false };
+      const a = k < 0.35 ? -1.25 - 0.8 * (k / 0.35) : -2.05 + 1.85 * easeOut((k - 0.35) / 0.65);
+      return { a, cast: k, behind: a < -1.7 };
+    }
+    // 근접: 머리 위로 들었다가(준비) 내려친다 / 다음 공격은 올려 벤다
+    if (k < 0) return { a: -1.05 + breathe, behind: false };
+    const down = p.swingDir > 0;
+    const from = down ? -2.4 : 1.0, to = down ? 1.0 : -2.2;
+    const wind = 0.18;
+    const a = k < wind ? from + (down ? -0.25 : 0.25) * (k / wind) : from + (to - from) * easeOut((k - wind) / (1 - wind));
+    return { a, behind: a < -1.8 };
   }
 
-  drawWeapon(w, p, ang, ox, oy) {
-    const g = this.g;
+  drawWeapon(w, p, pose, ox, oy) {
+    const g = this.g, dir = p.dir;
     const wa = WEAPON_ART[w.b.weaponId] || WEAPON_ART.rustySword;
     const img = sprite(wa.s, wa.tint || '');
     if (!img) return;
-    const hx = p.x + ox + Math.cos(ang) * 3, hy = p.y - 7 + oy + Math.sin(ang) * 2;
+    const world = dir > 0 ? pose.a : Math.PI - pose.a;
+    const hx = p.x + ox + dir * 4, hy = p.y - 7 + oy;
     g.save();
     g.translate(Math.round(hx), Math.round(hy));
     if (wa.bow) {
-      g.rotate(ang);
-      const recoil = p.swingT > 0 ? -2 * (p.swingT / 0.1) : 0;
-      g.drawImage(img, Math.round(2 + recoil), Math.round(-img.height / 2));
+      // 활은 세워서 앞으로 든다. 시위를 당기면 화살이 걸린다
+      const back = 7 * (pose.pull || 0), bh = img.height;
+      g.scale(dir, 1);
+      g.drawImage(img, 1, Math.round(-bh / 2));
+      const sx = 2 - back - (pose.snap ? Math.sin(pose.snap * 12) * 1.2 : 0);
+      g.strokeStyle = '#e8e2cf'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(3, -bh / 2 + 2); g.lineTo(sx, 0); g.lineTo(3, bh / 2 - 2); g.stroke();
+      if ((pose.pull || 0) > 0.15) {
+        const ar = sprite('weapon_arrow');
+        if (ar) { g.save(); g.translate(sx, 0); g.rotate(Math.PI / 2); g.drawImage(ar, -Math.round(ar.width / 2), -ar.height + 3); g.restore(); }
+      }
     } else {
-      g.rotate(ang + Math.PI / 2);
+      g.rotate(world + Math.PI / 2);
       const sc = Math.min(1, 24 / img.height);
       g.drawImage(img, Math.round(-img.width * sc / 2), Math.round(-img.height * sc + 3), Math.round(img.width * sc), Math.round(img.height * sc));
     }
     g.restore();
     if (w.b.weapon.dmg === 'mag' && w.b.weapon.kind === 'proj') {
-      const tx = hx + Math.cos(ang) * 16, ty = hy + Math.sin(ang) * 16;
-      g.fillStyle = `rgba(200,160,255,${0.3 + 0.2 * Math.sin(w.t * 8)})`; disc(g, tx, ty, 3);
+      const len = 20, tx = hx + Math.cos(world) * len, ty = hy + Math.sin(world) * len;
+      const glow = pose.cast != null ? 0.9 : 0.3 + 0.2 * Math.sin(w.t * 8);
+      g.fillStyle = `rgba(200,160,255,${glow})`; disc(g, tx, ty, pose.cast != null ? 4 : 2.5);
     }
   }
 
