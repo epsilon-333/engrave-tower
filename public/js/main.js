@@ -13,6 +13,7 @@ import { ENGRAVINGS } from './data/engravings.js';
 import { RACE_ART } from './data/art.js';
 import { buildPlaza } from './data/plaza.js';
 import { unlockAudio, sfx, startMusic, getVolume, setVolume } from './audio.js';
+import { setupTouch, isTouch } from './touch.js';
 
 let save = loadSave();
 const titleEl = document.getElementById('title');
@@ -169,6 +170,7 @@ function enterZone(id, depth = 0, carry = null) {
 function startLoop() {
   paused = false; endTimer = 0; acc = 0; modal = null;
   titleEl.hidden = true; gameEl.hidden = false; overlay.hidden = true; panelEl.hidden = true;
+  requestAnimationFrame(fitCanvas);
 }
 
 function showTutorial() {
@@ -182,6 +184,7 @@ function showTutorial() {
       <p><b>5.</b> 뭘 할지 모르겠다면 가운데 <b>의뢰 게시판</b>을 확인하세요.</p>
       <p><b>6.</b> 필드에는 <b>야영지</b>(잔향 맡기기), <b>떠돌이 상인</b>, <b>낡은 제단</b>(축복과 대가), 가장 깊은 곳의 <b>아래층 계단</b>이 있어요.</p>
       <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · Q/우클릭 무기 스킬 · Space 대시(무적) · R 오러(기사) · E 상호작용 · C 캐릭터 · Esc 메뉴</p>
+      ${touch ? '<p class="keys">모바일: 왼쪽 조이스틱 이동 · 오른쪽 조이스틱을 누르면 공격(밀면 그 방향 조준, 그냥 누르면 가까운 적 자동 조준) · 버튼으로 스킬·대시·상호작용</p>' : ''}
       <p class="muted">빨갛게 번쩍이는 적은 곧 공격합니다. 대시로 피하세요!</p>
     </div>
     <button data-close>시작하기</button>`);
@@ -189,6 +192,7 @@ function showTutorial() {
 
 // ───── 패널 (광장 시설) ─────
 function openPanel(tab) {
+  touch?.reset();
   hub.tab = tab; hub.render();
   panelEl.hidden = false; paused = true;
   input.attack = false;
@@ -202,6 +206,7 @@ function closePanel() {
 }
 
 function showModal(html, onClose) {
+  touch?.reset();
   overlay.innerHTML = `<div class="modal">${html}</div>`;
   overlay.hidden = false; paused = true;
   modal = onClose || (() => { overlay.hidden = true; paused = false; modal = null; sfx('close', { vol: 0.4 }); });
@@ -268,6 +273,13 @@ function showPause() {
   else document.getElementById('howto').onclick = () => showTutorial();
 }
 
+function escAction() {
+  if (!world || gameEl.hidden) return;
+  if (!panelEl.hidden) return closePanel();
+  if (modal) return modal();
+  if (world.state === 'play') showPause();
+}
+
 // ───── 입력 ─────
 const keys = new Set();
 const input = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, attack: false, dash: false, interact: false, skill: false, aura: false };
@@ -275,13 +287,7 @@ let mouseCX = innerWidth / 2, mouseCY = innerHeight / 2;
 addEventListener('keydown', (e) => {
   unlockAudio();
   if (!world || gameEl.hidden) return;
-  if (e.code === 'Escape') {
-    e.preventDefault();
-    if (!panelEl.hidden) return closePanel();
-    if (modal) return modal();
-    if (world.state === 'play') showPause();
-    return;
-  }
+  if (e.code === 'Escape') { e.preventDefault(); return escAction(); }
   if (!panelEl.hidden && (e.code === 'KeyE' || e.code === 'KeyC')) return closePanel();
   if (modal && (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); return modal(); }
   if (paused) return;
@@ -295,19 +301,30 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => { keys.clear(); input.attack = false; });
 canvas.addEventListener('mousemove', (e) => { mouseCX = e.clientX; mouseCY = e.clientY; });
-canvas.addEventListener('mousedown', (e) => { unlockAudio(); if (e.button === 0 && !paused) input.attack = true; if (e.button === 2 && !paused) input.skill = true; });
+canvas.addEventListener('mousedown', (e) => { unlockAudio(); if (touch) return; if (e.button === 0 && !paused) input.attack = true; if (e.button === 2 && !paused) input.skill = true; });
 addEventListener('mouseup', (e) => { if (e.button === 0) input.attack = false; });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 addEventListener('pointerdown', () => unlockAudio(), { once: true });
 
+let touch = null;
 function readInput() {
+  if (touch) { touch.apply(); return; }
   input.moveX = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
   input.moveY = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0);
   const p = renderer.toWorld(mouseCX, mouseCY);
   input.aimX = p.x; input.aimY = p.y;
 }
 
-addEventListener('resize', () => renderer.resize(innerWidth, innerHeight, devicePixelRatio || 1));
+// 화면 크기: 게임 영역의 실제 크기에 맞춘다 (모바일 주소창·회전 대응)
+function fitCanvas() {
+  const r = canvas.getBoundingClientRect();
+  const w = Math.round(r.width) || document.documentElement.clientWidth || innerWidth;
+  const h = Math.round(r.height) || document.documentElement.clientHeight || innerHeight;
+  if (w && h && (w !== fitCanvas.w || h !== fitCanvas.h || devicePixelRatio !== fitCanvas.d)) { fitCanvas.w = w; fitCanvas.h = h; fitCanvas.d = devicePixelRatio; renderer.resize(w, h, devicePixelRatio || 1); }
+}
+addEventListener('resize', fitCanvas);
+addEventListener('orientationchange', () => setTimeout(fitCanvas, 200));
+window.visualViewport?.addEventListener('resize', fitCanvas);
 
 // 떠돌이 상인: 이 층 몬스터의 잔향을 골드로 판다 (산 것은 바로 안전하게 보관)
 function showMerchant(zoneId) {
@@ -410,6 +427,13 @@ onCloud(() => {
   t.textContent = (cloud.id ? (cloud.name || '내 계정') + ' · ' : '') + cloudLabel();
   chip.appendChild(t);
 });
+
+// 모바일: 터치 조작 화면 켜기
+if (isTouch()) {
+  document.body.classList.add('touch');
+  touch = setupTouch({ input, getWorld: () => world, onMenu: () => { unlockAudio(); escAction(); }, onBag: () => openPanel('char') });
+  addEventListener('pointerdown', () => { try { if (!document.fullscreenElement && innerHeight < 600) document.documentElement.requestFullscreen?.().catch(() => {}); } catch { /* 무시 */ } }, { once: true });
+}
 
 (async () => {
   const [, , , remote] = await Promise.all([loadAssets(), document.fonts?.load('11px Galmuri11').catch(() => {}), document.fonts?.load('bold 11px Galmuri11').catch(() => {}), initCloud()]);

@@ -24,14 +24,13 @@ export class Renderer {
     this.shake = 0; this.banner = null; this.hitstop = 0; this.fade = 1; this.hurtFlash = 0;
     this.cam = { x: 0, y: 0 };
     this.world = null; this.lastStep = 0;
-    this.resize(innerWidth, innerHeight, devicePixelRatio || 1);
+    this.resize(document.documentElement.clientWidth || innerWidth, document.documentElement.clientHeight || innerHeight, devicePixelRatio || 1);
   }
 
   resize(cssW, cssH, dpr) {
     const W = Math.round(cssW * dpr), H = Math.round(cssH * dpr);
     this.c.width = W; this.c.height = H;
-    this.c.style.width = cssW + 'px'; this.c.style.height = cssH + 'px';
-    this.S = Math.max(2, Math.round(H / 290));
+    this.S = Math.max(2, Math.round(Math.max(W, H) / 480));
     this.VW = Math.ceil(W / this.S); this.VH = Math.ceil(H / this.S);
     this.u = Math.max(1, Math.round(this.S / 2)); // 글씨 배율 (Galmuri11 × u)
     this.light.width = this.VW; this.light.height = this.VH;
@@ -939,8 +938,8 @@ export class Renderer {
     if (w.b.race === 'beast' && p.momentum > 0) this.text(`사냥 본능 ×${p.momentum}`, sxx, sy0 + box / 2, u, '#ffcc22');
 
     if (w.mode === 'field') this.drawMinimap(w);
-    else {
-      const hint = 'WASD 이동 · 좌클릭 공격 · Q 스킬 · Space 대시 · E 상호작용 · C 캐릭터';
+    else if (!document.body.classList.contains('touch')) {
+      const hint = document.body.classList.contains('touch') ? '시설 가까이 가서 확인 버튼 · 캐릭터 버튼으로 스탯 배분' : 'WASD 이동 · 좌클릭 공격 · Q 스킬 · Space 대시 · E 상호작용 · C 캐릭터';
       g.font = `${11 * u}px ${FONT}`;
       const tw2 = g.measureText(hint).width + 20 * u;
       g.fillStyle = 'rgba(13,11,16,0.7)'; g.fillRect((W - tw2) / 2, H - 22 * u, tw2, 16 * u);
