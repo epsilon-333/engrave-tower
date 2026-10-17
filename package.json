@@ -1,0 +1,8 @@
+{
+  "name": "engrave-tower",
+  "version": "0.1.0",
+  "private": true,
+  "description": "각인의 탑 - 조합 빌드 도트 액션 로그라이트",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}

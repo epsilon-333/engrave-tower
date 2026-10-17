@@ -1,0 +1,367 @@
+// 마을 화면 (DOM). 캐릭터 / 공명 제단 / 상점 / 사냥터 / 도감
+import { BASE_STATS, STAT_INFO, SPECIAL_INFO, SLOT_INFO, GRADES, TIERS } from '../data/stats.js';
+import { RACES, xpToNext } from '../data/races.js';
+import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
+import { ITEMS } from '../data/items.js';
+import { MONSTERS, ECHOES, ZONES } from '../data/monsters.js';
+import { computeBuild, encodeLoadout, decodeLoadout, SLOTS } from '../sim/build.js';
+import { condText } from '../sim/conditions.js';
+import { toLoadout, writeSave, refreshQuests, claimQuest } from '../save.js';
+import { sfx } from '../audio.js';
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+export class Hub {
+  constructor(root, getSave, onStartRun, onReset, onClose) {
+    this.root = root; this.getSave = getSave; this.onStartRun = onStartRun; this.onReset = onReset; this.onClose = onClose;
+    this.tab = 'char';
+    try { this.tab = localStorage.getItem('et-tab') || 'char'; } catch { /* 무시 */ }
+    this.toastT = null;
+    root.addEventListener('click', (e) => this.onClick(e));
+  }
+
+  get s() { return this.getSave(); }
+  save() { writeSave(this.s); }
+
+  toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(this.toastT);
+    this.toastT = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  render() {
+    const s = this.s, b = computeBuild(toLoadout(s));
+    this.b = b;
+    const tabs = [['char', '캐릭터'], ['altar', '공명 제단'], ['shop', '대장간'], ['quest', '의뢰'], ['hunt', '관문 정보'], ['codex', '서고']];
+    this.root.innerHTML = `
+      <header class="hub-top">
+        <div class="title">각인의 탑</div>
+        <div class="who">${RACES[s.race].name} · Lv ${s.level} <span class="xp"><i style="width:${(s.xp / xpToNext(s.level)) * 100}%"></i></span> <span class="gold">◆ ${s.gold} 골드</span></div>
+        <button class="close" data-act="close">닫기 ✕</button>
+        <nav>${tabs.map(([k, n]) => `<button data-tab="${k}" class="${this.tab === k ? 'on' : ''}">${n}${k === 'char' && s.points ? ` <b class="dot">${s.points}</b>` : ''}${k === 'quest' && (s.quests || []).some((q) => q.done) ? ' <b class="dot">!</b>' : ''}</button>`).join('')}</nav>
+      </header>
+      <main class="hub-body">${this['tab_' + this.tab](s, b)}</main>
+      <div id="toast"></div>`;
+  }
+
+  // ───── 캐릭터 ─────
+  tab_char(s, b) {
+    const race = RACES[s.race], d = b.derived;
+    const statRow = (k) => {
+      const v = b.stats[k], alloc = s.alloc[k] || 0;
+      const next = (b.awakenings.filter((a) => a.stat === k && !a.on)[0]);
+      const tier = TIERS.findIndex(([cap]) => v <= cap);
+      return `<div class="stat-row">
+        <span class="sn" title="${esc(STAT_INFO[k].desc)}">${STAT_INFO[k].name}</span>
+        <span class="sv tier${tier}">${v}</span>
+        <span class="bar"><i style="width:${Math.min(100, v)}%"></i>${[30, 50, 70, 90].map((t) => `<em style="left:${t}%"></em>`).join('')}</span>
+        <span class="next">${next ? `${next.at}: ${next.name}` : '<b>모든 각성</b>'}</span>
+        <button class="sm" data-act="unalloc" data-k="${k}" ${alloc ? '' : 'disabled'}>−</button>
+        <button class="sm" data-act="alloc" data-k="${k}" ${s.points ? '' : 'disabled'}>+</button>
+      </div>`;
+    };
+    const specials = Object.entries(SPECIAL_INFO).filter(([k]) => b.stats[k]).map(([k, i]) => `<span class="chip">${i.name} ${b.stats[k]}${i.unit}</span>`).join('') || '<span class="muted">없음</span>';
+    const pct = (v) => Math.round(v * 100) + '%';
+    const awOn = b.awakenings.filter((a) => a.on);
+    return `
+    <div class="cols">
+      <section class="panel">
+        <h3>${race.name} <small>${race.passive}</small></h3>
+        <p class="muted">${race.desc}</p>
+        <div class="points">남은 포인트 <b>${s.points}</b>
+          <button class="sm" data-act="respec">배분 초기화 (무료)</button></div>
+        <div class="tier-help">포인트 효율: 0~20 ×1.0 · 21~40 ×1.3 · 41~60 ×1.7 · 61+ ×2.2 &nbsp;|&nbsp; 30/50/70/90에서 각성</div>
+        ${BASE_STATS.map(statRow).join('')}
+        <h4>특수 스탯</h4><div class="chips">${specials}</div>
+      </section>
+      <section class="panel">
+        <h3>전투 수치</h3>
+        <div class="derived">
+          <div>최대 HP <b>${d.maxHp}</b></div><div>무기 <b>${ITEMS[b.weaponId].name}</b></div>
+          <div>물리 공격력 <b>${Math.round(d.physAtk)}</b></div><div>마법 공격력 <b>${Math.round(d.magAtk)}</b></div>
+          <div>공격 속도 <b>×${d.atkSpeed.toFixed(2)}</b></div><div>이동 속도 <b>${Math.round(d.moveSpeed)}</b></div>
+          <div>치명타 <b>${pct(d.crit)}</b> · ×${d.critDmg.toFixed(2)}</div><div>회피 <b>${pct(d.dodge)}</b></div>
+          <div>물리 피해 감소 <b>${pct(d.physDR)}</b></div><div>마법 피해 감소 <b>${pct(d.magDR)}</b></div>
+          <div>상태이상 저항 <b>${pct(d.statusRes)}</b></div><div>쿨타임 감소 <b>${pct(d.cdr)}</b></div>
+          <div>모든 피해 <b>×${d.dmgMul.toFixed(2)}</b></div><div>받는 피해 <b>×${d.dmgTakenMul.toFixed(2)}</b></div>
+        </div>
+        <div class="load ${b.overload ? 'over' : ''}">각인 부하 <b>${b.load} / ${d.loadCap}</b><span class="bar"><i style="width:${Math.min(100, (b.load / d.loadCap) * 100)}%"></i></span></div>
+        ${b.extreme ? '<div class="badge extreme">극한 상태: 주력 스탯 +20%</div>' : ''}
+        <h4>발동 중인 각성 (${awOn.length})</h4>
+        <div class="list">${awOn.map((a) => `<div class="li on"><b>${STAT_INFO[a.stat].name} ${a.at}</b> ${a.name}: ${a.desc}</div>`).join('') || '<div class="muted">아직 없음. 한 스탯을 30까지 올려 보세요.</div>'}</div>
+        <h4>태그 시너지</h4>
+        <div class="list">${b.synergies.map((x) => `<div class="li ${x.on ? 'on' : 'off'}"><span class="tag" style="--c:${TAGS[x.tag].color}">${TAGS[x.tag].name} ${x.n}/${x.need}</span> ${x.text}</div>`).join('') || '<div class="muted">각인과 장비의 태그를 모아 보세요.</div>'}</div>
+        <h4>조건 효과</h4>
+        <div class="list">${b.notes.map((n) => `<div class="li ${n.kind}">${esc(n.text)}</div>`).join('') || '<div class="muted">없음</div>'}</div>
+        <h4>빌드 코드 <small>(공유용 · 나중에 온라인 대전에 사용)</small></h4>
+        <div class="code-row"><input id="buildCode" value="${encodeLoadout(toLoadout(s))}" readonly><button class="sm" data-act="copyCode">복사</button></div>
+        <div class="code-row"><input id="peekCode" placeholder="다른 빌드 코드를 붙여 넣으면 수치를 미리 봅니다"><button class="sm" data-act="peek">보기</button></div>
+        <div id="peekOut"></div>
+        <p class="danger-zone"><button class="sm ghost" data-act="reset">처음부터 다시 시작</button></p>
+      </section>
+    </div>`;
+  }
+
+  // ───── 공명 제단 ─────
+  tab_altar(s, b) {
+    const race = RACES[s.race];
+    const slots = SLOTS.filter((x) => x !== 'extra' || race.extraSlot);
+    const slotHtml = slots.map((sl) => {
+      const id = s.slots[sl], e = id && ENGRAVINGS[id];
+      return `<div class="slot ${e ? 'filled' : ''}" ${e ? `style="--g:${GRADES[e.grade].color}"` : ''}>
+        <div class="sl-name">${SLOT_INFO[sl]}</div>
+        ${e ? `<div class="sl-e">${e.name}</div><div class="sl-meta">부하 ${e.load}</div><button class="sm ghost" data-act="unequipE" data-slot="${sl}">빼기</button>` : '<div class="muted">비어 있음</div>'}
+      </div>`;
+    }).join('');
+
+    const echoInv = Object.entries(s.echoes).filter(([, n]) => n > 0)
+      .map(([id, n]) => `<span class="echo" style="--c:${ECHOES[id].color}">◆ ${ECHOES[id].name} <b>${n}</b></span>`).join('') || '<span class="muted">잔향이 없습니다. 사냥터에서 몬스터를 사냥하세요.</span>';
+
+    const groups = ZONES.map((z) => {
+      const ids = Object.keys(ENGRAVINGS).filter((id) => Object.keys(ENGRAVINGS[id].recipe).some((eid) => zoneOfEcho(eid) === z.id));
+      return `<h4>${z.name} <small>${z.floor}층</small></h4><div class="cards">${ids.map((id) => this.engravingCard(id, s, b)).join('')}</div>`;
+    }).join('');
+
+    return `
+      <section class="panel">
+        <h3>신체 각인 <small>부하 ${b.load} / ${b.derived.loadCap}${b.overload ? ' · <span class="warn">과부하!</span>' : ''}</small></h3>
+        <div class="slots">${slotHtml}</div>
+        <h4>보유 잔향</h4><div class="echoes">${echoInv}</div>
+      </section>
+      <section class="panel">
+        <h3>각인 목록 <small>잔향을 모아 새긴 뒤 같은 부위에 장착합니다</small></h3>
+        ${groups}
+      </section>`;
+  }
+
+  engravingCard(id, s, b) {
+    const e = ENGRAVINGS[id];
+    const known = Object.keys(e.recipe).some((eid) => s.codex.echoes[eid]);
+    const owned = s.owned[id] || 0;
+    const equipped = Object.values(s.slots).filter((x) => x === id).length;
+    const can = Object.entries(e.recipe).every(([eid, n]) => (s.echoes[eid] || 0) >= n);
+    const recipe = Object.entries(e.recipe).map(([eid, n]) => {
+      const have = s.echoes[eid] || 0;
+      const nm = s.codex.echoes[eid] ? ECHOES[eid].name : '???';
+      return `<span class="rq ${have >= n ? 'ok' : ''}" style="--c:${ECHOES[eid].color}">◆ ${nm} ${have}/${n}</span>`;
+    }).join('');
+    if (!known) {
+      return `<div class="card unknown"><div class="c-head"><b>??? 미확인 각인</b><span class="grade" style="--g:${GRADES[e.grade].color}">${GRADES[e.grade].name}</span></div>
+        <div class="c-meta">${SLOT_INFO[e.slot]}</div><div class="recipe">${recipe}</div></div>`;
+    }
+    const stats = Object.entries(e.stats).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k]).name} ${v > 0 ? '+' : ''}${v}`).join(', ');
+    const effs = e.effects.map((x) => `<li>${x.when ? `<em>[${esc(condText(x.when))}]</em> ` : ''}${esc(x.text)}</li>`).join('');
+    const canEquip = owned > equipped;
+    const prev = canEquip || owned ? this.preview(s, (lo) => { lo.engravings = { ...lo.engravings, [s.slots[e.slot] && RACES[s.race].extraSlot && !s.slots.extra ? 'extra' : e.slot]: id }; }) : '';
+    return `<div class="card" style="--g:${GRADES[e.grade].color}">
+      <div class="c-head"><b>${e.name}</b><span class="grade">${GRADES[e.grade].name}</span></div>
+      <div class="c-meta">${SLOT_INFO[e.slot]} · 부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
+      <div class="c-stats">${stats}</div>
+      <ul class="c-eff">${effs}</ul>
+      <div class="recipe">${recipe}</div>
+      ${prev}
+      <div class="c-act">
+        <button class="sm" data-act="craft" data-id="${id}" ${can ? '' : 'disabled'}>새기기</button>
+        <button class="sm" data-act="equipE" data-id="${id}" ${canEquip ? '' : 'disabled'}>장착</button>
+        <span class="muted">보유 ${owned}</span>
+      </div>
+    </div>`;
+  }
+
+  // ───── 상점 ─────
+  tab_shop(s, b) {
+    const gear = s.gear;
+    const gearRow = [['weapon', '무기'], ['armor', '방어구'], ['acc1', '장신구 1'], ['acc2', '장신구 2']]
+      .map(([k, n]) => `<div class="slot ${gear[k] ? 'filled' : ''}"><div class="sl-name">${n}</div>${gear[k] ? `<div class="sl-e">${ITEMS[gear[k]].name}</div>${k !== 'weapon' ? `<button class="sm ghost" data-act="unequipG" data-slot="${k}">빼기</button>` : ''}` : '<div class="muted">비어 있음</div>'}</div>`).join('');
+    const card = (id) => {
+      const it = ITEMS[id], has = s.items.includes(id);
+      const stats = Object.entries(it.stats).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k]).name} ${v > 0 ? '+' : ''}${v}`).join(', ');
+      const w = it.weapon ? `<div class="c-meta">${w2t(it.weapon)}</div>` : '';
+      const req = it.req ? `<div class="c-meta warn">착용 조건: ${Object.entries(it.req).map(([k, v]) => `${STAT_INFO[k].name} ${v}`).join(', ')}</div>` : '';
+      const effs = (it.effects || []).map((x) => `<li>${x.when ? `<em>[${esc(condText(x.when))}]</em> ` : ''}${esc(x.text)}</li>`).join('');
+      const equipped = Object.values(gear).includes(id);
+      const btn = !has
+        ? `<button class="sm" data-act="buy" data-id="${id}" ${s.gold >= it.price ? '' : 'disabled'}>구매 ${it.price}</button>`
+        : it.slot === 'acc'
+          ? `<button class="sm" data-act="equipG" data-id="${id}" data-slot="acc1" ${equipped ? 'disabled' : ''}>장신구1</button><button class="sm" data-act="equipG" data-id="${id}" data-slot="acc2" ${equipped ? 'disabled' : ''}>장신구2</button>`
+          : `<button class="sm" data-act="equipG" data-id="${id}" data-slot="${it.slot}" ${equipped ? 'disabled' : ''}>${equipped ? '장착 중' : '장착'}</button>`;
+      const prev = equipped ? '' : this.preview(s, (lo) => { lo.gear = { ...lo.gear, [it.slot === 'acc' ? (gear.acc1 ? 'acc2' : 'acc1') : it.slot]: id }; });
+      return `<div class="card ${has ? 'owned' : ''}"><div class="c-head"><b>${it.name}</b>${it.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
+        ${w}${req}<div class="c-stats">${stats || '&nbsp;'}</div><ul class="c-eff">${effs}</ul>${prev}<div class="c-act">${btn}</div></div>`;
+    };
+    const bySlot = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl).map(card).join('');
+    return `
+      <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots">${gearRow}</div></section>
+      <section class="panel"><h3>무기</h3><div class="cards">${bySlot('weapon')}</div>
+        <h3>방어구</h3><div class="cards">${bySlot('armor')}</div>
+        <h3>장신구</h3><div class="cards">${bySlot('acc')}</div></section>`;
+  }
+
+  // ───── 사냥터 ─────
+  tab_hunt(s) {
+    return `<section class="panel"><h3>관문 정보 <small>원하는 잔향을 주는 몬스터가 사는 곳을 고르세요</small></h3>
+      <div class="zones">${ZONES.map((z) => {
+        const mons = [...z.pool, z.elite].map((m) => {
+          const def = MONSTERS[m], seen = s.codex.kills[m];
+          const ec = seen ? `<span style="color:${ECHOES[def.echo.id].color}">◆ ${ECHOES[def.echo.id].name}</span>` : '<span class="muted">◆ ???</span>';
+          const cond = def.condEcho && seen ? `<div class="hint">숨겨진 잔향: ${def.condEcho.hint}하면 ${s.codex.echoes[def.condEcho.id] ? ECHOES[def.condEcho.id].name : '???'}</div>` : '';
+          const res = seen ? `<span class="muted">물저 ${def.pres} · 마저 ${def.mres}${def.reflect ? ' · 반사' : ''}</span>` : '';
+          return `<div class="mon ${def.elite ? 'elite' : ''}"><b>${seen ? def.name : '???'}</b>${def.elite ? ' <span class="warn">정예</span>' : ''} ${ec} ${res}${cond}</div>`;
+        }).join('');
+        const lvWarn = s.level < z.rec ? 'warn' : '';
+        return `<div class="zone" style="--z:${z.pal[1]}">
+          <div class="z-head"><b>${z.floor}층 · ${z.name}</b><span class="${lvWarn}">권장 Lv ${z.rec}</span></div>
+          ${mons}
+          <button data-act="hunt" data-id="${z.id}">바로 들어가기</button>
+        </div>`;
+      }).join('')}</div>
+      <p class="muted">광장 북쪽의 관문으로도 들어갈 수 있습니다. 필드는 넓은 동굴 지형이며, 몬스터는 지역마다 무리지어 삽니다.<br>
+      시작 지점의 귀환 포탈로 돌아오면 잔향 전부 · 긴급 귀환(Esc) 70% · 사망 50%</p></section>`;
+  }
+
+  // ───── 도감 ─────
+  tab_codex(s) {
+    const reactions = Object.entries(REACTIONS).map(([id, r]) => s.codex.reactions[id]
+      ? `<div class="li on"><b>${r.name}</b> (${r.recipe}) ${r.desc}</div>`
+      : '<div class="li off">??? 아직 발견하지 못한 원소 반응</div>').join('');
+    const mons = Object.entries(MONSTERS).map(([id, m]) => s.codex.kills[id]
+      ? `<div class="li"><b>${m.name}</b> 처치 ${s.codex.kills[id]} · HP ${m.hp} · 물저 ${m.pres} / 마저 ${m.mres} · ${m.type === 'mag' ? '마법' : '물리'} 공격</div>`
+      : '<div class="li off">???</div>').join('');
+    const tags = Object.values(TAGS).map((t) => `<div class="li"><span class="tag" style="--c:${t.color}">${t.name}</span> ${t.tiers.map((x) => `${x.n}개: ${x.text}`).join(' / ')}</div>`).join('');
+    return `<div class="cols">
+      <section class="panel"><h3>원소 반응</h3><div class="list">${reactions}</div>
+      <p class="muted">상태이상이 겹치면 반응이 일어납니다. 지속 피해(화상·중독·출혈)는 적의 저항을 무시합니다.</p>
+      <h3>몬스터</h3><div class="list">${mons}</div></section>
+      <section class="panel"><h3>고대 석판 기록</h3><div class="list">${(s.codex.lore || []).map((t) => `<div class="li lore">${esc(t)}</div>`).join('') || '<div class="li off">필드의 고대 석판을 찾아 읽어 보세요.</div>'}</div>
+      <h3>태그 시너지</h3><div class="list">${tags}</div>
+      <p class="muted">화염과 냉기를 둘 다 4개 이상 모으면 서로 상쇄되어 둘 다 꺼집니다.</p></section></div>`;
+  }
+
+  // 장착하면 수치가 어떻게 바뀌는지 미리보기
+  preview(s, patch) {
+    const base = this.b, lo = toLoadout(s);
+    lo.engravings = { ...lo.engravings }; lo.gear = { ...lo.gear };
+    patch(lo);
+    const nb = computeBuild(lo), a = base.derived, b = nb.derived;
+    const chips = [];
+    const num = (label, k, digits = 0, mul = 1) => {
+      const dv = (b[k] - a[k]) * mul;
+      if (Math.abs(dv) < (digits ? 0.005 : 0.5)) return;
+      chips.push(`<span class="pv ${dv > 0 ? 'up' : 'down'}">${label} ${dv > 0 ? '+' : ''}${digits ? dv.toFixed(digits) : Math.round(dv)}</span>`);
+    };
+    num('HP', 'maxHp'); num('물공', 'physAtk'); num('마공', 'magAtk'); num('공속', 'atkSpeed', 2);
+    num('치명%', 'crit', 0, 100); num('물감%', 'physDR', 0, 100); num('마감%', 'magDR', 0, 100); num('피해×', 'dmgMul', 2);
+    const synA = base.synergies.filter((x) => x.on).length, synB = nb.synergies.filter((x) => x.on).length;
+    if (synB !== synA) chips.push(`<span class="pv ${synB > synA ? 'up' : 'down'}">시너지 ${synB > synA ? '+' : ''}${synB - synA}</span>`);
+    const awA = base.awakenings.filter((x) => x.on).length, awB = nb.awakenings.filter((x) => x.on).length;
+    if (awB !== awA) chips.push(`<span class="pv ${awB > awA ? 'up' : 'down'}">각성 ${awB > awA ? '+' : ''}${awB - awA}</span>`);
+    if (nb.overload && !base.overload) chips.push('<span class="pv down">과부하!</span>');
+    return chips.length ? `<div class="preview">장착 시 ${chips.join('')}</div>` : '<div class="preview muted">장착 시 변화 없음</div>';
+  }
+
+  tab_quest(s) {
+    refreshQuests(s); this.save();
+    const zn = (id) => ZONES.find((z) => z.id === id).name;
+    const cards = s.quests.map((q) => `<div class="card quest ${q.done ? 'done' : ''}">
+      <div class="c-head"><b>${q.text}</b><span class="grade">${zn(q.zone)}</span></div>
+      <div class="qbar"><i style="width:${(q.progress / q.n) * 100}%"></i><span>${q.progress} / ${q.n}${q.kind === 'explore' ? '%' : ''}</span></div>
+      <div class="c-meta">보상: 골드 ${q.reward.gold} · 경험치 ${q.reward.xp}</div>
+      <div class="c-act"><button class="sm" data-act="claim" data-id="${q.id}" ${q.done ? '' : 'disabled'}>${q.done ? '보상 받기' : '진행 중'}</button></div>
+    </div>`).join('');
+    return `<section class="panel"><h3>의뢰 게시판 <small>의뢰인 마르코: "탑 아래 사람들이 부탁한 일들이오."</small></h3>
+      <div class="cards">${cards}</div>
+      <p class="muted">의뢰는 해당 지역에서 사냥을 마치고 돌아오면 진행됩니다. 완료하면 새 의뢰가 올라옵니다.</p></section>`;
+  }
+
+  onClick(ev) {
+    const t = ev.target.closest('[data-tab],[data-act]');
+    if (!t) return;
+    const s = this.s;
+    if (t.dataset.tab) {
+      sfx('select', { vol: 0.4 });
+      this.tab = t.dataset.tab;
+      try { localStorage.setItem('et-tab', this.tab); } catch { /* 무시 */ }
+      return this.render();
+    }
+    const { act, k, id, slot } = t.dataset;
+    sfx(act === 'craft' ? 'reaction' : act === 'buy' ? 'coin' : act === 'claim' ? 'levelup' : act === 'close' ? 'close' : 'click', { vol: 0.5 });
+    switch (act) {
+      case 'claim': { const r = claimQuest(s, id); if (r) this.toast(`보상: 골드 ${r.q.reward.gold} · 경험치 ${r.q.reward.xp}${r.ups ? ' · 레벨 업!' : ''}`); break; }
+      case 'alloc': if (s.points > 0) { s.alloc[k] = (s.alloc[k] || 0) + (ev.shiftKey ? Math.min(5, s.points) : 1); s.points -= ev.shiftKey ? Math.min(5, s.points) : 1; } break;
+      case 'unalloc': if (s.alloc[k]) { s.alloc[k]--; s.points++; } break;
+      case 'respec': for (const v of Object.values(s.alloc)) s.points += v; s.alloc = {}; this.toast('스탯 배분을 초기화했습니다'); break;
+      case 'craft': {
+        const e = ENGRAVINGS[id];
+        for (const [eid, n] of Object.entries(e.recipe)) s.echoes[eid] -= n;
+        s.owned[id] = (s.owned[id] || 0) + 1;
+        this.toast(`${e.name} 각인을 새겼습니다`);
+        break;
+      }
+      case 'equipE': {
+        const e = ENGRAVINGS[id];
+        let target = e.slot;
+        if (s.slots[target] && RACES[s.race].extraSlot && !s.slots.extra) target = 'extra';
+        s.slots[target] = id;
+        this.toast(`${SLOT_INFO[target]}에 ${e.name} 장착`);
+        break;
+      }
+      case 'unequipE': delete s.slots[slot]; break;
+      case 'buy': {
+        const it = ITEMS[id];
+        if (s.gold >= it.price) { s.gold -= it.price; s.items.push(id); this.toast(`${it.name} 구매`); }
+        break;
+      }
+      case 'equipG': s.gear[slot] = id; break;
+      case 'unequipG': delete s.gear[slot]; break;
+      case 'hunt': return this.onStartRun(id);
+      case 'close': return this.onClose();
+      case 'copyCode': $('#buildCode').select(); try { navigator.clipboard.writeText($('#buildCode').value); } catch { /* 무시 */ } this.toast('빌드 코드를 복사했습니다'); return;
+      case 'peek': {
+        try {
+          const lo = decodeLoadout($('#peekCode').value);
+          const pb = computeBuild(lo), d = pb.derived;
+          $('#peekOut').innerHTML = `<div class="peek">${RACES[lo.race].name} Lv${lo.level} · HP ${d.maxHp} · 물공 ${Math.round(d.physAtk)} · 마공 ${Math.round(d.magAtk)} · 각성 ${pb.awakenings.filter((a) => a.on).length}개 · 시너지 ${pb.synergies.filter((x) => x.on).length}개<br>
+            각인: ${Object.values(lo.engravings).map((x) => ENGRAVINGS[x]?.name).join(', ') || '없음'}</div>`;
+        } catch { this.toast('잘못된 빌드 코드입니다'); }
+        return;
+      }
+      case 'reset':
+        if (t.dataset.armed) return this.onReset();
+        t.dataset.armed = '1'; t.textContent = '정말 지울까요? 한 번 더 누르면 초기화'; t.classList.add('danger');
+        setTimeout(() => { if (t.isConnected) { delete t.dataset.armed; t.textContent = '처음부터 다시 시작'; t.classList.remove('danger'); } }, 4000);
+        return;
+    }
+    this.save();
+    this.render();
+  }
+}
+
+function zoneOfEcho(eid) {
+  for (const z of ZONES) for (const m of [...z.pool, z.elite]) {
+    const def = MONSTERS[m];
+    if (def.echo.id === eid || def.condEcho?.id === eid) return z.id;
+  }
+  return null;
+}
+
+function w2t(w) {
+  return `${w.kind === 'melee' ? '근접' : '원거리'} · ${w.dmg === 'phys' ? '물리' : '마법'} · 피해 ×${w.mul} · 속도 ${w.speed}${w.count ? ` · ${w.count}발` : ''}${w.pierce ? ` · 관통 ${w.pierce}` : ''}`;
+}
+
+// 종족 선택 화면
+export function renderRaceSelect(root, onPick) {
+  root.innerHTML = `<div class="race-select">
+    <h1>각인의 탑</h1>
+    <p class="muted">탑에 잠든 고대 문양을 몸에 새겨라. 강한 각인보다 <b>맞물리는 조합</b>이 이긴다.</p>
+    <div class="races">${Object.entries(RACES).map(([id, r]) => `
+      <button class="race" data-race="${id}">
+        <canvas width="96" height="120" data-race="${id}"></canvas>
+        <b>${r.name}</b><small>${r.passive}</small>
+        <div class="mini-stats">${BASE_STATS.map((k) => `<span><i>${STAT_INFO[k].short}</i><em style="width:${r.base[k] * 4}px"></em>${r.base[k]}</span>`).join('')}</div>
+        <p>${r.desc}</p>
+      </button>`).join('')}</div>
+    <p class="muted credit">그래픽: 16x16 DungeonTileset II by 0x72 (CC0) · 효과음: Kenney (CC0) · 글꼴: 갈무리, Noto Sans KR (OFL)</p></div>`;
+  root.querySelectorAll('.race').forEach((b) => b.addEventListener('click', () => onPick(b.dataset.race)));
+}

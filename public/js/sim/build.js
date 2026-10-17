@@ -1,0 +1,175 @@
+// 빌드 계산: 로드아웃(종족·레벨·배분·각인·장비) → 최종 스탯, 파생 수치, 플래그, 트리거.
+// DOM을 쓰지 않는 순수 함수라 서버에서도 그대로 돌릴 수 있다.
+import { BASE_STATS, SPECIAL_INFO, AWAKENINGS, EXTREME, eff } from '../data/stats.js';
+import { RACES } from '../data/races.js';
+import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
+import { ITEMS } from '../data/items.js';
+import { evalCond, condText } from './conditions.js';
+
+export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back', 'extra'];
+export const GEAR_SLOTS = ['weapon', 'armor', 'acc1', 'acc2'];
+
+// loadout: { race, level, alloc:{str..}, engravings:{slot:id}, gear:{slot:id} }
+export function computeBuild(lo) {
+  const race = RACES[lo.race];
+  const stats = {};
+  for (const k of BASE_STATS) stats[k] = race.base[k] + (lo.alloc?.[k] || 0) + (race.growth[k] || 0) * (lo.level - 1);
+  for (const k of Object.keys(SPECIAL_INFO)) stats[k] = 0;
+
+  const notes = []; // UI에 보여줄 발동 내역
+  const sources = [];
+  for (const s of SLOTS) {
+    const id = lo.engravings?.[s];
+    if (id && ENGRAVINGS[id] && (s !== 'extra' || race.extraSlot)) sources.push({ kind: 'engraving', id, def: ENGRAVINGS[id] });
+  }
+  for (const s of GEAR_SLOTS) {
+    const id = lo.gear?.[s];
+    if (id && ITEMS[id]) sources.push({ kind: 'item', id, def: ITEMS[id] });
+  }
+
+  // 1) 고정 스탯
+  for (const src of sources) {
+    const mult = src.kind === 'item' && lo.race === 'dwarf' ? 1.5 : 1;
+    for (const [k, v] of Object.entries(src.def.stats || {})) stats[k] = (stats[k] || 0) + Math.round(v * mult);
+  }
+
+  // 2) 태그
+  const tags = {};
+  for (const src of sources) for (const t of src.def.tags || []) tags[t] = (tags[t] || 0) + 1;
+
+  // 장비 착용 조건 (조건 미달 장비는 효과 없음, 스탯만 반영 안 되게 되돌림)
+  const disabled = new Set();
+  for (const src of sources) {
+    if (src.kind !== 'item' || !src.def.req) continue;
+    for (const [k, v] of Object.entries(src.def.req)) {
+      if (stats[k] < v) {
+        disabled.add(src.id);
+        notes.push({ kind: 'warn', text: `${src.def.name}: ${k === 'str' ? '근력' : '마력'} ${v} 필요 → 효과 없음` });
+      }
+    }
+  }
+  for (const src of sources) {
+    if (!disabled.has(src.id)) continue;
+    const mult = lo.race === 'dwarf' ? 1.5 : 1;
+    for (const [k, v] of Object.entries(src.def.stats || {})) stats[k] -= Math.round(v * mult);
+    for (const t of src.def.tags || []) tags[t]--;
+  }
+  const active = sources.filter((s) => !disabled.has(s.id));
+
+  // 3) 극한 판정 (기본 스탯 기준)
+  const sorted = BASE_STATS.map((k) => [k, stats[k]]).sort((a, b) => b[1] - a[1]);
+  const extreme = sorted[0][1] >= sorted[1][1] * EXTREME.ratio && sorted[0][1] > 0;
+  if (extreme) {
+    const [k] = sorted[0];
+    stats[k] = Math.round(stats[k] * (1 + EXTREME.bonus));
+    notes.push({ kind: 'extreme', text: `극한: 주력 스탯 +20%` });
+  }
+
+  // 4) 조건부 효과 수집 (조건은 1차 스탯 기준으로 판정 → 순환 방지)
+  const ctx = { stats: { ...stats }, tags, race: lo.race, extreme };
+  const effects = [];
+  for (const src of active) {
+    for (const e of src.def.effects || []) {
+      const ok = evalCond(e.when, ctx);
+      if (e.when) notes.push({ kind: ok ? 'on' : 'off', text: `${src.def.name}: ${condText(e.when)} → ${e.text}` });
+      if (ok) effects.push(e);
+    }
+  }
+
+  // 5) 태그 시너지 (+ 상쇄)
+  const cancelled = new Set();
+  for (const c of CANCELS) {
+    if ((tags[c.a] || 0) >= c.n && (tags[c.b] || 0) >= c.n) {
+      cancelled.add(c.a); cancelled.add(c.b);
+      notes.push({ kind: 'warn', text: `${c.name}: [${TAGS[c.a].name}]·[${TAGS[c.b].name}] 시너지 꺼짐` });
+    }
+  }
+  const synergies = [];
+  for (const [t, n] of Object.entries(tags)) {
+    const def = TAGS[t];
+    if (!def || n <= 0) continue;
+    for (const tier of def.tiers) {
+      const on = n >= tier.n && !cancelled.has(t);
+      synergies.push({ tag: t, n, need: tier.n, text: tier.text, on });
+      if (on) effects.push(...tier.effects);
+    }
+  }
+
+  // 인간: 서로 다른 태그 5종
+  const distinct = Object.values(tags).filter((n) => n > 0).length;
+  if (lo.race === 'human' && distinct >= 5) {
+    effects.push({ type: 'mul', key: 'dmgMul', v: 1.15 });
+    notes.push({ kind: 'on', text: `다재다능: 서로 다른 태그 ${distinct}종 → 피해 +15%` });
+  }
+
+  // 6) 2차 스탯 효과 반영
+  for (const e of effects) {
+    if (e.type === 'stat') stats[e.stat] = (stats[e.stat] || 0) + e.v;
+    if (e.type === 'statPct') stats[e.stat] = Math.round(stats[e.stat] * (1 + e.v));
+  }
+
+  // 7) 각성 (최종 스탯 기준)
+  const awakenings = [];
+  for (const [k, list] of Object.entries(AWAKENINGS)) {
+    for (const a of list) {
+      const on = stats[k] >= a.at;
+      awakenings.push({ stat: k, ...a, on });
+      if (on) effects.push(...a.effects);
+    }
+  }
+
+  // 8) 파생 수치
+  const E = {}; for (const k of BASE_STATS) E[k] = eff(Math.max(0, stats[k]));
+  const d = {
+    maxHp: 70 + E.vit * 7,
+    physAtk: 4 + E.str * 1.3,
+    magAtk: 4 + E.mag * 1.3,
+    atkSpeed: 1 + E.agi * 0.012,
+    moveSpeed: 80 + E.agi * 0.7,
+    dodge: E.agi / (E.agi + 220),
+    crit: 0.05 + E.sen / (E.sen + 140),
+    critDmg: 1.5 + E.sen * 0.006,
+    statusRes: E.spi / (E.spi + 90) + (lo.race === 'undead' ? 0.25 : 0),
+    cdr: E.spi / (E.spi + 160),
+    loadCap: 10 + Math.floor(stats.spi * 0.5),
+    physDR: Math.max(0, stats.pres) / (Math.max(0, stats.pres) + 100),
+    magDR: Math.max(0, stats.mres) / (Math.max(0, stats.mres) + 100),
+    physPen: 0, magPen: 0, knockback: 30, regen: 0,
+    dmgMul: 1, dmgTakenMul: 1, burnMul: 1, bleedMul: 1, chillMul: 1, reactionMul: 1, statusDmgMul: 1, reflectMul: 1,
+    poisonCap: 10, freezeReduce: 0, cloudSize: 0, dashCd: 1.2, goldMul: 1, projMul: lo.race === 'elf' ? 1.3 : 1,
+  };
+  const flags = new Set();
+  const triggers = { hit: [], kill: [], hurt: [], hurtMag: [], dodge: [], crit: [], dash: [] };
+  for (const e of effects) {
+    if (e.type === 'add') d[e.key] = (d[e.key] || 0) + e.v;
+    else if (e.type === 'mul') d[e.key] = (d[e.key] ?? 1) * e.v;
+    else if (e.type === 'flag') flags.add(e.flag);
+    else if (e.type === 'on') triggers[e.event].push(e);
+  }
+  d.maxHp = Math.round(d.maxHp);
+  d.dodge = Math.min(0.6, d.dodge);
+  d.crit = Math.min(0.9, d.crit);
+  d.statusRes = Math.min(0.85, d.statusRes);
+
+  // 9) 각인 부하
+  let load = 0;
+  for (const src of active) if (src.kind === 'engraving') load += src.def.load;
+  const overload = load > d.loadCap;
+  if (overload) {
+    d.atkSpeed *= 0.7; d.dmgTakenMul *= 1.3; d.moveSpeed *= 0.85;
+    notes.push({ kind: 'warn', text: `과부하! 부하 ${load}/${d.loadCap}: 공격 속도 -30%, 받는 피해 +30%` });
+  }
+
+  const weaponId = disabled.has(lo.gear?.weapon) ? 'rustySword' : lo.gear?.weapon || 'rustySword';
+  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId };
+}
+
+// 빌드 코드 (온라인 공유/고스트 대전용)
+export function encodeLoadout(lo) {
+  const json = JSON.stringify({ r: lo.race, l: lo.level, a: lo.alloc, e: lo.engravings, g: lo.gear });
+  return btoa(unescape(encodeURIComponent(json)));
+}
+export function decodeLoadout(code) {
+  const o = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+  return { race: o.r, level: o.l, alloc: o.a || {}, engravings: o.e || {}, gear: o.g || {} };
+}
