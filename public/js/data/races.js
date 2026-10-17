@@ -21,12 +21,12 @@ export const RACES = {
   },
   knight: {
     name: '기사', origin: '인간',
-    desc: '맞을수록 투지가 쌓이고, 투지를 심판의 일격으로 쏟아낸다. 받는 피해 -10%.',
+    desc: '맞을수록 오러가 쌓이고, 오러를 실어 강타한다. 받는 피해 -10%.',
     strong: '근력 · 체력 · 물리 저항', weak: '느림 · 마력 낮음',
     base: { str: 14, mag: 3, agi: 6, vit: 15, sen: 7, spi: 8, pres: 14, mres: 8 },
     growth: { pres: 1 },
     passive: '수호의 맹세',
-    res: { key: 'grit', name: '투지', color: '#ffd84a', hit: 2, kill: 3, hurt: 120, decay: 2 },
+    res: { key: 'grit', name: '오러', color: '#ffd84a', hit: 2, kill: 3, hurt: 120, decay: 2 },
   },
   orc: {
     name: '오크', origin: '황야',

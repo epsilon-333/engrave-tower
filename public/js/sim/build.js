@@ -5,7 +5,7 @@ import { RACES, RACE_MIGRATE } from '../data/races.js';
 import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
 import { ITEMS } from '../data/items.js';
 import { evalCond, condText } from './conditions.js';
-import { SKILLS, ENGRAVING_SKILLS } from '../data/skills.js';
+import { SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES } from '../data/skills.js';
 
 export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back'];
 export const GEAR_SLOTS = ['weapon', 'armor', 'acc1', 'acc2'];
@@ -172,7 +172,8 @@ export function computeBuild(lo) {
   if (lo.race === 'golem') d.dodge = 0;
 
   // 액티브 스킬: 종족 스킬(레벨 해금) + 장착한 각인의 스킬 + 무기 기술 → 최대 3개 장착
-  const available = Object.entries(SKILLS).filter(([, sk]) => sk.race === lo.race && (sk.unlock || 1) <= lo.level).map(([id]) => id);
+  const cls = lo.cls && CLASSES[lo.cls]?.race === lo.race ? lo.cls : RACE_CLASSES(lo.race)[0];
+  const available = CLASSES[cls].skills.filter((id) => (lo.allSkills || (SKILLS[id].unlock || 1) <= lo.level));
   for (const src of active) if (src.kind === 'engraving' && ENGRAVING_SKILLS[src.id] && !available.includes(ENGRAVING_SKILLS[src.id])) available.push(ENGRAVING_SKILLS[src.id]);
   available.push('weapon');
   let skills = (lo.skills || []).filter((id) => available.includes(id)).slice(0, 3);
@@ -186,15 +187,15 @@ export function computeBuild(lo) {
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
   if (wpn.kind === 'melee') { d.dmgTakenMul *= 0.8; flags.add('stagger'); }
   else flags.add('aimSlow');
-  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, skills, available };
+  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], cls, skills, available };
 }
 
 // 빌드 코드 (온라인 공유/고스트 대전용)
 export function encodeLoadout(lo) {
-  const json = JSON.stringify({ r: lo.race, l: lo.level, a: lo.alloc, e: lo.engravings, g: lo.gear, k: lo.skills });
+  const json = JSON.stringify({ r: lo.race, l: lo.level, a: lo.alloc, e: lo.engravings, g: lo.gear, k: lo.skills, c: lo.cls });
   return btoa(unescape(encodeURIComponent(json)));
 }
 export function decodeLoadout(code) {
   const o = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
-  return { race: o.r, level: o.l, alloc: o.a || {}, engravings: o.e || {}, gear: o.g || {}, skills: o.k };
+  return { race: o.r, level: o.l, alloc: o.a || {}, engravings: o.e || {}, gear: o.g || {}, skills: o.k, cls: o.c };
 }

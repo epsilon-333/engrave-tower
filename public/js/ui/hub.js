@@ -8,7 +8,8 @@ import { computeBuild, encodeLoadout, decodeLoadout, SLOTS } from '../sim/build.
 import { condText, evalCond } from '../sim/conditions.js';
 import { toLoadout, writeSave, refreshQuests, claimQuest } from '../save.js';
 import { sfx } from '../audio.js';
-import { SKILLS, ROLE_COLOR, ENGRAVING_SKILLS } from '../data/skills.js';
+import { SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES } from '../data/skills.js';
+import { getAutoAim, setAutoAim } from '../settings.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -20,6 +21,7 @@ export class Hub {
     try { this.tab = localStorage.getItem('et-tab') || 'char'; } catch { /* 무시 */ }
     this.toastT = null;
     root.addEventListener('click', (e) => this.onClick(e));
+    root.addEventListener('change', (e) => { if (e.target.dataset?.act === 'autoAim') { setAutoAim(e.target.checked); this.toast(e.target.checked ? '자동 조준 켜짐' : '자동 조준 꺼짐'); } }); // autoAimChange
   }
 
   get s() { return this.getSave(); }
@@ -164,7 +166,7 @@ export class Hub {
   skillPanel(s, b) {
     const keys = ['Q', 'R', 'F'];
     const resName = RACES[s.race].res.name;
-    const all = Object.entries(SKILLS).filter(([, sk]) => sk.race === s.race);
+    const all = CLASSES[b.cls].skills.map((id) => [id, SKILLS[id]]);
     const card = (id, sk, locked) => {
       const i = b.skills.indexOf(id), on = i >= 0;
       const cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
@@ -179,7 +181,7 @@ export class Hub {
       </div>`;
     };
     const race = all.map(([id, sk]) => card(id, sk, !b.available.includes(id))).join('');
-    const eng = b.available.filter((id) => id !== 'weapon' && !SKILLS[id].race).map((id) => card(id, SKILLS[id], false)).join('');
+    const eng = b.available.filter((id) => id !== 'weapon' && SKILLS[id].engraving).map((id) => card(id, SKILLS[id], false)).join('');
     const wsk = WEAPON_SKILLS[b.weapon.skill];
     let wcard = '';
     if (wsk) {
@@ -187,8 +189,19 @@ export class Hub {
       const wbtn = wi >= 0 ? '<button class="sm ghost" data-act="skillOff" data-id="weapon">빼기</button>' : '<button class="sm" data-act="skillOn" data-id="weapon">장착</button>';
       wcard = `<div class="skc ${wi >= 0 ? 'on' : ''}" style="--c:#aab0c0"><div class="c-head"><b>${wi >= 0 ? `[${keys[wi]}] ` : ''}${wsk.name}</b><span class="role">무기</span></div><div class="c-sum">${esc(wsk.desc || '')}</div><div class="c-act">${wbtn}</div></div>`;
     }
+    const clsRow = RACE_CLASSES(s.race).map((cid) => {
+      const c = CLASSES[cid], on = cid === b.cls;
+      return `<button class="cls ${on ? 'on' : ''}" data-act="setCls" data-id="${cid}"><b>${c.name}</b><small>${c.desc}</small></button>`;
+    }).join('');
+    const auto = getAutoAim();
     return `<section class="panel">
+      <h3>클래스 <small>언제든 무료로 바꿀 수 있어요 · 바꾸면 그 클래스의 시작 무기를 받습니다</small></h3>
+      <div class="cls-row">${clsRow}</div>
       <h3>스킬 <small>최대 3개 · Q / R / F (모바일은 화면 버튼) · 준비 → 강화 → 마무리 순서로 쓰면 강해져요</small></h3>
+      <div class="skill-tools">
+        <label class="toggle"><input type="checkbox" data-act="autoAim" ${auto ? 'checked' : ''}> 자동 조준 <small>(T) 강한 스킬은 체력 높은 적, 범위 스킬은 적이 많은 곳, 마무리는 약한 적을 노립니다</small></label>
+        <button class="sm" data-act="practice">연습 모드 · 모든 스킬 써 보기</button>
+      </div>
       <div class="skill-row">${race}</div>
       <h4>각인·무기 스킬 <small>스킬이 붙은 각인을 장착하면 여기에 생겨요</small></h4><div class="skill-row">${eng}${wcard}</div>
     </section>`;
@@ -287,9 +300,9 @@ export class Hub {
           : `<button class="sm" data-act="equipG" data-id="${id}" data-slot="${it.slot}" ${equipped ? 'disabled' : ''}>${equipped ? '장착 중' : '장착'}</button>`;
       const prev = equipped ? '' : this.preview(s, (lo) => { lo.gear = { ...lo.gear, [it.slot === 'acc' ? (gear.acc1 ? 'acc2' : 'acc1') : it.slot]: id }; });
       return `<div class="card ${has ? 'owned' : ''}"><div class="c-head"><b>${it.name}</b>${it.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
-        ${w}${req}<div class="c-stats">${stats || '&nbsp;'}</div><ul class="c-eff">${effs}</ul>${prev}<div class="c-act">${btn}</div></div>`;
+        ${it.cls ? `<div class="c-meta" style="color:${it.cls === s.cls ? '#ffd27a' : '#9a90b0'}">${CLASSES[it.cls].name} 전용${it.bdesc ? ' · ' + it.bdesc : ''}${it.cls !== s.cls && it.bdesc ? ' (클래스가 다르면 효과 없음)' : ''}</div>` : ''}${w}${req}<div class="c-stats">${stats || '&nbsp;'}</div><ul class="c-eff">${effs}</ul>${prev}<div class="c-act">${btn}</div></div>`;
     };
-    const bySlot = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl && (!ITEMS[id].starter && id !== 'rustySword' || s.items.includes(id))).map(card).join('');
+    const bySlot = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl && (!ITEMS[id].cls || CLASSES[ITEMS[id].cls].race === s.race) && (!ITEMS[id].starter && id !== 'rustySword' || s.items.includes(id))).sort((a, b) => (ITEMS[b].cls === s.cls) - (ITEMS[a].cls === s.cls)).map(card).join('');
     return `
       <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots">${gearRow}</div></section>
       <section class="panel"><h3>무기</h3><div class="cards">${bySlot('weapon')}</div>
@@ -412,6 +425,17 @@ export class Hub {
         if (cur.length >= 3) cur[2] = id; else cur.push(id);
         s.skills = cur; break;
       }
+      case 'setCls': {
+        const c = CLASSES[id];
+        if (!c || c.race !== s.race) break;
+        s.cls = id; s.skills = undefined; s.style = c.style;
+        const starter = c.weapons[0];
+        if (!s.items.includes(starter)) { s.items.push(starter); this.toast(`${c.name} · 시작 무기 「${ITEMS[starter].name}」를 받았습니다`); }
+        else this.toast(`${c.name}(으)로 바꿨습니다`);
+        if (ITEMS[s.gear.weapon]?.cls && ITEMS[s.gear.weapon].cls !== id) s.gear.weapon = starter;
+        break;
+      }
+      case 'practice': this.onClose(); return this.onStartRun('__practice');
       case 'skillOff': s.skills = this.curSkills().filter((x) => x !== id); break;
       case 'skillUp': { const cur = [...this.curSkills()], i = cur.indexOf(id); if (i > 0) { [cur[i - 1], cur[i]] = [cur[i], cur[i - 1]]; s.skills = cur; } break; }
       case 'buy': {

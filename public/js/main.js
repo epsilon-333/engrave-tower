@@ -9,6 +9,8 @@ import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, c
 import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
 import { RACES, RACE_MIGRATE } from './data/races.js';
 import { ITEMS, STYLES } from './data/items.js';
+import { CLASSES, RACE_CLASSES, SKILLS } from './data/skills.js';
+import { getAutoAim, setAutoAim } from './settings.js';
 import { ENGRAVINGS } from './data/engravings.js';
 import { RACE_ART } from './data/art.js';
 import { buildPlaza } from './data/plaza.js';
@@ -23,7 +25,7 @@ const panelEl = document.getElementById('panel');
 const overlay = document.getElementById('overlay');
 const renderer = new Renderer(canvas);
 const plazaMap = buildPlaza();
-const hub = new Hub(panelEl, () => save, (zone) => { closePanel(); enterZone(zone); }, resetGame, closePanel);
+const hub = new Hub(panelEl, () => save, (zone) => { closePanel(); if (zone === '__practice') enterPractice(); else enterZone(zone); }, resetGame, closePanel);
 
 let world = null, paused = false, endTimer = 0, last = 0, acc = 0, modal = null;
 
@@ -57,23 +59,24 @@ function showStyleSelect(race) {
   const R = RACES[race];
   titleEl.innerHTML = `<div class="race-select">
     <h1>${R.name}</h1>
-    <p class="muted">어떤 방식으로 싸울까요? 스타일에 맞는 시작 무기를 받습니다. 나중에 대장간에서 언제든 바꿀 수 있어요.</p>
-    <div class="styles">${Object.entries(STYLES).map(([id, st]) => {
-      const fit = st.races[race] || 0;
-      return `<button class="style ${fit === 2 ? 'best' : fit ? 'good' : ''}" data-style="${id}">
-        <b>${st.name}</b>${fit ? `<span class="fit">${fit === 2 ? '◎ 잘 맞음' : '○ 어울림'}</span>` : ''}
-        <p>${st.desc}</p>
-        <small>시작 무기: ${ITEMS[st.weapon].name}</small>
+    <p class="muted">클래스를 고르세요. 클래스마다 스킬 6개와 전용 무기가 있습니다. 광장의 공명 제단에서 언제든 바꿀 수 있어요.</p>
+    <div class="styles">${RACE_CLASSES(race).map((id) => {
+      const c = CLASSES[id];
+      return `<button class="style" data-style="${id}">
+        <b>${c.name}</b>
+        <p>${c.desc}</p>
+        <p class="sk-list">${c.skills.map((sid, i) => `<span${i === 5 ? ' class="ult"' : ''}>${SKILLS[sid].name}</span>`).join(' · ')}</p>
+        <small>시작 무기: ${ITEMS[c.weapons[0]].name}</small>
       </button>`;
     }).join('')}</div>
     <button class="ghost" id="backRace">← 종족 다시 고르기</button></div>`;
   titleEl.querySelectorAll('[data-style]').forEach((b) => (b.onclick = () => {
-    const st = STYLES[b.dataset.style];
+    const c = CLASSES[b.dataset.style];
     sfx('levelup');
     save = newSave(race);
-    save.style = b.dataset.style;
-    save.items = ['rustySword', st.weapon];
-    save.gear = { weapon: st.weapon };
+    save.cls = b.dataset.style; save.style = c.style;
+    save.items = ['rustySword', c.weapons[0]];
+    save.gear = { weapon: c.weapons[0] };
     refreshQuests(save); writeSave(save); titleEl.hidden = true; enterPlaza(true);
   }));
   document.getElementById('backRace').onclick = () => showRaceSelect();
@@ -130,12 +133,19 @@ function migrateSave(sv) {
   if (!sv.items.includes('rustySword')) sv.items.push('rustySword');
   if (!sv.gear?.weapon || !ITEMS[sv.gear.weapon]) sv.gear = { ...(sv.gear || {}), weapon: 'rustySword' };
   for (const k of Object.keys(sv.gear)) if (sv.gear[k] && !ITEMS[sv.gear[k]]) delete sv.gear[k];
+  if (!sv.cls || CLASSES[sv.cls]?.race !== sv.race) {
+    sv.cls = RACE_CLASSES(sv.race)[0];
+    const st = CLASSES[sv.cls].weapons[0];
+    if (!sv.items.includes(st)) sv.items.push(st);
+  }
+  if (sv.skills) sv.skills = sv.skills.filter((id) => id === 'weapon' || SKILLS[id]);
   return sv;
 }
 
 const buildNow = () => computeBuild(toLoadout(save));
 
 function enterPlaza(first) {
+  { const el = document.getElementById('practicePanel'); if (el) el.hidden = true; }
   world = new World({ build: buildNow(), mode: 'plaza', seed: 1, map: plazaMap });
   world.questReady = (save.quests || []).some((q) => q.done);
   renderer.setWorld(world);
@@ -167,6 +177,63 @@ function enterZone(id, depth = 0, carry = null) {
   startLoop();
 }
 
+// ───── 연습 모드: 모든 클래스의 모든 스킬을 자원·체력 걱정 없이 써 본다 (저장 안 됨) ─────
+const practice = { cls: null, skills: null, infRes: true, noCd: false };
+function practiceBuild() {
+  const c = CLASSES[practice.cls];
+  return computeBuild({ race: c.race, cls: practice.cls, level: 20, allSkills: true, alloc: { str: 18, mag: 18, agi: 10, vit: 10 }, engravings: {}, gear: { weapon: c.weapons[1] }, skills: practice.skills });
+}
+function enterPractice() {
+  practice.cls ||= save.cls; practice.skills ||= CLASSES[practice.cls].skills.slice(0, 3);
+  world = new World({ build: practiceBuild(), mode: 'field', zoneId: 'cave', seed: 4242, practice });
+  world.explored.fill(1);
+  renderer.setWorld(world);
+  renderer.banner = { text: '연습 모드', sub: '왼쪽 위에서 클래스와 스킬을 고르세요. 죽지 않고, 기록도 남지 않아요.', t: 3.5, color: '#7ad8ff' };
+  startMusic('cave');
+  showPracticePanel();
+  startLoop();
+}
+function refreshPractice() {
+  world.setBuild(practiceBuild());
+  const p = world.player;
+  p.cds = {}; p.buffs = {}; p.res = 100; world.allies = []; p.channel = null; p.castT = 0; p.castSkill = null;
+  showPracticePanel();
+}
+function showPracticePanel() {
+  let el = document.getElementById('practicePanel');
+  if (!el) { el = document.createElement('div'); el.id = 'practicePanel'; gameEl.appendChild(el); }
+  el.hidden = false;
+  const c = CLASSES[practice.cls];
+  const races = [...new Set(Object.values(CLASSES).map((x) => x.race))];
+  el.innerHTML = `<details open><summary>연습 모드 · ${c.name}</summary>
+    <select data-pr="cls">${races.map((r) => `<optgroup label="${RACES[r].name}">${RACE_CLASSES(r).map((id) => `<option value="${id}" ${id === practice.cls ? 'selected' : ''}>${CLASSES[id].name}</option>`).join('')}</optgroup>`).join('')}</select>
+    ${[0, 1, 2].map((i) => `<label>${'QRF'[i]} <select data-pr="s${i}">${c.skills.map((sid) => `<option value="${sid}" ${practice.skills[i] === sid ? 'selected' : ''}>${SKILLS[sid].name}</option>`).join('')}</select></label>`).join('')}
+    <label class="ck"><input type="checkbox" data-pr="infRes" ${practice.infRes ? 'checked' : ''}> 자원 무한</label>
+    <label class="ck"><input type="checkbox" data-pr="noCd" ${practice.noCd ? 'checked' : ''}> 재사용 대기 없음</label>
+    <label class="ck"><input type="checkbox" data-pr="auto" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
+    <button class="sm" data-pr="respawn">적 다시 부르기</button>
+    <button class="sm ghost" data-pr="exit">연습 끝내기</button></details>`;
+  el.onchange = (e) => {
+    const k = e.target.dataset.pr;
+    if (k === 'cls') { practice.cls = e.target.value; practice.skills = CLASSES[practice.cls].skills.slice(0, 3); }
+    else if (k?.[0] === 's') practice.skills[+k[1]] = e.target.value;
+    else if (k === 'infRes' || k === 'noCd') practice[k] = e.target.checked;
+    else if (k === 'auto') setAutoAim(e.target.checked);
+    e.target.blur();
+    refreshPractice();
+  };
+  el.onclick = (e) => {
+    const k = e.target.dataset.pr;
+    if (k === 'respawn') { for (const cp of world.camps) cp.respawnT = 0; world.respawnAll?.(); renderer.banner = { text: '적이 다시 나타납니다', t: 1.2, color: '#ffcf5a' }; }
+    if (k === 'exit') exitPractice();
+  };
+}
+function exitPractice() {
+  const el = document.getElementById('practicePanel');
+  if (el) el.hidden = true;
+  enterPlaza();
+}
+
 function startLoop() {
   paused = false; endTimer = 0; acc = 0; modal = null;
   titleEl.hidden = true; gameEl.hidden = false; overlay.hidden = true; panelEl.hidden = true;
@@ -184,7 +251,7 @@ function showTutorial() {
       <p><b>5.</b> 뭘 할지 모르겠다면 가운데 <b>의뢰 게시판</b>을 확인하세요.</p>
       <p><b>★</b> 종족마다 스킬 6개 중 <b>3개</b>를 공명 제단에서 골라 Q·R·F로 씁니다. <b>준비 → 강화 → 마무리</b> 순서로 이으면 강해져요.</p>
       <p><b>6.</b> 필드에는 <b>야영지</b>(잔향 맡기기), <b>떠돌이 상인</b>, <b>낡은 제단</b>(축복과 대가), 가장 깊은 곳의 <b>아래층 계단</b>이 있어요.</p>
-      <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · Q·R·F(1·2·3) 스킬 · 우클릭 첫 스킬 · Space 대시(무적) · E 상호작용 · C 캐릭터 · Esc 메뉴</p>
+      <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · Q·R·F(1·2·3) 스킬 · T 자동 조준 · Space 대시(무적) · E 상호작용 · C 캐릭터 · Esc 메뉴</p>
       ${touch ? '<p class="keys">모바일: 왼쪽 조이스틱 이동 · 오른쪽 조이스틱을 누르면 공격(밀면 그 방향 조준, 그냥 누르면 가까운 적 자동 조준) · 버튼으로 스킬·대시·상호작용</p>' : ''}
       <p class="muted">빨갛게 번쩍이는 적은 곧 공격합니다. 대시로 피하세요!</p>
     </div>
@@ -215,6 +282,7 @@ function showModal(html, onClose) {
 }
 
 function endRun(kind) {
+  if (world.practice) { exitPractice(); return; }
   const keep = kind === 'clear' ? 1 : kind === 'retreat' ? 0.7 : 0.5;
   // 야영지에 맡긴 몫은 그대로, 나머지만 비율대로 잃는다
   const loot = { ...world.loot, echoes: { ...world.loot.echoes } };
@@ -263,14 +331,17 @@ function showPause() {
   const field = world.mode === 'field';
   showModal(`<h2>일시정지</h2>
     <button data-close>계속하기</button>
-    ${field ? '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
+    ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
+    ${field && !world.practice ? '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
     ${volumeHtml()}
     ${isClaudePage() ? '' : cloud.mode === 'account' ? `<p class="muted">${esc(cloud.name)} 계정으로 로그인 중</p><button id="logoutBtn" class="ghost">로그아웃</button>` : '<button id="loginBtn" class="ghost">로그인 / 회원가입</button>'}`);
   bindVolume();
   const lo = document.getElementById('logoutBtn'), li = document.getElementById('loginBtn');
   if (lo) lo.onclick = async () => { await logout(); clearSave(); save = null; world = null; overlay.hidden = true; paused = false; modal = null; showLogin(afterLogin); };
   if (li) li.onclick = () => { overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
-  if (field) document.getElementById('retreat').onclick = () => { overlay.hidden = true; endRun('retreat'); };
+  document.getElementById('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
+  if (world.practice) document.getElementById('exitPractice').onclick = () => { overlay.hidden = true; paused = false; modal = null; exitPractice(); };
+  else if (field) document.getElementById('retreat').onclick = () => { overlay.hidden = true; endRun('retreat'); };
   else document.getElementById('howto').onclick = () => showTutorial();
 }
 
@@ -298,6 +369,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyQ' || e.code === 'Digit1') input.s1 = true;
   if (e.code === 'KeyR' || e.code === 'Digit2') input.s2 = true;
   if (e.code === 'KeyF' || e.code === 'Digit3') input.s3 = true;
+  if (e.code === 'KeyT') { setAutoAim(!getAutoAim()); renderer.banner = { text: getAutoAim() ? '자동 조준 켜짐' : '자동 조준 꺼짐', t: 1.2, color: '#7ad8ff' }; if (world.practice) showPracticePanel(); }
   if (e.code === 'KeyC' && world.mode === 'plaza') openPanel('char');
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
@@ -310,6 +382,7 @@ addEventListener('pointerdown', () => unlockAudio(), { once: true });
 
 let touch = null;
 function readInput() {
+  input.autoAim = getAutoAim();
   if (touch) { touch.apply(); return; }
   input.moveX = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
   input.moveY = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0);

@@ -98,6 +98,15 @@ export function registerCustomArt(atlas) {
       });
     }
   };
+  // 바람총 (세로로 긴 무기 그림, 0x72 무기처럼 손잡이가 아래)
+  const bg = document.createElement('canvas'); bg.width = 4; bg.height = 18;
+  const g = bg.getContext('2d');
+  g.fillStyle = '#1a140c'; g.fillRect(0, 0, 4, 18);
+  g.fillStyle = '#8a7a3a'; g.fillRect(1, 1, 2, 16);
+  g.fillStyle = '#c8b860'; g.fillRect(1, 1, 1, 16);
+  g.fillStyle = '#5a3a20'; g.fillRect(1, 5, 2, 1); g.fillRect(1, 11, 2, 1);
+  g.fillStyle = '#9be15d'; g.fillRect(1, 0, 2, 1);
+  atlas.weapon_blowgun = { x: 0, y: 0, w: 4, h: 18, src: bg };
   add('stone_golem', mirror(GOLEM_HALF), GOLEM_PAL, 28, 17);
   add('hood_assassin', ASSASSIN, ASSASSIN_PAL, 28, 17);
 }

@@ -84,6 +84,47 @@ export const ITEMS = {
     effects: [{ when: { race: 'knight' }, type: 'add', key: 'auraTime', v: 2, text: '오러 지속 +2초' }] },
 };
 
+// ── 클래스 전용 무기: [시작 무기, 상위 무기]. 상위 무기의 boost는 자기 클래스일 때만 스킬 피해를 올린다 ──
+const W = (cls, name, weapon, stats, extra = {}) => ({ name, slot: 'weapon', cls, price: extra.price ?? 0, starter: !extra.price, weapon, stats, tags: extra.tags || [], boost: extra.boost, bdesc: extra.bdesc });
+Object.assign(ITEMS, {
+  boneKnuckle: W('predator', '뼈 송곳니 너클', { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.72, speed: 2.6, range: 24, arc: 1.5, onHit: { status: 'bleed', stacks: 1, chance: 0.3 }, skill: 'dashStab' }, { agi: 3 }),
+  predatorFang: W('predator', '포식왕의 이빨', { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.9, speed: 2.8, range: 26, arc: 1.6, onHit: { status: 'bleed', stacks: 1, chance: 0.45 }, skill: 'dashStab' }, { agi: 6, str: 3 }, { price: 280, tags: ['bleed'], boost: { devour: 0.4, bite: 0.4 }, bdesc: '「포식」·「물어뜯기」 피해 +40%' }),
+  stoneClub: W('behemoth', '돌 곤봉', { kind: 'melee', dmg: 'phys', mul: 1.3, speed: 1.0, range: 34, arc: 2.2, skill: 'slam' }, { vit: 3 }),
+  tectonicHammer: W('behemoth', '지각판 망치', { kind: 'melee', dmg: 'phys', mul: 1.6, speed: 0.95, range: 36, arc: 2.4, armorBreak: true, skill: 'slam' }, { vit: 5, str: 4 }, { price: 280, tags: ['giant'], boost: { tremor: 0.4, headbutt: 0.4 }, bdesc: '「지축 울림」·「박치기 돌격」 피해 +40%' }),
+  elemStaff: W('elementalist', '원소 지팡이', { kind: 'proj', dmg: 'mag', mul: 1.4, speed: 1.5, projSpeed: 250, range: 190, splash: 24, mana: 5, skill: 'nova' }, { mag: 3 }),
+  triOrb: W('elementalist', '삼원소 보주', { kind: 'proj', dmg: 'mag', mul: 1.85, speed: 1.5, projSpeed: 260, range: 200, splash: 28, mana: 5, skill: 'nova' }, { mag: 7, spi: 3 }, { price: 300, boost: { grandFireball: 0.35, elemBolt: 0.35 }, bdesc: '「거대 화염구」·「원소탄」 피해 +35%' }),
+  hourglassStaff: W('chronomancer', '모래시계 지팡이', { kind: 'proj', dmg: 'mag', mul: 1.15, speed: 1.9, projSpeed: 280, range: 200, pierce: 1, mana: 4, skill: 'nova' }, { mag: 2, spi: 2 }),
+  aeonPendulum: W('chronomancer', '영겁의 시계추', { kind: 'proj', dmg: 'mag', mul: 1.5, speed: 2.0, projSpeed: 300, range: 210, pierce: 2, mana: 4, skill: 'nova' }, { mag: 6, spi: 4 }, { price: 300, boost: { arcaneBarrage: 0.4, gravityCollapse: 0.4 }, bdesc: '「비전 연발」·「중력 붕괴」 피해 +40%' }),
+  guardSword: W('guardian', '기사 장검과 방패', { kind: 'melee', dmg: 'phys', mul: 1.0, speed: 1.5, range: 30, arc: 1.9, skill: 'spin' }, { pres: 5 }),
+  bastionBlade: W('guardian', '철벽의 성채방패', { kind: 'melee', dmg: 'phys', mul: 1.25, speed: 1.5, range: 32, arc: 2.0, skill: 'spin' }, { pres: 10, vit: 4 }, { price: 280, tags: ['reflect'], boost: { shieldBash: 0.45, riposte: 0.45 }, bdesc: '「방패 강타」·「받아치기」 피해 +45%' }),
+  steelGreatsword: W('greatsword', '강철 대검', { kind: 'melee', dmg: 'phys', mul: 1.4, speed: 0.9, range: 40, arc: 2.4, skill: 'slam' }, { str: 3 }),
+  mountainCleaver: W('greatsword', '산을 가르는 검', { kind: 'melee', dmg: 'phys', mul: 1.8, speed: 0.88, range: 44, arc: 2.6, skill: 'slam' }, { str: 8 }, { price: 300, tags: ['giant'], boost: { skyfall: 0.35, swordWave: 0.4 }, bdesc: '「천붕참」 +35% · 「검기 날리기」 +40%' }),
+  twoHandAxe: W('berserker', '양손 전투도끼', { kind: 'melee', dmg: 'phys', mul: 1.45, speed: 0.95, range: 34, arc: 2.2, skill: 'spin' }, { str: 3 }),
+  bloodthirstAxe: W('berserker', '피에 굶주린 도끼', { kind: 'melee', dmg: 'phys', mul: 1.7, speed: 1.0, range: 36, arc: 2.3, onHit: { status: 'bleed', stacks: 1, chance: 0.3 }, skill: 'spin' }, { str: 7 }, { price: 290, tags: ['drain'], boost: { lastBlow: 0.4, axeSpin: 0.4 }, bdesc: '「최후의 일격」·「회전 도끼」 피해 +40%' }),
+  throwHatchet: W('thrower', '투척 손도끼', { kind: 'proj', dmg: 'phys', mul: 1.05, speed: 1.4, projSpeed: 230, range: 130, boomerang: true, skill: 'axeStorm' }, { str: 3 }),
+  twinReturnAxe: W('thrower', '귀환하는 쌍도끼', { kind: 'proj', dmg: 'phys', mul: 0.75, speed: 1.4, projSpeed: 240, range: 140, count: 2, spread: 0.2, boomerang: true, skill: 'axeStorm' }, { str: 7 }, { price: 290, tags: ['brawl'], boost: { axeThrow: 0.45, axeTempest: 0.35 }, bdesc: '「도끼 투척」 +45% · 「도끼 폭풍」 +35%' }),
+  skullStaff: W('necromancer', '해골 지팡이', { kind: 'proj', dmg: 'mag', mul: 1.1, speed: 1.4, projSpeed: 220, range: 185, skill: 'nova' }, { mag: 3 }),
+  deadScepter: W('necromancer', '망자의 홀', { kind: 'proj', dmg: 'mag', mul: 1.45, speed: 1.4, projSpeed: 230, range: 195, skill: 'nova' }, { mag: 6, spi: 4 }, { price: 300, boost: { corpseBlast: 0.45, lichLord: 0.35 }, bdesc: '「시체 폭발」 +45% · 「사령 군주」 +35%' }),
+  cursedDoll: W('hexer', '저주 인형', { kind: 'proj', dmg: 'mag', mul: 1.0, speed: 1.4, projSpeed: 210, range: 185, onHit: { status: 'curse', stacks: 1, chance: 0.5 }, skill: 'poisonPool' }, { mag: 3 }),
+  doomTome: W('hexer', '파멸의 서', { kind: 'proj', dmg: 'mag', mul: 1.3, speed: 1.4, projSpeed: 220, range: 195, onHit: { status: 'curse', stacks: 1, chance: 0.7 }, skill: 'poisonPool' }, { mag: 6, spi: 4 }, { price: 300, tags: ['curse'], boost: { soulBurst: 0.4, doomBrand: 0.35 }, bdesc: '「영혼 폭발」 +40% · 「파멸의 낙인」 +35%' }),
+  twinDaggers: W('shadowblade', '쌍단검', { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.55, hits: 2, speed: 2.2, range: 24, arc: 1.6, skill: 'dashStab' }, { agi: 3 }),
+  nightPiercer: W('shadowblade', '밤의 송곳', { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.7, hits: 2, speed: 2.3, range: 26, arc: 1.6, crit: 0.08, critDmg: 0.3, skill: 'dashStab' }, { agi: 6, sen: 4 }, { price: 290, tags: ['shadow'], boost: { execution: 0.4, ambush: 0.4 }, bdesc: '「그림자 처형」·「급습」 피해 +40%' }),
+  blowgun: W('venomHunter', '바람총', { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 0.55, speed: 2.8, projSpeed: 340, range: 190, onHit: { status: 'poison', stacks: 1, chance: 1 }, skill: 'volley' }, { agi: 2, toxicity: 2 }),
+  viperBlowgun: W('venomHunter', '독사 송곳 바람총', { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 0.5, speed: 2.8, projSpeed: 360, range: 200, count: 2, spread: 0.1, onHit: { status: 'poison', stacks: 1, chance: 1 }, skill: 'volley' }, { agi: 5, toxicity: 5 }, { price: 290, tags: ['poison'], boost: { venomBurst: 0.4, dartVolley: 0.45 }, bdesc: '「맹독 폭발」 +40% · 「독침」 +45%' }),
+  spiritBranch: W('spiritcaller', '정령의 나뭇가지', { kind: 'proj', dmg: 'mag', mul: 1.0, speed: 1.6, projSpeed: 240, range: 190, skill: 'nova' }, { mag: 2, agi: 2 }),
+  worldTreeStaff: W('spiritcaller', '세계수 지팡이', { kind: 'proj', dmg: 'mag', mul: 1.35, speed: 1.7, projSpeed: 250, range: 200, pierce: 1, skill: 'nova' }, { mag: 6, agi: 3 }, { price: 300, tags: ['wind'], boost: { spiritFusion: 0.45, spiritKing: 0.35 }, bdesc: '「정령 융합」 +45% · 「정령왕 소환」 +35%' }),
+  rangerBow: W('ranger', '사냥 활', { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 1.3, speed: 1.6, projSpeed: 300, range: 200, pierce: 1, skill: 'volley' }, { sen: 3 }),
+  galeLongbow: W('ranger', '바람결 장궁', { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 1.5, speed: 1.4, projSpeed: 380, range: 260, pierce: 2, skill: 'rain' }, { sen: 5, agi: 4 }, { price: 300, tags: ['wind'], boost: { pierceArrow: 0.45, arrowRain: 0.35 }, bdesc: '「관통 화살」 +45% · 「화살비」 +35%' }),
+  rockFist: W('rockguard', '바위 주먹', { kind: 'melee', dmg: 'phys', mul: 1.15, speed: 1.2, range: 26, arc: 1.8, skill: 'slam' }, { pres: 4 }),
+  mountainHeart: W('rockguard', '산맥의 심장', { kind: 'melee', dmg: 'phys', mul: 1.45, speed: 1.2, range: 28, arc: 2.0, armorBreak: true, skill: 'slam' }, { pres: 10, vit: 4 }, { price: 280, tags: ['reflect', 'giant'], boost: { quake: 0.45, colossus: 0.35 }, bdesc: '「지진 강타」 +45% · 「거신화」 +35%' }),
+  iceFist: W('frostGolem', '얼음 주먹', { kind: 'melee', dmg: 'phys', mul: 1.1, speed: 1.2, range: 26, arc: 1.8, onHit: { status: 'chill', stacks: 1, chance: 0.4 }, skill: 'slam' }, { iceAff: 2 }),
+  permafrostCore: W('frostGolem', '영구 동토의 핵', { kind: 'melee', dmg: 'phys', mul: 1.4, speed: 1.25, range: 28, arc: 2.0, onHit: { status: 'chill', stacks: 1, chance: 0.6 }, skill: 'frostRing' }, { iceAff: 6, pres: 4 }, { price: 290, tags: ['ice'], boost: { glacialSpikes: 0.45, absoluteZero: 0.35 }, bdesc: '「빙하 가시」 +45% · 「절대 영도」 +35%' }),
+  dragonSpear: W('dragoon', '용비늘 창', { kind: 'melee', dmg: 'phys', mul: 1.2, speed: 1.3, range: 46, shape: 'thrust', width: 10, onHit: { status: 'burn', stacks: 1, chance: 0.3 }, skill: 'dashStab' }, { str: 2, fireAff: 2 }),
+  wyrmFang: W('dragoon', '화룡의 이빨', { kind: 'melee', dmg: 'phys', mul: 1.5, speed: 1.35, range: 50, shape: 'thrust', width: 12, onHit: { status: 'burn', stacks: 1, chance: 0.45 }, skill: 'dashStab' }, { str: 6, fireAff: 4 }, { price: 300, tags: ['fire'], boost: { breath: 0.4, igniteBurst: 0.4 }, bdesc: '「화염 숨결」·「발화 폭발」 피해 +40%' }),
+  dragonTome: W('dragonSage', '용언 마도서', { kind: 'proj', dmg: 'mag', mul: 0.6, speed: 1.4, projSpeed: 230, range: 185, count: 2, spread: 0.18, splash: 20, mana: 6, onHit: { status: 'burn', stacks: 1, chance: 0.35 }, skill: 'nova' }, { mag: 3, fireAff: 2 }),
+  elderHeartstone: W('dragonSage', '고룡의 심장석', { kind: 'proj', dmg: 'mag', mul: 0.8, speed: 1.4, projSpeed: 240, range: 195, count: 3, spread: 0.2, splash: 22, mana: 6, onHit: { status: 'burn', stacks: 1, chance: 0.4 }, skill: 'meteor' }, { mag: 7, fireAff: 4 }, { price: 300, tags: ['fire'], boost: { meteorDrop: 0.4, wildfire: 0.35 }, bdesc: '「운석」 +40% · 「대화재」 +35%' }),
+});
+
 // 플레이 스타일 → 시작 무기 / 핵심 태그 / 추천 종족
 export const STYLES = {
   frost: { name: '서리 지배자', desc: '냉기를 쌓아 둔화시키고 얼려서 묶는다', tags: ['ice', 'curse'], weapon: 'apprenticeWand', stats: ['mag', 'spi'], races: { wizard: 2, elf: 1 } },

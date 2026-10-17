@@ -269,3 +269,20 @@ body.touch #cloudChip { font-size: 10px; left: calc(8px + env(safe-area-inset-le
   .derived { grid-template-columns: 1fr; }
 }
 body.touch:has(#panel:not([hidden])) #cloudChip, body.touch:has(#overlay:not([hidden])) #cloudChip { display: none; }
+
+/* 클래스 선택·스킬 도구·연습 모드 */
+.cls-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.cls-row .cls { text-align: left; display: grid; gap: 2px; padding: 10px; background: var(--panel2); border: 2px solid #3a3450; }
+.cls-row .cls.on { border-color: #ffd27a; box-shadow: 0 0 0 1px #ffd27a inset; }
+.cls-row .cls small { color: #a8a0c0; font-weight: 400; }
+.skill-tools { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 6px 0 10px; }
+.toggle { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.toggle small { color: #a8a0c0; }
+.style .sk-list { font-size: 12px; color: #c8c0e0; }
+.style .sk-list .ult { color: #ff8ae0; }
+#practicePanel { position: absolute; left: calc(8px + env(safe-area-inset-left, 0px)); top: calc(64px + env(safe-area-inset-top, 0px)); z-index: 6; background: rgba(16, 12, 26, 0.92); border: 2px solid #4a4068; padding: 8px 10px; max-width: min(300px, 70vw); font-size: 13px; }
+#practicePanel summary { cursor: pointer; font-weight: 700; color: #7ad8ff; }
+#practicePanel details[open] { display: grid; gap: 6px; }
+#practicePanel select { width: 100%; background: #221a34; color: #e8e0f4; border: 1px solid #4a4068; padding: 3px; font: inherit; }
+#practicePanel label { display: grid; grid-template-columns: 16px 1fr; gap: 6px; align-items: center; }
+#practicePanel label.ck, .modal label.ck { display: flex; gap: 6px; }
