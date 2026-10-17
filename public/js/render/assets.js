@@ -3,6 +3,7 @@
 export const atlas = {};
 let sheet = null;
 const cache = new Map();
+import { registerCustomArt } from './customart.js';
 
 export async function loadAssets() {
   const [img, list] = await Promise.all([
@@ -19,6 +20,7 @@ export async function loadAssets() {
     const m = k.match(/^(.*)_f10$/);
     if (m && !atlas[`${m[1]}_f0`] && atlas[`${m[1]}_f1`]) atlas[`${m[1]}_f0`] = atlas[k];
   }
+  registerCustomArt(atlas);
 }
 
 // 애니메이션 프레임 이름 목록: base_idle_anim_f0.. / base_run_anim_f0.. / base_anim_f0..
@@ -46,7 +48,7 @@ export function sprite(name, tint = '', flash = false, flip = false) {
   g.imageSmoothingEnabled = false;
   if (flip) { g.translate(a.w, 0); g.scale(-1, 1); }
   if (tint) g.filter = tint;
-  g.drawImage(sheet, a.x, a.y, a.w, a.h, 0, 0, a.w, a.h);
+  g.drawImage(a.src || sheet, a.x, a.y, a.w, a.h, 0, 0, a.w, a.h);
   g.filter = 'none';
   if (flash) {
     g.setTransform(1, 0, 0, 1, 0, 0);
