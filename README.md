@@ -3,6 +3,11 @@
 몬스터를 골라 사냥해서 **문양 잔향**을 모으고, 공명 제단에서 **각인**을 몸에 새겨 나만의 빌드를 만드는 2D 도트 액션 로그라이트입니다.
 핵심은 **"강한 각인보다 맞물리는 조합이 이긴다"**입니다.
 
+## 배포
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/epsilon-333/engrave-tower)
+
+`render.yaml`에 무료 웹 서비스 설정이 들어 있습니다. Render에서는 진행 상황이 브라우저에 저장됩니다(계정 서버 저장은 claude.ai 공유 페이지 버전에서만 동작).
+
 ## 실행
 ```
 node engrave-tower/server.js
