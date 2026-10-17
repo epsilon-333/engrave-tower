@@ -941,9 +941,9 @@ export class World {
           const a = (i / raised.length) * Math.PI * 2 + 0.5;
           let x = p.x + Math.cos(a) * 20, y = p.y + Math.sin(a) * 20;
           if (this.blocked(x, y, 5)) { x = p.x; y = p.y; }
-          const hp = sv.maxHp * 0.7;
+          const hp = sv.maxHp * 0.5;
           this.allies.push({ id: this.nextId++, kind: 'soul', defId: sv.defId, hp, maxHp: hp, x, y, t: 40, max: 40,
-            atk: Math.max(sv.atk, ctx.atk * 0.35) * ctx.bonus, cd: 0.3 + i * 0.15, phase: a, dir: 1, r: sv.r, scale: sv.scale });
+            atk: sv.atk * 0.5 * ctx.bonus, cd: 0.3 + i * 0.15, phase: a, dir: 1, r: sv.r, scale: sv.scale });
           this.emit({ t: 'summonFx', x, y, kind: 'soul', big: i === 0 });
         });
         this.emit({ t: 'text', x: p.x, y: p.y - 24, text: `영혼 ${raised.length} 소환 · 남은 영혼 ${p.souls.length}`, color: '#7ae8ff' });
@@ -1054,12 +1054,40 @@ export class World {
         }
       } else {
         // 망령·사령 군주·분신: 적을 쫓아가 공격
-        const tgt = near(al.kind === 'clone' ? 120 : 220);
+        // 부하마다 다른 적을 고른다: 이미 다른 부하가 노리는 적은 덜 고른다 (1초마다 다시 고름)
+        let tgt;
+        if (al.kind === 'soul' || al.kind === 'skeleton' || al.kind === 'ghost') {
+          al.pickT = (al.pickT || 0) - DT;
+          if (!al.tgt || al.tgt.dead || al.tgt.hidden || al.pickT <= 0) {
+            al.pickT = 1;
+            const claims = new Map();
+            for (const o of this.allies) if (o !== al && o.tgt && !o.tgt.dead) claims.set(o.tgt.id, (claims.get(o.tgt.id) || 0) + 1);
+            let best = null, bs = 1e9;
+            for (const e of this.enemies) {
+              if (e.dead || e.hidden || e.def.ai === 'dummy' && this.mode !== 'plaza') continue;
+              const dd = Math.hypot(e.x - al.x, e.y - al.y);
+              if (dd > 220) continue;
+              const sc = dd + (claims.get(e.id) || 0) * 70;
+              if (sc < bs) { bs = sc; best = e; }
+            }
+            al.tgt = best;
+          }
+          tgt = al.tgt;
+        } else tgt = near(al.kind === 'clone' ? 120 : 220);
         let tx = p.x + (al.kind === 'clone' ? -p.dir * 14 : 0), ty = p.y;
+        // 할 일이 없으면 내 주위에 둥글게 선다
+        if (!tgt && al.kind !== 'clone') { const a = al.phase + al.id * 1.3; tx = p.x + Math.cos(a) * 24; ty = p.y + Math.sin(a) * 16; }
         if (tgt) { tx = tgt.x; ty = tgt.y; }
         const vx = tx - al.x, vy = ty - al.y, l = Math.hypot(vx, vy) || 1;
         const spd = al.kind === 'lich' ? 70 : al.kind === 'skeleton' || al.kind === 'soul' ? 95 : 110;
-        if (l > (tgt ? tgt.r + 8 : 20)) { al.x += vx / l * spd * DT; al.y += vy / l * spd * DT; }
+        if (l > (tgt ? tgt.r + 8 : 6)) { al.x += vx / l * spd * DT; al.y += vy / l * spd * DT; }
+        for (const o of this.allies) {
+          if (o === al || o.kind === 'spirit' || o.kind === 'spiritKing') continue;
+          const dx = al.x - o.x, dy = al.y - o.y, dd = Math.hypot(dx, dy);
+          if (dd < 12 && dd > 0.01) { al.x += (dx / dd) * (12 - dd) * 0.25; al.y += (dy / dd) * (12 - dd) * 0.25; }
+          else if (dd <= 0.01) al.x += (al.id % 2 ? 1 : -1);
+        }
+        if (this.blocked(al.x, al.y, 4)) { al.x -= vx / l * spd * DT; al.y -= vy / l * spd * DT; }
         if (Math.abs(vx) > 1) al.dir = vx > 0 ? 1 : -1;
         if (tgt && l < tgt.r + 14 && al.cd <= 0) {
           al.cd = al.kind === 'lich' ? 0.9 : al.kind === 'clone' ? 0.45 : al.kind === 'skeleton' ? 0.6 : al.kind === 'soul' ? 0.8 : 0.7;
