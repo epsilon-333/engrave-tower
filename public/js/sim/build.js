@@ -175,7 +175,6 @@ export function computeBuild(lo) {
   const cls = lo.cls && CLASSES[lo.cls]?.race === lo.race ? lo.cls : RACE_CLASSES(lo.race)[0];
   const available = CLASSES[cls].skills.filter((id) => (lo.allSkills || (SKILLS[id].unlock || 1) <= lo.level));
   for (const src of active) if (src.kind === 'engraving' && ENGRAVING_SKILLS[src.id] && !available.includes(ENGRAVING_SKILLS[src.id])) available.push(ENGRAVING_SKILLS[src.id]);
-  available.push('weapon');
   let skills = (lo.skills || []).filter((id) => available.includes(id)).slice(0, 3);
   if (!lo.skills) {
     // 기본 장착: 준비/강화 → 공격 → 마무리 순으로 콤보가 되게

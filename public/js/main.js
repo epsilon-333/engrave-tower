@@ -251,7 +251,7 @@ function showTutorial() {
       <p><b>5.</b> 뭘 할지 모르겠다면 가운데 <b>의뢰 게시판</b>을 확인하세요.</p>
       <p><b>★</b> 종족마다 스킬 6개 중 <b>3개</b>를 공명 제단에서 골라 Q·R·F로 씁니다. <b>준비 → 강화 → 마무리</b> 순서로 이으면 강해져요.</p>
       <p><b>6.</b> 필드에는 <b>야영지</b>(잔향 맡기기), <b>떠돌이 상인</b>, <b>낡은 제단</b>(축복과 대가), 가장 깊은 곳의 <b>아래층 계단</b>이 있어요.</p>
-      <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · Q·R·F(1·2·3) 스킬 · T 자동 조준 · Space 대시(무적) · E 상호작용 · C 캐릭터 · Esc 메뉴</p>
+      <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · Q·R·F(1·2·3) 스킬 · T 자동 조준 · 우클릭 무기 기술 · Space 대시(무적) · E 상호작용 · C 캐릭터 · Esc 메뉴</p>
       ${touch ? '<p class="keys">모바일: 왼쪽 조이스틱 이동 · 오른쪽 조이스틱을 누르면 공격(밀면 그 방향 조준, 그냥 누르면 가까운 적 자동 조준) · 버튼으로 스킬·대시·상호작용</p>' : ''}
       <p class="muted">빨갛게 번쩍이는 적은 곧 공격합니다. 대시로 피하세요!</p>
     </div>
@@ -354,7 +354,7 @@ function escAction() {
 
 // ───── 입력 ─────
 const keys = new Set();
-const input = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, attack: false, dash: false, interact: false, skill: false, s1: false, s2: false, s3: false };
+const input = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, attack: false, dash: false, interact: false, skill: false, s1: false, s2: false, s3: false, wskill: false };
 let mouseCX = innerWidth / 2, mouseCY = innerHeight / 2;
 addEventListener('keydown', (e) => {
   unlockAudio();
@@ -375,7 +375,7 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => { keys.clear(); input.attack = false; });
 canvas.addEventListener('mousemove', (e) => { mouseCX = e.clientX; mouseCY = e.clientY; });
-canvas.addEventListener('mousedown', (e) => { unlockAudio(); if (touch) return; if (e.button === 0 && !paused) input.attack = true; if (e.button === 2 && !paused) input.s1 = true; });
+canvas.addEventListener('mousedown', (e) => { unlockAudio(); if (touch) return; if (e.button === 0 && !paused) input.attack = true; if (e.button === 2 && !paused) input.wskill = true; });
 addEventListener('mouseup', (e) => { if (e.button === 0) input.attack = false; });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 addEventListener('pointerdown', () => unlockAudio(), { once: true });
@@ -472,7 +472,7 @@ function frame(ts) {
       readInput();
       while (acc >= DT) {
         world.step(input);
-        input.dash = false; input.interact = false; input.skill = false; input.s1 = false; input.s2 = false; input.s3 = false;
+        input.dash = false; input.interact = false; input.skill = false; input.s1 = false; input.s2 = false; input.s3 = false; input.wskill = false;
         acc -= DT;
         if (world.signals.length) { handleSignals(); break; }
       }

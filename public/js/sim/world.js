@@ -40,7 +40,7 @@ export class World {
       mana: this.d.maxMana, lastCast: -9, aura: 0, auraT: 0, rage: 0, rageT: 0, lastFight: -9,
       dashCharges: 1, dashRecharge: 0, dashCritReady: false, lastShot: -9, whirlT: 0, whirlTick: 0,
       res: RACES[this.b.race]?.res?.start || 0, elem: 'fire', elemBonusT: 0, buffs: {}, cds: {}, parryT: 0, parry: null,
-      castT: 0, castMax: 0, castSkill: null, channel: null,
+      castT: 0, castMax: 0, castSkill: null, channel: null, souls: [],
     };
     this.allies = []; this.zones = [];
     this.zElem = this.zone ? ZONE_ELEM[this.zone.id] : null;
@@ -194,7 +194,7 @@ export class World {
       }
     }
     this.mileT -= DT;
-    if (this.mileT <= 0) {
+    if (this.mileT <= 0 && !this.practice) {
       this.mileT = 1;
       const pct = this.exploredPct();
       for (const ms of [50, 80, 100]) {
@@ -304,6 +304,7 @@ export class World {
 
     const slots = this.b.skills || [];
     for (let i = 0; i < 3; i++) if (inp['s' + (i + 1)] && slots[i]) this.castSkillId(slots[i]);
+    if (inp.wskill) this.castSkillId('weapon');
     if (inp.skill && slots[0]) this.castSkillId(slots[0]);
     if (p.whirlT > 0) this.tickWhirl();
     if (p.castT > 0) {
@@ -873,7 +874,8 @@ export class World {
           const a = this.rng.range(0, Math.PI * 2);
           const elem = op.kind === 'spiritKing' ? ELEM_CYCLE[this.rng.int(0, 2)] : op.elem;
           if (op.kind === 'spiritKing') this.emit({ t: 'banner', text: `${ELEM[elem].name}의 정령왕 강림`, color: ELEM[elem].color });
-          this.allies.push({ id: this.nextId++, kind: op.kind, elem, x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, t: op.dur, max: op.dur,
+          const hp = op.kind === 'skeleton' ? this.d.maxHp * 0.35 : op.kind === 'lich' ? this.d.maxHp * 0.8 : 0;
+          this.allies.push({ id: this.nextId++, kind: op.kind, elem, hp, maxHp: hp, x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, t: op.dur, max: op.dur,
             atk: ctx.atk * op.mul * (op.scaleRes ? ctx.resMul : 1), cd: 0.3 + i * 0.2, phase: a, dir: 1 });
           this.emit({ t: 'summonFx', x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, kind: op.kind, elem, big: op.kind === 'spiritKing' || op.kind === 'lich' });
         }
@@ -929,6 +931,37 @@ export class World {
         }
         break;
       }
+      case 'raiseSouls': {
+        if (!p.souls.length) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '거둔 영혼이 없다', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
+        const living = this.allies.filter((a) => a.kind === 'soul').length;
+        if (living >= 10) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '부하는 최대 10마리', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
+        p.souls.sort((a, b) => b.maxHp - a.maxHp);
+        const raised = p.souls.splice(0, Math.min(op.n, 10 - living));
+        raised.forEach((sv, i) => {
+          const a = (i / raised.length) * Math.PI * 2 + 0.5;
+          let x = p.x + Math.cos(a) * 20, y = p.y + Math.sin(a) * 20;
+          if (this.blocked(x, y, 5)) { x = p.x; y = p.y; }
+          const hp = sv.maxHp * 0.7;
+          this.allies.push({ id: this.nextId++, kind: 'soul', defId: sv.defId, hp, maxHp: hp, x, y, t: 40, max: 40,
+            atk: Math.max(sv.atk, ctx.atk * 0.35) * ctx.bonus, cd: 0.3 + i * 0.15, phase: a, dir: 1, r: sv.r, scale: sv.scale });
+          this.emit({ t: 'summonFx', x, y, kind: 'soul', big: i === 0 });
+        });
+        this.emit({ t: 'text', x: p.x, y: p.y - 24, text: `영혼 ${raised.length} 소환 · 남은 영혼 ${p.souls.length}`, color: '#7ae8ff' });
+        break;
+      }
+      case 'taunt': {
+        const mine = this.allies.filter((a) => a.hp > 0);
+        if (!mine.length) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '부하가 없다', color: '#a8b0c0' }); break; }
+        for (const al of mine) { al.tauntT = op.dur; this.emit({ t: 'skillAoe', x: al.x, y: al.y, r: 40, elem: 'dark', fx: 'taunt' }); }
+        for (const e of this.enemies) {
+          if (e.dead || e.hidden || e.def.ai === 'dummy') continue;
+          let best = null, bd = op.r;
+          for (const al of mine) { const dd = Math.hypot(al.x - e.x, al.y - e.y); if (dd < bd) { bd = dd; best = al; } }
+          if (!best && Math.hypot(e.x - p.x, e.y - p.y) < op.r) best = mine.reduce((a, b) => (Math.hypot(a.x - e.x, a.y - e.y) < Math.hypot(b.x - e.x, b.y - e.y) ? a : b));
+          if (best) { e.taunt = best; e.tauntT = op.dur; this.aggro(e); this.emit({ t: 'tauntLink', x1: best.x, y1: best.y, x2: e.x, y2: e.y }); }
+        }
+        break;
+      }
       case 'line': {
         const x1 = p.x, y1 = p.y, ax = p.aimX, ay = p.aimY;
         let len = op.len;
@@ -942,7 +975,8 @@ export class World {
         break;
       }
       case 'blastSummons': {
-        const mine = this.allies.filter((a) => a.kind !== 'spirit' && a.kind !== 'spiritKing');
+        let mine = this.allies.filter((a) => a.kind !== 'spirit' && a.kind !== 'spiritKing');
+        if (op.n) mine = mine.sort((a, b) => (a.maxHp ? a.hp / a.maxHp : 1) - (b.maxHp ? b.hp / b.maxHp : 1)).slice(0, op.n);
         if (!mine.length) {
           const e = ctx.target && !ctx.target.dead ? ctx.target : this.nearestEnemy(160);
           if (!e) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '터뜨릴 대상이 없다', color: '#a8b0c0' }); break; }
@@ -953,7 +987,7 @@ export class World {
         for (const a of mine) {
           a.t = 0;
           this.emit({ t: 'skillAoe', x: a.x, y: a.y, r: op.r, elem: 'dark', fx: 'corpse' });
-          for (const o of this.enemiesNear(a.x, a.y, op.r)) this.skillHit(o, { mul: op.mul * (a.kind === 'lich' ? 2 : 1) }, ctx);
+          for (const o of this.enemiesNear(a.x, a.y, op.r)) { this.skillHit(o, { mul: op.mul * (a.kind === 'lich' ? 2 : 1) }, ctx); if (a.maxHp && !o.dead) this.damageEnemy(o, a.maxHp * 0.25, 'mag', { src: 'aoe', elem: 'dark' }); }
         }
         this.emit({ t: 'shake', v: 6 });
         break;
@@ -1024,16 +1058,18 @@ export class World {
         let tx = p.x + (al.kind === 'clone' ? -p.dir * 14 : 0), ty = p.y;
         if (tgt) { tx = tgt.x; ty = tgt.y; }
         const vx = tx - al.x, vy = ty - al.y, l = Math.hypot(vx, vy) || 1;
-        const spd = al.kind === 'lich' ? 70 : al.kind === 'skeleton' ? 95 : 110;
+        const spd = al.kind === 'lich' ? 70 : al.kind === 'skeleton' || al.kind === 'soul' ? 95 : 110;
         if (l > (tgt ? tgt.r + 8 : 20)) { al.x += vx / l * spd * DT; al.y += vy / l * spd * DT; }
         if (Math.abs(vx) > 1) al.dir = vx > 0 ? 1 : -1;
         if (tgt && l < tgt.r + 14 && al.cd <= 0) {
-          al.cd = al.kind === 'lich' ? 0.9 : al.kind === 'clone' ? 0.45 : al.kind === 'skeleton' ? 0.6 : 0.7;
+          al.cd = al.kind === 'lich' ? 0.9 : al.kind === 'clone' ? 0.45 : al.kind === 'skeleton' ? 0.6 : al.kind === 'soul' ? 0.8 : 0.7;
           this.emit({ t: 'allyHit', x: tgt.x, y: tgt.y, kind: al.kind });
           if (al.kind === 'lich') { for (const e of this.enemiesNear(tgt.x, tgt.y, 40)) { this.damageEnemy(e, al.atk, 'mag', { src: 'aoe', elem: 'dark' }); this.applyStatus(e, 'curse', 1); } }
-          else this.damageEnemy(tgt, al.atk, al.kind === 'clone' || al.kind === 'skeleton' ? 'phys' : 'mag', { src: 'aoe', elem: al.kind === 'ghost' ? 'dark' : undefined });
+          else this.damageEnemy(tgt, al.atk, al.kind === 'clone' || al.kind === 'skeleton' || al.kind === 'soul' ? 'phys' : 'mag', { src: 'aoe', elem: al.kind === 'ghost' ? 'dark' : undefined });
         }
       }
+      if (al.tauntT > 0) al.tauntT -= DT;
+      if (al.maxHp && al.hp <= 0) al.t = 0;
       if (al.t <= 0) this.emit({ t: 'summonFx', x: al.x, y: al.y, kind: al.kind, elem: al.elem, out: true });
     }
     this.allies = this.allies.filter((a) => a.t > 0);
@@ -1594,6 +1630,24 @@ export class World {
       if (this.zones.some((z) => z.kind === 'sanctuary' && Math.hypot(e.x - z.x, e.y - z.y) < z.r)) slow = Math.max(slow, 0.5);
       let spd = frozen ? 0 : def.speed * e.speedMul * (1 - slow);
       let vx = 0, vy = 0;
+      if (e.tauntT > 0) {
+        e.tauntT -= DT;
+        const al = e.taunt;
+        if (al && al.t > 0 && al.hp > 0 && !e.hidden) {
+          const tx = al.x - e.x, ty = al.y - e.y, tl = Math.hypot(tx, ty) || 1;
+          if (tl > e.r + 8) this.move(e, (tx / tl) * spd * DT, (ty / tl) * spd * DT);
+          if (Math.abs(tx) > 1) e.dir = tx > 0 ? 1 : -1;
+          e.moving = tl > e.r + 8;
+          if (!frozen && tl < e.r + 14 && e.atkCd <= 0) {
+            e.atkCd = def.elite ? 1.3 : 1.1;
+            al.hp -= e.atk * (al.tauntT > 0 ? 0.7 : 1);
+            this.emit({ t: 'allyHurt', x: al.x, y: al.y, v: e.atk });
+            this.emit({ t: 'strike', x: e.x, y: e.y, ang: Math.atan2(ty, tx), r: e.r + 10, id: e.id });
+          }
+          continue;
+        }
+        e.tauntT = 0; e.taunt = null;
+      }
 
       // 상태 전환
       // 땅속 잠복: 가까이 오면 튀어나온다
@@ -1745,6 +1799,10 @@ export class World {
   killEnemy(e, selfDestruct = false) {
     if (e.dead) return;
     e.dead = true;
+    if (this.b.cls === 'necromancer' && !e.summoned && e.def.ai !== 'dummy' && this.player.souls.length < 10 && this.rng.chance(0.5)) {
+      this.player.souls.push({ defId: e.defId, maxHp: e.maxHp, atk: e.atk, r: e.r, scale: e.scale || 1 });
+      this.emit({ t: 'soulGet', x: e.x, y: e.y, n: this.player.souls.length });
+    }
     if (e.doom) {
       this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 90, elem: 'dark', fx: 'doom', ult: true });
       for (const o of this.enemiesNear(e.x, e.y, 90)) { this.applyStatus(o, 'curse', 6); this.damageEnemy(o, e.doom.atk * 1.8, 'mag', { src: 'aoe', elem: 'dark' }); }

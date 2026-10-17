@@ -162,6 +162,15 @@ export class Renderer {
         case 'summon': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 26, color: '#c45cff', t: 0.4, max: 0.4, w: 2 }); this.burst(ev.x, ev.y, '#c45cff', 12, 60); break;
         case 'camp': this.burst(ev.x, ev.y - 4, '#ffd88a', 16, 60); sfx('levelup', { vol: 0.4 }); break;
         case 'skillFx': this.skillFx(ev); break;
+        case 'soulGet': {
+          const pl = w.player;
+          for (let i = 0; i < 10; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 8, y: ev.y - 6, vx: (pl.x - ev.x) * 1.6 + (Math.random() - 0.5) * 40, vy: (pl.y - ev.y) * 1.6 - 40, t: 0.6, max: 0.6, color: '#7ae8ff', g: 60 });
+          this.texts.push({ x: ev.x, y: ev.y - 20, text: `영혼 ${ev.n}/10`, color: '#7ae8ff', t: 0.9, vy: -14, vx: 0, label: true });
+          sfx('echo', { vol: 0.35, rate: 1.4 });
+          break;
+        }
+        case 'tauntLink': this.fx.push({ k: 'link', ...ev, t: 0.5, max: 0.5 }); break;
+        case 'allyHurt': this.sparkBurst(ev.x, ev.y - 6, '#7ae8ff', 3); break;
         case 'lockOn': this.fx.push({ k: 'lock', x: ev.x, y: ev.y, kind: ev.kind, ult: ev.ult, t: ev.dur ? ev.dur + 0.35 : 0.45, max: ev.dur ? ev.dur + 0.35 : 0.45 }); sfx('open', { vol: 0.25, rate: 1.8 }); break;
         case 'fall': this.fx.push({ k: 'fall', x: ev.x, y: ev.y, r: ev.r, kind: ev.kind, t: ev.dur, max: ev.dur }); break;
         case 'lineTele': this.fx.push({ k: 'lineTele', ...ev, t: ev.dur, max: ev.dur }); break;
@@ -261,6 +270,7 @@ export class Renderer {
       sfx(fx === 'shatter' || fx === 'zero' ? 'freeze' : 'reaction', { vol: 0.9, rate: 0.75 });
       return;
     }
+    if (fx === 'taunt') { this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 34, color: '#c45cff', t: 0.5, max: 0.5, w: 3 }); this.texts.push({ x: ev.x, y: ev.y - 26, text: '!', color: '#ff5a7a', t: 0.8, vy: -10, vx: 0, label: true, size: 2 }); sfx('hitHeavy', { vol: 0.4, rate: 0.6 }); return; }
     if (fx === 'gravity') { this.fx.push({ k: 'gravity', x: ev.x, y: ev.y, r: ev.r, t: 0.5, max: 0.5 }); sfx('cast', { vol: 0.7, rate: 0.5 }); return; }
     if (fx === 'vines' || fx === 'bones' || fx === 'trap') {
       this.fx.push({ k: 'vines', x: ev.x, y: ev.y, r: ev.r, color: fx === 'bones' ? '#e8e0d0' : fx === 'trap' ? '#9be15d' : '#5fbf4a', t: 2, max: 2, seed: Math.random() * 100 });
@@ -757,6 +767,22 @@ export class Renderer {
       if (Math.random() < 0.5) this.parts.push({ x: al.x, y: al.y, vx: (Math.random() - 0.5) * 20, vy: 10, t: 0.4, max: 0.4, color: col, g: 0 });
       return;
     }
+    if (al.kind === 'soul') {
+      const art = MONSTER_ART[al.defId] || { base: 'goblin' };
+      const img2 = sprite(this.animFrame(art.base, 'run', w.t + al.id, 10), 'grayscale(1) brightness(1.3) sepia(1) hue-rotate(150deg) saturate(2.5)', false, al.dir < 0);
+      if (img2) {
+        const sc = (art.scale || 1) * (al.scale || 1);
+        g.globalAlpha = 0.78 * fade;
+        g.drawImage(img2, Math.round(al.x - img2.width * sc / 2), Math.round(al.y + 4 - img2.height * sc), img2.width * sc, img2.height * sc);
+        g.globalAlpha = 1;
+        if (al.tauntT > 0) { g.strokeStyle = `rgba(196,92,255,${0.5 + 0.3 * Math.sin(w.t * 10)})`; g.lineWidth = 1.5; g.beginPath(); g.ellipse(al.x, al.y + 3, 10, 4, 0, 0, Math.PI * 2); g.stroke(); }
+        const bw = 16, by = Math.round(al.y + 4 - img2.height * sc - 5);
+        g.fillStyle = '#0d0b10'; g.fillRect(al.x - bw / 2 - 1, by - 1, bw + 2, 4);
+        g.fillStyle = '#7ae8ff'; g.fillRect(al.x - bw / 2, by, Math.max(0, bw * al.hp / al.maxHp), 2);
+      }
+      if (Math.random() < 0.2) this.parts.push({ x: al.x + (Math.random() - 0.5) * 10, y: al.y - 6, vx: 0, vy: -20, t: 0.5, max: 0.5, color: '#7ae8ff', g: -10 });
+      return;
+    }
     const base = al.kind === 'lich' ? 'big_zombie' : al.kind === 'clone' ? RACE_ART[w.b.race].base : al.kind === 'skeleton' ? 'skelet' : 'necromancer';
     const tint = al.kind === 'skeleton' ? 'brightness(1.1)' : al.kind === 'lich' ? 'hue-rotate(220deg) saturate(1.4) brightness(0.9)' : al.kind === 'clone' ? 'brightness(0.25) saturate(0) contrast(1.4)' : 'grayscale(0.6) brightness(1.4) hue-rotate(180deg)';
     const img = sprite(this.animFrame(base, 'run', w.t + al.id, 10), tint, false, al.dir < 0);
@@ -935,6 +961,9 @@ export class Renderer {
         g.strokeStyle = `rgba(255,240,180,${0.5 + 0.3 * Math.sin(this.world.t * 20)})`; g.lineWidth = 2;
         g.beginPath(); g.arc(p2.x + p2.aimX * 6, p2.y - 7 + p2.aimY * 6, 13, Math.atan2(p2.aimY, p2.aimX) - 1.2, Math.atan2(p2.aimY, p2.aimX) + 1.2); g.stroke();
         if (this.world.player.parryT <= 0) f.t = 0;
+      } else if (f.k === 'link') {
+        g.strokeStyle = hexA('#c45cff', k); g.lineWidth = 1.5; g.setLineDash([3, 3]);
+        g.beginPath(); g.moveTo(f.x1, f.y1 - 6); g.lineTo(f.x2, f.y2 - 6); g.stroke(); g.setLineDash([]);
       } else if (f.k === 'lock') {
         // 자동 조준 표적: 바깥에서 조여드는 네 모서리 + 회전하는 고리
         const col = f.ult ? '#ff5ad0' : f.kind === 'tank' ? '#ff6a4a' : f.kind === 'low' ? '#ff3a6a' : f.kind === 'cluster' ? '#ffcf5a' : f.kind === 'away' ? '#bfe8d0' : '#7ad8ff';
@@ -1358,6 +1387,7 @@ export class Renderer {
       if (k >= 1 && Math.floor(w.t * 4) % 2) { g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u); }
       this.text(`${R.name} ${Math.floor(p.res)}`, bx + bw / 2, ry + gh / 2, Math.max(1, u - 1), '#ffffff', 'center');
       ry += gh + 2 * u;
+      if (w.b.cls === 'necromancer') { this.text(`거둔 영혼 ${p.souls.length} / 10`, bx, ry + 5 * u, Math.max(1, u - 1), '#7ae8ff'); ry += 10 * u; }
       if (w.b.race === 'wizard') { const el = ELEM[p.elem]; this.text(`속성: ${el.name}${w.zElem?.weak === p.elem ? ' (약점!)' : w.zElem?.resist === p.elem ? ' (내성)' : ''}`, bx, ry + 5 * u, Math.max(1, u - 1), el.color); ry += 10 * u; }
     }
     // 버프
@@ -1423,8 +1453,8 @@ export class Renderer {
     const g = this.g, p = w.player, d = w.d, u = this.u, v = Math.max(2, u), W = this.c.width, H = this.c.height;
     const touch = document.body.classList.contains('touch');
     const box = (touch ? 16 : 20) * v, gap = 12 * v;
-    const slots = w.b.skills || [];
-    const keys = ['Q', 'R', 'F'];
+    const slots = [...(w.b.skills || []).filter((x) => x !== 'weapon'), 'weapon'];
+    const keys = [...['Q', 'R', 'F'].slice(0, slots.length - 1), touch ? '무기' : '우클릭'];
     const n = slots.length + 1;
     const total = n * box + (n - 1) * gap;
     const x0 = touch ? 10 * u : (W - total) / 2, y0 = touch ? 10 * v + 70 * v : H - box - 12 * v;
@@ -1436,7 +1466,7 @@ export class Renderer {
       if (id === 'weapon') {
         const k = p.skillCd > 0 ? 1 - p.skillCd / p.skillMax : 1;
         this.cooldownBox(x, y0, box, k, keys[i], '');
-        this.text((WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기').slice(0, 4), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#d8d0e8', 'center');
+        this.text((WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기').slice(0, 4), x + box / 2, y0 + box + (7 + (i % 2) * 9) * v, Math.max(1, u - 1), '#d8d0e8', 'center');
         return;
       }
       const sk = SKILLS[id];
@@ -1446,7 +1476,7 @@ export class Renderer {
       const lack = need > p.res;
       this.cooldownBox(x, y0, box, k, keys[i], '', ROLE_COLOR[sk.role]);
       if (lack && k >= 1) { g.fillStyle = 'rgba(40,0,0,0.55)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); }
-      this.text(sk.name.slice(0, 4), x + box / 2, y0 + box + 7 * v, u, lack ? '#ff8a80' : '#d8d0e8', 'center');
+      this.text(sk.name.slice(0, 4), x + box / 2, y0 + box + (7 + (i % 2) * 9) * v, u, lack ? '#ff8a80' : '#d8d0e8', 'center');
       if (need) this.text(String(need), x + box - 3 * v, y0 + 5 * v, Math.max(1, u - 1), lack ? '#ff8a80' : RACES[w.b.race].res.color, 'right');
     });
     // 시전바

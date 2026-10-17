@@ -186,8 +186,8 @@ export class Hub {
     let wcard = '';
     if (wsk) {
       const wi = b.skills.indexOf('weapon');
-      const wbtn = wi >= 0 ? '<button class="sm ghost" data-act="skillOff" data-id="weapon">빼기</button>' : '<button class="sm" data-act="skillOn" data-id="weapon">장착</button>';
-      wcard = `<div class="skc ${wi >= 0 ? 'on' : ''}" style="--c:#aab0c0"><div class="c-head"><b>${wi >= 0 ? `[${keys[wi]}] ` : ''}${wsk.name}</b><span class="role">무기</span></div><div class="c-sum">${esc(wsk.desc || '')}</div><div class="c-act">${wbtn}</div></div>`;
+      const wbtn = '<span class="muted">우클릭(모바일은 「무기」 버튼)으로 언제나 사용</span>';
+      wcard = `<div class="skc on" style="--c:#aab0c0"><div class="c-head"><b>[우클릭] ${wsk.name}</b><span class="role">무기</span></div><div class="c-sum">${esc(wsk.desc || '')}</div><div class="c-act">${wbtn}</div></div>`;
     }
     const clsRow = RACE_CLASSES(s.race).map((cid) => {
       const c = CLASSES[cid], on = cid === b.cls;

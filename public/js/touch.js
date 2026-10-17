@@ -12,6 +12,7 @@ export function setupTouch({ input, getWorld, onMenu, onBag }) {
     <button class="tb s1" data-btn="s1">1</button>
     <button class="tb s2" data-btn="s2">2</button>
     <button class="tb s3" data-btn="s3">3</button>
+    <button class="tb wsk" data-btn="wskill">무기</button>
     <button class="tb dash" data-btn="dash">대시</button>
     <button class="tb act" data-btn="interact" hidden>E</button>
     <button class="tb menu" data-btn="menu" aria-label="메뉴">≡</button>

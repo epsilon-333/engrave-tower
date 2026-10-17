@@ -243,6 +243,7 @@ body.touch #panel:not([hidden]) ~ #touch, body.touch #overlay:not([hidden]) ~ #t
 #touch .s3 { right: calc(22px + min(34vmin, 150px) + 82px + env(safe-area-inset-right, 0px)); bottom: calc(22px + min(34vmin, 150px) + 30px + env(safe-area-inset-bottom, 0px)); }
 #touch .s1, #touch .s2, #touch .s3 { font-size: 11px; line-height: 1.1; background: rgba(70, 50, 110, 0.85); }
 #touch .tb.cool { opacity: 0.5; }
+#touch .wsk { right: calc(22px + min(34vmin, 150px) + 140px + env(safe-area-inset-right, 0px)); bottom: calc(22px + 10px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; font-size: 11px; background: rgba(60, 60, 80, 0.85); }
 .skill-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
 .skc { background: var(--panel2); border: 2px solid #3a3450; border-left: 5px solid var(--c); padding: 8px; display: grid; gap: 4px; }
 .skc.on { border-color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
