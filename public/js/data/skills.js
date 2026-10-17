@@ -200,8 +200,8 @@ export const SKILLS = {
 
   // ══════ 언데드 · 사령술사 ══════
   raiseSouls: { name: '영혼 소환', role: '소환', cd: 4, cost: 10, scale: 'mag', fx: 'summon', aim: 'none',
-    desc: '거둔 영혼을 최대 3개까지 되살린다. 원래 몬스터 체력의 70%로, 쓰러질 때까지 함께 싸운다. 강한 영혼부터 나온다. 부하는 최대 10마리.',
-    do: [{ op: 'raiseSouls', n: 3 }] },
+    desc: '거둔 영혼을 전부 한꺼번에 되살린다. 원래 몬스터 체력의 70%로, 쓰러질 때까지 함께 싸운다. 부하는 최대 10마리.',
+    do: [{ op: 'raiseSouls', n: 10 }] },
   deathCall: { name: '망자의 부름', role: '제어', cd: 10, cost: 15, scale: 'mag', fx: 'roar', aim: 'none',
     desc: '내 부하들이 울부짖어 주변 적의 시선을 끈다. 6초 동안 적들이 부하만 노리고, 부하는 받는 피해 -30%.',
     do: [{ op: 'taunt', r: 110, dur: 6 }] },
