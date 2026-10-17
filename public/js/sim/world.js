@@ -934,9 +934,9 @@ export class World {
       case 'raiseSouls': {
         if (!p.souls.length) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '거둔 영혼이 없다', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
         const living = this.allies.filter((a) => a.kind === 'soul').length;
-        if (living >= 10) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '부하는 최대 10마리', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
+        if (living >= 5) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '부하는 최대 5마리', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
         p.souls.sort((a, b) => b.maxHp - a.maxHp);
-        const raised = p.souls.splice(0, Math.min(op.n, 10 - living));
+        const raised = p.souls.splice(0, Math.min(op.n, 5 - living));
         raised.forEach((sv, i) => {
           const a = (i / raised.length) * Math.PI * 2 + 0.5;
           let x = p.x + Math.cos(a) * 20, y = p.y + Math.sin(a) * 20;
@@ -1056,7 +1056,16 @@ export class World {
         // 망령·사령 군주·분신: 적을 쫓아가 공격
         // 부하마다 다른 적을 고른다: 이미 다른 부하가 노리는 적은 덜 고른다 (1초마다 다시 고름)
         let tgt;
-        if (al.kind === 'soul' || al.kind === 'skeleton' || al.kind === 'ghost') {
+        const leashed = al.kind === 'soul' || al.kind === 'skeleton' || al.kind === 'ghost' || al.kind === 'lich';
+        const pd = Math.hypot(al.x - p.x, al.y - p.y);
+        if (leashed) {
+          if (pd > 360) { al.x = p.x + this.rng.range(-10, 10); al.y = p.y + this.rng.range(-10, 10); if (this.blocked(al.x, al.y, 4)) { al.x = p.x; al.y = p.y; } this.emit({ t: 'summonFx', x: al.x, y: al.y, kind: al.kind }); }
+          if (pd > 150) al.returning = true;
+          else if (pd < 60) al.returning = false;
+          if (al.returning) al.tgt = null;
+        }
+        if (al.returning) tgt = null;
+        else if (al.kind === 'soul' || al.kind === 'skeleton' || al.kind === 'ghost') {
           al.pickT = (al.pickT || 0) - DT;
           if (!al.tgt || al.tgt.dead || al.tgt.hidden || al.pickT <= 0) {
             al.pickT = 1;
@@ -1066,13 +1075,14 @@ export class World {
             for (const e of this.enemies) {
               if (e.dead || e.hidden || e.def.ai === 'dummy' && this.mode !== 'plaza') continue;
               const dd = Math.hypot(e.x - al.x, e.y - al.y);
-              if (dd > 220) continue;
+              if (dd > 220 || Math.hypot(e.x - p.x, e.y - p.y) > 130) continue;
               const sc = dd + (claims.get(e.id) || 0) * 70;
               if (sc < bs) { bs = sc; best = e; }
             }
             al.tgt = best;
           }
           tgt = al.tgt;
+          if (tgt && Math.hypot(tgt.x - p.x, tgt.y - p.y) > 160) { al.tgt = null; tgt = null; }
         } else tgt = near(al.kind === 'clone' ? 120 : 220);
         let tx = p.x + (al.kind === 'clone' ? -p.dir * 14 : 0), ty = p.y;
         // 할 일이 없으면 내 주위에 둥글게 선다
@@ -1080,14 +1090,18 @@ export class World {
         if (tgt) { tx = tgt.x; ty = tgt.y; }
         const vx = tx - al.x, vy = ty - al.y, l = Math.hypot(vx, vy) || 1;
         const spd = al.kind === 'lich' ? 70 : al.kind === 'skeleton' || al.kind === 'soul' ? 95 : 110;
-        if (l > (tgt ? tgt.r + 8 : 6)) { al.x += vx / l * spd * DT; al.y += vy / l * spd * DT; }
+        if (l > (tgt ? tgt.r + 8 : 6)) {
+          const [mx, my] = this.pathDir(al, tx, ty);
+          al.r = al.r || 5;
+          this.move(al, mx * spd * DT * (al.returning ? 1.4 : 1), my * spd * DT * (al.returning ? 1.4 : 1));
+        }
         for (const o of this.allies) {
           if (o === al || o.kind === 'spirit' || o.kind === 'spiritKing') continue;
           const dx = al.x - o.x, dy = al.y - o.y, dd = Math.hypot(dx, dy);
           if (dd < 12 && dd > 0.01) { al.x += (dx / dd) * (12 - dd) * 0.25; al.y += (dy / dd) * (12 - dd) * 0.25; }
           else if (dd <= 0.01) al.x += (al.id % 2 ? 1 : -1);
         }
-        if (this.blocked(al.x, al.y, 4)) { al.x -= vx / l * spd * DT; al.y -= vy / l * spd * DT; }
+        if (this.blocked(al.x, al.y, 3)) { al.x = p.x; al.y = p.y; }
         if (Math.abs(vx) > 1) al.dir = vx > 0 ? 1 : -1;
         if (tgt && l < tgt.r + 14 && al.cd <= 0) {
           al.cd = al.kind === 'lich' ? 0.9 : al.kind === 'clone' ? 0.45 : al.kind === 'skeleton' ? 0.6 : al.kind === 'soul' ? 0.8 : 0.7;
@@ -1553,6 +1567,51 @@ export class World {
         else c.respawnT = 3;
       }
     }
+  }
+
+  // 두 지점 사이가 벽에 막혔는지
+  clearLine(x1, y1, x2, y2) {
+    const n = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 6);
+    for (let i = 1; i < n; i++) if (this.solid(x1 + (x2 - x1) * i / n, y1 + (y2 - y1) * i / n)) return false;
+    return true;
+  }
+
+  // 소환수 길찾기: 곧장 갈 수 있으면 직진, 막히면 타일 단위 너비 우선 탐색으로 돌아간다 (0.4초마다 다시 계산)
+  pathDir(o, tx, ty) {
+    const dx = tx - o.x, dy = ty - o.y, l = Math.hypot(dx, dy) || 1;
+    if (this.mode !== 'field' || this.clearLine(o.x, o.y, tx, ty)) { o.path = null; return [dx / l, dy / l]; }
+    const tw = this.tw, th = this.th;
+    const sx = Math.floor(o.x / TILE), sy = Math.floor(o.y / TILE), gx = Math.floor(tx / TILE), gy = Math.floor(ty / TILE);
+    o.pathT = (o.pathT || 0) - DT;
+    if (!o.path || o.pathT <= 0 || o.path.goal !== gy * tw + gx) {
+      o.pathT = 0.4;
+      const start = sy * tw + sx, goal = gy * tw + gx;
+      const prev = new Map([[start, -1]]), q = [start];
+      let found = false;
+      for (let h = 0; h < q.length && h < 2500; h++) {
+        const i = q[h];
+        if (i === goal) { found = true; break; }
+        const x = i % tw, y = (i / tw) | 0;
+        for (let k = 0; k < 4; k++) {
+          const nx = x + N8[k][0], ny = y + N8[k][1];
+          if (nx < 0 || ny < 0 || nx >= tw || ny >= th) continue;
+          const j = ny * tw + nx, t = this.tiles[j];
+          if (prev.has(j) || t === T_WALL || t === T_CRACK || t === T_BUILD) continue;
+          prev.set(j, i); q.push(j);
+        }
+      }
+      // 첫 몇 칸만 기억: 시작점 다음 칸들
+      const steps = [];
+      if (found) { let c = goal; while (c !== -1 && c !== start) { steps.push(c); c = prev.get(c); } steps.reverse(); }
+      o.path = { goal, steps };
+    }
+    while (o.path.steps.length) {
+      const c = o.path.steps[0], cx = (c % tw) * TILE + 8, cy = ((c / tw) | 0) * TILE + 8;
+      if (Math.hypot(cx - o.x, cy - o.y) < 5) { o.path.steps.shift(); continue; }
+      const ax = cx - o.x, ay = cy - o.y, al = Math.hypot(ax, ay) || 1;
+      return [ax / al, ay / al];
+    }
+    return [dx / l, dy / l];
   }
 
   // 플레이어 위치에서 퍼지는 거리장 → 적이 벽을 돌아서 추격
