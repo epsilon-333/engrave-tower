@@ -1,7 +1,7 @@
 // 빌드 계산: 로드아웃(종족·레벨·배분·각인·장비) → 최종 스탯, 파생 수치, 플래그, 트리거.
 // DOM을 쓰지 않는 순수 함수라 서버에서도 그대로 돌릴 수 있다.
 import { BASE_STATS, SPECIAL_INFO, AWAKENINGS, EXTREME, eff } from '../data/stats.js';
-import { RACES } from '../data/races.js';
+import { RACES, RACE_MIGRATE } from '../data/races.js';
 import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
 import { ITEMS } from '../data/items.js';
 import { evalCond, condText } from './conditions.js';
@@ -11,6 +11,7 @@ export const GEAR_SLOTS = ['weapon', 'armor', 'acc1', 'acc2'];
 
 // loadout: { race, level, alloc:{str..}, engravings:{slot:id}, gear:{slot:id} }
 export function computeBuild(lo) {
+  if (RACE_MIGRATE[lo.race]) lo = { ...lo, race: RACE_MIGRATE[lo.race] };
   const race = RACES[lo.race];
   const stats = {};
   for (const k of BASE_STATS) stats[k] = race.base[k] + (lo.alloc?.[k] || 0) + (race.growth[k] || 0) * (lo.level - 1);
@@ -29,8 +30,7 @@ export function computeBuild(lo) {
 
   // 1) 고정 스탯
   for (const src of sources) {
-    const mult = src.kind === 'item' && lo.race === 'dwarf' ? 1.5 : 1;
-    for (const [k, v] of Object.entries(src.def.stats || {})) stats[k] = (stats[k] || 0) + Math.round(v * mult);
+    for (const [k, v] of Object.entries(src.def.stats || {})) stats[k] = (stats[k] || 0) + v;
   }
 
   // 2) 태그
@@ -50,8 +50,7 @@ export function computeBuild(lo) {
   }
   for (const src of sources) {
     if (!disabled.has(src.id)) continue;
-    const mult = lo.race === 'dwarf' ? 1.5 : 1;
-    for (const [k, v] of Object.entries(src.def.stats || {})) stats[k] -= Math.round(v * mult);
+    for (const [k, v] of Object.entries(src.def.stats || {})) stats[k] -= v;
     for (const t of src.def.tags || []) tags[t]--;
   }
   const active = sources.filter((s) => !disabled.has(s.id));
@@ -62,7 +61,7 @@ export function computeBuild(lo) {
   if (extreme) {
     const [k] = sorted[0];
     stats[k] = Math.round(stats[k] * (1 + EXTREME.bonus));
-    notes.push({ kind: 'extreme', text: `극한: 주력 스탯 +20%` });
+    notes.push({ kind: 'extreme', text: `극한: 주력 스탯 +${Math.round(EXTREME.bonus * 100)}%` });
   }
 
   // 4) 조건부 효과 수집 (조건은 1차 스탯 기준으로 판정 → 순환 방지)
@@ -95,12 +94,6 @@ export function computeBuild(lo) {
     }
   }
 
-  // 인간: 서로 다른 태그 5종
-  const distinct = Object.values(tags).filter((n) => n > 0).length;
-  if (lo.race === 'human' && distinct >= 5) {
-    effects.push({ type: 'mul', key: 'dmgMul', v: 1.15 });
-    notes.push({ kind: 'on', text: `다재다능: 서로 다른 태그 ${distinct}종 → 피해 +15%` });
-  }
 
   // 6) 2차 스탯 효과 반영
   for (const e of effects) {
@@ -123,13 +116,14 @@ export function computeBuild(lo) {
   const d = {
     maxHp: 70 + E.vit * 7,
     physAtk: 4 + E.str * 1.3,
+    dexAtk: 4 + E.agi * 1.15 + E.str * 0.25,
     magAtk: 4 + E.mag * 1.3,
     atkSpeed: 1 + E.agi * 0.012,
     moveSpeed: 80 + E.agi * 0.7,
     dodge: E.agi / (E.agi + 220),
     crit: 0.05 + E.sen / (E.sen + 140),
     critDmg: 1.5 + E.sen * 0.006,
-    statusRes: E.spi / (E.spi + 90) + (lo.race === 'undead' ? 0.25 : 0),
+    statusRes: E.spi / (E.spi + 90),
     cdr: E.spi / (E.spi + 160),
     loadCap: 10 + Math.floor(stats.spi * 0.5),
     physDR: Math.max(0, stats.pres) / (Math.max(0, stats.pres) + 100),
@@ -137,7 +131,13 @@ export function computeBuild(lo) {
     physPen: 0, magPen: 0, knockback: 30, regen: 0,
     dmgMul: 1, dmgTakenMul: 1, burnMul: 1, bleedMul: 1, chillMul: 1, reactionMul: 1, statusDmgMul: 1, reflectMul: 1,
     poisonCap: 10, freezeReduce: 0, cloudSize: 0, dashCd: 1.2, goldMul: 1, projMul: lo.race === 'elf' ? 1.3 : 1,
+    maxMana: 50 + E.spi * 2, manaRegen: 3 + E.spi * 0.08, skillCdMul: 1, auraTime: 5, aimSlow: lo.race === 'elf' ? 0.82 : 0.65,
+    freezeTime: 1.6,
   };
+  // 종족 고유 수치
+  if (lo.race === 'wizard') { d.maxMana *= 1.5; d.manaRegen *= 1.3; d.reactionMul *= 1.5; d.skillCdMul *= 0.75; }
+  if (lo.race === 'knight') d.moveSpeed *= 0.92;
+  if (lo.race === 'undead') d.moveSpeed *= 0.95;
   const flags = new Set();
   const triggers = { hit: [], kill: [], hurt: [], hurtMag: [], dodge: [], crit: [], dash: [] };
   for (const e of effects) {
@@ -147,6 +147,7 @@ export function computeBuild(lo) {
     else if (e.type === 'on') triggers[e.event].push(e);
   }
   d.maxHp = Math.round(d.maxHp);
+  d.maxMana = Math.round(d.maxMana);
   d.dodge = Math.min(0.6, d.dodge);
   d.crit = Math.min(0.9, d.crit);
   d.statusRes = Math.min(0.85, d.statusRes);
@@ -160,9 +161,14 @@ export function computeBuild(lo) {
     notes.push({ kind: 'warn', text: `과부하! 부하 ${load}/${d.loadCap}: 공격 속도 -30%, 받는 피해 +30%` });
   }
 
-  const weaponId = disabled.has(lo.gear?.weapon) ? 'rustySword' : lo.gear?.weapon || 'rustySword';
+  const wid = lo.gear?.weapon && ITEMS[lo.gear.weapon] ? lo.gear.weapon : 'rustySword';
+  const weaponId = disabled.has(wid) ? 'rustySword' : wid;
+  const wpn = ITEMS[weaponId].weapon;
+  if (wpn.crit) d.crit = Math.min(0.9, d.crit + wpn.crit);
+  if (wpn.critDmg) d.critDmg += wpn.critDmg;
+  if (flags.has('noAimSlow')) d.aimSlow = 1;
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
-  if (ITEMS[weaponId].weapon.kind === 'melee') { d.dmgTakenMul *= 0.8; flags.add('stagger'); }
+  if (wpn.kind === 'melee') { d.dmgTakenMul *= 0.8; flags.add('stagger'); }
   else flags.add('aimSlow');
   return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId };
 }

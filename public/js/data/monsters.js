@@ -24,7 +24,8 @@ export const ECHOES = {
   grave: { name: '묘지기의 잔향', color: '#c45cff', rare: true },
 };
 
-// ai: chase | erratic | ranged | charge | boss
+// ai: chase | erratic | ranged | charge | boss | kamikaze(다가와 자폭) | summoner(부하 소환) | burrow(땅속 잠복) | flee(도망)
+// shield: 정면 공격 피해 감소
 export const MONSTERS = {
   slime: { name: '이끼 늪괴', shape: 'blob', pal: { a: '#5fbf4a', b: '#3a7d2c', c: '#a6ef8a', e: '#102010' }, hp: 34, atk: 6, type: 'phys', speed: 38, ai: 'chase', r: 6, xp: 4, gold: 2, pres: 0, mres: 10, echo: { id: 'goo', rate: 0.45 } },
   bat: { name: '동굴 워골', shape: 'flyer', pal: { a: '#6a5aa8', b: '#40356e', c: '#9a8cff', e: '#ff4040' }, hp: 20, atk: 5, type: 'phys', speed: 82, ai: 'erratic', r: 5, xp: 4, gold: 2, pres: 0, mres: 0, echo: { id: 'wing', rate: 0.45 } },
@@ -49,17 +50,49 @@ export const MONSTERS = {
   skeleton: { name: '해골 병사', shape: 'humanoid', pal: { s: '#e8e2cf', h: '#e8e2cf', a: '#a8a28f', b: '#6a665a', e: '#ff3a3a' }, hp: 300, atk: 26, type: 'phys', speed: 50, ai: 'chase', r: 6, xp: 34, gold: 18, pres: 140, mres: 10, echo: { id: 'bone', rate: 0.4 } },
   wraith: { name: '망령술사', shape: 'flyer', ghost: true, pal: { a: '#8ad8ff', b: '#4a8ab8', c: '#e0f6ff', e: '#ffffff' }, hp: 260, atk: 24, type: 'mag', speed: 70, ai: 'erratic', r: 6, xp: 36, gold: 20, pres: 260, mres: 20, echo: { id: 'soul', rate: 0.4 } },
   ghoul: { name: '구울', shape: 'humanoid', pal: { s: '#8a9a6a', h: '#3a3a2a', a: '#5a5a3a', b: '#3a3a24', e: '#ffee00' }, hp: 380, atk: 30, type: 'phys', speed: 66, ai: 'chase', status: 'poison', r: 7, xp: 38, gold: 22, pres: 50, mres: 50, echo: { id: 'rot', rate: 0.4 } },
+  // ── 추가 몬스터 (층마다 3종) ──
+  mossSlug: { name: '이끼 민달팽이', shape: 'blob', pal: { a: '#7ed957' }, hp: 26, atk: 14, type: 'phys', speed: 58, ai: 'kamikaze', boom: { r: 34, color: '#7ed957' }, r: 5, xp: 5, gold: 3, pres: 0, mres: 0, echo: { id: 'goo', rate: 0.4 } },
+  goblinShaman: { name: '고블린 주술사', shape: 'humanoid', pal: { a: '#6fa83a' }, hp: 50, atk: 7, type: 'mag', speed: 40, ai: 'summoner', summon: 'goblin', range: 120, proj: { speed: 120, color: '#c8e04a' }, r: 6, xp: 9, gold: 6, pres: 5, mres: 15, echo: { id: 'rust', rate: 0.45 } },
+  caveLurker: { name: '동굴 잠복자', shape: 'quad', pal: { a: '#5a4a7a' }, hp: 46, atk: 11, type: 'phys', speed: 70, ai: 'burrow', r: 6, xp: 7, gold: 4, pres: 10, mres: 5, echo: { id: 'wing', rate: 0.45 } },
+
+  gasBloat: { name: '가스 부풀이', shape: 'blob', pal: { a: '#d8d04a' }, hp: 60, atk: 16, type: 'mag', speed: 48, ai: 'kamikaze', boom: { r: 40, color: '#c8e04a', cloud: true }, r: 7, xp: 10, gold: 5, pres: 0, mres: 10, echo: { id: 'spore', rate: 0.4 } },
+  bogWitch: { name: '늪 마녀', shape: 'humanoid', pal: { a: '#3a7a3a' }, hp: 90, atk: 10, type: 'mag', speed: 36, ai: 'summoner', summon: 'leech', range: 130, proj: { speed: 120, color: '#9be15d', status: 'poison' }, r: 6, xp: 14, gold: 8, pres: 10, mres: 25, echo: { id: 'venom', rate: 0.45 } },
+  mudLurker: { name: '진흙 잠복자', shape: 'blob', pal: { a: '#7a5a3a' }, hp: 85, atk: 14, type: 'phys', speed: 62, ai: 'burrow', status: 'bleed', r: 7, xp: 12, gold: 7, pres: 15, mres: 10, echo: { id: 'blood', rate: 0.45 } },
+
+  pumpkinFiend: { name: '불꽃 호박귀', shape: 'humanoid', pal: { a: '#ff8a2a' }, hp: 95, atk: 30, type: 'mag', speed: 70, ai: 'kamikaze', boom: { r: 44, color: '#ff7a2a', status: 'burn' }, r: 6, xp: 16, gold: 9, pres: 10, mres: 20, echo: { id: 'cinder', rate: 0.4 } },
+  chortShaman: { name: '악귀 술사', shape: 'humanoid', pal: { a: '#c0302a' }, hp: 150, atk: 13, type: 'mag', speed: 40, ai: 'summoner', summon: 'imp', range: 130, proj: { speed: 140, color: '#ff7a2a', status: 'burn' }, r: 6, xp: 22, gold: 12, pres: 15, mres: 40, echo: { id: 'ember', rate: 0.45 } },
+  shieldDemon: { name: '방패 악귀', shape: 'humanoid', pal: { a: '#8a2a2a' }, hp: 260, atk: 20, type: 'phys', speed: 40, ai: 'chase', shield: 0.6, r: 7, xp: 24, gold: 14, pres: 50, mres: 20, echo: { id: 'magma', rate: 0.45 } },
+
+  frostSlug: { name: '얼음 민달팽이', shape: 'blob', pal: { a: '#9fe3ff' }, hp: 120, atk: 30, type: 'mag', speed: 64, ai: 'kamikaze', boom: { r: 42, color: '#9fe3ff', status: 'chill' }, r: 6, xp: 20, gold: 11, pres: 20, mres: 30, echo: { id: 'frost', rate: 0.4 } },
+  iceShaman: { name: '서리 주술사', shape: 'humanoid', pal: { a: '#4a8ad0' }, hp: 200, atk: 16, type: 'mag', speed: 40, ai: 'summoner', summon: 'frostWolf', range: 140, proj: { speed: 150, color: '#9fe3ff', status: 'chill' }, r: 6, xp: 30, gold: 16, pres: 20, mres: 60, echo: { id: 'icecore', rate: 0.45 } },
+  snowLurker: { name: '설원 잠복자', shape: 'blob', pal: { a: '#e8f4ff' }, hp: 190, atk: 22, type: 'phys', speed: 66, ai: 'burrow', status: 'chill', r: 7, xp: 26, gold: 14, pres: 30, mres: 40, echo: { id: 'mirror', rate: 0.45 } },
+
+  tinyCorpse: { name: '꼬마 시체', shape: 'humanoid', pal: { a: '#8a9a6a' }, hp: 160, atk: 36, type: 'phys', speed: 74, ai: 'kamikaze', boom: { r: 42, color: '#8a9a4a', cloud: true }, r: 5, xp: 28, gold: 15, pres: 40, mres: 20, echo: { id: 'rot', rate: 0.4 } },
+  necroAcolyte: { name: '사령 수련생', shape: 'humanoid', pal: { a: '#5b3a7a' }, hp: 240, atk: 20, type: 'mag', speed: 40, ai: 'summoner', summon: 'skeleton', range: 140, proj: { speed: 150, color: '#c45cff' }, r: 6, xp: 40, gold: 22, pres: 30, mres: 70, echo: { id: 'soul', rate: 0.45 } },
+  boneGuard: { name: '뼈 방패병', shape: 'humanoid', pal: { a: '#e8e2cf' }, hp: 420, atk: 28, type: 'phys', speed: 44, ai: 'chase', shield: 0.6, r: 7, xp: 42, gold: 24, pres: 160, mres: 20, echo: { id: 'bone', rate: 0.45 } },
+
+  treasureGoblin: { name: '보물 고블린', shape: 'humanoid', pal: { a: '#ffcf3a' }, hp: 120, atk: 0, type: 'phys', speed: 92, ai: 'flee', r: 6, xp: 30, gold: 120, pres: 20, mres: 20, echo: { id: 'rust', rate: 1 }, treasure: true },
+
   graveKeeper: { name: '묘지기', shape: 'golem', scale: 2.2, elite: true, pal: { a: '#3a2a4a', b: '#1a1024', c: '#c45cff', e: '#00ff9a' }, hp: 5200, atk: 38, type: 'mag', speed: 34, ai: 'boss', range: 170, proj: { speed: 150, color: '#c45cff', status: 'bleed', spread: 11 }, r: 15, xp: 700, gold: 400, pres: 100, mres: 100, echo: { id: 'grave', rate: 1 } },
 };
 
 // liquid: 밟을 수 있는 지형 효과 (water 감속, lava 화상, snow 감속, mist 없음)
 export const ZONES = [
-  { id: 'cave', name: '이끼 동굴', floor: 1, rec: 1, pal: ['#2c3b2b', '#33452f', '#283626'], wall: ['#151d14', '#2a3826', '#3d5236'], liquid: 'water', liquidPal: ['#1d4a5a', '#2a6a7a'], dark: 0.62, deco: ['moss', 'moss', 'glowshroom', 'pebble', 'fern'], portal: '#7ed957', pool: ['slime', 'bat', 'goblin'], elite: 'goblinChief' },
-  { id: 'swamp', name: '독늪', floor: 2, rec: 5, pal: ['#2c3524', '#35402a', '#283020'], wall: ['#121a0e', '#26331c', '#3a4a28'], liquid: 'water', liquidPal: ['#2a4a2a', '#3e6a34'], dark: 0.45, deco: ['reed', 'reed', 'lily', 'glowshroom', 'pebble'], portal: '#9be15d', pool: ['toad', 'leech', 'shroom'], elite: 'swampQueen' },
-  { id: 'rift', name: '화산 균열', floor: 3, rec: 10, pal: ['#3a2622', '#452c26', '#30201c'], wall: ['#170c0a', '#3a1f18', '#5a2e22'], liquid: 'lava', liquidPal: ['#c8401a', '#ff8a2a'], dark: 0.5, deco: ['ember', 'pebble', 'bone', 'crystalR'], portal: '#ff7a2a', pool: ['salamander', 'magmaGolem', 'imp'], elite: 'riftGuard' },
-  { id: 'frost', name: '서리 회랑', floor: 4, rec: 15, pal: ['#3a4656', '#435264', '#36404e'], wall: ['#141c26', '#3a4e66', '#6a88a8'], liquid: 'snow', liquidPal: ['#c8dcec', '#e8f4ff'], dark: 0.35, deco: ['crystalB', 'crystalB', 'pebble', 'icicle'], portal: '#9fe3ff', pool: ['frostWolf', 'glassSpider', 'iceGolem'], elite: 'frostWitch' },
-  { id: 'grave', name: '그림자 묘지', floor: 5, rec: 20, pal: ['#2a2434', '#322a3e', '#241f2e'], wall: ['#0e0a14', '#2a2238', '#40345a'], liquid: 'mist', liquidPal: ['#3a3450', '#4a4466'], dark: 0.7, deco: ['tomb', 'candle', 'bone', 'bone', 'pebble'], portal: '#c45cff', pool: ['skeleton', 'wraith', 'ghoul'], elite: 'graveKeeper' },
+  { id: 'cave', name: '이끼 동굴', floor: 1, rec: 1, pal: ['#2c3b2b', '#33452f', '#283626'], wall: ['#151d14', '#2a3826', '#3d5236'], liquid: 'water', liquidPal: ['#1d4a5a', '#2a6a7a'], dark: 0.62, deco: ['moss', 'moss', 'glowshroom', 'pebble', 'fern'], portal: '#7ed957', pool: ['slime', 'bat', 'goblin', 'mossSlug', 'goblinShaman', 'caveLurker'], regions: ['이끼 굴', '고블린 야영지', '물웅덩이 동굴', '버섯 숲'], elite: 'goblinChief' },
+  { id: 'swamp', name: '독늪', floor: 2, rec: 5, pal: ['#2c3524', '#35402a', '#283020'], wall: ['#121a0e', '#26331c', '#3a4a28'], liquid: 'water', liquidPal: ['#2a4a2a', '#3e6a34'], dark: 0.45, deco: ['reed', 'reed', 'lily', 'glowshroom', 'pebble'], portal: '#9be15d', pool: ['toad', 'leech', 'shroom', 'gasBloat', 'bogWitch', 'mudLurker'], regions: ['썩은 갈대밭', '가라앉은 사원', '거머리 소굴', '안개 늪'], elite: 'swampQueen' },
+  { id: 'rift', name: '화산 균열', floor: 3, rec: 10, pal: ['#3a2622', '#452c26', '#30201c'], wall: ['#170c0a', '#3a1f18', '#5a2e22'], liquid: 'lava', liquidPal: ['#c8401a', '#ff8a2a'], dark: 0.5, deco: ['ember', 'pebble', 'bone', 'crystalR'], portal: '#ff7a2a', pool: ['salamander', 'magmaGolem', 'imp', 'pumpkinFiend', 'chortShaman', 'shieldDemon'], regions: ['재의 들판', '용암 강', '악귀 제단', '부서진 대장간'], elite: 'riftGuard' },
+  { id: 'frost', name: '서리 회랑', floor: 4, rec: 15, pal: ['#3a4656', '#435264', '#36404e'], wall: ['#141c26', '#3a4e66', '#6a88a8'], liquid: 'snow', liquidPal: ['#c8dcec', '#e8f4ff'], dark: 0.35, deco: ['crystalB', 'crystalB', 'pebble', 'icicle'], portal: '#9fe3ff', pool: ['frostWolf', 'glassSpider', 'iceGolem', 'frostSlug', 'iceShaman', 'snowLurker'], regions: ['얼어붙은 회랑', '거울 동굴', '눈보라 언덕', '빙하 감옥'], elite: 'frostWitch' },
+  { id: 'grave', name: '그림자 묘지', floor: 5, rec: 20, pal: ['#2a2434', '#322a3e', '#241f2e'], wall: ['#0e0a14', '#2a2238', '#40345a'], liquid: 'mist', liquidPal: ['#3a3450', '#4a4466'], dark: 0.7, deco: ['tomb', 'candle', 'bone', 'bone', 'pebble'], portal: '#c45cff', pool: ['skeleton', 'wraith', 'ghoul', 'tinyCorpse', 'necroAcolyte', 'boneGuard'], regions: ['무너진 묘역', '사령의 탑', '뼈 무덤', '그림자 숲'], elite: 'graveKeeper' },
 ];
+
+// 강화 개체 접두어: 일반 몬스터가 가끔 달고 나온다 (잔향·경험치 2배)
+export const AFFIXES = {
+  giant: { name: '거대한', color: '#ffb347', scale: 1.4, hp: 2.2, atk: 1.3 },
+  frenzied: { name: '광폭한', color: '#ff5050', speed: 1.5, atkRate: 1.6 },
+  toxic: { name: '독성', color: '#9be15d', deathCloud: true },
+  vampiric: { name: '흡혈', color: '#e0445a', drain: 0.25 },
+  frozen: { name: '얼어붙은', color: '#9fe3ff', status: 'chill' },
+};
 
 // 광장 수련장 허수아비 (빌드 테스트용)
 export const DUMMIES = {

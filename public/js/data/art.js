@@ -1,11 +1,11 @@
 // 데이터 ↔ 스프라이트 연결 (렌더 전용). tint 는 CSS filter
 export const RACE_ART = {
-  human: { base: 'knight_m' },
   elf: { base: 'elf_m' },
-  dwarf: { base: 'dwarf_m' },
   orc: { base: 'orc_warrior' },
   beast: { base: 'lizard_m' },
-  undead: { base: 'wizzard_m', tint: 'grayscale(0.7) hue-rotate(80deg) brightness(0.9) contrast(1.15)' },
+  undead: { base: 'necromancer' },
+  knight: { base: 'knight_m' },
+  wizard: { base: 'wizzard_m' },
 };
 
 export const MONSTER_ART = {
@@ -28,6 +28,22 @@ export const MONSTER_ART = {
   skeleton: { base: 'skelet' },
   wraith: { base: 'necromancer', ghost: true },
   ghoul: { base: 'orc_warrior', tint: 'grayscale(0.6) hue-rotate(40deg) brightness(0.85)' },
+  mossSlug: { base: 'tiny_slug', tint: 'hue-rotate(60deg) saturate(1.4)' },
+  goblinShaman: { base: 'orc_shaman', tint: 'hue-rotate(40deg)' },
+  caveLurker: { base: 'wogol', tint: 'brightness(0.7) hue-rotate(40deg)' },
+  gasBloat: { base: 'swampy', tint: 'hue-rotate(-50deg) saturate(1.6) brightness(1.2)' },
+  bogWitch: { base: 'doc', tint: 'hue-rotate(80deg) saturate(1.3)' },
+  mudLurker: { base: 'muddy', tint: 'brightness(0.8)' },
+  pumpkinFiend: { base: 'pumpkin_dude' },
+  chortShaman: { base: 'orc_shaman', tint: 'hue-rotate(-90deg) saturate(1.5)' },
+  shieldDemon: { base: 'masked_orc', tint: 'hue-rotate(-80deg) saturate(1.3) brightness(0.9)' },
+  frostSlug: { base: 'tiny_slug', tint: 'hue-rotate(160deg) saturate(1.2) brightness(1.3)' },
+  iceShaman: { base: 'orc_shaman', tint: 'hue-rotate(150deg) saturate(1.2) brightness(1.1)' },
+  snowLurker: { base: 'muddy', tint: 'grayscale(0.8) brightness(1.6)' },
+  tinyCorpse: { base: 'tiny_zombie' },
+  necroAcolyte: { base: 'necromancer', tint: 'hue-rotate(60deg)' },
+  boneGuard: { base: 'skelet', scale: 1.3, tint: 'brightness(1.1)' },
+  treasureGoblin: { base: 'goblin', tint: 'sepia(1) saturate(4) hue-rotate(5deg) brightness(1.2)' },
   graveKeeper: { base: 'big_demon', tint: 'hue-rotate(230deg) saturate(1.3) brightness(0.9)', scale: 1.5 },
 };
 
@@ -37,10 +53,26 @@ export const NPC_ART = {
   library: { base: 'elf_f' },
   trainer: { base: 'knight_f' },
   board: { base: 'doc' },
+  merchant: { base: 'dwarf_m' },
 };
 
 export const WEAPON_ART = {
   rustySword: { s: 'weapon_rusty_sword' },
+  knightSword: { s: 'weapon_knight_sword' },
+  heavySword: { s: 'weapon_anime_sword' },
+  handAxe: { s: 'weapon_throwing_axe' },
+  dualBlades: { s: 'weapon_duel_sword' },
+  katana: { s: 'weapon_katana' },
+  spear: { s: 'weapon_spear' },
+  doubleAxe: { s: 'weapon_double_axe' },
+  mace: { s: 'weapon_mace' },
+  longbow: { s: 'weapon_bow_2', bow: true },
+  throwingAxe: { s: 'weapon_waraxe' },
+  apprenticeWand: { s: 'weapon_green_magic_staff', tint: 'hue-rotate(110deg) saturate(1.3)' },
+  oldTome: { s: 'weapon_red_magic_staff', tint: 'saturate(0.6) brightness(0.9)' },
+  mossStaff: { s: 'weapon_green_magic_staff', tint: 'hue-rotate(-30deg) brightness(0.85)' },
+  poisonStaff: { s: 'weapon_green_magic_staff', tint: 'hue-rotate(40deg) saturate(1.6)' },
+  archStaff: { s: 'weapon_red_magic_staff', tint: 'hue-rotate(240deg) saturate(1.4) brightness(1.15)' },
   huntBow: { s: 'weapon_bow', bow: true },
   apprenticeStaff: { s: 'weapon_green_magic_staff' },
   dagger: { s: 'weapon_knife' },

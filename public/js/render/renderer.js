@@ -4,7 +4,8 @@ import { TILE, T_LIQUID, T_WALL, T_CRACK, T_BUILD } from '../sim/mapgen.js';
 import { getSprite, drawEchoGem } from './sprites.js';
 import { sprite, frames } from './assets.js';
 import { renderMap, hash } from './tiles.js';
-import { ECHOES } from '../data/monsters.js';
+import { ECHOES, AFFIXES } from '../data/monsters.js';
+import { SKILLS } from '../data/items.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, WEAPON_ART } from '../data/art.js';
 import { sfx } from '../audio.js';
 
@@ -125,12 +126,29 @@ export class Renderer {
         case 'telegraph': this.fx.push({ k: 'tele', ...ev, t: 0.6, max: 0.6 }); break;
         case 'windup': this.alerts.set(ev.id, 0.4); break;
         case 'strike': this.fx.push({ k: 'claw', ...ev, t: 0.16, max: 0.16 }); break;
-        case 'banner': this.banner = { text: ev.text, t: 2.5, color: ev.color }; sfx('levelup', { vol: 0.6 }); break;
+        case 'banner': this.banner = { text: ev.text, sub: ev.sub, t: ev.sub ? 3.5 : 2.5, color: ev.color }; sfx('levelup', { vol: 0.6 }); break;
         case 'hitstop': this.hitstop = Math.max(this.hitstop, ev.v); break;
         case 'alert': this.alerts.set(ev.id, -0.7); break;
         case 'spark': this.sparkBurst(ev.x, ev.y, ev.color, 4); break;
         case 'chest': this.chestOpen.set(`${ev.x},${ev.y}`, 0); this.burst(ev.x, ev.y - 6, ev.rich ? '#d8a8ff' : '#ffe08a', 30, 120); this.shake = 2; sfx('chest', { vol: 0.7 }); sfx('coin', { vol: 0.6 }); break;
         case 'crackHit': this.burst(ev.x, ev.y, '#a89880', 6, 60); this.shake = Math.max(this.shake, 1.5); sfx('crack', { vol: 0.6 }); break;
+        case 'region':
+          this.banner = { text: ev.name, sub: ev.first ? `새 구역 발견 · 경험치 +${ev.xp}` : '', t: 2.4, color: '#e8dcc0' };
+          if (ev.first) sfx('levelup', { vol: 0.4, rate: 1.2 });
+          break;
+        case 'aura': this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 46, color: '#ffd84a', t: 0.5, max: 0.5, w: 4 }); this.burst(ev.x, ev.y - 6, '#ffd84a', 30, 120); sfx('reaction', { vol: 0.6, rate: 1.3 }); this.shake = 3; break;
+        case 'rage': this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 46, color: '#ff4030', t: 0.5, max: 0.5, w: 4 }); this.burst(ev.x, ev.y - 6, '#ff4030', 30, 120); sfx('hitHeavy', { vol: 0.7, rate: 0.7 }); this.shake = 4; break;
+        case 'skill': sfx('skill', { vol: 0.55 }); break;
+        case 'slam': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: '#ffe8a0', t: 0.45, max: 0.45, w: 5 }); this.burst(ev.x, ev.y, '#c8b898', 40, 150); this.shake = 7; sfx('hitHeavy', { vol: 1, rate: 0.6 }); break;
+        case 'meteor': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: '#c9a8ff', t: 0.6, max: 0.6, w: 6 }); this.burst(ev.x, ev.y, '#c9a8ff', 60, 200); this.burst(ev.x, ev.y, '#ffffff', 20, 120); sfx('reaction', { vol: 1, rate: 0.7 }); break;
+        case 'telegraphCircle': this.fx.push({ k: 'tcircle', x: ev.x, y: ev.y, r: ev.r, t: ev.dur, max: ev.dur }); break;
+        case 'noMana':
+          if ((this.noManaT || 0) < w.t) { this.noManaT = w.t + 1; this.texts.push({ x: ev.x, y: ev.y - 22, text: '마나 부족', color: '#7aa8ff', t: 0.9, vy: -14, vx: 0, label: true }); sfx('error', { vol: 0.3 }); }
+          break;
+        case 'fuse': this.alerts.set(ev.id, 0.55); sfx('windup', { vol: 0.6, rate: 1.6 }); break;
+        case 'emerge': this.burst(ev.x, ev.y + 2, '#8a7a5a', 18, 90); sfx('crack', { vol: 0.5, rate: 1.3 }); break;
+        case 'summon': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 26, color: '#c45cff', t: 0.4, max: 0.4, w: 2 }); this.burst(ev.x, ev.y, '#c45cff', 12, 60); break;
+        case 'camp': this.burst(ev.x, ev.y - 4, '#ffd88a', 16, 60); sfx('levelup', { vol: 0.4 }); break;
         case 'crackBreak': this.burst(ev.x, ev.y, '#a89880', 30, 130); this.shake = 5; this.mapCanvas = renderMap(w); sfx('crack', { vol: 1, rate: 0.7 }); break;
       }
     }
@@ -297,10 +315,20 @@ export class Renderer {
     const g = this.g, def = e.def;
     if (def.ai === 'dummy') return this.drawDummy(w, e);
     const art = MONSTER_ART[e.defId] || { base: 'goblin' };
-    const sc = art.scale || 1;
+    if (e.hidden) {
+      // 땅속 잠복: 흙더미만 보인다
+      const bump = Math.sin(w.t * 3 + e.phase) * 0.6;
+      g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, e.x, e.y + 3, 8, 3);
+      g.fillStyle = '#5a4a36'; ellipse(g, e.x, e.y + 1 + bump, 7, 3.5);
+      g.fillStyle = '#7a6a4e'; ellipse(g, e.x - 1, e.y + bump, 4, 2);
+      e._top = null;
+      return;
+    }
+    const sc = (art.scale || 1) * (e.scale || 1);
     const name = this.animFrame(art.base, e.moving ? 'run' : 'idle', w.t + e.phase, e.moving ? 10 : 6);
     const wind = e.windT > 0;
-    const flash = e.hitFlash > 0 ? true : wind && Math.floor(w.t * 20) % 2 ? '#ff4040' : false;
+    const fuse = e.fuse > 0;
+    const flash = e.hitFlash > 0 ? true : (wind || fuse) && Math.floor(w.t * (fuse ? 30 : 20)) % 2 ? (fuse ? '#ffffff' : '#ff4040') : false;
     // 그림이 없으면 투명해지지 않도록 고블린 그림으로 대체
     const img = sprite(name, art.tint || '', flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);
     if (!img) return;
@@ -310,7 +338,9 @@ export class Renderer {
     const sx = 1 + 0.25 * k, sy = 1 - 0.2 * k;
     const wobble = wind ? (Math.random() - 0.5) * 1.5 : 0;
     const w0 = img.width * sc * sx, h0 = img.height * sc * sy;
-    if (def.elite) { g.fillStyle = `rgba(255,60,40,${0.18 + 0.1 * Math.sin(w.t * 4)})`; ellipse(g, e.x, e.y + 3, w0 * 0.55, w0 * 0.2); }
+    if (def.elite || e.champion) { g.fillStyle = `rgba(255,60,40,${0.18 + 0.1 * Math.sin(w.t * 4)})`; ellipse(g, e.x, e.y + 3, w0 * 0.55, w0 * 0.2); }
+    else if (e.affix) { g.fillStyle = hexA(AFFIXES[e.affix].color, 0.25 + 0.1 * Math.sin(w.t * 5)); ellipse(g, e.x, e.y + 3, w0 * 0.5, w0 * 0.18); }
+    if (fuse) { g.fillStyle = `rgba(255,120,60,${0.25 + 0.25 * Math.sin(w.t * 30)})`; disc(g, e.x, e.y, def.boom?.r || 30); }
     this.shadow(e.x, e.y + 3, Math.max(5, img.width * sc * 0.32));
     if (art.ghost) g.globalAlpha = 0.65 + 0.15 * Math.sin(w.t * 3 + e.phase);
     const dx = Math.round(e.x - w0 / 2 + wobble), dy = Math.round(e.y + 4 - h0);
@@ -325,7 +355,7 @@ export class Renderer {
     if (e.st.bleed && Math.random() < 0.12) this.parts.push({ x: e.x + (Math.random() - 0.5) * w0 * 0.4, y: e.y - h0 * 0.5, vx: 0, vy: 10, t: 0.5, max: 0.5, color: '#c02030', g: 120 });
     e._top = e.y + 4 - h0;
     // 체력바
-    if (e.hp < e.maxHp && !def.elite) {
+    if (e.hp < e.maxHp && !def.elite && !e.champion) {
       const bw = Math.max(16, Math.round(w0 * 0.9));
       const bx = Math.round(e.x - bw / 2), by = Math.round(e._top - 5);
       g.fillStyle = '#0d0b10'; g.fillRect(bx - 1, by - 1, bw + 2, 4);
@@ -405,6 +435,8 @@ export class Renderer {
     const lunge = sk > 0 ? Math.sin(sk * Math.PI) * 2.5 : 0;
     const ox = Math.cos(p.swingAng) * lunge, oy = Math.sin(p.swingAng) * lunge;
     if (p.shield > 0) { g.fillStyle = 'rgba(170,215,255,0.22)'; ellipse(g, p.x, p.y - 8, 12, 14); }
+    if (p.auraT > 0) { g.fillStyle = `rgba(255,216,74,${0.18 + 0.1 * Math.sin(w.t * 10)})`; ellipse(g, p.x, p.y - 8, 13, 16); if (Math.random() < 0.4) this.parts.push({ x: p.x + (Math.random() - 0.5) * 14, y: p.y - 4, vx: 0, vy: -30, t: 0.5, max: 0.5, color: '#ffd84a', g: -20 }); }
+    if (p.rageT > 0) { g.fillStyle = `rgba(255,50,30,${0.2 + 0.1 * Math.sin(w.t * 12)})`; ellipse(g, p.x, p.y - 8, 13, 16); }
     this.shadow(p.x, p.y + 4, 6);
     const pose = this.weaponPose(w, p);
     if (pose.behind) this.drawWeapon(w, p, pose, ox, oy);
@@ -412,32 +444,35 @@ export class Renderer {
     if (!pose.behind) this.drawWeapon(w, p, pose, ox, oy);
   }
 
-  // 무기 자세: 캐릭터가 바라보는 방향(좌/우) 기준 각도. 0 = 정면 수평, 음수 = 위쪽
+  // 무기 자세 → 월드 각도(ang). 근접은 캐릭터가 휘두르고, 활·지팡이는 쏘는 순간에만 쏘는 방향을 겨눈다
   weaponPose(w, p) {
-    const wpn = w.b.weapon, wa = WEAPON_ART[w.b.weaponId] || {};
-    const breathe = Math.sin(w.t * 3) * 0.05;
-    if (p.spinT > 0) return { a: -1.2 + (1 - p.spinT / 0.3) * Math.PI * 2, behind: false };
+    const wpn = w.b.weapon, wa = WEAPON_ART[w.b.weaponId] || {}, dir = p.dir;
+    const face = (a) => (dir > 0 ? a : Math.PI - a); // 바라보는 방향 기준 각도 → 월드 각도
+    const aim = Math.atan2(p.aimY, p.aimX);
+    const breathe = Math.sin(w.t * 3) * 0.04;
+    if (p.spinT > 0) return { ang: face(0.5) + dir * (1 - p.spinT / 0.3) * Math.PI * 2, behind: false };
     if (wa.bow) {
-      // 활: 공격 버튼을 누르는 동안 시위를 당기고, 쏘는 순간 놓는다
-      let pull = 0;
-      if (p.attackHeld && p.atkPeriod) pull = Math.min(1, 1 - p.atkCd / p.atkPeriod);
-      if (p.swingT > 0) pull = 0;
-      return { a: -0.15 + breathe * 0.5, pull, snap: p.swingT > 0 ? p.swingT / 0.1 : 0, behind: false };
+      const pull = p.attackHeld && p.atkPeriod && p.swingT <= 0 ? Math.min(1, 1 - p.atkCd / p.atkPeriod) : 0;
+      const snap = p.swingT > 0 ? p.swingT / 0.1 : 0;
+      if (pull > 0 || snap > 0 || p.attackHeld) return { ang: aim, pull, snap, aiming: true, behind: Math.sin(aim) < -0.5 };
+      return { ang: face(1.15 + breathe), pull: 0, snap: 0, behind: false };
     }
     const k = p.swingMax && p.swingT > 0 ? 1 - p.swingT / p.swingMax : -1;
     if (wpn.kind === 'proj') {
-      // 지팡이: 들어 올렸다가 앞으로 뻗는다
-      if (k < 0) return { a: -1.25 + breathe, behind: false };
-      const a = k < 0.35 ? -1.25 - 0.8 * (k / 0.35) : -2.05 + 1.85 * easeOut((k - 0.35) / 0.65);
-      return { a, cast: k, behind: a < -1.7 };
+      // 지팡이: 평소엔 세워 들고, 쏠 때 들어 올렸다가 쏘는 방향으로 뻗는다
+      if (k < 0) return { ang: face(-1.15 + breathe), behind: false };
+      const raised = face(-2.0);
+      const t = k < 0.3 ? 0 : easeOut((k - 0.3) / 0.7);
+      const ang = k < 0.3 ? face(-1.15 - 0.85 * (k / 0.3)) : lerpAngle(raised, aim, t);
+      return { ang, cast: k, behind: k < 0.3 };
     }
-    // 근접: 머리 위로 들었다가(준비) 내려친다 / 다음 공격은 올려 벤다
-    if (k < 0) return { a: -1.05 + breathe, behind: false };
+    // 근접: 평소엔 칼끝을 앞쪽 아래로. 공격하면 머리 위로 들었다 내려치고, 다음엔 올려 벤다
+    if (k < 0) return { ang: face(0.55 + breathe), behind: false };
     const down = p.swingDir > 0;
-    const from = down ? -2.4 : 1.0, to = down ? 1.0 : -2.2;
+    const from = down ? -2.3 : 1.15, to = down ? 1.15 : -2.0;
     const wind = 0.18;
-    const a = k < wind ? from + (down ? -0.25 : 0.25) * (k / wind) : from + (to - from) * easeOut((k - wind) / (1 - wind));
-    return { a, behind: a < -1.8 };
+    const a = k < wind ? from + (down ? -0.2 : 0.2) * (k / wind) : from + (to - from) * easeOut((k - wind) / (1 - wind));
+    return { ang: face(a), behind: a < -1.6 };
   }
 
   drawWeapon(w, p, pose, ox, oy) {
@@ -445,30 +480,33 @@ export class Renderer {
     const wa = WEAPON_ART[w.b.weaponId] || WEAPON_ART.rustySword;
     const img = sprite(wa.s, wa.tint || '');
     if (!img) return;
-    const world = dir > 0 ? pose.a : Math.PI - pose.a;
-    const hx = p.x + ox + dir * 4, hy = p.y - 7 + oy;
+    const ang = pose.ang;
+    // 손 위치: 몸 앞쪽 허리 높이
+    const hx = p.x + ox + dir * 4, hy = p.y - 5 + oy;
     g.save();
     g.translate(Math.round(hx), Math.round(hy));
     if (wa.bow) {
-      // 활은 세워서 앞으로 든다. 시위를 당기면 화살이 걸린다
-      const back = 7 * (pose.pull || 0), bh = img.height;
-      g.scale(dir, 1);
+      // 활: 쏘는 방향(ang)을 향해 세우고, 시위는 반대쪽으로 당긴다
+      g.rotate(ang);
+      const bh = img.height, back = 7 * (pose.pull || 0);
       g.drawImage(img, 1, Math.round(-bh / 2));
-      const sx = 2 - back - (pose.snap ? Math.sin(pose.snap * 12) * 1.2 : 0);
-      g.strokeStyle = '#e8e2cf'; g.lineWidth = 1;
-      g.beginPath(); g.moveTo(3, -bh / 2 + 2); g.lineTo(sx, 0); g.lineTo(3, bh / 2 - 2); g.stroke();
-      if ((pose.pull || 0) > 0.15) {
-        const ar = sprite('weapon_arrow');
-        if (ar) { g.save(); g.translate(sx, 0); g.rotate(Math.PI / 2); g.drawImage(ar, -Math.round(ar.width / 2), -ar.height + 3); g.restore(); }
+      if (pose.aiming) {
+        const sx = 2 - back - (pose.snap ? Math.sin(pose.snap * 12) * 1.2 : 0);
+        g.strokeStyle = '#e8e2cf'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(3, -bh / 2 + 2); g.lineTo(sx, 0); g.lineTo(3, bh / 2 - 2); g.stroke();
+        if ((pose.pull || 0) > 0.15) {
+          const ar = sprite('weapon_arrow');
+          if (ar) { g.save(); g.translate(sx, 0); g.rotate(Math.PI / 2); g.drawImage(ar, -Math.round(ar.width / 2), -ar.height + 3); g.restore(); }
+        }
       }
     } else {
-      g.rotate(world + Math.PI / 2);
-      const sc = Math.min(1, 24 / img.height);
-      g.drawImage(img, Math.round(-img.width * sc / 2), Math.round(-img.height * sc + 3), Math.round(img.width * sc), Math.round(img.height * sc));
+      g.rotate(ang + Math.PI / 2);
+      const sc = Math.min(1, 18 / img.height);
+      g.drawImage(img, Math.round(-img.width * sc / 2), Math.round(-img.height * sc + 2), Math.round(img.width * sc), Math.round(img.height * sc));
     }
     g.restore();
     if (w.b.weapon.dmg === 'mag' && w.b.weapon.kind === 'proj') {
-      const len = 20, tx = hx + Math.cos(world) * len, ty = hy + Math.sin(world) * len;
+      const len = 16, tx = hx + Math.cos(ang) * len, ty = hy + Math.sin(ang) * len;
       const glow = pose.cast != null ? 0.9 : 0.3 + 0.2 * Math.sin(w.t * 8);
       g.fillStyle = `rgba(200,160,255,${glow})`; disc(g, tx, ty, pose.cast != null ? 4 : 2.5);
     }
@@ -476,6 +514,10 @@ export class Renderer {
 
   drawProj(pr) {
     const g = this.g;
+    if (pr.kind === 'axe') {
+      const img = sprite('weapon_throwing_axe');
+      if (img) { g.save(); g.translate(Math.round(pr.x), Math.round(pr.y)); g.rotate(pr.spin || 0); g.drawImage(img, -Math.round(img.width / 2), -Math.round(img.height / 2)); g.restore(); return; }
+    }
     if (pr.kind === 'arrow') {
       const img = sprite('weapon_arrow');
       if (img) {
@@ -509,7 +551,14 @@ export class Renderer {
         const a0 = f.ang - f.dir * half, a1 = a0 + f.dir * half * 2 * prog;
         const tail = Math.max(0, 1 - k * 1.6);
         const as = a0 + f.dir * half * 2 * prog * tail;
-        const col = f.heavy ? '#ffd050' : f.type === 'mag' ? '#c9a8ff' : '#ffffff';
+        const col = f.aura ? '#ffd84a' : f.heavy ? '#ffd050' : f.type === 'mag' ? '#c9a8ff' : '#ffffff';
+        if (f.thrust) {
+          const a2 = Math.min(1, k * 2.2);
+          g.strokeStyle = hexA(col, 0.9 * a2); g.lineWidth = 4;
+          const L = f.range * (0.6 + 0.4 * (1 - k));
+          g.beginPath(); g.moveTo(p.x, p.y - 6); g.lineTo(p.x + Math.cos(f.ang) * L, p.y - 6 + Math.sin(f.ang) * L); g.stroke();
+          continue;
+        }
         const R = f.range + 4, r = Math.max(6, f.range * 0.35);
         const px = p.x, py = p.y - 6;
         const alpha = Math.min(1, k * 2.2);
@@ -517,6 +566,10 @@ export class Renderer {
         smear(g, px, py, R, (f.heavy ? 10 : 7), as, a1);
         g.fillStyle = hexA('#ffffff', 0.95 * alpha);
         smear(g, px, py, R, (f.heavy ? 4 : 2.5), as, a1);
+      } else if (f.k === 'tcircle') {
+        g.fillStyle = `rgba(200,150,255,${0.15 + 0.25 * (1 - k)})`; disc(g, f.x, f.y, f.r);
+        g.strokeStyle = 'rgba(230,200,255,0.8)'; g.lineWidth = 1.5;
+        g.beginPath(); g.arc(f.x, f.y, f.r * (1 - k), 0, Math.PI * 2); g.stroke();
       } else if (f.k === 'spin') {
         g.strokeStyle = hexA(f.type === 'mag' ? '#c9a8ff' : '#ffffff', k); g.lineWidth = 5 * k + 1;
         g.beginPath(); g.arc(p.x, p.y - 6, f.r * (1 - k * 0.3), 0, Math.PI * 2); g.stroke();
@@ -568,8 +621,53 @@ export class Renderer {
       g.fillStyle = hexA(o.color, 0.25); ellipse(g, x + 16, y + 34, 16, 4);
       return;
     }
-    if (o.kind === 'station') return this.drawNpc(w, o);
+    if (o.kind === 'station' || o.kind === 'merchant') return this.drawNpc(w, o);
+    if (o.kind === 'stairs') {
+      const img = sprite('floor_stairs');
+      g.fillStyle = hexA('#ff6040', 0.2 + 0.1 * Math.sin(t * 2)); ellipse(g, o.x, o.y + 4, 14, 7);
+      if (img) g.drawImage(img, Math.round(o.x - 8), Math.round(o.y - 4));
+      o._top = o.y - 10;
+      return;
+    }
+    if (o.kind === 'camp') {
+      const x = Math.round(o.x), y = Math.round(o.y);
+      g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, x, y + 4, 16, 5);
+      // 천막
+      g.fillStyle = '#0d0b10'; g.beginPath(); g.moveTo(x - 20, y + 2); g.lineTo(x - 9, y - 16); g.lineTo(x + 2, y + 2); g.closePath(); g.fill();
+      g.fillStyle = '#8a5a3a'; g.beginPath(); g.moveTo(x - 18, y + 1); g.lineTo(x - 9, y - 14); g.lineTo(x, y + 1); g.closePath(); g.fill();
+      g.fillStyle = '#3a2418'; g.fillRect(x - 10, y - 6, 3, 7);
+      // 모닥불
+      g.fillStyle = '#4a3020'; g.fillRect(x + 6, y + 1, 10, 2);
+      const fl = Math.sin(t * 14) * 1;
+      g.fillStyle = '#ff7a2a'; g.fillRect(x + 8, y - 5 + fl, 6, 6);
+      g.fillStyle = '#ffd040'; g.fillRect(x + 10, y - 3 + fl, 2, 4);
+      if (Math.random() < 0.2) this.parts.push({ x: x + 11, y: y - 4, vx: (Math.random() - 0.5) * 10, vy: -25, t: 0.6, max: 0.6, color: '#ffb040', g: -15 });
+      o._top = y - 18;
+      return;
+    }
+    if (o.kind === 'shrine') {
+      const x = Math.round(o.x), y = Math.round(o.y);
+      const img = sprite('column');
+      this.shadow(x, y + 4, 8);
+      if (img) g.drawImage(img, x - 8, y + 4 - 34, 16, 34);
+      const glow = o.opened ? 0.15 : 0.5 + 0.3 * Math.sin(t * 3);
+      g.fillStyle = `rgba(200,160,255,${glow})`; disc(g, x, y - 30, 4);
+      if (!o.opened && Math.random() < 0.1) this.parts.push({ x: x + (Math.random() - 0.5) * 10, y: y - 28, vx: 0, vy: -15, t: 0.8, max: 0.8, color: '#c9a8ff', g: -8 });
+      o._top = y - 36;
+      return;
+    }
     if (o.kind === 'portal') {
+      // 귀환 포탈: 빛나는 원
+      for (let i = 0; i < 5; i++) {
+        const k = 1 - i / 5;
+        g.fillStyle = i % 2 ? hexA(o.color, 0.35 + 0.15 * Math.sin(t * 4 + i)) : hexA('#ffffff', 0.15 + 0.1 * Math.sin(t * 3 - i));
+        ellipse(g, o.x, o.y, 14 * k, 7 * k);
+      }
+      for (let i = 0; i < 3; i++) { const ph = (t * 0.8 + i / 3) % 1; g.fillStyle = hexA(o.color, 1 - ph); g.fillRect(Math.round(o.x - 6 + i * 6), Math.round(o.y - ph * 22), 1, 3); }
+      o._top = o.y - 16;
+      return;
+    }
+    if (o.kind === 'portal_old') {
       const img = sprite('floor_stairs');
       g.fillStyle = hexA(o.color, 0.25 + 0.1 * Math.sin(t * 3)); ellipse(g, o.x, o.y + 4, 16, 8);
       if (img) g.drawImage(img, Math.round(o.x - 8), Math.round(o.y - 4));
@@ -601,7 +699,7 @@ export class Renderer {
 
   drawNpc(w, o) {
     const g = this.g;
-    const art = NPC_ART[o.station];
+    const art = NPC_ART[o.station || o.kind];
     const name = this.animFrame(art.base, 'idle', w.t + o.x * 0.01, 5);
     const img = sprite(name, '', false, w.player.x < o.x);
     this.shadow(o.x, o.y + 4, 6);
@@ -692,6 +790,9 @@ export class Renderer {
     for (const d of this.glowDeco) if (inView(d.x, d.y)) { const [r, c] = GLOW[d.kind]; hole(d.x, d.y - 3, r * (1 + Math.sin(w.t * 3 + d.x) * 0.08), 0.9); colored.push([d.x, d.y - 3, r * 0.8, c]); }
     for (const o of w.objects) if (inView(o.x, o.y)) {
       if (o.kind === 'portal') { hole(o.x, o.y, 70); colored.push([o.x, o.y, 50, o.color]); }
+      else if (o.kind === 'camp') { hole(o.x + 11, o.y - 2, 80); colored.push([o.x + 11, o.y - 2, 60, '#ffa040']); }
+      else if (o.kind === 'shrine' && !o.opened) { hole(o.x, o.y - 28, 40, 0.8); colored.push([o.x, o.y - 28, 30, '#c9a8ff']); }
+      else if (o.kind === 'stairs' || o.kind === 'merchant') { hole(o.x, o.y - 6, 40, 0.7); }
       else if (!o.opened) { hole(o.x, o.y - 6, 30, 0.7); colored.push([o.x, o.y - 6, 22, o.kind === 'lore' ? '#8ad8ff' : '#ffd88a']); }
     }
     for (const pr of w.projs) if (inView(pr.x, pr.y)) { hole(pr.x, pr.y, 24, 0.8); colored.push([pr.x, pr.y, 14, pr.color]); }
@@ -747,16 +848,20 @@ export class Renderer {
     const g = this.g, u = this.u;
     g.setTransform(1, 0, 0, 1, 0, 0);
     // 이름표
+    for (const o of w.objects) if (o.npc && o._top != null && Math.abs(o.x - w.player.x) < 220) this.text(o.npc.name, this.sx(o.x), this.sy(o._top - 5), u, '#ffe8a8', 'center');
     if (w.mode === 'plaza') {
-      for (const o of w.objects) if (o.npc && o._top != null) this.text(o.npc.name, this.sx(o.x), this.sy(o._top - 5), u, '#ffe8a8', 'center');
+      for (const o of w.objects) if (o.npc && o._top != null && false) this.text(o.npc.name, this.sx(o.x), this.sy(o._top - 5), u, '#ffe8a8', 'center');
       for (const e of w.enemies) if (e.def.ai === 'dummy') {
         this.text(e.def.name, this.sx(e.x), this.sy(e.y + 14), u, '#d8d0e8', 'center');
         if (e.dps > 0) this.text(`DPS ${Math.round(e.dps)}`, this.sx(e.x), this.sy(e.y - 20), u, '#ffcf5a', 'center', true, true);
       }
       for (const o of w.objects) if (o.kind === 'gate') this.text(o.label.split(' (')[0], this.sx(o.x), this.sy(o.y + 12), u, o.color, 'center');
     }
-    for (const e of w.enemies) if (e.def.elite && e._top != null && Math.abs(e.x - w.player.x) < 260 && Math.abs(e.y - w.player.y) < 160) {
-      this.text(e.def.name, this.sx(e.x), this.sy(e._top - 8), u, '#ff9a8a', 'center', true, true);
+    for (const e of w.enemies) if (e.affix && !e.champion && e._top != null && Math.abs(e.x - w.player.x) < 200 && Math.abs(e.y - w.player.y) < 130) {
+      this.text(`${AFFIXES[e.affix].name} ${e.def.name}`, this.sx(e.x), this.sy(e._top - 8), Math.max(1, u - 1), AFFIXES[e.affix].color, 'center', true);
+    }
+    for (const e of w.enemies) if ((e.def.elite || e.champion) && e._top != null && Math.abs(e.x - w.player.x) < 260 && Math.abs(e.y - w.player.y) < 160) {
+      this.text(e.champion || e.def.name, this.sx(e.x), this.sy(e._top - 8), u, '#ff9a8a', 'center', true, true);
     }
     for (const e of w.enemies) if (e._pips) {
       let px = Math.round(e.x - (e._pips.length * 6) / 2);
@@ -803,16 +908,33 @@ export class Renderer {
     g.fillStyle = '#ff6a6a'; g.fillRect(bx + u, m + u, (bw - 2 * u) * hpK, 2 * u);
     if (p.shield > 0) { g.fillStyle = '#a8d8ff'; g.fillRect(bx + u, m + bh - 3 * u, (bw - 2 * u) * Math.min(1, p.shield / d.maxHp), 2 * u); }
     this.text(`${Math.ceil(p.hp)} / ${d.maxHp}`, bx + bw / 2, m + bh / 2, u, '#ffffff', 'center');
+    // 자원 게이지: 마나(마법 무기·마법사·언데드) / 오러(기사) / 분노(오크)
+    let ry = m + bh + 3 * u;
+    const gauge = (val, max, col, label, ready) => {
+      const gh = 6 * u;
+      this.panel(bx, ry, bw, gh);
+      g.fillStyle = '#0d0b18'; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u);
+      g.fillStyle = col; g.fillRect(bx + u, ry + u, (bw - 2 * u) * Math.max(0, Math.min(1, val / max)), gh - 2 * u);
+      if (ready && Math.floor(w.t * 4) % 2) { g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u); }
+      this.text(label, bx + bw + 5 * u, ry + gh / 2, Math.max(1, u - 1), col, 'left');
+      ry += gh + 2 * u;
+    };
+    const usesMana = w.b.weapon.mana || SKILLS[w.b.weapon.skill]?.mana || w.b.race === 'wizard';
+    if (usesMana) gauge(p.mana, d.maxMana, '#4a8aff', `마나 ${Math.floor(p.mana)}`);
+    if (w.b.race === 'knight') gauge(p.auraT > 0 ? p.auraT : p.aura, p.auraT > 0 ? d.auraTime : 100, '#ffd84a', p.auraT > 0 ? '오러 개방 중' : p.aura >= 100 ? '오러 준비 (R)' : '오러', p.aura >= 100 && p.auraT <= 0);
+    if (w.b.race === 'orc') gauge(p.rageT > 0 ? p.rageT : p.rage, p.rageT > 0 ? 6 : 100, '#ff4a3a', p.rageT > 0 ? '광폭화!' : '분노');
     // 대시 / 스킬
-    const dashMax = d.dashCd * (1 - d.cdr), dashK = Math.min(1, 1 - p.dashCd / dashMax);
-    const sy0 = m + bh + 4 * u, box = 14 * u;
+    const dashMax = d.dashCd * (1 - d.cdr), dashK = p.dashCharges > 0 ? 1 : Math.min(1, 1 - p.dashRecharge / dashMax);
+    const sy0 = ry + u, box = 14 * u;
     this.cooldownBox(bx, sy0, box, dashK, 'Space', '대시');
     const sk = p.skillCd > 0 ? 1 - p.skillCd / p.skillMax : 1;
-    const skName = w.b.weapon.kind === 'melee' ? '회전베기' : w.b.weapon.dmg === 'mag' ? '마력 폭발' : '일제 사격';
+    const skName = SKILLS[w.b.weapon.skill]?.name || '스킬';
     this.cooldownBox(bx + box + 4 * u, sy0, box, sk, 'Q', skName);
+    if (w.b.race === 'beast') for (let i = 0; i < 2; i++) { g.fillStyle = i < p.dashCharges ? '#bfe8ff' : '#3a4050'; g.fillRect(bx + 2 * u + i * 5 * u, sy0 + box + 2 * u, 4 * u, 2 * u); }
+    this.text(skName, bx + (box + 4 * u) * 2 + 2 * u, sy0 + box / 2, Math.max(1, u - 1), '#b8b0c8');
     // 상태이상
     const names = { burn: ['화상', '#ff7a2a'], poison: ['중독', '#9be15d'], bleed: ['출혈', '#e0445a'], chill: ['냉기', '#9fe3ff'] };
-    let sxx = bx + (box + 4 * u) * 2 + 4 * u;
+    let sxx = bx + (box + 4 * u) * 2 + 4 * u + 60 * u;
     for (const k of Object.keys(p.st)) { this.text(names[k][0], sxx, sy0 + box / 2, u, names[k][1]); sxx += 30 * u; }
     if (w.b.race === 'beast' && p.momentum > 0) this.text(`사냥 본능 ×${p.momentum}`, sxx, sy0 + box / 2, u, '#ffcc22');
 
@@ -840,10 +962,10 @@ export class Renderer {
     }
 
     // 정예 체력바
-    const boss = w.enemies.find((e) => e.def.elite && e.state === 'chase');
+    const boss = w.enemies.find((e) => (e.def.elite || e.champion) && e.state === 'chase' && !e.dead);
     if (boss) {
       const bw2 = Math.min(W * 0.5, 260 * u), bx2 = (W - bw2) / 2, by2 = H - 26 * u;
-      this.text(boss.def.name, W / 2, by2 - 9 * u, u, '#ff9a8a', 'center', true, true);
+      this.text(boss.champion || boss.def.name, W / 2, by2 - 9 * u, u, '#ff9a8a', 'center', true, true);
       this.panel(bx2, by2, bw2, 8 * u);
       g.fillStyle = '#3a1016'; g.fillRect(bx2 + u, by2 + u, bw2 - 2 * u, 6 * u);
       g.fillStyle = '#e8483a'; g.fillRect(bx2 + u, by2 + u, (bw2 - 2 * u) * boss.hp / boss.maxHp, 6 * u);
@@ -875,7 +997,7 @@ export class Renderer {
 
   drawMinimap(w) {
     const g = this.g, u = this.u, W = this.c.width;
-    const s = u, mw = Math.round(w.tw * s), mh = Math.round(w.th * s);
+    const s = u * 0.75, mw = Math.round(w.tw * s), mh = Math.round(w.th * s);
     const mx = W - mw - 10 * u, my = 10 * u;
     this.panel(mx - 2 * u, my - 2 * u, mw + 4 * u, mh + 4 * u);
     g.fillStyle = '#05040a'; g.fillRect(mx, my, mw, mh);
@@ -888,17 +1010,32 @@ export class Renderer {
       if (o.kind === 'portal') dot(o.x, o.y, o.color, 2);
       else if (o.kind === 'chest' && !o.opened) dot(o.x, o.y, o.rich ? '#d8a8ff' : '#ffcf5a');
       else if (o.kind === 'lore' && !o.opened) dot(o.x, o.y, '#8ad8ff');
+      else if (o.kind === 'camp') dot(o.x, o.y, '#ffa040', 2);
+      else if (o.kind === 'merchant') dot(o.x, o.y, '#7be38a', 2);
+      else if (o.kind === 'shrine' && !o.opened) dot(o.x, o.y, '#c9a8ff');
+      else if (o.kind === 'stairs') dot(o.x, o.y, '#ff6040', 2);
     }
-    for (const e of w.enemies) if (e.def.elite && seen(e.x, e.y)) dot(e.x, e.y, '#ff4040', 2);
+    for (const e of w.enemies) if ((e.def.elite || e.champion) && seen(e.x, e.y)) dot(e.x, e.y, '#ff4040', 2);
     if (Math.floor(w.t * 4) % 2 === 0) dot(w.player.x, w.player.y, '#ffffff', 1.5);
     let y = my + mh + 12 * u;
-    this.text(`${w.zone.name} · 탐험 ${Math.round(w.exploredPct() * 100)}%`, mx + mw, y, u, '#d8d0e8', 'right');
+    if (!this.pctT || this.pctT < w.t) { this.pctT = w.t + 0.5; this.pctV = Math.round(w.exploredPct() * 100); }
+    this.text(`${w.zone.name}${w.depth ? ` 지하 ${w.depth + 1}층` : ''} · 탐험 ${this.pctV}%`, mx + mw, y, u, '#d8d0e8', 'right');
+    if (w.loot.banked) { y += 14 * u; this.text('야영지에 잔향을 맡김', mx + mw, y, Math.max(1, u - 1), '#ffd88a', 'right'); }
     y += 16 * u;
     for (const [id, n] of Object.entries(w.loot.echoes)) {
       this.text(`◆ ${ECHOES[id].name} ${n}`, mx + mw, y, u, ECHOES[id].color, 'right');
       y += 14 * u;
     }
     this.text(`골드 ${w.loot.gold}`, mx + mw, y, u, '#ffcf5a', 'right');
+    if (w.goalNeeds?.length) {
+      y += 20 * u;
+      this.text('★ 목표 잔향', mx + mw, y, u, '#ffcf5a', 'right');
+      for (const gn of w.goalNeeds) {
+        y += 14 * u;
+        const got = Math.min(gn.need, gn.have + (w.loot.echoes[gn.id] || 0));
+        this.text(`${ECHOES[gn.id].name} ${got}/${gn.need}`, mx + mw, y, Math.max(1, u - 1), got >= gn.need ? '#8af08a' : ECHOES[gn.id].color, 'right');
+      }
+    }
   }
 }
 
@@ -933,3 +1070,5 @@ function crescent(g, x, y, r1, r2, a0, a1, dir) {
   g.arc(x, y, r1, a1, a0, !ccw);
   g.closePath(); g.fill();
 }
+
+function lerpAngle(a, b, t) { let d = b - a; d = Math.atan2(Math.sin(d), Math.cos(d)); return a + d * t; }

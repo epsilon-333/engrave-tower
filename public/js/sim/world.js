@@ -1,7 +1,8 @@
 // 전투·탐험 시뮬레이션. 고정 틱(60Hz) + 시드 난수 + 입력만으로 진행 → 서버 권한 방식으로 옮기기 쉽다.
 // 렌더러는 world 상태와 world.events 만 읽고, main 은 world.signals 로 화면 전환을 한다.
-import { MONSTERS, ZONES, DUMMIES, ECHOES, LORES } from '../data/monsters.js';
+import { MONSTERS, ZONES, DUMMIES, ECHOES, LORES, AFFIXES } from '../data/monsters.js';
 import { REACTIONS } from '../data/engravings.js';
+import { SKILLS } from '../data/items.js';
 import { createRng } from './rng.js';
 import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, generateField } from './mapgen.js';
 
@@ -14,12 +15,13 @@ const ALL_MONSTERS = { ...MONSTERS, ...DUMMIES };
 
 export class World {
   // mode: 'field' | 'plaza'
-  constructor({ build, mode, zoneId, seed, map }) {
+  constructor({ build, mode, zoneId, seed, map, memory, depth = 0 }) {
+    this.depth = depth;
     this.mode = mode;
     this.setBuild(build);
     this.zone = zoneId ? ZONES.find((z) => z.id === zoneId) : null;
     this.rng = createRng(seed);
-    this.map = map || generateField(this.zone, seed);
+    this.map = map || generateField(this.zone, seed, depth);
     const m = this.map;
     this.tw = m.tw; this.th = m.th; this.tiles = m.tiles;
     this.crackHp = new Map();
@@ -32,9 +34,13 @@ export class World {
       atkCd: 0, atkCount: 0, dashCd: 0, dashT: 0, dvx: 0, dvy: 0, invuln: 0, st: {}, hitFlash: 0,
       undyingUsed: false, lastStandCd: 0, cleanseT: 8, momentum: 0, momentumT: 0, moving: false, pendingDouble: -1,
       swingT: 0, swingAng: 0, swingDir: 1, swingMax: 0.16, walkT: 0, liquidT: 0, onLiquid: false, skillCd: 0, skillMax: 6, spinT: 0,
+      mana: this.d.maxMana, lastCast: -9, aura: 0, auraT: 0, rage: 0, rageT: 0, lastFight: -9,
+      dashCharges: this.b.race === 'beast' ? 2 : 1, dashRecharge: 0, dashCritReady: false, lastShot: -9, whirlT: 0, whirlTick: 0,
     };
+    this.delayed = [];
     this.state = 'play'; // play | dead | done
-    this.loot = { echoes: {}, gold: 0, xp: 0, kills: {}, chests: 0, lores: [] };
+    this.loot = { echoes: {}, gold: 0, xp: 0, kills: {}, chests: 0, lores: [], banked: null };
+    this.regionSeen = new Set(); this.milestones = new Set(); this.regionCur = -1; this.regionT = 0; this.mileT = 0;
     this.discovered = new Set();
     this.near = null;
     this.flow = new Int16Array(this.tw * this.th); this.flowT = 0;
@@ -50,9 +56,25 @@ export class World {
       const elite = this.makeEnemy(this.zone.elite, m.lair.x * TILE + 8, m.lair.y * TILE + 8);
       elite.home = { x: elite.x, y: elite.y };
       this.enemies.push(elite);
+      // 구역 우두머리: 구역 몬스터의 강화판, 다시 생기지 않음
+      for (const c of m.champions || []) {
+        const e = this.makeEnemy(c.type, c.x * TILE + 8, c.y * TILE + 8, { champion: m.regionInfo[c.region].name });
+        e.home = { x: e.x, y: e.y };
+        this.enemies.push(e);
+      }
+      for (const g of m.goblins || []) {
+        const e = this.makeEnemy('treasureGoblin', g.x * TILE + 8, g.y * TILE + 8, { noAffix: true });
+        e.home = { x: e.x, y: e.y };
+        this.enemies.push(e);
+      }
       this.objects.push({ kind: 'portal', x: sx, y: sy - 14, label: '귀환 포탈 (잔향 전부 보존)', color: this.zone.portal });
-      for (const c of m.chests) this.objects.push({ kind: 'chest', x: c.x * TILE + 8, y: c.y * TILE + 8, rich: c.rich, label: c.rich ? '숨겨진 보물 상자' : '보물 상자' });
+      for (const c of m.chests) this.objects.push({ kind: 'chest', x: c.x * TILE + 8, y: c.y * TILE + 8, rich: c.rich, trap: c.trap, label: c.rich ? '숨겨진 보물 상자' : '보물 상자' });
+      for (const c of m.camp || []) this.objects.push({ kind: 'camp', x: c.x * TILE + 8, y: c.y * TILE + 8, label: '야영지 · 잔향 맡기고 쉬기', reusable: true });
+      for (const c of m.merchant || []) this.objects.push({ kind: 'merchant', x: c.x * TILE + 8, y: c.y * TILE + 8, label: '떠돌이 상인', reusable: true, npc: { name: '떠돌이 상인 오반' } });
+      for (const c of m.shrines || []) this.objects.push({ kind: 'shrine', x: c.x * TILE + 8, y: c.y * TILE + 8, label: '낡은 제단 · 축복 받기' });
+      if (m.stairs) this.objects.push({ kind: 'stairs', x: m.stairs.x * TILE + 8, y: m.stairs.y * TILE + 8, label: `아래층으로 (지하 ${depth + 2}층)`, reusable: true });
       for (const l of m.lores) this.objects.push({ kind: 'lore', x: l.x * TILE + 8, y: l.y * TILE + 8, label: '고대 석판 읽기' });
+      if (memory) this.applyMemory(memory);
       this.reveal(true);
     } else {
       for (const o of m.objects) this.objects.push({ ...o });
@@ -60,10 +82,38 @@ export class World {
     }
   }
 
+  // 층 기억: 탐험한 타일(비트), 열어 본 상자·석판(오브젝트 순번), 부순 균열 벽(타일 번호)
+  exportMemory() {
+    const bits = new Uint8Array(Math.ceil(this.explored.length / 8));
+    for (let i = 0; i < this.explored.length; i++) if (this.explored[i]) bits[i >> 3] |= 1 << (i & 7);
+    let bin = '';
+    for (const b of bits) bin += String.fromCharCode(b);
+    return {
+      v: 1, tw: this.tw, th: this.th, explored: btoa(bin),
+      opened: this.objects.map((o, i) => (o.opened ? i : -1)).filter((i) => i >= 0),
+      broken: [...(this.broken || [])],
+      regions: [...this.regionSeen], milestones: [...this.milestones],
+    };
+  }
+
+  applyMemory(m) {
+    if (!m || m.tw !== this.tw || m.th !== this.th) return;
+    try {
+      const bin = atob(m.explored || '');
+      for (let i = 0; i < this.explored.length; i++) if (bin.charCodeAt(i >> 3) & (1 << (i & 7))) this.explored[i] = 1;
+    } catch { /* 손상된 기록은 무시 */ }
+    for (const i of m.opened || []) if (this.objects[i] && this.objects[i].kind !== 'portal') this.objects[i].opened = true;
+    this.broken = new Set(m.broken || []);
+    this.regionSeen = new Set(m.regions || []);
+    this.milestones = new Set(m.milestones || []);
+    for (const i of this.broken) if (this.tiles[i] === T_CRACK) this.tiles[i] = T_FLOOR;
+  }
+
   setBuild(build) {
     this.b = build; this.d = build.derived; this.f = build.flags; this.s = build.stats;
     if (this.player) this.player.hp = Math.min(this.player.hp, this.d.maxHp);
     if (this.player && this.mode === 'plaza') this.player.hp = this.d.maxHp;
+    if (this.player) this.player.mana = Math.min(this.player.mana ?? this.d.maxMana, this.d.maxMana);
   }
 
   emit(e) { this.events.push(e); }
@@ -107,14 +157,48 @@ export class World {
     if (this.state !== 'play') return;
     this.t += DT;
     this.updatePlayer(input);
+    this.updateDelayed();
     this.updateFlow();
     this.updateEnemies();
     this.updateProjs();
     this.updateClouds();
     this.updateDrops();
     this.updateCamps();
+    this.updateExplore();
     this.enemies = this.enemies.filter((e) => !e.dead);
     if (this.mode === 'field' && Math.floor(this.t * 60) % 6 === 0) this.reveal();
+  }
+
+  updateExplore() {
+    if (this.mode !== 'field') return;
+    const p = this.player, m = this.map;
+    this.regionT -= DT;
+    if (this.regionT <= 0 && m.regions) {
+      this.regionT = 0.25;
+      const r = m.regions[Math.floor(p.y / TILE) * this.tw + Math.floor(p.x / TILE)];
+      if (r >= 0 && r !== this.regionCur) {
+        this.regionCur = r;
+        const info = m.regionInfo[r];
+        const first = !this.regionSeen.has(r) && this.depth === 0;
+        if (first) { this.regionSeen.add(r); this.loot.xp += 15 * this.zone.floor; }
+        this.emit({ t: 'region', name: info.name, first, xp: first ? 15 * this.zone.floor : 0 });
+      }
+    }
+    this.mileT -= DT;
+    if (this.mileT <= 0) {
+      this.mileT = 1;
+      const pct = this.exploredPct();
+      for (const ms of [50, 80, 100]) {
+        if (pct * 100 >= ms - 0.5 && !this.milestones.has(ms) && this.depth === 0) {
+          this.milestones.add(ms);
+          const gold = ms * this.zone.floor;
+          for (let i = 0; i < 4; i++) this.spawnDrop(p.x, p.y, 'gold', null, Math.ceil(gold / 4));
+          const ids = this.zone.pool.map((id) => MONSTERS[id].echo.id);
+          for (let i = 0; i < (ms === 100 ? 4 : 2); i++) this.spawnDrop(p.x, p.y, 'echo', this.rng.pick(ids));
+          this.emit({ t: 'banner', text: `탐험 ${ms}% 달성!`, color: '#8fd0ff' });
+        }
+      }
+    }
   }
 
   // ───────────── 플레이어 ─────────────
@@ -137,6 +221,28 @@ export class World {
       }
     }
     if (d.regen) this.heal(d.maxHp * d.regen * DT, 'regen');
+    // 마나: 3초 동안 마법을 안 쓰면 회복 2배
+    p.mana = Math.min(d.maxMana, p.mana + d.manaRegen * (this.t - p.lastCast > 3 ? 2 : 1) * DT);
+    // 기사 오러: 시간이 지나면 차오름(15초), 발동 중에는 줄어듦
+    if (this.b.race === 'knight') {
+      if (p.auraT > 0) p.auraT = Math.max(0, p.auraT - DT);
+      else p.aura = Math.min(100, p.aura + (100 / 15) * DT);
+      if (inp.aura && p.aura >= 100 && p.auraT <= 0) {
+        p.aura = 0; p.auraT = d.auraTime;
+        this.emit({ t: 'aura', x: p.x, y: p.y });
+        this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '오러 개방!', color: '#ffd84a' });
+        if (f.has('auraBurst')) this.doAction({ aoe: { r: 56, mul: 1.2, type: 'phys' } }, null, p);
+      }
+    }
+    // 오크 분노: 싸우지 않으면 서서히 식음
+    if (this.b.race === 'orc') {
+      if (p.rageT > 0) { p.rageT -= DT; if (p.rageT <= 0) p.rage = 0; }
+      else if (this.t - p.lastFight > 3) p.rage = Math.max(0, p.rage - 6 * DT);
+    }
+    if (p.dashCharges < (this.b.race === 'beast' ? 2 : 1)) {
+      p.dashRecharge -= DT;
+      if (p.dashRecharge <= 0) { p.dashCharges++; p.dashRecharge = d.dashCd * (1 - d.cdr); }
+    }
     if (this.mode === 'plaza') p.hp = d.maxHp;
     p.momentumT -= DT; if (p.momentumT <= 0) p.momentum = 0;
 
@@ -151,6 +257,7 @@ export class World {
 
     const ax = inp.aimX - p.x, ay = inp.aimY - p.y, al = Math.hypot(ax, ay) || 1;
     p.aimX = ax / al; p.aimY = ay / al;
+    this.aimDist = al;
     if (Math.abs(p.aimX) > 0.1) p.dir = p.aimX > 0 ? 1 : -1;
 
     let mx = inp.moveX, my = inp.moveY; const ml = Math.hypot(mx, my);
@@ -162,12 +269,14 @@ export class World {
       this.move(p, p.dvx * DT, p.dvy * DT);
     } else {
       const aiming = this.f.has('aimSlow') && (inp.attack || p.atkCd > 0.05);
-      const spd = d.moveSpeed * (1 - slow) * (aiming ? 0.65 : 1);
+      const spd = d.moveSpeed * (1 - slow) * (aiming ? d.aimSlow : 1);
       this.move(p, mx * spd * DT, my * spd * DT);
-      if (inp.dash && p.dashCd <= 0) {
+      if (inp.dash && p.dashCharges > 0 && p.dashCd <= 0) {
         const dx = ml > 0 ? mx : p.aimX, dy = ml > 0 ? my : p.aimY;
         p.dashT = 0.16; p.dvx = dx * 400; p.dvy = dy * 400; p.invuln = Math.max(p.invuln, 0.22);
-        p.dashCd = d.dashCd * (1 - d.cdr);
+        p.dashCharges--; if (p.dashRecharge <= 0) p.dashRecharge = d.dashCd * (1 - d.cdr);
+        p.dashCd = 0.25;
+        if (f.has('dashCrit')) p.dashCritReady = true;
         this.emit({ t: 'dash', x: p.x, y: p.y, dx, dy });
         if (f.has('dashAfterimage')) this.afterimage(p.x, p.y, p.x + dx * 64, p.y + dy * 64);
         for (const tr of this.b.triggers.dash) if (this.rng.chance(tr.chance)) this.doAction(tr.action, null, p);
@@ -177,7 +286,7 @@ export class World {
     p.attackHeld = !!inp.attack;
     if (p.pendingDouble >= 0) { p.pendingDouble -= DT; if (p.pendingDouble < 0) this.attack(0.12); }
     if (inp.attack && p.atkCd <= 0) {
-      const mom = this.b.race === 'beast' ? 1 + p.momentum * 0.04 : 1;
+      const mom = (this.b.race === 'beast' ? 1 + p.momentum * 0.04 : 1) * (p.rageT > 0 ? 1.3 : 1);
       p.atkCd = 1 / (this.b.weapon.speed * d.atkSpeed * mom);
       p.atkPeriod = p.atkCd;
       this.attack(0);
@@ -185,12 +294,13 @@ export class World {
     }
 
     if (inp.skill && p.skillCd <= 0) this.useSkill();
+    if (p.whirlT > 0) this.tickWhirl();
 
     // 상호작용 대상
     this.near = null;
     let bd = 26;
     for (const o of this.objects) {
-      if (o.opened) continue;
+      if (o.opened && !o.reusable) continue;
       const dd = Math.hypot(o.x - p.x, o.y - p.y);
       if (dd < bd) { bd = dd; this.near = o; }
     }
@@ -201,12 +311,54 @@ export class World {
     if (o.kind === 'portal') { this.state = 'done'; return; }
     if (o.kind === 'gate') { this.signals.push({ t: 'enterZone', zone: o.zone }); return; }
     if (o.kind === 'station') { this.signals.push({ t: 'openPanel', panel: o.panel }); return; }
+    if (o.kind === 'camp') {
+      // 야영지: 지금까지 모은 잔향과 골드를 맡긴다 (죽어도 잃지 않음) + 처음 한 번 체력 회복
+      this.loot.banked = { echoes: { ...this.loot.echoes }, gold: this.loot.gold };
+      if (!o.rested) { o.rested = true; this.player.hp = this.d.maxHp; this.player.mana = this.d.maxMana; }
+      this.emit({ t: 'camp', x: o.x, y: o.y });
+      this.emit({ t: 'text', x: o.x, y: o.y - 20, text: '잔향을 맡겼다', color: '#ffd88a' });
+      return;
+    }
+    if (o.kind === 'merchant') { this.signals.push({ t: 'merchant', zone: this.zone.id, depth: this.depth }); return; }
+    if (o.kind === 'stairs') { this.signals.push({ t: 'descend' }); return; }
+    if (o.kind === 'shrine') {
+      o.opened = true;
+      const opts = [
+        { name: '힘의 축복', good: '모든 피해 +25%', bad: '최대 HP -15%', apply: (d) => { d.dmgMul *= 1.25; d.maxHp = Math.round(d.maxHp * 0.85); } },
+        { name: '강철의 축복', good: '받는 피해 -25%', bad: '이동 속도 -15%', apply: (d) => { d.dmgTakenMul *= 0.75; d.moveSpeed *= 0.85; } },
+        { name: '바람의 축복', good: '이동·공격 속도 +20%', bad: '받는 피해 +15%', apply: (d) => { d.moveSpeed *= 1.2; d.atkSpeed *= 1.2; d.dmgTakenMul *= 1.15; } },
+        { name: '피의 축복', good: '흡혈 +8%', bad: '자연 회복 없음', apply: (d, s) => { s.lifesteal = (s.lifesteal || 0) + 8; d.regen = 0; } },
+        { name: '지혜의 축복', good: '스킬 쿨타임 -30%, 마나 회복 2배', bad: '최대 HP -10%', apply: (d) => { d.skillCdMul *= 0.7; d.manaRegen *= 2; d.maxHp = Math.round(d.maxHp * 0.9); } },
+      ];
+      const pick = opts[this.rng.int(0, opts.length - 1)];
+      pick.apply(this.d, this.s);
+      this.player.hp = Math.min(this.player.hp, this.d.maxHp);
+      this.blessing = pick;
+      this.emit({ t: 'banner', text: pick.name, sub: `${pick.good} · 대가: ${pick.bad}`, color: '#c9a8ff' });
+      this.emit({ t: 'ring', x: o.x, y: o.y, r: 40, color: '#c9a8ff' });
+      return;
+    }
     if (o.kind === 'chest') {
       o.opened = true;
       this.loot.chests++;
       this.emit({ t: 'chest', x: o.x, y: o.y, rich: o.rich });
+      if (o.trap) {
+        // 함정 상자: 몬스터가 몰려온다. 대신 보상이 더 크다
+        const r = this.map.regions?.[Math.floor(o.y / TILE) * this.tw + Math.floor(o.x / TILE)] ?? 0;
+        const types = this.map.regionInfo?.[r]?.types || this.zone.pool;
+        this.emit({ t: 'banner', text: '함정이다!', color: '#ff6060' });
+        for (let i = 0; i < 5; i++) {
+          const a = (i / 5) * Math.PI * 2;
+          let x = o.x + Math.cos(a) * 46, y = o.y + Math.sin(a) * 46;
+          if (this.blocked(x, y, 6)) { x = o.x; y = o.y; }
+          const e = this.makeEnemy(this.rng.pick(types), x, y, { noAffix: true });
+          e.state = 'chase'; e.home = { x: o.x, y: o.y };
+          this.enemies.push(e);
+          this.emit({ t: 'death', x, y, color: '#ff6060', big: false });
+        }
+      }
       const ids = [...this.zone.pool.map((m) => MONSTERS[m].echo.id)];
-      const n = o.rich ? this.rng.int(5, 7) : this.rng.int(2, 3);
+      const n = (o.rich ? this.rng.int(5, 7) : this.rng.int(2, 3)) + (o.trap ? 3 : 0);
       for (let i = 0; i < n; i++) this.spawnDrop(o.x, o.y, 'echo', this.rng.pick(ids));
       if (o.rich && this.rng.chance(0.35)) this.spawnDrop(o.x, o.y, 'echo', MONSTERS[this.zone.elite].echo.id);
       const gold = (o.rich ? 40 : 12) * this.zone.floor + this.rng.int(0, 10);
@@ -223,29 +375,61 @@ export class World {
     }
   }
 
+  // 마법 무기: 마나가 모자라면 지팡이로 약하게 때린다 (피의 마법이면 체력으로 대신)
+  payMana(cost) {
+    const p = this.player;
+    if (!cost) return true;
+    if (p.mana >= cost) { p.mana -= cost; p.lastCast = this.t; return true; }
+    if (this.f.has('bloodMagic') && p.hp > this.d.maxHp * 0.2) { p.hp -= cost * 0.8; p.lastCast = this.t; return true; }
+    return false;
+  }
+
   attack(angOff) {
     const p = this.player, d = this.d, w = this.b.weapon;
     let type = w.dmg;
     if (type === 'phys' && this.f.has('physToMag')) type = 'mag';
-    const atk = type === 'phys' ? d.physAtk : d.magAtk;
-    p.atkCount++;
-    let mul = w.mul, heavy = false;
-    if (this.f.has('heavyHit') && p.atkCount % 4 === 0) { mul *= 2; heavy = true; }
-    const base = atk * mul;
     const ang = Math.atan2(p.aimY, p.aimX) + angOff;
-    if (w.kind === 'melee') {
-      p.swingDir = p.atkCount % 2 ? 1 : -1;
-      p.swingMax = Math.min(0.2, 0.6 / (w.speed * d.atkSpeed)); p.swingT = p.swingMax; p.swingAng = ang;
-      this.emit({ t: 'swing', x: p.x, y: p.y, ang, range: w.range, arc: w.arc, heavy, type, dir: p.swingDir, dur: p.swingMax });
+    if (w.kind === 'proj' && w.mana && !this.payMana(w.mana)) {
+      // 마나 부족: 지팡이 휘두르기
+      p.atkCount++;
+      p.swingDir = p.atkCount % 2 ? 1 : -1; p.swingMax = 0.16; p.swingT = 0.16; p.swingAng = ang;
+      this.emit({ t: 'swing', x: p.x, y: p.y, ang, range: 22, arc: 1.4, heavy: false, type: 'phys', dir: p.swingDir, dur: 0.16 });
+      this.emit({ t: 'noMana', x: p.x, y: p.y });
       for (const e of this.enemies) {
         if (e.dead) continue;
         const dx = e.x - p.x, dy = e.y - p.y, dist = Math.hypot(dx, dy);
-        if (dist > w.range + e.r) continue;
-        let da = Math.atan2(dy, dx) - ang;
-        da = Math.atan2(Math.sin(da), Math.cos(da));
-        if (Math.abs(da) <= w.arc / 2 || dist < e.r + 6) this.hitEnemy(e, base, type, heavy);
+        if (dist > 22 + e.r) continue;
+        let da = Math.atan2(dy, dx) - ang; da = Math.atan2(Math.sin(da), Math.cos(da));
+        if (Math.abs(da) <= 0.7 || dist < e.r + 6) this.hitEnemy(e, d.physAtk * 0.5, 'phys', false);
       }
-      // 균열 벽 타격
+      return;
+    }
+    const atk = type === 'phys' ? (w.scale === 'agi' ? d.dexAtk : d.physAtk) : d.magAtk;
+    p.atkCount++;
+    let mul = w.mul, heavy = false;
+    if (this.f.has('heavyHit') && p.atkCount % 4 === 0) { mul *= 2; heavy = true; }
+    if (w.charge) { mul *= 1 + 0.6 * Math.min(1, (this.t - p.lastShot) / 1.6); }
+    p.lastShot = this.t;
+    const base = atk * mul;
+    if (w.kind === 'melee') {
+      p.swingDir = p.atkCount % 2 ? 1 : -1;
+      p.swingMax = Math.min(0.2, 0.6 / (w.speed * d.atkSpeed)); p.swingT = p.swingMax; p.swingAng = ang;
+      const thrust = w.shape === 'thrust';
+      this.emit({ t: 'swing', x: p.x, y: p.y, ang, range: w.range, arc: thrust ? 0.3 : w.arc, heavy, type, dir: p.swingDir, dur: p.swingMax, thrust, aura: p.auraT > 0 });
+      const hits = w.hits || 1;
+      for (const e of this.enemies) {
+        if (e.dead || e.hidden) continue;
+        const dx = e.x - p.x, dy = e.y - p.y, dist = Math.hypot(dx, dy);
+        if (dist > w.range + e.r) continue;
+        let ok;
+        if (thrust) ok = distToSeg(e.x, e.y, p.x, p.y, p.x + Math.cos(ang) * w.range, p.y + Math.sin(ang) * w.range) < e.r + (w.width || 8);
+        else {
+          let da = Math.atan2(dy, dx) - ang; da = Math.atan2(Math.sin(da), Math.cos(da));
+          ok = Math.abs(da) <= w.arc / 2 || dist < e.r + 6;
+        }
+        if (!ok) continue;
+        for (let h = 0; h < hits; h++) this.hitEnemy(e, base, type, heavy, false, { weapon: true });
+      }
       const hx = p.x + Math.cos(ang) * 14, hy = p.y + Math.sin(ang) * 14;
       if (this.tileAt(hx, hy) === T_CRACK) this.hitCrack(hx, hy, base);
     } else {
@@ -255,8 +439,9 @@ export class World {
         const sp = w.projSpeed * d.projMul;
         this.projs.push({
           owner: 'p', x: p.x + Math.cos(a) * 6, y: p.y + Math.sin(a) * 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-          life: (w.range * d.projMul) / sp, dmg: base, type, pierce: w.pierce || 0, hit: new Set(), heavy, splash: w.splash || 0,
-          color: type === 'mag' ? '#b58cff' : '#e8e2cf', kind: type === 'phys' ? 'arrow' : 'orb', ox: p.x, oy: p.y,
+          life: (w.range * d.projMul) / sp, maxLife: (w.range * d.projMul) / sp, dmg: base, type, pierce: w.boomerang ? 99 : w.pierce || 0, hit: new Set(), heavy, splash: w.splash || 0,
+          color: type === 'mag' ? '#b58cff' : '#e8e2cf', kind: w.boomerang ? 'axe' : type === 'phys' ? 'arrow' : 'orb', ox: p.x, oy: p.y,
+          boomerang: !!w.boomerang, weaponHit: true,
         });
       }
       p.swingT = 0.1; p.swingMax = 0.1; p.swingAng = ang;
@@ -264,34 +449,108 @@ export class World {
     }
   }
 
-  // 무기 스킬 (Q): 근접 회전베기 / 활 관통 일제사격 / 마법 폭발. 적중 시 각인 트리거가 그대로 발동한다
+  // 무기 스킬 (Q / 우클릭). 적중 시 각인 트리거가 그대로 발동한다
   useSkill() {
     const p = this.player, d = this.d, w = this.b.weapon;
+    const sk = SKILLS[w.skill] || SKILLS.spin;
+    if (sk.mana && !this.payMana(sk.mana)) { this.emit({ t: 'noMana', x: p.x, y: p.y }); p.skillCd = 0.3; return; }
+    p.skillMax = sk.cd * d.skillCdMul * (1 - d.cdr); p.skillCd = p.skillMax;
     let type = w.dmg;
     if (type === 'phys' && this.f.has('physToMag')) type = 'mag';
-    const atk = type === 'phys' ? d.physAtk : d.magAtk;
-    if (w.kind === 'melee') {
-      p.skillMax = 6 * (1 - d.cdr); p.skillCd = p.skillMax;
-      const r = w.range * 1.5 + 8;
-      p.spinT = 0.3;
-      this.emit({ t: 'spin', x: p.x, y: p.y, r, type });
-      this.emit({ t: 'hitstop', v: 0.04 });
-      for (const e of this.enemiesNear(p.x, p.y, r)) this.hitEnemy(e, atk * w.mul * 1.6, type, true);
-    } else if (type === 'phys') {
-      p.skillMax = 6 * (1 - d.cdr); p.skillCd = p.skillMax;
-      const ang = Math.atan2(p.aimY, p.aimX), sp = w.projSpeed * d.projMul * 1.3;
-      for (let i = -2; i <= 2; i++) {
-        const a = ang + i * 0.14;
-        this.projs.push({ owner: 'p', x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: (w.range * 1.4 * d.projMul) / sp, dmg: atk * w.mul * 1.1, type, pierce: 3, hit: new Set(), color: '#ffe8a0', kind: 'arrow' });
+    const atk = type === 'phys' ? (w.scale === 'agi' ? d.dexAtk : d.physAtk) : d.magAtk;
+    const ang = Math.atan2(p.aimY, p.aimX);
+    const aimX = p.x + p.aimX * Math.min(160, this.aimDist || 120), aimY = p.y + p.aimY * Math.min(160, this.aimDist || 120);
+    const hitAll = (list, mul, dtype = type) => { for (const e of list) this.hitEnemy(e, atk * w.mul * mul, dtype, true); };
+    this.emit({ t: 'skill', id: w.skill, x: p.x, y: p.y, ang, tx: aimX, ty: aimY });
+    switch (w.skill) {
+      case 'slam': {
+        const cx = p.x + Math.cos(ang) * 26, cy = p.y + Math.sin(ang) * 26;
+        this.emit({ t: 'slam', x: cx, y: cy, r: 58 });
+        this.emit({ t: 'hitstop', v: 0.1 });
+        for (const e of this.enemiesNear(cx, cy, 58)) { this.hitEnemy(e, atk * w.mul * 2.2, type, true); if (!e.def.elite) { e.windT = 0; e.atkCd = Math.max(e.atkCd, 1.2); } }
+        break;
       }
-      this.emit({ t: 'volley', x: p.x, y: p.y });
-    } else {
-      p.skillMax = 7 * (1 - d.cdr); p.skillCd = p.skillMax;
-      const r = 64;
-      this.emit({ t: 'nova', x: p.x, y: p.y, r });
-      this.emit({ t: 'hitstop', v: 0.05 });
-      for (const e of this.enemiesNear(p.x, p.y, r)) this.hitEnemy(e, atk * w.mul * 1.9, 'mag', true);
+      case 'dashStab': {
+        const len = 90, ex = p.x + Math.cos(ang) * len, ey = p.y + Math.sin(ang) * len;
+        p.dashT = 0.2; p.dvx = Math.cos(ang) * len / 0.2; p.dvy = Math.sin(ang) * len / 0.2; p.invuln = Math.max(p.invuln, 0.3);
+        this.emit({ t: 'afterimage', x1: p.x, y1: p.y, x2: ex, y2: ey });
+        for (const e of this.enemies) if (!e.dead && distToSeg(e.x, e.y, p.x, p.y, ex, ey) < e.r + 12) this.hitEnemy(e, atk * w.mul * 1.9, type, true);
+        if (this.f.has('dashCrit')) p.dashCritReady = true;
+        break;
+      }
+      case 'whirl': p.whirlT = 1.2; p.whirlTick = 0; break;
+      case 'volley': {
+        const sp = w.projSpeed * d.projMul * 1.3;
+        for (let i = -2; i <= 2; i++) {
+          const a = ang + i * 0.14;
+          this.projs.push({ owner: 'p', x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: (w.range * 1.4 * d.projMul) / sp, dmg: atk * w.mul * 1.1, type, pierce: 3, hit: new Set(), color: '#ffe8a0', kind: 'arrow', ox: p.x, oy: p.y, weaponHit: true });
+        }
+        break;
+      }
+      case 'rain': {
+        for (let i = 0; i < 6; i++) this.delayed.push({ t: 0.25 + i * 0.22, kind: 'aoe', x: aimX, y: aimY, r: 50, dmg: atk * w.mul * 0.75, type, fx: 'rain' });
+        break;
+      }
+      case 'axeStorm': {
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2, sp = 200;
+          this.projs.push({ owner: 'p', x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.9, maxLife: 0.9, dmg: atk * w.mul * 0.85, type, pierce: 99, hit: new Set(), color: '#e8e2cf', kind: 'axe', boomerang: true, ox: p.x, oy: p.y });
+        }
+        break;
+      }
+      case 'frostRing': {
+        this.emit({ t: 'nova', x: p.x, y: p.y, r: 72, color: '#9fe3ff' });
+        for (const e of this.enemiesNear(p.x, p.y, 72)) { this.hitEnemy(e, atk * w.mul * 0.9, 'mag', true); this.applyStatus(e, 'chill', 3); }
+        break;
+      }
+      case 'poisonPool': {
+        this.emit({ t: 'ring', x: aimX, y: aimY, r: 50, color: '#9be15d' });
+        this.addCloud(aimX, aimY, 50 * (1 + d.cloudSize), (6 + (this.s.toxicity || 0) * 1.2 + d.magAtk * 0.45) * 1.4, 5, 'p');
+        for (const e of this.enemiesNear(aimX, aimY, 50)) this.applyStatus(e, 'poison', 3);
+        break;
+      }
+      case 'meteor': {
+        this.emit({ t: 'telegraphCircle', x: aimX, y: aimY, r: 60, dur: 0.7 });
+        this.delayed.push({ t: 0.7, kind: 'aoe', x: aimX, y: aimY, r: 60, dmg: atk * w.mul * 3.2, type: 'mag', fx: 'meteor', big: true });
+        break;
+      }
+      case 'nova': {
+        this.emit({ t: 'nova', x: p.x, y: p.y, r: 66 });
+        this.emit({ t: 'hitstop', v: 0.05 });
+        hitAll(this.enemiesNear(p.x, p.y, 66), 1.9, 'mag');
+        break;
+      }
+      default: { // spin
+        const r = w.range * 1.5 + 8;
+        p.spinT = 0.3;
+        this.emit({ t: 'spin', x: p.x, y: p.y, r, type });
+        this.emit({ t: 'hitstop', v: 0.04 });
+        hitAll(this.enemiesNear(p.x, p.y, r), 1.6);
+      }
     }
+  }
+
+  tickWhirl() {
+    const p = this.player, d = this.d, w = this.b.weapon;
+    p.whirlT -= DT; p.whirlTick -= DT; p.spinT = 0.3;
+    if (p.whirlTick > 0) return;
+    p.whirlTick = 0.2;
+    const r = w.range + 10;
+    this.emit({ t: 'spin', x: p.x, y: p.y, r, type: 'phys' });
+    for (const e of this.enemiesNear(p.x, p.y, r)) this.hitEnemy(e, d.physAtk * w.mul * 0.7, 'phys', false);
+  }
+
+  updateDelayed() {
+    if (!this.delayed.length) return;
+    for (const a of this.delayed) {
+      a.t -= DT;
+      if (a.t > 0) continue;
+      a.done = true;
+      this.emit({ t: a.fx === 'meteor' ? 'meteor' : 'ring', x: a.x, y: a.y, r: a.r, color: a.type === 'mag' ? '#c9a8ff' : '#ffe8a0' });
+      if (a.big) { this.emit({ t: 'hitstop', v: 0.08 }); this.emit({ t: 'shake', v: 6 }); }
+      for (const e of this.enemiesNear(a.x, a.y, a.r)) this.hitEnemy(e, a.dmg, a.type, !!a.big);
+    }
+    this.delayed = this.delayed.filter((a) => !a.done);
   }
 
   hitCrack(x, y, dmg) {
@@ -301,6 +560,7 @@ export class World {
     if (hp <= 0) {
       this.tiles[i] = T_FLOOR;
       this.crackHp.delete(i);
+      (this.broken ||= new Set()).add(i);
       this.emit({ t: 'crackBreak', x: tx * TILE + 8, y: ty * TILE + 8, tile: i });
       this.emit({ t: 'text', x: tx * TILE + 8, y: ty * TILE - 4, text: '숨겨진 통로!', color: '#ffe080' });
     } else this.crackHp.set(i, hp);
@@ -315,11 +575,18 @@ export class World {
     }
   }
 
-  hitEnemy(e, base, type, heavy, proj = false) {
-    const p = this.player, d = this.d, f = this.f;
-    const crit = this.rng.chance(d.crit);
+  hitEnemy(e, base, type, heavy, proj = false, opt = {}) {
+    const p = this.player, d = this.d, f = this.f, w = this.b.weapon;
+    let crit = this.rng.chance(d.crit);
+    if (p.dashCritReady) { crit = true; p.dashCritReady = false; }
     this.aggro(e);
-    this.damageEnemy(e, base * (crit ? d.critDmg : 1), type, { src: 'attack', crit, heavy, proj });
+    this.damageEnemy(e, base * (crit ? d.critDmg : 1), type, { src: 'attack', crit, heavy, proj, dist: opt.dist });
+    if (opt.weapon) {
+      if (w.onHit && this.rng.chance(w.onHit.chance)) this.applyStatus(e, w.onHit.status, w.onHit.stacks);
+      if (w.armorBreak && !e.dead) { e.armorBreak = Math.min(5, (e.armorBreak || 0) + 1); e.armorBreakT = 5; }
+    }
+    if (this.b.race === 'orc') this.addRage(f.has('rageFast') ? 6 : 4);
+    p.lastFight = this.t;
     if (!e.def.elite && e.def.ai !== 'dummy') {
       const dx = e.x - p.x, dy = e.y - p.y, l = Math.hypot(dx, dy) || 1;
       const kb = d.knockback * (heavy ? 2 : 1);
@@ -341,21 +608,26 @@ export class World {
   }
 
   damageEnemy(e, amount, type, opt = {}) {
-    if (e.dead) return 0;
+    if (e.dead || e.hidden) return 0;
     const d = this.d, p = this.player;
     let mult = d.dmgMul;
     if (type === 'phys' || type === 'mag') {
-      const pen = Math.min(1, (type === 'phys' ? d.physPen : d.magPen) + (this.s.pierce || 0) / 100);
-      const res = (type === 'phys' ? e.pres : e.mres) * (1 - pen);
+      const aura = type === 'phys' && p.auraT > 0 ? 0.5 : 0;
+      const pen = Math.min(1, (type === 'phys' ? d.physPen : d.magPen) + (this.s.pierce || 0) / 100 + aura);
+      const broken = type === 'phys' && e.armorBreak ? 1 - e.armorBreak * 0.05 : 1;
+      const res = (type === 'phys' ? e.pres : e.mres) * broken * (1 - pen);
       mult *= 1 - res / (res + 100);
     }
     if (opt.src === 'dot' || opt.src === 'reaction') mult *= d.statusDmgMul;
+    if (e.def.shield && (opt.src === 'attack') && Math.sign(p.x - e.x) === e.dir && !(e.st.frozen > 0)) {
+      mult *= 1 - e.def.shield;
+      if (this.rng.chance(0.3)) this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '막힘', color: '#a8b0c0' });
+    }
     if (e.st.mark > 0) mult *= 1.2;
     if (e.st.frozen > 0 && this.f.has('frozenVuln')) mult *= 1.5;
-    if (this.b.race === 'orc') mult *= 1 + 0.35 * (1 - p.hp / d.maxHp);
     if (this.b.race === 'beast') mult *= 1 + p.momentum * 0.015;
-    if (this.b.race === 'undead' && type === 'mag') mult *= 1.15;
-    if (this.b.race === 'elf' && opt.proj) mult *= 1.2;
+    if (this.b.race === 'undead' && type === 'mag') mult *= 1.12;
+    if (this.b.race === 'elf' && opt.proj) mult *= 1 + 0.3 * Math.max(0, Math.min(1, ((opt.dist ?? 80) - 40) / 120));
     const dmg = amount * mult;
     e.hp -= dmg;
     if (e.def.ai === 'dummy') { e.dmgLog.push([this.t, dmg]); e.lastHit = this.t; }
@@ -367,12 +639,12 @@ export class World {
       this.emit({ t: 'dmg', x: e.x, y: e.y - e.r - 10, v: dmg, crit: opt.crit, heavy: opt.heavy, src: opt.src, armored: (type === 'phys' ? e.pres : e.mres) >= 60, id: e.id, color: opt.color || (type === 'mag' ? '#c9a8ff' : '#ffffff') });
     }
     if (opt.src === 'attack' || opt.src === 'aoe') {
-      let ls = this.s.lifesteal || 0;
+      let ls = (this.s.lifesteal || 0) + (p.rageT > 0 ? 8 : 0);
       if (this.f.has('lowHpDrain') && p.hp < d.maxHp / 2) ls *= 2;
       if (ls > 0) this.heal((dmg * ls) / 100, 'steal');
     }
     if (opt.src === 'attack' && e.def.reflect) this.hurtPlayer(Math.min(dmg * e.def.reflect, d.maxHp * 0.08), 'phys', null, { direct: true });
-    if (this.f.has('execute') && !e.def.elite && e.def.ai !== 'dummy' && e.hp > 0 && e.hp < e.maxHp * 0.15) {
+    if (this.f.has('execute') && !e.def.elite && e.def.ai !== 'dummy' && e.hp > 0 && e.hp < e.maxHp * 0.1) {
       e.hp = 0; this.emit({ t: 'text', x: e.x, y: e.y - 16, text: '처형', color: '#ff5050' });
     }
     if (e.hp <= 0) this.killEnemy(e);
@@ -392,7 +664,13 @@ export class World {
     if (!e || e.dead) return;
     const st = e.st;
     if (kind === 'burn') {
+      const fresh = !st.burn;
       st.burn = { n: Math.min(10, (st.burn?.n || 0) + stacks), t: 3 };
+      if (fresh && this.f.has('burnCatch') && !this._catching) {
+        this._catching = true;
+        for (const o of this.enemiesNear(e.x, e.y, 34)) if (o !== e && !o.st.burn) this.applyStatus(o, 'burn', 1);
+        this._catching = false;
+      }
       if (this.f.has('burnExplode') && st.burn.n >= 5) {
         st.burn = null;
         const dmg = (10 + this.d.magAtk * 1.1) * (1 + (this.s.fireAff || 0) * 0.03);
@@ -410,7 +688,7 @@ export class World {
       const freezeAt = Math.max(2, 5 - this.d.freezeReduce) + (e.def.elite ? 3 : 0);
       const n = (st.chill?.n || 0) + stacks;
       if (n >= freezeAt) {
-        st.chill = null; st.frozen = e.def.elite ? 0.6 : 1.3;
+        st.chill = null; st.frozen = (e.def.elite ? 0.6 : 1) * this.d.freezeTime;
         this.emit({ t: 'text', x: e.x, y: e.y - 16, text: '빙결', color: '#9fe3ff' });
       } else st.chill = { n, t: 3 };
     }
@@ -454,6 +732,7 @@ export class World {
     const d = this.d, s = this.s;
     if (a.status && target) this.applyStatus(target, a.status, a.stacks || 1);
     if (a.heal) this.heal(d.maxHp * a.heal, 'skill');
+    if (a.mana) { const p = this.player; p.mana = Math.min(d.maxMana, p.mana + a.mana); }
     if (a.shield) { const p = this.player; p.shield = Math.min(d.maxHp * 0.4, p.shield + d.maxHp * a.shield); }
     if (a.aoe) {
       const base = (a.aoe.type === 'phys' ? d.physAtk : d.magAtk) * a.aoe.mul;
@@ -503,6 +782,9 @@ export class World {
     let dmg = amount * (1 - dr) * d.dmgTakenMul;
     if (p.shield > 0) { const a = Math.min(p.shield, dmg); p.shield -= a; dmg -= a; }
     p.hp -= dmg; p.hitFlash = 0.15;
+    if (attacker && attacker.affix === 'vampiric' && !attacker.dead) attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg * 0.25);
+    if (this.b.race === 'orc') this.addRage((dmg / d.maxHp) * 160 * (f.has('rageFast') ? 1.5 : 1));
+    p.lastFight = this.t;
     if (!opt.direct) p.invuln = 0.3;
     this.emit({ t: 'dmg', x: p.x, y: p.y - 16, v: dmg, color: '#ff5a5a', who: 'p' });
     this.emit({ t: 'shake', v: Math.min(5, 1.5 + dmg / 12) });
@@ -511,9 +793,9 @@ export class World {
       const refl = this.s.reflect || 0;
       if (refl > 0) {
         const rv = (amount * refl / 100) * d.reflectMul;
-        const targets = f.has('reflectAoe') ? this.enemiesNear(p.x, p.y, 70) : [attacker];
+        const targets = f.has('reflectAoe') ? [attacker, ...this.enemiesNear(p.x, p.y, 70).filter((o) => o !== attacker)] : [attacker];
         if (f.has('reflectAoe')) this.emit({ t: 'ring', x: p.x, y: p.y, r: 70, color: '#e6f3ff' });
-        for (const o of targets) this.damageEnemy(o, rv, 'phys', { src: 'reflect', color: '#e6f3ff' });
+        for (const o of targets) this.damageEnemy(o, o === attacker ? rv : rv * 0.5, 'phys', { src: 'reflect', color: '#e6f3ff' });
       }
       if (f.has('slimeSlow')) this.applyStatus(attacker, 'chill', 1);
       for (const tr of this.b.triggers.hurt) if (this.rng.chance(tr.chance)) this.doAction(tr.action, attacker, attacker);
@@ -533,6 +815,7 @@ export class World {
 
   applyPlayerStatus(kind, power) {
     if (this.f.has('statusImmune') || this.mode === 'plaza') return;
+    if (this.b.race === 'undead' && (kind === 'poison' || kind === 'bleed')) return;
     const dur = { burn: 3, poison: 4, bleed: 3, chill: 2 }[kind] * (1 - this.d.statusRes);
     if (dur <= 0.05) return;
     const dps = kind === 'chill' ? 0 : power * 0.18 * (1 - this.d.statusRes * 0.5);
@@ -548,7 +831,7 @@ export class World {
       return;
     }
     if (this.f.has('lastStand') && p.lastStandCd <= 0) {
-      p.lastStandCd = 60; p.hp = 1; p.invuln = 1;
+      p.lastStandCd = 90; p.hp = 1; p.invuln = 1;
       this.emit({ t: 'text', x: p.x, y: p.y - 18, text: '불굴!', color: '#ffd060' });
       return;
     }
@@ -557,15 +840,30 @@ export class World {
   }
 
   // ───────────── 적 ─────────────
-  makeEnemy(id, x, y) {
+  makeEnemy(id, x, y, opt = {}) {
     const def = ALL_MONSTERS[id];
-    return {
-      id: this.nextId++, defId: id, def, x, y, r: def.r, hp: def.hp, maxHp: def.hp, atk: def.atk, pres: def.pres, mres: def.mres,
+    const dm = 1 + 0.4 * this.depth, am = 1 + 0.25 * this.depth;
+    const e = {
+      id: this.nextId++, defId: id, def, x, y, r: def.r, hp: def.hp * dm, maxHp: def.hp * dm, atk: def.atk * am, pres: def.pres, mres: def.mres,
       st: {}, atkCd: 0.5 + this.rng.next(), shotCd: 1 + this.rng.next() * 1.5, kbx: 0, kby: 0, hitFlash: 0, dead: false,
       dotAcc: 0, dotT: 0.5, reactCd: 0, ai: { mode: 'move', t: 2 + this.rng.next() * 2, dx: 0, dy: 0 }, dir: 1, phase: this.rng.range(0, 6),
       state: 'idle', home: { x, y }, wander: null, wanderT: this.rng.range(0, 2), leashT: 0, moving: false, walkT: 0,
-      dmgLog: [], lastHit: -9, wobble: 0, windT: 0, windMax: 0.4,
+      dmgLog: [], lastHit: -9, wobble: 0, windT: 0, windMax: 0.4, speedMul: 1, atkRate: 1, scale: 1,
+      hidden: def.ai === 'burrow', summonCd: 3, fuse: 0, summoned: !!opt.summoned,
     };
+    if (opt.champion) {
+      e.champion = `${opt.champion}의 우두머리`;
+      e.hp = e.maxHp = e.maxHp * 6; e.atk *= 1.6; e.scale = 1.5; e.r = def.r * 1.4; e.hidden = false;
+    } else if (this.mode === 'field' && !def.elite && !opt.noAffix && !opt.summoned && def.ai !== 'flee' && this.rng.chance(0.12)) {
+      const key = this.rng.pick(Object.keys(AFFIXES)), af = AFFIXES[key];
+      e.affix = key;
+      if (af.scale) { e.scale = af.scale; e.r = def.r * af.scale; }
+      if (af.hp) e.hp = e.maxHp = e.maxHp * af.hp;
+      if (af.atk) e.atk *= af.atk;
+      if (af.speed) e.speedMul = af.speed;
+      if (af.atkRate) e.atkRate = af.atkRate;
+    }
+    return e;
   }
 
   spawnCamp(c) {
@@ -661,7 +959,12 @@ export class World {
       // 지속 피해
       let burn = 0, poison = 0, bleed = 0;
       if (st.burn) { burn = st.burn.n * (2 + d.magAtk * 0.12) * (1 + (s.fireAff || 0) * 0.04) * d.burnMul; if ((st.burn.t -= DT) <= 0) st.burn = null; }
-      if (st.poison) { poison = st.poison.n * (1.5 + (s.toxicity || 0) * 0.6) * (st.septic > 0 ? 2 : 1); if ((st.poison.t -= DT) <= 0) st.poison = null; }
+      if (st.poison) {
+        const deep = this.f.has('poisonDeep') ? 1 + Math.max(0, st.poison.n - 5) * 0.08 : 1;
+        poison = st.poison.n * (1.5 + (s.toxicity || 0) * 0.6) * (st.septic > 0 ? 2 : 1) * deep;
+        if ((st.poison.t -= DT) <= 0) st.poison = null;
+      }
+      if (e.armorBreakT > 0 && (e.armorBreakT -= DT) <= 0) e.armorBreak = 0;
       if (st.bleed) { bleed = st.bleed.n * (1.5 + d.physAtk * 0.1) * d.bleedMul; if ((st.bleed.t -= DT) <= 0) st.bleed = null; }
       if (st.chill && (st.chill.t -= DT) <= 0) st.chill = null;
       for (const k of ['frozen', 'mark', 'septic']) if (st[k] > 0) st[k] -= DT;
@@ -679,16 +982,25 @@ export class World {
       }
       if (def.ai === 'dummy') continue;
 
-      e.atkCd -= DT; e.shotCd -= DT;
+      e.atkCd -= DT * e.atkRate; e.shotCd -= DT; e.summonCd -= DT;
       const frozen = st.frozen > 0;
       let slow = st.chill ? Math.min(0.6, st.chill.n * 0.12 * d.chillMul) : 0;
       if (this.zone && this.zone.liquid !== 'lava' && this.zone.liquid !== 'mist' && this.tileAt(e.x, e.y + 3) === T_LIQUID && def.shape !== 'flyer') slow = Math.max(slow, 0.3);
-      let spd = frozen ? 0 : def.speed * (1 - slow);
+      let spd = frozen ? 0 : def.speed * e.speedMul * (1 - slow);
       let vx = 0, vy = 0;
 
       // 상태 전환
+      // 땅속 잠복: 가까이 오면 튀어나온다
+      if (e.hidden) {
+        if (dist < 64 && !frozen) {
+          e.hidden = false; this.aggro(e);
+          e.windT = 0.3; e.windMax = 0.3;
+          this.emit({ t: 'emerge', x: e.x, y: e.y, id: e.id });
+        }
+        continue;
+      }
       if (e.state === 'idle') {
-        const aggroR = def.elite ? 130 : 105;
+        const aggroR = def.elite || e.champion ? 130 : 105;
         if (dist < aggroR) this.aggro(e);
       }
       if (e.state === 'chase') {
@@ -713,7 +1025,38 @@ export class World {
         else { vx = hx / hl; vy = hy / hl; e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.3 * DT); }
       } else {
         const [ux, uy] = this.chaseDir(e);
-        if (def.ai === 'chase') { vx = ux; vy = uy; }
+        if (def.ai === 'flee') {
+          // 보물 고블린: 도망치다 시간이 지나면 사라진다
+          vx = -dxp / dist; vy = -dyp / dist;
+          e.fleeT = (e.fleeT || 0) + DT;
+          if (e.fleeT > 22) { e.dead = true; this.emit({ t: 'text', x: e.x, y: e.y - 16, text: '도망쳤다…', color: '#ffcf5a' }); this.emit({ t: 'death', x: e.x, y: e.y, color: '#ffcf5a' }); continue; }
+        } else if (def.ai === 'kamikaze') {
+          // 다가와서 자폭 (도화선이 타는 동안 피할 수 있다)
+          if (e.fuse > 0) {
+            spd = 0; e.fuse -= DT;
+            if (e.fuse <= 0) { this.explode(e); continue; }
+          } else {
+            vx = ux; vy = uy; spd *= 1.15;
+            if (dist < e.r + p.r + 10) { e.fuse = 0.55; this.emit({ t: 'fuse', id: e.id }); }
+          }
+        } else if (def.ai === 'summoner') {
+          if (dist > def.range) { vx = ux; vy = uy; }
+          else if (dist < def.range * 0.6) { vx = -dxp / dist; vy = -dyp / dist; }
+          if (!frozen && e.shotCd <= 0 && dist < def.range + 40) { e.shotCd = 2.4; this.enemyShot(e, Math.atan2(dyp, dxp), 1, 0); }
+          const alive = this.enemies.filter((o) => o.summoner === e.id && !o.dead).length;
+          if (!frozen && e.summonCd <= 0 && alive < 4) {
+            e.summonCd = 7;
+            for (let i = 0; i < 2; i++) {
+              const a = this.rng.range(0, Math.PI * 2);
+              let x = e.x + Math.cos(a) * 20, y = e.y + Math.sin(a) * 20;
+              if (this.blocked(x, y, 6)) { x = e.x; y = e.y; }
+              const m = this.makeEnemy(def.summon, x, y, { summoned: true });
+              m.summoner = e.id; m.state = 'chase'; m.home = { ...e.home };
+              this.enemies.push(m);
+            }
+            this.emit({ t: 'summon', x: e.x, y: e.y });
+          }
+        } else if (def.ai === 'chase' || def.ai === 'burrow') { vx = ux; vy = uy; }
         else if (def.ai === 'erratic') {
           const w = Math.sin(this.t * 4 + e.phase) * 0.9;
           vx = ux * Math.cos(w) - uy * Math.sin(w); vy = ux * Math.sin(w) + uy * Math.cos(w);
@@ -752,12 +1095,12 @@ export class World {
           e.windT -= DT;
           if (e.windT <= 0) {
             e.atkCd = def.elite ? 1.3 : 1.1;
-            const reach = e.r + p.r + (def.elite ? 14 : 9);
+            const reach = e.r + p.r + (def.elite || e.champion ? 14 : 9);
             this.emit({ t: 'strike', id: e.id, x: e.x, y: e.y, ang: Math.atan2(dyp, dxp), r: reach + 4 });
-            if (Math.hypot(p.x - e.x, p.y - e.y) < reach) this.hurtPlayer(e.atk, def.type, e, { status: def.status });
+            if (Math.hypot(p.x - e.x, p.y - e.y) < reach) this.hurtPlayer(e.atk, def.type, e, { status: def.status || (e.affix && AFFIXES[e.affix].status) });
           }
         }
-      } else if (e.state === 'chase' && !frozen && dist < e.r + p.r + 6 && e.atkCd <= 0 && (def.ai !== 'charge' && def.ai !== 'boss' || e.ai.mode === 'move')) {
+      } else if (e.state === 'chase' && !frozen && def.ai !== 'flee' && def.ai !== 'kamikaze' && dist < e.r + p.r + 6 && e.atkCd <= 0 && (def.ai !== 'charge' && def.ai !== 'boss' || e.ai.mode === 'move')) {
         e.windT = def.elite ? 0.5 : 0.38; e.windMax = e.windT;
         this.emit({ t: 'windup', id: e.id });
       }
@@ -776,6 +1119,15 @@ export class World {
     }
   }
 
+  explode(e) {
+    const p = this.player, b = e.def.boom;
+    this.emit({ t: 'ring', x: e.x, y: e.y, r: b.r, color: b.color });
+    this.emit({ t: 'shake', v: 4 });
+    if (Math.hypot(p.x - e.x, p.y - e.y) < b.r + p.r) this.hurtPlayer(e.atk, e.def.type, null, { status: b.status });
+    if (b.cloud) this.addCloud(e.x, e.y, b.r, e.atk * 0.25, 3, 'e');
+    e.hp = 0; this.killEnemy(e, true);
+  }
+
   enemyShot(e, ang, n, spread) {
     const pr = e.def.proj;
     for (let i = 0; i < n; i++) {
@@ -784,17 +1136,22 @@ export class World {
     }
   }
 
-  killEnemy(e) {
+  killEnemy(e, selfDestruct = false) {
     if (e.dead) return;
     e.dead = true;
     const def = e.def, st = e.st, d = this.d;
-    this.loot.xp += def.xp;
+    const bonus = (e.affix ? 2 : 1) * (e.champion ? 5 : 1) * (1 + 0.5 * this.depth);
+    if (e.summoned) { this.emit({ t: 'death', x: e.x, y: e.y, color: def.pal.a, defId: e.defId, dir: e.dir }); return; }
+    this.loot.xp += Math.round(def.xp * bonus);
     this.loot.kills[e.defId] = (this.loot.kills[e.defId] || 0) + 1;
     this.emit({ t: 'death', x: e.x, y: e.y, color: def.pal.a, big: def.elite, defId: e.defId, dir: e.dir });
-    if (def.elite) { this.emit({ t: 'hitstop', v: 0.25 }); this.emit({ t: 'banner', text: `${def.name} 처치!`, color: '#ffcf5a' }); }
-    const gold = Math.round(def.gold * d.goldMul);
-    if (gold > 0) this.spawnDrop(e.x, e.y, 'gold', null, gold);
-    if (this.rng.chance(def.echo.rate)) this.spawnDrop(e.x, e.y, 'echo', def.echo.id);
+    if (def.elite || e.champion) { this.emit({ t: 'hitstop', v: 0.25 }); this.emit({ t: 'banner', text: `${e.champion || def.name} 처치!`, color: '#ffcf5a' }); }
+    if (e.affix && AFFIXES[e.affix].deathCloud) this.addCloud(e.x, e.y, 36, e.atk * 0.3, 3, 'e');
+    const gold = Math.round(def.gold * d.goldMul * bonus);
+    if (gold > 0) for (let i = 0, n = def.treasure || e.champion ? 6 : 1; i < n; i++) this.spawnDrop(e.x, e.y, 'gold', null, Math.ceil(gold / n));
+    const echoTries = e.champion ? 3 : def.treasure ? 3 : e.affix ? 2 : 1;
+    for (let i = 0; i < echoTries; i++) if (this.rng.chance(Math.min(1, def.echo.rate * (1 + 0.25 * this.depth)))) this.spawnDrop(e.x, e.y, 'echo', e.champion || def.treasure ? this.rng.pick(this.zone.pool.map((m) => MONSTERS[m].echo.id)) : def.echo.id);
+    if (e.champion && this.rng.chance(0.3)) this.spawnDrop(e.x, e.y, 'echo', MONSTERS[this.zone.elite].echo.id);
     if (def.condEcho && def.condEcho.when === 'burning' && st.burn && this.rng.chance(def.condEcho.rate)) this.spawnDrop(e.x, e.y, 'echo', def.condEcho.id);
     if (def.onDeath?.cloud) { const c = def.onDeath.cloud; this.addCloud(e.x, e.y, c.r, c.dps, c.dur, 'e'); }
 
@@ -802,7 +1159,19 @@ export class World {
     if (st.poison && this.f.has('poisonSpread')) for (const o of this.enemiesNear(e.x, e.y, 60)) this.applyStatus(o, 'poison', Math.ceil(st.poison.n / 2));
     if (st.burn && this.f.has('burnSpread')) for (const o of this.enemiesNear(e.x, e.y, 60)) this.applyStatus(o, 'burn', 2);
     if (st.poison && this.f.has('poisonBurst')) this.addCloud(e.x, e.y, 34 * (1 + d.cloudSize), 4 + (this.s.toxicity || 0) * 0.8, 3, 'p');
-    if (this.b.race === 'undead') this.heal(d.maxHp * 0.06, 'drain');
+    if (this.b.race === 'undead') { this.heal(d.maxHp * 0.06, 'drain'); this.player.mana = Math.min(d.maxMana, this.player.mana + 8); }
+    if (this.b.race === 'orc') this.addRage(6);
+  }
+
+  addRage(v) {
+    const p = this.player;
+    if (p.rageT > 0) return;
+    p.rage = Math.min(100, p.rage + v);
+    if (p.rage >= 100) {
+      p.rageT = 6;
+      this.emit({ t: 'rage', x: p.x, y: p.y });
+      this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '광폭화!', color: '#ff5040' });
+    }
   }
 
   spawnDrop(x, y, kind, id, amount = 1) {
@@ -834,7 +1203,7 @@ export class World {
   }
 
   enemiesNear(x, y, r) {
-    return this.enemies.filter((o) => !o.dead && Math.hypot(o.x - x, o.y - y) <= r + o.r);
+    return this.enemies.filter((o) => !o.dead && !o.hidden && Math.hypot(o.x - x, o.y - y) <= r + o.r);
   }
 
   // ───────────── 투사체 / 구름 ─────────────
@@ -849,8 +1218,15 @@ export class World {
           pr.vx += (Math.cos(a) * sp - pr.vx) * 0.12; pr.vy += (Math.sin(a) * sp - pr.vy) * 0.12;
         }
       }
+      if (pr.boomerang && !pr.returning && pr.life < pr.maxLife * 0.5) { pr.returning = true; pr.hit.clear(); }
+      if (pr.returning) {
+        const bx = this.player.x - pr.x, by = this.player.y - pr.y, bl = Math.hypot(bx, by) || 1, sp = Math.hypot(pr.vx, pr.vy) || 200;
+        pr.vx = (bx / bl) * sp; pr.vy = (by / bl) * sp; pr.life = Math.max(pr.life, 0.1);
+        if (bl < 10) { pr.life = 0; continue; }
+      }
+      pr.spin = (pr.spin || 0) + DT * 20;
       pr.x += pr.vx * DT; pr.y += pr.vy * DT; pr.life -= DT;
-      if (this.solid(pr.x, pr.y)) {
+      if (this.solid(pr.x, pr.y) && !pr.returning) {
         if (pr.owner === 'p' && this.tileAt(pr.x, pr.y) === T_CRACK) this.hitCrack(pr.x, pr.y, pr.dmg);
         this.emit({ t: 'spark', x: pr.x - pr.vx * DT, y: pr.y - pr.vy * DT, color: pr.color });
         pr.life = 0;
@@ -858,14 +1234,14 @@ export class World {
       if (pr.life <= 0) continue;
       if (pr.owner === 'p') {
         for (const e of this.enemies) {
-          if (e.dead || pr.hit.has(e.id)) continue;
+          if (e.dead || e.hidden || pr.hit.has(e.id)) continue;
           if (Math.hypot(e.x - pr.x, e.y - pr.y) > e.r + 3) continue;
           pr.hit.add(e.id);
           if (pr.noTrigger) this.damageEnemy(e, pr.dmg, pr.type, { src: 'aoe' });
           else {
             const dist = pr.ox != null ? Math.hypot(e.x - pr.ox, e.y - pr.oy) : 100;
-            const range = dist < 40 ? 0.7 : dist > 70 ? 1.1 : 1;
-            this.hitEnemy(e, pr.dmg * range, pr.type, pr.heavy, true);
+            const range = pr.boomerang ? 1 : dist < 40 ? 0.7 : dist > 70 ? 1.1 : 1;
+            this.hitEnemy(e, pr.dmg * range, pr.type, pr.heavy, true, { dist, weapon: pr.weaponHit });
           }
           if (pr.splash) { this.emit({ t: 'ring', x: pr.x, y: pr.y, r: pr.splash, color: pr.color }); for (const o of this.enemiesNear(pr.x, pr.y, pr.splash)) if (o !== e) this.damageEnemy(o, pr.dmg * 0.7, pr.type, { src: 'aoe' }); }
           if (pr.type === 'mag' && this.f.has('magicBurst') && !pr.noTrigger) this.doAction({ aoe: { r: 24, mul: 0.35, type: 'mag' } }, null, pr);

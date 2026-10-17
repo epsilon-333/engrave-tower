@@ -6,9 +6,10 @@ export const ENGRAVINGS = {
   // ── 이끼 동굴 ──
   slimeSkin: {
     name: '끈적한 점액', slot: 'leg', grade: 1, load: 2, tags: ['slime'],
-    stats: { vit: 4, pres: 3 },
+    stats: { vit: 6, pres: 4 },
     effects: [
       { type: 'flag', flag: 'slimeSlow', text: '나를 때린 적에게 냉기 1중첩' },
+      { type: 'add', key: 'regen', v: 0.004, text: '초당 HP 0.4% 회복' },
     ],
     recipe: { goo: 4 },
   },
@@ -95,9 +96,9 @@ export const ENGRAVINGS = {
   },
   impTrick: {
     name: '임프의 장난', slot: 'back', grade: 1, load: 2, tags: ['fire', 'wind'],
-    stats: { agi: 4 },
+    stats: { agi: 6, fireAff: 2 },
     effects: [
-      { type: 'on', event: 'dodge', chance: 1, action: { aoe: { r: 44, mul: 0.8, type: 'mag', status: 'burn' } }, text: '회피 시 주변에 화염 폭발' },
+      { type: 'on', event: 'dodge', chance: 1, action: { aoe: { r: 48, mul: 1.0, type: 'mag', status: 'burn' } }, text: '회피 시 주변에 화염 폭발' },
       { type: 'on', event: 'dash', chance: 1, action: { aoe: { r: 30, mul: 0.4, type: 'mag', status: 'burn' } }, text: '대시 시 작은 화염' },
     ],
     recipe: { cinder: 4 },
@@ -159,9 +160,10 @@ export const ENGRAVINGS = {
   // ── 그림자 묘지 ──
   boneFrame: {
     name: '해골의 뼈대', slot: 'leg', grade: 2, load: 3, tags: ['giant', 'undying'],
-    stats: { pres: 10, vit: 3 },
+    stats: { pres: 12, vit: 4 },
     effects: [
       { when: { race: 'undead' }, type: 'stat', stat: 'pres', v: 10, text: '물리 저항 +10' },
+      { type: 'on', event: 'hurt', chance: 0.2, action: { shield: 0.03 }, text: '맞으면 20% 확률로 보호막' },
     ],
     recipe: { bone: 5 },
   },
@@ -185,7 +187,7 @@ export const ENGRAVINGS = {
     name: '묘지기의 계약', slot: 'back', grade: 5, load: 10, tags: ['shadow'],
     stats: { str: 10, mag: 10, sen: 8 },
     effects: [
-      { type: 'mul', key: 'dmgMul', v: 1.4, text: '모든 피해 +40%' },
+      { type: 'mul', key: 'dmgMul', v: 1.3, text: '모든 피해 +30%' },
       { type: 'flag', flag: 'noHeal', text: '대가: 모든 회복 불가' },
     ],
     recipe: { grave: 1, bone: 10, soul: 5 },
@@ -398,6 +400,44 @@ export const ENGRAVINGS = {
     ],
     recipe: { grave: 2, bone: 6 },
   },
+  // ── 자원 각인 (오러·마나·분노) ──
+  auraSigil: {
+    name: '오러 증폭 문양', slot: 'heart', grade: 3, load: 5, tags: ['brawl'],
+    stats: { str: 4, pres: 4 },
+    effects: [
+      { when: { race: 'knight' }, type: 'add', key: 'auraTime', v: 2, text: '오러 지속 +2초' },
+      { when: { race: 'knight' }, type: 'flag', flag: 'auraBurst', text: '오러 발동 시 주변 충격파' },
+    ],
+    recipe: { chief: 1, rust: 4 },
+  },
+  manaSpring: {
+    name: '마나의 샘', slot: 'head', grade: 3, load: 5, tags: ['curse'],
+    stats: { spi: 6, mag: 3 },
+    effects: [
+      { type: 'on', event: 'kill', chance: 1, action: { mana: 8 }, text: '처치 시 마나 8 회복' },
+      { type: 'mul', key: 'manaRegen', v: 1.15, text: '마나 회복 +15%' },
+    ],
+    recipe: { soul: 3, spore: 3 },
+  },
+  bloodMagic: {
+    name: '피의 마법', slot: 'heart', grade: 4, load: 6, tags: ['drain', 'curse'],
+    stats: { mag: 6, vit: 6 },
+    effects: [
+      { type: 'flag', flag: 'bloodMagic', text: '마나가 모자라면 체력으로 마법 사용' },
+      { when: { stat: 'lifesteal', gte: 5 }, type: 'mul', key: 'magAtk', v: 1.1, text: '마법 공격력 +10%' },
+    ],
+    recipe: { blood: 6, soul: 3 },
+  },
+  rageFang: {
+    name: '분노의 송곳니', slot: 'arm', grade: 3, load: 5, tags: ['brawl', 'drain'],
+    stats: { str: 5 },
+    effects: [
+      { when: { race: 'orc' }, type: 'flag', flag: 'rageFast', text: '분노가 1.5배 빨리 참' },
+      { type: 'on', event: 'kill', chance: 0.5, action: { heal: 0.03 }, text: '처치 시 50% 확률로 HP 3% 회복' },
+    ],
+    recipe: { rust: 4, blood: 4 },
+  },
+
   // ── 혼합 문양 (여러 지역의 잔향) ──
   steamEngine: {
     name: '증기 기관', slot: 'heart', grade: 4, load: 6, tags: ['fire', 'ice'],
@@ -482,16 +522,16 @@ export const ENGRAVINGS = {
 // 태그 시너지: 장착한 각인 + 장비의 태그 개수
 export const TAGS = {
   fire: { name: '화염', color: '#ff7a2a', tiers: [
-    { n: 2, text: '화상 피해 +30%', effects: [{ type: 'mul', key: 'burnMul', v: 1.3 }] },
-    { n: 4, text: '화상 걸린 적이 죽으면 주변에 불이 옮겨붙음', effects: [{ type: 'flag', flag: 'burnSpread' }] },
+    { n: 2, text: '화상 걸린 적이 죽으면 주변으로 불이 번짐, 화상 피해 +15%', effects: [{ type: 'flag', flag: 'burnSpread' }, { type: 'mul', key: 'burnMul', v: 1.15 }] },
+    { n: 4, text: '화상 피해 +40%, 화상이 닿은 적 주변으로도 옮겨붙음', effects: [{ type: 'mul', key: 'burnMul', v: 1.4 }, { type: 'flag', flag: 'burnCatch' }] },
   ] },
   ice: { name: '냉기', color: '#9fe3ff', tiers: [
-    { n: 2, text: '냉기 둔화 효과 증가', effects: [{ type: 'mul', key: 'chillMul', v: 1.4 }] },
-    { n: 4, text: '빙결된 적이 받는 피해 +50%', effects: [{ type: 'flag', flag: 'frozenVuln' }] },
+    { n: 2, text: '둔화 효과 증가, 빙결 시간 +30%', effects: [{ type: 'mul', key: 'chillMul', v: 1.5 }, { type: 'mul', key: 'freezeTime', v: 1.3 }] },
+    { n: 4, text: '빙결된 적이 받는 피해 +50%, 빙결에 필요한 냉기 -1', effects: [{ type: 'flag', flag: 'frozenVuln' }, { type: 'add', key: 'freezeReduce', v: 1 }] },
   ] },
   poison: { name: '독', color: '#9be15d', tiers: [
     { n: 2, text: '독 최대 중첩 +5', effects: [{ type: 'add', key: 'poisonCap', v: 5 }] },
-    { n: 4, text: '중독된 적이 죽으면 독 구름', effects: [{ type: 'flag', flag: 'poisonBurst' }] },
+    { n: 4, text: '맹독: 독이 5중첩을 넘으면 중첩마다 독 피해 +8% (한 대상에 집중)', effects: [{ type: 'flag', flag: 'poisonDeep' }] },
   ] },
   bleed: { name: '출혈', color: '#e0445a', tiers: [
     { n: 2, text: '출혈 피해 +40%', effects: [{ type: 'mul', key: 'bleedMul', v: 1.4 }] },
@@ -503,7 +543,7 @@ export const TAGS = {
   ] },
   wind: { name: '바람', color: '#bfe8d0', tiers: [
     { n: 2, text: '이동 속도 +15%', effects: [{ type: 'mul', key: 'moveSpeed', v: 1.15 }] },
-    { n: 3, text: '대시 쿨타임 -40%, 대시 잔상', effects: [{ type: 'mul', key: 'dashCd', v: 0.6 }, { type: 'flag', flag: 'dashAfterimage' }] },
+    { n: 3, text: '쏘는 동안 느려지지 않음, 대시 쿨타임 -40%', effects: [{ type: 'flag', flag: 'noAimSlow' }, { type: 'mul', key: 'dashCd', v: 0.6 }] },
   ] },
   giant: { name: '거체', color: '#b08a5a', tiers: [
     { n: 2, text: '최대 HP +15%', effects: [{ type: 'mul', key: 'maxHp', v: 1.15 }] },
@@ -511,13 +551,14 @@ export const TAGS = {
   ] },
   reflect: { name: '반사', color: '#e6f3ff', tiers: [
     { n: 2, text: '반사 +8%', effects: [{ type: 'stat', stat: 'reflect', v: 8 }] },
-    { n: 3, text: '반사 피해가 주변 모든 적에게', effects: [{ type: 'flag', flag: 'reflectAoe' }] },
+    { n: 3, text: '반사 피해의 절반이 주변 적에게도', effects: [{ type: 'flag', flag: 'reflectAoe' }] },
   ] },
   slime: { name: '점액', color: '#7ed957', tiers: [
-    { n: 2, text: '물리·마법 저항 +6', effects: [{ type: 'stat', stat: 'pres', v: 6 }, { type: 'stat', stat: 'mres', v: 6 }] },
+    { n: 2, text: '물리·마법 저항 +6, 나를 때린 적 둔화', effects: [{ type: 'stat', stat: 'pres', v: 6 }, { type: 'stat', stat: 'mres', v: 6 }, { type: 'flag', flag: 'slimeSlow' }] },
   ] },
   shadow: { name: '그림자', color: '#8a6aff', tiers: [
-    { n: 2, text: '치명타 확률 +12%', effects: [{ type: 'add', key: 'crit', v: 0.12 }] },
+    { n: 2, text: '치명타 +12%, 대시 쿨타임 -25%, 대시 후 첫 공격 확정 치명타', effects: [{ type: 'add', key: 'crit', v: 0.12 }, { type: 'mul', key: 'dashCd', v: 0.75 }, { type: 'flag', flag: 'dashCrit' }] },
+    { n: 3, text: '회피 +8%', effects: [{ type: 'add', key: 'dodge', v: 0.08 }] },
   ] },
   curse: { name: '저주', color: '#b7a4ff', tiers: [
     { n: 2, text: '상태이상 피해 +25%', effects: [{ type: 'mul', key: 'statusDmgMul', v: 1.25 }] },
@@ -526,7 +567,7 @@ export const TAGS = {
     { n: 2, text: '사냥마다 1번, 죽으면 HP 30%로 부활', effects: [{ type: 'flag', flag: 'undying' }] },
   ] },
   brawl: { name: '투사', color: '#ffb347', tiers: [
-    { n: 2, text: '근력 +10%', effects: [{ type: 'statPct', stat: 'str', v: 0.1 }] },
+    { n: 2, text: '근력 +10%, 넉백 강화', effects: [{ type: 'statPct', stat: 'str', v: 0.1 }, { type: 'add', key: 'knockback', v: 30 }] },
   ] },
 };
 

@@ -2,10 +2,10 @@
 import { BASE_STATS, STAT_INFO, SPECIAL_INFO, SLOT_INFO, GRADES, TIERS } from '../data/stats.js';
 import { RACES, xpToNext } from '../data/races.js';
 import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
-import { ITEMS } from '../data/items.js';
+import { ITEMS, STYLES, SKILLS } from '../data/items.js';
 import { MONSTERS, ECHOES, ZONES } from '../data/monsters.js';
 import { computeBuild, encodeLoadout, decodeLoadout, SLOTS } from '../sim/build.js';
-import { condText } from '../sim/conditions.js';
+import { condText, evalCond } from '../sim/conditions.js';
 import { toLoadout, writeSave, refreshQuests, claimQuest } from '../save.js';
 import { sfx } from '../audio.js';
 
@@ -120,11 +120,26 @@ export class Hub {
       .map(([id, n]) => `<span class="echo" style="--c:${ECHOES[id].color}">◆ ${ECHOES[id].name} <b>${n}</b></span>`).join('') || '<span class="muted">잔향이 없습니다. 사냥터에서 몬스터를 사냥하세요.</span>';
 
     const zonesOf = (id) => [...new Set(Object.keys(ENGRAVINGS[id].recipe).map(zoneOfEcho))];
+    const filter = this.altarFilter || s.style || 'all';
+    const pass = (id) => {
+      const e = ENGRAVINGS[id];
+      if (filter === 'all') return true;
+      if (filter === 'goal') return (s.goals || []).includes(id);
+      if (filter === 'ready') return Object.entries(e.recipe).every(([eid, n]) => (s.echoes[eid] || 0) >= n) || (s.owned[id] || 0) > 0;
+      const st = STYLES[filter];
+      return st && e.tags.some((t) => st.tags.includes(t));
+    };
+    const filterBar = `<div class="filters">${[['all', '전체'], ...Object.entries(STYLES).map(([k, v]) => [k, v.name]), ['goal', '★ 찜'], ['ready', '새길 수 있음']]
+      .map(([k, n]) => `<button class="sm ${filter === k ? 'on' : ''}" data-act="filter" data-id="${k}">${n}</button>`).join('')}</div>
+      ${STYLES[filter] ? `<p class="muted">${STYLES[filter].name}: ${STYLES[filter].desc} · 핵심 태그 ${STYLES[filter].tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</p>` : ''}`;
+    const goalHtml = this.goalPanel(s);
     const groups = ZONES.map((z) => {
-      const ids = Object.keys(ENGRAVINGS).filter((id) => { const zs = zonesOf(id); return zs.length === 1 && zs[0] === z.id; });
+      const ids = Object.keys(ENGRAVINGS).filter((id) => { const zs = zonesOf(id); return zs.length === 1 && zs[0] === z.id && pass(id); });
+      if (!ids.length) return '';
       return `<h4>${z.name} <small>${z.floor}층 · ${ids.length}종</small></h4><div class="cards">${ids.map((id) => this.engravingCard(id, s, b)).join('')}</div>`;
     }).join('') + (() => {
-      const ids = Object.keys(ENGRAVINGS).filter((id) => zonesOf(id).length > 1);
+      const ids = Object.keys(ENGRAVINGS).filter((id) => zonesOf(id).length > 1 && pass(id));
+      if (!ids.length) return '';
       return `<h4>혼합 문양 <small>여러 지역의 잔향 · ${ids.length}종</small></h4><div class="cards">${ids.map((id) => this.engravingCard(id, s, b)).join('')}</div>`;
     })();
 
@@ -135,9 +150,48 @@ export class Hub {
         <h4>보유 잔향</h4><div class="echoes">${echoInv}</div>
       </section>
       <section class="panel">
-        <h3>각인 목록 <small>잔향을 모아 새긴 뒤 같은 부위에 장착합니다</small></h3>
-        ${groups}
+        <h3>각인 목록 <small>스타일을 고르면 맞는 각인만 보입니다 · ★로 찜하면 필요한 잔향과 사냥터를 알려 줘요</small></h3>
+        ${filterBar}
+        ${goalHtml}
+        ${groups || '<p class="muted">조건에 맞는 각인이 없습니다.</p>'}
       </section>`;
+  }
+
+  goalPanel(s) {
+    const goals = (s.goals || []).filter((id) => ENGRAVINGS[id]);
+    if (!goals.length) return '';
+    const need = {};
+    for (const id of goals) for (const [eid, n] of Object.entries(ENGRAVINGS[id].recipe)) need[eid] = (need[eid] || 0) + n;
+    const rows = Object.entries(need).map(([eid, n]) => {
+      const have = s.echoes[eid] || 0;
+      const src = [];
+      for (const z of ZONES) for (const m of [...z.pool, z.elite]) {
+        const def = MONSTERS[m];
+        if (def.echo.id === eid || def.condEcho?.id === eid) src.push(s.codex.kills[m] ? `${def.name}(${z.name})` : `???(${z.name})`);
+      }
+      return `<div class="li ${have >= n ? 'on' : ''}"><span style="color:${ECHOES[eid].color}">◆ ${s.codex.echoes[eid] ? ECHOES[eid].name : '???'}</span> ${Math.min(have, n)}/${n} · ${src.slice(0, 3).join(', ')}</div>`;
+    }).join('');
+    return `<div class="goal-box"><h4>★ 목표: ${goals.map((id) => ENGRAVINGS[id].name).join(', ')}</h4><div class="list">${rows}</div>
+      <p class="muted">필드에서도 화면 오른쪽에 목표 잔향 진행이 표시됩니다.</p></div>`;
+  }
+
+  // 지금 빌드 기준 배지: 시너지 발동, 조건 충족, 스타일 일치
+  badges(id, s, b) {
+    const e = ENGRAVINGS[id], out = [];
+    for (const t of e.tags) {
+      const n = (b.tags[t] || 0) + 1;
+      const tier = TAGS[t]?.tiers.find((x) => x.n === n);
+      if (tier) out.push(`<span class="badge syn" style="--c:${TAGS[t].color}">▲ ${TAGS[t].name} ${n}개 발동</span>`);
+    }
+    const ctx = { stats: b.stats, tags: b.tags, race: s.race, extreme: b.extreme };
+    const conds = e.effects.filter((x) => x.when);
+    if (conds.length) {
+      const ok = conds.filter((x) => evalCond(x.when, ctx)).length;
+      out.push(`<span class="badge ${ok === conds.length ? 'ok' : ok ? 'part' : 'no'}">조건 ${ok}/${conds.length}</span>`);
+    }
+    const st = STYLES[s.style];
+    if (st && e.tags.some((t) => st.tags.includes(t))) out.push(`<span class="badge style">${st.name}</span>`);
+    return out.join('');
   }
 
   engravingCard(id, s, b) {
@@ -158,12 +212,15 @@ export class Hub {
     const stats = Object.entries(e.stats).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k]).name} ${v > 0 ? '+' : ''}${v}`).join(', ');
     const effs = e.effects.map((x) => `<li>${x.when ? `<em>[${esc(condText(x.when))}]</em> ` : ''}${esc(x.text)}</li>`).join('');
     const canEquip = owned > equipped;
-    const prev = canEquip || owned ? this.preview(s, (lo) => { lo.engravings = { ...lo.engravings, [s.slots[e.slot] && RACES[s.race].extraSlot && !s.slots.extra ? 'extra' : e.slot]: id }; }) : '';
-    return `<div class="card" style="--g:${GRADES[e.grade].color}">
-      <div class="c-head"><b>${e.name}</b><span class="grade">${GRADES[e.grade].name}</span></div>
+    const prev = canEquip || owned ? this.preview(s, (lo) => { lo.engravings = { ...lo.engravings, [e.slot]: id }; }) : '';
+    const goal = (s.goals || []).includes(id);
+    const summary = e.effects.map((x) => x.text).join(' · ');
+    return `<div class="card ${goal ? 'goal' : ''}" style="--g:${GRADES[e.grade].color}">
+      <div class="c-head"><b>${e.name}</b><span><button class="star ${goal ? 'on' : ''}" data-act="goal" data-id="${id}" title="목표로 찜">★</button> <span class="grade">${GRADES[e.grade].name}</span></span></div>
       <div class="c-meta">${SLOT_INFO[e.slot]} · 부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
-      <div class="c-stats">${stats}</div>
-      <ul class="c-eff">${effs}</ul>
+      <div class="badges">${this.badges(id, s, b)}</div>
+      <div class="c-sum">${esc(summary)}</div>
+      <details><summary>자세히</summary><div class="c-stats">${stats}</div><ul class="c-eff">${effs}</ul></details>
       <div class="recipe">${recipe}</div>
       ${prev}
       <div class="c-act">
@@ -195,7 +252,7 @@ export class Hub {
       return `<div class="card ${has ? 'owned' : ''}"><div class="c-head"><b>${it.name}</b>${it.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
         ${w}${req}<div class="c-stats">${stats || '&nbsp;'}</div><ul class="c-eff">${effs}</ul>${prev}<div class="c-act">${btn}</div></div>`;
     };
-    const bySlot = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl).map(card).join('');
+    const bySlot = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl && (!ITEMS[id].starter && id !== 'rustySword' || s.items.includes(id))).map(card).join('');
     return `
       <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots">${gearRow}</div></section>
       <section class="panel"><h3>무기</h3><div class="cards">${bySlot('weapon')}</div>
@@ -305,8 +362,7 @@ export class Hub {
       }
       case 'equipE': {
         const e = ENGRAVINGS[id];
-        let target = e.slot;
-        if (s.slots[target] && RACES[s.race].extraSlot && !s.slots.extra) target = 'extra';
+        const target = e.slot;
         s.slots[target] = id;
         this.toast(`${SLOT_INFO[target]}에 ${e.name} 장착`);
         break;
@@ -319,6 +375,13 @@ export class Hub {
       }
       case 'equipG': s.gear[slot] = id; break;
       case 'unequipG': delete s.gear[slot]; break;
+      case 'filter': this.altarFilter = id; break;
+      case 'goal': {
+        s.goals ||= [];
+        const i = s.goals.indexOf(id);
+        if (i >= 0) s.goals.splice(i, 1); else { s.goals.push(id); this.toast(`${ENGRAVINGS[id].name}을(를) 목표로 찜했습니다`); }
+        break;
+      }
       case 'hunt': return this.onStartRun(id);
       case 'close': return this.onClose();
       case 'copyCode': $('#buildCode').select(); try { navigator.clipboard.writeText($('#buildCode').value); } catch { /* 무시 */ } this.toast('빌드 코드를 복사했습니다'); return;
@@ -351,7 +414,8 @@ function zoneOfEcho(eid) {
 }
 
 function w2t(w) {
-  return `${w.kind === 'melee' ? '근접 (받는 피해 -20%, 적중 시 적 공격 끊기)' : '원거리 (쏘는 동안 이동 -35%, 근거리 피해 -30%, 먼 거리 +10%)'} · ${w.dmg === 'phys' ? '물리' : '마법'} · 피해 ×${w.mul} · 속도 ${w.speed}${w.count ? ` · ${w.count}발` : ''}${w.pierce ? ` · 관통 ${w.pierce}` : ''}`;
+  const sk = SKILLS[w.skill];
+  return `${sk ? `Q: ${sk.name} (${sk.desc}) · ` : ''}${w.mana ? `마나 ${w.mana} · ` : ''}${w.kind === 'melee' ? '근접 (받는 피해 -20%, 적중 시 적 공격 끊기)' : '원거리 (쏘는 동안 이동 -35%, 근거리 피해 -30%, 먼 거리 +10%)'} · ${w.dmg === 'phys' ? '물리' : '마법'} · 피해 ×${w.mul} · 속도 ${w.speed}${w.count ? ` · ${w.count}발` : ''}${w.pierce ? ` · 관통 ${w.pierce}` : ''}`;
 }
 
 // 종족 선택 화면
@@ -362,9 +426,10 @@ export function renderRaceSelect(root, onPick) {
     <div class="races">${Object.entries(RACES).map(([id, r]) => `
       <button class="race" data-race="${id}">
         <canvas width="96" height="120" data-race="${id}"></canvas>
-        <b>${r.name}</b><small>${r.passive}</small>
+        <b>${r.name}</b><small>${r.origin} · ${r.passive}</small>
         <div class="mini-stats">${BASE_STATS.map((k) => `<span><i>${STAT_INFO[k].short}</i><em style="width:${r.base[k] * 4}px"></em>${r.base[k]}</span>`).join('')}</div>
         <p>${r.desc}</p>
+        <p class="sw"><span class="up">강점 ${r.strong}</span><span class="down">약점 ${r.weak}</span></p>
       </button>`).join('')}</div>
     <p class="muted credit">그래픽: 16x16 DungeonTileset II by 0x72 (CC0) · 효과음: Kenney (CC0) · 글꼴: 갈무리, Noto Sans KR (OFL)</p></div>`;
   root.querySelectorAll('.race').forEach((b) => b.addEventListener('click', () => onPick(b.dataset.race)));
