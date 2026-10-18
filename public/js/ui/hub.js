@@ -1,6 +1,8 @@
 // 마을 화면 (DOM). 캐릭터 / 공명 제단 / 상점 / 사냥터 / 도감
 import { BASE_STATS, STAT_INFO, SPECIAL_INFO, SLOT_INFO, GRADES, TIERS } from '../data/stats.js';
-import { RACES, xpToNext } from '../data/races.js';
+import { RACES } from '../data/races.js';
+import { codexPoints, levelFor, codexTotals, monsterStage, STAGE_KILLS, zonePlaces, placeKey } from '../data/codex.js';
+import { JOURNALS, PEOPLE, STORY_ITEMS } from '../data/story.js';
 import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
 import { ITEMS, STYLES, WEAPON_SKILLS } from '../data/items.js';
 import { MONSTERS, ECHOES, ZONES } from '../data/monsters.js';
@@ -37,11 +39,11 @@ export class Hub {
   render() {
     const s = this.s, b = computeBuild(toLoadout(s));
     this.b = b;
-    const tabs = [['char', '캐릭터'], ['altar', '공명 제단'], ['shop', '대장간'], ['quest', '의뢰'], ['hunt', '관문 정보'], ['codex', '서고']];
+    const tabs = [['char', '캐릭터'], ['altar', '공명 제단'], ['shop', '대장간'], ['quest', '의뢰'], ['hunt', '관문 정보'], ['codex', '도감']];
     this.root.innerHTML = `
       <header class="hub-top">
         <div class="title">각인의 탑</div>
-        <div class="who">${RACES[s.race].name} · Lv ${s.level} <span class="xp"><i style="width:${(s.xp / xpToNext(s.level)) * 100}%"></i></span> <span class="gold">◆ ${s.gold} 골드</span></div>
+        <div class="who">${RACES[s.race].name} · Lv ${s.level} ${(() => { const lv = levelFor(codexPoints(s)); return `<span class="xp" title="도감 점수 ${lv.into}/${lv.need} — 다음 레벨까지"><i style="width:${(lv.into / lv.need) * 100}%"></i></span>`; })()} <span class="gold">◆ ${s.gold} 골드</span></div>
         <button class="close" data-act="close">닫기 ✕</button>
         <nav>${tabs.map(([k, n]) => `<button data-tab="${k}" class="${this.tab === k ? 'on' : ''}">${n}${k === 'char' && s.points ? ` <b class="dot">${s.points}</b>` : ''}${k === 'quest' && (s.quests || []).some((q) => q.done) ? ' <b class="dot">!</b>' : ''}</button>`).join('')}</nav>
       </header>
@@ -164,7 +166,7 @@ export class Hub {
   curSkills() { return computeBuild(toLoadout(this.s)).skills; }
 
   skillPanel(s, b) {
-    const keys = ['Q', 'R', 'F'];
+    const keys = ['Q', 'E', 'R', 'F'];
     const resName = RACES[s.race].res.name;
     const all = CLASSES[b.cls].skills.map((id) => [id, SKILLS[id]]);
     const card = (id, sk, locked) => {
@@ -197,7 +199,7 @@ export class Hub {
     return `<section class="panel">
       <h3>클래스 <small>언제든 무료로 바꿀 수 있어요 · 바꾸면 그 클래스의 시작 무기를 받습니다</small></h3>
       <div class="cls-row">${clsRow}</div>
-      <h3>스킬 <small>최대 3개 · Q / R / F (모바일은 화면 버튼) · 준비 → 강화 → 마무리 순서로 쓰면 강해져요</small></h3>
+      <h3>스킬 <small>최대 4개 · Q / E / R / F (모바일은 화면 버튼) · 스킬마다 자원 소모가 달라요</small></h3>
       <div class="skill-tools">
         <label class="toggle"><input type="checkbox" data-act="autoAim" ${auto ? 'checked' : ''}> 자동 조준 <small>(T) 강한 스킬은 체력 높은 적, 범위 스킬은 적이 많은 곳, 마무리는 약한 적을 노립니다</small></label>
         <button class="sm" data-act="practice">연습 모드 · 모든 스킬 써 보기</button>
@@ -334,20 +336,52 @@ export class Hub {
 
   // ───── 도감 ─────
   tab_codex(s) {
-    const reactions = Object.entries(REACTIONS).map(([id, r]) => s.codex.reactions[id]
-      ? `<div class="li on"><b>${r.name}</b> (${r.recipe}) ${r.desc}</div>`
-      : '<div class="li off">??? 아직 발견하지 못한 원소 반응</div>').join('');
-    const mons = Object.entries(MONSTERS).map(([id, m]) => s.codex.kills[id]
-      ? `<div class="li"><b>${m.name}</b> 처치 ${s.codex.kills[id]} · HP ${m.hp} · 물저 ${m.pres} / 마저 ${m.mres} · ${m.type === 'mag' ? '마법' : '물리'} 공격</div>`
-      : '<div class="li off">???</div>').join('');
-    const tags = Object.values(TAGS).map((t) => `<div class="li"><span class="tag" style="--c:${t.color}">${t.name}</span> ${t.tiers.map((x) => `${x.n}개: ${x.text}`).join(' / ')}</div>`).join('');
-    return `<div class="cols">
-      <section class="panel"><h3>원소 반응</h3><div class="list">${reactions}</div>
-      <p class="muted">상태이상이 겹치면 반응이 일어납니다. 지속 피해(화상·중독·출혈)는 적의 저항을 무시합니다.</p>
-      <h3>몬스터</h3><div class="list">${mons}</div></section>
-      <section class="panel"><h3>고대 석판 기록</h3><div class="list">${(s.codex.lore || []).map((t) => `<div class="li lore">${esc(t)}</div>`).join('') || '<div class="li off">필드의 고대 석판을 찾아 읽어 보세요.</div>'}</div>
-      <h3>태그 시너지</h3><div class="list">${tags}</div>
-      <p class="muted">화염과 냉기를 둘 다 4개 이상 모으면 서로 상쇄되어 둘 다 꺼집니다.</p></section></div>`;
+    const c = s.codex, f = s.story?.flags || {}, items = s.story?.items || {};
+    const pts = codexPoints(s), lv = levelFor(pts), tot = codexTotals(s);
+    const sec = this.codexSec ||= 'monsters';
+    const head = `<div class="codex-head">
+      <div><b>도감 점수 ${pts}</b> · 다음 레벨까지 ${lv.need - lv.into}점 <span class="bar"><i style="width:${(lv.into / lv.need) * 100}%"></i></span></div>
+      <p class="muted">새 몬스터를 알아가고, 장소를 찾고, 기록을 읽고, 사람의 사연을 끝까지 들으면 도감이 채워지고 레벨이 오릅니다.</p>
+      <nav class="codex-nav">${[['monsters', `몬스터 ${tot.monsters.done}/${tot.monsters.all}`], ['places', `장소 ${tot.places.done}/${tot.places.all}`], ['records', `기록 ${tot.records.done}/${tot.records.all}`], ['people', `사람 ${tot.people.done}/${tot.people.all}`], ['etc', '원소 반응 · 태그']]
+        .map(([k, n]) => `<button class="sm ${sec === k ? 'on' : 'ghost'}" data-act="codexSec" data-id="${k}">${n}</button>`).join('')}</nav></div>`;
+    let body = '';
+    if (sec === 'monsters') {
+      const dropsOf = (id) => Object.values(STORY_ITEMS).filter((it) => it.from[id]).map((it) => it.name);
+      body = ZONES.map((z) => {
+        const ids = [...z.pool, z.elite];
+        if (z.id === 'cave') ids.push('treasureGoblin');
+        return `<h4>${z.floor}층 · ${z.name}</h4><div class="list">${ids.map((id) => {
+          const m = MONSTERS[id], n = c.kills?.[id] || 0, st = monsterStage(id, n);
+          if (!st) return '<div class="li off">??? <small>아직 만나지 못했다</small></div>';
+          const stars = '★'.repeat(st) + '☆'.repeat(3 - st);
+          const next = st < 3 ? ` · 다음 단계까지 ${STAGE_KILLS[st] - n}마리` : ' · <b>완성</b>';
+          const info = [`HP ${m.hp} · ${m.type === 'mag' ? '마법' : '물리'} 공격 ${m.atk}`];
+          if (st >= 2) info.push(`물리 저항 ${m.pres} / 마법 저항 ${m.mres}${m.status ? ` · ${({ burn: '화상', poison: '중독', bleed: '출혈', chill: '냉기' })[m.status]}을 건다` : ''}`, `떨어뜨림: ${[ECHOES[m.echo.id].name, ...dropsOf(id)].join(', ')}`);
+          else info.push('<span class="muted">5마리를 잡으면 약점과 떨어뜨리는 것이 기록된다</span>');
+          return `<div class="li ${st >= 3 ? 'on' : ''}"><b>${m.name}</b> <span class="stars">${stars}</span> <small>처치 ${n}${next}</small><br><small>${info.join('<br>')}</small></div>`;
+        }).join('')}</div>`;
+      }).join('');
+    } else if (sec === 'places') {
+      body = ZONES.map((z) => `<h4>${z.floor}층 · ${z.name}</h4><div class="list">${zonePlaces(z).map((n) => c.places?.[placeKey(z.id, n)] ? `<div class="li on"><b>${n}</b></div>` : '<div class="li off">??? <small>아직 찾지 못한 장소</small></div>').join('')}</div>`).join('');
+    } else if (sec === 'records') {
+      body = `<h4>등반가 세린의 일지</h4><div class="list">${Object.entries(JOURNALS).map(([id, j]) => c.journals?.[id] ? `<details class="li on"><summary><b>${j.title}</b> <small>${j.where}</small></summary><p class="journal">${esc(j.text).replace(/\n/g, '<br>')}</p></details>` : '<div class="li off">??? <small>찢겨 나간 일지 한 장</small></div>').join('')}</div>
+        <h4>고대 석판</h4><div class="list">${(c.lore || []).map((t) => `<div class="li lore">${esc(t)}</div>`).join('') || '<div class="li off">필드의 고대 석판을 찾아 읽어 보세요.</div>'}</div>
+        <h4>가지고 있는 이야기 물건</h4><div class="list">${Object.entries(items).filter(([, n]) => n > 0).map(([id, n]) => `<div class="li"><b style="color:${STORY_ITEMS[id].color}">${STORY_ITEMS[id].name}</b>${n > 1 ? ` ×${n}` : ''} <small>${STORY_ITEMS[id].desc}</small></div>`).join('') || '<div class="li off">없음</div>'}</div>`;
+    } else if (sec === 'people') {
+      body = `<div class="list">${Object.values(PEOPLE).map((p) => {
+        const done = p.steps.filter((st) => f[st]).length;
+        if (!done) return '<div class="li off">??? <small>아직 만나지 못한 사람</small></div>';
+        return `<div class="li ${done === p.steps.length ? 'on' : ''}"><b>${p.name}</b> <small>${p.title} · 사연 ${done}/${p.steps.length}</small><br><small>${p.summary.slice(0, done).join('<br>')}</small></div>`;
+      }).join('')}</div>`;
+    } else {
+      const reactions = Object.entries(REACTIONS).map(([id, r]) => s.codex.reactions?.[id]
+        ? `<div class="li on"><b>${r.name}</b> (${r.recipe}) ${r.desc}</div>`
+        : '<div class="li off">??? 아직 발견하지 못한 원소 반응</div>').join('');
+      const tags = Object.values(TAGS).map((t) => `<div class="li"><span class="tag" style="--c:${t.color}">${t.name}</span> ${t.tiers.map((x) => `${x.n}개: ${x.text}`).join(' / ')}</div>`).join('');
+      body = `<h4>원소 반응</h4><div class="list">${reactions}</div><p class="muted">상태이상이 겹치면 반응이 일어납니다. 지속 피해(화상·중독·출혈)는 적의 저항을 무시합니다.</p>
+        <h4>태그 시너지</h4><div class="list">${tags}</div><p class="muted">화염과 냉기를 둘 다 4개 이상 모으면 서로 상쇄되어 둘 다 꺼집니다.</p>`;
+    }
+    return `<section class="panel codex">${head}${body}</section>`;
   }
 
   // 장착하면 수치가 어떻게 바뀌는지 미리보기
@@ -378,7 +412,7 @@ export class Hub {
     const cards = s.quests.map((q) => `<div class="card quest ${q.done ? 'done' : ''}">
       <div class="c-head"><b>${q.text}</b><span class="grade">${zn(q.zone)}</span></div>
       <div class="qbar"><i style="width:${(q.progress / q.n) * 100}%"></i><span>${q.progress} / ${q.n}${q.kind === 'explore' ? '%' : ''}</span></div>
-      <div class="c-meta">보상: 골드 ${q.reward.gold} · 경험치 ${q.reward.xp}</div>
+      <div class="c-meta">보상: 골드 ${q.reward.gold}</div>
       <div class="c-act"><button class="sm" data-act="claim" data-id="${q.id}" ${q.done ? '' : 'disabled'}>${q.done ? '보상 받기' : '진행 중'}</button></div>
     </div>`).join('');
     return `<section class="panel"><h3>의뢰 게시판 <small>의뢰인 마르코: "탑 아래 사람들이 부탁한 일들이오."</small></h3>
@@ -399,7 +433,7 @@ export class Hub {
     const { act, k, id, slot } = t.dataset;
     sfx(act === 'craft' ? 'reaction' : act === 'buy' ? 'coin' : act === 'claim' ? 'levelup' : act === 'close' ? 'close' : 'click', { vol: 0.5 });
     switch (act) {
-      case 'claim': { const r = claimQuest(s, id); if (r) this.toast(`보상: 골드 ${r.q.reward.gold} · 경험치 ${r.q.reward.xp}${r.ups ? ' · 레벨 업!' : ''}`); break; }
+      case 'claim': { const r = claimQuest(s, id); if (r) this.toast(`보상: 골드 ${r.q.reward.gold}`); break; }
       case 'alloc': if (s.points > 0) { s.alloc[k] = (s.alloc[k] || 0) + (ev.shiftKey ? Math.min(5, s.points) : 1); s.points -= ev.shiftKey ? Math.min(5, s.points) : 1; } break;
       case 'unalloc': if (s.alloc[k]) { s.alloc[k]--; s.points++; } break;
       case 'respec': for (const v of Object.values(s.alloc)) s.points += v; s.alloc = {}; this.toast('스탯 배분을 초기화했습니다'); break;
@@ -422,7 +456,7 @@ export class Hub {
       case 'skillOn': {
         const cur = [...this.curSkills()];
         if (cur.includes(id)) break;
-        if (cur.length >= 3) cur[2] = id; else cur.push(id);
+        if (cur.length >= 4) cur[3] = id; else cur.push(id);
         s.skills = cur; break;
       }
       case 'setCls': {
@@ -446,6 +480,7 @@ export class Hub {
       case 'equipG': s.gear[slot] = id; break;
       case 'unequipG': delete s.gear[slot]; break;
       case 'filter': this.altarFilter = id; break;
+      case 'codexSec': this.codexSec = id; break;
       case 'goal': {
         s.goals ||= [];
         const i = s.goals.indexOf(id);

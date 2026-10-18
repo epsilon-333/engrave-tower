@@ -3,7 +3,7 @@
 import { createRng } from './rng.js';
 
 export const TILE = 16;
-export const T_FLOOR = 0, T_WALL = 1, T_LIQUID = 2, T_CRACK = 3, T_BUILD = 4;
+export const T_FLOOR = 0, T_WALL = 1, T_LIQUID = 2, T_CRACK = 3, T_BUILD = 4, T_GATE = 5; // T_GATE: 길을 막는 것(덩굴·철창·바위) — 못 지나가지만 바닥으로 그린다
 const DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 export function generateField(zone, seed, depth = 0) {

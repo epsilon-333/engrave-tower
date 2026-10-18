@@ -12,9 +12,10 @@ export function setupTouch({ input, getWorld, onMenu, onBag }) {
     <button class="tb s1" data-btn="s1">1</button>
     <button class="tb s2" data-btn="s2">2</button>
     <button class="tb s3" data-btn="s3">3</button>
+    <button class="tb s4" data-btn="s4">4</button>
     <button class="tb wsk" data-btn="wskill">무기</button>
     <button class="tb dash" data-btn="dash">대시</button>
-    <button class="tb act" data-btn="interact" hidden>E</button>
+    <button class="tb act" data-btn="interact" hidden>G</button>
     <button class="tb menu" data-btn="menu" aria-label="메뉴">≡</button>
     <button class="tb bag" data-btn="bag" hidden>캐릭터</button>`;
   document.getElementById('game').appendChild(root);
@@ -55,8 +56,9 @@ export function setupTouch({ input, getWorld, onMenu, onBag }) {
       if (k === 'menu') return onMenu();
       if (k === 'bag') return onBag();
       input[k] = true;
+      if (/^s\d$/.test(k)) input['h' + k[1]] = true;
     });
-    const up = () => b.classList.remove('down');
+    const up = () => { b.classList.remove('down'); const k = b.dataset.btn; if (/^s\d$/.test(k)) input['h' + k[1]] = false; };
     b.addEventListener('pointerup', up);
     b.addEventListener('pointercancel', up);
   }
@@ -92,9 +94,9 @@ export function setupTouch({ input, getWorld, onMenu, onBag }) {
       }
       // 상황에 따라 보이는 버튼
       root.querySelector('[data-btn=interact]').hidden = !w.near;
-      root.querySelector('[data-btn=interact]').textContent = w.near ? (w.near.kind === 'chest' ? '열기' : w.near.kind === 'gate' ? '입장' : '확인') : 'E';
+      root.querySelector('[data-btn=interact]').textContent = w.near ? (w.near.kind === 'chest' ? '열기' : w.near.kind === 'gate' ? '입장' : '확인') : 'G';
       const sks = w.b.skills || [];
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 4; i++) {
         const el = root.querySelector(`[data-btn=s${i + 1}]`), id = sks[i];
         el.hidden = !id;
         if (!id) continue;

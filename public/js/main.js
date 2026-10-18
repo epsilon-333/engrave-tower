@@ -4,7 +4,10 @@ import { computeBuild } from './sim/build.js';
 import { Renderer } from './render/renderer.js';
 import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
-import { newSave, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook } from './save.js';
+import { newSave, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel } from './save.js';
+import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
+import { codexPoints, levelFor } from './data/codex.js';
+import { TILE } from './sim/mapgen.js';
 import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, cloud, isClaudePage, login, register, logout, errorText } from './cloud.js';
 import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
 import { RACES, RACE_MIGRATE } from './data/races.js';
@@ -139,6 +142,9 @@ function migrateSave(sv) {
     if (!sv.items.includes(st)) sv.items.push(st);
   }
   if (sv.skills) sv.skills = sv.skills.filter((id) => id === 'weapon' || SKILLS[id]);
+  sv.story ||= newStory(); sv.story.items ||= {}; sv.story.flags ||= {};
+  sv.codex ||= {}; sv.codex.kills ||= {}; sv.codex.places ||= {}; sv.codex.journals ||= {}; sv.codex.lore ||= [];
+  syncLevel(sv);
   return sv;
 }
 
@@ -148,6 +154,7 @@ function enterPlaza(first) {
   { const el = document.getElementById('practicePanel'); if (el) el.hidden = true; }
   world = new World({ build: buildNow(), mode: 'plaza', seed: 1, map: plazaMap });
   world.questReady = (save.quests || []).some((q) => q.done);
+  if (save.story?.flags.pinoDone) world.objects.push({ kind: 'npc', id: 'pinoPlaza', art: 'pino', x: 16 * TILE + 8, y: 13 * TILE + 8, label: '지도 제작자 피노와 이야기', reusable: true });
   renderer.setWorld(world);
   startMusic('plaza');
   startLoop();
@@ -160,7 +167,9 @@ function enterZone(id, depth = 0, carry = null) {
   if (save.zoneSeeds[id] == null) { save.zoneSeeds[id] = ((save.seed >>> 0) + z.floor * 7919 + Math.floor(Math.random() * 1e6)) >>> 0; writeSave(save); }
   // 지하층은 매번 새로 생성 (기억은 1층만)
   const seed = depth ? (save.zoneSeeds[id] + depth * 104729 + Math.floor(Math.random() * 1e6)) >>> 0 : save.zoneSeeds[id];
-  world = new World({ build: buildNow(), mode: 'field', zoneId: id, seed, depth, memory: depth ? null : save.zoneMemory[id] });
+  world = new World({ build: buildNow(), mode: 'field', zoneId: id, seed, depth, memory: depth ? null : save.zoneMemory[id], story: save.story, codex: save.codex });
+  world.mapKnown = id === 'cave' && !depth && !!save.story.flags.pinoMap;
+  world.codexStart = carry?.codexStart ?? codexPoints(save);
   if (carry) {
     world.loot = carry.loot; world.discovered = carry.discovered;
     world.player.hp = Math.min(carry.hp, world.d.maxHp); world.player.mana = carry.mana; world.player.aura = carry.aura;
@@ -184,7 +193,7 @@ function practiceBuild() {
   return computeBuild({ race: c.race, cls: practice.cls, level: 20, allSkills: true, alloc: { str: 18, mag: 18, agi: 10, vit: 10 }, engravings: {}, gear: { weapon: c.weapons[1] }, skills: practice.skills });
 }
 function enterPractice() {
-  practice.cls ||= save.cls; practice.skills ||= CLASSES[practice.cls].skills.slice(0, 3);
+  practice.cls ||= save.cls; practice.skills ||= CLASSES[practice.cls].skills.slice(0, 4);
   world = new World({ build: practiceBuild(), mode: 'field', zoneId: 'cave', seed: 4242, practice });
   world.explored.fill(1);
   renderer.setWorld(world);
@@ -207,7 +216,7 @@ function showPracticePanel() {
   const races = [...new Set(Object.values(CLASSES).map((x) => x.race))];
   el.innerHTML = `<details open><summary>연습 모드 · ${c.name}</summary>
     <select data-pr="cls">${races.map((r) => `<optgroup label="${RACES[r].name}">${RACE_CLASSES(r).map((id) => `<option value="${id}" ${id === practice.cls ? 'selected' : ''}>${CLASSES[id].name}</option>`).join('')}</optgroup>`).join('')}</select>
-    ${[0, 1, 2].map((i) => `<label>${'QRF'[i]} <select data-pr="s${i}">${c.skills.map((sid) => `<option value="${sid}" ${practice.skills[i] === sid ? 'selected' : ''}>${SKILLS[sid].name}</option>`).join('')}</select></label>`).join('')}
+    ${[0, 1, 2, 3].map((i) => `<label>${'QERF'[i]} <select data-pr="s${i}">${c.skills.map((sid) => `<option value="${sid}" ${practice.skills[i] === sid ? 'selected' : ''}>${SKILLS[sid].name}</option>`).join('')}</select></label>`).join('')}
     <label class="ck"><input type="checkbox" data-pr="infRes" ${practice.infRes ? 'checked' : ''}> 자원 무한</label>
     <label class="ck"><input type="checkbox" data-pr="noCd" ${practice.noCd ? 'checked' : ''}> 재사용 대기 없음</label>
     <label class="ck"><input type="checkbox" data-pr="auto" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
@@ -215,7 +224,7 @@ function showPracticePanel() {
     <button class="sm ghost" data-pr="exit">연습 끝내기</button></details>`;
   el.onchange = (e) => {
     const k = e.target.dataset.pr;
-    if (k === 'cls') { practice.cls = e.target.value; practice.skills = CLASSES[practice.cls].skills.slice(0, 3); }
+    if (k === 'cls') { practice.cls = e.target.value; practice.skills = CLASSES[practice.cls].skills.slice(0, 4); }
     else if (k?.[0] === 's') practice.skills[+k[1]] = e.target.value;
     else if (k === 'infRes' || k === 'noCd') practice[k] = e.target.checked;
     else if (k === 'auto') setAutoAim(e.target.checked);
@@ -249,9 +258,9 @@ function showTutorial() {
       <p><b>3.</b> 광장의 <b>공명 제단</b>(왼쪽 위)에서 잔향으로 각인을 새기고, <b>수련 교관</b>(오른쪽 아래)에게 스탯을 배분하세요.</p>
       <p><b>4.</b> 강한 각인보다 <b>맞물리는 조합</b>이 이깁니다. 스탯 하나를 높이 올리면 각성이 열려요.</p>
       <p><b>5.</b> 뭘 할지 모르겠다면 가운데 <b>의뢰 게시판</b>을 확인하세요.</p>
-      <p><b>★</b> 종족마다 스킬 6개 중 <b>3개</b>를 공명 제단에서 골라 Q·R·F로 씁니다. <b>준비 → 강화 → 마무리</b> 순서로 이으면 강해져요.</p>
+      <p><b>★</b> 종족마다 스킬 6개 중 <b>4개</b>를 공명 제단에서 골라 Q·E·R·F로 씁니다. 스킬마다 쓰는 자원이 다르니 계산하며 쓰세요. <b>준비 → 강화 → 마무리</b> 순서로 이으면 강해져요.</p>
       <p><b>6.</b> 필드에는 <b>야영지</b>(잔향 맡기기), <b>떠돌이 상인</b>, <b>낡은 제단</b>(축복과 대가), 가장 깊은 곳의 <b>아래층 계단</b>이 있어요.</p>
-      <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · Q·R·F(1·2·3) 스킬 · T 자동 조준 · 우클릭 무기 기술 · Space 대시(무적) · E 상호작용 · C 캐릭터 · Esc 메뉴</p>
+      <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · Q·E·R·F(1·2·3·4) 스킬 · T 자동 조준 · 우클릭 무기 기술 · Space 대시(무적) · G 상호작용 · C 캐릭터 · Esc 메뉴</p>
       ${touch ? '<p class="keys">모바일: 왼쪽 조이스틱 이동 · 오른쪽 조이스틱을 누르면 공격(밀면 그 방향 조준, 그냥 누르면 가까운 적 자동 조준) · 버튼으로 스킬·대시·상호작용</p>' : ''}
       <p class="muted">빨갛게 번쩍이는 적은 곧 공격합니다. 대시로 피하세요!</p>
     </div>
@@ -311,7 +320,7 @@ function endRun(kind) {
     <h2>${title}</h2>
     <p class="muted">${kind === 'clear' ? '잔향을 모두 가져왔다.' : kind === 'retreat' ? '잔향의 70%만 지켰다.' : '잔향의 절반을 잃었다.'}${bank && kind !== 'clear' ? ' (야영지에 맡긴 몫은 지켰다)' : ''}${world.depth ? ` · 도달: 지하 ${world.depth + 1}층` : ''}</p>
     <div class="echoes">${echoes}</div>
-    <p>골드 +${res.gold} · 경험치 +${res.xp} · 상자 ${world.loot.chests}개 · 탐험 ${Math.round(world.exploredPct() * 100)}%</p>
+    <p>골드 +${res.gold} · 도감 +${Math.max(0, codexPoints(save) - (world.codexStart ?? codexPoints(save)))}점 · 상자 ${world.loot.chests}개 · 탐험 ${Math.round(world.exploredPct() * 100)}%</p>
     ${res.ups ? `<p class="lvup">레벨 업! Lv ${save.level} · 스탯 포인트 +${res.ups * 3} (수련 교관에게 가세요)</p>` : ''}
     ${world.discovered.size ? '<p class="lvup">새로 발견한 원소 반응이 서고에 기록되었습니다.</p>' : ''}
     ${done ? `<p class="lvup">완료한 의뢰 ${done}개! 게시판에서 보상을 받으세요.</p>` : ''}
@@ -354,21 +363,22 @@ function escAction() {
 
 // ───── 입력 ─────
 const keys = new Set();
-const input = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, attack: false, dash: false, interact: false, skill: false, s1: false, s2: false, s3: false, wskill: false };
+const input = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, attack: false, dash: false, interact: false, skill: false, s1: false, s2: false, s3: false, s4: false, wskill: false };
 let mouseCX = innerWidth / 2, mouseCY = innerHeight / 2;
 addEventListener('keydown', (e) => {
   unlockAudio();
   if (!world || gameEl.hidden) return;
   if (e.code === 'Escape') { e.preventDefault(); return escAction(); }
-  if (!panelEl.hidden && (e.code === 'KeyE' || e.code === 'KeyC')) return closePanel();
-  if (modal && (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); return modal(); }
+  if (!panelEl.hidden && (e.code === 'KeyG' || e.code === 'KeyC')) return closePanel();
+  if (modal && (e.code === 'KeyG' || e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); return modal(); }
   if (paused) return;
   keys.add(e.code);
   if (e.code === 'Space') { input.dash = true; e.preventDefault(); }
-  if (e.code === 'KeyE') input.interact = true;
+  if (e.code === 'KeyG') input.interact = true;
   if (e.code === 'KeyQ' || e.code === 'Digit1') input.s1 = true;
-  if (e.code === 'KeyR' || e.code === 'Digit2') input.s2 = true;
-  if (e.code === 'KeyF' || e.code === 'Digit3') input.s3 = true;
+  if (e.code === 'KeyE' || e.code === 'Digit2') input.s2 = true;
+  if (e.code === 'KeyR' || e.code === 'Digit3') input.s3 = true;
+  if (e.code === 'KeyF' || e.code === 'Digit4') input.s4 = true;
   if (e.code === 'KeyT') { setAutoAim(!getAutoAim()); renderer.banner = { text: getAutoAim() ? '자동 조준 켜짐' : '자동 조준 꺼짐', t: 1.2, color: '#7ad8ff' }; if (world.practice) showPracticePanel(); }
   if (e.code === 'KeyC' && world.mode === 'plaza') openPanel('char');
 });
@@ -386,6 +396,9 @@ function readInput() {
   if (touch) { touch.apply(); return; }
   input.moveX = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
   input.moveY = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0);
+  // 스킬 키를 누르고 있는지 (차지·돌격)
+  input.h1 = keys.has('KeyQ') || keys.has('Digit1'); input.h2 = keys.has('KeyE') || keys.has('Digit2');
+  input.h3 = keys.has('KeyR') || keys.has('Digit3'); input.h4 = keys.has('KeyF') || keys.has('Digit4');
   const p = renderer.toWorld(mouseCX, mouseCY);
   input.aimX = p.x; input.aimY = p.y;
 }
@@ -428,8 +441,36 @@ function showMerchant(zoneId) {
   render();
 }
 
+// 사람과 이야기: 대사를 한 줄씩 넘기고, 끝나면 물건을 주고받고 사연이 나아간다
+function talkTo(id) {
+  const st = save.story;
+  const talk = id === 'pinoPlaza' ? pinoPlazaTalk() : pinoTalk(st);
+  let i = 0;
+  const finish = () => {
+    for (const [k, n] of Object.entries(talk.take || {})) st.items[k] = Math.max(0, (st.items[k] || 0) - n);
+    for (const [k, n] of Object.entries(talk.give || {})) st.items[k] = (st.items[k] || 0) + n;
+    if (talk.set) {
+      st.flags[talk.set] = true;
+      if (talk.set === 'pinoMap') { world.mapKnown = true; renderer.knowMap(world); }
+      if (talk.set === 'pinoDone') { const o = world.objects.find((x) => x.kind === 'npc' && x.id === 'pino'); if (o) { o.leaving = 1; o.reusable = false; o.opened = true; } }
+      for (const k of Object.keys(talk.give || {})) renderer.banner = { text: `${STORY_ITEMS[k].name}을(를) 받았다`, sub: STORY_ITEMS[k].desc, t: 3.5, color: STORY_ITEMS[k].color };
+      world.signals.push({ t: 'codex' });
+    }
+    writeSave(save);
+  };
+  const show = () => {
+    const last = i >= talk.lines.length - 1;
+    sfx('select', { vol: 0.4 });
+    showModal(`<div class="talk"><div class="who">지도 제작자 피노</div><p>${esc(talk.lines[i])}</p></div>
+      <button data-next>${last ? (talk.take ? '건네준다' : '알겠다') : '계속 ▸'}</button>`, () => { if (!last) { i++; show(); } else { overlay.hidden = true; paused = false; modal = null; finish(); } });
+    overlay.querySelector('[data-next]').onclick = () => modal();
+  };
+  show();
+}
+
 function handleSignals() {
-  for (const s of world.signals) {
+  // 먼저 비워 둔다: 창을 띄우고 중간에 돌아가도 같은 신호가 다시 처리되지 않게
+  for (const s of world.signals.splice(0)) {
     if (s.t === 'openPanel') openPanel(s.panel);
     else if (s.t === 'enterZone') {
       const z = ZONES.find((x) => x.id === s.zone);
@@ -446,13 +487,31 @@ function handleSignals() {
         <button id="goDown">내려간다</button><button data-close class="ghost">아직 아니다</button>`);
       document.getElementById('goDown').onclick = () => {
         overlay.hidden = true;
-        const carry = { loot: world.loot, discovered: world.discovered, hp: world.player.hp, mana: world.player.mana, aura: world.player.aura,
+        const carry = { loot: world.loot, discovered: world.discovered, hp: world.player.hp, mana: world.player.mana, aura: world.player.aura, codexStart: world.codexStart,
           rootMemory: world.depth ? world.rootMemory : world.exportMemory() };
         enterZone(world.zone.id, world.depth + 1, carry);
       };
       return;
     } else if (s.t === 'merchant') {
       showMerchant(s.zone);
+      return;
+    } else if (s.t === 'save') {
+      writeSave(save);
+    } else if (s.t === 'codex') {
+      const ups = syncLevel(save);
+      writeSave(save);
+      if (ups) {
+        world.setBuild(buildNow());
+        world.player.hp = world.d.maxHp; world.player.mana = world.d.maxMana;
+        renderer.levelUp(world, save.level, ups * 3);
+      }
+    } else if (s.t === 'journal') {
+      const j = JOURNALS[s.id];
+      sfx('lore');
+      showModal(`<h2>${j.title}</h2><p class="muted">${j.where}</p><div class="journal">${esc(j.text).replace(/\n/g, '<br>')}</div><button data-close>덮는다</button>`);
+      return;
+    } else if (s.t === 'npc') {
+      talkTo(s.id);
       return;
     } else if (s.t === 'lore') {
       sfx('lore');
@@ -472,7 +531,7 @@ function frame(ts) {
       readInput();
       while (acc >= DT) {
         world.step(input);
-        input.dash = false; input.interact = false; input.skill = false; input.s1 = false; input.s2 = false; input.s3 = false; input.wskill = false;
+        input.dash = false; input.interact = false; input.skill = false; input.s1 = false; input.s2 = false; input.s3 = false; input.s4 = false; input.wskill = false;
         acc -= DT;
         if (world.signals.length) { handleSignals(); break; }
       }

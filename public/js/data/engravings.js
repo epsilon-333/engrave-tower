@@ -580,4 +580,6 @@ export const REACTIONS = {
   toxic: { name: '유독 연기', recipe: '중독 + 화상', desc: '화상을 소모해 지속 피해 구름 생성' },
   bloodIce: { name: '혈빙', recipe: '출혈 + 냉기', desc: '출혈을 소모해 즉시 빙결 + 피해' },
   septic: { name: '패혈', recipe: '중독 + 출혈', desc: '3초간 독 피해 2배' },
+  overload: { name: '과부하', recipe: '화상 + 감전', desc: '두 상태를 소모해 주변에 번개 폭발' },
+  superconduct: { name: '순간 빙결', recipe: '냉기 + 감전', desc: '두 상태를 소모해 바로 얼리고 피해' },
 };

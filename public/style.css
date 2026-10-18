@@ -241,7 +241,8 @@ body.touch #panel:not([hidden]) ~ #touch, body.touch #overlay:not([hidden]) ~ #t
 #touch .act { right: calc(22px + min(34vmin, 150px) + 18px + env(safe-area-inset-right, 0px)); bottom: calc(22px + min(34vmin, 150px) + 50px + env(safe-area-inset-bottom, 0px)); background: rgba(160, 120, 30, 0.9); }
 #touch .s2 { right: calc(22px + min(34vmin, 150px) + 78px + env(safe-area-inset-right, 0px)); bottom: calc(22px + 10px + env(safe-area-inset-bottom, 0px)); }
 #touch .s3 { right: calc(22px + min(34vmin, 150px) + 82px + env(safe-area-inset-right, 0px)); bottom: calc(22px + min(34vmin, 150px) + 30px + env(safe-area-inset-bottom, 0px)); }
-#touch .s1, #touch .s2, #touch .s3 { font-size: 11px; line-height: 1.1; background: rgba(70, 50, 110, 0.85); }
+#touch .s4 { right: calc(22px + min(34vmin, 150px) + 146px + env(safe-area-inset-right, 0px)); bottom: calc(22px + min(34vmin, 150px) - 6px + env(safe-area-inset-bottom, 0px)); }
+#touch .s1, #touch .s2, #touch .s3, #touch .s4 { font-size: 11px; line-height: 1.1; background: rgba(70, 50, 110, 0.85); }
 #touch .tb.cool { opacity: 0.5; }
 #touch .wsk { right: calc(22px + min(34vmin, 150px) + 140px + env(safe-area-inset-right, 0px)); bottom: calc(22px + 10px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; font-size: 11px; background: rgba(60, 60, 80, 0.85); }
 .skill-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
@@ -287,3 +288,16 @@ body.touch:has(#panel:not([hidden])) #cloudChip, body.touch:has(#overlay:not([hi
 #practicePanel select { width: 100%; background: #221a34; color: #e8e0f4; border: 1px solid #4a4068; padding: 3px; font: inherit; }
 #practicePanel label { display: grid; grid-template-columns: 16px 1fr; gap: 6px; align-items: center; }
 #practicePanel label.ck, .modal label.ck { display: flex; gap: 6px; }
+
+/* ───── 이야기 · 도감 ───── */
+.modal .talk { text-align: left; margin: 4px 0 14px; }
+.modal .talk .who { color: #e8c87a; font-weight: bold; margin-bottom: 6px; }
+.modal .talk p { line-height: 1.7; margin: 0; }
+.modal .journal, .codex .journal { text-align: left; line-height: 1.8; background: #efe2c0; color: #3a2a1a; padding: 14px 16px; border: 2px solid #8a6a3a; box-shadow: inset 0 0 18px rgba(120, 80, 30, 0.35); margin: 8px 0 14px; white-space: normal; }
+.codex-head { margin-bottom: 10px; }
+.codex-head .bar { display: inline-block; width: 160px; height: 6px; background: #241e2c; vertical-align: middle; margin-left: 6px; }
+.codex-head .bar i { display: block; height: 100%; background: #ffe080; }
+.codex-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.codex h4 { margin: 14px 0 6px; }
+.codex .stars { color: #ffd060; letter-spacing: 1px; }
+.codex details summary { cursor: pointer; }

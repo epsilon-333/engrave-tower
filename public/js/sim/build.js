@@ -171,17 +171,17 @@ export function computeBuild(lo) {
   if (flags.has('noAimSlow')) d.aimSlow = 1;
   if (lo.race === 'golem') d.dodge = 0;
 
-  // 액티브 스킬: 종족 스킬(레벨 해금) + 장착한 각인의 스킬 + 무기 기술 → 최대 3개 장착
+  // 액티브 스킬: 종족 스킬(레벨 해금) + 장착한 각인의 스킬 + 무기 기술 → 최대 4개 장착
   const cls = lo.cls && CLASSES[lo.cls]?.race === lo.race ? lo.cls : RACE_CLASSES(lo.race)[0];
   const available = CLASSES[cls].skills.filter((id) => (lo.allSkills || (SKILLS[id].unlock || 1) <= lo.level));
   for (const src of active) if (src.kind === 'engraving' && ENGRAVING_SKILLS[src.id] && !available.includes(ENGRAVING_SKILLS[src.id])) available.push(ENGRAVING_SKILLS[src.id]);
-  let skills = (lo.skills || []).filter((id) => available.includes(id)).slice(0, 3);
+  let skills = (lo.skills || []).filter((id) => available.includes(id)).slice(0, 4);
   if (!lo.skills) {
     // 기본 장착: 준비/강화 → 공격 → 마무리 순으로 콤보가 되게
     const race = available.filter((id) => SKILLS[id]);
     const pick = (roles) => race.find((id) => roles.includes(SKILLS[id].role) && !skills.includes(id));
     for (const roles of [['준비', '강화', '전환', '방어'], ['공격', '이동', '연타', '제어', '소환'], ['마무리']]) { const id = pick(roles); if (id) skills.push(id); }
-    for (const id of race) if (skills.length < 3 && !skills.includes(id)) skills.push(id);
+    for (const id of race) if (skills.length < 4 && !skills.includes(id)) skills.push(id);
   }
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
   if (wpn.kind === 'melee') { d.dmgTakenMul *= 0.8; flags.add('stagger'); }

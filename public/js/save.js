@@ -1,5 +1,7 @@
 // 저장 데이터 (지금은 브라우저 저장, 나중에 서버 계정으로 옮길 수 있게 순수 JSON)
-import { POINTS_PER_LEVEL, xpToNext, RACES } from './data/races.js';
+import { POINTS_PER_LEVEL, RACES } from './data/races.js';
+import { codexPoints, levelFor } from './data/codex.js';
+import { newStory } from './data/story.js';
 import { ZONES, MONSTERS, ECHOES } from './data/monsters.js';
 
 const KEY = 'engrave-tower-save-v1';
@@ -8,7 +10,8 @@ export function newSave(race) {
   return {
     v: 1, race, level: 1, xp: 0, points: 0, alloc: {}, gold: 30,
     echoes: {}, owned: {}, slots: {}, items: ['rustySword'], gear: { weapon: 'rustySword' },
-    codex: { kills: {}, echoes: {}, reactions: {}, condSeen: {} },
+    codex: { kills: {}, echoes: {}, reactions: {}, condSeen: {}, places: {}, journals: {}, lore: [] },
+    story: newStory(),
     runs: 0, seed: (Date.now() % 1e9) | 0,
   };
 }
@@ -39,16 +42,22 @@ export function applyRun(s, loot, keep, discovered) {
     if (k > 0) { kept[id] = k; s.echoes[id] = (s.echoes[id] || 0) + k; }
     s.codex.echoes[id] = true;
   }
-  for (const [id, n] of Object.entries(loot.kills)) s.codex.kills[id] = (s.codex.kills[id] || 0) + n;
   for (const r of discovered) s.codex.reactions[r] = true;
   const gold = Math.floor(loot.gold * (keep >= 1 ? 1 : keep));
   s.gold += gold;
-  s.xp += loot.xp;
-  let ups = 0;
-  while (s.xp >= xpToNext(s.level)) { s.xp -= xpToNext(s.level); s.level++; s.points += POINTS_PER_LEVEL + (RACES[s.race].bonusPoints || 0); ups++; }
+  const ups = syncLevel(s);
   s.runs++;
   s.seed = (s.seed * 1103515245 + 12345) & 0x7fffffff;
-  return { kept, gold, xp: loot.xp, ups };
+  return { kept, gold, ups };
+}
+
+// 도감 점수로 레벨을 맞춘다 (레벨은 내려가지 않는다). 오른 만큼 스탯 포인트를 준다
+export function syncLevel(s) {
+  s.codex ||= {}; s.story ||= newStory();
+  const { level } = levelFor(codexPoints(s));
+  let ups = 0;
+  while (s.level < level) { s.level++; s.points += POINTS_PER_LEVEL + (RACES[s.race].bonusPoints || 0); ups++; }
+  return ups;
 }
 
 // ───── 의뢰 (광장 게시판) ─────
@@ -71,7 +80,7 @@ export function refreshQuests(s, seedBump = 0) {
     if (s.quests.some((o) => o.kind === q.kind && o.target === q.target && o.zone === q.zone)) continue;
     q.id = `${Date.now().toString(36)}${Math.floor(rnd() * 1e6)}`;
     q.progress = 0;
-    q.reward = { gold: 25 * f + Math.floor(rnd() * 10) * f, xp: 15 * f };
+    q.reward = { gold: 40 * f + Math.floor(rnd() * 10) * f };
     s.quests.push(q);
   }
 }
@@ -93,9 +102,6 @@ export function claimQuest(s, id) {
   const q = s.quests[i];
   s.quests.splice(i, 1);
   s.gold += q.reward.gold;
-  s.xp += q.reward.xp;
-  let ups = 0;
-  while (s.xp >= xpToNext(s.level)) { s.xp -= xpToNext(s.level); s.level++; s.points += POINTS_PER_LEVEL + (RACES[s.race].bonusPoints || 0); ups++; }
   refreshQuests(s, 1);
-  return { q, ups };
+  return { q, ups: 0 };
 }

@@ -21,6 +21,24 @@ export async function loadAssets() {
     if (m && !atlas[`${m[1]}_f0`] && atlas[`${m[1]}_f1`]) atlas[`${m[1]}_f0`] = atlas[k];
   }
   registerCustomArt(atlas);
+  // 뼈대 도트 시트 (tools/dragon.py · kings.py · dragonkin.py 로 생성): 동작마다 한 줄, 프레임마다 한 칸
+  const load = (src) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+  const json = (src) => fetch(src).then((r) => r.json()).catch(() => null);
+  const reg = (img, meta, prefix) => {
+    if (!img || !meta) return;
+    for (const [anim, { row, n }] of Object.entries(meta.anims)) for (let i = 0; i < n; i++) atlas[`${prefix}_${anim}_anim_f${i}`] = { x: i * meta.w, y: row * meta.h, w: meta.w, h: meta.h, src: img };
+  };
+  // 용인족: 뼈대 도트(tools/dragonkin.py) · 용과 정령왕: 사용자 스프라이트 시트에서 잘라낸 동작 프레임(tools/cut_sheet.py)
+  const [dkI, dkM, meta, drI, kF, kW, kG] = await Promise.all([
+    load('assets/custom/dragonkin.png'), json('assets/custom/dragonkin.json'), json('assets/custom/sheet_meta.json'),
+    load('assets/custom/dragon_fire.png'), load('assets/custom/king_fire.png'), load('assets/custom/king_wind.png'), load('assets/custom/king_forest.png'),
+  ]);
+  reg(dkI, dkM, 'dragonkin');
+  if (meta) {
+    reg(drI, meta.dragon_fire, 'true_dragon'); atlas.true_dragon_meta = meta.dragon_fire;
+    reg(kF, meta.king_fire, 'king_fire'); reg(kW, meta.king_wind, 'king_wind'); reg(kG, meta.king_forest, 'king_forest');
+    atlas.king_meta = { fire: meta.king_fire, wind: meta.king_wind, forest: meta.king_forest };
+  }
 }
 
 // 애니메이션 프레임 이름 목록: base_idle_anim_f0.. / base_run_anim_f0.. / base_anim_f0..
