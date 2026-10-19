@@ -80,7 +80,7 @@ function showStyleSelect(race) {
     save.cls = b.dataset.style; save.style = c.style;
     save.items = ['rustySword', c.weapons[0]];
     save.gear = { weapon: c.weapons[0] };
-    refreshQuests(save); writeSave(save); titleEl.hidden = true; enterPlaza(true);
+    refreshQuests(save); writeSave(save); titleEl.hidden = true; enterWorld(null, true);
   }));
   document.getElementById('backRace').onclick = () => showRaceSelect();
 }
@@ -123,7 +123,7 @@ function showLogin(onDone) {
 function afterLogin(remote) {
   if (remote) save = migrateSave(remote);
   else if (save && cloud.mode !== 'local') cloudSaveNow(save);
-  if (save) { refreshQuests(save); writeSave(save); enterPlaza(); } else showRaceSelect();
+  if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else showRaceSelect();
 }
 
 // 예전 저장 데이터를 새 구조로 옮긴다 (인간·드워프 → 기사, 없어진 슬롯·무기 정리)
@@ -159,6 +159,48 @@ function enterPlaza(first) {
   startMusic('plaza');
   startLoop();
   if (first || !save.tutorial) showTutorial();
+}
+
+// 바깥 세계 (2D 오픈월드): 마을에서 시작해 어디로든 간다. at: 'cave' · 'tower'면 그 입구 앞에서
+let returnTo = null;
+function enterWorld(at = null, first = false) {
+  { const el = document.getElementById('practicePanel'); if (el) el.hidden = true; }
+  save.zoneMemory ||= {};
+  world = new World({ build: buildNow(), mode: 'field', zoneId: 'world', seed: 77, memory: save.zoneMemory.world, story: save.story, codex: save.codex });
+  world.codexStart = codexPoints(save);
+  const door = at === 'cave' ? world.objects.find((o) => o.kind === 'caveDoor') : at === 'tower' ? world.objects.find((o) => o.kind === 'towerDoor') : null;
+  if (door) { world.player.x = door.x; world.player.y = door.y + 24; world.reveal(true); }
+  world.questReady = (save.quests || []).some((q) => q.done);
+  returnTo = null;
+  renderer.setWorld(world);
+  startMusic('plaza');
+  startLoop();
+  if (first || !save.owTutorial) showWorldIntro();
+}
+function showWorldIntro() {
+  save.owTutorial = 1; writeSave(save);
+  showModal(`<h2>바람결의 섬</h2>
+    <div class="tut">
+      <p>탑의 층을 오르내리는 대신, 이제 <b>하나로 이어진 넓은 땅</b>을 걸어 다닙니다.</p>
+      <p><b>바람결 마을</b>에 각인사 · 대장장이 · 사서 · 교관 · 의뢰 게시판이 있어요. <b>마을 모닥불</b>에서 쉬면 모은 잔향과 골드가 저장됩니다.</p>
+      <p>서쪽 <b>이끼 숲</b>의 동굴, 동쪽 <b>거울 호수</b>, 북쪽 <b>바위산</b>, 한가운데 <b>각인의 탑</b>… 어디로든 가 보세요.</p>
+      <p><b>불</b> 스킬은 키 큰 풀을 태우고, <b>얼음</b> 스킬은 물을 얼려 길을 만듭니다. 호수 가운데 섬에는 어떻게 갈까요?</p>
+      <p class="keys">WASD 이동 · 좌클릭 공격 · Q·E·R·F 스킬 · Space 대시 · G 상호작용 · C 캐릭터 · Esc 메뉴</p>
+    </div>
+    <button data-close>모험 시작</button>`);
+}
+
+// 쉬기: 지금까지 모은 것을 저장한다 (바깥 세계에는 '귀환'이 없다)
+function restAndSave() {
+  const res = applyRun(save, world.loot, 1, world.discovered);
+  save.zoneMemory.world = world.exportMemory();
+  save.codex.lore = [...new Set([...(save.codex.lore || []), ...world.loot.lores])];
+  progressQuests(save, { zone: 'world', kills: world.loot.kills, kept: res.kept, chests: world.loot.chests, explored: world.exploredPct() });
+  world.loot = { echoes: {}, gold: 0, xp: 0, kills: {}, chests: 0, lores: [], banked: null };
+  world.questReady = (save.quests || []).some((q) => q.done);
+  writeSave(save); cloudSaveNow(save);
+  renderer.banner = { text: '모닥불 곁에서 쉬었다', sub: `체력 회복 · 잔향 ${Object.values(res.kept).reduce((a, b) => a + b, 0)}개와 골드 ${res.gold}를 저장했다`, t: 3.2, color: '#ffd88a' };
+  sfx('levelup', { vol: 0.5 });
 }
 
 function enterZone(id, depth = 0, carry = null) {
@@ -240,7 +282,7 @@ function showPracticePanel() {
 function exitPractice() {
   const el = document.getElementById('practicePanel');
   if (el) el.hidden = true;
-  enterPlaza();
+  enterWorld();
 }
 
 function startLoop() {
@@ -324,7 +366,7 @@ function endRun(kind) {
     ${res.ups ? `<p class="lvup">레벨 업! Lv ${save.level} · 스탯 포인트 +${res.ups * 3} (수련 교관에게 가세요)</p>` : ''}
     ${world.discovered.size ? '<p class="lvup">새로 발견한 원소 반응이 서고에 기록되었습니다.</p>' : ''}
     ${done ? `<p class="lvup">완료한 의뢰 ${done}개! 게시판에서 보상을 받으세요.</p>` : ''}
-    <button data-close>광장으로</button>`, () => { overlay.hidden = true; enterPlaza(); });
+    <button data-close>${world.zone.id === 'world' ? '마을에서 다시 일어난다' : '밖으로 나간다'}</button>`, () => { overlay.hidden = true; const back = world.zone.id === 'world' || kind === 'dead' ? null : returnTo || 'tower'; enterWorld(back); });
 }
 
 function volumeHtml() {
@@ -380,7 +422,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyR' || e.code === 'Digit3') input.s3 = true;
   if (e.code === 'KeyF' || e.code === 'Digit4') input.s4 = true;
   if (e.code === 'KeyT') { setAutoAim(!getAutoAim()); renderer.banner = { text: getAutoAim() ? '자동 조준 켜짐' : '자동 조준 꺼짐', t: 1.2, color: '#7ad8ff' }; if (world.practice) showPracticePanel(); }
-  if (e.code === 'KeyC' && world.mode === 'plaza') openPanel('char');
+  if (e.code === 'KeyC' && (world.mode === 'plaza' || world.zone?.id === 'world')) openPanel('char');
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => { keys.clear(); input.attack = false; });
@@ -473,6 +515,7 @@ function handleSignals() {
   for (const s of world.signals.splice(0)) {
     if (s.t === 'openPanel') openPanel(s.panel);
     else if (s.t === 'enterZone') {
+      if (world.zone?.id === 'world') { returnTo = s.from || 'tower'; save.zoneMemory.world = world.exportMemory(); }
       const z = ZONES.find((x) => x.id === s.zone);
       if (save.level < z.rec - 2) {
         showModal(`<h2>${z.name}</h2><p>권장 레벨은 ${z.rec}입니다. (현재 Lv ${save.level})</p><p class="muted">위험하지만 들어갈 수 있습니다.</p>
@@ -495,6 +538,8 @@ function handleSignals() {
     } else if (s.t === 'merchant') {
       showMerchant(s.zone);
       return;
+    } else if (s.t === 'rest') {
+      restAndSave();
     } else if (s.t === 'save') {
       writeSave(save);
     } else if (s.t === 'codex') {
@@ -578,6 +623,6 @@ if (isTouch()) {
   if (save && remote !== save) cloudSave(save);
   let guest = false; try { guest = !!localStorage.getItem('et-guest'); } catch { /* 무시 */ }
   if (!isClaudePage() && cloud.mode === 'local' && !guest) { showLogin(afterLogin); requestAnimationFrame(frame); return; }
-  if (save) { refreshQuests(save); writeSave(save); enterPlaza(); } else showRaceSelect();
+  if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else showRaceSelect();
   requestAnimationFrame(frame);
 })();

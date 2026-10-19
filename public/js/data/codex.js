@@ -2,6 +2,8 @@
 import { MONSTERS, ZONES, LORES } from './monsters.js';
 import { JOURNALS, PEOPLE } from './story.js';
 import { CAVE1_PLACES } from './maps/cave1.js';
+import { OW_PLACES, WORLD_ZONE } from './maps/overworld.js';
+export const PLACE_ZONES = [WORLD_ZONE, ...ZONES];
 
 // 몬스터 도감 단계: 처치 수 1 / 5 / 15 (정예 · 보물 고블린은 1마리로 완성)
 export const STAGE_KILLS = [1, 5, 15];
@@ -19,7 +21,7 @@ export function monsterStage(id, kills) {
 const stagePts = (stage) => STAGE_POINTS.slice(0, stage).reduce((a, b) => a + b, 0);
 
 // 층마다의 장소 이름 (1층은 직접 설계한 방들, 나머지는 구역 이름)
-export function zonePlaces(z) { return z.id === 'cave' ? CAVE1_PLACES : z.regions || []; }
+export function zonePlaces(z) { return z.id === 'world' ? OW_PLACES : z.id === 'cave' ? CAVE1_PLACES : z.regions || []; }
 export const placeKey = (zoneId, name) => `${zoneId}:${name}`;
 
 export function codexPoints(s) {
@@ -47,7 +49,7 @@ export function codexTotals(s) {
   const mons = Object.keys(MONSTERS);
   return {
     monsters: { done: mons.filter((id) => monsterStage(id, c.kills?.[id]) >= 3).length, seen: mons.filter((id) => c.kills?.[id]).length, all: mons.length },
-    places: { done: Object.keys(c.places || {}).length, all: ZONES.reduce((a, z) => a + zonePlaces(z).length, 0) },
+    places: { done: Object.keys(c.places || {}).length, all: PLACE_ZONES.reduce((a, z) => a + zonePlaces(z).length, 0) },
     records: { done: Object.keys(c.journals || {}).length + (c.lore || []).length, all: Object.keys(JOURNALS).length + LORES.length },
     people: { done: Object.values(PEOPLE).filter((p) => s.story?.flags?.[p.steps[p.steps.length - 1]]).length, all: Object.keys(PEOPLE).length },
   };

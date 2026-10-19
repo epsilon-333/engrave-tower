@@ -132,7 +132,7 @@ function plazaStatic(g, m) {
   }
 }
 
-function drawDeco(g, d) {
+export function drawDeco(g, d) {
   const { x, y, v } = d;
   const P = (c, dx, dy, w = 1, h = 1) => { g.fillStyle = c; g.fillRect(x + dx, y + dy, w, h); };
   switch (d.kind) {

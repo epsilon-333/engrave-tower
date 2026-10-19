@@ -1,7 +1,7 @@
 // 마을 화면 (DOM). 캐릭터 / 공명 제단 / 상점 / 사냥터 / 도감
 import { BASE_STATS, STAT_INFO, SPECIAL_INFO, SLOT_INFO, GRADES, TIERS } from '../data/stats.js';
 import { RACES } from '../data/races.js';
-import { codexPoints, levelFor, codexTotals, monsterStage, STAGE_KILLS, zonePlaces, placeKey } from '../data/codex.js';
+import { codexPoints, levelFor, codexTotals, monsterStage, STAGE_KILLS, zonePlaces, placeKey, PLACE_ZONES } from '../data/codex.js';
 import { JOURNALS, PEOPLE, STORY_ITEMS } from '../data/story.js';
 import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
 import { ITEMS, STYLES, WEAPON_SKILLS } from '../data/items.js';
@@ -362,7 +362,7 @@ export class Hub {
         }).join('')}</div>`;
       }).join('');
     } else if (sec === 'places') {
-      body = ZONES.map((z) => `<h4>${z.floor}층 · ${z.name}</h4><div class="list">${zonePlaces(z).map((n) => c.places?.[placeKey(z.id, n)] ? `<div class="li on"><b>${n}</b></div>` : '<div class="li off">??? <small>아직 찾지 못한 장소</small></div>').join('')}</div>`).join('');
+      body = PLACE_ZONES.map((z) => `<h4>${z.id === 'world' ? '' : `${z.floor}층 · `}${z.name}</h4><div class="list">${zonePlaces(z).map((n) => c.places?.[placeKey(z.id, n)] ? `<div class="li on"><b>${n}</b></div>` : '<div class="li off">??? <small>아직 찾지 못한 장소</small></div>').join('')}</div>`).join('');
     } else if (sec === 'records') {
       body = `<h4>등반가 세린의 일지</h4><div class="list">${Object.entries(JOURNALS).map(([id, j]) => c.journals?.[id] ? `<details class="li on"><summary><b>${j.title}</b> <small>${j.where}</small></summary><p class="journal">${esc(j.text).replace(/\n/g, '<br>')}</p></details>` : '<div class="li off">??? <small>찢겨 나간 일지 한 장</small></div>').join('')}</div>
         <h4>고대 석판</h4><div class="list">${(c.lore || []).map((t) => `<div class="li lore">${esc(t)}</div>`).join('') || '<div class="li off">필드의 고대 석판을 찾아 읽어 보세요.</div>'}</div>

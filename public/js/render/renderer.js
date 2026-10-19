@@ -1,6 +1,8 @@
 // 캔버스 렌더러: world 상태를 읽어서 그리기만 한다 (게임 로직 없음)
 // 화면 크기에 맞춰 정수 배율(S)로 도트를 키우고, 글씨는 실제 해상도로 따로 그린다.
-import { TILE, T_LIQUID, T_WALL, T_CRACK, T_BUILD } from '../sim/mapgen.js';
+import { TILE, T_LIQUID, T_WALL, T_CRACK, T_BUILD, T_DEEP } from '../sim/mapgen.js';
+import { renderOutdoor, paintTile, drawOutdoorProp } from './outdoor.js';
+import { G } from '../data/maps/overworld.js';
 import { getSprite, drawEchoGem } from './sprites.js';
 import { sprite, frames, atlas } from './assets.js';
 import { renderMap, hash } from './tiles.js';
@@ -100,7 +102,7 @@ export class Renderer {
 
   setWorld(w) {
     this.world = w;
-    this.mapCanvas = renderMap(w);
+    this.mapCanvas = w.map.outdoor ? renderOutdoor(w) : renderMap(w);
     this.fx = []; this.texts = []; this.parts = []; this.corpses = []; this.alerts.clear(); this.squash.clear(); this.chestOpen.clear();
     this.banner = null; this.fade = 1;
     this.cam.x = w.player.x - this.VW / 2; this.cam.y = w.player.y - this.VH / 2;
@@ -110,7 +112,7 @@ export class Renderer {
     this.mini = document.createElement('canvas'); this.mini.width = w.tw; this.mini.height = w.th;
     this.mg = this.mini.getContext('2d');
     this.applyReveal(true);
-    if (w.zone) this.banner = { text: `${w.zone.floor}층 · ${w.zone.name}`, sub: '몬스터는 지역마다 무리지어 산다. 탐험하라.', t: 3.2, color: '#ffe8a8' };
+    if (w.zone) this.banner = w.map.outdoor ? { text: w.zone.name, sub: '어디로든 갈 수 있다. 저 멀리 탑이 보인다.', t: 3.6, color: '#ffe8a8' } : { text: `${w.zone.floor}층 · ${w.zone.name}`, sub: '몬스터는 지역마다 무리지어 산다. 탐험하라.', t: 3.2, color: '#ffe8a8' };
     this.glowDeco = w.map.deco.filter((d) => GLOW[d.kind]);
     this.notes = []; this.vista = null;
     if (w.mapKnown) this.knowMap(w);
@@ -137,11 +139,23 @@ export class Renderer {
     sfx('levelup', { vol: 0.9 });
   }
 
+  // 바깥 세계: 칸 하나와 이웃을 다시 그린다
+  repaint(w, k) {
+    const g = this.mapCanvas.getContext('2d'), x0 = k % w.tw, y0 = Math.floor(k / w.tw);
+    for (let y = y0 - 1; y <= y0 + 1; y++) for (let x = x0 - 1; x <= x0 + 1; x++) if (x >= 0 && y >= 0 && x < w.tw && y < w.th) paintTile(g, w, x, y);
+    if (w.explored[k]) w.revealed.push(k);
+  }
+
   applyReveal(all) {
     const w = this.world;
     const paint = (i) => {
       const x = i % w.tw, y = (i / w.tw) | 0, t = w.tiles[i];
       this.fg.clearRect(x, y, 1, 1);
+      if (w.map.outdoor) {
+        const gr = w.map.ground[i];
+        this.mg.fillStyle = t === T_DEEP ? '#2c5a8a' : t === T_LIQUID ? '#4a8ab8' : t === T_WALL || t === T_CRACK ? '#6a5a48' : t === T_BUILD ? '#3e5a2e'
+          : ({ [G.DIRT]: '#a8834f', [G.SAND]: '#d8c88e', [G.ROCK]: '#8a9076', [G.SNOW]: '#e8eef4', [G.STONE]: '#b0aca6', [G.FOREST]: '#3d6b2f', [G.BURNT]: '#3a3028', [G.ICE]: '#c4ecf8', [G.BRIDGE]: '#9a6a3c', [G.TALL]: '#4e8a30' })[gr] || '#5d9e3b';
+      } else
       this.mg.fillStyle = t === T_WALL || t === T_CRACK ? '#211b28' : t === T_LIQUID ? '#3a6a9a' : t === T_BUILD ? '#5a4a3a' : '#8a7a6a';
       this.mg.fillRect(x, y, 1, 1);
     };
@@ -361,7 +375,9 @@ export class Renderer {
           sfx('reaction', { vol: 0.8, rate: 0.5 });
           break;
         }
-        case 'crackBreak': this.burst(ev.x, ev.y, '#a89880', 30, 130); this.shake = 5; this.mapCanvas = renderMap(w); sfx('crack', { vol: 1, rate: 0.7 }); break;
+        case 'crackBreak': this.burst(ev.x, ev.y, '#a89880', 30, 130); this.shake = 5; if (w.map.outdoor) this.repaint(w, ev.tile); else this.mapCanvas = renderMap(w); sfx('crack', { vol: 1, rate: 0.7 }); break;
+        case 'groundChange': this.repaint(w, ev.k); if (w.map.ground[ev.k] === G.ICE) { const x = (ev.k % w.tw) * TILE + 8, y = Math.floor(ev.k / w.tw) * TILE + 8; this.burst(x, y, '#d8f4ff', 3, 30); } break;
+        case 'treeBurn': this.burst(ev.x, ev.y - 20, '#ff9a3a', 24, 90); sfx('reaction', { vol: 0.3, rate: 0.8 }); break;
       }
     }
     w.events.length = 0;
@@ -526,6 +542,7 @@ export class Renderer {
     g.setTransform(S, 0, 0, S, -cx * S, -cy * S);
     g.imageSmoothingEnabled = false;
     g.drawImage(this.mapCanvas, 0, 0);
+    if (w.map.outdoor) this.drawOutdoorLife(w, cx, cy);
     this.drawLiquidAnim(w, cx, cy);
     if (w.mode === 'plaza') this.drawPlazaFloor(w);
 
@@ -604,10 +621,8 @@ export class Renderer {
     for (const c of this.corpses) list.push({ c, y: c.y });
     list.push({ p, y: p.y });
     for (const al of w.allies || []) list.push({ al, y: al.y });
-    if (w.mode === 'plaza') {
-      for (const pr of w.map.props) list.push({ prop: pr, y: (pr.y + pr.h) * TILE - 2 });
-      for (const d of w.map.wallDeco) list.push({ wd: d, y: -1e9 + 1 });
-    }
+    if (w.map.props) for (const pr of w.map.props) { const px = (pr.x + pr.w / 2) * TILE, py = (pr.y + pr.h) * TILE; if (vis(px, py - 40) || pr.kind === 'tower') list.push({ prop: pr, y: py - 2 }); }
+    if (w.mode === 'plaza') for (const d of w.map.wallDeco) list.push({ wd: d, y: -1e9 + 1 });
     list.sort((a, b) => a.y - b.y);
     for (const it of list) {
       if (it.p) this.drawPlayer(w, p, dt);
@@ -660,7 +675,7 @@ export class Renderer {
     }
     this.parts = this.parts.filter((q) => q.t > 0);
 
-    if (w.mode === 'field') { this.drawLight(w, cx, cy); this.drawFog(w, cx, cy); }
+    if (w.mode === 'field' && !w.map.outdoor) { this.drawLight(w, cx, cy); this.drawFog(w, cx, cy); } // 바깥 세계는 화면을 가리지 않는다 (안 가 본 곳은 지도에서만)
 
     this.drawTexts(w, dt);
     this.drawHud(w, dt);
@@ -2107,8 +2122,32 @@ export class Renderer {
     g.restore();
   }
 
+  // 바깥 세계의 움직임: 타오르는 풀, 반짝이는 물
+  drawOutdoorLife(w, cx, cy) {
+    const g = this.g, VW = this.VW, VH = this.VH;
+    let n = 0;
+    for (const [k, t] of w.burning) {
+      const x = (k % w.tw) * TILE, y = Math.floor(k / w.tw) * TILE;
+      if (x < cx - 20 || x > cx + VW + 20 || y < cy - 20 || y > cy + VH + 20) continue;
+      const f = 0.6 + 0.4 * Math.sin(w.t * 18 + k);
+      g.fillStyle = `rgba(255,120,30,${0.55 * f})`; g.fillRect(x + 2, y + 6, 12, 9);
+      g.fillStyle = `rgba(255,220,90,${0.7 * f})`; g.fillRect(x + 5, y + 8 - f * 3, 6, 6);
+      if (n++ < 60 && Math.random() < 0.35) this.parts.push({ x: x + 3 + Math.random() * 10, y: y + 10, vx: (Math.random() - 0.5) * 12, vy: -30 - Math.random() * 25, t: 0.5, max: 0.5, color: Math.random() < 0.5 ? '#ff7a2a' : '#ffd040', g: -20, glow: true, size: 1 });
+      if (Math.random() < 0.04) this.parts.push({ x: x + 8, y: y + 2, vx: 4, vy: -14, t: 1.4, max: 1.4, color: '#5a5048', g: -4, size: 2 });
+    }
+    // 물 반짝임 (보이는 물 칸 몇 개만)
+    const x0 = Math.max(0, Math.floor(cx / TILE)), y0 = Math.max(0, Math.floor(cy / TILE)), x1 = Math.min(w.tw - 1, Math.ceil((cx + VW) / TILE)), y1 = Math.min(w.th - 1, Math.ceil((cy + VH) / TILE));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const t = w.tiles[y * w.tw + x];
+      if (t !== T_DEEP && t !== T_LIQUID) continue;
+      const ph = (w.t * 0.8 + hash(x, y, 77) / 4294967296 * 6) % 6;
+      if (ph < 0.5) { g.fillStyle = `rgba(255,255,255,${0.7 * Math.sin(ph / 0.5 * Math.PI)})`; const hx = hash(x, y, 78) % 12, hy = hash(x, y, 79) % 12; g.fillRect(x * TILE + hx, y * TILE + hy + 2, 3, 1); g.fillRect(x * TILE + hx + 1, y * TILE + hy + 1, 1, 1); }
+    }
+  }
+
   drawProp(w, pr) {
     const g = this.g, x = pr.x * TILE, y = pr.y * TILE;
+    if (w.map.outdoor) return drawOutdoorProp(g, pr, w.t, false, w.burntTrees);
     if (pr.kind === 'column') { const s = sprite('column'); if (s) g.drawImage(s, x, y + TILE - 48); return; }
     if (pr.kind === 'crate') { const s = sprite('crate'); if (s) g.drawImage(s, x, y - 8); return; }
     if (pr.kind === 'shelf') {

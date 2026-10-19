@@ -6,7 +6,8 @@ import { WEAPON_SKILLS } from '../data/items.js';
 import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule } from '../data/skills.js';
 import { RACES } from '../data/races.js';
 import { createRng } from './rng.js';
-import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, generateField } from './mapgen.js';
+import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP, generateField } from './mapgen.js';
+import { buildOverworld, G, WORLD_ZONE } from '../data/maps/overworld.js';
 import { buildCave1 } from '../data/maps/cave1.js';
 import { STORY_ITEMS, BARRIERS, JOURNALS } from '../data/story.js';
 import { monsterStage, placeKey, STAGE_KILLS } from '../data/codex.js';
@@ -31,9 +32,9 @@ export class World {
     this.practice = practice; // { infRes, noCd }
     this.mode = mode;
     this.setBuild(build);
-    this.zone = zoneId ? ZONES.find((z) => z.id === zoneId) : null;
+    this.zone = zoneId === 'world' ? WORLD_ZONE : zoneId ? ZONES.find((z) => z.id === zoneId) : null;
     this.rng = createRng(seed);
-    this.map = map || (this.zone?.id === 'cave' && !depth && !practice ? buildCave1(this.zone) : generateField(this.zone, seed, depth));
+    this.map = map || (this.zone?.id === 'world' ? buildOverworld(this.zone) : this.zone?.id === 'cave' && !depth && !practice ? buildCave1(this.zone) : generateField(this.zone, seed, depth));
     const m = this.map;
     this.tw = m.tw; this.th = m.th; this.tiles = m.tiles;
     this.crackHp = new Map();
@@ -61,6 +62,7 @@ export class World {
     this.loot = { echoes: {}, gold: 0, xp: 0, kills: {}, chests: 0, lores: [], banked: null };
     this.regionSeen = new Set(); this.milestones = new Set(); this.regionCur = -1; this.regionT = 0; this.mileT = 0;
     this.discovered = new Set();
+    this.burning = new Map(); this.frozen = new Map(); this.burntTrees = new Set(); this.burntSoil = new Map(); this.burnOrig = new Map(); this.envT = 0;
     this.near = null;
     this.flow = new Int16Array(this.tw * this.th); this.flowT = 0;
 
@@ -86,7 +88,8 @@ export class World {
         e.home = { x: e.x, y: e.y };
         this.enemies.push(e);
       }
-      this.objects.push({ kind: 'portal', x: sx, y: sy - 14, label: '귀환 포탈 (잔향 전부 보존)', color: this.zone.portal });
+      if (!m.outdoor) this.objects.push({ kind: 'portal', x: sx, y: sy - 14, label: '귀환 포탈 (잔향 전부 보존)', color: this.zone.portal });
+      for (const o of m.objects || []) this.objects.push({ ...o });
       for (const c of m.chests) this.objects.push({ kind: 'chest', x: c.x * TILE + 8, y: c.y * TILE + 8, rich: c.rich, trap: c.trap, label: c.rich ? '숨겨진 보물 상자' : '보물 상자' });
       for (const c of m.camp || []) this.objects.push({ kind: 'camp', x: c.x * TILE + 8, y: c.y * TILE + 8, label: '야영지 · 잔향 맡기고 쉬기', reusable: true });
       for (const c of m.merchant || []) this.objects.push({ kind: 'merchant', x: c.x * TILE + 8, y: c.y * TILE + 8, label: '떠돌이 상인', reusable: true, npc: { name: '떠돌이 상인 오반' } });
@@ -145,7 +148,99 @@ export class World {
     if (this.player) this.player.mana = Math.min(this.player.mana ?? this.d.maxMana, this.d.maxMana);
   }
 
-  emit(e) { this.events.push(e); }
+  emit(e) {
+    this.events.push(e);
+    if (this.map?.outdoor && (e.elem === 'fire' || e.elem === 'ice') && e.t && e.t.startsWith('skill')) this.elemReact(e);
+  }
+
+  // ───────────── 바깥 세계: 원소 반응 ─────────────
+  elemReact(e) {
+    const tiles = new Set(), add = (x, y) => { const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE); if (tx >= 0 && ty >= 0 && tx < this.tw && ty < this.th) tiles.add(ty * this.tw + tx); };
+    const circle = (cx, cy, r) => { for (let y = cy - r; y <= cy + r; y += 8) for (let x = cx - r; x <= cx + r; x += 8) if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r) add(x, y); add(cx, cy); };
+    if (e.t === 'skillAoe') circle(e.x, e.y, e.r || 24);
+    else if (e.t === 'skillCone') { for (let d = 8; d <= e.range; d += 8) for (let a = -e.angle / 2; a <= e.angle / 2; a += 0.15) add(e.x + Math.cos(e.ang + a) * d, e.y + Math.sin(e.ang + a) * d); }
+    else if (e.t === 'skillLine' || e.t === 'skillDash') { const L = Math.hypot(e.x2 - e.x1, e.y2 - e.y1); for (let d = 0; d <= L; d += 8) circle(e.x1 + (e.x2 - e.x1) * d / L, e.y1 + (e.y2 - e.y1) * d / L, (e.w || 16) / 2); }
+    else if (e.x != null) circle(e.x, e.y, 14);
+    for (const k of tiles) e.elem === 'fire' ? this.igniteTile(k) : this.freezeTile(k);
+  }
+  igniteTile(k) {
+    const g = this.map.ground;
+    if (this.tiles[k] === T_FLOOR && g[k] === G.ICE) { this.thawTile(k); return; }
+    if (this.tiles[k] !== T_FLOOR || this.burning.has(k) || !(g[k] === G.TALL || g[k] === G.FLOWER || g[k] === G.GRASS && this.rng.chance(0.25))) return;
+    this.burnStart(k);
+  }
+  burnStart(k) {
+    const g = this.map.ground;
+    if (!this.burnOrig.has(k)) this.burnOrig.set(k, g[k]);
+    this.burning.set(k, g[k] === G.TALL ? 5.5 : g[k] === G.FLOWER ? 3.5 : 2.5);
+  }
+  freezeTile(k) {
+    const t = this.tiles[k];
+    if (t !== T_DEEP && t !== T_LIQUID) return;
+    this.frozen.set(k, { t: 30, tile: t, ground: this.map.ground[k] });
+    this.tiles[k] = T_FLOOR; this.map.ground[k] = G.ICE;
+    this.emit({ t: 'groundChange', k });
+  }
+  thawTile(k) {
+    const f = this.frozen.get(k);
+    if (!f) return;
+    this.frozen.delete(k);
+    this.tiles[k] = f.tile; this.map.ground[k] = f.ground;
+    this.emit({ t: 'groundChange', k, thaw: true });
+    // 녹은 물 위에 서 있으면 가까운 땅으로 밀어낸다 (물에 파묻히지 않게)
+    for (const ent of [this.player, ...this.enemies]) {
+      if (Math.floor(ent.x / TILE) + Math.floor(ent.y / TILE) * this.tw !== k || ent.def?.shape === 'flyer') continue;
+      let best = null, bd = 1e9;
+      for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+        const x = ent.x + dx * TILE, y = ent.y + dy * TILE;
+        if (!this.blocked(x, y, 4) && Math.hypot(dx, dy) < bd) { bd = Math.hypot(dx, dy); best = { x, y }; }
+      }
+      if (best) { ent.x = best.x; ent.y = best.y; if (ent === this.player) this.emit({ t: 'text', x: ent.x, y: ent.y - 20, text: '얼음이 녹았다!', color: '#bfe8ff' }); }
+    }
+  }
+  updateOutdoor() {
+    if (!this.map.outdoor) return;
+    this.envT += DT;
+    const tick = this.envT >= 0.25;
+    if (tick) this.envT -= 0.25;
+    const g = this.map.ground, tw = this.tw;
+    for (const [k, t] of this.burning) {
+      const nt = t - DT;
+      if (nt <= 0) {
+        this.burning.delete(k); g[k] = G.BURNT; this.burntSoil.set(k, 40 + this.rng.range(0, 15)); // 40~55초 뒤 새싹
+        this.emit({ t: 'groundChange', k });
+        continue;
+      }
+      this.burning.set(k, nt);
+      if (!tick) continue;
+      const x = k % tw, y = (k / tw) | 0;
+      for (const o of [1, -1, tw, -tw]) {
+        const j = k + o;
+        if (j < 0 || j >= g.length || this.burning.has(j) || this.tiles[j] !== T_FLOOR) continue;
+        if ((g[j] === G.TALL && this.rng.chance(0.04)) || (g[j] === G.FLOWER && this.rng.chance(0.025)) || (g[j] === G.GRASS && this.rng.chance(0.003))) this.burnStart(j);
+      }
+      // 옆의 나무에 옮겨 붙는다
+      for (const pr of this.map.props) if (pr.kind === 'tree' && Math.abs(pr.x - x) <= 1 && Math.abs(pr.y - y) <= 1 && !this.burntTrees.has(`${pr.x},${pr.y}`) && this.rng.chance(0.08)) { this.burntTrees.add(`${pr.x},${pr.y}`); this.emit({ t: 'treeBurn', x: pr.x * TILE + 8, y: pr.y * TILE }); }
+      // 불길 위에 있으면 탄다
+      const cx = x * TILE + 8, cy = y * TILE + 8;
+      for (const e of this.enemies) if (!e.dead && Math.abs(e.x - cx) < 10 && Math.abs(e.y - cy) < 10) this.applyStatus(e, 'burn', 1);
+      const p = this.player;
+      if (Math.abs(p.x - cx) < 9 && Math.abs(p.y - cy) < 9 && p.invuln <= 0) this.hurtPlayer(3, 'mag', null, { direct: true, status: 'burn' });
+    }
+    if (tick) {
+      for (const [k, f] of this.frozen) { f.t -= 0.25; if (f.t <= 0) this.thawTile(k); }
+      // 다시 자란다: 탄 땅 → 짧은 풀 → (원래 키 큰 풀 · 꽃이었으면) 원래대로
+      for (const [k, t] of this.burntSoil) {
+        if (t > 0.25) { this.burntSoil.set(k, t - 0.25); continue; }
+        const orig = this.burnOrig.get(k) ?? G.GRASS;
+        if (g[k] === G.BURNT) {
+          g[k] = G.GRASS; this.emit({ t: 'groundChange', k });
+          if (orig !== G.GRASS) { this.burntSoil.set(k, 35 + this.rng.range(0, 20)); continue; }
+        } else if (g[k] === G.GRASS) { g[k] = orig; this.emit({ t: 'groundChange', k }); }
+        this.burntSoil.delete(k); this.burnOrig.delete(k);
+      }
+    }
+  }
 
   // ───────────── 타일 ─────────────
   tileAt(px, py) {
@@ -153,7 +248,8 @@ export class World {
     if (x < 0 || y < 0 || x >= this.tw || y >= this.th) return T_WALL;
     return this.tiles[y * this.tw + x];
   }
-  solid(px, py) { const t = this.tileAt(px, py); return t === T_WALL || t === T_CRACK || t === T_BUILD || t === T_GATE; }
+  solid(px, py) { const t = this.tileAt(px, py); return t === T_WALL || t === T_CRACK || t === T_BUILD || t === T_GATE || t === T_DEEP; }
+  wallAt(px, py) { const t = this.tileAt(px, py); return t === T_WALL || t === T_CRACK || t === T_BUILD || t === T_GATE; }
   blocked(x, y, r) {
     return this.solid(x - r, y - r) || this.solid(x + r, y - r) || this.solid(x - r, y + r) || this.solid(x + r, y + r)
       || this.solid(x, y - r) || this.solid(x, y + r) || this.solid(x - r, y) || this.solid(x + r, y);
@@ -196,6 +292,7 @@ export class World {
     this.updateDrops();
     this.updateCamps();
     this.updateExplore();
+    this.updateOutdoor();
     this.enemies = this.enemies.filter((e) => !e.dead);
     if (this.mode === 'field' && Math.floor(this.t * 60) % 6 === 0) this.reveal();
   }
@@ -382,6 +479,9 @@ export class World {
     }
     if (o.kind === 'merchant') { this.signals.push({ t: 'merchant', zone: this.zone.id, depth: this.depth }); return; }
     if (o.kind === 'npc') { this.signals.push({ t: 'npc', id: o.id }); return; }
+    if (o.kind === 'rest') { this.player.hp = this.d.maxHp; this.player.mana = this.d.maxMana; this.emit({ t: 'camp', x: o.x, y: o.y }); this.signals.push({ t: 'rest' }); return; }
+    if (o.kind === 'caveDoor') { this.signals.push({ t: 'enterZone', zone: o.zone, from: 'cave' }); return; }
+    if (o.kind === 'towerDoor') { this.signals.push({ t: 'openPanel', panel: 'hunt' }); return; }
     if (o.kind === 'journal') {
       if (this.codex && !this.codex.journals?.[o.id]) { (this.codex.journals ||= {})[o.id] = true; this.signals.push({ t: 'codex' }); this.emit({ t: 'text', x: o.x, y: o.y - 18, text: '기록 도감에 남겼다', color: '#e8d8a8' }); }
       o.read = true;
@@ -2215,7 +2315,7 @@ export class World {
   // 두 지점 사이가 벽에 막혔는지
   clearLine(x1, y1, x2, y2) {
     const n = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 6);
-    for (let i = 1; i < n; i++) if (this.solid(x1 + (x2 - x1) * i / n, y1 + (y2 - y1) * i / n)) return false;
+    for (let i = 1; i < n; i++) if (this.wallAt(x1 + (x2 - x1) * i / n, y1 + (y2 - y1) * i / n)) return false;
     return true;
   }
 
@@ -2239,7 +2339,7 @@ export class World {
           const nx = x + N8[k][0], ny = y + N8[k][1];
           if (nx < 0 || ny < 0 || nx >= tw || ny >= th) continue;
           const j = ny * tw + nx, t = this.tiles[j];
-          if (prev.has(j) || t === T_WALL || t === T_CRACK || t === T_BUILD || t === T_GATE) continue;
+          if (prev.has(j) || t === T_WALL || t === T_CRACK || t === T_BUILD || t === T_GATE || t === T_DEEP) continue;
           prev.set(j, i); q.push(j);
         }
       }
@@ -2274,7 +2374,7 @@ export class World {
         const nx = x + N8[k][0], ny = y + N8[k][1];
         if (nx < 0 || ny < 0 || nx >= tw || ny >= th) continue;
         const j = ny * tw + nx, tt = this.tiles[j];
-        if (f[j] >= 0 || tt === T_WALL || tt === T_CRACK || tt === T_BUILD || tt === T_GATE) continue;
+        if (f[j] >= 0 || tt === T_WALL || tt === T_CRACK || tt === T_BUILD || tt === T_GATE || tt === T_DEEP) continue;
         f[j] = dv + 1; q.push(j);
       }
     }
@@ -2693,8 +2793,8 @@ export class World {
       let ps = 1;
       if (pr.owner !== 'p' && this.zones.length) for (const z of this.zones) if (z.kind === 'slow' && Math.hypot(pr.x - z.x, pr.y - z.y) < z.r) ps = 0.4;
       pr.x += pr.vx * DT * ps; pr.y += pr.vy * DT * ps; pr.life -= DT * ps;
-      if (this.solid(pr.x, pr.y) && !pr.returning && pr.boomerang && pr.owner === 'p') { pr.returning = true; pr.hit.clear(); pr.x -= pr.vx * DT; pr.y -= pr.vy * DT; this.emit({ t: 'spark', x: pr.x, y: pr.y, color: '#e8e2cf' }); }
-      else if (this.solid(pr.x, pr.y) && !pr.returning) {
+      if (this.wallAt(pr.x, pr.y) && !pr.returning && pr.boomerang && pr.owner === 'p') { pr.returning = true; pr.hit.clear(); pr.x -= pr.vx * DT; pr.y -= pr.vy * DT; this.emit({ t: 'spark', x: pr.x, y: pr.y, color: '#e8e2cf' }); }
+      else if (this.wallAt(pr.x, pr.y) && !pr.returning) {
         if (pr.owner === 'p' && this.tileAt(pr.x, pr.y) === T_CRACK) this.hitCrack(pr.x, pr.y, pr.dmg);
         this.emit({ t: 'spark', x: pr.x - pr.vx * DT, y: pr.y - pr.vy * DT, color: pr.color });
         pr.life = 0;
@@ -2751,4 +2851,4 @@ function distToSeg(px, py, x1, y1, x2, y2) {
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
 
-export { ECHOES, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE };
+export { ECHOES, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP };
