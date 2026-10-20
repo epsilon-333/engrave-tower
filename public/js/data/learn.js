@@ -25,8 +25,8 @@ export const LEARN = {
 export const WHERE_NAME = { dojo: '수련장 교관 가르', library: '서고 사서 에일', tablet: '옛 기술 석판', turtle: '바닷가의 자라', spirit: '거울 호수의 물의 정령' };
 // 늘 켜져 있는 능력 (장착하지 않는다)
 export const ABILITIES = {
-  waterBlessing: { name: '물의 가호', where: 'spirit', desc: '깊은 물에서 헤엄치고, 헤엄치다 G로 바닷속에 들어간다. 물속 숨 45초 · 헤엄 속도 +40%.' },
+  waterBlessing: { name: '물의 가호', where: 'spirit', desc: '물속 숨 8초 → 45초 · 헤엄 속도 +40%. (가호가 없어도 헤엄치고 잠수할 수는 있지만 숨이 짧다)' },
 };
 export const TABLET_BIOME_NAME = { volcano: '화산 지대', snow: '서리 설원', mountains: '북쪽 바위산', swamp: '독늪', meadow: '꽃바람 들판', ruins: '폐허 도시', forest: '이끼 숲', jungle: '원시림', coast: '남쪽 해안', wasteland: '메마른 황야' };
 // 물속 숨 (초): 잠수만 배웠으면 20초, 물의 가호가 있으면 45초. 음식 '긴 숨'은 곱한다. 수중 호흡 중에는 줄지 않는다
-export const BREATH = { dive: 20, blessing: 45 };
+export const BREATH = { free: 8, dive: 20, blessing: 45 }; // 물속 숨 (초): 그냥 · 잠수를 배우면 · 물의 가호

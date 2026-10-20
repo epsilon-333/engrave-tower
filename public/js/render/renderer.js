@@ -11,12 +11,13 @@ import { drawLeader, drawResident, drawVfx, drawFlyers, drawTrainTarget, drawTra
 import { LANDMARK_BOX } from './landmarks.js';
 import { PixelCtx } from './pixelctx.js';
 import { flameSprite, puffSprite, sparkSprite, dustSprite, BAYER4 } from './pxfx.js';
+import { spiritSprite } from './spirits.js';
 import { G, BIOME_LIST } from '../data/maps/overworld.js';
 import { getSprite, drawEchoGem } from './sprites.js';
 import { sprite, frames, atlas } from './assets.js';
 import { renderMap, hash } from './tiles.js';
 import { ECHOES, AFFIXES } from '../data/monsters.js';
-import { WEAPON_SKILLS, ITEMS } from '../data/items.js';
+import { WEAPON_SKILLS, ITEMS, OFF_LOOK } from '../data/items.js';
 import { SKILLS, ELEM, ROLE_COLOR } from '../data/skills.js';
 import { RACES } from '../data/races.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, WEAPON_ART, weaponArt } from '../data/art.js';
@@ -428,8 +429,14 @@ export class Renderer {
           break;
         }
         case 'skillAoe': this.aoeFx(ev); break;
-        case 'skillCone': if (ev.fx === 'sweep') { this.fx.push({ k: 'spin', x: ev.x, y: ev.y, r: ev.range, type: 'phys', t: 0.25, max: 0.25 }); this.shake = Math.max(this.shake, 4); sfx('heavySwing', { vol: 0.9 }); }
-          if (ev.fx !== 'breath') this.fx.push({ k: 'cone', ...ev, color: ELEM[ev.elem]?.color || (ev.fx === 'claws' ? '#ffffff' : '#ffb066'), t: 0.22, max: 0.22 });
+        case 'skillCone': if (ev.fx === 'spellBlade') { // 근접 무기로 쓴 마법: 그 속성 빛의 초승달이 앞을 휩쓴다
+            const col = ELEM[ev.elem]?.color || '#c9a8ff';
+            this.fx.push({ k: 'spellBlade', x: ev.x, y: ev.y, ang: ev.ang, r: ev.range, angle: ev.angle, col, t: 0.26, max: 0.26 });
+            for (let i = 0; i < 6; i++) { const a = ev.ang + (Math.random() - 0.5) * ev.angle, d = ev.range * (0.45 + Math.random() * 0.55); this.parts.push({ x: ev.x + Math.cos(a) * d, y: ev.y - 6 + Math.sin(a) * d * 0.62, vx: Math.cos(a) * 30, vy: Math.sin(a) * 16 - 8, t: 0.3, max: 0.3, color: col, g: -20, glow: true, size: 1 }); }
+            if (ev.elem === 'fire') for (let i = 0; i < 6; i++) { const a = ev.ang + (Math.random() - 0.5) * ev.angle, d = ev.range * (0.5 + Math.random() * 0.5); this.parts.push({ x: ev.x + Math.cos(a) * d, y: ev.y + Math.sin(a) * d * 0.62, vx: 0, vy: -30, t: 0.4, max: 0.4, g: -20, flame: true, size: 1, color: '#ffffff' }); }
+            this.shake = Math.max(this.shake, 2); sfx('reaction', { vol: 0.45, rate: 1.5 });
+          } else if (ev.fx === 'sweep') { this.fx.push({ k: 'spin', x: ev.x, y: ev.y, r: ev.range, type: 'phys', t: 0.25, max: 0.25 }); this.shake = Math.max(this.shake, 4); sfx('heavySwing', { vol: 0.9 }); }
+          if (ev.fx !== 'breath' && ev.fx !== 'spellBlade') this.fx.push({ k: 'cone', ...ev, color: ELEM[ev.elem]?.color || (ev.fx === 'claws' ? '#ffffff' : '#ffb066'), t: 0.22, max: 0.22 });
           if (ev.fx === 'claws') { this.fx.push({ k: 'claws', x: ev.x, y: ev.y, ang: ev.ang + (Math.random() - 0.5) * 0.6, r: ev.range, t: 0.18, max: 0.18 }); sfx('swing', { vol: 0.5, rate: 1.4 }); }
           else if (ev.fx === 'breath') this.flameStream(ev);
           else { this.shake = Math.max(this.shake, 4); sfx('hitHeavy', { vol: 0.8, rate: 0.7 }); }
@@ -1197,6 +1204,7 @@ export class Renderer {
     if (w.map.underwater && dt > 0 && Math.random() < dt * 1.6) this.parts.push({ x: bx + p.dir * 3, y: by - 14, vx: (Math.random() - 0.5) * 6, vy: -26 - Math.random() * 14, t: 1.4, max: 1.4, color: '#e0f6ff', g: -6, bubble: true });
     const wart = weaponArt(w.b.weaponId, ITEMS);
     if ((wart.shield || w.b.wcat === 'shield') && !hideW) this.drawShield(w, p, pose, bx, by, gs);
+    else if (w.b.offItem && !hideW) this.drawOffhand(w, p, pose, bx, by, gs); // 왼손 도구 (한손 무기일 때)
     if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx - p.dir * (back ? -1 : 4) * gs, by - (back ? 7 : 5) * gs, this.fistMetal(wart), p.dir); }
     if (pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
     const sink = p.swim ? by - 7 : p.boat ? by - 1 : null;
@@ -1209,10 +1217,12 @@ export class Renderer {
       g.restore();
     }
     if (!blink && img) this.drawBody(img, bx, by, gs, pose, p.dir);
+    if (!blink && w.b.offItem && !hideW && OFF_LOOK[w.b.offId] === 'xbow') this.drawOffhand(w, p, pose, bx, by, gs, 'front'); // 손쇠뇌는 몸 앞에
     if (sink != null) g.restore();
     if (p.swim) this.drawSwimLine(w, p, bx, by, dt);
     if (p.boat) this.drawBoat(w, p.x, p.y, p.dir, p.moving, 'front');
     if (!pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
+    if (p.familiar) this.drawFamiliar(w, p); // 불러낸 정령 (어깨 위)
     if (busy) this.drawLifeTool(w, p, bx, by);
     if (this.caught) { // 잡은 것을 머리 위로 들어 보인다
       this.caught.t -= dt;
@@ -1429,6 +1439,11 @@ export class Renderer {
       case 'farmPlant': this.sparkBurst(ev.x, ev.y - 2, '#9be15d', 5); sfx('drop', { vol: 0.35, rate: 1.2 }); return true;
       case 'farmWater': for (let i = 0; i < 6; i++) P({ x: ev.x + (rnd() - 0.5) * 10, y: ev.y - 6, vx: (rnd() - 0.5) * 20, vy: 10 + rnd() * 20, t: 0.4, max: 0.4, color: '#8ad0f0', g: 120 }); sfx('drop', { vol: 0.3, rate: 1.6 }); return true;
       case 'farmHarvest': this.burst(ev.x, ev.y - 4, '#9be15d', 12, 60); sfx('coin', { vol: 0.4, rate: 1.2 }); return true;
+      case 'potion': { // 물약: 병에서 올라오는 붉은 거품 몇 개
+        for (let i = 0; i < 6; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 8, y: ev.y - 4, vx: (Math.random() - 0.5) * 8, vy: -24 - Math.random() * 14, t: 0.6, max: 0.6, color: ev.color || '#e04a4a', g: -6, bubble: true });
+        sfx('echo', { vol: 0.4, rate: 1.5 });
+        return true;
+      }
       case 'eat': {
         const nm = GOODS[ev.id]?.name || '';
         this.texts.push({ x: ev.x, y: ev.y - 30, text: `+${ev.heal}`, color: '#8af08a', t: 1.1, vy: -18, vx: 0, size: 2, pop: 0.12 });
@@ -1850,6 +1865,15 @@ export class Renderer {
     if (!img) return;
     // 던진 부메랑이 날아가는 동안은 손이 빈다
     if (wa.thrown && w.b.weapon.boomerang && w.projs.some((pr) => pr.owner === 'p' && pr.boomerang && pr.weaponHit)) { this.fistAt(w, hx, hy); return; }
+    if (w.b.weapon.hits === 2 && !wa.bow && !wa.thrown) { // 쌍검: 왼손에 한 자루 더 (오른손 칼과 엇갈리게, 휘두를 때는 반대 박자로)
+      const { sc, grip } = this.bladeGeom(wa, P, img, gs), sw = p.swingT > 0 ? Math.sin(Math.min(1, 1 - p.swingT / Math.max(0.01, p.swingMax || 0.3)) * Math.PI) : 0;
+      const ox = bx - dir * (2 - sw * 3) * gs, oy = hy + (2 - sw) * gs, a2 = ang + dir * (0.75 - sw * 1.3);
+      g.save(); g.translate(Math.round(ox), Math.round(oy)); g.rotate(a2 + Math.PI / 2);
+      g.drawImage(img, Math.round(-img.width * sc / 2), Math.round(-img.height * sc + grip * sc), Math.round(img.width * sc), Math.round(img.height * sc));
+      g.restore();
+      const sk2 = HAND_COLOR[w.b.race] || '#e8b48a';
+      g.fillStyle = '#16121c'; g.fillRect(Math.round(ox) - 2, Math.round(oy) - 2, 4, 4); g.fillStyle = sk2; g.fillRect(Math.round(ox) - 1, Math.round(oy) - 1, 2, 2);
+    }
     g.save();
     g.translate(Math.round(hx), Math.round(hy));
     if (wa.bow) {
@@ -2017,6 +2041,53 @@ export class Renderer {
     g.fillStyle = front; g.beginPath(); g.moveTo(x - 3, y - 4); g.lineTo(x + 3, y - 4); g.lineTo(x + 3, y + 2); g.lineTo(x, y + 5); g.lineTo(x - 3, y + 2); g.closePath(); g.fill();
     g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillRect(x - 3, y - 4, 6, 1);
     g.fillStyle = '#c83a3a'; g.fillRect(x - 1, y - 3, 2, 6); g.fillRect(x - 2, y - 1, 4, 2);
+  }
+
+  // 불러낸 정령: 도트 그림이 날갯짓 · 흔들림 4장으로 움직인다. 강화 중엔 속성 빛 알갱이, 정령의 품이면 내 둘레를 도는 작은 빛 넷
+  drawFamiliar(w, p) {
+    const g = this.g, f = p.familiar, img = spiritSprite(f.id, Math.floor(w.t * (f.emp > 0 ? 10 : 6)) + (f.phase | 0));
+    if (!img) return;
+    const col = ELEM[{ fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' }[f.elem]]?.color || '#9bffb0';
+    const fade = f.t < 2 && Math.floor(w.t * 8) % 2 ? 0.45 : 1; // 곧 떠난다
+    this.shadow(f.x, p.y + 3, Math.max(3, img.width / 4));
+    g.globalAlpha = fade;
+    g.save(); g.translate(Math.round(f.x), Math.round(f.y)); if (p.dir < 0) g.scale(-1, 1);
+    g.drawImage(img, -Math.round(img.width / 2), -Math.round(img.height / 2));
+    g.restore();
+    g.globalAlpha = 1;
+    if (f.emp > 0 && Math.random() < 0.25) this.parts.push({ x: f.x + (Math.random() - 0.5) * img.width, y: f.y + (Math.random() - 0.5) * img.height, vx: 0, vy: -18, t: 0.45, max: 0.45, color: col, g: 0, glow: true, size: 1 });
+    if (f.guard > 0) for (let i = 0; i < 4; i++) { const a = w.t * 3 + (i / 4) * Math.PI * 2, x = Math.round(p.x + Math.cos(a) * 13), y = Math.round(p.y - 8 + Math.sin(a) * 7); g.fillStyle = '#16121c'; g.fillRect(x - 2, y - 2, 4, 4); g.fillStyle = col; g.fillRect(x - 1, y - 1, 2, 2); }
+  }
+
+  // 왼손 도구: 둥근 작은 방패 · 매달린 부적 · 앞을 겨눈 손쇠뇌 · 허리춤 주머니
+  drawOffhand(w, p, P, bx, by, gs, layer = 'back') {
+    const g = this.g, dir = p.dir, id = w.b.offId, look = OFF_LOOK[id], O = '#16121c';
+    if ((look === 'xbow') !== (layer === 'front')) return;
+    const x = Math.round(bx - dir * 5 * gs), y = Math.round(by - 8 * gs);
+    if (look === 'buckler') {
+      const fine = id === 'knightBuckler';
+      g.fillStyle = O; disc(g, x, y, 5); g.fillStyle = fine ? '#7a86a0' : '#7a5a36'; disc(g, x, y, 4);
+      g.fillStyle = fine ? '#a8b4c8' : '#a07a4a'; g.fillRect(x - 3, y - 3, 3, 2); g.fillRect(x - 3, y - 1, 1, 2);
+      g.fillStyle = fine ? '#e8d070' : '#c8b088'; g.fillRect(x - 1, y - 1, 2, 2);
+    } else if (look === 'charm') {
+      const fine = id === 'starCharm', sw = Math.round(Math.sin(w.t * 2.6 + 1) * 0.8), cx = x + sw;
+      g.fillStyle = O; g.fillRect(x - 1, y - 2, 2, 2); g.fillRect(cx - 2, y - 1, 5, 9);
+      g.fillStyle = fine ? '#ece6ff' : '#f2e6c4'; g.fillRect(cx - 1, y, 3, 7);
+      g.fillStyle = fine ? '#7a5ae8' : '#c8302c'; g.fillRect(cx, y + 1, 1, 5); g.fillRect(cx - 1, y + 3, 3, 1);
+      if ((p.castT > 0 || P.glow > 0.3) && Math.random() < 0.15) this.parts.push({ x: cx + 0.5, y: y + 3, vx: 0, vy: -14, t: 0.4, max: 0.4, color: fine ? '#c8b8ff' : '#ffd8a0', g: 0, glow: true, size: 1 });
+    } else if (look === 'xbow') { // 허리 높이에서 앞을 겨눈 손쇠뇌: 개머리 · 활대 · 쇠살 끝 (몸 앞에 그린다)
+      const fine = id === 'repeatCrossbow', y2 = Math.round(by - 2 * gs), x0 = Math.round(bx - dir * 1 * gs), tip = x0 + dir * 8, lo = Math.min(x0, tip);
+      g.fillStyle = O; g.fillRect(lo - 1, y2 - 2, 10, 4); g.fillRect(tip - 1, y2 - 5, 3, 10); g.fillRect(x0 - 1, y2, 3, 4);
+      g.fillStyle = fine ? '#5a4a6a' : '#8a5a32'; g.fillRect(lo, y2 - 1, 8, 2); g.fillRect(x0, y2 + 1, 1, 2);
+      g.fillStyle = fine ? '#8a7aa0' : '#b07a48'; g.fillRect(lo, y2 - 1, 8, 1);
+      g.fillStyle = fine ? '#e0e6f0' : '#c8ccd4'; g.fillRect(tip, y2 - 4, 1, 8);
+      g.fillStyle = '#f0ece4'; g.fillRect(tip + dir, y2 - 1, 1, 1);
+      if (fine) { g.fillStyle = '#c8ccd4'; g.fillRect(x0 + dir * 3, y2 - 3, 2, 1); } // 연발 탄창
+    } else if (look === 'pouch') { // 등 쪽 허리춤 (몸 뒤로 삐져나오게)
+      const hx = Math.round(bx - dir * 7 * gs), hy = Math.round(by - 4 * gs), fine = id === 'knifeBelt';
+      g.fillStyle = O; g.fillRect(hx - 3, hy - 3, 6, 6); g.fillStyle = '#7a5434'; g.fillRect(hx - 2, hy - 2, 4, 4); g.fillStyle = '#a07448'; g.fillRect(hx - 2, hy - 2, 4, 1);
+      if (fine) { g.fillStyle = O; g.fillRect(hx - 2, hy - 6, 1, 4); g.fillRect(hx + 1, hy - 6, 1, 4); g.fillStyle = '#c8d0dc'; g.fillRect(hx - 2, hy - 7, 1, 1); g.fillRect(hx + 1, hy - 7, 1, 1); }
+    }
   }
 
   castColor(w, p) {
@@ -2234,7 +2305,7 @@ export class Renderer {
     const col = pr.color || '#c9a8ff';
     const sp = Math.hypot(pr.vx, pr.vy) || 1, ux = pr.vx / sp, uy = pr.vy / sp, a = Math.atan2(pr.vy, pr.vx);
     const el = pr.elem || (pr.skind === 'fireball' ? 'fire' : pr.skind === 'icerock' || pr.skind === 'ice' ? 'ice' : pr.skind === 'arcane' ? 'arcane' : pr.skind === 'soul' ? 'soul' : pr.skind === 'plague' ? 'poison' : pr.kind === 'orb' ? 'orb' : 'arcane');
-    const big = pr.skind === 'fireball' || pr.skind === 'spiritArrow' || pr.skind === 'icerock' ? 1.5 : pr.kind === 'orb' ? 0.8 : 1;
+    const big = pr.skind === 'fireball' || pr.skind === 'spiritArrow' || pr.skind === 'icerock' ? 1.5 : pr.kind === 'orb' ? 0.8 : pr.skind === 'spiritBolt' ? 0.7 : 1; // 정령 탄은 작게
     g.save();
     g.globalCompositeOperation = 'lighter';
     const halo = g.createRadialGradient(pr.x, pr.y, 0, pr.x, pr.y, 14 * big);
@@ -2287,7 +2358,7 @@ export class Renderer {
       // 깃든 정령 색이 화살 주위를 나선으로 돈다
       pr.spiritElems.forEach((e2, i) => { const q = t * 18 + i * 2.1; this.parts.push({ x: pr.x - ux * 4 + Math.cos(q) * -uy * 5, y: pr.y - uy * 4 + Math.cos(q) * ux * 5, vx: -pr.vx * 0.1, vy: -pr.vy * 0.1, t: 0.35, max: 0.35, color: ELEM[e2].color, g: 0, glow: true }); });
     }
-    if (Math.random() < 0.8) {
+    if (Math.random() < (pr.skind === 'spiritBolt' ? 0.3 : 0.8)) {
       const pc = el === 'fire' ? (Math.random() < 0.5 ? '#ff7a2a' : '#ffd040') : el === 'ice' ? '#e0f8ff' : col;
       this.parts.push({ x: pr.x + (Math.random() - 0.5) * 6, y: pr.y + (Math.random() - 0.5) * 6, vx: -pr.vx * 0.15 + (Math.random() - 0.5) * 20, vy: -pr.vy * 0.15 + (Math.random() - 0.5) * 20 - (el === 'fire' ? 20 : 0), t: 0.35, max: 0.35, color: pc, g: el === 'ice' ? 40 : -10, glow: true });
     }
@@ -2672,6 +2743,12 @@ export class Renderer {
         const art = RACE_ART[w.b.race];
         const img = sprite(frames(art.base, 'run')[0], f.tint || 'brightness(2) saturate(0)', false, (f.dir || p.dir) < 0);
         if (img) { g.globalAlpha = k * (f.tint ? 0.7 : 0.5); g.drawImage(img, Math.round(f.x - img.width / 2), Math.round(f.y + 5 - img.height)); g.globalAlpha = 1; }
+      } else if (f.k === 'spellBlade') { // 근접 마법 초승달: 바깥은 속성 빛, 안쪽은 흰 날
+        const prog = 1 - k, a0 = f.ang - f.angle / 2, a1 = a0 + f.angle * Math.min(1, prog * 3.2);
+        g.save(); g.translate(f.x, f.y - 6); g.scale(1, 0.62);
+        g.fillStyle = hexA(f.col, 0.55 * Math.min(1, k * 2.2)); smear(g, 0, 0, f.r * 0.92, 9, a0, a1);
+        g.fillStyle = hexA('#ffffff', 0.85 * Math.min(1, k * 2.2)); smear(g, 0, 0, f.r * 0.92, 2.5, a0, a1);
+        g.restore();
       } else if (f.k === 'cut') { // 초승달 칼자국 두 줄 (가운데가 두껍고 끝이 가늘다)
         const prog = 1 - k;
         for (const [o, col, th] of [[-3, '#8a6aff', 5], [3, '#c8b0ff', 4], [0, '#ffffff', 1.6]]) {
@@ -3266,7 +3343,7 @@ export class Renderer {
     };
     const fl = (k) => 1 + Math.sin(t * 9 + k) * 0.05 + Math.sin(t * 23 + k * 3) * 0.03;
     if (L > 0) {
-      light(p.x, p.y - 6, 78, '#d8d0c0', 0.5 * L); // 내 둘레는 늘 조금 보인다
+      light(p.x, p.y - 6, p.buffs?.scrollLight ? 150 : 78, p.buffs?.scrollLight ? '#fff2c8' : '#d8d0c0', (p.buffs?.scrollLight ? 0.85 : 0.5) * L); // 내 둘레는 늘 조금 보인다 (빛의 주문서면 환히)
       if (p.buffs?.enchant) light(p.x, p.y - 8, 54, ELEM[p.buffs.enchant.elem]?.color || '#ffffff', 0.5 * L);
       for (const o of w.objects) {
         if (!inView(o.x, o.y, 140)) continue;
@@ -3292,7 +3369,7 @@ export class Renderer {
         else if (pr.kind === 'candles') light(px, py - 10, 46 * fl(px), '#ffc070', 0.8 * L);
         else if (pr.kind === 'desk' && pr.books) light((pr.x + pr.w) * TILE - 12, py - 20, 36, '#ffc070', 0.7 * L);
         else if (pr.kind === 'runeAltar') light(px, py - 22, 60, '#c0a0ff', 0.75 * L);
-        else if (pr.kind === 'lampPost') light(px, py - 30, 84 * fl(px), '#ffd890', 0.9 * L);
+        else if (pr.kind === 'lampPost') light(px, py - 30, 84, '#ffd890', 0.9 * L); // 가로등은 흔들리지 않는 고른 빛 (깜박이지 않게)
         else if (pr.kind === 'mageTower' || pr.kind === 'worldTree' || pr.kind === 'dragonNest' || pr.kind === 'mausoleum') light(px, py - 30, 70, pr.kind === 'worldTree' ? '#8affb0' : pr.kind === 'dragonNest' ? '#ff8a40' : pr.kind === 'mausoleum' ? '#c45cff' : '#b0a0ff', 0.5 * L);
       }
       if (indoor) light(p.x, p.y - 6, 60, '#ffd8a0', 0.35 * L);
@@ -3355,7 +3432,7 @@ export class Renderer {
       lg.fillStyle = gr; lg.fillRect(x - cx - r, y - cy - r, r * 2, r * 2);
     };
     const flick = 1 + Math.sin(w.t * 9) * 0.02 + Math.sin(w.t * 23) * 0.015;
-    hole(p.x, p.y - 6, 160 * flick);
+    hole(p.x, p.y - 6, (p.buffs?.scrollLight ? 250 : 160) * flick); // 빛의 주문서: 더 넓게
     const inView = (x, y) => x > cx - 80 && x < cx + VW + 80 && y > cy - 80 && y < cy + VH + 80;
     const colored = [];
     for (const d of this.glowDeco) if (inView(d.x, d.y)) { const [r, c] = GLOW[d.kind]; hole(d.x, d.y - 3, r * (1 + Math.sin(w.t * 3 + d.x) * 0.08), 0.9); colored.push([d.x, d.y - 3, r * 0.8, c]); }
@@ -3677,6 +3754,15 @@ export class Renderer {
       if (n > 0) { g.imageSmoothingEnabled = false; const ic = iconCanvas(qf), s2 = Math.floor((box - 4 * u) / 16); g.drawImage(ic, Math.round(qx + (box - 16 * s2) / 2), Math.round(y0 + (box - 16 * s2) / 2), 16 * s2, 16 * s2); this.text(String(n), qx + box - 3 * v, y0 + box - 5 * v, Math.max(1, u - 1), '#ffffff', 'right'); }
       else { g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(qx + u, y0 + u, box - 2 * u, box - 2 * u); }
       this.text('H', qx + 4 * v, y0 + 5 * v, Math.max(1, u - 1), '#ffe8a8', 'left', true, true);
+    }
+    // 물약 (Z): 가진 물약 수 · 다시 마실 때까지
+    const pots = ['potion1', 'potion2', 'potion3'].filter((id) => w.life?.bag?.[id] > 0);
+    if (pots.length && !touch) {
+      const px2 = x0 + n * (box + gap), cnt = pots.reduce((a, id) => a + w.life.bag[id], 0);
+      this.cooldownBox(px2, y0, box, p.potionCd > 0 ? 1 - p.potionCd / 8 : 1, 'Z', '');
+      g.imageSmoothingEnabled = false; const ic = iconCanvas(pots[0]), s2 = Math.max(1, Math.floor((box - 8 * u) / 16)); g.drawImage(ic, Math.round(px2 + (box - 16 * s2) / 2), Math.round(y0 + (box - 16 * s2) / 2 + 2 * u), 16 * s2, 16 * s2);
+      this.text(String(cnt), px2 + box - 3 * v, y0 + box - 5 * v, Math.max(1, u - 1), '#ffffff', 'right');
+      this.text('물약', px2 + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#d8d0e8', 'center');
     }
     slots.forEach((id, i) => {
       const x = x0 + (i + 1) * (box + gap);

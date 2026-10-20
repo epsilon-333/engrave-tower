@@ -145,6 +145,7 @@ export function craftCost(type, mat, parts = []) {
   return { mats, gold: T.gold + M.tier * M.tier * 12 };
 }
 
+const CRAFT_HANDS = { greatsword: 2, hammer: 2, spear: 2, halberd: 2, scythe: 2, knuckle: 2, swordShield: 2, bow: 2, crossbow: 2, staff: 2 }; // 양손 무기 (나머지는 한손)
 // 만든 무기 정보 → 장비 (items.js 와 같은 모양)
 export function craftItem(rec) {
   const T = WTYPES[rec.type], M = WMATS[rec.mat];
@@ -194,7 +195,7 @@ export function craftItem(rec) {
   const adj = parts.length ? (syn ? syn.name : PART_FX[parts[0]].adj) : '';
   const name = rec.name || `${adj ? adj + ' ' : ''}${M.name} ${T.name}`;
   return {
-    name, slot: 'weapon', price: 0, crafted: true, cat: T.cat, weapon: w, stats, tags: [], effects: effects.map((e) => ({ ...e, text: '' })),
+    name, slot: 'weapon', price: 0, crafted: true, cat: T.cat, hands: CRAFT_HANDS[rec.type] || 1, weapon: w, stats, tags: [], effects: effects.map((e) => ({ ...e, text: '' })),
     lines, art: { ...T.art, tint: M.tint }, rec, desc: T.desc,
   };
 }

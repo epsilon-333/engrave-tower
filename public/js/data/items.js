@@ -194,7 +194,27 @@ const WCAT = {
   shield: ['guardSword', 'bastionBlade'],
 };
 for (const [cat, ids] of Object.entries(WCAT)) for (const id of ids) { const it = ITEMS[id]; if (it?.weapon) { it.cat = cat; it.weapon.cat = cat; if (cat === 'great') it.weapon.great = true; } }
+// 한손 · 양손: 한손 무기를 들면 왼손에 보조 도구(부적 · 손쇠뇌 · 작은 방패 · 투척 주머니)를 들 수 있다. 양손 무기는 두 손을 다 쓴다
+export const CAT_HANDS = { blade: 1, axe: 1, blunt: 1, whip: 1, throw: 1, tome: 1, great: 2, polearm: 2, bow: 2, tube: 2, staff: 2, scythe: 2, fist: 2, shield: 2 };
+const HANDS = { // 분류와 다른 것: 쌍검 · 큰 도끼 · 큰 곤봉은 양손, 완드 · 보주 · 홀 · 인형 · 시계추 · 심장석은 한손
+  dualBlades: 2, twinDaggers: 2, katana: 2, doubleAxe: 2, twoHandAxe: 2, bloodthirstAxe: 2, twinReturnAxe: 2, stoneClub: 2, tectonicHammer: 2, rockFist: 2, mountainHeart: 2, iceFist: 2, permafrostCore: 2,
+  apprenticeWand: 1, frostWand: 1, triOrb: 1, cursedDoll: 1, deadScepter: 1, aeonPendulum: 1, elderHeartstone: 1,
+};
+for (const [id, it] of Object.entries(ITEMS)) if (it.weapon && !it.hands) it.hands = HANDS[id] || CAT_HANDS[it.cat] || 1;
+// 왼손 도구: 한손 무기와 함께 들면 그 종류의 스킬을 이 힘으로 쓴다 (off: 스킬 종류 → 힘)
+Object.assign(ITEMS, {
+  talisman: { name: '마법 부적', slot: 'off', price: 120, stats: { mag: 2 }, tags: [], off: { spell: 0.9 }, odesc: '마법을 90% 힘으로 쓴다' },
+  starCharm: { name: '별빛 부적', slot: 'off', price: 600, stats: { mag: 5, spi: 2 }, tags: [], off: { spell: 1 }, odesc: '마법을 온전한 힘으로 쓴다' },
+  handCrossbow: { name: '손쇠뇌', slot: 'off', price: 150, stats: { agi: 2 }, tags: [], off: { shoot: 0.8 }, odesc: '쏘기 스킬을 80% 힘으로 쓴다 (쇠살)' },
+  repeatCrossbow: { name: '연발 손쇠뇌', slot: 'off', price: 650, stats: { agi: 4, sen: 2 }, tags: [], off: { shoot: 0.95 }, odesc: '쏘기 스킬을 95% 힘으로 쓴다 (쇠살)' },
+  buckler: { name: '작은 방패', slot: 'off', price: 100, stats: { pres: 5 }, tags: [], off: { shield: 1, parry: 1 }, odesc: '방패 · 받아치기 스킬을 온전히 쓴다' },
+  knightBuckler: { name: '기사단 원형 방패', slot: 'off', price: 550, stats: { pres: 12, vit: 3 }, tags: [], off: { shield: 1, parry: 1 }, odesc: '방패 · 받아치기 스킬을 온전히 쓴다' },
+  throwPouch: { name: '투척 주머니', slot: 'off', price: 90, stats: { str: 1, agi: 1 }, tags: [], off: { throw: 0.85 }, odesc: '던지기 스킬을 85% 힘으로 쓴다' },
+  knifeBelt: { name: '투척 단검 띠', slot: 'off', price: 550, stats: { agi: 3, sen: 2 }, tags: [], off: { throw: 1 }, odesc: '던지기 스킬을 온전한 힘으로 쓴다' },
+});
+export const OFF_LOOK = { talisman: 'charm', starCharm: 'charm', handCrossbow: 'xbow', repeatCrossbow: 'xbow', buckler: 'buckler', knightBuckler: 'buckler', throwPouch: 'pouch', knifeBelt: 'pouch' };
 export const WCAT_NAME = { blade: '한손 칼', great: '대검', axe: '도끼', blunt: '둔기', polearm: '창', fist: '주먹', bow: '활 · 석궁', tube: '바람총', throw: '던지는 무기', staff: '지팡이', tome: '마도서', shield: '검과 방패', whip: '채찍', scythe: '낫' };
+export const weaponHands = (it) => it?.hands || CAT_HANDS[it?.weapon?.cat || it?.cat] || 1;
 export const weaponCat = (it) => it?.weapon?.cat || it?.cat || (it?.weapon?.kind === 'proj' ? (it.weapon.dmg === 'mag' ? 'staff' : 'bow') : 'blade');
 
 // 플레이 스타일 → 시작 무기 / 핵심 태그 / 추천 종족

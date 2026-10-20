@@ -2,7 +2,7 @@
 // + 도구(곡괭이 · 도끼 · 삽 · 괭이 · 물뿌리개 · 낚싯대) · 자원 덩어리 · 땅 파기 · 낚시 · 농사 · 대장간 제작 · 잡화점 시세
 // icon: 그림 종류(t)와 색(c). 그림은 render/icons.js 가 그린다.
 
-export const GOOD_CATS = { food: '요리', ore: '광석 · 돌', gem: '보석', wood: '나무', forage: '채집물', meat: '고기', part: '몬스터 부산물', dig: '땅에서 나온 것', bait: '미끼', fish: '물고기', crop: '작물', seed: '씨앗', junk: '잡동사니' };
+export const GOOD_CATS = { food: '요리', ore: '광석 · 돌', gem: '보석', wood: '나무', forage: '채집물', meat: '고기', part: '몬스터 부산물', dig: '땅에서 나온 것', bait: '미끼', fish: '물고기', crop: '작물', seed: '씨앗', potion: '물약', scroll: '주문서', junk: '잡동사니' };
 
 // ── 가방: 물건 종류마다 한 칸 (같은 물건은 몇 개든 한 칸). 잡화점에서 칸을 늘린다 ──
 export const BAG_START = 30;
@@ -51,6 +51,19 @@ export const GOODS = {
   frogLeg: { name: '개구리 다리', cat: 'meat', price: 9, desc: '늪의 진흙 괴물에게서 얻는다. 먹으면 몸이 가벼워진다.', icon: { t: 'meat', c: ['#8ab060', '#d8e8b0', '#5a7a3a'] } },
   // ── 잡동사니 ──
   oldBoot: { name: '낡은 장화', cat: 'junk', price: 1, desc: '누군가 잃어버린 장화. 물이 줄줄 샌다.', icon: { t: 'boot', c: ['#6a4a32', '#8a6a4a', '#3a2818'] } },
+  // ── 정령석: 세계수 성지에서 정령과 계약할 때 바친다 (몬스터가 가끔 떨어뜨리고, 숲에서 더 자주) ──
+  spiritStone: { name: '정령석', cat: 'gem', price: 40, desc: '정령의 숨이 깃든 맑은 돌. 세계수 성지의 「정령 계약」에서 하나를 바치면 정령 하나와 계약한다.', icon: { t: 'crystal', c: ['#9bffb0', '#e8fff0', '#3a9a6a'] } },
+  // ── 마탑 주문서 (1회용 · 가방에서 '읽기') ──
+  scroll_breath: { name: '수중 호흡 주문서', cat: 'scroll', price: 30, desc: '읽으면 3분 동안 물속에서 숨이 줄지 않는다.', use: { kind: 'buff', buff: 'waterBreath', t: 180, color: '#7ad8ff', name: '수중 호흡' }, icon: { t: 'scroll', c: ['#3a8ad8'] } },
+  scroll_return: { name: '귀환 주문서', cat: 'scroll', price: 40, desc: '읽으면 바람결 마을로 돌아간다. 던전에서 읽으면 얻은 것을 모두 지킨 채 밖으로 나온다.', use: { kind: 'return' }, icon: { t: 'scroll', c: ['#e8a83a'] } },
+  scroll_teleport: { name: '이동 주문서', cat: 'scroll', price: 50, desc: '읽으면 깨운 이동 포탈 가운데 한 곳으로 바로 간다. (바깥 세계에서)', use: { kind: 'teleport' }, icon: { t: 'scroll', c: ['#8a6aff'] } },
+  scroll_light: { name: '빛의 주문서', cat: 'scroll', price: 25, desc: '읽으면 5분 동안 내 둘레가 환히 밝아진다. 어두운 던전과 밤에.', use: { kind: 'buff', buff: 'scrollLight', t: 300, color: '#fff0a0', name: '빛의 주문서' }, icon: { t: 'scroll', c: ['#d8b830'] } },
+  scroll_haste: { name: '바람의 주문서', cat: 'scroll', price: 35, desc: '읽으면 3분 동안 이동 속도 +25%.', use: { kind: 'buff', buff: 'scrollHaste', t: 180, mods: { moveSpeed: 1.25 }, color: '#bfffd0', name: '바람의 주문서' }, icon: { t: 'scroll', c: ['#3ab878'] } },
+  scroll_reveal: { name: '탐색 주문서', cat: 'scroll', price: 60, desc: '읽으면 지금 있는 던전 층의 지도가 모두 드러난다. 바깥 세계에서는 둘레의 넓은 땅이 드러난다.', use: { kind: 'reveal' }, icon: { t: 'scroll', c: ['#c83a3a'] } },
+  // ── 물약 (가방에서 '마시기' · Z로 빨리 마시기 · 한 번 마시면 8초 뒤에 다시) ──
+  potion1: { name: '체력 포션', cat: 'potion', price: 20, desc: '마시면 체력을 30% 되찾는다.', use: { kind: 'potion', heal: 0.3 }, icon: { t: 'potion', c: ['#e04a4a'] } },
+  potion2: { name: '상급 체력 포션', cat: 'potion', price: 60, desc: '마시면 체력을 55% 되찾는다.', use: { kind: 'potion', heal: 0.55 }, icon: { t: 'potion', c: ['#d8306a'], k: 2 } },
+  potion3: { name: '최상급 체력 포션', cat: 'potion', price: 150, desc: '마시면 체력을 모두 되찾는다.', use: { kind: 'potion', heal: 1 }, icon: { t: 'potion', c: ['#f0c040'], k: 3 } },
 };
 
 // ── 물고기: 사는 물(water) · 지역(biome, 없으면 어디든) · 잘 걸리는 정도(w) · 크기(cm) · 값 ──
@@ -320,7 +333,8 @@ export const REINFORCE = [
 export const REINFORCE_MAX = 5;
 
 // ── 잡화점: 파는 것 · 시세 (1시간마다 종류별로 값이 오르내리고, 두 가지는 인기 상품 ×1.8) ──
-export const SHOP_STOCK = ['turnipSeed', 'wheatSeed', 'carrotSeed', 'potatoSeed', 'strawberrySeed', 'pumpkinSeed', 'worm'];
+export const SHOP_STOCK = ['potion1', 'potion2', 'potion3', 'turnipSeed', 'wheatSeed', 'carrotSeed', 'potatoSeed', 'strawberrySeed', 'pumpkinSeed', 'worm'];
+export const SCROLL_SHOP = ['scroll_breath', 'scroll_return', 'scroll_teleport', 'scroll_light', 'scroll_haste', 'scroll_reveal']; // 마탑에서 판다
 export const buyPrice = (id) => (GOODS[id].cat === 'seed' ? CROPS[GOODS[id].crop].seedPrice : Math.max(2, GOODS[id].price * 2));
 const SELL_CATS = ['ore', 'gem', 'wood', 'forage', 'dig', 'fish', 'crop', 'junk', 'bait', 'seed'];
 export function market(now = Date.now()) {

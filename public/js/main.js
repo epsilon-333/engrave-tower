@@ -26,7 +26,11 @@ import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
 import { RACES, RACE_MIGRATE } from './data/races.js';
 import { RACE_STORY, relation, allies, ALLY_AFF, REL_NAME, REL_COLOR } from './data/lore.js';
 import { ITEMS, STYLES } from './data/items.js';
-import { CLASSES, RACE_CLASSES, SKILLS } from './data/skills.js';
+import { CLASSES, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc } from './data/skills.js';
+import { STAT_INFO } from './data/stats.js';
+import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
+import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText } from './data/spirits.js';
+import { spiritIconURL } from './render/spirits.js';
 import { getAutoAim, setAutoAim } from './settings.js';
 import { ENGRAVINGS } from './data/engravings.js';
 import { RACE_ART } from './data/art.js';
@@ -341,12 +345,17 @@ function showSanctum(race, tab = 'bless') {
   const S = SANCTUMS[race], L = SANCT_LIFE[race], st = sanctState(save.story, race);
   const lv = affLevel(st.aff), q = st.cur, def = q && sanctQuestDef(race, q.id);
   const dot = (k) => (k === 'quest' && (q?.done || (!q && st.step < L.quests.length)) ? ' <b class="dot">!</b>' : '');
+  // 다른 종족의 성지에서는 그 종족의 기술을 배울 수 있다 · 마탑에서는 주문서를 판다
+  const tabs = [...SANCT_TABS, ...(save.race !== race ? [['learn', '기술 배우기']] : []), ...(race === 'wizard' ? [['scroll', '주문서']] : []), ...(race === 'elf' ? [['spirit', '정령 계약']] : [])];
   let html = `<h2>${S.name}</h2><p class="muted">${tab === 'bless' ? S.keeper : L.leader.name} · 친밀도 <b style="color:${S.color}">${AFF_NAME[lv]}</b>${save.race === race ? ` · <b style="color:${S.color}">내 종족의 성지</b>` : ''}</p>
-    <div class="tabs sanct-tabs">${SANCT_TABS.map(([k, n]) => `<button class="${k === tab ? 'on' : ''}" data-st="${k}">${n}${dot(k)}</button>`).join('')}</div>`;
+    <div class="tabs sanct-tabs">${tabs.map(([k, n]) => `<button class="${k === tab ? 'on' : ''}" data-st="${k}">${n}${dot(k)}</button>`).join('')}</div>`;
   if (tab === 'bless') html += blessHtml(race);
   else if (tab === 'quest') html += questHtml(race, st, q, def);
   else if (tab === 'aff') html += affHtml(race, st, lv);
   else if (tab === 'story') html += storyHtml(race);
+  else if (tab === 'learn') html += sanctLearnHtml(race, lv);
+  else if (tab === 'scroll') html += scrollShopHtml();
+  else if (tab === 'spirit') html += spiritHtml();
   else html += trainHtml(race, st, lv);
   html += '<button data-close class="ghost">떠난다</button>';
   showModal(html);
@@ -362,8 +371,104 @@ function showSanctum(race, tab = 'bless') {
   // 친밀도: 선물 · 오늘의 조각
   overlay.querySelectorAll('[data-gift]').forEach((b) => (b.onclick = () => { giveGift(race, b.dataset.gift); showSanctum(race, 'aff'); }));
   on('dailyShard', () => { st.shardDay = today(); gainShard(race); writeSave(save); renderer.banner = { text: `${L.leader.name}의 선물`, sub: `${S.relic} 조각 1개 (${save.shards?.[race] || 0} / ${SHARDS_PER_RELIC})`, t: 2.6, color: S.color }; showSanctum(race, 'aff'); });
+  // 다른 종족 기술 배우기 · 주문서 사기
+  overlay.querySelectorAll('[data-learnx]').forEach((b) => (b.onclick = () => { learnCross(race, b.dataset.learnx); showSanctum(race, 'learn'); }));
+  overlay.querySelectorAll('[data-scroll]').forEach((b) => (b.onclick = () => { buyScroll(b.dataset.scroll, +b.dataset.n || 1); showSanctum(race, 'scroll'); }));
+  // 정령 계약: 정령석 사기 · 계약 1회 / 10회 · 함께하는 정령 고르기
+  overlay.querySelectorAll('[data-stone]').forEach((b) => (b.onclick = () => { buyStones(+b.dataset.stone); showSanctum(race, 'spirit'); }));
+  overlay.querySelectorAll('[data-pull]').forEach((b) => (b.onclick = () => { pullSpirits(+b.dataset.pull); showSanctum(race, 'spirit'); }));
+  overlay.querySelectorAll('[data-spmain]').forEach((b) => (b.onclick = () => { save.spirits.main = b.dataset.spmain; writeSave(save); world.setBuild(buildNow()); showSanctum(race, 'spirit'); }));
   // 수련
   on('trainGo', () => { overlay.hidden = true; paused = false; modal = null; if (!world.startTraining?.(race)) renderer.banner = { text: '지금은 수련할 수 없다', t: 1.6, color: '#c8b8a0' }; });
+}
+// 다른 종족의 기술: 스킬 종류에 맞는 능력치(마법 = 마력 · 활 · 던지기 = 민첩 · 나머지 = 근력) + 이 성지의 친밀도 「친구」 + 골드
+function sanctLearnHtml(race, lv) {
+  const S = SANCTUMS[race], b = buildNow(), resName = RACES[save.race].res.name;
+  const groups = Object.entries(CLASSES).filter(([, c]) => c.race === race).map(([cid, c]) => {
+    const cards = c.skills.filter(crossOk).map((id) => {
+      const sk = SKILLS[id], r = crossReq(sk), have = b.stats[r.stat] || 0, known = (save.learned || []).includes(id);
+      const okLv = (sk.unlock || 1) <= save.level, okStat = have >= r.need, okAff = lv >= r.aff, ok = okLv && okStat && okAff && save.gold >= r.gold;
+      const fit = handFit(sk, b).fit, cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
+      const cond = (good, text) => `<span class="${good ? '' : 'warn'}">${text}</span>`;
+      return `<div class="skc ${known ? 'on' : ''}"><div class="c-head"><b>${sk.name}</b>${sk.ult ? ' <span class="warn">궁극</span>' : ''}<span class="role">${KIND_NAME[sk.kind || 'body']}</span></div>
+        <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''} · 지금 손에 든 것으로: <b class="${fit <= 0 ? 'warn' : ''}">${fitText(fit)}</b></div>
+        <div class="c-sum">${esc(plainDesc(sk))}</div>
+        <div class="muted">조건: ${cond(okStat, `${STAT_INFO[r.stat].name} ${have} / ${r.need}`)} · ${cond(okAff, `친밀도 「${AFF_NAME[r.aff]}」`)} · ${cond(okLv, `레벨 ${sk.unlock || 1}`)} · ${STAT_INFO[r.stat].name} ${r.full} 이상이면 온전한 힘 (아니면 85%)</div>
+        <div class="c-act">${known ? '<span class="muted">배움 ✔ · 캐릭터 창(C)에서 Q·E·R·F에 넣는다</span>' : `<button class="sm" data-learnx="${id}" ${ok ? '' : 'disabled'}>배우기 ◆ ${r.gold}</button>`}</div></div>`;
+    }).join('');
+    return cards ? `<h4>${esc(c.name)} <small>${esc(c.desc)}</small></h4><div class="skill-row">${cards}</div>` : '';
+  }).join('');
+  return `<div class="talk"><p>${esc(RACES[race].name)}의 기술을 배운다. 배운 기술은 <b>내 종족의 자원(${resName})</b>으로 쓴다 — 쓰는 기술이면 ${josa(resName, '을', '를')} 쓰고, 모으는 기술이면 ${josa(resName, '이', '가')} 찬다.</p>
+    <p class="muted">무기가 맞지 않으면 약해진다. 한손 무기라면 왼손 도구(마법 부적 · 손쇠뇌 · 작은 방패 · 투척 주머니)를 대장간에서 사서 들자.</p></div>${groups}`;
+}
+function learnCross(race, id) {
+  const sk = SKILLS[id], r = crossReq(sk), b = buildNow(), st = sanctState(save.story, race);
+  if (!crossOk(id) || (save.learned || []).includes(id) || (b.stats[r.stat] || 0) < r.need || affLevel(st.aff) < r.aff || (sk.unlock || 1) > save.level || save.gold < r.gold) return;
+  save.gold -= r.gold; (save.learned ||= []).push(id);
+  writeSave(save); world.setBuild(buildNow());
+  renderer.banner = { text: `새 기술 「${sk.name}」`, sub: `${SANCTUMS[race].name}에서 배웠다 · 캐릭터 창(C)에서 Q·E·R·F에 넣는다`, t: 4, color: SANCTUMS[race].color };
+  sfx('levelup', { vol: 0.7 });
+}
+// 마탑의 주문서: 물속 숨 · 귀환 · 이동 · 빛 · 바람 · 탐색 (1회용, 가방에서 읽는다)
+function scrollShopHtml() {
+  const cards = SCROLL_SHOP.map((id) => {
+    const g = GOODS[id], price = buyPrice(id), have = save.bag?.[id] || 0;
+    return `<div class="skc"><div class="c-head"><b>${g.name}</b><span class="role">${have}장 있음</span></div><div class="c-sum">${esc(g.desc)}</div>
+      <div class="c-act"><button class="sm" data-scroll="${id}" data-n="1" ${save.gold >= price ? '' : 'disabled'}>1장 ◆ ${price}</button><button class="sm" data-scroll="${id}" data-n="5" ${save.gold >= price * 5 ? '' : 'disabled'}>5장 ◆ ${price * 5}</button></div></div>`;
+  }).join('');
+  return `<div class="talk"><p>「마법사가 아니어도 좋네. 종이에 담긴 별빛은 읽는 자를 가리지 않으니.」</p>
+    <p class="muted">주문서는 한 번 읽으면 사라진다. 가방(I)에서 「읽기」를 누른다.</p></div><div class="skill-row">${cards}</div>`;
+}
+function buyScroll(id, n) {
+  const price = buyPrice(id) * n;
+  if (!GOODS[id] || save.gold < price) return;
+  if (!bagAdd(lifeOf(), id, n)) { renderer.banner = { text: '가방이 가득 찼다', t: 1.6, color: '#ffb0a0' }; return; }
+  save.gold -= price; writeSave(save);
+  sfx('coin', { vol: 0.6 });
+}
+// 정령 계약 (뽑기): 정령석 하나 = 계약 한 번. 등급 일반 55% · 희귀 30% · 영웅 12% · 전설 3%. 10회는 희귀 이상 하나를 보장
+let lastPull = null;
+function spiritCard(id, owned, main, badge = '') {
+  const s = SPIRITS[id], G = SPIRIT_GRADES[s.grade], o = owned?.[id];
+  return `<div class="spc ${o ? '' : 'off'} ${main === id ? 'main' : ''}" style="--c:${G.color}">
+    <img src="${spiritIconURL(id)}" alt="">${badge ? `<i class="sp-badge">${badge}</i>` : ''}
+    <b>${o ? esc(s.name) : '???'}</b><small style="color:${G.color}">${G.name} · ${SPIRIT_ELEMS[s.elem].name}${o ? ` · ${'★'.repeat(o.star)}${'☆'.repeat(SPIRIT_STAR_MAX - o.star)}` : ''}</small>
+    ${o ? `<small>${esc(spiritBuffText(id, o.star))}</small>${main === id ? '<em>함께하는 정령</em>' : `<button class="sm" data-spmain="${id}">함께하기</button>`}` : ''}</div>`;
+}
+function spiritHtml() {
+  const sv = save.spirits || { owned: {}, main: null }, stones = save.bag?.spiritStone || 0, got = Object.keys(sv.owned || {}).length;
+  const res = lastPull ? `<h4>계약 결과</h4><div class="sp-grid">${lastPull.map((r) => spiritCard(r.id, sv.owned, sv.main, r.r === 'new' ? 'NEW' : r.r === 'star' ? '결속 ★+1' : '정령석 +1')).join('')}</div>` : '';
+  const all = Object.keys(SPIRITS).sort((a, b) => SPIRITS[b].grade - SPIRITS[a].grade);
+  return `<div class="talk"><p>「정령은 부른다고 오지 않아. 마음이 맞는 정령이 스스로 손을 내밀지.」</p>
+    <p class="muted">정령석 하나를 바치면 정령 하나와 계약한다. 같은 정령과 또 계약하면 결속(★)이 올라 힘이 15%씩 세진다 (최대 ★${SPIRIT_STAR_MAX}). 싸울 때는 「정령 부르기」 스킬로 함께하는 정령을 꺼낸다 — 정령사가 아니어도 이 성지의 「기술 배우기」에서 배울 수 있다.</p>
+    <p class="muted">확률: ${SPIRIT_GRADES.map((G) => `<b style="color:${G.color}">${G.name} ${Math.round(G.rate * 100)}%</b>`).join(' · ')} · 10회 계약은 희귀 이상 하나 보장 · 정령석은 몬스터가 가끔 떨어뜨린다 (이끼 숲 · 원시림 · 이끼 동굴에서 더 자주, 우두머리는 꼭)</p></div>
+    <div class="sp-bar"><span>정령석 <b>${stones}</b>개 · ◆ ${save.gold}</span>
+      <button class="sm" data-stone="1" ${save.gold >= STONE_PRICE ? '' : 'disabled'}>정령석 1개 ◆ ${STONE_PRICE}</button><button class="sm" data-stone="10" ${save.gold >= STONE_PRICE * 10 ? '' : 'disabled'}>10개 ◆ ${STONE_PRICE * 10}</button>
+      <button data-pull="1" ${stones >= 1 ? '' : 'disabled'}>계약 1회</button><button data-pull="10" ${stones >= 10 ? '' : 'disabled'}>계약 10회</button></div>
+    ${res}
+    <h4>내 정령 <small>${got} / ${all.length}</small></h4><div class="sp-grid">${all.map((id) => spiritCard(id, sv.owned, sv.main)).join('')}</div>`;
+}
+function buyStones(n) {
+  const price = STONE_PRICE * n;
+  if (save.gold < price) return;
+  if (!bagAdd(lifeOf(), 'spiritStone', n)) { renderer.banner = { text: '가방이 가득 찼다', t: 1.6, color: '#ffb0a0' }; return; }
+  save.gold -= price; writeSave(save); sfx('coin', { vol: 0.6 });
+}
+function pullSpirits(n) {
+  if ((save.bag?.spiritStone || 0) < n) return;
+  save.bag.spiritStone -= n; if (save.bag.spiritStone <= 0) delete save.bag.spiritStone;
+  const res = [];
+  for (let i = 0; i < n; i++) {
+    const guarantee = n >= 10 && i === n - 1 && !res.some((r) => SPIRITS[r.id].grade >= 1);
+    const id = rollSpirit(Math.random, guarantee ? 1 : 0);
+    res.push({ id, r: addSpirit(save, id) });
+  }
+  save.spirits.pulls = (save.spirits.pulls || 0) + n;
+  lastPull = res.sort((a, b) => SPIRITS[b.id].grade - SPIRITS[a.id].grade);
+  writeSave(save); cloudSaveNow(save); world.setBuild(buildNow());
+  const top = SPIRITS[lastPull[0].id];
+  if (top.grade >= 2) renderer.banner = { text: `${SPIRIT_GRADES[top.grade].name}의 정령!`, sub: `${top.name}과(와) 계약했다`, t: 3, color: SPIRIT_GRADES[top.grade].color };
+  sfx(top.grade >= 2 ? 'levelup' : 'echo', { vol: 0.6, rate: top.grade >= 3 ? 0.8 : 1.2 });
 }
 // 이야기: 이 종족의 사연과 다른 종족과의 사이 (원한 · 동맹)
 function storyHtml(race) {
@@ -577,6 +682,26 @@ function showWaypoints(here) {
     <button data-close class="ghost">닫기</button>`);
   overlay.querySelectorAll('[data-wp]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; travelTo(b.dataset.wp); }));
 }
+// 귀환 · 이동 주문서: 실제로 옮겨 간 뒤에 한 장 쓴다
+function useScroll(kind, id) {
+  const spend = () => { if (--save.bag[id] <= 0) delete save.bag[id]; writeSave(save); };
+  const outdoor = world.zone?.id === 'world', p = world.player;
+  if (p.boat || p.swim) { renderer.banner = { text: '물 위에서는 읽을 수 없다', t: 1.8, color: '#c8b8a0' }; return; }
+  if (kind === 'return') {
+    if (world.mode === 'plaza') { renderer.banner = { text: '이미 마을이다', t: 1.6, color: '#c8b8a0' }; return; }
+    spend();
+    if (outdoor) { if (world.teleportTo('wp_village')) renderer.banner = { text: '바람결 마을', sub: '귀환 주문서를 읽었다', t: 2, color: '#ffe8a8' }; return; }
+    endRun('clear'); // 던전 · 궁전: 얻은 것을 모두 지키고 밖으로
+    return;
+  }
+  if (kind === 'teleport') {
+    if (!outdoor) { renderer.banner = { text: '바깥 세계에서만 읽을 수 있다', t: 1.8, color: '#c8b8a0' }; return; }
+    const open = world.objects.filter((o) => o.kind === 'waypoint' && o.active);
+    showModal(`<h2>이동 주문서</h2><p class="muted">깨운 포탈 가운데 한 곳으로 바로 간다 (주문서 한 장)</p>
+      <div class="wp-list">${open.map((o) => `<button class="wp" data-wp="${o.id}">${esc(o.name)}</button>`).join('')}</div><button data-close class="ghost">읽지 않는다</button>`);
+    overlay.querySelectorAll('[data-wp]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; if (world.teleportTo(b.dataset.wp)) { spend(); const o = world.objects.find((q) => q.id === b.dataset.wp); renderer.banner = { text: o?.name || '', sub: '이동 주문서를 읽었다', t: 1.8, color: '#bfefff' }; } }));
+  }
+}
 function travelTo(id) {
   if (!world.teleportTo(id)) return;
   const o = world.objects.find((q) => q.id === id);
@@ -648,7 +773,8 @@ function enterZone(id, depth = 0, carry = null) {
 const practice = { cls: null, skills: null, infRes: true, noCd: false, arena: 'weak', refill: true };
 function practiceBuild() {
   const c = CLASSES[practice.cls];
-  return computeBuild({ race: c.race, cls: practice.cls, level: 20, allSkills: true, alloc: { str: 18, mag: 18, agi: 10, vit: 10 }, engravings: {}, gear: { weapon: c.weapons[1] }, skills: practice.skills });
+  const sp = save.spirits?.main ? { id: save.spirits.main, star: save.spirits.owned[save.spirits.main]?.star || 1 } : { id: 'fire2', star: 1 }; // 연습장: 계약한 정령이 없으면 화염 여우를 빌려 준다
+  return computeBuild({ race: c.race, cls: practice.cls, level: 20, allSkills: true, alloc: { str: 18, mag: 18, agi: 10, vit: 10 }, engravings: {}, gear: { weapon: c.weapons[1] }, skills: practice.skills, spirit: sp });
 }
 function enterPractice() {
   practice.cls ||= save.cls; practice.skills ||= CLASSES[practice.cls].skills.slice(0, 4);
@@ -858,6 +984,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyX' && world.life && world.farmRect) { const sd = cycleSeed(world); renderer.banner = { text: sd ? `${GOODS[sd].name} (${save.bag[sd]}개)` : '씨앗이 없다', sub: sd ? '이 씨앗을 심는다 · X로 바꾸기' : '잡화점에서 씨앗을 산다', t: 1.6, color: '#c8e8a0' }; }
   if (e.code === 'KeyM' && world.map?.outdoor) renderer.bigMap = !renderer.bigMap;
   if (e.code === 'KeyH' && world.state === 'play') eatQuick();
+  if (e.code === 'KeyZ' && world.state === 'play') world.quickPotion(); // 물약 빨리 마시기
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => { keys.clear(); input.attack = false; });
@@ -989,6 +1116,8 @@ function handleSignals() {
     else if (s.t === 'sanctTrain') { showSanctum(s.race, 'train'); return; }
     else if (s.t === 'sanctQuestDone') { const L = SANCT_LIFE[s.race], d = sanctQuestDef(s.race, sanctState(save.story, s.race).cur?.id); writeSave(save); renderer.banner = { text: `의뢰를 마쳤다 · ${d?.title || ''}`, sub: `${SANCTUMS[s.race].name}의 ${L.leader.name}에게 알리자`, t: 3.2, color: SANCTUMS[s.race].color }; sfx('levelup', { vol: 0.5, rate: 1.2 }); }
     else if (s.t === 'trainingDone') finishTraining(s);
+    else if (s.t === 'rebuild') { world.setBuild(buildNow()); writeSave(save); }
+    else if (s.t === 'scroll') { useScroll(s.kind, s.id); world.signals.length = 0; return; } // 귀환 · 이동 주문서
     else if (s.t === 'sleep') { showSleep(); return; }
     else if (s.t === 'skillStone') {
       const sk = SKILLS[s.skill];

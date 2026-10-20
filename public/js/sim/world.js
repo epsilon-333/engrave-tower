@@ -3,7 +3,10 @@
 import { MONSTERS, ZONES, DUMMIES, ECHOES, LORES, AFFIXES } from '../data/monsters.js';
 import { REACTIONS } from '../data/engravings.js';
 import { WEAPON_SKILLS } from '../data/items.js';
-import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, CANT_TEXT } from '../data/skills.js';
+import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT } from '../data/skills.js';
+import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower, spiritBuff, buffMods } from '../data/spirits.js';
+const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
+const SPIRIT_DMG_ELEM = { fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' };
 import { RACES } from '../data/races.js';
 import { createRng } from './rng.js';
 import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP, generateField } from './mapgen.js';
@@ -320,9 +323,9 @@ export class World {
   }
   groundAt(px, py) { const g = this.map.ground; if (!g) return -1; const x = Math.floor(px / TILE), y = Math.floor(py / TILE); if (x < 0 || y < 0 || x >= this.tw || y >= this.th) return -1; return g[y * this.tw + x]; }
   isWaterAt(px, py, bridge = false) { const t = this.tileAt(px, py), gr = this.groundAt(px, py); return ((t === T_DEEP || t === T_LIQUID) && gr !== G.LAVA) || (bridge && gr === G.BRIDGE && t === T_FLOOR); }
-  // 깊은 물에서 헤엄칠 수 있나: 물의 가호 · 잠수(배움) · 수중 호흡(걸려 있을 때)
-  get canSwim() { return !!(this.b.abilities?.waterBlessing || this.b.available?.includes('dive') || this.player?.buffs?.waterBreath); }
-  get canDive() { return this.canSwim; }
+  // 깊은 물: 누구나 헤엄치고 잠수할 수 있다 (물의 가호 · 잠수 기술 · 수중 호흡은 더 오래 · 더 빨리)
+  get canSwim() { return true; }
+  get canDive() { return true; }
   wallAt(px, py) { const t = this.tileAt(px, py); return t === T_WALL || t === T_CRACK || t === T_BUILD || t === T_GATE; }
   blocked(x, y, r, mode = null) {
     const s = (px, py) => this.solid(px, py, mode);
@@ -343,7 +346,7 @@ export class World {
     if (p.swim && !p.wasSwim) this.emit({ t: 'splash', x: p.x, y: p.y });
     p.wasSwim = p.swim;
     if (!this.map.underwater) { p.breath = null; return; }
-    const inf = !!p.buffs.waterBreath, max = (this.b.abilities?.waterBlessing ? BREATH.blessing : BREATH.dive) * this.mod('breath');
+    const inf = !!p.buffs.waterBreath, max = (this.b.abilities?.waterBlessing ? BREATH.blessing : this.b.available?.includes('dive') ? BREATH.dive : BREATH.free) * this.mod('breath'); // 아무것도 없으면 숨이 짧다
     p.breathMax = max; if (p.breath == null) p.breath = max;
     const vent = this.objects.some((o) => o.kind === 'vent' && Math.hypot(o.x - p.x, o.y - p.y) < 24);
     if (inf) p.breath = max;
@@ -482,6 +485,7 @@ export class World {
     p.histT -= DT;
     if (p.histT <= 0) { p.histT = 0.1; p.hist.push({ x: p.x, y: p.y, hp: p.hp }); if (p.hist.length > 40) p.hist.shift(); }
     this.updateSpirits();
+    this.updateFamiliar();
 
     let slow = 0;
     for (const [k, st] of Object.entries(p.st)) {
@@ -513,6 +517,7 @@ export class World {
     if (p.parryT > 0) p.parryT -= DT;
     const cdRate = this.mod('cdRate');
     for (const k of Object.keys(p.cds)) { p.cds[k] -= DT * cdRate; if (p.cds[k] <= 0) delete p.cds[k]; }
+    if (p.potionCd > 0) p.potionCd -= DT; // 물약은 한 번 마시면 8초 뒤에 다시
     if (this.practice) { if (this.practice.infRes) p.res = 100; p.hp = d.maxHp; }
     if (p.dashCharges < 1) {
       p.dashRecharge -= DT;
@@ -1280,10 +1285,10 @@ export class World {
     if (id === 'weapon') { if (p.skillCd <= 0) { this.breakStealth(); this.useSkill(); } return; }
     const def = SKILLS[id];
     if (!def || p.cds[id] > 0) return;
-    const fit = skillFit(def, this.b.wcat);
-    if (fit <= 0) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: CANT_TEXT[def.kind] || '이 무기로는 쓸 수 없다' }); p.cds[id] = 0.4; return; }
-    if (p.swim && !['dive', 'waterBreath'].includes(id)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: '헤엄치는 중에는 쓸 수 없다' }); p.cds[id] = 0.3; return; }
+    const fit = handFit(def, this.b).fit;
+    if (fit <= 0) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: (CANT_TEXT[def.kind] || '이 무기로는 쓸 수 없다') + (this.b.hands < 2 ? ' · 왼손 도구로도 쓸 수 있다' : '') }); p.cds[id] = 0.4; return; }    if (p.swim && !['dive', 'waterBreath'].includes(id)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: '헤엄치는 중에는 쓸 수 없다' }); p.cds[id] = 0.3; return; }
     if (def.needSpirit && !p.spirits.length) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: '깃든 정령', text: '깃든 정령이 없다' }); p.cds[id] = 0.3; return; }
+    if (def.do.some((o) => SPIRIT_OPS.has(o.op)) && !SPIRITS[this.b.spirit?.id]) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: '계약한 정령이 없다 · 세계수 성지의 「정령 계약」' }); p.cds[id] = 0.5; return; }
     let spent = 0;
     if (def.costAll) {
       if (p.res < def.costAll.min) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
@@ -1334,8 +1339,8 @@ export class World {
     if (p.elemBonusT > 0 && elem && elem !== 'phys') { bonus = 1.3; p.elemBonusT = 0; }
     // 힘 모으기: 다음 스킬 한 번이 강해진다
     if (p.buffs.charged && id !== 'chargeUp') { bonus *= p.buffs.charged.power || 2.5; p.buffs.charged.t = Math.min(p.buffs.charged.t, 0.05); }
-    const boost = this.weaponBoost(id), fit = skillFit(def, this.b.wcat);
-    const ctx = { def, id, spent, elem, bonus: bonus * boost * fit, fit, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot };
+    const boost = this.weaponBoost(id), hf = handFit(def, this.b), fit = hf.fit, cross = crossMul(def, this.b); // 다른 종족 스킬: 능력치가 모자라면 85%
+    const ctx = { def, id, spent, elem, bonus: bonus * boost * fit * cross, fit, hand: hf.hand, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot };
     if (fit < 0.95 && fit > 0) this.emit({ t: 'text', x: p.x, y: p.y - 26, text: `무기가 맞지 않다 · 피해 ${Math.round(fit * 100)}%`, color: '#c8b8a0' });
     if (this.autoAim) {
       const tg = this.pickTarget(def);
@@ -1561,6 +1566,10 @@ export class World {
       }
       case 'cone': {
         if (op.chargeRange && ctx.charge) op = { ...op, range: op.range * (1 + op.chargeRange * ctx.charge) };
+        if (op._form === 'melee' && ctx.target && !ctx.target.dead) { // 근접 마법: 표적이 조금 멀면 한 걸음 파고든다
+          const dd = Math.hypot(ctx.target.x - p.x, ctx.target.y - p.y) - ctx.target.r - op.range * 0.7;
+          if (dd > 0 && dd < 60) { let st = dd; while (st > 0 && this.blocked(p.x + p.aimX * st, p.y + p.aimY * st, 5)) st -= 6; if (st > 0) { const x1 = p.x, y1 = p.y; p.x += p.aimX * st; p.y += p.aimY * st; this.emit({ t: 'skillDash', x1, y1, x2: p.x, y2: p.y, elem: ctx.elem }); } }
+        }
         if (p.buffs.dragonForm) op = { ...op, range: op.range * 1.4, angle: op.angle * 1.2 }; // 용의 몸집만큼 넓게
         const list = this.enemies.filter((e) => {
           if (e.dead || e.hidden) return false;
@@ -1569,8 +1578,10 @@ export class World {
           let da = Math.atan2(dy, dx) - ang; da = Math.atan2(Math.sin(da), Math.cos(da));
           return Math.abs(da) <= op.angle / 2 || dist < e.r + 8;
         });
-        this.emit({ t: 'skillCone', x: p.x, y: p.y, ang, range: op.range, angle: op.angle, elem: ctx.elem, fx: op.fx || ctx.def.fx });
-        countHits(list);
+        this.emit({ t: 'skillCone', x: p.x, y: p.y, ang, range: op.range, angle: op.angle, elem: ctx.elem, fx: op._form === 'melee' ? 'spellBlade' : op.fx || ctx.def.fx });
+        const hits = countHits(list);
+        if (hits && op.onHitGain) this.addRes(op.onHitGain);
+        if (hits && op.onHitHeal) this.heal(this.d.maxHp * op.onHitHeal, 'skill');
         break;
       }
       case 'single': {
@@ -1584,7 +1595,13 @@ export class World {
         break;
       }
       case 'proj': {
-        if (ctx.def.kind === 'shoot') { // 든 무기가 쏜다: 활이면 화살, 석궁이면 쇠살, 바람총이면 독침
+        // 무기에 따라 마법 모양이 바뀐다: 근접 무기면 앞쪽을 휩쓰는 짧고 센 마법, 활 · 바람총이면 빠르고 멀리 가는 마법 화살
+        if (ctx.def.kind === 'spell' && !op._form) {
+          if (this.b.weapon.kind === 'melee') { const n = op.n || 1; return this.runOp({ ...op, op: 'cone', _form: 'melee', range: 62, angle: 1.7, mul: (op.mul || 1) * 1.2 * (n > 1 ? 1 + 0.3 * (n - 1) : 1) }, ctx); }
+          if (this.b.wcat === 'bow' || this.b.wcat === 'tube') op = { ...op, _form: 'bow', speed: op.speed * 1.5, range: op.range * 1.3 };
+        }
+        if (ctx.def.kind === 'shoot' && ctx.hand === 'off') op = { ...op, kind: 'bolt', status: op.status === 'poison' ? null : op.status }; // 왼손 손쇠뇌: 쇠살
+        if (ctx.def.kind === 'shoot' && ctx.hand !== 'off') { // 든 무기가 쏜다: 활이면 화살, 석궁이면 쇠살, 바람총이면 독침
           const wc = this.b.wcat, bolt = this.b.weapon.projKind === 'bolt';
           if (wc === 'bow' && (op.kind === 'dart' || bolt)) op = { ...op, kind: bolt ? 'bolt' : 'arrow', status: op.status === 'poison' ? null : op.status };
           else if (wc === 'tube' && op.kind === 'arrow') op = { ...op, kind: 'dart' };
@@ -1901,14 +1918,17 @@ export class World {
         this.emit({ t: 'spiritIn', x: p.x, y: p.y, elem: op.elem, n: this.spiritCount(op.elem) });
         break;
       }
+      case 'summonSpirit': this.summonFamiliar(op.dur, 0); break;
+      case 'spiritEmpower': { if (!p.familiar) this.summonFamiliar(20, op.dur); else { p.familiar.emp = op.dur; this.emit({ t: 'spiritIn', x: p.familiar.x, y: p.familiar.y + 10, elem: p.familiar.elem, n: 3 }); } this.emit({ t: 'text', x: p.x, y: p.y - 30, text: '정령 강화!', color: SPIRIT_GRADES[SPIRITS[this.b.spirit.id].grade].color }); break; }
+      case 'spiritGuard': { if (!p.familiar) this.summonFamiliar(20, 0); p.familiar.guard = op.dur; p.familiar.pushT = 0; this.emit({ t: 'buff', x: p.x, y: p.y, color: ELEM[SPIRIT_DMG_ELEM[p.familiar.elem]]?.color || '#9bffb0' }); break; }
       case 'spiritArrow': {
-        const n = p.spirits.length;
+        const f = p.familiar, n = p.spirits.length;
         const cnt = (k) => this.spiritCount(k);
-        const dom = ['fire', 'wind', 'forest'].reduce((a, b) => (cnt(b) > cnt(a) ? b : a));
-        const elem = dom === 'fire' ? 'fire' : dom === 'forest' ? 'poison' : null;
-        const c2 = { ...ctx, elem, bonus: ctx.bonus * (1 + op.per * (n - 1)) };
+        const dom = f ? f.elem : ['fire', 'wind', 'forest'].reduce((a, b) => (cnt(b) > cnt(a) ? b : a));
+        const elem = f ? SPIRIT_DMG_ELEM[f.elem] : dom === 'fire' ? 'fire' : dom === 'forest' ? 'poison' : null;
+        const c2 = { ...ctx, elem, bonus: ctx.bonus * (f ? 1.5 * (1 + 0.1 * f.grade + 0.05 * (f.star - 1)) : 1 + op.per * Math.max(0, n - 1)) }; // 정령이 나와 있으면 그 속성 · 피해 +50%
         this.projs.push({ owner: 'p', x: p.x + p.aimX * 6, y: p.y - 4 + p.aimY * 6, vx: p.aimX * op.speed, vy: p.aimY * op.speed, life: op.range / op.speed, dmg: 0, type: 'mag', pierce: 99, hit: new Set(),
-          color: ELEM[dom].color, kind: 'skill', skind: 'spiritArrow', spiritElems: p.spirits.map((q) => q.elem), big: true,
+          color: (ELEM[elem] || ELEM[dom] || ELEM.wind).color, kind: 'skill', skind: 'spiritArrow', spiritElems: f ? [SPIRIT_DMG_ELEM[f.elem]] : p.spirits.map((q) => q.elem), big: true,
           skillHit: (e) => this.skillHit(e, { mul: op.mul, stacks: 2 }, c2) });
         this.emit({ t: 'shoot', type: 'mag', x: p.x, y: p.y });
         break;
@@ -1916,7 +1936,8 @@ export class World {
       case 'kingDescend': {
         const cnt = (k) => this.spiritCount(k);
         const cycle = ['fire', 'wind', 'forest'];
-        const dom = p.spirits.length ? cycle.reduce((a, b) => (cnt(b) > cnt(a) ? b : a)) : cycle[(p.kingCycle = ((p.kingCycle ?? -1) + 1) % 3)];
+        const fe = p.familiar?.elem; // 함께하는 정령이 불 · 바람 · 숲이면 그 왕
+        const dom = cycle.includes(fe) ? fe : p.spirits.length ? cycle.reduce((a, b) => (cnt(b) > cnt(a) ? b : a)) : cycle[(p.kingCycle = ((p.kingCycle ?? -1) + 1) % 3)];
         p.spirits = [0, 1, 2].map((i) => ({ elem: dom, t: op.dur, max: op.dur, phase: i * 2.1 }));
         p.kingT = op.dur;
         const elem = dom === 'fire' ? 'fire' : dom === 'wind' ? 'lightning' : 'poison';
@@ -1976,6 +1997,50 @@ export class World {
     if (gone.length) p.spirits = p.spirits.filter((s) => s.t > 0);
     const forest = this.spiritCount('forest');
     if (forest) this.heal(this.d.maxHp * 0.008 * forest * DT, 'regen');
+  }
+
+  // 계약한 정령: 불러내면 어깨 위를 떠다니며 버프를 주고, 가까운 적을 그 속성으로 공격한다
+  summonFamiliar(dur, emp = 0) {
+    const p = this.player, sp = this.b.spirit, S = SPIRITS[sp?.id];
+    if (!S) return;
+    const old = p.familiar;
+    p.familiar = { id: S.id, elem: S.elem, grade: S.grade, star: sp.star || 1, t: dur, max: dur, emp, guard: 0, cd: 0.4, x: old?.x ?? p.x - p.dir * 12, y: old?.y ?? p.y - 18, phase: old?.phase || 0 };
+    this.emit({ t: 'spiritIn', x: p.familiar.x, y: p.familiar.y + 10, elem: SPIRIT_DMG_ELEM[S.elem], n: 1 + S.grade });
+    if (!old) this.emit({ t: 'text', x: p.x, y: p.y - 34, text: `${S.name}${'★'.repeat(p.familiar.star)}`, color: SPIRIT_GRADES[S.grade].color });
+  }
+  updateFamiliar() {
+    const p = this.player, f = p.familiar;
+    if (!f) { if (p.buffs.spiritBond) delete p.buffs.spiritBond; if (p.buffs.spiritGuard) delete p.buffs.spiritGuard; return; }
+    f.t -= DT; if (f.emp > 0) f.emp -= DT; if (f.guard > 0) f.guard -= DT;
+    if (f.t <= 0 || this.state !== 'play') { this.emit({ t: 'spiritOut', x: f.x, y: f.y + 10, elem: SPIRIT_DMG_ELEM[f.elem] }); p.familiar = null; delete p.buffs.spiritBond; delete p.buffs.spiritGuard; return; }
+    // 어깨 위 (내 뒤쪽)로 따라온다
+    f.phase += DT * 2.2;
+    const tx = p.x - p.dir * 13, ty = p.y - 20 + Math.sin(f.phase) * 2, k = Math.min(1, DT * 6);
+    f.x += (tx - f.x) * k; f.y += (ty - f.y) * k;
+    // 버프: 나와 있는 동안 (강화 중이면 1.5배)
+    const S = SPIRITS[f.id], E = SPIRIT_ELEMS[f.elem], col = ELEM[SPIRIT_DMG_ELEM[f.elem]]?.color || '#9bffb0';
+    p.buffs.spiritBond = { t: f.t, max: f.max, mods: buffMods(spiritBuff(f.id, f.star, f.emp > 0 ? 1.5 : 1)), color: col, name: `${S.name}${'★'.repeat(f.star)}`, spirit: true };
+    if (f.guard > 0) { // 정령의 품: 받는 피해 -40% · 다가온 적을 밀쳐낸다
+      p.buffs.spiritGuard = { t: f.guard, max: 4, mods: { dmgTakenMul: 0.6 }, color: col, name: '정령의 품' };
+      if ((f.pushT = (f.pushT || 0) - DT) <= 0) { f.pushT = 0.5; for (const e of this.enemiesNear(p.x, p.y, 34)) { if (e.def.ai === 'dummy') continue; const dx = e.x - p.x, dy = e.y - p.y, l = Math.hypot(dx, dy) || 1, kb = e.def.elite ? 120 : 260; e.kbx += (dx / l) * kb; e.kby += (dy / l) * kb; } }
+    } else delete p.buffs.spiritGuard;
+    // 공격: 내 둘레 150 안의 가장 가까운 적에게 속성 탄 (강화 중이면 2배 빠르게 · 피해 +60%)
+    f.cd -= DT * (f.emp > 0 ? 2 : 1);
+    if (f.cd > 0) return;
+    let tgt = null, td = 150;
+    for (const e of this.enemies) { if (e.dead || e.hidden || e.def.ai === 'dummy' && !this.practice && this.mode !== 'plaza') continue; const d2 = Math.hypot(e.x - p.x, e.y - p.y); if (d2 < td) { td = d2; tgt = e; } }
+    if (!tgt) { f.cd = 0.2; return; }
+    f.cd = 1.15 - 0.08 * f.grade;
+    const elem = SPIRIT_DMG_ELEM[f.elem], dmg = this.skillAtk('best') * 0.42 * E.atk * spiritPower(f.id, f.star) * (f.emp > 0 ? 1.6 : 1);
+    const ax = tgt.x - f.x, ay = tgt.y - 8 - f.y, al = Math.hypot(ax, ay) || 1, spd = 230;
+    this.projs.push({ owner: 'p', x: f.x, y: f.y, vx: (ax / al) * spd, vy: (ay / al) * spd, life: 1.1, dmg: 0, type: 'mag', pierce: E.pierce ? 2 : 0, hit: new Set(), splash: 0,
+      color: col, kind: 'skill', skind: 'spiritBolt', elem, big: false, rot: Math.atan2(ay, ax), homing: true,
+      skillHit: (e) => {
+        this.damageEnemy(e, dmg, 'mag', { src: 'spirit', elem, color: col });
+        if (!e.dead && E.status) this.applyStatus(e, E.status, 1 + (f.grade >= 2 ? 1 : 0));
+        if (E.chain) { let o = null, od = 70; for (const x of this.enemies) { if (x === e || x.dead || x.hidden) continue; const dd = Math.hypot(x.x - e.x, x.y - e.y); if (dd < od) { od = dd; o = x; } } if (o) { this.emit({ t: 'bolt', pts: [{ x: e.x, y: e.y - 6 }, { x: o.x, y: o.y - 6 }], color: col }); this.damageEnemy(o, dmg * 0.6, 'mag', { src: 'spirit', elem }); } }
+      } });
+    this.emit({ t: 'spiritShot', x: f.x, y: f.y, elem });
   }
 
   // 포식자: 출혈 걸린 적에게 다가갈 때 빨라진다
@@ -2596,6 +2661,40 @@ export class World {
     this.emit({ t: 'eat', x: p.x, y: p.y, id, heal: Math.round(this.d.maxHp * info.heal), eff: eff?.name, color: eff?.color });
     this.signals.push({ t: 'save' });
     return true;
+  }
+  // 물약 · 주문서 쓰기. 썼으면 true (귀환 · 이동은 main이 마을 · 포탈로 옮긴 뒤에 한 장 쓴다)
+  useItem(id) {
+    const p = this.player, bag = this.life?.bag, g = GOODS[id], u = g?.use, say = (text, color = '#c8b8a0') => this.emit({ t: 'text', x: p.x, y: p.y - 26, text, color });
+    if (!u || !(bag?.[id] > 0) || this.state !== 'play') return false;
+    if (u.kind === 'potion') {
+      if (p.potionCd > 0) { say(`아직 마실 수 없다 (${Math.ceil(p.potionCd)}초)`); return false; }
+      if (p.hp >= this.d.maxHp) { say('체력이 가득하다'); return false; }
+      this.heal(this.d.maxHp * u.heal, 'potion'); p.potionCd = 8;
+      this.emit({ t: 'potion', x: p.x, y: p.y, color: g.icon.c[0] });
+    } else if (u.kind === 'buff') {
+      p.buffs[u.buff] = { t: u.t, max: u.t, mods: u.mods || {}, color: u.color, name: u.name };
+      this.emit({ t: 'buff', x: p.x, y: p.y, color: u.color });
+    } else if (u.kind === 'reveal') {
+      const cx = Math.floor(p.x / TILE), cy = Math.floor(p.y / TILE), R = 45;
+      for (let i = 0; i < this.explored.length; i++) {
+        if (this.explored[i]) continue;
+        if (this.map.outdoor) { const x = i % this.tw, y = (i / this.tw) | 0; if ((x - cx) ** 2 + (y - cy) ** 2 > R * R) continue; }
+        this.explored[i] = 1; this.revealed.push(i);
+      }
+      this.revealed.push(-1);
+      say(this.map.outdoor ? '둘레의 땅이 지도에 드러났다' : '이 층의 지도가 드러났다', '#ffd8a0');
+      this.emit({ t: 'buff', x: p.x, y: p.y, color: '#ffd8a0' });
+    } else { this.signals.push({ t: 'scroll', kind: u.kind, id }); return true; } // 귀환 · 이동
+    if (--bag[id] <= 0) delete bag[id];
+    this.signals.push({ t: 'save' });
+    return true;
+  }
+  // Z: 지금 잃은 체력에 맞는 가장 작은 물약 (모자라면 가장 큰 것)
+  quickPotion() {
+    const bag = this.life?.bag || {}, lost = 1 - this.player.hp / this.d.maxHp;
+    const have = ['potion1', 'potion2', 'potion3'].filter((id) => bag[id] > 0);
+    if (!have.length) { this.emit({ t: 'text', x: this.player.x, y: this.player.y - 26, text: '물약이 없다 (잡화점에서 판다)', color: '#c8b8a0' }); return false; }
+    return this.useItem(have.find((id) => GOODS[id].use.heal >= lost - 0.05) || have[have.length - 1]);
   }
 
   damageEnemy(e, amount, type, opt = {}) {
@@ -3425,6 +3524,9 @@ export class World {
         if (this.rng.chance(Math.min(1, ch * luck * extra))) this.spawnDrop(e.x, e.y, 'good', gid, 1);
         if (ch >= 1 && this.rng.chance(0.5 * luck)) this.spawnDrop(e.x, e.y, 'good', gid, 1); // 우두머리: 가끔 하나 더
       }
+      // 정령석: 어디서나 가끔, 숲(이끼 숲 · 원시림 · 이끼 동굴)에서는 더 자주, 우두머리는 꼭
+      const bi = this.map.biome?.[Math.floor(e.y / TILE) * this.tw + Math.floor(e.x / TILE)], green = this.zone?.id === 'cave' || [2, 10].includes(bi);
+      if (def.elite || e.champion || this.rng.chance((green ? 0.05 : 0.018) * luck * extra)) this.spawnDrop(e.x, e.y, 'good', 'spiritStone', 1);
     }
 
     for (const tr of this.b.triggers.kill) if (this.rng.chance(tr.chance)) this.doAction(tr.action, null, e);

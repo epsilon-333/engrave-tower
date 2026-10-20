@@ -6,7 +6,7 @@ import { SANCTUMS as SANCT_ALL } from '../data/sanctums.js';
 import { codexPoints, levelFor, codexTotals, monsterStage, STAGE_KILLS, zonePlaces, placeKey, PLACE_ZONES } from '../data/codex.js';
 import { JOURNALS, PEOPLE, STORY_ITEMS } from '../data/story.js';
 import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
-import { ITEMS, STYLES, WEAPON_SKILLS } from '../data/items.js';
+import { ITEMS, STYLES, WEAPON_SKILLS, weaponHands } from '../data/items.js';
 import { MONSTERS, ECHOES, ZONES } from '../data/monsters.js';
 import { WORLD_ZONE, ENTRANCES } from '../data/maps/overworld.js';
 import { LABY_ZONE, PALACE_ZONE } from '../data/maps/interiors.js';
@@ -305,13 +305,13 @@ export class Hub {
 
   // ───── 상점 ─────
   tab_shop(s, b) {
-    const gear = s.gear;
-    const gearRow = [['weapon', '무기'], ['armor', '방어구'], ['acc1', '장신구 1'], ['acc2', '장신구 2']]
-      .map(([k, n]) => `<div class="slot ${gear[k] ? 'filled' : ''}"><div class="sl-name">${n}</div>${gear[k] ? `<div class="sl-e">${ITEMS[gear[k]].name}</div>${k !== 'weapon' ? `<button class="sm ghost" data-act="unequipG" data-slot="${k}">빼기</button>` : ''}` : '<div class="muted">비어 있음</div>'}</div>`).join('');
+    const gear = s.gear, twoHand = weaponHands(ITEMS[gear.weapon]) >= 2;
+    const gearRow = [['weapon', '무기 (오른손)'], ['off', '왼손'], ['armor', '방어구'], ['acc1', '장신구 1'], ['acc2', '장신구 2']]
+      .map(([k, n]) => `<div class="slot ${gear[k] ? 'filled' : ''} ${k === 'off' && twoHand && gear.off ? 'resting' : ''}"><div class="sl-name">${n}</div>${gear[k] && ITEMS[gear[k]] ? `<div class="sl-e">${ITEMS[gear[k]].name}</div>${k === 'off' && twoHand ? '<div class="muted">양손 무기라 쉬는 중</div>' : ''}${k !== 'weapon' ? `<button class="sm ghost" data-act="unequipG" data-slot="${k}">빼기</button>` : ''}` : `<div class="muted">${k === 'off' && twoHand ? '양손 무기를 들었다' : '비어 있음'}</div>`}</div>`).join('');
     const card = (id) => {
       const it = ITEMS[id], has = s.items.includes(id);
       const stats = Object.entries(it.stats).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k]).name} ${v > 0 ? '+' : ''}${v}`).join(', ');
-      const w = it.weapon ? `<div class="c-meta">${w2t(it.weapon)}</div>` : '';
+      const w = it.weapon ? `<div class="c-meta"><b>${weaponHands(it) >= 2 ? '양손' : '한손 · 왼손 도구를 함께 든다'}</b> · ${w2t(it.weapon)}</div>` : it.off ? `<div class="c-meta"><b>왼손</b> · ${esc(it.odesc || '')} · 한손 무기와 함께 들 때만</div>` : '';
       const req = it.req ? `<div class="c-meta warn">착용 조건: ${Object.entries(it.req).map(([k, v]) => `${STAT_INFO[k].name} ${v}`).join(', ')}</div>` : '';
       const effs = (it.effects || []).map((x) => `<li>${x.when ? `<em>[${esc(condText(x.when))}]</em> ` : ''}${esc(x.text)}</li>`).join('');
       const equipped = Object.values(gear).includes(id);
@@ -328,6 +328,7 @@ export class Hub {
     return `
       <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots">${gearRow}</div></section>
       <section class="panel"><h3>무기</h3><div class="cards">${bySlot('weapon')}</div>
+        <h3>왼손 도구 <small>한손 무기를 들면 왼손에 하나 든다 · 스킬은 두 손 중 더 맞는 쪽으로 나간다 · 양손 무기를 들면 쉰다</small></h3><div class="cards">${bySlot('off')}</div>
         <h3>방어구</h3><div class="cards">${bySlot('armor')}</div>
         <h3>장신구</h3><div class="cards">${bySlot('acc')}</div></section>`;
   }

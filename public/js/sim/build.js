@@ -4,12 +4,13 @@ import { BASE_STATS, SPECIAL_INFO, AWAKENINGS, EXTREME, eff } from '../data/stat
 import { allSanctums, trainStats } from '../data/sanctums.js';
 import { RACES, RACE_MIGRATE } from '../data/races.js';
 import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
-import { ITEMS, weaponCat } from '../data/items.js';
+import { ITEMS, weaponCat, weaponHands } from '../data/items.js';
 import { evalCond, condText } from './conditions.js';
 import { SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES } from '../data/skills.js';
 
 export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back'];
-export const GEAR_SLOTS = ['weapon', 'armor', 'acc1', 'acc2'];
+export const AGI_DODGE_FROM = 25;
+export const GEAR_SLOTS = ['weapon', 'off', 'armor', 'acc1', 'acc2'];
 
 // loadout: { race, level, alloc:{str..}, engravings:{slot:id}, gear:{slot:id} }
 export function computeBuild(lo) {
@@ -27,8 +28,10 @@ export function computeBuild(lo) {
     const id = lo.engravings?.[s];
     if (id && ENGRAVINGS[id]) sources.push({ kind: 'engraving', id, def: ENGRAVINGS[id] });
   }
+  const twoHand = weaponHands(ITEMS[lo.gear?.weapon]) >= 2; // 양손 무기면 왼손 도구는 쉰다
   for (const s of GEAR_SLOTS) {
     const id = lo.gear?.[s];
+    if (s === 'off' && (twoHand || ITEMS[id]?.slot !== 'off')) continue;
     if (id && ITEMS[id]) sources.push({ kind: 'item', id, def: ITEMS[id] });
   }
 
@@ -158,6 +161,8 @@ export function computeBuild(lo) {
   }
   d.maxHp = Math.round(d.maxHp);
   d.maxMana = Math.round(d.maxMana);
+  // 민첩 25부터는 1마다 회피 +0.3%가 더 붙는다 (최대 +15%)
+  d.dodge += Math.min(0.15, Math.max(0, stats.agi - AGI_DODGE_FROM) * 0.003);
   d.dodge = Math.min(0.6, d.dodge);
   d.crit = Math.min(0.9, d.crit);
   d.statusRes = Math.min(0.85, d.statusRes);
@@ -195,7 +200,7 @@ export function computeBuild(lo) {
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
   if (wpn.kind === 'melee') { d.dmgTakenMul *= 0.8; flags.add('stagger'); }
   else flags.add('aimSlow');
-  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat: weaponCat(ITEMS[weaponId]), cls, skills, available, abilities: lo.abilities || {} };
+  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat: weaponCat(ITEMS[weaponId]), hands: weaponHands(ITEMS[weaponId]), spirit: lo.spirit?.id ? lo.spirit : null, offId: active.find((s2) => s2.def.slot === 'off')?.id || null, offItem: active.find((s2) => s2.def.slot === 'off')?.def || null, cls, skills, available, abilities: lo.abilities || {} };
 }
 
 // 빌드 코드 (온라인 공유/고스트 대전용)

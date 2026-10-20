@@ -3,7 +3,10 @@ import { GOODS, GOOD_CATS, BAG_START, BAG_UPGRADES, bagUsed, bagFits } from '../
 import { FOOD, FOOD_EFFECTS, KIND_NAME, cookPreview, registerDish, parseDish, dishName, dishEffectText, eatInfo, rawEdible, RECIPES } from '../data/cooking.js';
 import { WTYPES, WMATS, PART_FX, SYNERGY, craftCost, craftItem } from '../data/crafting.js';
 import { ITEMS, WEAPON_SKILLS, WCAT_NAME, weaponCat } from '../data/items.js';
-import { SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, skillFit, fitText } from '../data/skills.js';
+import { SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, skillFit, handFit, crossMul, crossReq, fitText, plainDesc } from '../data/skills.js';
+import { STAT_INFO } from '../data/stats.js';
+import { SPIRITS, SPIRIT_GRADES, spiritBuffText } from '../data/spirits.js';
+import { spiritIconURL } from '../render/spirits.js';
 import { LEARN, WHERE_NAME, TABLET_BIOME_NAME } from '../data/learn.js';
 import { RACES } from '../data/races.js';
 import { iconURL } from '../render/icons.js';
@@ -117,7 +120,7 @@ export function learnTab(s, ui, b) {
   const resName = RACES[s.race].res.name;
   const cards = ids.map((id) => {
     const sk = SKILLS[id], L = LEARN[id], known = (s.learned || []).includes(id) || b.available.includes(id);
-    const fit = skillFit(sk, b.wcat), cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
+    const fit = handFit(sk, b).fit, cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
     const btn = known ? '<span class="muted">배움 ✔</span>' : s.level < L.lv ? `<span class="muted">Lv ${L.lv}부터</span>` : `<button class="sm" data-act="learn" data-id="${id}" ${s.gold >= L.gold ? '' : 'disabled'}>배우기 ◆ ${L.gold}</button>`;
     return `<div class="skc ${known ? 'on' : ''}" style="--c:${ROLE_COLOR[sk.role]}"><div class="c-head"><b>${sk.name}</b><span class="role">${SKILL_KIND[sk.kind]}</span></div>
       <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''} · 지금 무기로: <b class="${fit <= 0 ? 'warn' : ''}">${fitText(fit)}</b></div><div class="c-sum">${esc(sk.desc)}</div><div class="c-act">${btn}</div></div>`;
@@ -133,22 +136,35 @@ export function learnTab(s, ui, b) {
 export function skillPickHtml(s, b) {
   const keys = ['Q', 'E', 'R', 'F'], resName = RACES[s.race].res.name;
   const card = (id, locked) => {
-    const sk = SKILLS[id], i = b.skills.indexOf(id), on = i >= 0, fit = skillFit(sk, b.wcat);
+    const sk = SKILLS[id], i = b.skills.indexOf(id), on = i >= 0, hf = handFit(sk, b), fit = hf.fit;
     const cost = sk.costAll ? `${resName} ${sk.costAll.min}+` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
+    const cm = crossMul(sk, b), cr = sk.race && sk.race !== s.race && !sk.scroll ? crossReq(sk) : null; // 다른 종족 기술
+    const note = [hf.hand === 'off' && fit > 0 ? `왼손 ${b.offItem.name}으로` : '', cr ? `다른 종족 기술 · ${STAT_INFO[cr.stat].name} ${cr.full} 이상이면 온전히 (지금 ${Math.round(cm * 100)}%)` : ''].filter(Boolean).join(' · ');
     const btn = locked ? `<span class="muted">${sk.unlock}레벨에 배움</span>` : on ? `<button class="sm ghost" data-act="skillOff" data-id="${id}">빼기</button>${i > 0 ? `<button class="sm ghost" data-act="skillUp" data-id="${id}">앞으로</button>` : ''}` : `<button class="sm" data-act="skillOn" data-id="${id}">장착</button>`;
     return `<div class="skc ${on ? 'on' : ''} ${locked ? 'locked' : ''} ${fit <= 0 ? 'cant' : ''}" style="--c:${ROLE_COLOR[sk.role]}"><div class="c-head"><b>${on ? `[${keys[i]}] ` : ''}${sk.name}</b><span class="role">${SKILL_KIND[sk.kind]}</span></div>
-      <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''} · <b class="${fit <= 0 ? 'warn' : fit < 0.99 ? 'dim' : ''}">${fitText(fit)}</b></div><div class="c-sum">${esc(sk.desc)}</div><div class="c-act">${btn}</div></div>`;
+      <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''} · <b class="${fit <= 0 ? 'warn' : fit < 0.99 ? 'dim' : ''}">${fitText(fit)}</b>${note ? ` · ${note}` : ''}</div><div class="c-sum">${esc(cr ? plainDesc(sk) : sk.desc)}</div><div class="c-act">${btn}</div></div>`;
   };
   const cls = (b.available || []).filter((id) => SKILLS[id] && SKILLS[id].cls === b.cls);
   const locked = Object.keys(SKILLS).filter((id) => SKILLS[id].cls === b.cls && !cls.includes(id));
   const learned = (b.available || []).filter((id) => SKILLS[id] && (SKILLS[id].cls !== b.cls) && !SKILLS[id].engraving);
   const eng = (b.available || []).filter((id) => SKILLS[id]?.engraving);
   return `<section class="panel"><h3>스킬 <small>최대 4개 · Q / E / R / F · 무기: ${ITEMS[b.weaponId].name} (${WCAT_NAME[b.wcat] || b.wcat})</small></h3>
-      <p class="muted">무기에 맞지 않는 스킬은 약해지고(지팡이로 베기 → 30%), 아예 못 쓰는 것도 있다(활 없이 쏘기 · 던질 수 없는 무기로 던지기 · 방패 없이 방패 기술).</p>
+      <p class="muted">무기에 맞지 않는 스킬은 약해지고(지팡이로 베기 → 30%), 아예 못 쓰는 것도 있다(활 없이 쏘기 · 방패 없이 방패 기술). <b>한손 무기</b>라면 왼손 도구(마법 부적 · 손쇠뇌 · 작은 방패 · 투척 주머니)를 함께 들어 모든 스킬을 쓸 수 있다 — 스킬은 두 손 중 더 맞는 쪽으로 나간다. 마법은 든 무기에 따라 모양이 바뀐다 (근접 무기: 앞을 휩쓰는 짧고 센 마법 · 활: 빠르고 멀리 가는 마법 화살).</p>
       <div class="skill-row">${cls.map((id) => card(id, false)).join('')}${locked.map((id) => card(id, true)).join('')}</div>
       <h4>배운 기술 <small>수련장 교관 · 서고 사서에게 배우거나, 섬의 옛 기술 석판을 읽는다</small></h4>
       <div class="skill-row">${learned.map((id) => card(id, false)).join('') || '<p class="muted">아직 없다. 마을 수련장 · 서고에 가 보자.</p>'}</div>
-      ${eng.length ? `<h4>각인 스킬</h4><div class="skill-row">${eng.map((id) => card(id, false)).join('')}</div>` : ''}</section>`;
+      ${eng.length ? `<h4>각인 스킬</h4><div class="skill-row">${eng.map((id) => card(id, false)).join('')}</div>` : ''}
+      ${spiritPickHtml(s)}</section>`;
+}
+// 함께하는 정령 고르기 (계약은 세계수 성지에서)
+function spiritPickHtml(s) {
+  const own = Object.entries(s.spirits?.owned || {});
+  if (!own.length) return '';
+  own.sort((a, b) => SPIRITS[b[0]].grade - SPIRITS[a[0]].grade || b[1].star - a[1].star);
+  return `<h4>함께하는 정령 <small>「정령 부르기」로 꺼낸다 · 계약은 세계수 성지의 「정령 계약」</small></h4><div class="sp-grid">${own.map(([id, o]) => {
+    const sp = SPIRITS[id], G = SPIRIT_GRADES[sp.grade], on = s.spirits.main === id;
+    return `<div class="spc ${on ? 'main' : ''}" style="--c:${G.color}"><img src="${spiritIconURL(id)}" alt=""><b>${esc(sp.name)}</b><small style="color:${G.color}">${G.name} · ${'★'.repeat(o.star)}</small><small>${esc(spiritBuffText(id, o.star))}</small>${on ? '<em>함께하는 중</em>' : `<button class="sm" data-act="spiritMain" data-id="${id}">함께하기</button>`}</div>`;
+  }).join('')}</div>`;
 }
 
 // ───── 버튼 처리 (처리했으면 true) ─────
@@ -186,6 +202,14 @@ export function homeClick(hub, act, t) {
       const w = hub.getWorld?.();
       if (w && w.eat(id)) { const info = eatInfo(id); hub.toast(`${info.name}을(를) 먹었다 · 회복 ${Math.round(info.heal * 100)}%${info.eff ? ` · ${FOOD_EFFECTS[info.eff].name}` : ''}`); }
       else if (s.bag[id] > 0 && eatInfo(id)) { s.bag[id]--; hub.toast('먹었다'); }
+      return true;
+    }
+    case 'spiritMain': if (s.spirits?.owned?.[id]) { s.spirits.main = id; hub.toast(`${SPIRITS[id].name}과(와) 함께한다`); } return true;
+    case 'useItem': { // 물약 · 주문서: 귀환 · 이동은 창을 닫고 바로 옮겨 간다
+      const w = hub.getWorld?.(), u = GOODS[id]?.use;
+      if (!w || !u) return true;
+      if (w.useItem(id)) { if (u.kind === 'return' || u.kind === 'teleport') hub.onClose(); else hub.toast(`${GOODS[id].name}${u.kind === 'potion' ? '을(를) 마셨다' : '을(를) 읽었다'}`); }
+      else hub.toast(w.player.potionCd > 0 && u.kind === 'potion' ? `아직 마실 수 없다 (${Math.ceil(w.player.potionCd)}초)` : '지금은 쓸 수 없다');
       return true;
     }
     case 'quick': s.quickFood = s.quickFood === id ? null : id; hub.toast(s.quickFood ? `${GOODS[id].name} → 빠른 칸 (H로 먹기)` : '빠른 칸을 비웠다'); return true;
@@ -231,6 +255,8 @@ export function homeClick(hub, act, t) {
 
 // 가방 칸의 '먹기' · '빠른 칸' 버튼
 export function foodButtons(s, id) {
+  const u = GOODS[id]?.use;
+  if (u) return `<div class="mvb"><button class="sm" data-act="useItem" data-id="${id}">${u.kind === 'potion' ? '마시기' : '읽기'}</button></div>`; // 물약 · 주문서
   if (!eatInfo(id)) return '';
   return `<div class="mvb"><button class="sm" data-act="eat" data-id="${id}">먹기</button>${parseDish(id) ? `<button class="sm ${s.quickFood === id ? 'on' : 'ghost'}" data-act="quick" data-id="${id}">H</button>` : ''}</div>`;
 }

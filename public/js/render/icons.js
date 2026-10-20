@@ -258,6 +258,20 @@ const DRAW = {
   key(P) { P.circle(5, 5, 3.2, '#a8743a'); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (((x + 0.5 - 5) ** 2 + (y + 0.5 - 5) ** 2) < 2) P.set(x, y, null); P.line(7, 7, 13, 13, '#a8743a', 2); P.rect(11, 13, 2, 2, '#a8743a'); P.rect(13, 11, 2, 2, '#a8743a'); P.bevel(0.3, 0.35); P.outline(); },
 };
 
+// 물약: 둥근 유리병 + 코르크 (등급이 오를수록 병이 크고 목에 띠가 감긴다)
+DRAW.potion = (P, [liq], k = 1) => {
+  const r = k >= 3 ? 5.5 : k >= 2 ? 5 : 4.5;
+  P.ellipse(8, 10.5, r, r - 0.3, '#d8e8f0'); P.ellipse(8, 11, r - 1, r - 1.3, liq); P.rect(6, 3, 4, 4, '#d8e8f0'); P.rect(6, 1, 4, 2, '#a87a48');
+  if (k >= 2) P.rect(6, 5, 4, 1, k >= 3 ? '#f0c040' : '#c8c8d8');
+  P.bevel(0.35, 0.3); P.set(5, 9, '#ffffff'); P.set(5, 10, '#ffffff'); P.outline();
+};
+// 주문서: 양 끝을 만 종이 + 마법 글귀 (글귀 색 = 마법의 색)
+DRAW.scroll = (P, [ink]) => {
+  P.rect(4, 4, 8, 9, '#efe4c8'); P.rect(2, 3, 3, 11, '#c8a878'); P.rect(11, 3, 3, 11, '#c8a878'); P.rect(3, 3, 1, 11, '#e8d4a8'); P.rect(12, 3, 1, 11, '#e8d4a8');
+  P.bevel(0.3, 0.3);
+  for (const [y, w] of [[6, 5], [8, 4], [10, 5]]) P.rect(5, y, w, 1, ink);
+  P.set(10, 8, ink); P.outline();
+};
 // ───── 고기 · 몬스터 부산물 ─────
 DRAW.meat = (P, [a, b, bone]) => { // 뼈 달린 고기
   P.ellipse(7, 7.5, 5.5, 4.5, a); P.line(10, 10, 14, 14, bone, 2); P.circle(14.2, 14.2, 1.3, bone); P.circle(13, 15, 1.1, bone);
@@ -344,6 +358,7 @@ export function iconCanvas(key) {
       else if (ic.t === 'fish') DRAW.fish(P, ic.c, ic.shape);
       else if (ic.t === 'part') part(P, ic.k, ic.c);
       else if (ic.t === 'dish') dish(P, ic.k, ic.c);
+      else if (ic.t === 'potion') DRAW.potion(P, ic.c, ic.k || 1);
       else (DRAW[ic.t] || DRAW.lump)(P, ic.c || []);
     }
   } catch { /* 그림 실패 시 빈 칸 */ }

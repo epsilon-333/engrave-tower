@@ -8,7 +8,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const J = (p) => pathToFileURL(join(ROOT, 'public/js', p)).href;
 const { RACES, POINTS_PER_LEVEL } = await import(J('data/races.js'));
 const { CLASSES, SKILLS, ELEM, ZONE_ELEM, UNLOCKS, KIND_NAME, ENGRAVING_SKILLS } = await import(J('data/skills.js'));
-const { ITEMS, WEAPON_SKILLS, WCAT_NAME, STYLES } = await import(J('data/items.js'));
+const SP = await import(J('data/spirits.js'));
+const { ITEMS, WEAPON_SKILLS, WCAT_NAME, STYLES, weaponHands } = await import(J('data/items.js'));
 const { ENGRAVINGS, TAGS, REACTIONS, CANCELS } = await import(J('data/engravings.js'));
 const { MONSTERS, ZONES, AFFIXES, ECHOES, LORES } = await import(J('data/monsters.js'));
 const G = await import(J('data/goods.js'));
@@ -51,11 +52,14 @@ const overview = sec('overview', '한눈에 보기', `
       <p>클래스마다 스킬 6개 중 4개를 Q · E · R · F에 넣어 쓴다. 몬스터를 잡으면 <b>잔향</b>이 떨어지고, 잔향으로 몸에 <b>각인</b>을 새겨 능력을 붙인다. 레벨은 <b>도감</b>을 채워서 오른다.</p></div>
     <div><h3>조작</h3>${table(['키', '하는 일'], [
       ['W A S D', '이동'], ['마우스', '조준'], ['좌클릭', '평타'], ['우클릭', '무기 능력'], ['Q · E · R · F (1 · 2 · 3 · 4)', '스킬'], ['Space', '구르기 · 대시'], ['G', '상호작용 (말 걸기 · 열기 · 채집 · 낚시)'],
-      ['C', '캐릭터 창 (스킬 · 스탯) — 던전 안에서도 열린다'], ['I · B', '가방'], ['H', '빨리 먹기'], ['M', '큰 지도 (바깥 세계)'], ['T', '자동 조준 켜기 · 끄기'], ['X', '심을 씨앗 바꾸기 (밭)'], ['Esc', '메뉴 · 창 닫기'],
+      ['C', '캐릭터 창 (스킬 · 스탯) — 던전 안에서도 열린다'], ['I · B', '가방'], ['H', '빨리 먹기'], ['Z', '물약 빨리 마시기 (잃은 체력에 맞는 것)'], ['M', '큰 지도 (바깥 세계)'], ['T', '자동 조준 켜기 · 끄기'], ['X', '심을 씨앗 바꾸기 (밭)'], ['Esc', '메뉴 · 창 닫기'],
     ])}</div>
   </div>
   <h3>핵심 순환</h3>
   <p class="flow">몬스터 사냥 → 잔향 · 재료 · 이야기 물건 → 각인 새기기 · 장비 제작 · 성지 축복 → 더 깊은 던전 · 더 먼 지역 → 도감이 차서 레벨 업 → 다시 사냥</p>
+  <h3>수영 · 회피</h3>
+  <p>누구나 깊은 물에서 헤엄치고 잠수할 수 있다. 물속 숨은 그냥 8초, 잠수를 배우면 20초, 물의 가호(거울 호수의 물의 정령에게 진주)를 받으면 45초에 헤엄 속도 +40%. 헤엄칠 때는 낚시 · 스킬 · 평타를 쓸 수 없다.</p>
+  <p>회피는 민첩에 따라 조금씩 오르고, 민첩 25부터는 1마다 +0.3%가 더 붙는다 (보너스 최대 +15%, 회피는 최대 60%).</p>
   <h3>시간</h3>
   <p>게임 1분 = 실제 1초 (하루 = 실제 24분). 아침 6시 해가 뜨고 저녁 6시 노을이 진다. 밤에는 어두워지고 밤에만 무는 물고기가 있다. 침대에서는 저녁 5시 ~ 새벽 5시에 잘 수 있고, 자고 나면 아침 6시에 일어나며 체력 · 마나가 차고 물을 준 작물이 한 단계 자라고 <b>개운함</b>(저녁 6시까지 이동 속도 +8% · 받는 피해 -5%)이 붙는다.</p>`);
 
@@ -116,12 +120,17 @@ const statsSec = sec('stats', '능력치 · 각성', `
 
 // ───── 6. 장비 ─────
 const wItems = Object.entries(ITEMS).filter(([, it]) => it.slot === 'weapon' && !it.forged);
-const oItems = Object.entries(ITEMS).filter(([, it]) => it.slot !== 'weapon');
+const oItems = Object.entries(ITEMS).filter(([, it]) => it.slot !== 'weapon' && it.slot !== 'off');
+const offItems = Object.entries(ITEMS).filter(([, it]) => it.slot === 'off');
 const eff = (it) => (it.effects || []).map((e) => e.text).filter(Boolean).join(' · ');
 const gear = sec('gear', '장비 · 제작 · 강화', `
   ${h3('무기', `${wItems.length}종`)}
-  ${table(['무기', '종류', '피해', '공격 속도', '사거리', '우클릭', '능력치', '조건 · 효과', '값'], wItems.map(([, it]) => { const w = it.weapon || {};
-    return [`<b>${esc(it.name)}</b>${it.treasure ? ' ' + chip('성지 보물', '#ffd76a') : ''}${it.token ? ' ' + chip('증표', '#9fe3a8') : ''}`, esc(WCAT_NAME[it.cat || w.cat] || ''), `${w.dmg === 'mag' ? '마법' : '물리'} ×${w.mul ?? 1}`, w.speed ?? '', w.range ?? '', esc(WEAPON_SKILLS[w.skill]?.name || ''), `<small>${stats(it.stats)}</small>`, `<small>${[stats(it.req) && `필요 ${stats(it.req)}`, eff(it), it.bdesc].filter(Boolean).map(esc).join(' · ')}</small>`, it.price || '']; }))}
+  <p>한손 무기를 들면 왼손에 보조 도구 하나를 든다. 스킬은 두 손 중 더 맞는 쪽으로 나가서, 한손 무기 + 알맞은 왼손 도구면 <b>모든 스킬</b>을 쓸 수 있다. 양손 무기는 두 손을 다 쓰는 대신 제 스킬은 온전하다.</p>
+  ${table(['무기', '손', '종류', '피해', '공격 속도', '사거리', '우클릭', '능력치', '조건 · 효과', '값'], wItems.map(([, it]) => { const w = it.weapon || {};
+    return [`<b>${esc(it.name)}</b>${it.treasure ? ' ' + chip('성지 보물', '#ffd76a') : ''}${it.token ? ' ' + chip('증표', '#9fe3a8') : ''}`, weaponHands(it) >= 2 ? '양손' : '<b>한손</b>', esc(WCAT_NAME[it.cat || w.cat] || ''), `${w.dmg === 'mag' ? '마법' : '물리'} ×${w.mul ?? 1}`, w.speed ?? '', w.range ?? '', esc(WEAPON_SKILLS[w.skill]?.name || ''), `<small>${stats(it.stats)}</small>`, `<small>${[stats(it.req) && `필요 ${stats(it.req)}`, eff(it), it.bdesc].filter(Boolean).map(esc).join(' · ')}</small>`, it.price || '']; }))}
+  ${h3('왼손 도구', '한손 무기와 함께 들 때만 · 양손 무기를 들면 쉰다 · 대장간에서 산다')}
+  ${table(['도구', '하는 일', '능력치', '값'], offItems.map(([, it]) => [`<b>${esc(it.name)}</b>`, esc(it.odesc), `<small>${stats(it.stats)}</small>`, it.price]))}
+  <p>무기에 따라 마법 모양이 바뀐다: 근접 무기로 쓰면 날아가는 마법이 앞을 휩쓰는 짧고 센 근접 마법(피해 ×1.2, 조금 멀면 한 걸음 파고든다)이 되고, 활 · 바람총으로 쓰면 1.5배 빠르고 1.3배 멀리 가는 마법 화살이 된다.</p>
   ${h3('갑옷 · 장신구')}
   ${table(['장비', '자리', '능력치', '효과', '값'], oItems.map(([, it]) => [`<b>${esc(it.name)}</b>${it.treasure ? ' ' + chip('성지 보물', '#ffd76a') : ''}${it.token ? ' ' + chip('증표', '#9fe3a8') : ''}`, it.slot === 'armor' ? '갑옷' : '장신구', `<small>${stats(it.stats)}</small>`, `<small>${esc(eff(it) || it.bdesc || '')}</small>`, it.price || '']))}
   ${h3('전투 스타일', '처음 고르는 길잡이')}
@@ -219,6 +228,15 @@ const life = sec('life', '생활: 채집 · 낚시 · 농사 · 요리', `
 const learnSec = sec('learn', '기술 배우기 · 도감 · 레벨', `
   ${table(['기술', '어디서', '골드', '레벨'], Object.entries(LEARN).map(([id, l]) => [`<b>${esc(SKILLS[id]?.name || ABILITIES[id]?.name || id)}</b>`, esc(WHERE_NAME[l.where] || l.where), l.gold ?? '', l.lv ?? '']))}
   ${table(['특별한 힘', '어디서', '효과'], Object.values(ABILITIES).map((a) => [`<b>${esc(a.name)}</b>`, esc(WHERE_NAME[a.where] || a.where), esc(a.desc)]))}
+  ${h3('다른 종족의 기술', '그 종족 성지의 「기술 배우기」 탭')}
+  <p>마법은 마력, 활 · 던지기는 민첩, 나머지는 근력이 30 이상(궁극 기술은 50)이고 그 성지의 친밀도가 「친구」면 배울 수 있다. 배운 기술은 내 종족의 자원으로 쓴다. 능력치가 50(궁극 70) 이상이면 온전한 힘, 아니면 85%. 영혼 · 깃든 정령처럼 그 클래스만 모으는 것이 있어야 하는 기술은 배울 수 없다. 값: 250골드 + 열리는 레벨 × 50 (궁극 900 + 레벨 × 50).</p>
+  ${h3('물약 · 주문서', '물약은 잡화점 · 주문서는 마탑에서 산다 · 가방(I)에서 「마시기」 · 「읽기」, 물약은 Z로 빨리 마신다')}
+  ${table(['물건', '값 (살 때)', '효과'], Object.entries(G.GOODS).filter(([, g]) => g.cat === 'potion' || g.cat === 'scroll').map(([id, g]) => [`<b>${esc(g.name)}</b>`, G.buyPrice(id), esc(g.desc)]))}
+  <p class="small">물약은 한 번 마시면 8초 뒤에 다시 마실 수 있다. Z는 잃은 체력에 맞는 가장 작은 물약을 고른다. 귀환 · 이동 주문서는 옮겨 간 뒤에 한 장이 사라진다.</p>
+  ${h3('정령 계약', '세계수 성지의 「정령 계약」 · 정령석 하나 = 계약 한 번')}
+  <p>확률: ${SP.SPIRIT_GRADES.map((g2) => `${g2.name} ${Math.round(g2.rate * 100)}%`).join(' · ')} · 10회 계약은 희귀 이상 하나 보장. 같은 정령과 또 계약하면 결속 ★이 올라 힘 +${Math.round(SP.STAR_MUL * 100)}% (최대 ★${SP.SPIRIT_STAR_MAX}, 그다음은 정령석으로 돌려받는다). 정령석은 세계수 성지에서 ${SP.STONE_PRICE}골드에 사거나, 몬스터가 가끔 떨어뜨린다 (이끼 숲 · 원시림 · 이끼 동굴에서 더 자주, 우두머리는 꼭).</p>
+  <p>싸울 때는 「정령 부르기」(정령사 1번 스킬, 다른 종족은 세계수 성지에서 배운다)로 함께하는 정령을 20초 동안 꺼낸다. 정령은 어깨 위를 떠다니며 버프를 주고, 둘레 150칸 안의 가장 가까운 적을 그 속성 탄으로 친다. 「정령 강화」는 8초 동안 공격 2배 빠르게 · 피해 +60% · 버프 1.5배, 「정령의 품」은 4초 동안 받는 피해 -40% · 다가온 적을 밀쳐낸다 (둘 다 정령이 없으면 불러낸다).</p>
+  ${table(['정령', '등급', '속성', '버프 (★1)'], Object.values(SP.SPIRITS).sort((a, b) => b.grade - a.grade).map((s) => [`<b>${esc(s.name)}</b>`, `<span style="color:${SP.SPIRIT_GRADES[s.grade].color}">${SP.SPIRIT_GRADES[s.grade].name}</span>`, SP.SPIRIT_ELEMS[s.elem].name, esc(SP.spiritBuffText(s.id, 1))]))}
   ${h3('도감으로 레벨 업')}
   <p>몬스터 처치 ${CX.STAGE_KILLS.join(' · ')}마리 (단계마다 ${CX.STAGE_POINTS.join(' · ')}점) · 장소 발견 ${CX.PLACE_POINTS}점 · 일지 ${CX.JOURNAL_POINTS}점 · 석판 ${CX.LORE_POINTS}점 · 사람의 사연 단계마다 ${CX.PERSON_POINTS.join(' · ')}점 · 새 물고기 ${CX.FISH_POINTS}점 · 유물 ${CX.ARTIFACT_POINTS}점. 레벨 L에서 다음 레벨까지 (3 + L)점.</p>`);
 

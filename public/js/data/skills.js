@@ -59,8 +59,8 @@ export const CLASSES = {
     skills: ['shadowStep', 'weakMark', 'ambush', 'stealth', 'shadowEvade', 'shadowDance'] },
   venomHunter: { race: 'assassin', name: '독침 사냥꾼', desc: '덫을 깔고 미끼로 몬스터를 끌어들인다.', trait: '평타가 독을 건다.', weapons: ['blowgun', 'viperBlowgun'], style: 'poison',
     skills: ['snare', 'retreatShot', 'bait', 'dartFan', 'smokeBomb', 'venomBurst'] },
-  spiritcaller: { race: 'elf', name: '정령사', desc: '정령을 몸에 깃들여 싸운다. 깃든 정령은 내 주위를 떠다닌다.', trait: '정령은 최대 3개, 12초 동안 깃든다. 같은 정령을 겹치면 효과가 깊어지고, 서로 다른 정령을 섞으면 조합 효과가 붙는다.', weapons: ['spiritBow', 'worldTreeBow'], style: 'wind',
-    skills: ['fireSpirit', 'windSpirit', 'forestSpirit', 'spiritAbsorb', 'spiritArrow', 'spiritKing'] },
+  spiritcaller: { race: 'elf', name: '정령사', desc: '정령과 계약해 함께 싸운다. 불러낸 정령이 버프를 주고 적을 공격한다.', trait: '세계수 성지의 「정령 계약」에서 정령석을 바쳐 정령과 계약한다(속성 6 · 등급 4, 확률). 같은 정령과 또 계약하면 결속이 올라 강해진다. 「정령 부르기」로 함께하는 정령을 꺼낸다.', weapons: ['spiritBow', 'worldTreeBow'], style: 'wind',
+    skills: ['summonSpirit', 'spiritAbsorb', 'spiritEmpower', 'spiritArrow', 'spiritGuard', 'spiritKing'] },
   ranger: { race: 'elf', name: '숲의 사수', desc: '멈춰서 집중하고 멀리서 꿰뚫는다.', trait: '가만히 서 있으면 집중이 쌓인다(0.5초마다 1단계, 최대 3). 다음 사격 피해 단계당 +25%.', weapons: ['rangerBow', 'galeLongbow'], style: 'wind',
     skills: ['pierceArrow', 'windStep', 'vineSnare', 'pushArrow', 'aimedShot', 'skyPiercer'] },
   rockguard: { race: 'golem', name: '바위 수호자', desc: '무엇이든 버티고 되돌려준다.', weapons: ['rockFist', 'mountainHeart'], style: 'mirror',
@@ -280,19 +280,19 @@ export const SKILLS = {
     desc: '독이 쌓인 모든 적의 독을 한꺼번에 터뜨린다. 중첩과 그림자가 많을수록 크다.', do: [{ op: 'detonate', what: 'poison', mul: 1.1, r: 46, scaleRes: true }] },
 
   // ══════ 엘프 · 정령사 (깃드는 정령) ══════
-  fireSpirit: { name: '화염 정령', role: '강화', cd: 3, cost: 20, scale: 'best', fx: 'spiritIn', aim: 'none', mo: 'castBig',
-    desc: '화염 정령이 깃든다(12초). 정령 하나당 공격력 +6%, 공격 시 30% 확률로 화상. 정령력 20.', do: [{ op: 'bind', elem: 'fire', dur: 12 }] },
-  windSpirit: { name: '바람 정령', role: '강화', cd: 3, cost: 20, scale: 'best', fx: 'spiritIn', aim: 'none', mo: 'castBig',
-    desc: '바람 정령이 깃든다(12초). 정령 하나당 공격 속도 +10%, 이동 속도 +6%, 평타 관통 +1. 정령력 20.', do: [{ op: 'bind', elem: 'wind', dur: 12 }] },
-  forestSpirit: { name: '숲 정령', role: '방어', cd: 3, cost: 25, scale: 'best', fx: 'spiritIn', aim: 'none', mo: 'castBig',
-    desc: '숲 정령이 깃든다(12초). 깃들 때 보호막(최대 체력 6%×정령 수), 정령 하나당 초당 체력 0.8% 회복. 정령력 25.', do: [{ op: 'bind', elem: 'forest', dur: 12 }] },
+  summonSpirit: { name: '정령 부르기', role: '소환', cd: 18, cost: 25, scale: 'best', fx: 'spiritIn', aim: 'none', mo: 'castBig',
+    desc: '계약한 정령 가운데 함께하는 정령을 불러낸다(20초). 나와 있는 동안 정령의 버프가 붙고, 정령이 가까운 적을 그 속성으로 공격한다. 다시 쓰면 시간이 처음부터. 정령력 25.', do: [{ op: 'summonSpirit', dur: 20 }] },
+  spiritEmpower: { name: '정령 강화', role: '강화', cd: 16, cost: 20, scale: 'best', fx: 'spiritIn', aim: 'none', mo: 'castBig',
+    desc: '함께하는 정령이 8초 동안 강해진다: 공격이 2배 빠르고 피해 +60%, 버프 1.5배. 정령이 나와 있지 않으면 강해진 채로 불러낸다(20초). 정령력 20.', do: [{ op: 'spiritEmpower', dur: 8 }] },
+  spiritGuard: { name: '정령의 품', role: '방어', cd: 14, cost: 20, scale: 'best', fx: 'spiritIn', aim: 'none', mo: 'castBig',
+    desc: '함께하는 정령이 나를 감싸 4초 동안 받는 피해 -40%, 다가온 적을 밀쳐낸다. 정령이 나와 있지 않으면 불러낸다(20초). 정령력 20.', do: [{ op: 'spiritGuard', dur: 4 }] },
   spiritAbsorb: { name: '정령 흡수', role: '준비', cd: 7, scale: 'best', fx: 'absorb', mo: 'channel',
     desc: '1.2초 동안 주변 적의 생기를 빨아들인다. 맞힌 적 하나마다 정령력 +3.',
     do: [{ op: 'channel', dur: 1.2, every: 0.3, sub: { op: 'aoe', at: 'self', r: 80, mul: 0.35, gainPerHit: 3, fx: 'absorb' } }] },
-  spiritArrow: { name: '정령의 화살', role: '공격', cd: 4, cost: 15, scale: 'best', fx: 'bolt', mo: 'shoot', needSpirit: true,
-    desc: '깃든 정령의 힘으로 관통하는 큰 화살을 쏜다. 정령이 많을수록 강하다. 깃든 정령이 없으면 쓸 수 없다. 정령력 15.', do: [{ op: 'spiritArrow', speed: 340, range: 260, mul: 1.4, per: 0.45 }] },
+  spiritArrow: { name: '정령의 화살', role: '공격', cd: 4, cost: 15, scale: 'best', fx: 'bolt', mo: 'shoot',
+    desc: '정령의 힘으로 관통하는 큰 화살을 쏜다. 정령이 나와 있으면 그 정령의 속성이 붙고 피해 +50% (등급 · 결속이 높을수록 더). 정령력 15.', do: [{ op: 'spiritArrow', speed: 340, range: 260, mul: 1.4, per: 0.45 }] },
   spiritKing: { name: '정령왕 강림', role: '궁극', cd: 36, costAll: { min: 60 }, scale: 'best', fx: 'summon', ult: true, mo: 'castBig',
-    desc: '15초 동안 가장 많이 깃든 정령의 왕이 나타나 주먹으로 싸운다. 바람은 멀리 날려 버리고, 불은 화염으로 태우고, 숲은 덩굴로 묶는다. 정령 칸도 그 정령으로 가득 찬다(깃든 정령이 없으면 불→바람→숲 차례). 정령력이 많을수록 강하다.',
+    desc: '15초 동안 정령왕이 나타나 주먹으로 싸운다. 함께하는 정령이 불 · 바람 · 숲이면 그 왕이, 아니면 불→바람→숲 차례로 온다. 바람은 멀리 날려 버리고, 불은 화염으로 태우고, 숲은 덩굴로 묶는다. 정령력이 많을수록 강하다.',
     do: [{ op: 'kingDescend', dur: 15, mul: 1.1, scaleRes: true }] },
 
   // ══════ 엘프 · 숲의 사수 ══════
@@ -404,7 +404,7 @@ export const SKILLS = {
   waterBreath: { general: true, name: '수중 호흡', role: '강화', cd: 30, cost: 20, scale: 'mag', fx: 'bubbleIn', aim: 'none', mo: 'cast',
     desc: '3분 동안 물속에서 숨이 줄지 않는다. 그동안 깊은 물에서 헤엄치고, 헤엄치다가 G를 누르면 바닷속으로 내려간다.', do: [{ op: 'waterBreath', min: 180 }] },
   dive: { general: true, name: '잠수', role: '이동', cd: 4, scale: 'phys', fx: 'splash', aim: 'none', mo: 'leap',
-    desc: '물가나 물 위에서 쓰면 물속으로 뛰어든다 (숨 20초 · 다 떨어지면 체력이 줄고 물 위로 떠오른다). 배운 뒤에는 깊은 물에서 헤엄칠 수 있다.', do: [{ op: 'dive' }] },
+    desc: '물가나 물 위에서 쓰면 물속으로 뛰어든다. 배우면 물속 숨이 8초 → 20초로 길어진다 (다 떨어지면 체력이 줄고 물 위로 떠오른다).', do: [{ op: 'dive' }] },
 };
 
 // 스킬 → 클래스·종족·배우는 레벨
@@ -424,7 +424,7 @@ const SKILL_KIND = {
   sweep: 'slash', dashSlash: 'slash', swordWave: 'slash', skyfall: 'slash', shadowDance: 'slash', eSoulHarvest: 'slash',
   crushBlow: 'smash', chargeSmash: 'smash', crushingBlows: 'smash', rageBurst: 'smash', groundSmash: 'smash',
   ambush: 'thrust', comboSlash: 'slash',
-  fireSpirit: 'body', windSpirit: 'body', forestSpirit: 'body', spiritAbsorb: 'body', spiritKing: 'body', spiritArrow: 'shoot',
+  summonSpirit: 'body', spiritEmpower: 'body', spiritGuard: 'body', spiritAbsorb: 'body', spiritKing: 'body', spiritArrow: 'shoot',
   retreatShot: 'shoot', dartFan: 'shoot', pierceArrow: 'shoot', pushArrow: 'shoot', skyPiercer: 'shoot',
   harpoon: 'throw', rapidThrow: 'throw', greatAxe: 'throw', axeLegion: 'throw',
   riposte: 'parry', shieldCharge: 'shield', ironWall: 'shield', shieldBash: 'shield',
@@ -452,6 +452,24 @@ export function skillFit(def, wcat) {
   const t = FIT[def.kind || 'body'] || FIT.body;
   return t[wcat] ?? t._ ?? 0;
 }
+// 두 손 중 더 맞는 쪽: 오른손 무기, 또는 (한손 무기일 때) 왼손 도구
+export function handFit(def, b) {
+  const main = skillFit(def, b?.wcat), off = b?.offItem && (b.hands || 1) < 2 ? b.offItem.off?.[def?.kind || 'body'] || 0 : 0;
+  return off > main ? { fit: off, hand: 'off' } : { fit: main, hand: 'main' };
+}
+// 다른 종족의 클래스 스킬을 배우는 조건: 스킬 종류에 맞는 능력치 + 그 종족 성지의 친밀도
+export const CROSS_STAT = { spell: 'mag', shoot: 'agi', throw: 'agi' };
+export function crossReq(def) {
+  const stat = CROSS_STAT[def.kind] || (def.scale === 'mag' ? 'mag' : def.scale === 'dex' ? 'agi' : 'str');
+  return { stat, need: def.ult ? 50 : 30, full: def.ult ? 70 : 50, aff: 2, gold: (def.ult ? 900 : 250) + (def.unlock || 1) * 50 };
+}
+// 다른 종족의 스킬은 능력치가 '온전' 기준에 못 미치면 85% 힘
+export const crossMul = (def, b) => { if (!def?.race || def.race === b.race || def.scroll) return 1; const r = crossReq(def); return (b.stats?.[r.stat] || 0) >= r.full ? 1 : 0.85; };
+// 배울 수 없는 것: 그 클래스만 모으는 것(영혼 · 깃든 정령 · 부하)이 있어야 쓰는 스킬
+export const crossOk = (id) => { const s = SKILLS[id]; return !!s && !!s.cls && !s.needSpirit && !s.do.some((o) => ['raiseSouls', 'blastSummons'].includes(o.op)); };
+// 설명 끝의 '정령력 20.' 같은 원래 종족 자원 이야기를 뗀다 (다른 종족이 배우면 내 자원으로 쓰니까)
+const RES_TAIL = /\s*(마력|기력|분노|오러|본능|영혼|그림자|정령력|용기|암석 에너지)\s*[+]?\d+\+?\s*(전부|씩)?\.?\s*$/;
+export const plainDesc = (s) => (s?.desc || '').replace(RES_TAIL, '');
 export const fitText = (f) => (f <= 0 ? '쓸 수 없음' : f >= 0.99 ? '제대로 쓴다' : `피해 ${Math.round(f * 100)}%`);
 
 // 각인 → 스킬
