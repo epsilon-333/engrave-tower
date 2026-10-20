@@ -129,10 +129,12 @@ export function buildCave1(zone) {
   for (const S of SECRETS) {
     const R = ROOMS.find((r) => r.id === S.from);
     const L = Math.ceil(Math.hypot(S.x - R.x, S.y - R.y));
-    let crack = null;
+    let crack = null, px = R.x, py = R.y;
     for (let k = 0; k <= L; k++) {
       const x = Math.round(R.x + ((S.x - R.x) * k) / L), y = Math.round(R.y + ((S.y - R.y) * k) / L);
+      const diag = x !== px && y !== py; px = x; py = y;
       if (!crack) { if (get(x, y) === T_WALL) { crack = [x, y]; set(x, y, T_CRACK); } continue; }
+      if (diag && get(x - Math.sign(S.x - R.x), y) === T_WALL) set(x - Math.sign(S.x - R.x), y, T_FLOOR); // 대각선으로만 이어지면 못 지나간다
       if (Math.hypot(x - S.x, y - S.y) > S.r) set(x, y, T_FLOOR);
     }
     disc(S.x, S.y, S.r);

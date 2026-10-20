@@ -3,6 +3,7 @@ import { MONSTERS, ZONES, LORES } from './monsters.js';
 import { JOURNALS, PEOPLE } from './story.js';
 import { CAVE1_PLACES } from './maps/cave1.js';
 import { OW_PLACES, WORLD_ZONE } from './maps/overworld.js';
+import { FISH, ARTIFACTS } from './goods.js';
 export const PLACE_ZONES = [WORLD_ZONE, ...ZONES];
 
 // 몬스터 도감 단계: 처치 수 1 / 5 / 15 (정예 · 보물 고블린은 1마리로 완성)
@@ -10,6 +11,7 @@ export const STAGE_KILLS = [1, 5, 15];
 export const STAGE_POINTS = [1, 1, 2];
 export const PLACE_POINTS = 2, JOURNAL_POINTS = 2, LORE_POINTS = 1;
 export const PERSON_POINTS = [1, 1, 1, 2]; // 사연 단계마다
+export const FISH_POINTS = 1, ARTIFACT_POINTS = 2; // 새 물고기 · 땅에서 찾은 유물
 
 const oneKill = (m) => m.elite || m.treasure;
 export function monsterStage(id, kills) {
@@ -32,6 +34,8 @@ export function codexPoints(s) {
   pts += Object.keys(c.journals || {}).filter((id) => JOURNALS[id]).length * JOURNAL_POINTS;
   pts += (c.lore || []).length * LORE_POINTS;
   for (const p of Object.values(PEOPLE)) p.steps.forEach((st, i) => { if (f[st]) pts += PERSON_POINTS[i]; });
+  pts += Object.keys(s.fishLog || {}).filter((id) => FISH[id]).length * FISH_POINTS;
+  pts += Object.keys(s.artifacts || {}).filter((id) => ARTIFACTS[id]).length * ARTIFACT_POINTS;
   return pts;
 }
 
@@ -52,5 +56,7 @@ export function codexTotals(s) {
     places: { done: Object.keys(c.places || {}).length, all: PLACE_ZONES.reduce((a, z) => a + zonePlaces(z).length, 0) },
     records: { done: Object.keys(c.journals || {}).length + (c.lore || []).length, all: Object.keys(JOURNALS).length + LORES.length },
     people: { done: Object.values(PEOPLE).filter((p) => s.story?.flags?.[p.steps[p.steps.length - 1]]).length, all: Object.keys(PEOPLE).length },
+    fish: { done: Object.keys(s.fishLog || {}).filter((id) => FISH[id]).length, all: Object.keys(FISH).length },
+    artifacts: { done: Object.keys(s.artifacts || {}).filter((id) => ARTIFACTS[id]).length, all: Object.keys(ARTIFACTS).length },
   };
 }

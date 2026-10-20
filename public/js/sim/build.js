@@ -1,9 +1,10 @@
 // 빌드 계산: 로드아웃(종족·레벨·배분·각인·장비) → 최종 스탯, 파생 수치, 플래그, 트리거.
 // DOM을 쓰지 않는 순수 함수라 서버에서도 그대로 돌릴 수 있다.
 import { BASE_STATS, SPECIAL_INFO, AWAKENINGS, EXTREME, eff } from '../data/stats.js';
+import { allSanctums, trainStats } from '../data/sanctums.js';
 import { RACES, RACE_MIGRATE } from '../data/races.js';
 import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
-import { ITEMS } from '../data/items.js';
+import { ITEMS, weaponCat } from '../data/items.js';
 import { evalCond, condText } from './conditions.js';
 import { SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES } from '../data/skills.js';
 
@@ -15,7 +16,9 @@ export function computeBuild(lo) {
   if (RACE_MIGRATE[lo.race]) lo = { ...lo, race: RACE_MIGRATE[lo.race] };
   const race = RACES[lo.race];
   const stats = {};
-  for (const k of BASE_STATS) stats[k] = race.base[k] + (lo.alloc?.[k] || 0) + (race.growth[k] || 0) * (lo.level - 1);
+  const sanct = allSanctums(lo); // 성지에서 받은 축복 (모든 성지, 내 종족의 성지는 1.5배)
+  const train = trainStats(lo);  // 성지 수련 단계
+  for (const k of BASE_STATS) stats[k] = race.base[k] + (lo.alloc?.[k] || 0) + (race.growth[k] || 0) * (lo.level - 1) + (sanct.stats[k] || 0) + (train[k] || 0);
   for (const k of Object.keys(SPECIAL_INFO)) stats[k] = 0;
 
   const notes = []; // UI에 보여줄 발동 내역
@@ -75,6 +78,11 @@ export function computeBuild(lo) {
       if (ok) effects.push(e);
     }
   }
+
+  effects.push(...sanct.effects); // 3단계 은총
+  // 강화한 무기: 단계마다 모든 피해 +6%
+  const rf = lo.reinforce?.[lo.gear?.weapon] || 0;
+  if (rf) effects.push({ type: 'mul', key: 'dmgMul', v: 1 + 0.06 * rf });
 
   // 5) 태그 시너지 (+ 상쇄)
   const cancelled = new Set();
@@ -175,6 +183,7 @@ export function computeBuild(lo) {
   const cls = lo.cls && CLASSES[lo.cls]?.race === lo.race ? lo.cls : RACE_CLASSES(lo.race)[0];
   const available = CLASSES[cls].skills.filter((id) => (lo.allSkills || (SKILLS[id].unlock || 1) <= lo.level));
   for (const src of active) if (src.kind === 'engraving' && ENGRAVING_SKILLS[src.id] && !available.includes(ENGRAVING_SKILLS[src.id])) available.push(ENGRAVING_SKILLS[src.id]);
+  for (const id of lo.learned || []) if (SKILLS[id] && !available.includes(id)) available.push(id); // 세상에서 배운 기술
   let skills = (lo.skills || []).filter((id) => available.includes(id)).slice(0, 4);
   if (!lo.skills) {
     // 기본 장착: 준비/강화 → 공격 → 마무리 순으로 콤보가 되게
@@ -186,7 +195,7 @@ export function computeBuild(lo) {
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
   if (wpn.kind === 'melee') { d.dmgTakenMul *= 0.8; flags.add('stagger'); }
   else flags.add('aimSlow');
-  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], cls, skills, available };
+  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat: weaponCat(ITEMS[weaponId]), cls, skills, available, abilities: lo.abilities || {} };
 }
 
 // 빌드 코드 (온라인 공유/고스트 대전용)

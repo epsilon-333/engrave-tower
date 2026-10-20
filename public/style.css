@@ -301,3 +301,90 @@ body.touch:has(#panel:not([hidden])) #cloudChip, body.touch:has(#overlay:not([hi
 .codex h4 { margin: 14px 0 6px; }
 .codex .stars { color: #ffd060; letter-spacing: 1px; }
 .codex details summary { cursor: pointer; }
+
+/* 성지: 단계 표시 */
+.sanct-pips { display: flex; gap: 6px; justify-content: center; margin: 4px 0; }
+.sanct-pips i { font-style: normal; width: 30px; height: 30px; display: grid; place-items: center; background: #1a1626; color: #6a6280; box-shadow: inset 0 0 0 2px #2e2840; font-weight: bold; }
+.sanct-pips i.star { box-shadow: inset 0 0 0 2px #6a5a2a; }
+.sanct-pips i.on { background: var(--c); color: #16121c; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.4); }
+.sanct-info { text-align: left; background: #15121e; padding: 8px 12px; display: grid; gap: 2px; }
+.sanct-info p { margin: 2px 0; }
+
+/* 생활: 가방 · 잡화점 · 대장간 제작 */
+.gi { width: 32px; height: 32px; image-rendering: pixelated; vertical-align: middle; display: inline-block; }
+.tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.tool { display: flex; gap: 8px; align-items: center; background: var(--panel2); padding: 6px 8px; }
+.tool div { display: grid; } .tool small { color: var(--muted); font-size: 13px; }
+.tool.off { opacity: 0.45; }
+.goods { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; margin-bottom: 8px; }
+.good { position: relative; display: grid; justify-items: center; gap: 2px; background: var(--panel2); padding: 6px 4px; font-size: 13px; text-align: center; }
+.good b { position: absolute; right: 6px; top: 4px; color: var(--accent); font-size: 14px; text-shadow: 1px 1px 0 #000; }
+.tlist { display: grid; gap: 4px; }
+.trow { display: grid; grid-template-columns: 36px 1fr auto auto auto; gap: 8px; align-items: center; background: var(--panel2); padding: 4px 8px; }
+.trow > span:nth-child(2) { display: grid; } .trow small { color: var(--muted); font-size: 13px; }
+.trow .mats { font-size: 13px; color: var(--muted); }
+.trow.hot { box-shadow: inset 3px 0 0 var(--accent); }
+.price { color: var(--accent); white-space: nowrap; }
+em.up { color: #7be38a; font-style: normal; } em.down { color: #ff7a6a; font-style: normal; }
+.mat { display: inline-flex; align-items: center; gap: 1px; margin-right: 6px; font-size: 13px; }
+.mat .gi { width: 24px; height: 24px; }
+.mat.ok { color: #b8f0a8; } .mat.no { color: #ff9a8a; }
+.fcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.fcard { background: var(--panel2); padding: 8px 10px; display: grid; gap: 4px; }
+.fcard.owned { opacity: 0.6; }
+.fcard .c-head { display: flex; justify-content: space-between; } .fcard .c-head small { color: var(--muted); }
+.fcard .c-meta, .fcard .c-stats { font-size: 13px; color: #c8c0d8; }
+@media (max-width: 700px) { .trow { grid-template-columns: 32px 1fr auto; } .trow .mats { grid-column: 2 / 4; } }
+
+.fishrow { display: flex; gap: 8px; align-items: center; }
+.fishrow > span:last-child { display: block; }
+.trow.r3 { grid-template-columns: 1fr auto auto; }
+
+#practicePanel label.wide { grid-template-columns: auto 1fr; }
+.sanct-tabs { display: flex; gap: 4px; justify-content: center; margin: 4px 0 10px; }
+.sanct-tabs button { flex: 1; padding: 6px 4px; }
+.sanct-tabs button.on { background: #3a2e58; box-shadow: inset 0 0 0 2px #8a78c8; }
+.sanct-tabs .dot { color: #ffd040; }
+.rel-list { display: grid; gap: 6px; text-align: left; margin: 6px 0 10px; }
+.rel { background: #15121e; padding: 6px 10px; }
+.rel small { display: block; color: #b8b0c8; margin-top: 2px; }
+.rel-tag { display: inline-block; padding: 0 6px; margin-left: 4px; font-size: 0.85em; color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
+.sq { text-align: left; background: #15121e; padding: 8px 12px; margin: 0 0 10px; box-shadow: inset 3px 0 0 var(--c); }
+.sq.ready { box-shadow: inset 3px 0 0 var(--c), 0 0 0 1px var(--c); }
+.sq p { margin: 4px 0; }
+.aff { text-align: left; margin-bottom: 6px; }
+.aff-bar { height: 10px; background: #1a1626; box-shadow: inset 0 0 0 1px #2e2840; }
+.aff-bar i { display: block; height: 100%; background: var(--c); }
+.c-eff li.got { color: #d8f0c0; }
+.gift-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 4px 0 10px; }
+.gift-row small { color: #a8a0b8; }
+.wp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin: 8px 0 12px; }
+.wp-list .wp { display: flex; flex-direction: column; align-items: center; gap: 2px; border-color: #4a7a9a; }
+.wp-list .wp.here { opacity: 0.6; }
+.wp-list .wp small { font-size: 11px; color: #bfefff; }
+#practicePanel .dps { color: #ffe8a8; font-weight: bold; margin: 2px 0; }
+#practicePanel #arenaNote { font-size: 12px; margin: 0 0 4px; }
+/* ── 집 · 생활: 부엌 냄비 · 재료 · 보관함 · 무기 만들기 · 스킬 맞음 ── */
+.pot { display: flex; gap: 8px; margin: 8px 0; }
+.potslot { width: 52px; height: 52px; display: grid; place-items: center; background: #15121d; box-shadow: inset 0 0 0 2px #3a3450, inset 0 3px 0 rgba(0,0,0,0.4); padding: 0; }
+.potslot.on { background: #2a2438; box-shadow: inset 0 0 0 2px var(--accent); cursor: pointer; }
+.potslot .gi { width: 40px; height: 40px; }
+.cookres { display: flex; gap: 12px; align-items: center; background: #2a2236; padding: 8px 12px; box-shadow: inset 3px 0 0 var(--accent); margin: 6px 0; }
+.cookres > div { flex: 1; }
+.cookres b { font-size: 17px; }
+.gi.big { width: 48px; height: 48px; }
+button.good { cursor: pointer; color: var(--text); box-shadow: none; }
+button.good:hover:not(:disabled) { background: #332c44; box-shadow: inset 0 0 0 1px var(--accent); }
+.good em { font-style: normal; font-size: 12px; color: var(--muted); }
+.good em i { font-style: normal; }
+.good.quick { box-shadow: inset 0 0 0 2px var(--accent); }
+.good.mv { padding-bottom: 4px; }
+.mvb { display: flex; gap: 3px; margin-top: 2px; }
+.mvb button.sm { padding: 1px 6px; font-size: 12px; }
+.mvb button.on { background: var(--accent); color: #241a00; }
+.qbtns { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip.on { box-shadow: inset 0 0 0 1px var(--ok); color: #d8ffd0; }
+.chip.off { color: var(--muted); }
+button.sm.on { background: var(--accent); color: #241a00; }
+.skc.cant { opacity: 0.6; border-left-color: var(--warn); }
+b.dim { color: #e8c890; }

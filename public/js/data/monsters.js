@@ -73,6 +73,24 @@ export const MONSTERS = {
 
   treasureGoblin: { name: '보물 고블린', shape: 'humanoid', pal: { a: '#ffcf3a' }, hp: 120, atk: 0, type: 'phys', speed: 92, ai: 'flee', r: 6, xp: 30, gold: 120, pres: 20, mres: 20, echo: { id: 'rust', rate: 1 }, treasure: true },
 
+  // ── 바깥 세계 몬스터 (지역마다) ──
+  sandScorpion: { name: '모래 전갈', shape: 'quad', pal: { a: '#d8a050' }, hp: 150, atk: 15, type: 'phys', speed: 58, ai: 'chase', status: 'poison', r: 6, xp: 18, gold: 9, pres: 40, mres: 10, echo: { id: 'venom', rate: 0.4 } },
+  hyena: { name: '하이에나', shape: 'quad', pal: { a: '#c8a070' }, hp: 110, atk: 13, type: 'phys', speed: 96, ai: 'chase', status: 'bleed', r: 6, xp: 16, gold: 8, pres: 10, mres: 10, echo: { id: 'blood', rate: 0.4 } },
+  orcRaider: { name: '오크 약탈자', shape: 'humanoid', pal: { a: '#8a6a3a' }, hp: 220, atk: 19, type: 'phys', speed: 52, ai: 'charge', r: 7, xp: 24, gold: 14, pres: 35, mres: 10, echo: { id: 'rust', rate: 0.45 } },
+  raptor: { name: '랩터', shape: 'quad', pal: { a: '#5aa040' }, hp: 160, atk: 17, type: 'phys', speed: 104, ai: 'chase', status: 'bleed', r: 6, xp: 22, gold: 11, pres: 15, mres: 10, echo: { id: 'blood', rate: 0.45 } },
+  jungleWasp: { name: '독침 말벌', shape: 'flyer', pal: { a: '#e8c83a' }, hp: 90, atk: 13, type: 'phys', speed: 100, ai: 'erratic', status: 'poison', r: 5, xp: 16, gold: 8, pres: 0, mres: 10, echo: { id: 'venom', rate: 0.4 } },
+  bigBeetle: { name: '거대 딱정벌레', shape: 'golem', scale: 1.2, pal: { a: '#3a6a5a' }, hp: 340, atk: 21, type: 'phys', speed: 30, ai: 'chase', shield: 0.5, r: 8, xp: 28, gold: 15, pres: 80, mres: 20, echo: { id: 'spore', rate: 0.45 } },
+  bandit: { name: '도적', shape: 'humanoid', pal: { a: '#5a5a6a' }, hp: 150, atk: 17, type: 'phys', speed: 74, ai: 'chase', status: 'bleed', r: 6, xp: 20, gold: 18, pres: 20, mres: 15, echo: { id: 'blood', rate: 0.4 } },
+  coralCrab: { name: '산호 게', shape: 'quad', pal: { a: '#ff7a5a' }, hp: 260, atk: 22, type: 'phys', speed: 44, ai: 'chase', shield: 0.5, r: 7, xp: 30, gold: 16, pres: 70, mres: 30, echo: { id: 'mirror', rate: 0.4 } },
+  jellyfish: { name: '해파리', shape: 'flyer', ghost: true, pal: { a: '#ff9ad8' }, hp: 160, atk: 20, type: 'mag', speed: 50, ai: 'erratic', status: 'chill', r: 6, xp: 26, gold: 14, pres: 30, mres: 60, echo: { id: 'frost', rate: 0.4 } },
+  seaSerpent: { name: '바다뱀', shape: 'blob', pal: { a: '#3ab8b0' }, hp: 240, atk: 24, type: 'mag', speed: 60, ai: 'ranged', range: 130, proj: { speed: 140, color: '#7ae8ff', status: 'chill' }, r: 7, xp: 30, gold: 16, pres: 20, mres: 50, echo: { id: 'icecore', rate: 0.4 } },
+  // 우두머리 (안쪽 깊은 곳 · 성물을 지닌다)
+  dragonGuard: { name: '용궁 수문장', shape: 'golem', scale: 2, elite: true, pal: { a: '#2a8a9a', b: '#14505a', c: '#9af0ff', e: '#ffe14a' }, hp: 2600, atk: 30, type: 'mag', speed: 32, ai: 'boss', range: 160, proj: { speed: 150, color: '#7ae8ff', status: 'chill', spread: 7 }, r: 14, xp: 320, gold: 220, pres: 60, mres: 80, echo: { id: 'meltcore', rate: 1 } },
+  labyrinthLord: { name: '미궁의 군주', shape: 'golem', scale: 1.9, elite: true, pal: { a: '#6a2a2a', b: '#3a1414', c: '#ff8a4a', e: '#ffcc00' }, hp: 1800, atk: 30, type: 'phys', speed: 50, ai: 'charge', r: 13, xp: 240, gold: 180, pres: 70, mres: 30, echo: { id: 'chief', rate: 1 } },
+  orcWarlord: { name: '오크 족장', shape: 'humanoid', scale: 1.7, elite: true, pal: { a: '#6a8a3a', b: '#3a5a1a', c: '#c8a050', e: '#ff3300' }, hp: 1200, atk: 26, type: 'phys', speed: 50, ai: 'charge', r: 10, xp: 160, gold: 120, pres: 50, mres: 15, echo: { id: 'chief', rate: 1 } },
+  raptorAlpha: { name: '우두머리 랩터', shape: 'quad', scale: 1.7, elite: true, pal: { a: '#3a8a2a', b: '#1a5a14', c: '#c8f07a', e: '#ffee00' }, hp: 1300, atk: 27, type: 'phys', speed: 90, ai: 'charge', status: 'bleed', r: 10, xp: 170, gold: 120, pres: 30, mres: 20, echo: { id: 'queen', rate: 1 } },
+  fallenKnight: { name: '타락한 기사', shape: 'humanoid', scale: 1.7, elite: true, pal: { a: '#4a4a5a', b: '#2a2a3a', c: '#c45cff', e: '#ff3a3a' }, hp: 1500, atk: 27, type: 'phys', speed: 44, ai: 'charge', shield: 0.4, r: 10, xp: 180, gold: 130, pres: 90, mres: 40, echo: { id: 'grave', rate: 1 } },
+
   graveKeeper: { name: '묘지기', shape: 'golem', scale: 2.2, elite: true, pal: { a: '#3a2a4a', b: '#1a1024', c: '#c45cff', e: '#00ff9a' }, hp: 5200, atk: 38, type: 'mag', speed: 34, ai: 'boss', range: 170, proj: { speed: 150, color: '#c45cff', status: 'bleed', spread: 11 }, r: 15, xp: 700, gold: 400, pres: 100, mres: 100, echo: { id: 'grave', rate: 1 } },
 };
 
@@ -98,6 +116,9 @@ export const AFFIXES = {
 export const DUMMIES = {
   dummy: { name: '나무 허수아비', shape: 'dummy', pal: { a: '#b08a5a', b: '#6a4a2a', c: '#e0c080', e: '#2a1a0a' }, hp: 1e9, atk: 0, type: 'phys', speed: 0, ai: 'dummy', r: 7, xp: 0, gold: 0, pres: 0, mres: 0, echo: { id: 'goo', rate: 0 } },
   dummyP: { name: '강철 허수아비', shape: 'dummy', pal: { a: '#8a94a8', b: '#4a5266', c: '#d0d8e8', e: '#1a1a2a' }, hp: 1e9, atk: 0, type: 'phys', speed: 0, ai: 'dummy', r: 7, xp: 0, gold: 0, pres: 100, mres: 0, echo: { id: 'goo', rate: 0 } },
+  // 성지 수련: 과녁(한 번 맞히면 넘어간다) · 버팀목(피해를 잰다, 회복하지 않는다)
+  trainTarget: { name: '수련 과녁', shape: 'dummy', pal: { a: '#c8a070', b: '#6a4a2a', c: '#f0e0b0', e: '#2a1a0a' }, hp: 1, atk: 0, type: 'phys', speed: 0, ai: 'target', r: 7, xp: 0, gold: 0, pres: 0, mres: 0, echo: { id: 'goo', rate: 0 } },
+  trainPost: { name: '근위대 허수아비', shape: 'dummy', pal: { a: '#9aa0b0', b: '#5a6070', c: '#e0e4f0', e: '#1a1a2a' }, hp: 1e9, atk: 0, type: 'phys', speed: 0, ai: 'target', r: 8, xp: 0, gold: 0, pres: 0, mres: 0, echo: { id: 'goo', rate: 0 } },
   dummyM: { name: '룬석 허수아비', shape: 'dummy', pal: { a: '#6a5aa8', b: '#3a2e6a', c: '#b8a8ff', e: '#00e0ff' }, hp: 1e9, atk: 0, type: 'mag', speed: 0, ai: 'dummy', r: 7, xp: 0, gold: 0, pres: 0, mres: 100, echo: { id: 'goo', rate: 0 } },
 };
 

@@ -48,6 +48,21 @@ export const MONSTER_ART = {
   boneGuard: { base: 'skelet', scale: 1.3, tint: 'brightness(1.1)' },
   treasureGoblin: { base: 'goblin', tint: 'sepia(1) saturate(4) hue-rotate(5deg) brightness(1.2)' },
   graveKeeper: { base: 'big_demon', tint: 'hue-rotate(230deg) saturate(1.3) brightness(0.9)', scale: 1.5 },
+  sandScorpion: { base: 'lizard_m', tint: 'sepia(0.9) saturate(1.8) hue-rotate(-10deg) brightness(1.1)' },
+  hyena: { base: 'chort', tint: 'sepia(1) saturate(1.2) hue-rotate(5deg) brightness(1.05)' },
+  orcRaider: { base: 'orc_warrior', tint: 'sepia(0.4) hue-rotate(-15deg) saturate(1.3)' },
+  raptor: { base: 'lizard_f', tint: 'hue-rotate(-30deg) saturate(1.5)' },
+  jungleWasp: { base: 'imp', tint: 'hue-rotate(60deg) saturate(1.8) brightness(1.3)' },
+  bigBeetle: { base: 'ogre', tint: 'hue-rotate(120deg) saturate(0.9) brightness(0.75)' },
+  bandit: { base: 'dwarf_m', tint: 'grayscale(0.7) brightness(0.8)' },
+  coralCrab: { base: 'muddy', tint: 'hue-rotate(-40deg) saturate(2) brightness(1.2)' },
+  jellyfish: { base: 'swampy', tint: 'hue-rotate(220deg) saturate(1.6) brightness(1.3)' },
+  seaSerpent: { base: 'slug', tint: 'hue-rotate(120deg) saturate(1.6) brightness(1.1)' },
+  dragonGuard: { base: 'big_demon', tint: 'hue-rotate(150deg) saturate(1.2) brightness(1.1)', scale: 1.4 },
+  labyrinthLord: { base: 'ogre', tint: 'hue-rotate(-40deg) saturate(1.4) brightness(0.8)', scale: 1.5 },
+  orcWarlord: { base: 'masked_orc', tint: 'hue-rotate(30deg) saturate(1.2)', scale: 1.6 },
+  raptorAlpha: { base: 'lizard_f', tint: 'hue-rotate(-50deg) saturate(1.8) brightness(0.9)', scale: 1.6 },
+  fallenKnight: { base: 'knight_m', tint: 'grayscale(0.6) hue-rotate(220deg) brightness(0.75) saturate(1.5)', scale: 1.6 },
 };
 
 export const NPC_ART = {
@@ -57,9 +72,16 @@ export const NPC_ART = {
   trainer: { base: 'knight_f' },
   board: { base: 'doc' },
   merchant: { base: 'dwarf_m' },
+  store: { base: 'wizzard_m', tint: 'sepia(0.75) saturate(1.3) hue-rotate(-12deg) brightness(1.05)' },
   pino: { base: 'elf_m', tint: 'sepia(0.55) saturate(1.3) hue-rotate(-12deg)' },
+  turtle: { base: 'swampy', tint: 'hue-rotate(40deg) saturate(0.8)' },
+  // 종족 성지 수호자
+  keep_wizard: { base: 'wizzard_f', tint: 'hue-rotate(40deg)' }, keep_elf: { base: 'elf_f' }, keep_knight: { base: 'knight_f' }, keep_orc: { base: 'orc_shaman' },
+  keep_undead: { base: 'necromancer', tint: 'hue-rotate(40deg)' }, keep_assassin: { base: 'hood_assassin', tint: 'brightness(1.2)' }, keep_dino: { base: 'lizard_f', tint: 'hue-rotate(20deg)' }, keep_dragon: { base: 'dragonkin', tint: 'brightness(1.1)' },
 };
 
+// 무기 그림: 직접 만든 무기는 장비 정보(art)에 그림이 들어 있다
+export const weaponArt = (id, ITEMS) => WEAPON_ART[id] || ITEMS?.[id]?.art || WEAPON_ART.rustySword;
 export const WEAPON_ART = {
   boneKnuckle: { s: 'weapon_baton_with_spikes', tint: 'sepia(0.6) brightness(1.2)' },
   predatorFang: { s: 'weapon_saw_sword', tint: 'hue-rotate(-30deg) saturate(1.4)' },
@@ -85,8 +107,8 @@ export const WEAPON_ART = {
   nightPiercer: { s: 'weapon_knife', tint: 'hue-rotate(230deg) saturate(2) brightness(0.8)' },
   blowgun: { s: 'weapon_blowgun' },
   viperBlowgun: { s: 'weapon_blowgun', tint: 'hue-rotate(60deg) saturate(1.6)' },
-  spiritBranch: { s: 'weapon_green_magic_staff' },
-  worldTreeStaff: { s: 'weapon_green_magic_staff', tint: 'hue-rotate(-40deg) saturate(1.8) brightness(1.2)' },
+  spiritBow: { s: 'weapon_bow', bow: true, tint: 'hue-rotate(70deg) saturate(1.5) brightness(1.1)' },
+  worldTreeBow: { s: 'weapon_bow_2', bow: true, tint: 'hue-rotate(40deg) saturate(1.8) brightness(1.2)' },
   rangerBow: { s: 'weapon_bow', bow: true },
   galeLongbow: { s: 'weapon_bow_2', bow: true, tint: 'hue-rotate(90deg) saturate(1.4)' },
   rockFist: { s: 'weapon_hammer', tint: 'grayscale(1) brightness(0.8)' },
@@ -119,8 +141,19 @@ export const WEAPON_ART = {
   battleAxe: { s: 'weapon_axe' },
   tome: { s: 'weapon_red_magic_staff' },
   rotDagger: { s: 'weapon_cleaver', tint: 'hue-rotate(80deg) saturate(1.5)' },
-  riftGreatsword: { s: 'weapon_lavish_sword' },
+  riftGreatsword: { s: 'weapon_lavish_sword', great: true },
   frostWand: { s: 'weapon_green_magic_staff', tint: 'hue-rotate(110deg) saturate(1.4)' },
+  // 대장간에서 만든 장비
+  copperDagger: { s: 'weapon_knife', tint: 'sepia(1) saturate(2.6) hue-rotate(-14deg) brightness(0.95)' },
+  copperSword: { s: 'weapon_regular_sword', tint: 'sepia(1) saturate(2.3) hue-rotate(-12deg)' },
+  huntersBow: { s: 'weapon_bow', bow: true, tint: 'sepia(0.5) brightness(0.88)' },
+  ironSword: { s: 'weapon_knight_sword', tint: 'grayscale(0.5) brightness(1.08)' },
+  ironWaraxe: { s: 'weapon_waraxe', tint: 'grayscale(0.7) brightness(1.05)' },
+  silverRapier: { s: 'weapon_red_gem_sword', tint: 'grayscale(0.85) brightness(1.4)' },
+  crystalStaff: { s: 'weapon_green_magic_staff', tint: 'hue-rotate(150deg) saturate(1.7) brightness(1.2)' },
+  coralTrident: { s: 'weapon_spear', spear: true, tint: 'hue-rotate(-40deg) saturate(2.2) brightness(1.25)' },
+  obsidianBlade: { s: 'weapon_greatsword', great: true, tint: 'brightness(0.42) saturate(0.6) hue-rotate(220deg) contrast(1.5)' },
+  starTome: { s: 'weapon_red_magic_staff', tint: 'hue-rotate(200deg) saturate(1.8) brightness(1.3)' },
 };
 
 // 지역별 색조 (맵 전체에 적용)
@@ -130,4 +163,7 @@ export const ZONE_TINT = {
   rift: 'hue-rotate(-25deg) saturate(1.5) brightness(0.9)',
   frost: 'hue-rotate(170deg) saturate(0.55) brightness(1.2)',
   grave: 'hue-rotate(225deg) saturate(0.45) brightness(0.75)',
+  labyrinth: 'sepia(0.5) saturate(0.8) brightness(0.85)',
+  palace: 'hue-rotate(150deg) saturate(1.3) brightness(1.1)',
+  arena: 'sepia(0.35) saturate(0.7) brightness(1.6)', // 연습 실험장: 밝은 모래빛 돌바닥
 };

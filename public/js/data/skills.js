@@ -22,6 +22,18 @@ export const ELEM = {
 export const ELEM_CYCLE = ['fire', 'ice', 'lightning'];
 
 // 클래스: 종족마다 2개. weapons = [시작 무기, 상위 무기], style = 각인 추천 필터, trait = 클래스 특성(평타·상시 효과)
+// 각인 목록: 클래스마다 잘 맞는 각인의 태그 (공명 제단에서 '내 클래스'로 거를 때)
+export const CLASS_TAGS = {
+  predator: ['bleed', 'drain', 'brawl'], behemoth: ['giant', 'brawl', 'reflect'],
+  elementalist: ['fire', 'ice'], chronomancer: ['ice', 'curse'],
+  guardian: ['reflect', 'giant', 'undying'], greatsword: ['giant', 'brawl', 'bleed'],
+  berserker: ['drain', 'brawl', 'undying'], thrower: ['brawl', 'giant', 'bleed'],
+  necromancer: ['curse', 'poison', 'undying'], hexer: ['curse', 'poison'],
+  shadowblade: ['shadow', 'bleed'], venomHunter: ['poison', 'shadow'],
+  spiritcaller: ['wind', 'fire'], ranger: ['wind', 'bleed'],
+  rockguard: ['reflect', 'giant', 'slime'], frostGolem: ['ice', 'giant'],
+  dragoon: ['fire', 'brawl'], dragonSage: ['fire', 'curse'],
+};
 export const CLASSES = {
   predator: { race: 'dino', name: '포식자', desc: '물고 빠지며 출혈을 남기고, 피 냄새를 따라 쫓는다.', trait: '출혈 걸린 적에게 다가갈 때 이동 속도 +25%. 출혈 걸린 적을 때리면 체력이 조금씩 회복된다.', weapons: ['boneKnuckle', 'predatorFang'], style: 'blood',
     skills: ['pounce', 'rakeRetreat', 'maul', 'herdRoar', 'devour', 'apexPredator'] },
@@ -34,7 +46,7 @@ export const CLASSES = {
   guardian: { race: 'knight', name: '수호기사', desc: '정면을 방패로 막고 받아친다.', trait: '정면에서 오는 피해 -25%, 정면으로 막을 때마다 오러 +4.', weapons: ['guardSword', 'bastionBlade'], style: 'mirror',
     skills: ['riposte', 'shieldCharge', 'provoke', 'ironWall', 'shieldBash', 'undying'] },
   greatsword: { race: 'knight', name: '대검술사', desc: '느리지만 묵직하다. 힘을 모을수록 강해진다.', trait: '「차지」 스킬은 길게 누르면 1~3단계로 힘을 모은다. 모으는 동안 받는 피해 -25%.', weapons: ['steelGreatsword', 'mountainCleaver'], style: 'giant',
-    skills: ['sweep', 'dashSlash', 'swordWave', 'steadfast', 'crushBlow', 'skyfall'] },
+    skills: ['comboSlash', 'dashSlash', 'swordWave', 'steadfast', 'crushBlow', 'skyfall'] },
   berserker: { race: 'orc', name: '광전사', desc: '맞을수록 분노가 차오르고, 분노가 높을수록 세진다.', trait: '분노 1당 공격력 +0.4% (분노 100이면 +40%). 분노를 쓰면 그만큼 약해진다.', weapons: ['twoHandAxe', 'bloodthirstAxe'], style: 'blood',
     skills: ['warCry', 'chargeSmash', 'crushingBlows', 'braceForIt', 'berserkSkill', 'rageBurst'] },
   thrower: { race: 'orc', name: '투척 전사', desc: '도끼를 휘두르고, 던지고, 작살로 끌어와 제압한다.', trait: '평타로 도끼를 휘두른다. 우클릭은 사방으로 도끼를 던지는 도끼 폭풍.', weapons: ['throwHatchet', 'twinReturnAxe'], style: 'giant',
@@ -47,7 +59,7 @@ export const CLASSES = {
     skills: ['shadowStep', 'weakMark', 'ambush', 'stealth', 'shadowEvade', 'shadowDance'] },
   venomHunter: { race: 'assassin', name: '독침 사냥꾼', desc: '덫을 깔고 미끼로 몬스터를 끌어들인다.', trait: '평타가 독을 건다.', weapons: ['blowgun', 'viperBlowgun'], style: 'poison',
     skills: ['snare', 'retreatShot', 'bait', 'dartFan', 'smokeBomb', 'venomBurst'] },
-  spiritcaller: { race: 'elf', name: '정령사', desc: '정령을 몸에 깃들여 싸운다. 깃든 정령은 내 주위를 떠다닌다.', trait: '정령은 최대 3개, 12초 동안 깃든다. 같은 정령을 겹치면 효과가 깊어지고, 서로 다른 정령을 섞으면 조합 효과가 붙는다.', weapons: ['spiritBranch', 'worldTreeStaff'], style: 'wind',
+  spiritcaller: { race: 'elf', name: '정령사', desc: '정령을 몸에 깃들여 싸운다. 깃든 정령은 내 주위를 떠다닌다.', trait: '정령은 최대 3개, 12초 동안 깃든다. 같은 정령을 겹치면 효과가 깊어지고, 서로 다른 정령을 섞으면 조합 효과가 붙는다.', weapons: ['spiritBow', 'worldTreeBow'], style: 'wind',
     skills: ['fireSpirit', 'windSpirit', 'forestSpirit', 'spiritAbsorb', 'spiritArrow', 'spiritKing'] },
   ranger: { race: 'elf', name: '숲의 사수', desc: '멈춰서 집중하고 멀리서 꿰뚫는다.', trait: '가만히 서 있으면 집중이 쌓인다(0.5초마다 1단계, 최대 3). 다음 사격 피해 단계당 +25%.', weapons: ['rangerBow', 'galeLongbow'], style: 'wind',
     skills: ['pierceArrow', 'windStep', 'vineSnare', 'pushArrow', 'aimedShot', 'skyPiercer'] },
@@ -151,6 +163,9 @@ export const SKILLS = {
   // ══════ 기사 · 대검술사 (차지) ══════
   sweep: { name: '횡베기', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'sweep', mo: 'sweep', charge: true,
     desc: '[차지] 넓은 반원을 베어 밀쳐낸다. 모을수록 범위와 피해가 커진다. 오러 +12.', do: [{ op: 'cone', range: 62, angle: 3.0, mul: 1.5, knock: 150, fx: 'sweep', chargeRange: 0.25 }] },
+  comboSlash: { name: '연속베기', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'spin', mo: 'spin',
+    desc: '앞으로 나아가며 몸을 돌려 세 번 벤다. 한 바퀴마다 둘레의 적을 베고 밀쳐내며, 세 번째가 가장 세다. 오러 +12.',
+    do: [{ op: 'comboSpin', n: 3, every: 0.22, step: 24, r: 54, mul: 0.95, last: 1.7, knock: 120 }] },
   dashSlash: { name: '돌진 베기', role: '이동', cd: 7, gain: 8, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'dashSlash', charge: true,
     desc: '[차지] 앞으로 돌진하며 벤다. 모을수록 멀리 간다. 오러 +8.', do: [{ op: 'dash', dist: 90, mul: 1.4, chargeDist: 40 }] },
   swordWave: { name: '검기 날리기', role: '공격', cd: 6, cost: 15, scale: 'phys', fx: 'wave', mo: 'overhead', charge: true,
@@ -178,8 +193,8 @@ export const SKILLS = {
   berserkSkill: { name: '광전사화', role: '강화', cd: 18, cost: 20, scale: 'phys', fx: 'buff', mo: 'power',
     desc: '8초 동안 분노가 저절로 줄지 않고 공격 속도 +35%. 분노 20.',
     do: [{ op: 'buff', id: 'berserk', dur: 8, mods: { atkSpeed: 1.35 }, color: '#ff3a2a' }] },
-  rageBurst: { name: '분노 폭발', role: '궁극', cd: 20, costAll: { min: 50 }, scale: 'phys', fx: 'quake', ult: true, mo: 'overhead',
-    desc: '분노를 모두 쏟아 주변을 내려친다. 분노가 많을수록 강하다.', do: [{ op: 'aoe', at: 'self', r: 92, mul: 3.4, scaleRes: true, knock: 220, fx: 'quake' }] },
+  rageBurst: { name: '분노 폭발', role: '궁극', cd: 20, costAll: { min: 50 }, scale: 'phys', fx: 'rage', ult: true, mo: 'overhead',
+    desc: '분노를 모두 쏟아 주변을 내려친다. 몸에서 붉은 기운이 터져 나와 땅이 갈라진다. 분노가 많을수록 강하다.', do: [{ op: 'aoe', at: 'self', r: 92, mul: 3.4, scaleRes: true, knock: 220, fx: 'rage' }] },
 
   // ══════ 오크 · 투척 전사 ══════
   harpoon: { name: '작살', role: '제어', cd: 7, cost: 10, scale: 'phys', fx: 'throw', aim: 'tank', mo: 'throw',
@@ -199,13 +214,13 @@ export const SKILLS = {
 
   // ══════ 언데드 · 사령술사 ══════
   raiseSouls: { name: '영혼 소환', role: '소환', cd: 4, cost: 10, scale: 'mag', fx: 'summon', aim: 'none',
-    desc: '거둔 영혼을 한 번에 최대 5개 되살린다. 원래 몬스터의 체력·공격력 50%로, 쓰러질 때까지 함께 싸운다. 부하는 최대 5마리, 나에게서 너무 멀어지면 돌아온다.',
+    desc: '거둔 영혼을 한 번에 최대 5개 되살린다. 원래 몬스터의 체력·공격력 50%로, 쓰러질 때까지 함께 싸운다(시간이 지나도 사라지지 않는다). 부하는 최대 5마리, 나에게서 너무 멀어지면 돌아온다.',
     do: [{ op: 'raiseSouls', n: 5 }] },
   deathCall: { name: '망자의 부름', role: '제어', cd: 10, cost: 15, scale: 'mag', fx: 'roar', aim: 'none',
     desc: '내 부하들이 울부짖어 주변 적의 시선을 끈다. 6초 동안 적들이 부하만 노리고, 부하는 받는 피해 -30%.',
     do: [{ op: 'taunt', r: 110, dur: 6 }] },
   skeletons: { name: '해골 병사', role: '소환', cd: 12, cost: 20, scale: 'mag', fx: 'summon',
-    desc: '20초 동안 싸우는 해골 병사 2마리를 부른다. 체력이 있어서 적의 공격을 받아낼 수 있다.', do: [{ op: 'summon', kind: 'skeleton', n: 2, dur: 20, mul: 0.55 }] },
+    desc: '쓰러질 때까지 싸우는 해골 병사 2마리를 부른다 (최대 4마리). 체력이 있어서 적의 공격을 받아낼 수 있다.', do: [{ op: 'summon', kind: 'skeleton', n: 2, dur: 20, mul: 0.55, perm: true, max: 4 }] },
   wraiths: { name: '망령 소환', role: '소환', cd: 14, cost: 20, scale: 'mag', fx: 'summon',
     desc: '10초 동안 적을 쫓는 망령 2마리를 부른다.', do: [{ op: 'summon', kind: 'ghost', n: 2, dur: 10, mul: 0.5 }] },
   soulDrain: { name: '영혼 흡수', role: '준비', cd: 3, scale: 'mag', elem: 'dark', fx: 'soul',
@@ -215,8 +230,8 @@ export const SKILLS = {
   corpseBlast: { name: '시체 폭발', role: '마무리', cd: 8, cost: 25, scale: 'mag', elem: 'dark', fx: 'burst', aim: 'none',
     desc: '체력이 가장 낮은 부하 3마리만 터뜨려 큰 범위 피해. 부하의 최대 체력이 클수록 강하다. 부하가 없으면 근처 적 하나를 터뜨린다.', do: [{ op: 'blastSummons', r: 64, mul: 2.4, n: 3 }] },
   lichLord: { name: '사령 군주', role: '궁극', cd: 30, costAll: { min: 60 }, scale: 'mag', fx: 'summon', ult: true,
-    desc: '15초 동안 강력한 사령 군주를 부르고, 해골 병사 2마리를 함께 일으킨다. 영혼이 많을수록 강하다.',
-    do: [{ op: 'summon', kind: 'lich', n: 1, dur: 15, mul: 1.8, scaleRes: true }, { op: 'summon', kind: 'skeleton', n: 2, dur: 15, mul: 0.6 }] },
+    desc: '쓰러질 때까지 싸우는 강력한 사령 군주를 부르고(하나만), 해골 병사 2마리를 함께 일으킨다. 영혼이 많을수록 강하다.',
+    do: [{ op: 'summon', kind: 'lich', n: 1, dur: 15, mul: 1.8, scaleRes: true, perm: true, max: 1 }, { op: 'summon', kind: 'skeleton', n: 2, dur: 15, mul: 0.6, perm: true, max: 4 }] },
 
   // ══════ 언데드 · 저주술사 ══════
   curse: { name: '저주', role: '준비', cd: 4, gain: 8, scale: 'mag', elem: 'dark', fx: 'rune', aim: 'cluster', mo: 'cast',
@@ -239,8 +254,8 @@ export const SKILLS = {
   weakMark: { name: '약점 표식', role: '준비', cd: 7, gain: 10, scale: 'phys', fx: 'rune', aim: 'fresh', mo: 'point',
     desc: '적의 약점을 드러낸다. 8초 동안 받는 피해 +35%. 그림자 +10.', do: [{ op: 'single', range: 180, mul: 0.2, weak: 8 }] },
   ambush: { name: '급습', role: '연타', cd: 6, gain: 10, scale: 'phys', fx: 'dash', mo: 'stab',
-    desc: '적에게 파고들어 3번 찌른다. 등 뒤에서 치면 1.5배, 출혈. 그림자 +10.',
-    do: [{ op: 'dash', dist: 150, mul: 0.6, toward: 'nearest' }, { op: 'channel', dur: 0.36, every: 0.12, sub: { op: 'single', range: 40, mul: 0.8, backstab: true, status: 'bleed', stacks: 1, fx: 'stab' } }] },
+    desc: '나와 싸우고 있는 적 가운데 가장 멀리 있는 적에게 파고들어 3번 찌른다. 등 뒤에서 치면 1.5배, 출혈. 그림자 +10.',
+    do: [{ op: 'dash', dist: 240, mul: 0.6, toward: 'farthestEngaged' }, { op: 'channel', dur: 0.36, every: 0.12, sub: { op: 'single', range: 40, mul: 0.8, backstab: true, status: 'bleed', stacks: 1, fx: 'stab' } }] },
   stealth: { name: '은신', role: '방어', cd: 14, cost: 20, scale: 'phys', fx: 'smoke', aim: 'none', mo: 'crouch',
     desc: '3초 동안 모습을 감춘다. 적이 나를 놓치고, 은신 중 첫 공격은 3배. 공격하면 풀린다. 그림자 20.', do: [{ op: 'stealth', dur: 3 }] },
   shadowEvade: { name: '그림자 회피', role: '방어', cd: 9, gain: 25, scale: 'phys', fx: 'blink', aim: 'away', mo: 'dash',
@@ -250,17 +265,17 @@ export const SKILLS = {
     do: [{ op: 'channel', dur: 4, every: 0.5, invuln: true, sub: { op: 'danceStrike', r: 130, mul: 1.2, scaleRes: true } }] },
 
   // ══════ 암살자 · 독침 사냥꾼 ══════
-  snare: { name: '덫 설치', role: '제어', cd: 4, cost: 10, scale: 'phys', fx: 'trap', aim: 'cluster', mo: 'throw',
-    desc: '덫을 던져 놓는다. 밟은 적은 2초 묶이고 독 4중첩. 최대 3개. 그림자 10.', do: [{ op: 'zone', kind: 'trap', r: 20, dur: 20, at: 'aim', max: 3 }] },
+  snare: { name: '덫 설치', role: '제어', cd: 4, cost: 10, scale: 'phys', fx: 'trap', aim: 'none', mo: 'crouch',
+    desc: '내가 선 자리에 덫을 놓는다. 밟은 적은 공격력 150% 피해를 받고 2초 묶이며 독 4중첩. 최대 3개. 그림자 10.', do: [{ op: 'zone', kind: 'trap', r: 18, dur: 30, at: 'self', max: 3 }] },
   retreatShot: { name: '후퇴 사격', role: '이동', cd: 6, gain: 15, scale: 'phys', fx: 'dart', aim: 'near', mo: 'shoot',
     desc: '뒤로 뛰면서 독침 5발을 분다. 그림자 +15.', do: [{ op: 'dash', dist: -80, mul: 0 }, { op: 'proj', n: 5, spread: 0.18, speed: 340, range: 210, mul: 0.7, status: 'poison', stacks: 1, kind: 'dart' }] },
   bait: { name: '미끼', role: '제어', cd: 14, cost: 15, scale: 'phys', fx: 'trap', aim: 'cluster', mo: 'throw',
-    desc: '고기를 던진다. 6초 동안 주변 몬스터가 미끼로 몰려간다(정예는 짧게). 그림자 15.', do: [{ op: 'zone', kind: 'bait', r: 150, dur: 6, at: 'aim' }] },
+    desc: '고기를 던진다. 6초 동안 주변 몬스터가 미끼로 몰려간다 — 나를 쫓던 적은 50%, 아니면 75% 확률 (정예는 짧게). 깔아 둔 덫이 있으면 미끼를 덫 위에 놓는다. 그림자 15.', do: [{ op: 'zone', kind: 'bait', r: 150, dur: 6, at: 'aim' }] },
   dartFan: { name: '독침 난사', role: '공격', cd: 6, cost: 18, scale: 'phys', fx: 'dart', mo: 'blow3',
     desc: '바람총을 세 번 연달아 불어 독침 3발씩, 모두 9발을 흩뿌린다. 맞을 때마다 독 2중첩. 그림자 18.', do: [{ op: 'channel', dur: 0.6, every: 0.2, sub: { op: 'proj', n: 3, spread: 0.16, speed: 360, range: 200, mul: 0.55, status: 'poison', stacks: 2, kind: 'dart' } }] },
   smokeBomb: { name: '연막탄', role: '방어', cd: 14, gain: 20, scale: 'phys', fx: 'smoke', aim: 'none', mo: 'crouch',
-    desc: '연기를 터뜨린다. 4초 동안 회피 +50%, 주변 적이 나를 놓친다. 그림자 +20.',
-    do: [{ op: 'aoe', at: 'self', r: 80, mul: 0, lose: true, fx: 'smoke' }, { op: 'buff', id: 'smoke', dur: 4, mods: { dodge: 0.5 }, color: '#8a8aa0' }] },
+    desc: '발밑에 연막을 터뜨린다. 6초 동안 연기가 퍼진 자리에 있으면 적이 나를 놓친다 (바로 붙어 있는 적은 그래도 친다). 4초 동안 회피 +50%. 그림자 +20.',
+    do: [{ op: 'zone', kind: 'smoke', r: 66, dur: 6, at: 'self', max: 2 }, { op: 'buff', id: 'smoke', dur: 4, mods: { dodge: 0.5 }, color: '#8a8aa0' }] },
   venomBurst: { name: '맹독 폭발', role: '궁극', cd: 16, costAll: { min: 40 }, scale: 'phys', elem: 'poison', fx: 'burst', ult: true, aim: 'none', mo: 'power',
     desc: '독이 쌓인 모든 적의 독을 한꺼번에 터뜨린다. 중첩과 그림자가 많을수록 크다.', do: [{ op: 'detonate', what: 'poison', mul: 1.1, r: 46, scaleRes: true }] },
 
@@ -274,7 +289,7 @@ export const SKILLS = {
   spiritAbsorb: { name: '정령 흡수', role: '준비', cd: 7, scale: 'best', fx: 'absorb', mo: 'channel',
     desc: '1.2초 동안 주변 적의 생기를 빨아들인다. 맞힌 적 하나마다 정령력 +3.',
     do: [{ op: 'channel', dur: 1.2, every: 0.3, sub: { op: 'aoe', at: 'self', r: 80, mul: 0.35, gainPerHit: 3, fx: 'absorb' } }] },
-  spiritArrow: { name: '정령의 화살', role: '공격', cd: 4, cost: 15, scale: 'best', fx: 'bolt', mo: 'cast', needSpirit: true,
+  spiritArrow: { name: '정령의 화살', role: '공격', cd: 4, cost: 15, scale: 'best', fx: 'bolt', mo: 'shoot', needSpirit: true,
     desc: '깃든 정령의 힘으로 관통하는 큰 화살을 쏜다. 정령이 많을수록 강하다. 깃든 정령이 없으면 쓸 수 없다. 정령력 15.', do: [{ op: 'spiritArrow', speed: 340, range: 260, mul: 1.4, per: 0.45 }] },
   spiritKing: { name: '정령왕 강림', role: '궁극', cd: 36, costAll: { min: 60 }, scale: 'best', fx: 'summon', ult: true, mo: 'castBig',
     desc: '15초 동안 가장 많이 깃든 정령의 왕이 나타나 주먹으로 싸운다. 바람은 멀리 날려 버리고, 불은 화염으로 태우고, 숲은 덩굴로 묶는다. 정령 칸도 그 정령으로 가득 찬다(깃든 정령이 없으면 불→바람→숲 차례). 정령력이 많을수록 강하다.',
@@ -376,6 +391,20 @@ export const SKILLS = {
     desc: '6초 동안 공격력 +20%, 종족 자원 +20.', do: [{ op: 'buff', id: 'warHorn', dur: 6, mods: { dmgMul: 1.2 }, color: '#ffcf5a' }] },
   eSoulHarvest: { engraving: true, name: '영혼 수확', role: '마무리', cd: 12, scale: 'best', elem: 'dark', fx: 'burst',
     desc: '주변을 베어 거둔다. 처치한 적마다 종족 자원 +10.', do: [{ op: 'aoe', at: 'self', r: 62, mul: 1.6, gainPerKill: 10 }] },
+
+  // ══════ 세상에서 배우는 기술 (클래스와 상관없이 누구나: 석판 · 스승 · 정령) ══════
+  enchantFire: { general: true, name: '화염 부여', role: '강화', cd: 16, cost: 15, scale: 'best', elem: 'fire', fx: 'enchant', aim: 'none', mo: 'power',
+    desc: '15초 동안 무기에 불을 붙인다. 평타 · 무기 기술이 공격력 40%만큼 화염 피해를 더 주고 화상 1중첩. 활이면 불화살이 된다.', do: [{ op: 'enchant', elem: 'fire', dur: 15, pow: 0.4 }] },
+  enchantIce: { general: true, name: '냉기 부여', role: '강화', cd: 16, cost: 15, scale: 'best', elem: 'ice', fx: 'enchant', aim: 'none', mo: 'power',
+    desc: '15초 동안 무기에 서리를 두른다. 평타 · 무기 기술이 공격력 30%만큼 냉기 피해를 더 주고 냉기 1중첩(4중첩이면 얼어붙는다).', do: [{ op: 'enchant', elem: 'ice', dur: 15, pow: 0.3 }] },
+  enchantLightning: { general: true, name: '번개 부여', role: '강화', cd: 16, cost: 15, scale: 'best', elem: 'lightning', fx: 'enchant', aim: 'none', mo: 'power',
+    desc: '15초 동안 무기에 번개를 담는다. 평타 · 무기 기술이 공격력 30%만큼 번개 피해를 더 주고 감전. 30% 확률로 가까운 적 하나에게 한 번 더 튄다.', do: [{ op: 'enchant', elem: 'lightning', dur: 15, pow: 0.3 }] },
+  enchantPoison: { general: true, name: '독 부여', role: '강화', cd: 16, cost: 15, scale: 'best', elem: 'poison', fx: 'enchant', aim: 'none', mo: 'power',
+    desc: '15초 동안 무기에 독을 바른다. 평타 · 무기 기술이 공격력 20%만큼 독 피해를 더 주고 독 2중첩.', do: [{ op: 'enchant', elem: 'poison', dur: 15, pow: 0.2, stacks: 2 }] },
+  waterBreath: { general: true, name: '수중 호흡', role: '강화', cd: 30, cost: 20, scale: 'mag', fx: 'bubbleIn', aim: 'none', mo: 'cast',
+    desc: '3분 동안 물속에서 숨이 줄지 않는다. 그동안 깊은 물에서 헤엄치고, 헤엄치다가 G를 누르면 바닷속으로 내려간다.', do: [{ op: 'waterBreath', min: 180 }] },
+  dive: { general: true, name: '잠수', role: '이동', cd: 4, scale: 'phys', fx: 'splash', aim: 'none', mo: 'leap',
+    desc: '물가나 물 위에서 쓰면 물속으로 뛰어든다 (숨 20초 · 다 떨어지면 체력이 줄고 물 위로 떠오른다). 배운 뒤에는 깊은 물에서 헤엄칠 수 있다.', do: [{ op: 'dive' }] },
 };
 
 // 스킬 → 클래스·종족·배우는 레벨
@@ -387,6 +416,43 @@ for (const [cid, c] of Object.entries(CLASSES)) {
   });
 }
 for (const sk of Object.values(SKILLS)) if (sk.engraving) sk.race = 'engraving';
+for (const sk of Object.values(SKILLS)) if (sk.general) sk.race = 'general';
+
+// ── 스킬의 몸놀림: 무기에 따라 쓸 수 있는지 · 얼마나 잘 쓰는지가 달라진다 ──
+// slash 베기 · smash 내려찍기 · thrust 찌르기 · shoot 쏘기(활 · 석궁 · 바람총) · throw 던지기 · spell 마법 · parry 받아치기 · shield 방패 · body 몸(무기 상관없음)
+const SKILL_KIND = {
+  sweep: 'slash', dashSlash: 'slash', swordWave: 'slash', skyfall: 'slash', shadowDance: 'slash', eSoulHarvest: 'slash',
+  crushBlow: 'smash', chargeSmash: 'smash', crushingBlows: 'smash', rageBurst: 'smash', groundSmash: 'smash',
+  ambush: 'thrust', comboSlash: 'slash',
+  fireSpirit: 'body', windSpirit: 'body', forestSpirit: 'body', spiritAbsorb: 'body', spiritKing: 'body', spiritArrow: 'shoot',
+  retreatShot: 'shoot', dartFan: 'shoot', pierceArrow: 'shoot', pushArrow: 'shoot', skyPiercer: 'shoot',
+  harpoon: 'throw', rapidThrow: 'throw', greatAxe: 'throw', axeLegion: 'throw',
+  riposte: 'parry', shieldCharge: 'shield', ironWall: 'shield', shieldBash: 'shield',
+  vineSnare: 'spell', waterBreath: 'spell', eFirePillar: 'spell', eFrostNova: 'spell', ePoisonBurst: 'spell', eMirrorWall: 'spell', eChainBolt: 'spell',
+};
+for (const [id, sk] of Object.entries(SKILLS)) {
+  sk.kind = SKILL_KIND[id] || (['wizard', 'undead'].includes(sk.race) || ['spiritcaller', 'dragonSage'].includes(sk.cls) ? 'spell' : 'body');
+}
+// 무기 갈래 × 몸놀림 → 피해 배율 (0 = 그 무기로는 쓸 수 없다)
+export const FIT = { // 제 무기면 1 (더 세지지는 않는다), 맞지 않는 무기일수록 약해지고, 0이면 아예 쓸 수 없다
+  slash: { blade: 1, great: 1, scythe: 1, shield: 1, axe: 0.9, polearm: 0.85, whip: 0.7, blunt: 0.6, fist: 0.55, throw: 0.6, staff: 0.3, tome: 0.25, bow: 0.3, tube: 0.25 },
+  smash: { blunt: 1, great: 1, axe: 1, fist: 0.9, shield: 0.9, polearm: 0.8, blade: 0.8, scythe: 0.75, throw: 0.6, staff: 0.5, whip: 0.4, tome: 0.3, bow: 0.3, tube: 0.25 },
+  thrust: { polearm: 1, blade: 1, shield: 0.85, great: 0.75, fist: 0.7, scythe: 0.6, axe: 0.6, throw: 0.6, blunt: 0.5, whip: 0.5, staff: 0.45, tome: 0.25, bow: 0.3, tube: 0.3 },
+  shoot: { bow: 1, tube: 1 },
+  throw: { throw: 1, axe: 1, polearm: 0.9, blade: 0.8, blunt: 0.75, scythe: 0.7, shield: 0.6 },
+  spell: { staff: 1, tome: 1, _: 0.75 },
+  parry: { shield: 1, blade: 1, great: 1, axe: 1, blunt: 1, polearm: 1, scythe: 0.9, fist: 0.9, throw: 0.7, staff: 0.7, whip: 0.6, tome: 0.6, bow: 0.5, tube: 0.5 },
+  shield: { shield: 1 },
+  body: { _: 1 },
+};
+export const KIND_NAME = { slash: '베기', smash: '내려찍기', thrust: '찌르기', shoot: '쏘기', throw: '던지기', spell: '마법', parry: '받아치기', shield: '방패', body: '몸' };
+export const CANT_TEXT = { shoot: '활 · 석궁 · 바람총이 있어야 쏠 수 있다', throw: '던질 무기(도끼 · 창 · 단검 · 부메랑)가 있어야 한다', shield: '방패가 있어야 쓸 수 있다', slash: '이 무기로는 벨 수 없다', smash: '이 무기로는 내려찍을 수 없다', thrust: '이 무기로는 찌를 수 없다' };
+export function skillFit(def, wcat) {
+  if (!def) return 1;
+  const t = FIT[def.kind || 'body'] || FIT.body;
+  return t[wcat] ?? t._ ?? 0;
+}
+export const fitText = (f) => (f <= 0 ? '쓸 수 없음' : f >= 0.99 ? '제대로 쓴다' : `피해 ${Math.round(f * 100)}%`);
 
 // 각인 → 스킬
 export const ENGRAVING_SKILLS = {

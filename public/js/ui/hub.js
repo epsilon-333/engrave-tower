@@ -1,17 +1,23 @@
 // 마을 화면 (DOM). 캐릭터 / 공명 제단 / 상점 / 사냥터 / 도감
 import { BASE_STATS, STAT_INFO, SPECIAL_INFO, SLOT_INFO, GRADES, TIERS } from '../data/stats.js';
 import { RACES } from '../data/races.js';
+import { WORLD_HISTORY, relation, REL_NAME, REL_COLOR } from '../data/lore.js';
+import { SANCTUMS as SANCT_ALL } from '../data/sanctums.js';
 import { codexPoints, levelFor, codexTotals, monsterStage, STAGE_KILLS, zonePlaces, placeKey, PLACE_ZONES } from '../data/codex.js';
 import { JOURNALS, PEOPLE, STORY_ITEMS } from '../data/story.js';
 import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
 import { ITEMS, STYLES, WEAPON_SKILLS } from '../data/items.js';
 import { MONSTERS, ECHOES, ZONES } from '../data/monsters.js';
+import { WORLD_ZONE, ENTRANCES } from '../data/maps/overworld.js';
+import { LABY_ZONE, PALACE_ZONE } from '../data/maps/interiors.js';
 import { computeBuild, encodeLoadout, decodeLoadout, SLOTS } from '../sim/build.js';
 import { condText, evalCond } from '../sim/conditions.js';
 import { toLoadout, writeSave, refreshQuests, claimQuest } from '../save.js';
 import { sfx } from '../audio.js';
-import { SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES } from '../data/skills.js';
+import { SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS } from '../data/skills.js';
 import { getAutoAim, setAutoAim } from '../settings.js';
+import { bagTab, tradeTab, forgeTab, lifeClick, fishCodex, artifactCodex } from './life.js';
+import { storageTab, cookTab, craftTab, learnTab, skillPickHtml, homeClick } from './home.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -39,7 +45,10 @@ export class Hub {
   render() {
     const s = this.s, b = computeBuild(toLoadout(s));
     this.b = b;
-    const tabs = [['char', '캐릭터'], ['altar', '공명 제단'], ['shop', '대장간'], ['quest', '의뢰'], ['hunt', '관문 정보'], ['codex', '도감']];
+    // 그 집(시설)에서 연 창이면 그 시설의 탭 + 언제나 쓸 수 있는 탭(캐릭터 · 가방 · 도감)만 보인다
+    const tabs = [['char', '캐릭터'], ['altar', '공명 제단'], ['shop', '대장간'], ['forge', '제작'], ['craft', '무기 만들기'], ['trade', '잡화점'], ['learn', '기술 배우기'], ['cook', '부엌'], ['storage', '보관함'], ['quest', '의뢰'], ['hunt', '관문 정보'], ['bag', '가방'], ['codex', '도감']]
+      .filter(([k]) => !this.allowed || this.allowed.includes(k));
+    if (!tabs.some(([k]) => k === this.tab)) this.tab = tabs[0][0];
     this.root.innerHTML = `
       <header class="hub-top">
         <div class="title">각인의 탑</div>
@@ -50,6 +59,14 @@ export class Hub {
       <main class="hub-body">${this['tab_' + this.tab](s, b)}</main>
       <div id="toast"></div>`;
   }
+
+  tab_bag(s) { return bagTab(s); }
+  tab_storage(s) { return storageTab(s); }
+  tab_cook(s) { return cookTab(s, this); }
+  tab_craft(s) { return craftTab(s, this); }
+  tab_learn(s, b) { return learnTab(s, this, b); }
+  tab_trade(s) { return tradeTab(s); }
+  tab_forge(s) { return forgeTab(s); }
 
   // ───── 캐릭터 ─────
   tab_char(s, b) {
@@ -70,7 +87,7 @@ export class Hub {
     const specials = Object.entries(SPECIAL_INFO).filter(([k]) => b.stats[k]).map(([k, i]) => `<span class="chip">${i.name} ${b.stats[k]}${i.unit}</span>`).join('') || '<span class="muted">없음</span>';
     const pct = (v) => Math.round(v * 100) + '%';
     const awOn = b.awakenings.filter((a) => a.on);
-    return `
+    return `${skillPickHtml(s, b)}
     <div class="cols">
       <section class="panel">
         <h3>${race.name} <small>${race.passive}</small></h3>
@@ -125,18 +142,21 @@ export class Hub {
       .map(([id, n]) => `<span class="echo" style="--c:${ECHOES[id].color}">◆ ${ECHOES[id].name} <b>${n}</b></span>`).join('') || '<span class="muted">잔향이 없습니다. 사냥터에서 몬스터를 사냥하세요.</span>';
 
     const zonesOf = (id) => [...new Set(Object.keys(ENGRAVINGS[id].recipe).map(zoneOfEcho))];
-    const filter = this.altarFilter || s.style || 'all';
+    // 거르기: 기본은 지금 클래스에 맞는 각인. 같은 종족의 다른 클래스 · 전체 · 찜 · 새길 수 있음도 고를 수 있다
+    let filter = this.altarFilter || `cls:${b.cls}`;
+    if (filter.startsWith('cls:') && !CLASS_TAGS[filter.slice(4)]) filter = `cls:${b.cls}`;
+    const fcls = filter.startsWith('cls:') ? filter.slice(4) : null, ftags = fcls ? CLASS_TAGS[fcls] : null;
     const pass = (id) => {
       const e = ENGRAVINGS[id];
       if (filter === 'all') return true;
       if (filter === 'goal') return (s.goals || []).includes(id);
       if (filter === 'ready') return Object.entries(e.recipe).every(([eid, n]) => (s.echoes[eid] || 0) >= n) || (s.owned[id] || 0) > 0;
-      const st = STYLES[filter];
-      return st && e.tags.some((t) => st.tags.includes(t));
+      return !!ftags && e.tags.some((t) => ftags.includes(t));
     };
-    const filterBar = `<div class="filters">${[['all', '전체'], ...Object.entries(STYLES).map(([k, v]) => [k, v.name]), ['goal', '★ 찜'], ['ready', '새길 수 있음']]
+    const clsBtns = RACE_CLASSES(s.race).filter((c) => CLASS_TAGS[c]).sort((a2, c2) => (c2 === b.cls) - (a2 === b.cls)).map((c) => [`cls:${c}`, c === b.cls ? `내 클래스 · ${CLASSES[c].name}` : CLASSES[c].name]);
+    const filterBar = `<div class="filters">${[...clsBtns, ['all', '전체'], ['goal', '★ 찜'], ['ready', '새길 수 있음']]
       .map(([k, n]) => `<button class="sm ${filter === k ? 'on' : ''}" data-act="filter" data-id="${k}">${n}</button>`).join('')}</div>
-      ${STYLES[filter] ? `<p class="muted">${STYLES[filter].name}: ${STYLES[filter].desc} · 핵심 태그 ${STYLES[filter].tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</p>` : ''}`;
+      ${ftags ? `<p class="muted">${CLASSES[fcls].name}에게 잘 맞는 각인 · 핵심 태그 ${ftags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</p>` : ''}`;
     const goalHtml = this.goalPanel(s);
     const groups = ZONES.map((z) => {
       const ids = Object.keys(ENGRAVINGS).filter((id) => { const zs = zonesOf(id); return zs.length === 1 && zs[0] === z.id && pass(id); });
@@ -156,7 +176,7 @@ export class Hub {
         <h4>보유 잔향</h4><div class="echoes">${echoInv}</div>
       </section>
       <section class="panel">
-        <h3>각인 목록 <small>스타일을 고르면 맞는 각인만 보입니다 · ★로 찜하면 필요한 잔향과 사냥터를 알려 줘요</small></h3>
+        <h3>각인 목록 <small>처음에는 내 클래스에 맞는 각인만 보입니다 · ★로 찜하면 필요한 잔향과 사냥터를 알려 줘요</small></h3>
         ${filterBar}
         ${goalHtml}
         ${groups || '<p class="muted">조건에 맞는 각인이 없습니다.</p>'}
@@ -304,7 +324,7 @@ export class Hub {
       return `<div class="card ${has ? 'owned' : ''}"><div class="c-head"><b>${it.name}</b>${it.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
         ${it.cls ? `<div class="c-meta" style="color:${it.cls === s.cls ? '#ffd27a' : '#9a90b0'}">${CLASSES[it.cls].name} 전용${it.bdesc ? ' · ' + it.bdesc : ''}${it.cls !== s.cls && it.bdesc ? ' (클래스가 다르면 효과 없음)' : ''}</div>` : ''}${w}${req}<div class="c-stats">${stats || '&nbsp;'}</div><ul class="c-eff">${effs}</ul>${prev}<div class="c-act">${btn}</div></div>`;
     };
-    const bySlot = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl && (!ITEMS[id].cls || CLASSES[ITEMS[id].cls].race === s.race) && (!ITEMS[id].starter && id !== 'rustySword' || s.items.includes(id))).sort((a, b) => (ITEMS[b].cls === s.cls) - (ITEMS[a].cls === s.cls)).map(card).join('');
+    const bySlot = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl && (!ITEMS[id].cls || CLASSES[ITEMS[id].cls].race === s.race) && (!ITEMS[id].starter && id !== 'rustySword' || s.items.includes(id)) && (!ITEMS[id].treasure && !ITEMS[id].forged || s.items.includes(id))).sort((a, b) => (ITEMS[b].cls === s.cls) - (ITEMS[a].cls === s.cls)).map(card).join('');
     return `
       <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots">${gearRow}</div></section>
       <section class="panel"><h3>무기</h3><div class="cards">${bySlot('weapon')}</div>
@@ -341,16 +361,14 @@ export class Hub {
     const sec = this.codexSec ||= 'monsters';
     const head = `<div class="codex-head">
       <div><b>도감 점수 ${pts}</b> · 다음 레벨까지 ${lv.need - lv.into}점 <span class="bar"><i style="width:${(lv.into / lv.need) * 100}%"></i></span></div>
-      <p class="muted">새 몬스터를 알아가고, 장소를 찾고, 기록을 읽고, 사람의 사연을 끝까지 들으면 도감이 채워지고 레벨이 오릅니다.</p>
-      <nav class="codex-nav">${[['monsters', `몬스터 ${tot.monsters.done}/${tot.monsters.all}`], ['places', `장소 ${tot.places.done}/${tot.places.all}`], ['records', `기록 ${tot.records.done}/${tot.records.all}`], ['people', `사람 ${tot.people.done}/${tot.people.all}`], ['etc', '원소 반응 · 태그']]
+      <p class="muted">새 몬스터를 알아가고, 장소를 찾고, 기록을 읽고, 사람의 사연을 끝까지 듣고, 새 물고기를 낚고, 땅속 유물을 찾으면 도감이 채워지고 레벨이 오릅니다.</p>
+      <nav class="codex-nav">${[['monsters', `몬스터 ${tot.monsters.done}/${tot.monsters.all}`], ['places', `장소 ${tot.places.done}/${tot.places.all}`], ['records', `기록 ${tot.records.done}/${tot.records.all}`], ['people', `사람 ${tot.people.done}/${tot.people.all}`], ['fish', `물고기 ${tot.fish.done}/${tot.fish.all}`], ['artifacts', `유물 ${tot.artifacts.done}/${tot.artifacts.all}`], ['etc', '원소 반응 · 태그']]
         .map(([k, n]) => `<button class="sm ${sec === k ? 'on' : 'ghost'}" data-act="codexSec" data-id="${k}">${n}</button>`).join('')}</nav></div>`;
     let body = '';
     if (sec === 'monsters') {
       const dropsOf = (id) => Object.values(STORY_ITEMS).filter((it) => it.from[id]).map((it) => it.name);
-      body = ZONES.map((z) => {
-        const ids = [...z.pool, z.elite];
-        if (z.id === 'cave') ids.push('treasureGoblin');
-        return `<h4>${z.floor}층 · ${z.name}</h4><div class="list">${ids.map((id) => {
+      body = codexGroups().map(({ name, ids }) => {
+        return `<h4>${name}</h4><div class="list">${ids.map((id) => {
           const m = MONSTERS[id], n = c.kills?.[id] || 0, st = monsterStage(id, n);
           if (!st) return '<div class="li off">??? <small>아직 만나지 못했다</small></div>';
           const stars = '★'.repeat(st) + '☆'.repeat(3 - st);
@@ -364,9 +382,18 @@ export class Hub {
     } else if (sec === 'places') {
       body = PLACE_ZONES.map((z) => `<h4>${z.id === 'world' ? '' : `${z.floor}층 · `}${z.name}</h4><div class="list">${zonePlaces(z).map((n) => c.places?.[placeKey(z.id, n)] ? `<div class="li on"><b>${n}</b></div>` : '<div class="li off">??? <small>아직 찾지 못한 장소</small></div>').join('')}</div>`).join('');
     } else if (sec === 'records') {
-      body = `<h4>등반가 세린의 일지</h4><div class="list">${Object.entries(JOURNALS).map(([id, j]) => c.journals?.[id] ? `<details class="li on"><summary><b>${j.title}</b> <small>${j.where}</small></summary><p class="journal">${esc(j.text).replace(/\n/g, '<br>')}</p></details>` : '<div class="li off">??? <small>찢겨 나간 일지 한 장</small></div>').join('')}</div>
+      const sr = Object.keys(SANCT_ALL), relRows = [];
+      for (let i = 0; i < sr.length; i++) for (let j = i + 1; j < sr.length; j++) { const r = relation(sr[i], sr[j]); if (r.v) relRows.push([sr[i], sr[j], r]); }
+      relRows.sort((p, q) => p[2].v - q[2].v);
+      const story = `<h4>바람결의 섬 이야기</h4><div class="list">${WORLD_HISTORY.map((h) => `<details class="li on"><summary><b>${h.title}</b></summary><p>${esc(h.text)}</p></details>`).join('')}</div>
+        <h4>종족 사이 <small>성지 창의 「이야기」에서 더 자세히</small></h4><div class="list">${relRows.map(([a2, b2, r]) => `<div class="li"><b style="color:${SANCT_ALL[a2].color}">${RACES[a2]?.name || a2}</b> · <b style="color:${SANCT_ALL[b2].color}">${RACES[b2]?.name || b2}</b> <span class="rel-tag" style="--c:${REL_COLOR[r.v]}">${REL_NAME[r.v]}</span><br><small>${esc(r.why)}</small></div>`).join('')}</div>`;
+      body = story + `<h4>등반가 세린의 일지</h4><div class="list">${Object.entries(JOURNALS).map(([id, j]) => c.journals?.[id] ? `<details class="li on"><summary><b>${j.title}</b> <small>${j.where}</small></summary><p class="journal">${esc(j.text).replace(/\n/g, '<br>')}</p></details>` : '<div class="li off">??? <small>찢겨 나간 일지 한 장</small></div>').join('')}</div>
         <h4>고대 석판</h4><div class="list">${(c.lore || []).map((t) => `<div class="li lore">${esc(t)}</div>`).join('') || '<div class="li off">필드의 고대 석판을 찾아 읽어 보세요.</div>'}</div>
         <h4>가지고 있는 이야기 물건</h4><div class="list">${Object.entries(items).filter(([, n]) => n > 0).map(([id, n]) => `<div class="li"><b style="color:${STORY_ITEMS[id].color}">${STORY_ITEMS[id].name}</b>${n > 1 ? ` ×${n}` : ''} <small>${STORY_ITEMS[id].desc}</small></div>`).join('') || '<div class="li off">없음</div>'}</div>`;
+    } else if (sec === 'fish') {
+      body = fishCodex(s);
+    } else if (sec === 'artifacts') {
+      body = artifactCodex(s);
     } else if (sec === 'people') {
       body = `<div class="list">${Object.values(PEOPLE).map((p) => {
         const done = p.steps.filter((st) => f[st]).length;
@@ -431,7 +458,8 @@ export class Hub {
       return this.render();
     }
     const { act, k, id, slot } = t.dataset;
-    sfx(act === 'craft' ? 'reaction' : act === 'buy' ? 'coin' : act === 'claim' ? 'levelup' : act === 'close' ? 'close' : 'click', { vol: 0.5 });
+    sfx(act === 'craft' || act === 'forge' || act === 'toolUp' || act === 'reinforce' ? 'reaction' : act === 'buy' || act === 'tbuy' || act === 'tsell' || act === 'tsellQuick' ? 'coin' : act === 'claim' ? 'levelup' : act === 'close' ? 'close' : 'click', { vol: 0.5 });
+    if (lifeClick(this, act, t) || homeClick(this, act, t)) { this.save(); return this.render(); }
     switch (act) {
       case 'claim': { const r = claimQuest(s, id); if (r) this.toast(`보상: 골드 ${r.q.reward.gold}`); break; }
       case 'alloc': if (s.points > 0) { s.alloc[k] = (s.alloc[k] || 0) + (ev.shiftKey ? Math.min(5, s.points) : 1); s.points -= ev.shiftKey ? Math.min(5, s.points) : 1; } break;
@@ -510,6 +538,21 @@ export class Hub {
   }
 }
 
+// 도감의 몬스터 묶음: 탑의 층 → 섬 → 미궁 → 용궁 (몬스터마다 처음 나오는 곳 하나에만)
+function codexGroups() {
+  const groups = [
+    ...ZONES.map((z) => ({ name: `${z.floor}층 · ${z.name}`, ids: [...z.pool, z.elite, ...(z.id === 'cave' ? ['treasureGoblin'] : [])] })),
+    { name: `${WORLD_ZONE.name} · 들판과 동굴`, ids: [...WORLD_ZONE.pool, ...Object.values(ENTRANCES).map((d) => d.elite).filter(Boolean)] },
+    { name: LABY_ZONE.name, ids: [...LABY_ZONE.pool, LABY_ZONE.elite] },
+    { name: PALACE_ZONE.name, ids: [...PALACE_ZONE.pool, PALACE_ZONE.elite] },
+  ];
+  const seen = new Set();
+  for (const g of groups) g.ids = g.ids.filter((id) => MONSTERS[id] && !seen.has(id) && seen.add(id));
+  const rest = Object.keys(MONSTERS).filter((id) => !seen.has(id));
+  if (rest.length) groups.push({ name: '그 밖의 것', ids: rest });
+  return groups.filter((g) => g.ids.length);
+}
+
 function zoneOfEcho(eid) {
   for (const z of ZONES) for (const m of [...z.pool, z.elite]) {
     const def = MONSTERS[m];
@@ -525,10 +568,11 @@ function w2t(w) {
 
 // 종족 선택 화면
 export function renderRaceSelect(root, onPick) {
+  // 골렘족은 새로 고를 수 없다 (예전 저장의 골렘은 그대로 쓸 수 있다)
   root.innerHTML = `<div class="race-select">
     <h1>각인의 탑</h1>
     <p class="muted">탑에 잠든 고대 문양을 몸에 새겨라. 강한 각인보다 <b>맞물리는 조합</b>이 이긴다.</p>
-    <div class="races">${Object.entries(RACES).map(([id, r]) => `
+    <div class="races">${Object.entries(RACES).filter(([id]) => id !== 'golem').map(([id, r]) => `
       <button class="race" data-race="${id}">
         <canvas width="96" height="120" data-race="${id}"></canvas>
         <b>${r.name}</b><small>${r.origin} · ${r.passive}</small>

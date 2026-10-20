@@ -67,6 +67,15 @@ export function sfx(name, { vol: v = 1, rate = 1, jitter = 0.08 } = {}) {
   src.start();
 }
 
+// 짧은 음 하나 (리듬 낚시: 똑딱 · 맞힐 때마다 한 음씩 멜로디)
+export function tone(freq, { dur = 0.16, type = 'triangle', vol = 0.22, when = 0 } = {}) {
+  if (!ctx) return;
+  const t0 = ctx.currentTime + when, o = ctx.createOscillator(), gn = ctx.createGain();
+  o.type = type; o.frequency.value = freq;
+  gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(vol, t0 + 0.008); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(gn); gn.connect(sfxGain); o.start(t0); o.stop(t0 + dur + 0.03);
+}
+
 // ───── 앰비언트 배경음 (지역별 음계·음색) ─────
 const MOODS = {
   plaza: { root: 57, scale: [0, 3, 5, 7, 10], wave: 'triangle', tempo: 1.6, drone: 0.05, bright: 1800 },
@@ -75,6 +84,8 @@ const MOODS = {
   rift: { root: 40, scale: [0, 1, 4, 6, 7], wave: 'sawtooth', tempo: 2.0, drone: 0.06, bright: 600 },
   frost: { root: 52, scale: [0, 2, 4, 7, 9], wave: 'triangle', tempo: 2.6, drone: 0.05, bright: 2400 },
   grave: { root: 38, scale: [0, 1, 3, 6, 7], wave: 'sine', tempo: 3.2, drone: 0.09, bright: 500 },
+  labyrinth: { root: 41, scale: [0, 1, 3, 5, 8], wave: 'triangle', tempo: 2.9, drone: 0.08, bright: 650 },
+  palace: { root: 55, scale: [0, 2, 4, 7, 9, 11], wave: 'sine', tempo: 2.2, drone: 0.05, bright: 2000 },
 };
 let music = null, pendingMusic = null;
 

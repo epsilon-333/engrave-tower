@@ -3,6 +3,7 @@ import { POINTS_PER_LEVEL, RACES } from './data/races.js';
 import { codexPoints, levelFor } from './data/codex.js';
 import { newStory } from './data/story.js';
 import { ZONES, MONSTERS, ECHOES } from './data/monsters.js';
+import { newClock } from './sim/time.js';
 
 const KEY = 'engrave-tower-save-v1';
 
@@ -13,7 +14,13 @@ export function newSave(race) {
     codex: { kills: {}, echoes: {}, reactions: {}, condSeen: {}, places: {}, journals: {}, lore: [] },
     story: newStory(),
     runs: 0, seed: (Date.now() % 1e9) | 0,
+    time: newClock(), effects: [], learned: [], abilities: {}, crafted: {}, chest: {}, bagCap: 30, dishLog: {}, quickFood: null,
+    ...newLife(),
   };
+}
+// 생활: 가방 · 도구(처음엔 낡은 도구 한 벌) · 캔 자리 · 벤 나무 · 밭 · 물고기 기록 · 유물
+export function newLife() {
+  return { bag: {}, tools: { pickaxe: 1, axe: 1, shovel: 1, hoe: 1, can: 1, rod: 1 }, nodes: {}, chopped: {}, farm: {}, fishLog: {}, artifacts: {}, farmOpts: {} };
 }
 
 export function loadSave() {
@@ -31,7 +38,7 @@ export function clearSave() {
 }
 
 export function toLoadout(s) {
-  return { race: s.race, level: s.level, alloc: s.alloc, engravings: s.slots, gear: s.gear, skills: s.skills, cls: s.cls };
+  return { race: s.race, level: s.level, alloc: s.alloc, engravings: s.slots, gear: s.gear, skills: s.skills, cls: s.cls, sanctum: s.sanctum, reinforce: s.reinforce, learned: s.learned, abilities: s.abilities, train: Object.fromEntries(Object.entries(s.story?.sanct || {}).map(([r, v]) => [r, v.train || 0])) };
 }
 
 // 사냥 결과 반영. keep = 잔향 보존 비율

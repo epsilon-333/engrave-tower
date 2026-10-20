@@ -101,6 +101,34 @@ const GREATSWORD = [
 ];
 const GREATSWORD_PAL = { K: '#16141c', w: '#f4f6ff', W: '#b8c0d0', s: '#6a7284', f: '#8a92a6', g: '#ffe08a', G: '#c89a3a', h: '#6a4a30', H: '#4a3020', p: '#ffe08a', P: '#c89a3a' };
 
+// 도끼창: 창날 + 한쪽 도끼날 + 반대쪽 갈고리, 금빛 고리, 긴 자루
+const HALBERD = [
+  '.....K.....', '....KwK....', '....KwK....', '...KwWsK...', '...KwWsK...', '...KwWsK...', '....KWK....',
+  '...KKGKKK..', '..KsKGKwwK.', '.KssKGKwWWK', 'KssKKGKwWWK', '.KssKGKwWWK', '..KsKGKwwK.', '...KKGKKK..', '....KGK....',
+  ...Array(6).fill('....KRK....'), '....KrK....', ...Array(6).fill('....KRK....'), '....KrK....', ...Array(5).fill('....KRK....'), '....KgK....', '.....K.....',
+];
+const HALBERD_PAL = { K: '#16141c', w: '#f4f6ff', W: '#b8c0d0', s: '#6a7284', G: '#c89a3a', R: '#8a5a32', r: '#5a3a22', g: '#c89a3a' };
+// 낫: 자루 위에서 왼쪽으로 휘어 내려오는 긴 날 (안쪽 날이 빛난다)
+const SCYTHE = [
+  '....KKKKKKK...', '..KKsssssssKK.', '.KssWWWWWWWWKK', 'KsWWWWWWWWWWGK', 'KWwwwwwwwwwKGK', 'KwKKKKKKKKKKRK', 'KK.........KRK',
+  ...Array(10).fill('...........KRK'), '...........KrK', ...Array(10).fill('...........KRK'), '...........KrK', ...Array(3).fill('...........KRK'), '...........KgK', '............K.',
+];
+const SCYTHE_PAL = { K: '#16141c', w: '#f4f6ff', W: '#b8c0d0', s: '#6a7284', G: '#c89a3a', R: '#8a5a32', r: '#5a3a22', g: '#c89a3a' };
+// 석궁 (가로, 오른쪽이 앞): 나무 개머리 · 쇠 활대 · 방아쇠
+const CROSSBOW = [
+  '................KK..', '...............KwK..', '..............KwK...', 'KKKKKKKKKKKKKKKWKKK.', 'KRRRRRRRRRRRRRGGGGsK', 'KrrrrrKKKKKKKKKWKKK.', '.KrrK..KK.....KwK...', '..KK...KK......KwK..', '................KK..',
+];
+const CROSSBOW_PAL = { K: '#16141c', w: '#f4f6ff', W: '#b8c0d0', s: '#6a7284', G: '#c89a3a', R: '#a0703e', r: '#6a4024' };
+// 부메랑: V 모양 나무 날개, 가운데 띠
+const BOOMERANG = ['KK........KK', 'KwK......KwK', 'KWwK....KwWK', '.KWwK..KwWK.', '..KWwKKwWK..', '...KWbbWK...', '....KKKK....'];
+const BOOMERANG_PAL = { K: '#1a1410', w: '#e8c890', W: '#b8844a', b: '#c84a3a' };
+// 채찍 손잡이 (가죽 감은 자루 + 금빛 끝)
+const WHIP = ['.KK.', 'KwbK', 'KbbK', 'KbBK', 'KbbK', 'KbBK', 'KbbK', 'KbBK', 'KGGK', '.KK.'];
+const WHIP_PAL = { K: '#1a1410', w: '#a07a52', b: '#6a4a2a', B: '#4a3018', G: '#c89a3a' };
+// 마도서 (닫힌 책): 표지 · 금장 · 책장
+const TOME = ['.KKKKKKKK.', 'KRRRRRRRpK', 'KRgRRRRgpK', 'KRRRGGRRpK', 'KRRGRRGRpK', 'KRRRGGRRpK', 'KRgRRRRgpK', 'KRRRRRRRpK', 'KRRRRRRRpK', 'KrrrrrrrpK', '.KKKKKKKK.'];
+const TOME_PAL = { K: '#16141c', R: '#7a3a8a', r: '#5a2a6a', g: '#e8c060', G: '#ffe08a', p: '#f4ecd8' };
+
 function paint(rows, pal) {
   const c = document.createElement('canvas');
   c.width = rows[0].length; c.height = rows.length;
@@ -163,4 +191,7 @@ export function registerCustomArt(atlas) {
   atlas.weapon_dragon_spear = { x: 0, y: 0, w: sp.width, h: sp.height, src: sp };
   const gs = paint(GREATSWORD, GREATSWORD_PAL);
   atlas.weapon_greatsword = { x: 0, y: 0, w: gs.width, h: gs.height, src: gs };
+  for (const [name, rows, pal] of [['cw_halberd', HALBERD, HALBERD_PAL], ['cw_scythe', SCYTHE, SCYTHE_PAL], ['cw_crossbow', CROSSBOW, CROSSBOW_PAL], ['cw_boomerang', BOOMERANG, BOOMERANG_PAL], ['cw_whip', WHIP, WHIP_PAL], ['cw_tome', TOME, TOME_PAL]]) {
+    const c = paint(rows, pal); atlas[name] = { x: 0, y: 0, w: c.width, h: c.height, src: c };
+  }
 }

@@ -75,7 +75,36 @@ export function renderMap(world) {
   og.filter = 'none';
   // 물·용암은 색조 없이 원래 색으로
   for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) if (at(x, y) === T_LIQUID) liquid(og, x * TILE, y * TILE, x, y, z, at);
+  if (world.map.palace) palaceStatic(og, world.map.palace);
   return out;
+}
+
+// 용궁: 붉은 비단길(금빛 테 · 구름무늬)과 용왕의 옥좌
+function palaceStatic(g, p) {
+  const rug = ([x0, y0, x1, y1]) => {
+    const x = x0 * TILE + 3, y = y0 * TILE + 3, w = (x1 - x0 + 1) * TILE - 6, h = (y1 - y0 + 1) * TILE - 6;
+    g.fillStyle = '#1a0a0e'; g.fillRect(x - 1, y - 1, w + 2, h + 2);
+    g.fillStyle = '#7a1824'; g.fillRect(x, y, w, h);
+    g.fillStyle = '#9a2834'; g.fillRect(x + 2, y + 2, w - 4, h - 4);
+    g.fillStyle = '#e8c060'; g.fillRect(x + 3, y + 3, w - 6, 1); g.fillRect(x + 3, y + h - 4, w - 6, 1); g.fillRect(x + 3, y + 3, 1, h - 6); g.fillRect(x + w - 4, y + 3, 1, h - 6);
+    g.fillStyle = 'rgba(240,200,110,0.5)';
+    for (let yy = y + 9; yy < y + h - 8; yy += 14) for (let xx = x + 8; xx < x + w - 8; xx += 12) { g.fillRect(xx - 2, yy, 5, 1); g.fillRect(xx - 1, yy - 1, 1, 1); g.fillRect(xx + 1, yy - 1, 1, 1); g.fillRect(xx, yy + 1, 1, 1); }
+  };
+  for (const r of p.rugs) rug(r);
+  const tx = p.throne.x * TILE + 8, ty = p.throne.y * TILE + 8;
+  g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(tx - 15, ty + 12, 30, 4);
+  g.fillStyle = '#1a0a0e'; g.fillRect(tx - 14, ty - 16, 28, 30);
+  g.fillStyle = '#b8862e'; g.fillRect(tx - 13, ty - 15, 26, 28);               // 금빛 등받이
+  g.fillStyle = '#e8c060'; g.fillRect(tx - 11, ty - 13, 22, 2); g.fillRect(tx - 1, ty - 18, 2, 4); g.fillRect(tx - 4, ty - 17, 8, 2);
+  g.fillStyle = '#2a8a6a'; g.fillRect(tx - 2, ty - 10, 4, 4); g.fillStyle = '#8affd8'; g.fillRect(tx - 1, ty - 9, 1, 1); // 비취 구슬
+  g.fillStyle = '#7a1824'; g.fillRect(tx - 9, ty - 4, 18, 14);                 // 붉은 방석
+  g.fillStyle = '#a8303a'; g.fillRect(tx - 7, ty - 2, 14, 6);
+  for (const sx of [-1, 1]) {                                                   // 용머리 팔걸이
+    const ax = tx + sx * 13;
+    g.fillStyle = '#1a0a0e'; g.fillRect(ax - 3, ty - 2, 6, 12);
+    g.fillStyle = '#e8c060'; g.fillRect(ax - 2, ty - 1, 4, 10); g.fillRect(ax - 2 + sx, ty - 3, 4, 3);
+    g.fillStyle = '#2a8a6a'; g.fillRect(ax + sx, ty - 2, 1, 1);
+  }
 }
 
 function crackLines(g, px, py) {
@@ -137,6 +166,15 @@ export function drawDeco(g, d) {
   const P = (c, dx, dy, w = 1, h = 1) => { g.fillStyle = c; g.fillRect(x + dx, y + dy, w, h); };
   switch (d.kind) {
     case 'moss': P('#4a7a3a', -2, 0, 4, 1); P('#5f9a48', -1, -1, 2, 1); P('#3a5a2a', 1, 1, 2, 1); break;
+    // 바닷속
+    case 'kelp': { const hgt = 9 + v * 3; for (let i = 0; i < hgt; i++) { const sx = Math.round(Math.sin(i * 0.5 + v) * 1.2); P('#1e3a1e', sx - 1, -i, 3, 1); P(i % 3 ? '#3a7a3a' : '#4e9a48', sx, -i, 1, 1); } for (let i = 2; i < hgt; i += 3) { const sx = Math.round(Math.sin(i * 0.5 + v) * 1.2); P('#5aaa50', sx + 1, -i, 2, 1); P('#5aaa50', sx - 2, -i - 1, 2, 1); } break; }
+    case 'coralFan': { const col = ['#e86a7a', '#f0a050', '#c85ab8', '#ff8a6a'][v]; P('#1a1410', -4, -7, 9, 7); for (let i = 0; i < 4; i++) P(col, -3 + i * 2, -6 + (i % 2), 1, 6); P(col, -3, -6, 7, 1); P('#ffffff', -2, -6, 1, 1); P('#5a3a2a', 0, -1, 1, 2); break; }
+    case 'coralBranch': { const col = ['#ff7a8a', '#ffb070', '#e080d8', '#ff9a7a'][v]; P('#1a1410', -1, -8, 3, 9); P(col, 0, -8, 1, 8); P('#1a1410', -4, -6, 4, 2); P(col, -3, -6, 3, 1); P(col, -3, -8, 1, 2); P('#1a1410', 1, -5, 4, 2); P(col, 2, -5, 2, 1); P(col, 3, -7, 1, 2); break; }
+    case 'seaShell': P('#1a1410', -2, -2, 5, 3); P('#f0d8c0', -1, -2, 3, 2); P('#c89a7a', 0, -1, 1, 1); break;
+    case 'starfish': P('#e8603a', 0, -3, 1, 5); P('#e8603a', -2, -1, 5, 1); P('#e8603a', -1, 0, 1, 1); P('#e8603a', 1, 0, 1, 1); P('#ffb08a', 0, -1, 1, 1); break;
+    case 'seaRock': P('#1a1410', -3, -2, 6, 3); P('#6a707a', -2, -2, 4, 2); P('#8a9098', -2, -2, 2, 1); break;
+    case 'glowPlant': P('#2a4a5a', 0, -5, 1, 5); P('#7af0ff', -1, -6, 3, 2); P('#ffffff', 0, -6, 1, 1); P('#5ac8e8', 2, -3, 1, 1); break;
+    case 'lakeWeed': P('#3a6a3a', 0, -6, 1, 6); P('#4a8a42', -2, -4, 2, 1); P('#4a8a42', 1, -3, 2, 1); P('#3a6a3a', 2, -5, 1, 3); break;
     case 'fern': P('#3e7a32', 0, -4, 1, 4); P('#5aa048', -2, -3, 2, 1); P('#5aa048', 1, -2, 2, 1); P('#5aa048', -2, -1, 2, 1); break;
     case 'pebble': P('#0d0b10', -2, -1, 4, 3); P('#7a6a5a', -1, -1, 2, 2); P('#a8988a', -1, -1, 1, 1); break;
     case 'glowshroom': P('#e8e0d0', 0, -2, 1, 3); P('#0d0b10', -2, -4, 5, 2); P(v % 2 ? '#5affd0' : '#8affa0', -1, -4, 3, 1); P('#ffffff', 0, -4, 1, 1); break;
@@ -149,6 +187,11 @@ export function drawDeco(g, d) {
     case 'icicle': P('#a8d8f0', -2, -2, 4, 1); P('#c8ecff', -1, -1, 2, 2); break;
     case 'tomb': P('#0d0b10', -4, -9, 9, 10); P('#6a6478', -3, -8, 7, 8); P('#8a849a', -3, -8, 7, 1); P('#4a4458', 0, -6, 1, 4); P('#4a4458', -1, -5, 3, 1); break;
     case 'candle': P('#e8e0c8', 0, -3, 2, 3); P('#ffd24a', 0, -5, 1, 2); break;
+    case 'coral': { // 산호 (용궁)
+      const c = ['#ff7a8a', '#ff9a5a', '#c86aff', '#5ad8c8'][v % 4];
+      P('#1a1410', -1, -7, 3, 8); P(c, 0, -6, 1, 7); P('#1a1410', -4, -5, 3, 2); P(c, -3, -5, 2, 1); P('#1a1410', 2, -4, 3, 2); P(c, 2, -4, 2, 1); P('#ffffff', 0, -6, 1, 1);
+      break;
+    }
     case 'chalk': { // 먼저 오른 사람이 남긴 분필 화살표 (v: 0 오른쪽 · 1 위 · 2 왼쪽 · 3 아래)
       const c = 'rgba(236,230,214,0.75)';
       if (v === 0) { P(c, -4, 0, 7, 1); P(c, 1, -2, 1, 1); P(c, 2, -1, 1, 1); P(c, 2, 1, 1, 1); P(c, 1, 2, 1, 1); }

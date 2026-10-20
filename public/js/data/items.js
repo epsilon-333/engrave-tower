@@ -16,6 +16,10 @@ export const WEAPON_SKILLS = {
   frostRing: { name: '서리 고리', desc: '주변을 크게 얼린다 (냉기 3중첩)', cd: 7, mana: 20 },
   poisonPool: { name: '역병 웅덩이', desc: '조준한 곳에 진한 독 웅덩이를 만든다', cd: 7, mana: 20 },
   meteor: { name: '유성', desc: '잠시 뒤 조준한 곳에 거대한 마력 덩어리가 떨어진다', cd: 10, mana: 40 },
+  lash: { name: '채찍 휘감기', desc: '앞쪽을 세 번 넓게 휘갈기고, 마지막에 맞은 적을 내 앞으로 끌어온다', cd: 7 },
+  flurry: { name: '난타', desc: '0.6초 동안 주먹으로 여섯 번 친다. 마지막 주먹은 적을 날려 보낸다', cd: 6 },
+  knifeFan: { name: '단검 폭풍', desc: '단검 열 자루를 사방으로 던진다', cd: 7 },
+  boomStorm: { name: '부메랑 폭풍', desc: '돌아오는 부메랑 여섯 개를 사방으로 던진다', cd: 7 },
 };
 
 export const ITEMS = {
@@ -82,7 +86,55 @@ export const ITEMS = {
     effects: [{ type: 'mul', key: 'maxMana', v: 1.25, text: '최대 마나 +25%' }, { type: 'mul', key: 'manaRegen', v: 1.2, text: '마나 회복 +20%' }] },
   auraSeal: { name: '기사단 인장', slot: 'acc', price: 140, stats: { pres: 4 }, tags: [],
     effects: [{ when: { race: 'knight' }, type: 'add', key: 'auraTime', v: 2, text: '오러 지속 +2초' }] },
+
+  // ── 성지의 보물: 한 성지의 축복을 5단계까지 받으면 그 성지가 내어 준다 (상점에 없다) ──
+  starOrb: { name: '별의 보주', slot: 'acc', price: 0, treasure: 'wizard', stats: { mag: 6, spi: 6 }, tags: [],
+    effects: [{ type: 'mul', key: 'manaRegen', v: 1.3, text: '마나 회복 +30%' }] },
+  worldLeaf: { name: '세계수의 잎', slot: 'acc', price: 0, treasure: 'elf', stats: { mag: 5, agi: 5 }, tags: ['wind'],
+    effects: [{ type: 'add', key: 'regen', v: 0.004, text: '자연 회복 · 초당 최대 체력의 0.4%' }] },
+  royalCrest: { name: '왕가의 휘장', slot: 'acc', price: 0, treasure: 'knight', stats: { pres: 12, vit: 5 }, tags: [],
+    effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.93, text: '받는 피해 -7%' }] },
+  championHorn: { name: '투사의 뿔', slot: 'acc', price: 0, treasure: 'orc', stats: { str: 7, vit: 4 }, tags: ['brawl'],
+    effects: [{ type: 'mul', key: 'dmgMul', v: 1.08, text: '모든 피해 +8%' }] },
+  lichCrown: { name: '망자의 왕관', slot: 'acc', price: 0, treasure: 'undead', stats: { mag: 6, mres: 10 }, tags: ['drain'],
+    effects: [{ type: 'stat', stat: 'lifesteal', v: 4, text: '흡혈 +4%' }] },
+  shadowSeal: { name: '그림자 인장 반지', slot: 'acc', price: 0, treasure: 'assassin', stats: { agi: 6, sen: 6 }, tags: ['shadow'],
+    effects: [{ type: 'add', key: 'crit', v: 0.05, text: '치명타 확률 +5%' }] },
+  primalFang: { name: '태고의 송곳니', slot: 'acc', price: 0, treasure: 'dino', stats: { str: 6, agi: 6 }, tags: ['bleed'],
+    effects: [{ type: 'mul', key: 'moveSpeed', v: 1.06, text: '이동 속도 +6%' }] },
+  dragonHeart: { name: '용의 심장', slot: 'acc', price: 0, treasure: 'dragon', stats: { str: 5, mag: 5, vit: 4 }, tags: ['fire'],
+    effects: [{ type: 'mul', key: 'burnMul', v: 1.25, text: '화상 피해 +25%' }] },
+  // ── 종족의 증표: 성지 친밀도가 '가족'이 되면 우두머리가 준다 (상점에 없다) ──
+  tokenWizard: { name: '마탑의 별 반지', slot: 'acc', price: 0, treasure: 'wizard', token: true, stats: { mag: 4, spi: 4, mres: 6 }, tags: [] },
+  tokenElf: { name: '여왕의 은빛 깃털', slot: 'acc', price: 0, treasure: 'elf', token: true, stats: { agi: 4, sen: 4, mag: 3 }, tags: ['wind'] },
+  tokenKnight: { name: '근위대 훈장', slot: 'acc', price: 0, treasure: 'knight', token: true, stats: { pres: 8, vit: 4 }, tags: [] },
+  tokenOrc: { name: '투사의 이빨 팔찌', slot: 'acc', price: 0, treasure: 'orc', token: true, stats: { str: 5, vit: 4 }, tags: ['brawl'] },
+  tokenUndead: { name: '망자의 반지', slot: 'acc', price: 0, treasure: 'undead', token: true, stats: { mag: 4, mres: 6, spi: 2 }, tags: [] },
+  tokenAssassin: { name: '그림자 깃 장식', slot: 'acc', price: 0, treasure: 'assassin', token: true, stats: { agi: 5, sen: 4 }, tags: ['shadow'] },
+  tokenDino: { name: '태고의 송곳니 목걸이', slot: 'acc', price: 0, treasure: 'dino', token: true, stats: { str: 4, agi: 4 }, tags: [] },
+  tokenDragon: { name: '용왕의 비늘 목걸이', slot: 'acc', price: 0, treasure: 'dragon', token: true, stats: { str: 3, mag: 3, mres: 4 }, tags: ['fire'] },
 };
+
+// ── 대장간에서 만드는 장비 (상점에서 팔지 않는다: 캔 광석 · 벤 나무 · 바다의 산호로 만든다) ──
+const F = (name, slot, extra) => ({ name, slot, price: 0, forged: true, stats: {}, tags: [], ...extra });
+Object.assign(ITEMS, {
+  copperDagger: F('구리 단검', 'weapon', { weapon: { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.78, speed: 3.0, range: 24, arc: 1.5, skill: 'dashStab' }, stats: { agi: 3 } }),
+  copperSword: F('구리 검', 'weapon', { weapon: { kind: 'melee', dmg: 'phys', mul: 1.05, speed: 1.6, range: 30, arc: 1.9, skill: 'spin' }, stats: { str: 3 } }),
+  huntersBow: F('사냥꾼의 활', 'weapon', { weapon: { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 1.35, speed: 1.6, projSpeed: 320, range: 220, pierce: 1, skill: 'volley' }, stats: { sen: 4, agi: 2 }, tags: ['wind'] }),
+  ironSword: F('철 장검', 'weapon', { weapon: { kind: 'melee', dmg: 'phys', mul: 1.25, speed: 1.5, range: 33, arc: 2.0, skill: 'spin' }, stats: { str: 5, vit: 2 } }),
+  ironWaraxe: F('철 전투도끼', 'weapon', { weapon: { kind: 'melee', dmg: 'phys', mul: 1.6, speed: 0.95, range: 34, arc: 2.3, skill: 'slam' }, stats: { str: 7 }, tags: ['brawl'] }),
+  silverRapier: F('은 레이피어', 'weapon', { weapon: { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 1.0, speed: 2.2, range: 40, shape: 'thrust', width: 8, crit: 0.1, critDmg: 0.3, skill: 'dashStab' }, stats: { agi: 5, sen: 5 }, tags: ['shadow'] }),
+  crystalStaff: F('수정 지팡이', 'weapon', { weapon: { kind: 'proj', dmg: 'mag', mul: 1.9, speed: 1.5, projSpeed: 260, range: 200, splash: 26, mana: 5, skill: 'nova' }, stats: { mag: 7, spi: 3 } }),
+  coralTrident: F('산호 삼지창', 'weapon', { weapon: { kind: 'melee', dmg: 'phys', mul: 1.45, speed: 1.35, range: 48, shape: 'thrust', width: 12, onHit: { status: 'chill', stacks: 1, chance: 0.3 }, skill: 'dashStab' }, stats: { str: 5, agi: 4 }, tags: ['ice'] }),
+  obsidianBlade: F('흑요석 대검', 'weapon', { weapon: { kind: 'melee', dmg: 'phys', mul: 1.95, speed: 0.85, range: 42, arc: 2.6, armorBreak: true, skill: 'slam' }, stats: { str: 10 }, tags: ['giant'] }),
+  starTome: F('별빛 마도서', 'weapon', { weapon: { kind: 'proj', dmg: 'mag', mul: 0.75, speed: 1.5, projSpeed: 250, range: 200, count: 3, spread: 0.2, splash: 22, mana: 6, skill: 'meteor' }, stats: { mag: 9, spi: 5 },
+    effects: [{ type: 'mul', key: 'reactionMul', v: 1.15, text: '원소 반응 피해 +15%' }] }),
+  copperMail: F('구리 흉갑', 'armor', { stats: { pres: 10, vit: 2 } }),
+  ironPlate: F('철 판금 갑옷', 'armor', { stats: { pres: 24, vit: 5, agi: -2 }, tags: ['giant'] }),
+  rubyRing: F('루비 반지', 'acc', { stats: { fireAff: 4, mag: 3 }, tags: ['fire'] }),
+  sapphireRing: F('사파이어 반지', 'acc', { stats: { iceAff: 4, spi: 3 }, tags: ['ice'] }),
+  emeraldAmulet: F('에메랄드 목걸이', 'acc', { stats: { agi: 4, vit: 3 }, effects: [{ type: 'add', key: 'regen', v: 0.002, text: '자연 회복 · 초당 최대 체력의 0.2%' }] }),
+});
 
 // ── 클래스 전용 무기: [시작 무기, 상위 무기]. 상위 무기의 boost는 자기 클래스일 때만 스킬 피해를 올린다 ──
 const W = (cls, name, weapon, stats, extra = {}) => ({ name, slot: 'weapon', cls, price: extra.price ?? 0, starter: !extra.price, weapon, stats, tags: extra.tags || [], boost: extra.boost, bdesc: extra.bdesc });
@@ -111,8 +163,8 @@ Object.assign(ITEMS, {
   nightPiercer: W('shadowblade', '밤의 송곳', { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.7, hits: 2, speed: 2.3, range: 26, arc: 1.6, crit: 0.08, critDmg: 0.3, skill: 'dashStab' }, { agi: 6, sen: 4 }, { price: 290, tags: ['shadow'], boost: { shadowDance: 0.4, ambush: 0.4 }, bdesc: '「그림자 춤」·「급습」 피해 +40%' }),
   blowgun: W('venomHunter', '바람총', { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 0.55, speed: 2.8, projSpeed: 340, range: 190, onHit: { status: 'poison', stacks: 1, chance: 1 }, skill: 'volley' }, { agi: 2, toxicity: 2 }),
   viperBlowgun: W('venomHunter', '독사 송곳 바람총', { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 0.5, speed: 2.8, projSpeed: 360, range: 200, count: 2, spread: 0.1, onHit: { status: 'poison', stacks: 1, chance: 1 }, skill: 'volley' }, { agi: 5, toxicity: 5 }, { price: 290, tags: ['poison'], boost: { venomBurst: 0.4, dartFan: 0.45 }, bdesc: '「맹독 폭발」 +40% · 「독침 난사」 +45%' }),
-  spiritBranch: W('spiritcaller', '정령의 나뭇가지', { kind: 'proj', dmg: 'mag', mul: 1.0, speed: 1.6, projSpeed: 240, range: 190, skill: 'nova' }, { mag: 2, agi: 2 }),
-  worldTreeStaff: W('spiritcaller', '세계수 지팡이', { kind: 'proj', dmg: 'mag', mul: 1.35, speed: 1.7, projSpeed: 250, range: 200, pierce: 1, skill: 'nova' }, { mag: 6, agi: 3 }, { price: 300, tags: ['wind'], boost: { spiritArrow: 0.45, spiritKing: 0.35 }, bdesc: '「정령의 화살」 +45% · 「정령왕 강림」 +35%' }),
+  spiritBow: W('spiritcaller', '정령의 활', { kind: 'proj', dmg: 'mag', mul: 1.0, speed: 1.6, projSpeed: 300, range: 200, projKind: 'arrow', skill: 'volley' }, { mag: 2, agi: 2 }),
+  worldTreeBow: W('spiritcaller', '세계수 장궁', { kind: 'proj', dmg: 'mag', mul: 1.35, speed: 1.6, projSpeed: 330, range: 220, pierce: 1, projKind: 'arrow', skill: 'rain' }, { mag: 6, agi: 3 }, { price: 300, tags: ['wind'], boost: { spiritArrow: 0.45, spiritKing: 0.35 }, bdesc: '「정령의 화살」 +45% · 「정령왕 강림」 +35%' }),
   rangerBow: W('ranger', '사냥 활', { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 1.3, speed: 1.6, projSpeed: 300, range: 200, pierce: 1, skill: 'volley' }, { sen: 3 }),
   galeLongbow: W('ranger', '바람결 장궁', { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 1.5, speed: 1.4, projSpeed: 380, range: 260, pierce: 2, skill: 'rain' }, { sen: 5, agi: 4 }, { price: 300, tags: ['wind'], boost: { pierceArrow: 0.45, skyPiercer: 0.35 }, bdesc: '「관통 화살」 +45% · 「천공의 한 발」 +35%' }),
   rockFist: W('rockguard', '바위 주먹', { kind: 'melee', dmg: 'phys', mul: 1.15, speed: 1.2, range: 26, arc: 1.8, skill: 'slam' }, { pres: 4 }),
@@ -124,6 +176,26 @@ Object.assign(ITEMS, {
   dragonTome: W('dragonSage', '용언 마도서', { kind: 'proj', dmg: 'mag', mul: 0.6, speed: 1.4, projSpeed: 230, range: 185, count: 2, spread: 0.18, splash: 20, mana: 6, onHit: { status: 'burn', stacks: 1, chance: 0.35 }, skill: 'nova' }, { mag: 3, fireAff: 2 }),
   elderHeartstone: W('dragonSage', '고룡의 심장석', { kind: 'proj', dmg: 'mag', mul: 0.8, speed: 1.4, projSpeed: 240, range: 195, count: 3, spread: 0.2, splash: 22, mana: 6, onHit: { status: 'burn', stacks: 1, chance: 0.4 }, skill: 'meteor' }, { mag: 7, fireAff: 4 }, { price: 300, tags: ['fire'], boost: { wordSky: 0.4, wordFire: 0.35 }, bdesc: '「용언: 하늘」 +40% · 「용언: 불」 +35%' }),
 });
+
+// ── 무기 갈래: 스킬이 이 무기로 되는지 · 얼마나 잘 되는지 (skills.js FIT) ──
+// blade 한손 칼 · great 대검 · axe 도끼 · blunt 둔기 · polearm 창 · fist 주먹 · bow 활 · tube 바람총 · throw 던지는 무기 · staff 지팡이 · tome 마도서 · shield 검과 방패 · whip 채찍 · scythe 낫
+const WCAT = {
+  blade: ['knightSword', 'rustySword', 'dagger', 'heavySword', 'dualBlades', 'katana', 'rotDagger', 'copperDagger', 'copperSword', 'ironSword', 'silverRapier', 'twinDaggers', 'nightPiercer'],
+  great: ['riftGreatsword', 'steelGreatsword', 'mountainCleaver', 'obsidianBlade'],
+  axe: ['handAxe', 'battleAxe', 'doubleAxe', 'ironWaraxe', 'twoHandAxe', 'bloodthirstAxe', 'throwHatchet', 'twinReturnAxe'],
+  blunt: ['mace', 'stoneClub', 'tectonicHammer', 'rockFist', 'mountainHeart', 'iceFist', 'permafrostCore'],
+  polearm: ['spear', 'coralTrident', 'dragonSpear', 'wyrmFang'],
+  fist: ['boneKnuckle', 'predatorFang'],
+  bow: ['huntBow', 'longbow', 'huntersBow', 'rangerBow', 'galeLongbow', 'spiritBow', 'worldTreeBow'],
+  tube: ['blowgun', 'viperBlowgun'],
+  throw: ['throwingAxe'],
+  staff: ['apprenticeWand', 'mossStaff', 'apprenticeStaff', 'frostWand', 'poisonStaff', 'archStaff', 'crystalStaff', 'elemStaff', 'triOrb', 'hourglassStaff', 'aeonPendulum', 'skullStaff', 'deadScepter', 'cursedDoll', 'elderHeartstone'],
+  tome: ['oldTome', 'tome', 'starTome', 'doomTome', 'dragonTome'],
+  shield: ['guardSword', 'bastionBlade'],
+};
+for (const [cat, ids] of Object.entries(WCAT)) for (const id of ids) { const it = ITEMS[id]; if (it?.weapon) { it.cat = cat; it.weapon.cat = cat; if (cat === 'great') it.weapon.great = true; } }
+export const WCAT_NAME = { blade: '한손 칼', great: '대검', axe: '도끼', blunt: '둔기', polearm: '창', fist: '주먹', bow: '활 · 석궁', tube: '바람총', throw: '던지는 무기', staff: '지팡이', tome: '마도서', shield: '검과 방패', whip: '채찍', scythe: '낫' };
+export const weaponCat = (it) => it?.weapon?.cat || it?.cat || (it?.weapon?.kind === 'proj' ? (it.weapon.dmg === 'mag' ? 'staff' : 'bow') : 'blade');
 
 // 플레이 스타일 → 시작 무기 / 핵심 태그 / 추천 종족
 export const STYLES = {

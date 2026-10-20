@@ -6,9 +6,10 @@ export const TILE = 16;
 export const T_FLOOR = 0, T_WALL = 1, T_LIQUID = 2, T_CRACK = 3, T_BUILD = 4, T_GATE = 5, T_DEEP = 6; // T_DEEP: 깊은 물 (못 걷는다, 얼리면 걸을 수 있다) // T_GATE: 길을 막는 것(덩굴·철창·바위) — 못 지나가지만 바닥으로 그린다
 const DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
-export function generateField(zone, seed, depth = 0) {
+export function generateField(zone, seed, depth = 0, size = null) {
   const rng = createRng((seed ^ 0x5eed) + depth * 7777);
-  const tw = 168, th = 110;
+  const tw = size?.tw || 168, th = size?.th || 110;
+  const AF = (tw * th) / (168 * 110); // 크기 비율 (작은 동굴은 무리 · 상자도 적게)
   const t = new Uint8Array(tw * th);
   const idx = (x, y) => y * tw + x;
   const inb = (x, y) => x >= 0 && y >= 0 && x < tw && y < th;
@@ -28,7 +29,7 @@ export function generateField(zone, seed, depth = 0) {
     t.set(n);
   }
   // 큰 방(광장형 공간) 몇 개를 뚫어 지형에 리듬을 준다
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < Math.max(2, Math.round(7 * AF)); i++) {
     const cx = rng.int(12, tw - 13), cy = rng.int(10, th - 11), rx = rng.int(5, 9), ry = rng.int(4, 7);
     for (let y = cy - ry; y <= cy + ry; y++) for (let x = cx - rx; x <= cx + rx; x++) {
       if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1 + rng.range(-0.1, 0.1) && x > 2 && y > 2 && x < tw - 3 && y < th - 3) t[idx(x, y)] = T_FLOOR;
@@ -142,7 +143,7 @@ export function generateField(zone, seed, depth = 0) {
   for (let i = 0; i < t.length; i++) if (t[i] === T_FLOOR && dist[i] > 14) cands.push(i);
   const taken = [];
   const free = (x, y, r) => !taken.some((o) => Math.hypot(o.x - x, o.y - y) < r);
-  for (let a = 0; a < 8000 && camps.length < 40; a++) {
+  for (let a = 0; a < 8000 && camps.length < Math.round(40 * AF); a++) {
     const i = cands[rng.int(0, cands.length - 1)];
     const x = i % tw, y = (i / tw) | 0;
     if (Math.hypot(x - lair.x, y - lair.y) < 12 || !free(x, y, 9)) continue;
@@ -175,7 +176,7 @@ export function generateField(zone, seed, depth = 0) {
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (get(x + dx, y + dy) === T_WALL) w++;
     if (w >= 5) nook.push({ x, y });
   }
-  for (let a = 0; a < 2000 && chests.length < 16; a++) {
+  for (let a = 0; a < 2000 && chests.length < Math.round(16 * AF) + 2; a++) {
     const c = rng.pick(nook);
     if (c && !chests.some((o) => Math.hypot(o.x - c.x, o.y - c.y) < 12)) chests.push({ ...c, rich: false, trap: rng.chance(0.25) });
   }
@@ -189,11 +190,11 @@ export function generateField(zone, seed, depth = 0) {
     }
     return list;
   };
-  const lores = place(5, 20, 7);
+  const lores = place(Math.max(1, Math.round(5 * AF)), 20, 7);
   const camp = place(2, Math.floor(far * 0.35), 10);
   for (const c of camp) carve(c.x, c.y, 2);
   const merchant = place(1, 25, 8);
-  const shrines = place(2, 18, 8);
+  const shrines = place(Math.max(1, Math.round(2 * AF)), 18, 8);
   const goblins = place(2, 25, 8);
   const stairs = { x: lair.x + 3, y: lair.y };
   if (get(stairs.x, stairs.y) !== T_FLOOR) { stairs.x = lair.x; stairs.y = lair.y + 3; }
