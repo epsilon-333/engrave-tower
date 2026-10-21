@@ -404,3 +404,27 @@ button.good:hover:not(:disabled) { background: #332c44; box-shadow: inset 0 0 0 
 button.sm.on { background: var(--accent); color: #241a00; }
 .skc.cant { opacity: 0.6; border-left-color: var(--warn); }
 b.dim { color: #e8c890; }
+
+/* 퀘스트 창 */
+.qlog { max-height: 62vh; overflow-y: auto; text-align: left; }
+.qlog h3 { margin: 12px 0 6px; font-size: 15px; color: var(--accent); }
+.qrow { background: rgba(255,255,255,0.04); border: 1px solid #3a3248; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; }
+.qrow.done { border-color: #6aa86a; }
+.qrow p { margin: 4px 0; font-size: 12px; }
+.qmeta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 5px; }
+.qmeta small { white-space: nowrap; }
+.qbar { display: inline-block; width: 160px; height: 6px; background: #241e2c; border-radius: 3px; overflow: hidden; }
+.qbar i { display: block; height: 100%; background: #ffcf5a; }
+
+/* 각인의 탑 */
+.tw-floors { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 12px; max-height: 30vh; overflow-y: auto; }
+.tw-f { display: inline-flex; flex-direction: column; align-items: center; width: 34px; padding: 3px 0; border: 1px solid var(--c); border-radius: 4px; font-size: 11px; color: #c8c0d0; }
+.tw-f b { color: var(--c); font-size: 13px; }
+.tw-f.boss { background: rgba(255,120,90,0.12); }
+.tw-grade { font: 700 64px Galmuri11, sans-serif; color: var(--c); text-shadow: 3px 3px 0 #1a1020; margin: 4px 0 8px; }
+
+/* 튜토리얼 안내 */
+#tut { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: rgba(20,16,28,0.92); border: 1px solid #ffcf5a; border-radius: 6px; color: #f4ecd8; font: 14px Galmuri11, sans-serif; box-shadow: 0 2px 0 #000; max-width: calc(100vw - 32px); }
+#tut small { color: #ffcf5a; white-space: nowrap; }
+#tut b { font-weight: 400; min-width: min(420px, 60vw); }
+#tut button { font: 12px Galmuri11, sans-serif; padding: 3px 8px; background: transparent; color: #a89cb8; border: 1px solid #5a4e72; border-radius: 4px; cursor: pointer; white-space: nowrap; }

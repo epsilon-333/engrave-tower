@@ -106,7 +106,7 @@ export function startAction(w, act) {
     if (def.tool) {
       const tier = toolTier(w, def.tool);
       if (tier < def.tier) { w.emit({ t: 'text', x: act.x, y: act.y - 22, text: `${toolName(def.tool, def.tier)} 이상이 필요하다`, color: '#ffb08a' }); w.emit({ t: 'locked', x: act.x, y: act.y }); return; }
-      p.gather = { kind: 'pickaxe', target: act, t: 0, dur: 0.5 - 0.04 * (tier - 1), power: tier };
+      p.gather = { kind: 'pickaxe', target: act, t: 0, dur: (0.5 - 0.04 * (tier - 1)) * (w.hasKnack('miner') ? 0.75 : 1), power: tier };
     } else p.gather = { kind: 'hand', target: act, t: 0, dur: 0.32, power: 1 };
   } else if (act.kind === 'dig') {
     if (act.depleted) return;
@@ -116,7 +116,7 @@ export function startAction(w, act) {
   } else if (act.kind === 'chop') {
     const tier = toolTier(w, 'axe');
     if (!tier) { w.emit({ t: 'text', x: act.x, y: act.y - 30, text: '도끼가 필요하다', color: '#ffb08a' }); return; }
-    p.gather = { kind: 'axe', target: act, t: 0, dur: 0.5 - 0.04 * (tier - 1), power: [1, 1, 1.5, 3][tier - 1] };
+    p.gather = { kind: 'axe', target: act, t: 0, dur: 0.5 - 0.04 * (tier - 1), power: [1, 1, 1.5, 3][tier - 1] + (w.hasKnack('lumber') ? 1 : 0) };
   } else if (act.kind === 'fish') { startFishing(w, act); return; }
   else if (act.kind === 'till' || act.kind === 'plant' || act.kind === 'water' || act.kind === 'harvest') { farmDo(w, act); return; }
   if (p.gather) { p.dir = (p.gather.target.x ?? act.x) >= p.x ? 1 : -1; w.emit({ t: 'toolSwing', kind: p.gather.kind }); }
@@ -178,6 +178,9 @@ function landHit(w, gth) {
     if (tg.block) w.tiles[tg.ty * w.tw + tg.tx] = T_FLOOR;
     for (const [id, a, b] of def.drops) addGood(w, id, rng.int(a, b) + (gth.kind === 'pickaxe' && gth.power >= 4 ? 1 : 0), tg.x, tg.y - 4);
     for (const [id, ch] of def.extra || []) if (rng.chance(ch)) addGood(w, id, 1, tg.x, tg.y - 4);
+    const first = def.drops[0]?.[0], hand = gth.kind === 'hand'; // 숙련 「광부의 눈」 · 「채집가」: 덤
+    if (first && w.hasKnack(hand ? 'forager' : 'miner') && rng.chance(hand ? 0.3 : 0.2)) addGood(w, first, 1, tg.x, tg.y - 4);
+    w.knack(hand ? 'forage' : 'mine');
     w.emit({ t: 'nodeBreak', x: tg.x, y: tg.y - 4, type: tg.type });
     w.signals.push({ t: 'save' });
   } else if (gth.kind === 'axe') {
@@ -195,18 +198,21 @@ function landHit(w, gth) {
     if (burnt) { addGood(w, 'coal', rng.int(1, 2), x, y); addGood(w, 'wood', 1, x, y); }
     else if (pr.tree === 'cactus' || pr.tree === 'dead') addGood(w, 'wood', rng.int(1, 2), x, y);
     else {
-      addGood(w, 'wood', rng.int(2, 3) + (tier >= 3 ? 1 : 0), x, y);
+      addGood(w, 'wood', rng.int(2, 3) + (tier >= 3 ? 1 : 0) + (w.hasKnack('lumber') && rng.chance(0.3) ? 1 : 0), x, y);
       if (tier >= 2 && HARD_TREES.has(pr.tree)) addGood(w, 'hardwood', rng.int(1, 2), x, y);
       if (pr.tree === 'oak' && pr.v === 3) addGood(w, 'berry', 2, x, y); // 열매가 달린 나무
     }
     w.emit({ t: 'treeFall', x, y: y - 20, kind: pr.tree, burnt });
+    w.knack('chop');
     w.signals.push({ t: 'save' });
   } else if (gth.kind === 'shovel') {
     gth.done = true;
     tg.depleted = true; tg.respawnAt = now() + 480000;
     if (tg.key) w.life.nodes[tg.key] = tg.respawnAt;
     const found = digLoot(w, tg, gth.power);
+    if (w.hasKnack('digger') && rng.chance(0.25)) found.push(...digLoot(w, tg, gth.power)); // 숙련 「발굴가」
     for (const [id, n] of found) addGood(w, id, n, tg.x, tg.y - 2);
+    w.knack('dig');
     w.emit({ t: 'digDone', x: tg.x, y: tg.y });
     w.signals.push({ t: 'save' });
   }
@@ -285,7 +291,7 @@ function startFishing(w, act) {
   if (bait) w.life.bag.worm--;
   p.dir = act.x >= p.x ? 1 : -1;
   const deep = act.water === 'sea' ? Math.max(0, Math.min(1, (seaDepth(w, Math.floor(act.y / TILE) * w.tw + Math.floor(act.x / TILE)) - 3) / 4)) : 0; // 0 바닷가 ~ 1 먼바다
-  p.fish = { phase: 'cast', t: 0, sx: p.x, sy: p.y, bx: act.x, by: act.y, water: act.water, bait, tier, deep, wait: w.rng.range(1.6, 5.5) * (bait ? 0.55 : 1) * (1 - 0.45 * deep), nibble: 0 };
+  p.fish = { phase: 'cast', t: 0, sx: p.x, sy: p.y, bx: act.x, by: act.y, water: act.water, bait, tier, deep, wait: w.rng.range(1.6, 5.5) * (bait ? 0.55 : 1) * (1 - 0.45 * deep) * (w.hasKnack('angler') ? 0.75 : 1), nibble: 0 };
   w.emit({ t: 'fishCast', x: act.x, y: act.y });
   if (deep >= 0.5 && !w.deepTold) { w.deepTold = true; w.emit({ t: 'text', x: p.x, y: p.y - 26, text: '먼바다: 큰 물고기가 잘 문다', color: '#9fd8ff' }); }
 }
@@ -376,6 +382,7 @@ function updateFishing(w, inp) {
 function finishCatch(w, f) {
   const p = w.player, id = f.catch, d = FISH[id];
   p.fish = null;
+  w.knack('fish');
   if (id === 'bottleLetter') { // 유리병 편지: 오래된 기록 한 장
     const text = LORES[w.rng.int(0, LORES.length - 1)];
     w.signals.push({ t: 'lore', text, bottle: true });
@@ -477,7 +484,8 @@ function farmDo(w, act) {
     p.gather = { kind: 'can', target: act, t: 0, dur: 0.55, done: true, hit: true };
     w.signals.push({ t: 'save' });
   } else if (act.kind === 'harvest') {
-    const pl = farm[act.key], c = CROPS[pl.crop], n = w.rng.int(c.yield[0], c.yield[1]);
+    const pl = farm[act.key], c = CROPS[pl.crop], n = w.rng.int(c.yield[0], c.yield[1]) + (w.hasKnack('farmer') && w.rng.chance(0.3) ? 1 : 0);
+    w.knack('harvest');
     addGood(w, pl.crop, n, act.x, act.y - 4);
     if (w.rng.chance(0.08)) addGood(w, pl.crop + 'Seed', 1, act.x, act.y - 4); // 가끔 씨앗도 남는다
     w.emit({ t: 'farmHarvest', x: act.x, y: act.y, crop: pl.crop });

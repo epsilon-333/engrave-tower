@@ -10,6 +10,12 @@ export const SPIRIT_GRADES = [
 ];
 export const SPIRIT_STAR_MAX = 5, STAR_MUL = 0.15;
 export const STONE_PRICE = 150; // 세계수 성지에서 정령석 하나 값
+// 정령사는 정령과 가깝다: 정령석이 싸고, 좋은 정령이 조금 더 잘 온다
+export const STONE_PRICE_CALLER = 100;
+export const CALLER_RATES = [0.45, 0.33, 0.17, 0.05];
+// 정령 레벨: 함께 싸운 시간(초)이 쌓이면 오른다. 레벨마다 힘 +6% (최대 10)
+export const SPIRIT_LV_XP = [0, 120, 300, 600, 1000, 1500, 2200, 3000, 4000, 5400], SPIRIT_LV_MUL = 0.06;
+export const spiritLevel = (xp = 0) => { let l = 1; for (let i = 0; i < SPIRIT_LV_XP.length; i++) if (xp >= SPIRIT_LV_XP[i]) l = i + 1; return l; };
 export const PULL10_GUARANTEE = 1; // 10회 계약은 희귀 이상 하나를 보장
 
 // 속성: 색 3가지(밝음 · 몸 · 그늘) · 버프(등급 1배 · 결속 1 기준) · 공격 모양
@@ -36,9 +42,9 @@ export const SPIRITS = {};
 for (const [elem, names] of Object.entries(NAMES)) names.forEach((name, grade) => { SPIRITS[`${elem}${grade}`] = { id: `${elem}${grade}`, elem, grade, name }; });
 
 // 결속을 넣은 힘 배율 · 버프 수치
-export const spiritPower = (id, star = 1) => { const s = SPIRITS[id]; return s ? SPIRIT_GRADES[s.grade].mul * (1 + STAR_MUL * (Math.max(1, star) - 1)) : 1; };
-export function spiritBuff(id, star = 1, boost = 1) {
-  const s = SPIRITS[id], E = SPIRIT_ELEMS[s.elem], k = spiritPower(id, star) * boost, out = {};
+export const spiritPower = (id, star = 1, lv = 1) => { const s = SPIRITS[id]; return s ? SPIRIT_GRADES[s.grade].mul * (1 + STAR_MUL * (Math.max(1, star) - 1)) * (1 + SPIRIT_LV_MUL * (Math.max(1, lv) - 1)) : 1; };
+export function spiritBuff(id, star = 1, boost = 1, lv = 1) {
+  const s = SPIRITS[id], E = SPIRIT_ELEMS[s.elem], k = spiritPower(id, star, lv) * boost, out = {};
   for (const [key, v] of Object.entries(E.buff)) out[key] = v * k;
   return out;
 }
@@ -48,12 +54,13 @@ export function buffMods(b) {
   for (const [key, v] of Object.entries(b)) m[key] = ['dmgMul', 'dmgTakenMul', 'moveSpeed', 'atkSpeed'].includes(key) ? 1 + v : v;
   return m;
 }
-export const spiritBuffText = (id, star = 1) => SPIRIT_ELEMS[SPIRITS[id].elem].buffText(spiritBuff(id, star));
+export const spiritBuffText = (id, star = 1, lv = 1) => SPIRIT_ELEMS[SPIRITS[id].elem].buffText(spiritBuff(id, star, 1, lv));
 
 // 계약 한 번: 등급을 고르고 그 등급의 정령 중 하나 (rng: () => 0~1)
-export function rollSpirit(rng, minGrade = 0) {
+export function rollSpirit(rng, minGrade = 0, rates = null) {
   let r = rng(), grade = 0;
-  for (let g = SPIRIT_GRADES.length - 1; g >= 0; g--) { const cum = SPIRIT_GRADES.slice(g).reduce((a, x) => a + x.rate, 0); if (r < cum) { grade = g; break; } }
+  const R = rates || SPIRIT_GRADES.map((G) => G.rate);
+  for (let g = SPIRIT_GRADES.length - 1; g >= 0; g--) { const cum = R.slice(g).reduce((a, x) => a + x, 0); if (r < cum) { grade = g; break; } }
   grade = Math.max(minGrade, grade);
   const pool = Object.values(SPIRITS).filter((s) => s.grade === grade);
   return pool[Math.floor(rng() * pool.length) % pool.length].id;

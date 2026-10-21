@@ -194,6 +194,7 @@ export function homeClick(hub, act, t) {
       const first = !s.dishLog?.[pv.recipe];
       (s.dishLog ||= {})[pv.recipe] = (s.dishLog[pv.recipe] || 0) + 1;
       hub.pot = [];
+      hub.onKnack?.('cook');
       hub.toast(`${GOODS[pv.key].name} 완성!${toBag ? '' : ' (가방이 가득 차서 보관함에 넣었다)'}${first ? ' · 새 요리 · 도감 +1' : ''}`);
       if (first) hub.onCodex?.();
       return true;

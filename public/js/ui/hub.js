@@ -1,4 +1,5 @@
 // 마을 화면 (DOM). 캐릭터 / 공명 제단 / 상점 / 사냥터 / 도감
+import { KNACKS } from '../data/knacks.js';
 import { BASE_STATS, STAT_INFO, SPECIAL_INFO, SLOT_INFO, GRADES, TIERS } from '../data/stats.js';
 import { RACES } from '../data/races.js';
 import { WORLD_HISTORY, relation, REL_NAME, REL_COLOR } from '../data/lore.js';
@@ -10,7 +11,7 @@ import { ITEMS, STYLES, WEAPON_SKILLS, weaponHands } from '../data/items.js';
 import { MONSTERS, ECHOES, ZONES } from '../data/monsters.js';
 import { WORLD_ZONE, ENTRANCES } from '../data/maps/overworld.js';
 import { LABY_ZONE, PALACE_ZONE } from '../data/maps/interiors.js';
-import { computeBuild, encodeLoadout, decodeLoadout, SLOTS } from '../sim/build.js';
+import { computeBuild, encodeLoadout, decodeLoadout, SLOTS, twoHandBonus, weaponFamily, FAMILY_NAME } from '../sim/build.js';
 import { condText, evalCond } from '../sim/conditions.js';
 import { toLoadout, writeSave, refreshQuests, claimQuest } from '../save.js';
 import { sfx } from '../audio.js';
@@ -46,7 +47,7 @@ export class Hub {
     const s = this.s, b = computeBuild(toLoadout(s));
     this.b = b;
     // 그 집(시설)에서 연 창이면 그 시설의 탭 + 언제나 쓸 수 있는 탭(캐릭터 · 가방 · 도감)만 보인다
-    const tabs = [['char', '캐릭터'], ['altar', '공명 제단'], ['shop', '대장간'], ['forge', '제작'], ['craft', '무기 만들기'], ['trade', '잡화점'], ['learn', '기술 배우기'], ['cook', '부엌'], ['storage', '보관함'], ['quest', '의뢰'], ['hunt', '관문 정보'], ['bag', '가방'], ['codex', '도감']]
+    const tabs = [['char', '캐릭터'], ['gear', '장비'], ['altar', '공명 제단'], ['shop', '대장간'], ['forge', '제작'], ['craft', '무기 만들기'], ['trade', '잡화점'], ['learn', '기술 배우기'], ['cook', '부엌'], ['storage', '보관함'], ['quest', '의뢰'], ['hunt', '관문 정보'], ['bag', '가방'], ['codex', '도감']]
       .filter(([k]) => !this.allowed || this.allowed.includes(k));
     if (!tabs.some(([k]) => k === this.tab)) this.tab = tabs[0][0];
     this.root.innerHTML = `
@@ -97,6 +98,8 @@ export class Hub {
         <div class="tier-help">포인트 효율: 0~20 ×1.0 · 21~40 ×1.3 · 41~60 ×1.7 · 61+ ×2.2 &nbsp;|&nbsp; 30/50/70/90에서 각성</div>
         ${BASE_STATS.map(statRow).join('')}
         <h4>특수 스탯</h4><div class="chips">${specials}</div>
+        <h4>숙련으로 깨달은 것 <small class="muted">같은 일을 오래 하다 보면 어느 날 문득 깨닫는다</small></h4>
+        <div class="chips">${Object.keys(s.knack?.got || {}).filter((id) => KNACKS[id]).map((id) => KNACKS[id].kind === 'life' ? `<span class="chip" title="${esc(KNACKS[id].desc)}">${KNACKS[id].name}</span>` : `<span class="chip" title="${esc(KNACKS[id].hint)}">${SKILLS[KNACKS[id].skill]?.name || id}</span>`).join('') || '<span class="muted">아직 없음</span>'}</div>
       </section>
       <section class="panel">
         <h3>전투 수치</h3>
@@ -303,15 +306,18 @@ export class Hub {
     </div>`;
   }
 
+  // ───── 장비 (어디서나): 가진 장비만 보고 바로 바꾼다 ─────
+  tab_gear(s, b) { return this.tab_shop(s, b, true); }
+
   // ───── 상점 ─────
-  tab_shop(s, b) {
+  tab_shop(s, b, ownedOnly = false) {
     const gear = s.gear, twoHand = weaponHands(ITEMS[gear.weapon]) >= 2;
     const gearRow = [['weapon', '무기 (오른손)'], ['off', '왼손'], ['armor', '방어구'], ['acc1', '장신구 1'], ['acc2', '장신구 2']]
       .map(([k, n]) => `<div class="slot ${gear[k] ? 'filled' : ''} ${k === 'off' && twoHand && gear.off ? 'resting' : ''}"><div class="sl-name">${n}</div>${gear[k] && ITEMS[gear[k]] ? `<div class="sl-e">${ITEMS[gear[k]].name}</div>${k === 'off' && twoHand ? '<div class="muted">양손 무기라 쉬는 중</div>' : ''}${k !== 'weapon' ? `<button class="sm ghost" data-act="unequipG" data-slot="${k}">빼기</button>` : ''}` : `<div class="muted">${k === 'off' && twoHand ? '양손 무기를 들었다' : '비어 있음'}</div>`}</div>`).join('');
     const card = (id) => {
       const it = ITEMS[id], has = s.items.includes(id);
       const stats = Object.entries(it.stats).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k]).name} ${v > 0 ? '+' : ''}${v}`).join(', ');
-      const w = it.weapon ? `<div class="c-meta"><b>${weaponHands(it) >= 2 ? '양손' : '한손 · 왼손 도구를 함께 든다'}</b> · ${w2t(it.weapon)}</div>` : it.off ? `<div class="c-meta"><b>왼손</b> · ${esc(it.odesc || '')} · 한손 무기와 함께 들 때만</div>` : '';
+      const w = it.weapon ? `<div class="c-meta"><b>${weaponHands(it) >= 2 ? `양손 · ${twoHandBonus(id, it).text.replace(/^[^:]+: /, '')}` : `한손 · 왼손에 도구나 ${FAMILY_NAME[weaponFamily(it)] || '무기'}를 함께 든다`}</b> · ${w2t(it.weapon)}</div>` : it.off ? `<div class="c-meta"><b>왼손</b> · ${esc(it.odesc || '')} · 한손 무기와 함께 들 때만</div>` : '';
       const req = it.req ? `<div class="c-meta warn">착용 조건: ${Object.entries(it.req).map(([k, v]) => `${STAT_INFO[k].name} ${v}`).join(', ')}</div>` : '';
       const effs = (it.effects || []).map((x) => `<li>${x.when ? `<em>[${esc(condText(x.when))}]</em> ` : ''}${esc(x.text)}</li>`).join('');
       const equipped = Object.values(gear).includes(id);
@@ -319,18 +325,19 @@ export class Hub {
         ? `<button class="sm" data-act="buy" data-id="${id}" ${s.gold >= it.price ? '' : 'disabled'}>구매 ${it.price}</button>`
         : it.slot === 'acc'
           ? `<button class="sm" data-act="equipG" data-id="${id}" data-slot="acc1" ${equipped ? 'disabled' : ''}>장신구1</button><button class="sm" data-act="equipG" data-id="${id}" data-slot="acc2" ${equipped ? 'disabled' : ''}>장신구2</button>`
-          : `<button class="sm" data-act="equipG" data-id="${id}" data-slot="${it.slot}" ${equipped ? 'disabled' : ''}>${equipped ? '장착 중' : '장착'}</button>`;
+          : `<button class="sm" data-act="equipG" data-id="${id}" data-slot="${it.slot}" ${gear[it.slot] === id ? 'disabled' : ''}>${gear[it.slot] === id ? '장착 중' : it.slot === 'weapon' ? '오른손' : '장착'}</button>${it.slot === 'weapon' && weaponHands(it) < 2 ? `<button class="sm" data-act="equipG" data-id="${id}" data-slot="off" ${gear.off === id || gear.weapon === id || twoHand ? 'disabled' : ''} title="${twoHand ? '양손 무기를 들고 있다' : '왼손에 든 무기는 능력치 절반 · 같은 계열 둘이면 보너스'}">${gear.off === id ? '왼손 중' : '왼손'}</button>` : ''}`;
       const prev = equipped ? '' : this.preview(s, (lo) => { lo.gear = { ...lo.gear, [it.slot === 'acc' ? (gear.acc1 ? 'acc2' : 'acc1') : it.slot]: id }; });
       return `<div class="card ${has ? 'owned' : ''}"><div class="c-head"><b>${it.name}</b>${it.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
         ${it.cls ? `<div class="c-meta" style="color:${it.cls === s.cls ? '#ffd27a' : '#9a90b0'}">${CLASSES[it.cls].name} 전용${it.bdesc ? ' · ' + it.bdesc : ''}${it.cls !== s.cls && it.bdesc ? ' (클래스가 다르면 효과 없음)' : ''}</div>` : ''}${w}${req}<div class="c-stats">${stats || '&nbsp;'}</div><ul class="c-eff">${effs}</ul>${prev}<div class="c-act">${btn}</div></div>`;
     };
-    const bySlot = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl && (!ITEMS[id].cls || CLASSES[ITEMS[id].cls].race === s.race) && (!ITEMS[id].starter && id !== 'rustySword' || s.items.includes(id)) && (!ITEMS[id].treasure && !ITEMS[id].forged || s.items.includes(id))).sort((a, b) => (ITEMS[b].cls === s.cls) - (ITEMS[a].cls === s.cls)).map(card).join('');
+    const bySlot = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl && (!ownedOnly || s.items.includes(id)) && (!ITEMS[id].cls || CLASSES[ITEMS[id].cls].race === s.race) && (!ITEMS[id].starter && id !== 'rustySword' || s.items.includes(id)) && (!ITEMS[id].treasure && !ITEMS[id].forged || s.items.includes(id))).sort((a, b) => (ITEMS[b].cls === s.cls) - (ITEMS[a].cls === s.cls)).map(card).join('');
     return `
-      <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots">${gearRow}</div></section>
-      <section class="panel"><h3>무기</h3><div class="cards">${bySlot('weapon')}</div>
-        <h3>왼손 도구 <small>한손 무기를 들면 왼손에 하나 든다 · 스킬은 두 손 중 더 맞는 쪽으로 나간다 · 양손 무기를 들면 쉰다</small></h3><div class="cards">${bySlot('off')}</div>
-        <h3>방어구</h3><div class="cards">${bySlot('armor')}</div>
-        <h3>장신구</h3><div class="cards">${bySlot('acc')}</div></section>`;
+      <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots">${gearRow}</div>
+        ${b.notes.filter((n) => /^양손|둘:|^쌍/.test(n.text)).map((n) => `<p class="up">✦ ${esc(n.text)}</p>`).join('') || '<p class="muted">양손 무기는 한손 무기 둘을 합친 만큼의 능력치를 준다 · 한손 무기 둘을 같은 계열로 들면 살짝 강해진다</p>'}</section>
+      <section class="panel">${ownedOnly ? '<p class="muted">가진 장비만 보인다. 새 장비는 대장간에서 사거나 만든다.</p>' : ''}<h3>무기</h3><div class="cards">${bySlot('weapon') || '<p class="muted">없음</p>'}</div>
+        <h3>왼손 도구 <small>한손 무기를 들면 왼손에 하나 든다 · 스킬은 두 손 중 더 맞는 쪽으로 나간다 · 양손 무기를 들면 쉰다</small></h3><div class="cards">${bySlot('off') || '<p class="muted">없음</p>'}</div>
+        <h3>방어구</h3><div class="cards">${bySlot('armor') || '<p class="muted">없음</p>'}</div>
+        <h3>장신구</h3><div class="cards">${bySlot('acc') || '<p class="muted">없음</p>'}</div></section>`;
   }
 
   // ───── 사냥터 ─────
@@ -506,7 +513,10 @@ export class Hub {
         if (s.gold >= it.price) { s.gold -= it.price; s.items.push(id); this.toast(`${it.name} 구매`); }
         break;
       }
-      case 'equipG': s.gear[slot] = id; break;
+      case 'equipG':
+        if (slot === 'off' && s.gear.weapon === id) break;
+        if (slot === 'weapon' && s.gear.off === id) delete s.gear.off; // 왼손에 있던 무기를 오른손으로
+        s.gear[slot] = id; break;
       case 'unequipG': delete s.gear[slot]; break;
       case 'filter': this.altarFilter = id; break;
       case 'codexSec': this.codexSec = id; break;

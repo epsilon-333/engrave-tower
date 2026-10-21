@@ -28,16 +28,19 @@ export function computeBuild(lo) {
     const id = lo.engravings?.[s];
     if (id && ENGRAVINGS[id]) sources.push({ kind: 'engraving', id, def: ENGRAVINGS[id] });
   }
-  const twoHand = weaponHands(ITEMS[lo.gear?.weapon]) >= 2; // 양손 무기면 왼손 도구는 쉰다
+  const twoHand = weaponHands(ITEMS[lo.gear?.weapon]) >= 2; // 양손 무기면 왼손은 쉰다
+  const offRaw = lo.gear?.off ? ITEMS[lo.gear.off] : null;
+  const offIsWeapon = !!(offRaw && offRaw.slot === 'weapon' && weaponHands(offRaw) < 2 && lo.gear.off !== lo.gear.weapon); // 왼손에 한손 무기
   for (const s of GEAR_SLOTS) {
     const id = lo.gear?.[s];
-    if (s === 'off' && (twoHand || ITEMS[id]?.slot !== 'off')) continue;
-    if (id && ITEMS[id]) sources.push({ kind: 'item', id, def: ITEMS[id] });
+    if (s === 'off' && (twoHand || !(ITEMS[id]?.slot === 'off' || offIsWeapon))) continue;
+    // 능력치 배율: 양손 무기는 한손 둘을 합친 만큼(×1.8), 왼손에 든 무기는 절반
+    if (id && ITEMS[id]) sources.push({ kind: 'item', id, def: ITEMS[id], mul: s === 'weapon' && twoHand ? 1.8 : s === 'off' && offIsWeapon ? 0.5 : 1 });
   }
 
   // 1) 고정 스탯
   for (const src of sources) {
-    for (const [k, v] of Object.entries(src.def.stats || {})) stats[k] = (stats[k] || 0) + v;
+    for (const [k, v] of Object.entries(src.def.stats || {})) stats[k] = (stats[k] || 0) + Math.round(v * (src.mul ?? 1));
   }
 
   // 2) 태그
@@ -57,7 +60,7 @@ export function computeBuild(lo) {
   }
   for (const src of sources) {
     if (!disabled.has(src.id)) continue;
-    for (const [k, v] of Object.entries(src.def.stats || {})) stats[k] -= v;
+    for (const [k, v] of Object.entries(src.def.stats || {})) stats[k] -= Math.round(v * (src.mul ?? 1));
     for (const t of src.def.tags || []) tags[t]--;
   }
   const active = sources.filter((s) => !disabled.has(s.id));
@@ -138,13 +141,13 @@ export function computeBuild(lo) {
     statusRes: E.spi / (E.spi + 90),
     cdr: E.spi / (E.spi + 160),
     loadCap: 10 + Math.floor(stats.spi * 0.5),
-    physDR: Math.max(0, stats.pres) / (Math.max(0, stats.pres) + 100),
-    magDR: Math.max(0, stats.mres) / (Math.max(0, stats.mres) + 100),
+    physDR: Math.max(0, stats.pres) / (Math.max(0, stats.pres) + 160), // 방어 1점의 값을 낮췄다 (예전 +100)
+    magDR: Math.max(0, stats.mres) / (Math.max(0, stats.mres) + 160),
     physPen: 0, magPen: 0, knockback: 30, regen: 0,
     dmgMul: 1, dmgTakenMul: 1, burnMul: 1, bleedMul: 1, chillMul: 1, reactionMul: 1, statusDmgMul: 1, reflectMul: 1,
     poisonCap: 10, freezeReduce: 0, cloudSize: 0, dashCd: 1.2, goldMul: 1, projMul: lo.race === 'elf' ? 1.3 : 1,
     maxMana: 50 + E.spi * 2, manaRegen: 3 + E.spi * 0.08, skillCdMul: 1, auraTime: 5, aimSlow: lo.race === 'elf' ? 0.82 : 0.65,
-    freezeTime: 1.6,
+    freezeTime: 1.6, castMul: 1,
   };
   // 종족 고유 수치
   if (lo.race === 'wizard') { d.maxMana *= 1.5; d.manaRegen *= 1.3; d.reactionMul *= 1.5; d.skillCdMul *= 0.75; }
@@ -198,9 +201,58 @@ export function computeBuild(lo) {
     for (const id of race) if (skills.length < 4 && !skills.includes(id)) skills.push(id);
   }
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
-  if (wpn.kind === 'melee') { d.dmgTakenMul *= 0.8; flags.add('stagger'); }
+  if (wpn.kind === 'melee') { d.dmgTakenMul *= 0.9; flags.add('stagger'); }
   else flags.add('aimSlow');
-  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat: weaponCat(ITEMS[weaponId]), hands: weaponHands(ITEMS[weaponId]), spirit: lo.spirit?.id ? lo.spirit : null, offId: active.find((s2) => s2.def.slot === 'off')?.id || null, offItem: active.find((s2) => s2.def.slot === 'off')?.def || null, cls, skills, available, abilities: lo.abilities || {} };
+  // 손 보정: 양손 무기는 종류마다 장점 하나, 한손 둘을 같은 계열로 들면 살짝 더 강해진다
+  const wcat = weaponCat(ITEMS[weaponId]), hands = weaponHands(ITEMS[weaponId]);
+  const offSrc = active.find((s2) => s2.mul === 0.5 && s2.def.slot === 'weapon');
+  if (hands >= 2) {
+    const h = twoHandBonus(weaponId, ITEMS[weaponId]);
+    if (h.atkSpeed) d.atkSpeed *= h.atkSpeed;
+    if (h.dmgMul) d.dmgMul *= h.dmgMul;
+    notes.push({ kind: 'on', text: h.text });
+  } else if (offSrc) {
+    const h = pairBonus(ITEMS[weaponId], offSrc.def);
+    if (h) { if (h.atkSpeed) d.atkSpeed *= h.atkSpeed; if (h.dmgMul) d.dmgMul *= h.dmgMul; if (h.castMul) d.castMul *= h.castMul; notes.push({ kind: 'on', text: h.text }); }
+  }
+  const offA = active.find((s2) => s2.def.slot === 'off' || s2 === offSrc);
+  const offItem = offA ? (offA === offSrc ? { ...offSrc.def, off: offWeaponPower(offSrc.def), odesc: '왼손에 든 무기' } : offA.def) : null;
+  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
+}
+
+// 무기 계열: 마법(마도서 · 완드 · 보주 · 인형) / 단검(민첩 칼) / 검 / 도끼 / 둔기 / 던지기 / 채찍
+export function weaponFamily(it) {
+  const c = weaponCat(it);
+  if (it?.weapon?.dmg === 'mag' || ['tome', 'staff', 'orb'].includes(c)) return 'magic';
+  if (c === 'blade') return it.weapon?.scale === 'agi' ? 'dagger' : 'sword';
+  return c;
+}
+export const FAMILY_NAME = { magic: '마법 무기', dagger: '단검', sword: '검', axe: '도끼', blunt: '둔기', throw: '던지는 무기', whip: '채찍' };
+// 양손 무기: 쌍검은 빠르게, 무거운 것은 세게, 활 · 지팡이는 조금 세게
+export function twoHandBonus(id, it) {
+  const c = weaponCat(it);
+  if (/dual|twin/i.test(id) || it.weapon?.dual) return { atkSpeed: 1.15, text: '양손 쌍검: 공격 속도 +15%' };
+  if (['bow', 'tube', 'staff'].includes(c)) return { dmgMul: 1.08, text: '양손 원거리 무기: 피해 +8%' };
+  if (c === 'fist') return { atkSpeed: 1.08, dmgMul: 1.05, text: '양손 주먹: 공격 속도 +8% · 피해 +5%' };
+  return { dmgMul: 1.12, text: '양손 무기: 피해 +12%' };
+}
+// 같은 계열 한손 무기 둘: 살짝만 강해진다
+export function pairBonus(main, off) {
+  const f = weaponFamily(main);
+  if (f !== weaponFamily(off)) return null;
+  if (f === 'magic') return { dmgMul: 1.06, castMul: 0.88, text: '마법 무기 둘: 피해 +6% · 시전 시간 -12%' };
+  if (f === 'dagger') return { atkSpeed: 1.12, text: '쌍단검: 공격 속도 +12%' };
+  if (f === 'sword') return { atkSpeed: 1.06, dmgMul: 1.04, text: '쌍검: 공격 속도 +6% · 피해 +4%' };
+  if (f === 'axe' || f === 'blunt') return { dmgMul: 1.08, text: `${FAMILY_NAME[f]} 둘: 피해 +8%` };
+  return { atkSpeed: 1.06, text: `${FAMILY_NAME[f] || '같은 무기'} 둘: 공격 속도 +6%` };
+}
+// 왼손 무기로 쓰는 스킬의 힘 (마검사 · 근접 마법사 같은 조합)
+export function offWeaponPower(it) {
+  const f = weaponFamily(it);
+  if (f === 'magic') return { spell: 0.85 };
+  if (f === 'throw') return { throw: 0.85 };
+  if (f === 'whip') return { slash: 0.7 };
+  return { slash: 0.8, smash: 0.8, thrust: 0.8, parry: 0.8, throw: f === 'dagger' || f === 'axe' ? 0.6 : 0 };
 }
 
 // 빌드 코드 (온라인 공유/고스트 대전용)

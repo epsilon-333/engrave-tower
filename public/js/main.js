@@ -20,8 +20,10 @@ import { registerCrafted } from './data/crafting.js';
 import { registerAllDishes, registerDish } from './data/cooking.js';
 import { LEARN, ABILITIES } from './data/learn.js';
 import { CROPS } from './data/goods.js';
-import { GOODS } from './data/goods.js';
-import { SANCTUMS, SANCTUM_MAX, TIER_COST, PERK_TIER, TREASURE_TIER, SHARDS_PER_RELIC, sanctumBonusText, SANCT_LIFE, sanctState, affLevel, AFF_LV, AFF_NAME, AFF_REWARD, trainCap, trainSpec, OWN_TRAIN_CAP, OWN_TRAIN_EASE, GIFT_AFF, GIFTS_PER_DAY, TRAIN_AFF, TRAINS_PER_DAY, sanctQuestDef, FIND_NAME } from './data/sanctums.js';
+import { GOODS, SELL_BONUS } from './data/goods.js';
+import { KNACKS, knackTick, hasKnack, newKnack } from './data/knacks.js';
+import { TOWER_TOP, towerZoneId, towerSize, isBossFloor, towerGrade, towerReward, GRADE_COLOR, betterGrade, towerStarts, parTime } from './data/tower.js';
+import { SANCTUMS, SANCTUM_MAX, TIER_COST, PERK_TIER, TREASURE_TIER, SHARDS_PER_RELIC, sanctumBonusText, SANCT_LIFE, sanctState, affLevel, AFF_LV, AFF_NAME, AFF_REWARD, trainCap, trainSpec, OWN_TRAIN_CAP, OWN_TRAIN_EASE, GIFT_AFF, GIFTS_PER_DAY, TRAIN_AFF, TRAINS_PER_DAY, sanctQuestDef, FIND_NAME, RACE_SHOP } from './data/sanctums.js';
 import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, cloud, isClaudePage, login, register, logout, errorText } from './cloud.js';
 import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
 import { RACES, RACE_MIGRATE } from './data/races.js';
@@ -30,7 +32,7 @@ import { ITEMS, STYLES } from './data/items.js';
 import { CLASSES, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc } from './data/skills.js';
 import { STAT_INFO } from './data/stats.js';
 import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
-import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText } from './data/spirits.js';
+import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText, STONE_PRICE_CALLER, CALLER_RATES, spiritLevel, SPIRIT_LV_XP } from './data/spirits.js';
 import { spiritIconURL } from './render/spirits.js';
 import { getAutoAim, setAutoAim } from './settings.js';
 import { ENGRAVINGS } from './data/engravings.js';
@@ -49,6 +51,95 @@ const renderer = new Renderer(canvas);
 const plazaMap = buildPlaza();
 const hub = new Hub(panelEl, () => save, (zone) => { closePanel(); if (zone === '__practice') enterPractice(); else enterZone(zone); }, resetGame, closePanel);
 hub.getWorld = () => world;
+// ───── 튜토리얼: 마을 광장에서 조작을 하나씩 따라 한다 (건너뛸 수 있다) ─────
+const tutFlags = { interact: false, panel: false };
+const TUT = [
+  { text: 'WASD로 걸어 보세요', done: (w, t) => Math.hypot(w.player.x - t.x0, w.player.y - t.y0) > 70 },
+  { text: 'Space로 굴러 보세요 — 구르는 동안은 공격을 피한다', done: (w, t) => w.player.dashCharges < t.dash0 },
+  { text: '좌클릭으로 허수아비를 세 번 때리세요 (마우스 쪽으로 휘두른다)', setup: (w, t) => { const e = w.makeEnemy('dummy', w.player.x + 46, w.player.y); e.home = { x: e.x, y: e.y }; e.tut = true; w.enemies.push(e); t.dummy = e; t.hp = e.hp; t.hits = 0; },
+    done: (w, t) => { if (!t.dummy) return true; if (t.dummy.hp < t.hp) { t.hits++; t.hp = t.dummy.hp; } return t.hits >= 3; } },
+  { text: 'Q · E로 스킬을 써 보세요 — 아래 칸에 남은 시간이 숫자로 보인다', done: (w) => Object.values(w.player.cds || {}).some((v) => v > 0.45) },
+  { text: '우클릭으로 무기 기술을 써 보세요', done: (w) => w.player.skillCd > 0 || !!w.player.charging },
+  { text: '무언가 앞에서 G — 표지판을 읽고, 사람에게 말을 걸고, 모닥불에서 쉰다', done: () => tutFlags.interact },
+  { text: 'I 장비 · B 가방 · J 퀘스트 · C 캐릭터 — 하나를 열어 보세요', done: () => tutFlags.panel },
+];
+let tutEl = null;
+function tutorialTick() {
+  const T = save?.tutorial;
+  if (!T || T.done || !world || world.zone?.id !== 'world' || world.state !== 'play' || paused) { if (tutEl) tutEl.hidden = true; return; }
+  const step = TUT[T.step];
+  if (!step) { finishTutorial(true); return; }
+  const rt = (tutorialTick.rt ||= {});
+  if (rt.step !== T.step || rt.world !== world) { rt.step = T.step; rt.world = world; rt.x0 = world.player.x; rt.y0 = world.player.y; rt.dash0 = world.player.dashCharges; tutFlags.interact = false; tutFlags.panel = false; step.setup?.(world, rt); }
+  if (!tutEl) {
+    tutEl = document.createElement('div'); tutEl.id = 'tut'; document.body.appendChild(tutEl);
+    tutEl.addEventListener('click', (e) => { if (e.target.dataset.tutskip != null) finishTutorial(false); });
+  }
+  tutEl.hidden = false;
+  tutEl.innerHTML = `<small>튜토리얼 ${T.step + 1} / ${TUT.length}</small><b>${step.text}</b><button data-tutskip>건너뛰기</button>`;
+  if (step.done(world, rt)) { T.step++; sfx('open', { vol: 0.5, rate: 1.4 }); writeSave(save); }
+}
+function finishTutorial(done) {
+  save.tutorial = { done: true };
+  const d = tutorialTick.rt?.dummy; if (d) { d.dead = true; world.enemies = world.enemies.filter((e) => e !== d); }
+  tutorialTick.rt = null;
+  if (tutEl) tutEl.hidden = true;
+  if (done) renderer.banner = { text: '튜토리얼 끝!', sub: '북쪽 각인의 탑 · 섬 곳곳의 종족 성지 · 마을 의뢰 게시판에서 모험을 시작하세요', t: 4.5, color: '#ffe8a8' };
+  writeSave(save);
+}
+
+// ───── 각인의 탑 50층 ─────
+const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+function showTower() {
+  const T = (save.tower ||= { best: {}, max: 0 }), starts = towerStarts(T.max);
+  const floors = Array.from({ length: Math.min(TOWER_TOP, T.max + 1) }, (_, i) => i + 1).map((f) => `<span class="tw-f ${isBossFloor(f) ? 'boss' : ''}" style="--c:${GRADE_COLOR[T.best[f]] || '#5a5068'}">${f}<b>${T.best[f] || '·'}</b></span>`).join('');
+  showModal(`<h2>각인의 탑</h2>
+    <p class="muted">층마다 짧은 던전이다. 계단에 닿으면 클리어 — 걸린 시간과 받은 피해로 등급(S · A · B · C)과 보상을 받는다. 5층마다 층 수호자를 쓰러뜨려야 계단이 열린다. 오를수록 몬스터가 크게 강해진다. 쓰러지면 탑 밖으로 밀려난다.</p>
+    <p>최고 기록 <b>${T.max}층</b> / ${TOWER_TOP}층</p><div class="tw-floors">${floors}</div>
+    <div class="actions">${starts.map((f) => `<button data-tw="${f}">${f}층부터 오르기</button>`).join('')}<button data-close class="ghost">돌아간다</button></div>`);
+  overlay.querySelectorAll('[data-tw]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; enterTower(+b.dataset.tw); }));
+}
+function enterTower(f, carry = null) {
+  if (world?.zone?.id === 'world') { returnTo = 'tower'; save.zoneMemory.world = world.exportMemory(); }
+  const zid = towerZoneId(f), z = ZONES.find((x) => x.id === zid), seed = (Math.random() * 1e9) >>> 0;
+  world = new World({ build: buildNow(), mode: 'field', zoneId: zid, seed, map: generateField(z, seed, Math.floor(f / 6), towerSize(f)), tower: { f }, story: save.story, codex: save.codex, ...shared() });
+  world.codexStart = carry?.codexStart ?? codexPoints(save);
+  if (carry) { world.loot = carry.loot; world.discovered = carry.discovered; world.player.hp = Math.min(carry.hp, world.d.maxHp); world.player.mana = carry.mana; }
+  world.goalNeeds = [];
+  renderer.setWorld(world);
+  renderer.banner = { text: `각인의 탑 ${f}층`, sub: isBossFloor(f) ? '층 수호자가 계단을 지킨다' : `기준 시간 ${mmss(parTime(f))} · 계단을 찾아라`, t: 3, color: isBossFloor(f) ? '#ff9a7a' : '#e8d8a8' };
+  startMusic(zid); sfx('open'); startLoop();
+}
+function towerClear(s) {
+  const T = (save.tower ||= { best: {}, max: 0 }), f = s.f, grade = towerGrade(s), first = !T.best[f], rw = towerReward(f, grade, first);
+  T.best[f] = first ? grade : betterGrade(grade, T.best[f]); T.max = Math.max(T.max, f);
+  save.gold += rw.gold;
+  const extra = [];
+  if (rw.stones && bagAdd(lifeOf(), 'spiritStone', rw.stones)) extra.push(`정령석 ×${rw.stones}`);
+  if (rw.potion && bagAdd(lifeOf(), rw.potion, 1)) extra.push(GOODS[rw.potion].name);
+  writeSave(save); cloudSaveNow(save);
+  world.state = 'over';
+  sfx(grade === 'S' ? 'levelup' : 'open', { vol: 0.7 });
+  const top = f >= TOWER_TOP;
+  showModal(`<h2>${top ? '탑의 꼭대기에 닿았다' : `${f}층 클리어`}</h2>
+    <div class="tw-grade" style="--c:${GRADE_COLOR[grade]}">${grade}</div>
+    <p>걸린 시간 <b>${mmss(s.time)}</b> <span class="muted">(기준 ${mmss(parTime(f))})</span> · 받은 피해 <b>${Math.round((s.hurt / Math.max(1, s.maxHp)) * 100)}%</b> <span class="muted">(최대 체력 대비)</span></p>
+    <p class="lvup">◆ ${rw.gold} 골드${first ? ' (처음 깬 층 ×2)' : ''}${extra.length ? ' · ' + extra.join(' · ') : ''}</p>
+    <div class="actions">${top ? '' : `<button id="twNext">${f + 1}층으로 오른다</button>`}<button id="twOut" class="ghost">탑에서 나간다</button></div>`, () => {});
+  const carry = () => ({ loot: world.loot, discovered: world.discovered, hp: world.player.hp, mana: world.player.mana, codexStart: world.codexStart });
+  const nx = document.getElementById('twNext'); if (nx) nx.onclick = () => { overlay.hidden = true; paused = false; modal = null; enterTower(f + 1, carry()); };
+  document.getElementById('twOut').onclick = () => { overlay.hidden = true; paused = false; modal = null; world.state = 'play'; endRun('clear'); };
+}
+
+// 숙련: 깨달은 순간 (전투 · 생활은 세계가, 요리 · 팔기는 창에서 알린다)
+function onKnackLearned(id) {
+  const k = KNACKS[id]; if (!k) return;
+  if (k.kind === 'skill') learnSkill(k.skill, `문득 깨달았다 — ${k.hint}`);
+  else { renderer.banner = { text: `생활 기술 「${k.name}」을 깨달았다`, sub: `${k.desc} · 따로 누르지 않아도 저절로`, t: 4.5, color: '#c8e8a0' }; sfx('levelup', { vol: 0.6 }); }
+  SELL_BONUS.v = hasKnack(save.knack, 'haggler') ? 1.1 : 1;
+  writeSave(save);
+}
+hub.onKnack = (act, n = 1) => { for (const id of knackTick((save.knack ||= newKnack()), act, Math.random, n)) onKnackLearned(id); };
 hub.onCodex = () => { const ups = syncLevel(save); if (ups && world) { world.setBuild(buildNow()); renderer.levelUp(world, save.level, ups * 3); } };
 
 let world = null, paused = false, endTimer = 0, last = 0, acc = 0, modal = null;
@@ -101,6 +192,7 @@ function showStyleSelect(race) {
     save.cls = b.dataset.style; save.style = c.style;
     save.items = ['rustySword', c.weapons[0]];
     save.gear = { weapon: c.weapons[0] };
+    save.tutorial = { step: 0 }; // 처음 시작하는 사람은 튜토리얼부터
     refreshQuests(save); writeSave(save); titleEl.hidden = true; enterWorld(null, true);
   }));
   document.getElementById('backRace').onclick = () => showRaceSelect();
@@ -140,6 +232,24 @@ function showLogin(onDone) {
   $('lgId').focus();
 }
 
+// 퀘스트 창 (J): 의뢰 게시판 · 성지 의뢰를 한눈에
+function showQuestLog() {
+  tutFlags.panel = true;
+  const zoneName = (id) => ZONES.find((z) => z.id === id)?.name || '';
+  const bar = (v, n) => `<span class="qbar"><i style="width:${Math.min(100, Math.round((v / Math.max(1, n)) * 100))}%"></i></span><small>${Math.min(v, n)} / ${n}</small>`;
+  const board = (save.quests || []).map((q) => `<div class="qrow ${q.done ? 'done' : ''}"><b>${q.text}</b> <small class="muted">${zoneName(q.zone)}</small>
+    <div class="qmeta">${bar(q.progress || 0, q.n)}<small>${q.done ? '<em class="up">완료 · 마을 의뢰 게시판에서 보상 받기</em>' : `보상 ◆ ${q.reward.gold}`}</small></div></div>`).join('') || '<p class="muted">받은 의뢰가 없다. 바람결 마을 의뢰 게시판에서 받을 수 있다.</p>';
+  const sanct = Object.keys(SANCTUMS).map((race) => {
+    const st = save.story?.sanct?.[race], cur = st?.cur; if (!cur) return '';
+    const d = sanctQuestDef(race, cur.id); if (!d) return '';
+    const have = d.kind === 'bring' ? (save.bag?.[d.item] || 0) : d.kind === 'find' ? (cur.found?.length || 0) : (cur.progress || 0);
+    const what = d.kind === 'kill' ? `${d.n}마리 처치` : d.kind === 'bring' ? `${GOODS[d.item]?.name} ${d.n}개 가져가기` : `${FIND_NAME[d.look]} ${d.n}개 찾기 (작은 지도에 ◆)`;
+    return `<div class="qrow ${have >= d.n ? 'done' : ''}"><b style="color:${SANCTUMS[race].color}">${d.title}</b> <small class="muted">${SANCTUMS[race].name}</small>
+      <p class="muted">${d.text}</p><small>${what}</small><div class="qmeta">${bar(have, d.n)}${have >= d.n ? '<small><em class="up">다 했다 · 성지에 돌아가 알리기</em></small>' : ''}</div></div>`;
+  }).join('') || '<p class="muted">받은 성지 의뢰가 없다. 종족 성지의 주민에게 말을 걸어 보자.</p>';
+  showModal(`<h2>퀘스트</h2><div class="qlog"><h3>의뢰 게시판</h3>${board}<h3>성지 의뢰</h3>${sanct}</div><div class="actions"><button data-close>닫기 (J)</button></div>`);
+}
+
 // 소개 영상: 화면 전체를 덮고, 끝나거나 건너뛰면 then()
 function playIntro(then) {
   const wrap = document.createElement('div'), cv = document.createElement('canvas');
@@ -167,6 +277,8 @@ function migrateSave(sv) {
   registerAllDishes(sv.bag, sv.chest);
   if (RACE_MIGRATE[sv.race]) sv.race = RACE_MIGRATE[sv.race];
   if (!RACES[sv.race]) sv.race = 'knight';
+  sv.knack ||= newKnack(); // 숙련 (같은 행동을 세어 두었다가 우연히 깨닫는다)
+  SELL_BONUS.v = hasKnack(sv.knack, 'haggler') ? 1.1 : 1;
   if (sv.slots?.extra) delete sv.slots.extra;
   for (const [old, nw] of [['spiritBranch', 'spiritBow'], ['worldTreeStaff', 'worldTreeBow']]) { // 정령사는 이제 활을 쓴다
     if (sv.items?.includes(old)) sv.items = sv.items.map((id) => (id === old ? nw : id));
@@ -195,7 +307,7 @@ function migrateSave(sv) {
 
 const buildNow = () => computeBuild(toLoadout(save));
 // 생활 데이터: 저장의 같은 객체를 세계에 넘긴다 (캐고 · 베고 · 낚고 · 키운 것이 곧바로 저장에 남는다)
-const lifeOf = () => ({ bag: save.bag, tools: save.tools, nodes: save.nodes, chopped: save.chopped, farm: save.farm, fishLog: save.fishLog, artifacts: save.artifacts, farmOpts: save.farmOpts, chest: save.chest, get cap() { return save.bagCap || 30; }, get quickFood() { return save.quickFood; } });
+const lifeOf = () => ({ get knack() { return (save.knack ||= newKnack()); }, bag: save.bag, tools: save.tools, nodes: save.nodes, chopped: save.chopped, farm: save.farm, fishLog: save.fishLog, artifacts: save.artifacts, farmOpts: save.farmOpts, chest: save.chest, get cap() { return save.bagCap || 30; }, get quickFood() { return save.quickFood; } });
 // 세계마다 함께 넘기는 저장 객체: 생활 · 하루의 시간 · 오래가는 효과(음식 · 잠)
 const shared = () => ({ life: lifeOf(), clock: save.time, persist: save.effects });
 
@@ -299,7 +411,7 @@ function showWorldIntro() {
       <p>섬 곳곳에 <b>종족 성지</b>가 8곳 있어요. 그 땅에서 성물(조각 5개 = 성물 1개)을 모아 바치면 축복이 쌓여요. 어느 성지든 받을 수 있고, 내 종족의 성지는 1.5배예요. 한 곳에 집중할수록 강해집니다. <b>M</b>으로 지도를 볼 수 있어요.</p>
       <p><b>불</b> 스킬은 키 큰 풀을 태우고, <b>얼음</b> 스킬은 물을 얼려 길을 만듭니다. 호수 가운데 섬에는 어떻게 갈까요?</p>
       <p><b>마을의 집</b>에 들어가 각인사 · 대장장이 · 사서 · 교관 · 의뢰인 · 잡화점 주인을 만나요. 바위를 캐고, 나무를 베고, 반짝이는 흙을 파고, 물가에서 <b>낚시</b>하고, 마을 동쪽 <b>텃밭</b>에서 농사를 지을 수 있어요. 캔 것은 잡화점에서 팔고, 대장간에서 도구와 장비를 만들어요.</p>
-      <p class="keys">WASD 이동 · 좌클릭 공격 · Q·E·R·F 스킬 · Space 대시 · G 상호작용(누르고 있으면 계속 캐기) · I 가방 · X 씨앗 바꾸기 · C 캐릭터 · M 지도 · Esc 메뉴</p>
+      <p class="keys">WASD 이동 · 좌클릭 공격 · Q·E·R·F 스킬 · Space 대시 · G 상호작용(누르고 있으면 계속 캐기) · I 장비 · B 가방 · J 퀘스트 · X 씨앗 바꾸기 · C 캐릭터 · M 지도 · Esc 메뉴</p>
     </div>
     <button data-close>모험 시작</button>`);
   save.lifeIntro = 1;
@@ -315,7 +427,7 @@ function showLifeIntro() {
       <p><b>농사</b>: 마을 동쪽 텃밭에서 괭이로 갈고 → 씨앗 심고 → 물 주기. 단계마다 물을 주면 자라요. X로 심을 씨앗을 바꿔요.</p>
       <p><b>거래 · 제작</b>: 잡화점에서 씨앗 · 미끼를 사고 캔 것을 팔아요 (시세가 1시간마다 바뀌어요). 대장간에서 도구를 바꾸고, 장비를 만들고, 무기를 강화해요.</p>
       <p><b>성지</b>는 이제 어느 종족이든 축복을 받을 수 있고(내 종족은 1.5배), 5단계까지 올라요. 단계가 높을수록 성물이 많이 들지만 훨씬 강해져요. <b>낡은 제단</b>의 축복에는 더 이상 대가가 없어요.</p>
-      <p class="keys">I 가방 · X 씨앗 바꾸기 · 새 물고기와 땅속 유물도 도감에 남아요</p>
+      <p class="keys">I 장비 · B 가방 · J 퀘스트 · X 씨앗 바꾸기 · 새 물고기와 땅속 유물도 도감에 남아요</p>
     </div>
     <button data-close>좋아요</button>`);
 }
@@ -360,7 +472,7 @@ function showSanctum(race, tab = 'bless') {
   const lv = affLevel(st.aff), q = st.cur, def = q && sanctQuestDef(race, q.id);
   const dot = (k) => (k === 'quest' && (q?.done || (!q && st.step < L.quests.length)) ? ' <b class="dot">!</b>' : '');
   // 다른 종족의 성지에서는 그 종족의 기술을 배울 수 있다 · 마탑에서는 주문서를 판다
-  const tabs = [...SANCT_TABS, ...(save.race !== race ? [['learn', '기술 배우기']] : []), ...(race === 'wizard' ? [['scroll', '주문서']] : []), ...(race === 'elf' ? [['spirit', '정령 계약']] : [])];
+  const tabs = [...SANCT_TABS, ...(save.race !== race ? [['learn', '기술 배우기']] : []), ...(race === 'wizard' ? [['scroll', '주문서']] : []), ...(race === 'elf' ? [['spirit', '정령 계약']] : []), ['shop', '종족 상점']];
   let html = `<h2>${S.name}</h2><p class="muted">${tab === 'bless' ? S.keeper : L.leader.name} · 친밀도 <b style="color:${S.color}">${AFF_NAME[lv]}</b>${save.race === race ? ` · <b style="color:${S.color}">내 종족의 성지</b>` : ''}</p>
     <div class="tabs sanct-tabs">${tabs.map(([k, n]) => `<button class="${k === tab ? 'on' : ''}" data-st="${k}">${n}${dot(k)}</button>`).join('')}</div>`;
   if (tab === 'bless') html += blessHtml(race);
@@ -370,6 +482,7 @@ function showSanctum(race, tab = 'bless') {
   else if (tab === 'learn') html += sanctLearnHtml(race, lv);
   else if (tab === 'scroll') html += scrollShopHtml();
   else if (tab === 'spirit') html += spiritHtml();
+  else if (tab === 'shop') html += raceShopHtml(race, lv);
   else html += trainHtml(race, st, lv);
   html += '<button data-close class="ghost">떠난다</button>';
   showModal(html);
@@ -392,8 +505,43 @@ function showSanctum(race, tab = 'bless') {
   overlay.querySelectorAll('[data-stone]').forEach((b) => (b.onclick = () => { buyStones(+b.dataset.stone); showSanctum(race, 'spirit'); }));
   overlay.querySelectorAll('[data-pull]').forEach((b) => (b.onclick = () => { pullSpirits(+b.dataset.pull); showSanctum(race, 'spirit'); }));
   overlay.querySelectorAll('[data-spmain]').forEach((b) => (b.onclick = () => { save.spirits.main = b.dataset.spmain; writeSave(save); world.setBuild(buildNow()); showSanctum(race, 'spirit'); }));
+  // 종족 상점
+  overlay.querySelectorAll('[data-rgood]').forEach((b) => (b.onclick = () => { buyRaceGood(race, b.dataset.rgood, +b.dataset.n || 1); showSanctum(race, 'shop'); }));
+  overlay.querySelectorAll('[data-ritem]').forEach((b) => (b.onclick = () => { buyRaceItem(race, b.dataset.ritem, lv); showSanctum(race, 'shop'); }));
   // 수련
   on('trainGo', () => { overlay.hidden = true; paused = false; modal = null; if (!world.startTraining?.(race)) renderer.banner = { text: '지금은 수련할 수 없다', t: 1.6, color: '#c8b8a0' }; });
+}
+// 종족 상점: 그 종족의 물건 + 그 종족 클래스의 무기 (다른 종족은 「친구」부터, 30% 비싸게)
+const raceWeapons = (race) => Object.keys(ITEMS).filter((id) => ITEMS[id].cls && CLASSES[ITEMS[id].cls]?.race === race && ITEMS[id].price > 0);
+const raceItemPrice = (race, id) => Math.round(ITEMS[id].price * (save.race === race ? 1 : 1.3));
+function raceShopHtml(race, lv) {
+  const S = SANCTUMS[race], own = save.race === race, canW = own || lv >= 2;
+  const goods = (RACE_SHOP[race] || []).filter((id) => GOODS[id]).map((id) => {
+    const g = GOODS[id], p = buyPrice(id), have = save.bag?.[id] || 0;
+    return `<div class="skc"><div class="c-head"><b>${g.name}</b><span class="role">${have}개 있음</span></div><div class="c-sum">${esc(g.desc || '')}</div>
+      <div class="c-act"><button class="sm" data-rgood="${id}" data-n="1" ${save.gold >= p ? '' : 'disabled'}>1개 ◆ ${p}</button><button class="sm" data-rgood="${id}" data-n="5" ${save.gold >= p * 5 ? '' : 'disabled'}>5개 ◆ ${p * 5}</button></div></div>`;
+  }).join('');
+  const weapons = raceWeapons(race).map((id) => {
+    const it = ITEMS[id], p = raceItemPrice(race, id), has = save.items.includes(id);
+    return `<div class="skc"><div class="c-head"><b>${it.name}</b><span class="role">${CLASSES[it.cls].name}</span></div><div class="c-sum">${esc(it.bdesc || '')}${it.cls !== save.cls ? ' <span class="muted">(그 클래스가 아니면 무기의 특별한 힘은 없다)</span>' : ''}</div>
+      <div class="c-act">${has ? '<span class="muted">가지고 있다 · 장비 창(I)에서 바꾼다</span>' : `<button class="sm" data-ritem="${id}" ${canW && save.gold >= p ? '' : 'disabled'}>◆ ${p}</button>`}</div></div>`;
+  }).join('');
+  return `<div class="talk"><p>「${S.name}의 물건이오. 이 땅에서만 구할 수 있지.」</p>${own ? '' : `<p class="muted">무기는 친밀도 「${AFF_NAME[2]}」부터 살 수 있고, 다른 종족에게는 30% 비싸다.</p>`}</div>
+    <h4>이 땅의 물건</h4><div class="skill-row">${goods}</div>
+    <h4>${S.name}의 무기</h4><div class="skill-row">${weapons || '<p class="muted">없음</p>'}</div>`;
+}
+function buyRaceGood(race, id, n) {
+  if (!(RACE_SHOP[race] || []).includes(id)) return;
+  const price = buyPrice(id) * n;
+  if (save.gold < price) return;
+  if (!bagAdd(lifeOf(), id, n)) { renderer.banner = { text: '가방이 가득 찼다', t: 1.6, color: '#ffb0a0' }; return; }
+  save.gold -= price; writeSave(save); sfx('coin', { vol: 0.6 });
+}
+function buyRaceItem(race, id, lv) {
+  const p = raceItemPrice(race, id);
+  if (!raceWeapons(race).includes(id) || save.items.includes(id) || save.gold < p || (save.race !== race && lv < 2)) return;
+  save.gold -= p; save.items.push(id); writeSave(save); sfx('coin', { vol: 0.6 });
+  renderer.banner = { text: `${ITEMS[id].name}을(를) 샀다`, sub: '장비 창(I)에서 바꿔 든다', t: 2.4, color: SANCTUMS[race].color };
 }
 // 다른 종족의 기술: 스킬 종류에 맞는 능력치(마법 = 마력 · 활 · 던지기 = 민첩 · 나머지 = 근력) + 이 성지의 친밀도 「친구」 + 골드
 function sanctLearnHtml(race, lv) {
@@ -431,7 +579,7 @@ function scrollShopHtml() {
       <div class="c-act"><button class="sm" data-scroll="${id}" data-n="1" ${save.gold >= price ? '' : 'disabled'}>1장 ◆ ${price}</button><button class="sm" data-scroll="${id}" data-n="5" ${save.gold >= price * 5 ? '' : 'disabled'}>5장 ◆ ${price * 5}</button></div></div>`;
   }).join('');
   return `<div class="talk"><p>「마법사가 아니어도 좋네. 종이에 담긴 별빛은 읽는 자를 가리지 않으니.」</p>
-    <p class="muted">주문서는 한 번 읽으면 사라진다. 가방(I)에서 「읽기」를 누른다.</p></div><div class="skill-row">${cards}</div>`;
+    <p class="muted">주문서는 한 번 읽으면 사라진다. 가방(B)에서 「읽기」를 누른다.</p></div><div class="skill-row">${cards}</div>`;
 }
 function buyScroll(id, n) {
   const price = buyPrice(id) * n;
@@ -447,7 +595,8 @@ function spiritCard(id, owned, main, badge = '') {
   return `<div class="spc ${o ? '' : 'off'} ${main === id ? 'main' : ''}" style="--c:${G.color}">
     <img src="${spiritIconURL(id)}" alt="">${badge ? `<i class="sp-badge">${badge}</i>` : ''}
     <b>${o ? esc(s.name) : '???'}</b><small style="color:${G.color}">${G.name} · ${SPIRIT_ELEMS[s.elem].name}${o ? ` · ${'★'.repeat(o.star)}${'☆'.repeat(SPIRIT_STAR_MAX - o.star)}` : ''}</small>
-    ${o ? `<small>${esc(spiritBuffText(id, o.star))}</small>${main === id ? '<em>함께하는 정령</em>' : `<button class="sm" data-spmain="${id}">함께하기</button>`}` : ''}</div>`;
+    ${o ? (() => { const lv = spiritLevel(o.xp), nx = SPIRIT_LV_XP[lv], pv = SPIRIT_LV_XP[lv - 1]; return `<small>Lv ${lv}${nx ? ` <span class="qbar"><i style="width:${Math.round(((o.xp || 0) - pv) / (nx - pv) * 100)}%"></i></span>` : ' (최고)'}</small>`; })() : ''}
+    ${o ? `<small>${esc(spiritBuffText(id, o.star, spiritLevel(o.xp)))}</small>${main === id ? '<em>함께하는 정령</em>' : `<button class="sm" data-spmain="${id}">함께하기</button>`}` : ''}</div>`;
 }
 function spiritHtml() {
   const sv = save.spirits || { owned: {}, main: null }, stones = save.bag?.spiritStone || 0, got = Object.keys(sv.owned || {}).length;
@@ -455,15 +604,16 @@ function spiritHtml() {
   const all = Object.keys(SPIRITS).sort((a, b) => SPIRITS[b].grade - SPIRITS[a].grade);
   return `<div class="talk"><p>「정령은 부른다고 오지 않아. 마음이 맞는 정령이 스스로 손을 내밀지.」</p>
     <p class="muted">정령석 하나를 바치면 정령 하나와 계약한다. 같은 정령과 또 계약하면 결속(★)이 올라 힘이 15%씩 세진다 (최대 ★${SPIRIT_STAR_MAX}). 싸울 때는 「정령 부르기」 스킬로 함께하는 정령을 꺼낸다 — 정령사가 아니어도 이 성지의 「기술 배우기」에서 배울 수 있다.</p>
-    <p class="muted">확률: ${SPIRIT_GRADES.map((G) => `<b style="color:${G.color}">${G.name} ${Math.round(G.rate * 100)}%</b>`).join(' · ')} · 10회 계약은 희귀 이상 하나 보장 · 정령석은 몬스터가 가끔 떨어뜨린다 (이끼 숲 · 원시림 · 이끼 동굴에서 더 자주, 우두머리는 꼭)</p></div>
+    <p class="muted">${save.cls === 'spiritcaller' ? '<b class="up">정령사: 정령석이 싸고 좋은 정령이 더 잘 온다 · 함께 싸우면 정령 레벨이 1.5배 빨리 오른다</b><br>' : ''}확률: ${SPIRIT_GRADES.map((G, i) => `<b style="color:${G.color}">${G.name} ${Math.round((save.cls === 'spiritcaller' ? CALLER_RATES[i] : G.rate) * 100)}%</b>`).join(' · ')} · 10회 계약은 희귀 이상 하나 보장 · 정령석은 몬스터가 가끔 떨어뜨린다 (이끼 숲 · 원시림 · 이끼 동굴에서 더 자주, 우두머리는 꼭)</p></div>
     <div class="sp-bar"><span>정령석 <b>${stones}</b>개 · ◆ ${save.gold}</span>
-      <button class="sm" data-stone="1" ${save.gold >= STONE_PRICE ? '' : 'disabled'}>정령석 1개 ◆ ${STONE_PRICE}</button><button class="sm" data-stone="10" ${save.gold >= STONE_PRICE * 10 ? '' : 'disabled'}>10개 ◆ ${STONE_PRICE * 10}</button>
+      <button class="sm" data-stone="1" ${save.gold >= stonePrice() ? '' : 'disabled'}>정령석 1개 ◆ ${stonePrice()}</button><button class="sm" data-stone="10" ${save.gold >= stonePrice() * 10 ? '' : 'disabled'}>10개 ◆ ${stonePrice() * 10}</button>
       <button data-pull="1" ${stones >= 1 ? '' : 'disabled'}>계약 1회</button><button data-pull="10" ${stones >= 10 ? '' : 'disabled'}>계약 10회</button></div>
     ${res}
     <h4>내 정령 <small>${got} / ${all.length}</small></h4><div class="sp-grid">${all.map((id) => spiritCard(id, sv.owned, sv.main)).join('')}</div>`;
 }
+const stonePrice = () => (save.cls === 'spiritcaller' ? STONE_PRICE_CALLER : STONE_PRICE); // 정령사는 정령석이 싸다
 function buyStones(n) {
-  const price = STONE_PRICE * n;
+  const price = stonePrice() * n;
   if (save.gold < price) return;
   if (!bagAdd(lifeOf(), 'spiritStone', n)) { renderer.banner = { text: '가방이 가득 찼다', t: 1.6, color: '#ffb0a0' }; return; }
   save.gold -= price; writeSave(save); sfx('coin', { vol: 0.6 });
@@ -474,7 +624,7 @@ function pullSpirits(n) {
   const res = [];
   for (let i = 0; i < n; i++) {
     const guarantee = n >= 10 && i === n - 1 && !res.some((r) => SPIRITS[r.id].grade >= 1);
-    const id = rollSpirit(Math.random, guarantee ? 1 : 0);
+    const id = rollSpirit(Math.random, guarantee ? 1 : 0, save.cls === 'spiritcaller' ? CALLER_RATES : null); // 정령사는 좋은 정령이 조금 더 잘 온다
     res.push({ id, r: addSpirit(save, id) });
   }
   save.spirits.pulls = (save.spirits.pulls || 0) + n;
@@ -745,7 +895,7 @@ function doSleep() {
 // 빠른 칸 음식 (H)
 function eatQuick() {
   const id = save.quickFood;
-  if (!id || !(save.bag[id] > 0)) { renderer.banner = { text: '빠른 칸에 음식이 없다', sub: '가방(I)에서 요리 옆의 H를 눌러 빠른 칸에 둔다', t: 2, color: '#c8b8a0' }; return; }
+  if (!id || !(save.bag[id] > 0)) { renderer.banner = { text: '빠른 칸에 음식이 없다', sub: '가방(B)에서 요리 옆의 H를 눌러 빠른 칸에 둔다', t: 2, color: '#c8b8a0' }; return; }
   world.eat(id);
 }
 // 옛 기술 석판 · 물의 정령 · 자라: 기술 배우기
@@ -876,10 +1026,11 @@ function showTutorial() {
 
 // ───── 패널 (마을 시설) ─────
 // 그 시설(집)에서 열면 그 시설의 탭까지, 키로 열면 캐릭터 · 가방 · 도감만
-const ALWAYS_TABS = ['char', 'bag', 'codex'];
+const ALWAYS_TABS = ['char', 'gear', 'bag', 'codex'];
 const STATION_TABS = { altar: ['altar'], shop: ['shop', 'forge', 'craft'], forge: ['forge', 'shop', 'craft'], codex: ['codex', 'learn'], char: ['char', 'learn'], quest: ['quest'], trade: ['trade'], hunt: ['hunt'], cook: ['cook', 'storage'], storage: ['storage', 'cook'], craft: ['craft', 'storage'] };
 function openPanel(tab, fromStation = false) {
   touch?.reset();
+  tutFlags.panel = true;
   hub.station = fromStation ? tab : null;
   hub.allowed = fromStation ? [...new Set([...(STATION_TABS[tab] || [tab]), ...ALWAYS_TABS])] : ALWAYS_TABS;
   hub.tab = tab; hub.render();
@@ -918,7 +1069,7 @@ function endRun(kind) {
   }
   const res = applyRun(save, loot, 1, world.discovered);
   const memKey = world.zone.key ? memKeyOf(world.zone.key) : world.zone.id;
-  (save.zoneMemory ||= {})[memKey] = world.depth ? world.rootMemory || save.zoneMemory[memKey] : world.exportMemory();
+  if (!world.tower) (save.zoneMemory ||= {})[memKey] = world.depth ? world.rootMemory || save.zoneMemory[memKey] : world.exportMemory(); // 탑의 층은 기억하지 않는다
   save.codex.lore = [...new Set([...(save.codex.lore || []), ...world.loot.lores])];
   progressQuests(save, { zone: world.zone.id, kills: world.loot.kills, kept: res.kept, chests: world.loot.chests, explored: world.exploredPct() });
   refreshQuests(save);
@@ -982,11 +1133,12 @@ addEventListener('keydown', (e) => {
   unlockAudio();
   if (!world || gameEl.hidden) return;
   if (e.code === 'Escape') { e.preventDefault(); return escAction(); }
-  if (!panelEl.hidden && (e.code === 'KeyG' || e.code === 'KeyC' || e.code === 'KeyI' || e.code === 'KeyB')) return closePanel();
-  if (modal && (e.code === 'KeyG' || e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); return modal(); }
+  if (!panelEl.hidden && (e.code === 'KeyG' || e.code === 'KeyC' || e.code === 'KeyI' || e.code === 'KeyB' || e.code === 'KeyK')) return closePanel();
+  if (modal && (e.code === 'KeyG' || e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyJ')) { e.preventDefault(); return modal(); }
   if (paused) return;
   keys.add(e.code);
   if (e.code === 'Space') { input.dash = true; e.preventDefault(); }
+  if (e.code === 'KeyG' && (world.near || world.act)) tutFlags.interact = true;
   if (e.code === 'KeyG') input.interact = true;
   if (e.code === 'KeyQ' || e.code === 'Digit1') input.s1 = true;
   if (e.code === 'KeyE' || e.code === 'Digit2') input.s2 = true;
@@ -994,9 +1146,11 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyF' || e.code === 'Digit4') input.s4 = true;
   if (e.code === 'KeyT') { setAutoAim(!getAutoAim()); renderer.banner = { text: getAutoAim() ? '자동 조준 켜짐' : '자동 조준 꺼짐', t: 1.2, color: '#7ad8ff' }; if (world.practice) showPracticePanel(); }
   if (e.code === 'KeyC' && (world.mode === 'plaza' || world.state === 'play') && !world.practice) openPanel('char'); // 던전 안에서도 스킬 · 스탯을 바꿀 수 있다 (재사용 대기는 스킬마다 그대로)
-  if ((e.code === 'KeyI' || e.code === 'KeyB') && world.state === 'play') openPanel('bag');
+  if (e.code === 'KeyB' && world.state === 'play') openPanel('bag');
+  if ((e.code === 'KeyI' || e.code === 'KeyK') && world.state === 'play') openPanel('gear'); // 장비: 대장간에 가지 않아도 바로 바꾼다
   if (e.code === 'KeyX' && world.life && world.farmRect) { const sd = cycleSeed(world); renderer.banner = { text: sd ? `${GOODS[sd].name} (${save.bag[sd]}개)` : '씨앗이 없다', sub: sd ? '이 씨앗을 심는다 · X로 바꾸기' : '잡화점에서 씨앗을 산다', t: 1.6, color: '#c8e8a0' }; }
   if (e.code === 'KeyM' && world.map?.outdoor) renderer.bigMap = !renderer.bigMap;
+  if (e.code === 'KeyJ' && world.state === 'play' && !world.practice) showQuestLog();
   if (e.code === 'KeyH' && world.state === 'play') eatQuick();
   if (e.code === 'KeyZ' && world.state === 'play') world.quickPotion(); // 물약 빨리 마시기
 });
@@ -1110,6 +1264,8 @@ function handleSignals() {
   // 먼저 비워 둔다: 창을 띄우고 중간에 돌아가도 같은 신호가 다시 처리되지 않게
   for (const s of world.signals.splice(0)) {
     if (s.t === 'openPanel') openPanel(s.panel, true);
+    if (s.t === 'tower') { showTower(); return; }
+    if (s.t === 'towerClear') { towerClear(s); return; }
     else if (s.t === 'dive') { enterSeabed(s.x, s.y); return; }
     else if (s.t === 'surface') { exitSeabed(s.x, s.y, s.forced); return; }
     else if (s.t === 'enterHouse') { enterHouse(s.house, { x: s.x, y: s.y }); return; }
@@ -1133,6 +1289,13 @@ function handleSignals() {
     else if (s.t === 'rebuild') { world.setBuild(buildNow()); writeSave(save); }
     else if (s.t === 'scroll') { useScroll(s.kind, s.id); world.signals.length = 0; return; } // 귀환 · 이동 주문서
     else if (s.t === 'sleep') { showSleep(); return; }
+    else if (s.t === 'knack') { onKnackLearned(s.id); }
+    else if (s.t === 'spiritXp') { // 함께 싸운 시간만큼 정령이 자란다
+      const o = save.spirits?.owned?.[s.id];
+      const lv0 = spiritLevel(o?.xp); if (o) o.xp = (o.xp || 0) + s.v;
+      const lv1 = spiritLevel(o?.xp);
+      if (o && lv1 > lv0) { world.setBuild(buildNow()); renderer.banner = { text: `${SPIRITS[s.id].name} Lv ${lv1}`, sub: '함께 싸운 정령이 자랐다 · 힘 +6%', t: 3, color: SPIRIT_GRADES[SPIRITS[s.id].grade].color }; sfx('levelup', { vol: 0.5, rate: 1.3 }); writeSave(save); }
+    }
     else if (s.t === 'skillStone') {
       const sk = SKILLS[s.skill];
       if (!learnSkill(s.skill, '옛 기술 석판을 읽었다')) showModal(`<h2>옛 기술 석판</h2><p class="lore">돌에 새겨진 기술: <b>${sk.name}</b></p><p>${esc(sk.desc)}</p><p class="muted">이미 배운 기술이다.</p><button data-close>닫기</button>`);
@@ -1246,6 +1409,7 @@ function tick(ts) {
       if (practice.refill && set?.list.length && world.enemies.every((e) => e.dead)) { frame.refillT = (frame.refillT || 0) + 0.4; if (frame.refillT >= 2) { frame.refillT = 0; spawnArena(practice.arena); } }
       else frame.refillT = 0;
     }
+    tutorialTick();
     if (world.state === 'dead' || world.state === 'done') {
       endTimer += dt;
       if (endTimer > (world.state === 'dead' ? 1.4 : 0.3)) endRun(world.state === 'dead' ? 'dead' : 'clear');

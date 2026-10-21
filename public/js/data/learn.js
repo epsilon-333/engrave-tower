@@ -6,16 +6,16 @@ export const LEARN = {
   sweep: { where: 'dojo', gold: 300, lv: 4 }, dashSlash: { where: 'dojo', gold: 300, lv: 4 }, swordWave: { where: 'dojo', gold: 500, lv: 8 }, crushBlow: { where: 'dojo', gold: 600, lv: 10 },
   chargeSmash: { where: 'dojo', gold: 300, lv: 3 }, crushingBlows: { where: 'dojo', gold: 500, lv: 7 }, groundSmash: { where: 'dojo', gold: 500, lv: 8 },
   rapidThrow: { where: 'dojo', gold: 400, lv: 5 }, greatAxe: { where: 'dojo', gold: 600, lv: 9 },
-  ambush: { where: 'dojo', gold: 400, lv: 5 }, weakMark: { where: 'dojo', gold: 300, lv: 3 }, stealth: { where: 'dojo', gold: 600, lv: 9 }, smokeBomb: { where: 'dojo', gold: 400, lv: 6 }, snare: { where: 'dojo', gold: 300, lv: 3 },
-  dartFan: { where: 'dojo', gold: 500, lv: 7 }, pierceArrow: { where: 'dojo', gold: 400, lv: 4 }, pushArrow: { where: 'dojo', gold: 300, lv: 3 }, aimedShot: { where: 'dojo', gold: 500, lv: 7 },
-  riposte: { where: 'dojo', gold: 400, lv: 5 }, shieldCharge: { where: 'dojo', gold: 300, lv: 3 }, provoke: { where: 'dojo', gold: 300, lv: 3 }, shieldBash: { where: 'dojo', gold: 500, lv: 7 }, ironWall: { where: 'dojo', gold: 500, lv: 8 },
+  ambush: { where: 'dojo', gold: 400, lv: 5 }, weakMark: { where: 'dojo', gold: 300, lv: 3 }, stealth: { where: 'dojo', gold: 600, lv: 9 }, smokeBomb: { where: 'dojo', gold: 400, lv: 6 },
+  dartFan: { where: 'dojo', gold: 500, lv: 7 }, pierceArrow: { where: 'dojo', gold: 400, lv: 4 }, aimedShot: { where: 'dojo', gold: 500, lv: 7 },
+  riposte: { where: 'dojo', gold: 400, lv: 5 }, shieldCharge: { where: 'dojo', gold: 300, lv: 3 }, provoke: { where: 'dojo', gold: 300, lv: 3 }, ironWall: { where: 'dojo', gold: 500, lv: 8 },
   warCry: { where: 'dojo', gold: 300, lv: 3 }, braceForIt: { where: 'dojo', gold: 400, lv: 5 }, steadfast: { where: 'dojo', gold: 400, lv: 5 }, berserkSkill: { where: 'dojo', gold: 700, lv: 11 },
   // ── 서고: 마법 ──
-  flameBurst: { where: 'library', gold: 400, lv: 3 }, frostChain: { where: 'library', gold: 500, lv: 5 }, lightningChain: { where: 'library', gold: 600, lv: 7 }, elemMark: { where: 'library', gold: 300, lv: 3 },
-  arcaneBarrage: { where: 'library', gold: 500, lv: 5 }, blinkBlast: { where: 'library', gold: 600, lv: 7 }, slowField: { where: 'library', gold: 600, lv: 8 }, rewind: { where: 'library', gold: 800, lv: 10 }, gravityCollapse: { where: 'library', gold: 900, lv: 12 },
+  flameBurst: { where: 'library', gold: 400, lv: 3 }, lightningChain: { where: 'library', gold: 600, lv: 7 }, elemMark: { where: 'library', gold: 300, lv: 3 },
+  arcaneBarrage: { where: 'library', gold: 500, lv: 5 }, blinkBlast: { where: 'library', gold: 600, lv: 7 }, rewind: { where: 'library', gold: 800, lv: 10 }, gravityCollapse: { where: 'library', gold: 900, lv: 12 },
   curse: { where: 'library', gold: 300, lv: 3 }, painLink: { where: 'library', gold: 500, lv: 6 }, retribution: { where: 'library', gold: 500, lv: 6 }, deathFog: { where: 'library', gold: 600, lv: 8 },
   waterBreath: { where: 'library', gold: 700, lv: 6 },
-  // ── 옛 기술 석판 (그 지역 깊은 곳에서 읽으면 배운다) ──
+  // ── 옛 기술 석판: 없앴다. 이 기술들은 숙련(data/knacks.js)으로만 깨닫는다. 제어 기술(덫 · 서리 사슬 · 밀쳐내기 화살 · 시간 감속장 · 방패 강타)도 상점에서 빠졌다 ──
   enchantFire: { where: 'tablet', biome: 'volcano' }, enchantIce: { where: 'tablet', biome: 'snow' }, enchantLightning: { where: 'tablet', biome: 'mountains' }, enchantPoison: { where: 'tablet', biome: 'swamp' },
   windStep: { where: 'tablet', biome: 'meadow' }, shadowStep: { where: 'tablet', biome: 'ruins' }, vineSnare: { where: 'tablet', biome: 'forest' }, retreatShot: { where: 'tablet', biome: 'jungle' },
   harpoon: { where: 'tablet', biome: 'coast' }, leap: { where: 'tablet', biome: 'wasteland' },

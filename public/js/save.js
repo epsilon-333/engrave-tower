@@ -1,4 +1,5 @@
 // 저장 데이터 (지금은 브라우저 저장, 나중에 서버 계정으로 옮길 수 있게 순수 JSON)
+import { spiritLevel } from './data/spirits.js';
 import { POINTS_PER_LEVEL, RACES } from './data/races.js';
 import { codexPoints, levelFor } from './data/codex.js';
 import { newStory } from './data/story.js';
@@ -38,7 +39,7 @@ export function clearSave() {
 }
 
 export function toLoadout(s) {
-  return { race: s.race, level: s.level, alloc: s.alloc, engravings: s.slots, gear: s.gear, skills: s.skills, cls: s.cls, sanctum: s.sanctum, reinforce: s.reinforce, learned: s.learned, abilities: s.abilities, spirit: s.spirits?.main ? { id: s.spirits.main, star: s.spirits.owned?.[s.spirits.main]?.star || 1 } : null, train: Object.fromEntries(Object.entries(s.story?.sanct || {}).map(([r, v]) => [r, v.train || 0])) };
+  return { race: s.race, level: s.level, alloc: s.alloc, engravings: s.slots, gear: s.gear, skills: s.skills, cls: s.cls, sanctum: s.sanctum, reinforce: s.reinforce, learned: s.learned, abilities: s.abilities, spirit: s.spirits?.main ? { id: s.spirits.main, star: s.spirits.owned?.[s.spirits.main]?.star || 1, lv: spiritLevel(s.spirits.owned?.[s.spirits.main]?.xp) } : null, train: Object.fromEntries(Object.entries(s.story?.sanct || {}).map(([r, v]) => [r, v.train || 0])) };
 }
 
 // 사냥 결과 반영. keep = 잔향 보존 비율
@@ -87,7 +88,7 @@ export function refreshQuests(s, seedBump = 0) {
     if (s.quests.some((o) => o.kind === q.kind && o.target === q.target && o.zone === q.zone)) continue;
     q.id = `${Date.now().toString(36)}${Math.floor(rnd() * 1e6)}`;
     q.progress = 0;
-    q.reward = { gold: 40 * f + Math.floor(rnd() * 10) * f };
+    q.reward = { gold: Math.round((40 * f + Math.floor(rnd() * 10) * f) * 0.65) };
     s.quests.push(q);
   }
 }

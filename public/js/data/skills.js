@@ -69,7 +69,7 @@ export const CLASSES = {
     skills: ['iceChunk', 'frostField', 'frostCharge', 'iceArmor', 'glacialSpikes', 'absoluteZero'] },
   dragoon: { race: 'dragon', name: '화룡 전사', desc: '날아올라 내리꽂고, 적을 낚아채 떨어뜨린다.', trait: '불타는 적에게 주는 피해 +15% (용족).', weapons: ['dragonSpear', 'wyrmFang'], style: 'fire',
     skills: ['breath', 'dragonClaw', 'soar', 'snatch', 'scales', 'dragonForm'] },
-  dragonSage: { race: 'dragon', name: '용언 술사', desc: '용의 말을 이어 문장을 만든다.', trait: '용언 스킬을 쓸 때마다 단어가 쌓이고, 3개가 차면 문장이 자동으로 발동한다. 같은 단어를 겹칠수록 제곱으로 강해진다.', weapons: ['dragonTome', 'elderHeartstone'], style: 'fire',
+  dragonSage: { race: 'dragon', name: '용언 술사', desc: '용의 말을 이어 문장을 만든다.', trait: '용언 스킬을 쓸 때마다 단어가 쌓이고, 3개가 차면 문장이 발동한다. 첫 단어가 문장의 몸통이라 순서가 바뀌면 다른 문장이 된다. 마력 언령(불 · 하늘)은 마력으로, 정신 언령(비늘 · 대지 · 날개)은 정신으로 힘이 정해진다. 같은 단어는 강세, 같은 계열은 합성, 다른 계열을 아무렇게나 이으면 말이 엇갈려 약해진다. 용의 혀로만 말할 수 있어 다른 종족은 배우지 못한다.', weapons: ['dragonTome', 'elderHeartstone'], style: 'fire',
     skills: ['wordFire', 'wordWing', 'wordSky', 'wordScale', 'wordEarth', 'wordSilence'] },
 };
 export const RACE_CLASSES = (race) => Object.keys(CLASSES).filter((k) => CLASSES[k].race === race);
@@ -329,15 +329,15 @@ export const SKILLS = {
 
   // ══════ 용족 · 용언 술사 (단어 → 문장) ══════
   wordFire: { name: '용언: 불', role: '공격', cd: 2, cost: 10, scale: 'mag', elem: 'fire', fx: 'bolt', mo: 'cast', word: 'fire',
-    desc: '화염구를 쏜다. 단어 「불」 — 문장에서 조준한 곳에 폭발(겹칠수록 제곱으로 커짐). 용기 10.', do: [{ op: 'proj', n: 1, speed: 270, range: 220, mul: 1.2, splash: 30, stacks: 1, kind: 'fireball' }] },
+    desc: '화염구를 쏜다. 마력 언령 「불」 — 문장의 몸통이면 조준한 곳이 폭발한다. 하늘 다음이면 「떨어지는 태양」. 용기 10.', do: [{ op: 'proj', n: 1, speed: 270, range: 220, mul: 1.2, splash: 30, stacks: 1, kind: 'fireball' }] },
   wordWing: { name: '용언: 날개', role: '이동', cd: 5, gain: 10, scale: 'mag', fx: 'blink', aim: 'away', mo: 'cast', word: 'wing',
-    desc: '짧게 순간이동한다. 단어 「날개」 — 문장에서 사방으로 바람 칼날. 용기 +10.', do: [{ op: 'teleport', dist: 90 }] },
+    desc: '짧게 순간이동한다. 정신 언령 「날개」 — 몸통이면 사방으로 바람 칼날. 날개 → 하늘은 「하늘 걸음」. 용기 +10.', do: [{ op: 'teleport', dist: 90 }] },
   wordSky: { name: '용언: 하늘', role: '공격', cd: 4, cost: 16, scale: 'mag', elem: 'fire', fx: 'meteor', aim: 'cluster', mo: 'castBig', word: 'sky',
-    desc: '작은 운석을 떨어뜨린다. 단어 「하늘」 — 문장에서 운석이 여러 개 떨어진다. 용기 16.', do: [{ op: 'aoe', at: 'aim', r: 40, mul: 1.5, stacks: 1, delay: 0.5, fall: 'meteor', fx: 'meteor' }] },
+    desc: '작은 운석을 떨어뜨린다. 마력 언령 「하늘」 — 몸통이면 운석이 여러 개 떨어진다. 불 다음이면 「불비」. 용기 16.', do: [{ op: 'aoe', at: 'aim', r: 40, mul: 1.5, stacks: 1, delay: 0.5, fall: 'meteor', fx: 'meteor' }] },
   wordScale: { name: '용언: 비늘', role: '방어', cd: 6, cost: 14, scale: 'mag', fx: 'bubble', aim: 'none', mo: 'guard', word: 'scale',
-    desc: '보호막(최대 체력 8%)을 얻는다. 단어 「비늘」 — 문장에서 큰 보호막, 3개면 2초 무적. 용기 14.', do: [{ op: 'shield', v: 0.08 }] },
+    desc: '보호막(최대 체력 8%)을 얻는다. 정신 언령 「비늘」 — 몸통이면 큰 보호막, 강하게 말하면 잠깐 무적. 대지 다음이면 「바위 갑옷」. 용기 14.', do: [{ op: 'shield', v: 0.08 }] },
   wordEarth: { name: '용언: 대지', role: '제어', cd: 7, cost: 20, scale: 'mag', fx: 'quake', mo: 'stomp', word: 'earth',
-    desc: '주변 적을 0.8초 기절시킨다. 단어 「대지」 — 문장에서 넓은 지진과 긴 기절. 용기 20.', do: [{ op: 'aoe', at: 'self', r: 60, mul: 0.8, stun: 0.8 }] },
+    desc: '주변 적을 0.8초 기절시킨다. 정신 언령 「대지」 — 몸통이면 넓은 지진과 기절. 대지 → 불은 「용암 땅」. 용기 20.', do: [{ op: 'aoe', at: 'self', r: 60, mul: 0.8, stun: 0.8 }] },
   wordSilence: { name: '용언: 침묵', role: '궁극', cd: 34, costAll: { min: 60 }, cast: 0.6, scale: 'mag', fx: 'roar', ult: true, aim: 'none', mo: 'castBig',
     desc: '용의 말로 침묵을 명한다. 주변의 모든 적이 4초 동안 공격하지 못한다. 용기가 많을수록 오래(최대 8초).', do: [{ op: 'silence', r: 150, dur: 4 }] },
 
@@ -466,11 +466,58 @@ export function crossReq(def) {
 // 다른 종족의 스킬은 능력치가 '온전' 기준에 못 미치면 85% 힘
 export const crossMul = (def, b) => { if (!def?.race || def.race === b.race || def.scroll) return 1; const r = crossReq(def); return (b.stats?.[r.stat] || 0) >= r.full ? 1 : 0.85; };
 // 배울 수 없는 것: 그 클래스만 모으는 것(영혼 · 깃든 정령 · 부하)이 있어야 쓰는 스킬
-export const crossOk = (id) => { const s = SKILLS[id]; return !!s && !!s.cls && !s.needSpirit && !s.do.some((o) => ['raiseSouls', 'blastSummons'].includes(o.op)); };
+// 궁극기와 용언(용의 혀로만 말한다)은 그 종족만 쓴다
+export const crossOk = (id) => { const s = SKILLS[id]; return !!s && !!s.cls && !s.ult && !s.word && !s.needSpirit && !s.do.some((o) => ['raiseSouls', 'blastSummons'].includes(o.op)); };
 // 설명 끝의 '정령력 20.' 같은 원래 종족 자원 이야기를 뗀다 (다른 종족이 배우면 내 자원으로 쓰니까)
 const RES_TAIL = /\s*(마력|기력|분노|오러|본능|영혼|그림자|정령력|용기|암석 에너지)\s*[+]?\d+\+?\s*(전부|씩)?\.?\s*$/;
 export const plainDesc = (s) => (s?.desc || '').replace(RES_TAIL, '');
 export const fitText = (f) => (f <= 0 ? '쓸 수 없음' : f >= 0.99 ? '제대로 쓴다' : `피해 ${Math.round(f * 100)}%`);
+
+// 언령: 단어의 계열과 순서가 있는 조합 (앞 단어 > 뒤 단어). 조합이 없으면 계열 규칙(강세 · 합성 · 엇갈림)을 따른다
+export const WORD_FAMILY = { fire: 'mana', sky: 'mana', scale: 'mind', earth: 'mind', wing: 'mind' };
+export const WORD_COMBO = {
+  'sky>fire': { name: '떨어지는 태양', run(pw, c, ctx) {
+    const { x, y } = c, r = 70;
+    this.emit({ t: 'telegraphCircle', x, y, r, dur: 0.8 }); this.emit({ t: 'fall', x, y, r, dur: 0.8, kind: 'meteor' });
+    this.delayed.push({ t: 0.8, run: () => { this.emit({ t: 'skillAoe', x, y, r, elem: 'fire', fx: 'meteor', ult: true }); for (const e of this.enemiesNear(x, y, r)) this.skillHit(e, { mul: 3.6 * pw, stacks: 4 }, ctx); } });
+  } },
+  'fire>sky': { name: '불비', run(pw, c, ctx) {
+    for (let i = 0; i < 6; i++) {
+      const a = i * 1.05, d = 20 + (i % 3) * 22, x = c.x + Math.cos(a) * d, y = c.y + Math.sin(a) * d * 0.6;
+      this.delayed.push({ t: 0.15 + i * 0.12, run: () => { this.emit({ t: 'skillAoe', x, y, r: 30, elem: 'fire', fx: 'pillar' }); for (const e of this.enemiesNear(x, y, 30)) this.skillHit(e, { mul: 1.1 * pw, stacks: 1 }, ctx); } });
+    }
+  } },
+  'earth>fire': { name: '용암 땅', run(pw, c, ctx) {
+    this.wordEffect('earth', pw * 0.8, c, ctx);
+    const p = this.player;
+    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; this.zones.push({ kind: 'fire', x: p.x + Math.cos(a) * 30, y: p.y + Math.sin(a) * 18, r: 18, t: 4, max: 4, tick: 0, atk: ctx.atk * pw }); }
+  } },
+  'scale>fire': { name: '불꽃 비늘', run(pw, c, ctx) {
+    this.wordEffect('scale', pw, c, ctx);
+    this.player.buffs.scales = { t: 6, max: 6, mods: { dmgTakenMul: 0.8 }, color: '#ff8a4a', bubble: true }; // 나를 때린 적은 화상
+  } },
+  'wing>sky': { name: '하늘 걸음', run(pw, c, ctx) {
+    const p = this.player, dx = c.x - p.x, dy = c.y - p.y, l = Math.hypot(dx, dy) || 1, d = Math.min(120, l - 24);
+    if (d > 0 && !this.blocked(p.x + dx / l * d, p.y + dy / l * d, 5)) { p.x += dx / l * d; p.y += dy / l * d; p.invuln = Math.max(p.invuln, 0.4); this.emit({ t: 'land', x: p.x, y: p.y }); }
+    this.wordEffect('sky', pw, c, ctx);
+  } },
+  'earth>scale': { name: '바위 갑옷', run(pw, c, ctx) {
+    this.wordEffect('scale', pw * 1.5, c, ctx);
+    const p = this.player;
+    this.emit({ t: 'skillAoe', x: p.x, y: p.y, r: 60, fx: 'quake' });
+    for (const e of this.enemiesNear(p.x, p.y, 60)) this.stunE(e, 0.8);
+  } },
+  'scale>earth': { name: '굳건한 땅', run(pw, c, ctx) { this.wordEffect('earth', pw, c, ctx); this.player.invuln = Math.max(this.player.invuln, 1); } },
+  'fire>wing': { name: '불바람', run(pw, c, ctx) {
+    this.wordEffect('wing', pw, c, ctx);
+    for (const e of this.enemiesNear(this.player.x, this.player.y, 110)) this.applyStatus(e, 'burn', 2);
+  } },
+};
+
+// 대전(PvP) 보정: 사람끼리 싸울 때는 피해 · 회복 · 보호막 · CC를 줄여 한 번에 끝나지 않게
+export const PVP = { dmg: 0.6, heal: 0.5, shield: 0.6, cc: 0.6 };
+// CC 종류 (숫자로 분명하게): 기절 = 아무것도 못 함 · 빙결 = 못 움직이고 못 때림 · 속박 = 못 움직임 · 공포 = 도망 · 침묵 = 스킬 못 씀 · 둔화 = 느려짐
+export const CC_NAME = { stun: '기절', frozen: '빙결', root: '속박', fear: '공포', silence: '침묵', slow: '둔화' };
 
 // 각인 → 스킬
 export const ENGRAVING_SKILLS = {

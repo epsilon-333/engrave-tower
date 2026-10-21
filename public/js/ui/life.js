@@ -100,13 +100,13 @@ export function lifeClick(hub, act, t) {
     }
     case 'tsell': {
       const k = Math.min(n, s.bag[id] || 0), p = sellPrice(id);
-      if (k > 0) { s.bag[id] -= k; s.gold += p * k; hub.toast(`${GOODS[id].name} ${k}개를 팔았다 (+◆ ${p * k})`); }
+      if (k > 0) { s.bag[id] -= k; s.gold += p * k; hub.toast(`${GOODS[id].name} ${k}개를 팔았다 (+◆ ${p * k})`); hub.onKnack?.('sell', k); }
       return true;
     }
     case 'tsellQuick': {
       const mk = market(); let total = 0, cnt = 0;
       for (const [gid, k] of Object.entries(s.bag)) if (k > 0 && GOODS[gid] && ['fish', 'crop', 'junk'].includes(GOODS[gid].cat)) { total += sellPrice(gid, mk) * k; cnt += k; s.bag[gid] = 0; }
-      s.gold += total; hub.toast(`${cnt}개를 팔았다 (+◆ ${total})`);
+      s.gold += total; hub.toast(`${cnt}개를 팔았다 (+◆ ${total})`); if (cnt) hub.onKnack?.('sell', cnt);
       return true;
     }
     case 'toolUp': {

@@ -62,18 +62,30 @@ export function sanctumBonusText(race, tier, own) {
 
 // ───── 성지 마을: 우두머리 · 주민 · 날아다니는 것 · 전용 의뢰 · 친밀도 · 수련 ─────
 // 친밀도: 의뢰 · 선물 · 수련으로 오른다. 단계마다 보상이 하나씩 열린다
-export const AFF_LV = [0, 20, 50, 90, 150];
+// 종족 상점: 그 종족의 손을 거친 물건 (그 땅의 재료 · 약 · 주문서) + 그 종족 클래스의 무기
+// 다른 종족은 친밀도 「친구」부터 무기를 살 수 있고, 값은 30% 더 비싸다
+export const RACE_SHOP = {
+  wizard: ['manaCrystal', 'scroll_reveal', 'scroll_teleport', 'potion2', 'sapphire'],
+  elf: ['herb', 'spiritStone', 'potion1', 'emerald', 'truffle'],
+  knight: ['ironOre', 'potion2', 'potion3', 'silverOre', 'scroll_return'],
+  orc: ['beastMeat', 'orcTusk', 'potion1', 'ironOre', 'hyenaFang'],
+  undead: ['bone', 'soulDust', 'boneShard', 'scroll_light', 'potion2'],
+  assassin: ['poisonGland', 'scroll_haste', 'banditCloth', 'potion1', 'oldCoin'],
+  dino: ['beastMeat', 'raptorClaw', 'berry', 'waspSting', 'potion1'],
+  dragon: ['obsidian', 'fireBloom', 'emberDust', 'ruby', 'magmaCore'],
+};
+export const AFF_LV = [0, 40, 110, 220, 380]; // 친구가 되기는 쉽지 않다 (예전 0 · 20 · 50 · 90 · 150)
 export const AFF_NAME = ['낯선 이', '아는 사이', '친구', '동료', '가족'];
 export const AFF_REWARD = [null, '환영 선물 (그 땅의 물건 · 골드 150)', '수련 한도 5 → 10단계', '우두머리가 하루 한 번 성물 조각을 준다', '종족의 증표 (장신구)'];
 export const affLevel = (pts) => { let l = 0; for (let i = 0; i < AFF_LV.length; i++) if ((pts || 0) >= AFF_LV[i]) l = i; return l; };
 // 수련 한도: 친밀도 「친구」부터 10단계. 내 종족의 성지는 5단계 더 (같은 핏줄이라 더 깊이 배운다)
-export const OWN_TRAIN_CAP = 5, OWN_TRAIN_EASE = 2;
+export const OWN_TRAIN_CAP = 5, OWN_TRAIN_EASE = 1;
 export const trainCap = (affLv, own = false) => (affLv >= 2 ? 10 : 5) + (own ? OWN_TRAIN_CAP : 0);
 // 수련 내용: 단계(rank = 지금까지 이긴 수)가 오를수록 빡빡해진다. 내 종족이면 두 단계 쉬운 난이도로 치른다
 export function trainSpec(race, rank, own = false) {
   const L = SANCT_LIFE[race]?.train;
   if (!L) return null;
-  const e = Math.max(0, (rank || 0) - (own ? OWN_TRAIN_EASE : 0)), S = { ...L, eff: e }, r1 = (v) => Math.round(v * 10) / 10;
+  const e = Math.max(0, Math.round(2 + (rank || 0) * 1.4 - (own ? OWN_TRAIN_EASE : 0))), S = { ...L, eff: e }, r1 = (v) => Math.round(v * 10) / 10; // 처음부터 빡빡하고 단계마다 더 가파르게
   switch (L.mode) {
     case 'order': { // 마탑: 번호 순서대로 (틀리면 시간을 잃는다)
       S.set = Math.min(6, 3 + Math.floor(e / 3)); S.n = S.set * (3 + Math.floor(e / 5)); S.time = Math.round(S.n * Math.max(1.35, 3 - e * 0.12)); S.penalty = 2;
@@ -110,7 +122,7 @@ export function trainSpec(race, rank, own = false) {
   }
   return S;
 }
-export const GIFT_AFF = 4, GIFTS_PER_DAY = 3, TRAIN_AFF = 5, TRAINS_PER_DAY = 3;
+export const GIFT_AFF = 2, GIFTS_PER_DAY = 2, TRAIN_AFF = 3, TRAINS_PER_DAY = 2;
 // 수련 단계마다 그 종족의 능력치(축복 한 단위와 같은 것)가 1씩 오른다
 export function trainStats(lo) {
   const out = {};

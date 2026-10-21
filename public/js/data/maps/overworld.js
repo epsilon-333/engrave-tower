@@ -439,7 +439,7 @@ export function buildOverworld(zone) {
   const TABLETS = [['enchantFire', B.volcano], ['enchantIce', B.snow], ['enchantLightning', B.mountains], ['enchantPoison', B.swamp], ['windStep', B.meadow], ['shadowStep', B.ruins], ['vineSnare', B.forest], ['retreatShot', B.jungle], ['leap', B.wasteland]];
   const tabs = [];
   const farFromRoad = (x, y) => { for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) if (inb(x + dx, y + dy) && onPath[I(x + dx, y + dy)]) return false; return true; };
-  for (const [skill, b] of TABLETS) {
+  for (const [skill, b] of []) { // 옛 기술 석판은 없앴다: 기술은 숙련(같은 행동 반복)으로 깨닫는다 (TABLETS는 기록으로만 남긴다)
     const cand = biomeTiles(b, (x, y) => !nearSafe(x, y, 6) && farFromRoad(x, y)).map((c) => ({ ...c, r: rng.next() })).sort((a, c) => (LV[I(c.x, c.y)] - LV[I(a.x, a.y)]) || (a.r - c.r));
     const c = cand.find((q) => !relics.some((r) => Math.hypot(r.x - q.x, r.y - q.y) < 16) && !tabs.some((r) => Math.hypot(r.x - q.x, r.y - q.y) < 30));
     if (c) { tabs.push(c); objects.push({ kind: 'skillStone', skill, ...at(c.x, c.y), label: '옛 기술 석판 읽기', reusable: true }); }
@@ -452,7 +452,7 @@ export function buildOverworld(zone) {
       if (![[0, 1], [0, 2]].some(([dx, dy]) => T(x + dx, y + dy) === T_DEEP)) continue;
       if (!best || x < best.x) best = { x, y };
     }
-    if (best) objects.push({ kind: 'skillStone', skill: 'harpoon', ...at(best.x, best.y), label: '옛 기술 석판 읽기', reusable: true });
+    void best; // 작살 석판도 없앴다 (낚시 숙련으로 깨닫는다)
   }
   { // 거울 호수의 물의 정령: 호숫가 길 끝, 물가에
     let best = null, bd = 1e9;
@@ -465,10 +465,11 @@ export function buildOverworld(zone) {
     if (best) { objects.push({ kind: 'waterSpirit', ...at(best.x, best.y), label: '물의 정령과 이야기', reusable: true }); safe.push({ x: best.x, y: best.y, r: 8 }); }
   }
   const chests = [{ x: island.x, y: island.y, rich: true }, { x: islet.x + 2, y: islet.y - 1, rich: true }];
-  for (let a = 0; a < 20000 && chests.length < 56; a++) {
+  for (let a = 0; a < 20000 && chests.length < 34; a++) { // 상자는 드물게 (예전 56)
     const x = rng.int(6, TW - 7), y = rng.int(6, TH - 7), k = I(x, y);
     if (BI[k] < 0 || t[k] !== T_FLOOR || !seen[k] || occupied[k] || onPath[k] || nearSafe(x, y, 3) || chests.some((c) => Math.hypot(c.x - x, c.y - y) < 20)) continue;
     let walls = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (T(x + dx, y + dy) !== T_FLOOR) walls++;
+    if (chests.some((c) => Math.hypot(c.x - x, c.y - y) < 30)) continue;
     if (walls >= 3 || LV[k] >= 2 || rng.chance(0.08)) chests.push({ x, y, rich: LV[k] >= 2 || rng.chance(0.15), trap: rng.chance(0.15) });
   }
   // 바위산 금 간 바위 뒤 숨은 방

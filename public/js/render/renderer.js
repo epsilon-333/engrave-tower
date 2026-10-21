@@ -380,7 +380,7 @@ export class Renderer {
         }
         case 'tauntLink': this.fx.push({ k: 'link', ...ev, color: ev.color || '#c45cff', t: 0.5, max: 0.5 }); break;
         case 'allyHurt': this.sparkBurst(ev.x, ev.y - 6, '#7ae8ff', 3); break;
-        case 'lockOn': this.fx.push({ k: 'lock', x: ev.x, y: ev.y, kind: ev.kind, ult: ev.ult, t: ev.dur ? ev.dur + 0.35 : 0.45, max: ev.dur ? ev.dur + 0.35 : 0.45 }); sfx('open', { vol: 0.25, rate: 1.8 }); break;
+        case 'lockOn': sfx('open', { vol: 0.25, rate: 1.8 }); break; // 자동 조준 표적은 그리지 않는다 (네 모서리 꺾쇠가 바닥의 노란 화살표처럼 보였다)
         case 'fall': this.fx.push({ k: 'fall', x: ev.x, y: ev.y, r: ev.r, kind: ev.kind, t: ev.dur, max: ev.dur }); break;
         case 'lineTele': this.fx.push({ k: 'lineTele', ...ev, t: ev.dur, max: ev.dur }); break;
         case 'skillLine': {
@@ -2083,6 +2083,16 @@ export class Renderer {
       g.fillStyle = fine ? '#e0e6f0' : '#c8ccd4'; g.fillRect(tip, y2 - 4, 1, 8);
       g.fillStyle = '#f0ece4'; g.fillRect(tip + dir, y2 - 1, 1, 1);
       if (fine) { g.fillStyle = '#c8ccd4'; g.fillRect(x0 + dir * 3, y2 - 3, 2, 1); } // 연발 탄창
+    } else if (look === 'doll') { // 저주 인형: 왼손에 매달린 헝겊 인형, 바늘 하나
+      const sw = Math.round(Math.sin(w.t * 2.2) * 0.8), cx = x + sw;
+      g.fillStyle = O; g.fillRect(cx - 3, y - 3, 6, 10); g.fillRect(cx - 4, y + 1, 8, 2);
+      g.fillStyle = '#c8b090'; g.fillRect(cx - 2, y - 2, 4, 4); g.fillStyle = '#8a6a8a'; g.fillRect(cx - 2, y + 2, 4, 4); g.fillRect(cx - 3, y + 2, 6, 1);
+      g.fillStyle = '#1a1020'; g.fillRect(cx - 1, y - 1, 1, 1); g.fillRect(cx + 1, y - 1, 1, 1);
+      g.fillStyle = '#e0e4ec'; g.fillRect(cx + 2, y - 4, 1, 4);
+      if (Math.random() < 0.05) this.parts.push({ x: cx, y: y - 3, vx: 0, vy: -10, t: 0.5, max: 0.5, color: '#b070ff', g: 0, glow: true, size: 1 });
+    } else if (w.b.offIsWeapon) { // 왼손에 든 한손 무기: 몸 뒤에서 비스듬히
+      const wa = weaponArt(id, ITEMS), img = sprite(wa.s, wa.tint || '');
+      if (img) { const sc = Math.min(1, 14 / img.height); g.save(); g.translate(x, y + 2); g.rotate(dir * 2.4); g.scale(sc, sc); g.drawImage(img, -img.width / 2, -2); g.restore(); }
     } else if (look === 'pouch') { // 등 쪽 허리춤 (몸 뒤로 삐져나오게)
       const hx = Math.round(bx - dir * 7 * gs), hy = Math.round(by - 4 * gs), fine = id === 'knifeBelt';
       g.fillStyle = O; g.fillRect(hx - 3, hy - 3, 6, 6); g.fillStyle = '#7a5434'; g.fillRect(hx - 2, hy - 2, 4, 4); g.fillStyle = '#a07448'; g.fillRect(hx - 2, hy - 2, 4, 1);
@@ -3047,6 +3057,10 @@ export class Renderer {
       return;
     }
     if (o.kind === 'chest') {
+      if (o.hidden && !o.found) { // 숨은 상자: 보이지 않는다. 아주 가까이 가면 가끔 반짝일 뿐
+        if (Math.hypot(o.x - w.player.x, o.y - w.player.y) < 70 && (t % 3.2) < 0.18) { g.fillStyle = '#fff6c8'; g.fillRect(Math.round(o.x), Math.round(o.y - 6), 1, 1); }
+        return;
+      }
       if (!o.spotted && Math.hypot(o.x - w.player.x, o.y - w.player.y) < 120) o.spotted = true; // 가까이서 봐야 지도에 적힌다
       const key = `${o.x},${o.y}`;
       let fr = 0;
@@ -3375,7 +3389,7 @@ export class Renderer {
       if (indoor) light(p.x, p.y - 6, 60, '#ffd8a0', 0.35 * L);
       if (w.map.underwater) {
         light(p.x, p.y - 6, 96, '#bfe8ff', 0.6); // 물속에서도 둘레는 보인다
-        for (const o of w.objects) { if (o.kind === 'vent') light(o.x, o.y - 6, 52 + Math.sin(t * 3 + o.x) * 4, '#a8f0ff', 0.75); else if (o.kind === 'palaceGate') light(o.x, o.y - 16, 110, '#7af0e0', 0.9); else if (o.kind === 'chest' && !o.opened) light(o.x, o.y - 4, 26, '#ffe8a0', 0.5); }
+        for (const o of w.objects) { if (o.kind === 'vent') light(o.x, o.y - 6, 52 + Math.sin(t * 3 + o.x) * 4, '#a8f0ff', 0.75); else if (o.kind === 'palaceGate') light(o.x, o.y - 16, 110, '#7af0e0', 0.9); else if (o.kind === 'chest' && !o.opened && (!o.hidden || o.found)) light(o.x, o.y - 4, 26, '#ffe8a0', 0.5); }
       }
       for (const d of this.glowDeco || []) if (inView(d.x, d.y, 40)) { const [rr, col] = GLOW[d.kind]; light(d.x, d.y - 3, rr * 1.4, col, 0.75 * L); }
       for (const [k] of w.burning || []) { const x = (k % w.tw) * TILE + 8, y = Math.floor(k / w.tw) * TILE + 8; light(x, y, 44 * fl(k), '#ff9040', 0.8 * L); }
@@ -3634,7 +3648,7 @@ export class Renderer {
 
     if (w.mode === 'field') this.drawMinimap(w);
     else if (!document.body.classList.contains('touch')) {
-      const hint = document.body.classList.contains('touch') ? '시설 가까이 가서 확인 버튼 · 캐릭터 버튼으로 스탯 배분' : 'WASD 이동 · G 상호작용 · I 가방 · C 캐릭터 · 아래쪽 문으로 나가기';
+      const hint = document.body.classList.contains('touch') ? '시설 가까이 가서 확인 버튼 · 캐릭터 버튼으로 스탯 배분' : 'WASD 이동 · G 상호작용 · I 장비 · B 가방 · C 캐릭터 · 아래쪽 문으로 나가기';
       g.font = `${11 * u}px ${FONT}`;
       const tw2 = g.measureText(hint).width + 20 * u;
       const vv = Math.max(2, u), hy0 = H - 32 * vv - 26 * u; // 스킬바 위로
@@ -3648,7 +3662,7 @@ export class Renderer {
       const o = w.near;
       const label = o.kind === 'chest' ? `${o.label} 열기` : o.label;
       const top = o._top != null ? o._top : o.kind === 'gate' ? o.y - 40 : o.y - 22;
-      const tx = this.sx(o.x), ty = this.sy(top) - 14 * u;
+      const tx = this.sx(o.x), ty = o.say ? this.sy(o.y + 12) + 10 * u : this.sy(top) - 14 * u; // 말풍선이 떠 있으면 발밑에
       g.font = `${11 * u}px ${FONT}`;
       const tw2 = g.measureText(label).width + 30 * u;
       this.panel(tx - tw2 / 2, ty - 8 * u, tw2, 16 * u);
@@ -3686,10 +3700,16 @@ export class Renderer {
         if (on) { g.fillStyle = 'rgba(160,220,255,0.35)'; g.beginPath(); g.arc(x, y, 2.5 * u, 0, Math.PI * 2); g.fill(); g.fillStyle = '#ffffff'; g.fillRect(x - u, y - 2 * u, u, u); }
       }
     }
+    // 각인의 탑: 층 · 걸린 시간 / 기준 시간 (넘기면 붉게)
+    if (w.tower) {
+      const par = 60 + w.tower.f * 2 + (w.tower.f % 5 === 0 ? 45 : 0), tt = w.tower.t, over = tt > par;
+      const fmt = (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;
+      this.text(`각인의 탑 ${w.tower.f}층 · ${fmt(tt)} / ${fmt(par)}`, W / 2, 46 * u, u, over ? '#ff8a7a' : '#e8d8a8', 'center', true, true);
+    }
     // 정예 체력바
     const boss = w.enemies.find((e) => (e.def.elite || e.champion) && e.state === 'chase' && !e.dead);
     if (boss) {
-      const bw2 = Math.min(W * 0.5, 260 * u), bx2 = (W - bw2) / 2, by2 = H - 26 * u;
+      const bw2 = Math.min(W * 0.5, 260 * u), bx2 = (W - bw2) / 2, by2 = (w.tower ? 74 : 62) * u; // 화면 위쪽 (아래 스킬 칸을 가리지 않게)
       this.text(boss.champion || boss.def.name, W / 2, by2 - 9 * u, u, '#ff9a8a', 'center', true, true);
       this.panel(bx2, by2, bw2, 8 * u);
       g.fillStyle = '#3a1016'; g.fillRect(bx2 + u, by2 + u, bw2 - 2 * u, 6 * u);
@@ -3745,7 +3765,7 @@ export class Renderer {
     const x0 = touch ? 10 * u : (W - total) / 2, y0 = touch ? 10 * v + 70 * v : H - box - 12 * v;
     // 대시
     const dashMax = d.dashCd * (1 - d.cdr), dashK = p.dashCharges > 0 ? 1 : Math.min(1, 1 - p.dashRecharge / dashMax);
-    this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : 'Space', '');
+    this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : 'Space', '', null, p.dashCharges > 0 ? 0 : p.dashRecharge);
     // 빠른 칸 음식 (H)
     const qf = w.life?.quickFood;
     if (qf && !touch) {
@@ -3759,7 +3779,7 @@ export class Renderer {
     const pots = ['potion1', 'potion2', 'potion3'].filter((id) => w.life?.bag?.[id] > 0);
     if (pots.length && !touch) {
       const px2 = x0 + n * (box + gap), cnt = pots.reduce((a, id) => a + w.life.bag[id], 0);
-      this.cooldownBox(px2, y0, box, p.potionCd > 0 ? 1 - p.potionCd / 8 : 1, 'Z', '');
+      this.cooldownBox(px2, y0, box, p.potionCd > 0 ? 1 - p.potionCd / 8 : 1, 'Z', '', null, p.potionCd);
       g.imageSmoothingEnabled = false; const ic = iconCanvas(pots[0]), s2 = Math.max(1, Math.floor((box - 8 * u) / 16)); g.drawImage(ic, Math.round(px2 + (box - 16 * s2) / 2), Math.round(y0 + (box - 16 * s2) / 2 + 2 * u), 16 * s2, 16 * s2);
       this.text(String(cnt), px2 + box - 3 * v, y0 + box - 5 * v, Math.max(1, u - 1), '#ffffff', 'right');
       this.text('물약', px2 + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#d8d0e8', 'center');
@@ -3768,7 +3788,7 @@ export class Renderer {
       const x = x0 + (i + 1) * (box + gap);
       if (id === 'weapon') {
         const k = p.skillCd > 0 ? 1 - p.skillCd / p.skillMax : 1;
-        this.cooldownBox(x, y0, box, k, keys[i], '');
+        this.cooldownBox(x, y0, box, k, keys[i], '', null, p.skillCd);
         this.text((WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기').slice(0, 4), x + box / 2, y0 + box + (7 + (i % 2) * 9) * v, Math.max(1, u - 1), '#d8d0e8', 'center');
         return;
       }
@@ -3777,7 +3797,7 @@ export class Renderer {
       const k = cd > 0 ? 1 - cd / max : 1;
       const need = sk.costAll ? sk.costAll.min : sk.cost || 0;
       const lack = need > p.res;
-      this.cooldownBox(x, y0, box, k, keys[i], '', ROLE_COLOR[sk.role]);
+      this.cooldownBox(x, y0, box, k, keys[i], '', ROLE_COLOR[sk.role], cd);
       if (lack && k >= 1) { g.fillStyle = 'rgba(40,0,0,0.55)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); }
       this.text(sk.name.slice(0, 4), x + box / 2, y0 + box + (7 + (i % 2) * 9) * v, u, lack ? '#ff8a80' : '#d8d0e8', 'center');
       if (need) this.text(String(need), x + box - 3 * v, y0 + 5 * v, Math.max(1, u - 1), lack ? '#ff8a80' : RACES[w.b.race].res.color, 'right');
@@ -3791,18 +3811,27 @@ export class Renderer {
     }
   }
 
-  cooldownBox(x, y, s, k, key, label, border) {
+  // 스킬 칸: 기다리는 동안은 어둡게 덮고 남은 초를 크게, 다 차면 금빛 테두리
+  cooldownBox(x, y, s, k, key, label, border, rem = 0) {
     const g = this.g, u = this.u;
     this.panel(x, y, s, s);
     if (border) { g.fillStyle = border; g.fillRect(x, y + s - 2 * u, s, 2 * u); }
     if (k < 1) {
-      g.fillStyle = 'rgba(0,0,0,0.6)';
+      g.fillStyle = 'rgba(0,0,0,0.74)';
       g.beginPath(); g.moveTo(x + s / 2, y + s / 2);
       g.arc(x + s / 2, y + s / 2, s * 0.7, -Math.PI / 2 + k * Math.PI * 2, Math.PI * 1.5); g.closePath();
       g.save(); g.beginPath(); g.rect(x + u, y + u, s - 2 * u, s - 2 * u); g.clip();
       g.beginPath(); g.moveTo(x + s / 2, y + s / 2); g.arc(x + s / 2, y + s / 2, s, -Math.PI / 2 + k * Math.PI * 2, Math.PI * 1.5); g.closePath(); g.fill();
       g.restore();
-    } else { g.fillStyle = 'rgba(255,207,90,0.18)'; g.fillRect(x + u, y + u, s - 2 * u, s - 2 * u); }
+      if (rem > 0.05) { // 남은 시간: 칸 가운데 크게, 키 이름은 왼쪽 위에 작게
+        this.text(rem >= 3 ? String(Math.ceil(rem)) : rem.toFixed(1), x + s / 2, y + s / 2 + u, u + 1, '#ffffff', 'center', true, true);
+        this.text(key, x + 3 * u, y + 5 * u, Math.max(1, u - 1), '#a89cb8', 'left', true, true);
+        return;
+      }
+    } else {
+      g.fillStyle = 'rgba(255,207,90,0.16)'; g.fillRect(x + u, y + u, s - 2 * u, s - 2 * u);
+      g.strokeStyle = '#ffcf5a'; g.lineWidth = u; g.strokeRect(x + 1.5 * u, y + 1.5 * u, s - 3 * u, s - 3 * u);
+    }
     this.text(key, x + s / 2, y + s / 2, key.length > 1 ? Math.max(1, u - 1) || 1 : u, k >= 1 ? '#ffe8a8' : '#8a8098', 'center', true, true);
   }
 

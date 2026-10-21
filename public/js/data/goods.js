@@ -335,7 +335,7 @@ export const REINFORCE_MAX = 5;
 // ── 잡화점: 파는 것 · 시세 (1시간마다 종류별로 값이 오르내리고, 두 가지는 인기 상품 ×1.8) ──
 export const SHOP_STOCK = ['potion1', 'potion2', 'potion3', 'turnipSeed', 'wheatSeed', 'carrotSeed', 'potatoSeed', 'strawberrySeed', 'pumpkinSeed', 'worm'];
 export const SCROLL_SHOP = ['scroll_breath', 'scroll_return', 'scroll_teleport', 'scroll_light', 'scroll_haste', 'scroll_reveal']; // 마탑에서 판다
-export const buyPrice = (id) => (GOODS[id].cat === 'seed' ? CROPS[GOODS[id].crop].seedPrice : Math.max(2, GOODS[id].price * 2));
+export const buyPrice = (id) => (GOODS[id].cat === 'seed' ? Math.round(CROPS[GOODS[id].crop].seedPrice * 1.5) : Math.max(3, GOODS[id].price * 3));
 const SELL_CATS = ['ore', 'gem', 'wood', 'forage', 'dig', 'fish', 'crop', 'junk', 'bait', 'seed'];
 export function market(now = Date.now()) {
   const win = Math.floor(now / 3600000);
@@ -348,8 +348,9 @@ export function market(now = Date.now()) {
   while (hot.length < 2) { const id = pool[Math.floor(rnd() * pool.length)]; if (!hot.includes(id)) hot.push(id); }
   return { win, mul, hot, nextIn: (win + 1) * 3600000 - now };
 }
+export const SELL_BONUS = { v: 1 }; // 숙련 「흥정」이면 1.1
 export function sellPrice(id, mk = market()) {
   const g = GOODS[id];
   if (!g || !g.price) return 0;
-  return Math.max(1, Math.round(g.price * (mk.mul[g.cat] || 1) * (mk.hot.includes(id) ? 1.8 : 1)));
+  return Math.max(1, Math.round(g.price * 0.6 * SELL_BONUS.v * (mk.mul[g.cat] || 1) * (mk.hot.includes(id) ? 1.8 : 1))); // 파는 값은 원래의 60%
 }
