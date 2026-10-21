@@ -359,14 +359,15 @@ onNet('co', (m) => {
     case 'no': renderer.banner = { text: `${fromName} — 함께 오르지 않는다`, sub: m.why, t: 2.4, color: '#c8b8a0' }; break;
     case 'me': coState.set(m.from, { hp: m.hp, maxHp: m.maxHp, down: !!m.down, f: m.f, t: performance.now() }); break;
     case 'snap':
-      if (coRun?.role === 'member' && m.from === coRun.host && world.tower?.f === m.f && world.coop) { world.coApplySnap(m); coRun.lastSnap = performance.now(); }
+      if (coRun && world.tower?.f === m.f && world.coop) { world.coApplySnap(m, m.from); if (m.from === coRun.host) coRun.lastSnap = performance.now(); }
       break;
     case 'b': // 묶음: 동료 → 파티장(피해 · 상태이상 · CC …) · 파티장 → 동료(맞았다)
       if (!world.coop || !coRun) break;
-      if (coRun.role === 'host') for (const x of m.l || []) world.coRecv(x, m.from);
-      else if (m.from === coRun.host) for (const x of m.l || []) if (x.k === 'hurt') world.coHurt(x);
+      for (const x of m.l || []) { if (x.k === 'hurt') world.coHurt(x); else world.coRecv(x, m.from); } // 누구든: 맞았다 · 내가 맡은 몬스터에 들어온 공격
       break;
-    case 'sync': if (coRun?.role === 'host' && world.coop) world.coop.known.clear(); break; // 늦게 온 동료: 적의 종류부터 다시
+    case 'own': if (coRun?.role === 'member' && m.from === coRun.host && world.tower?.f === m.f && world.coop) { world.coSetOwners(m.l || [], net.id); coRun.lastSnap = performance.now(); } break; // 내가 맡을 몬스터
+    case 'sync': if (world.coop) world.coop.known.clear(); break; // 늦게 온 동료: 적의 종류부터 다시
+    case 'next': if (coRun?.role === 'host') document.getElementById('twNext')?.click(); break; // 동료가 다음 층으로 가자고 했다
     case 'stairs': // 동료가 계단에 닿았다 (파티장이 쓰러져 있어도 층을 깰 수 있게)
       if (coRun?.role === 'host' && world.state === 'play' && world.tower && (!world.tower.boss || world.tower.boss.dead)) {
         renderer.banner = { text: `${josa(fromName, '이', '가')} 계단에 닿았다`, t: 2, color: '#9fe6ff' };
@@ -387,29 +388,29 @@ onNet('co', (m) => {
 });
 function coTick(dt) {
   if (!coRun || !world?.coop || !world.tower) return;
-  const w = world, p = w.player, now = performance.now();
+  const w = world, p = w.player, now = performance.now(), host = coRun.role === 'host';
   if ((coRun.meT -= dt) <= 0) { coRun.meT = 0.25; netSend({ t: 'co', k: 'me', hp: Math.round(p.hp), maxHp: w.d.maxHp, down: p.down ? 1 : 0, f: w.tower.f }); }
-  if (coRun.role === 'host') {
-    const mates = w.coop.mates;
-    for (const rp of net.players.values()) { // 같은 층의 동료 (자리는 지도 중계 · 쓰러짐은 me)
-      if (!net.party?.members.some((x) => x.id === rp.id)) continue;
-      let mt = mates.get(rp.id);
-      if (!mt) { mt = { id: rp.id, name: rp.name, r: 5, dead: false }; mates.set(rp.id, mt); }
-      const cs = coState.get(rp.id);
-      mt.x = rp.x; mt.y = rp.y; mt.dead = !!(cs && cs.down && cs.f === w.tower.f);
-    }
-    for (const id of [...mates.keys()]) if (!net.players.has(id)) mates.delete(id);
-    w.coScale(1 + mates.size); // 인원수에 따라 난이도
-    if ((coRun.snapT -= dt) <= 0) { coRun.snapT = 0.1; const s = w.coSnap(); if (mates.size) netSend({ t: 'co', f: w.tower.f, ...s }); }
-    const by = new Map();
-    for (const o of w.coop.out.splice(0)) { if (!by.has(o.to)) by.set(o.to, []); by.get(o.to).push(o); }
-    for (const [to, l] of by) netSend({ t: 'co', to, k: 'b', l });
-    if (p.down && w.state === 'play' && [...mates.values()].every((mt) => mt.dead)) { netSend({ t: 'co', k: 'wipe', f: w.tower.f }); coWipe(); } // 모두 쓰러졌다
-  } else {
-    if ((coRun.flushT -= dt) <= 0) { coRun.flushT = 0.05; const l = w.coFlush(); if (l.length) netSend({ t: 'co', to: coRun.host, k: 'b', l }); }
-    if (w.coop.need && now - (coRun.needT || 0) > 1000) { coRun.needT = now; w.coop.need = false; netSend({ t: 'co', to: coRun.host, k: 'sync' }); }
-    if (now - coRun.lastSnap > 6000 && w.state === 'play') coSolo('파티장의 소식이 끊겼다 — 혼자 이어 오른다');
+  // 같은 층의 동료 (자리는 지도 중계 · 쓰러짐은 me) — 파티장도 동료도 똑같이: 내가 맡은 몬스터는 내 세계가 움직이고 가까운 사람을 노린다
+  const mates = w.coop.mates;
+  for (const rp of net.players.values()) {
+    if (!net.party?.members.some((x) => x.id === rp.id)) continue;
+    let mt = mates.get(rp.id);
+    if (!mt) { mt = { id: rp.id, name: rp.name, r: 5, dead: false }; mates.set(rp.id, mt); }
+    const cs = coState.get(rp.id);
+    mt.x = rp.x; mt.y = rp.y; mt.dead = !!(cs && cs.down && cs.f === w.tower.f);
   }
+  for (const id of [...mates.keys()]) if (!net.players.has(id)) mates.delete(id);
+  if (host) {
+    w.coScale(1 + mates.size); // 인원수에 따라 난이도
+    if ((coRun.ownT -= dt) <= 0 || coRun.ownT == null) { coRun.ownT = 0.5; const l = w.coOwners(net.id); w.coSetOwners(l, net.id); if (mates.size) netSend({ t: 'co', k: 'own', f: w.tower.f, l }); } // 몬스터마다 가장 가까운 사람이 맡는다
+  }
+  if ((coRun.knownT -= dt) <= 0 || coRun.knownT == null) { coRun.knownT = 3; w.coop.known.clear(); } // 늦게 온 동료도 몬스터 종류를 알게
+  if ((coRun.snapT -= dt) <= 0) { coRun.snapT = 0.1; const s = w.coSnap(); if (mates.size && (s.e.length || s.dead.length || s.ev.length)) netSend({ t: 'co', f: w.tower.f, ...s }); }
+  const by = new Map();
+  for (const o of w.coFlush()) { const to = o.to || coRun.host; if (!by.has(to)) by.set(to, []); by.get(to).push(o); }
+  for (const [to, l] of by) netSend({ t: 'co', to, k: 'b', l });
+  if (host && p.down && w.state === 'play' && [...mates.values()].every((mt) => mt.dead)) { netSend({ t: 'co', k: 'wipe', f: w.tower.f }); coWipe(); } // 모두 쓰러졌다
+  if (!host && now - coRun.lastSnap > 6000 && w.state === 'play') coSolo('파티장의 소식이 끊겼다 — 혼자 이어 오른다');
 }
 // 파티장을 잃은 동료: 꼭두각시였던 몬스터가 스스로 움직이고, 혼자 이어 오른다
 function coSolo(why) {
@@ -513,14 +514,14 @@ function towerClear(s) {
     <div class="tw-grade" style="--c:${GRADE_COLOR[grade]}">${grade}</div>
     <p>걸린 시간 <b>${mmss(s.time)}</b> <span class="muted">(기준 ${mmss(parTime(f))})</span> · 받은 피해 <b>${Math.round((s.hurt / Math.max(1, s.maxHp)) * 100)}%</b> <span class="muted">(최대 체력 대비)</span></p>
     <p class="lvup">◆ ${rw.gold} 골드${first ? ' (처음 깬 층 ×2)' : ''}${extra.length ? ' · ' + extra.join(' · ') : ''}</p>
-    ${coMember ? '<p class="muted">파티장이 다음 층을 고르면 함께 오른다…</p>' : ''}
-    <div class="actions">${top || coMember ? '' : `<button id="twNext">${f + 1}층으로 오른다${coHost ? ' (파티와 함께)' : ''}</button>`}<button id="twOut" class="ghost">탑에서 나간다</button></div>`, () => {});
+    <div class="actions">${top ? '' : coMember ? `<button id="twNextCo">${f + 1}층으로 오르자 (파티 모두)</button>` : `<button id="twNext">${f + 1}층으로 오른다${coHost ? ' (파티와 함께)' : ''}</button>`}<button id="twOut" class="ghost">탑에서 나간다</button></div>`, () => {});
   const carry = () => ({ loot: world.loot, discovered: world.discovered, hp: Math.max(world.player.hp, world.d.maxHp * 0.3), codexStart: world.codexStart });
   const nx = document.getElementById('twNext'); if (nx) nx.onclick = () => {
     overlay.hidden = true; paused = false; modal = null;
     if (coHost) { const seed = (Math.random() * 1e9) >>> 0; enterTower(f + 1, carry(), { role: 'host', seed }); netSend({ t: 'co', k: 'floor', f: f + 1, seed }); }
     else enterTower(f + 1, carry());
   };
+  const nc = document.getElementById('twNextCo'); if (nc) nc.onclick = () => { netSend({ t: 'co', to: coRun?.host, k: 'next' }); nc.disabled = true; nc.textContent = '다 같이 오른다…'; }; // 동료도 다음 층을 고를 수 있다
   document.getElementById('twOut').onclick = () => { overlay.hidden = true; paused = false; modal = null; world.state = 'play'; endRun('clear'); };
 }
 

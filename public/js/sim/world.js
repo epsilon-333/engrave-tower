@@ -2658,7 +2658,7 @@ export class World {
     if (e.def.ai === 'dummy') e.wobble = 0.3;
     if (f.has('stagger') && e.windT > 0 && !e.def.elite) {
       e.windT = 0; e.atkCd = Math.max(e.atkCd, 0.7);
-      if (e.puppet) this.coop.out.push({ k: 'int', id: e.id }); // 파티 탑 (동료): 방장의 적도 공격을 끊는다
+      if (e.puppet) this.coop.out.push({ k: 'int', id: e.id, to: e.owner }); // 파티 탑 (동료): 방장의 적도 공격을 끊는다
       this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '경직', color: '#ffe080' });
     }
     if (heavy || crit) this.emit({ t: 'hitstop', v: heavy ? 0.06 : 0.03 });
@@ -2769,8 +2769,8 @@ export class World {
     if (r.n >= 3) { r.imm = now + 3; r.n = 0; }
     return dur * k * (this.pvp ? PVP.cc : 1);
   }
-  stunE(e, dur) { if (e.puppet) { this.coop.out.push({ k: 'cc', id: e.id, cc: 'stun', dur: Math.round(dur * 100) / 100 }); return dur; } const d = this.ccTime(e, dur); if (d > 0) { if (e.remote) this.pvp?.out.push({ t: 'dhit', dmg: 0, cc: 'stun', dur: d }); else e.st.stun = Math.max(e.st.stun || 0, d); } return d; }
-  fearE(e, dur) { if (e.puppet) { this.coop.out.push({ k: 'cc', id: e.id, cc: 'fear', dur: Math.round(dur * 100) / 100 }); return dur; } const d = this.ccTime(e, dur); if (d > 0) { if (e.remote) this.pvp?.out.push({ t: 'dhit', dmg: 0, cc: 'stun', dur: d * 0.7 }); else e.st.fear = Math.max(e.st.fear || 0, d); } return d; }
+  stunE(e, dur) { if (e.puppet) { this.coop.out.push({ k: 'cc', to: e.owner, id: e.id, cc: 'stun', dur: Math.round(dur * 100) / 100 }); return dur; } const d = this.ccTime(e, dur); if (d > 0) { if (e.remote) this.pvp?.out.push({ t: 'dhit', dmg: 0, cc: 'stun', dur: d }); else e.st.stun = Math.max(e.st.stun || 0, d); } return d; }
+  fearE(e, dur) { if (e.puppet) { this.coop.out.push({ k: 'cc', to: e.owner, id: e.id, cc: 'fear', dur: Math.round(dur * 100) / 100 }); return dur; } const d = this.ccTime(e, dur); if (d > 0) { if (e.remote) this.pvp?.out.push({ t: 'dhit', dmg: 0, cc: 'stun', dur: d * 0.7 }); else e.st.fear = Math.max(e.st.fear || 0, d); } return d; }
   // 결투: 상대 화면에서 온 공격을 내 몸으로 받는다 (내 방어 · 회피 · 받아치기 · 대전 보정)
   pvpHit(m) {
     const p = this.player, e = this.enemies.find((x) => x.remote);
@@ -2851,7 +2851,7 @@ export class World {
       return dmg;
     }
     if (e.puppet) { // 파티 탑 (동료): 적의 체력은 방장의 세계가 깎는다 — 여기서는 피해를 보내고 숫자만 보인다
-      if (dmg > 0) this.coop.out.push({ k: 'hit', id: e.id, dmg: Math.round(dmg * 10) / 10, crit: opt.crit ? 1 : 0 });
+      if (dmg > 0) this.coop.out.push({ k: 'hit', to: e.owner, id: e.id, dmg: Math.round(dmg * 10) / 10, crit: opt.crit ? 1 : 0 });
       e.hitFlash = 0.1;
       if (dmg >= 0.5 && opt.src !== 'dot') this.emit({ t: 'dmg', x: e.x, y: e.y - e.r - 10, v: dmg, crit: opt.crit, heavy: opt.heavy, src: opt.src, id: e.id, color: opt.color || (type === 'mag' ? '#c9a8ff' : '#ffffff') });
     } else {
@@ -2893,7 +2893,7 @@ export class World {
 
   applyStatus(e, kind, stacks = 1) {
     if (!e || e.dead) return;
-    if (e.puppet) { this.coop.out.push({ k: 'st', id: e.id, kind, n: stacks }); return; }
+    if (e.puppet) { this.coop.out.push({ k: 'st', to: e.owner, id: e.id, kind, n: stacks }); return; }
     if (e.remote) { this.pvp?.out.push({ t: 'dhit', dmg: 0, status: kind, stacks }); return; }
     const st = e.st;
     if (kind === 'curse') { st.curse = { n: Math.min(12, (st.curse?.n || 0) + stacks), t: 8 }; return; }
@@ -3291,7 +3291,7 @@ export class World {
   }
 
   updateEnemies() {
-    const P = this.player, d = this.d, s = this.s, host = this.coop?.role === 'host';
+    const P = this.player, d = this.d, s = this.s, host = !!this.coop; // 파티 탑: 내가 맡은 몬스터는 내 세계가 움직인다
     this.coRec = host;
     for (const e of this.enemies) {
       if (e.dead) continue;
@@ -3599,7 +3599,7 @@ export class World {
   killEnemy(e, selfDestruct = false) {
     if (e.dead) return;
     e.dead = true;
-    if (this.coop?.role === 'host') this.coop.deadIds.push(e.id);
+    if (this.coop) this.coop.deadIds.push(e.id);
     if (e.training) { // 수련 상대: 전리품 · 도감 · 의뢰 없이 수련만 센다
       if (this.training && !this.trainKill(e)) return;
       if (this.training) { this.training.got++; this.emit({ t: 'trainHit', x: e.x, y: e.y, look: e.look, n: this.training.got }); }
@@ -3690,7 +3690,7 @@ export class World {
   // 방장: 적이 노릴 수 있는 사람 (나 + 같은 층의 동료, 쓰러진 사람은 빼고)
   coTargets() {
     const P = this.player, out = P.down ? [] : [P];
-    if (this.coop?.role === 'host') for (const m of this.coop.mates.values()) if (!m.dead) out.push(m);
+    if (this.coop) for (const m of this.coop.mates.values()) if (!m.dead) out.push(m);
     return out;
   }
   // 방장: 이 적이 노릴 사람 — 가장 가까운 사람, 한 번 고르면 잠깐은 그대로 (도발한 사람이 있으면 그 사람)
@@ -3726,20 +3726,21 @@ export class World {
   coSnap() {
     const c = this.coop, list = [], info = {};
     for (const e of this.enemies) {
-      if (e.dead || e.training) continue;
+      if (e.dead || e.training || e.puppet) continue; // 내가 맡은 몬스터만 알린다
       const st = e.st;
       const bits = (st.burn ? 1 : 0) | (st.poison ? 2 : 0) | (st.chill ? 4 : 0) | (st.frozen > 0 ? 8 : 0) | (st.stun > 0 ? 16 : 0) | (e.hidden ? 32 : 0) | (e.state === 'chase' ? 64 : 0) | (st.bleed ? 128 : 0) | (st.curse ? 256 : 0) | (st.fear > 0 ? 512 : 0);
       list.push([e.id, Math.round(e.x), Math.round(e.y), Math.ceil(e.hp), Math.round(e.maxHp), bits, e.dir, Math.round(e.windT * 100), e.ai?.mode === 'dash' ? 2 : e.ai?.mode === 'wind' ? 1 : 0]);
       if (c.scale > 1 && !e.coScaled && e.summoned) { e.coScaled = true; e.maxHp *= 1 + 0.6 * (c.scale - 1); e.hp *= 1 + 0.6 * (c.scale - 1); }
-      if (!c.known.has(e.id)) { c.known.add(e.id); info[e.id] = [e.defId, e.champion || '', e.affix || '', e.scale || 1, e.r, e === this.tower?.boss ? 1 : 0, e.summoned ? 1 : 0, e.lair ? 1 : 0]; }
+      if (!c.known.has(e.id)) { c.known.add(e.id); info[e.id] = [e.defId, e.champion || '', e.affix || '', e.scale || 1, e.r, e === this.tower?.boss ? 1 : 0, e.summoned ? 1 : 0, e.lair ? 1 : 0, Math.round(e.atk)]; }
     }
-    const pr = this.projs.filter((x) => x.owner === 'e').map((x) => [Math.round(x.x), Math.round(x.y), Math.round(x.vx), Math.round(x.vy), x.color]);
+    const pr = this.projs.filter((x) => x.owner === 'e' && !x.ghost).map((x) => [Math.round(x.x), Math.round(x.y), Math.round(x.vx), Math.round(x.vy), x.color]);
     return { k: 'snap', e: list, info, dead: c.deadIds.splice(0), pr, ev: c.ev.splice(0).map(({ t, id, x, y, r, dx, dy, ang, color, text, v }) => ({ t, id, x, y, r, dx, dy, ang, color, text, v })) };
   }
   // 방장: 동료 화면에서 온 것 (피해 · 상태이상 · CC · 밀치기 · 기술이 건 것)
   coRecv(m, from) {
     const e = m.id != null ? this.enemies.find((x) => x.id === m.id) : null;
     if (m.id != null && (!e || e.dead)) return;
+    if (e?.puppet) { if (e.owner !== from) this.coop.out.push({ ...m, to: e.owner }); return; } // 주인이 바뀌었다 → 지금 주인에게
     switch (m.k) {
       case 'hit':
         if (!(m.dmg > 0)) break;
@@ -3762,20 +3763,21 @@ export class World {
     }
   }
   // 동료: 방장이 알려 준 적의 모습을 그대로 따른다
-  coApplySnap(m) {
+  coApplySnap(m, from = 0) {
     const c = this.coop, byId = new Map(this.enemies.map((e) => [e.id, e])), seen = new Set(), dead = new Set(m.dead || []);
     for (const [id, inf] of Object.entries(m.info || {})) c.info.set(+id, inf);
     for (const [id, x, y, hp, maxHp, bits, dir, wind, mode] of m.e || []) {
       let e = byId.get(id);
+      if (e && !e.puppet) continue; // 내가 맡은 몬스터는 내 세계가 정한다
       if (!e) {
         const inf = c.info.get(id);
         if (!inf || !ALL_MONSTERS[inf[0]]) { c.need = true; continue; }
         e = this.makeEnemy(inf[0], x, y, { noAffix: true, summoned: !!inf[6] });
-        Object.assign(e, { id, puppet: true, champion: inf[1] || undefined, affix: inf[2] || undefined, scale: inf[3], r: inf[4], lair: !!inf[7], tx: x, ty: y });
+        Object.assign(e, { id, puppet: true, owner: from, atk: inf[8] || e.atk, champion: inf[1] || undefined, affix: inf[2] || undefined, scale: inf[3], r: inf[4], lair: !!inf[7], tx: x, ty: y });
         if (inf[5] && this.tower) this.tower.boss = e;
         this.enemies.push(e); byId.set(id, e);
       }
-      seen.add(id);
+      seen.add(id); e.owner = from; e.handoff = 0;
       e.tx = x; e.ty = y; e.hp = hp; e.maxHp = maxHp; e.dir = dir; e.hidden = !!(bits & 32); e.state = bits & 64 ? 'chase' : 'idle';
       const w = wind / 100; if (w > e.windT + 0.05) e.windMax = w; e.windT = w;
       e.ai.mode = mode === 2 ? 'dash' : mode === 1 ? 'wind' : 'move';
@@ -3787,10 +3789,10 @@ export class World {
     for (const e of this.enemies) {
       if (!e.puppet || e.dead) continue;
       if (dead.has(e.id)) { e.hp = 0; this.killEnemy(e); } // 쓰러뜨렸다: 전리품 · 도감은 각자
-      else if (!seen.has(e.id)) e.dead = true; // 사라졌다 (도망 등)
+      else if (e.owner === from && !seen.has(e.id) && !e.handoff) e.dead = true; // 사라졌다 (도망 등)
     }
-    this.projs = this.projs.filter((x) => !x.ghost);
-    for (const [x, y, vx, vy, color] of m.pr || []) this.projs.push({ owner: 'e', ghost: true, x, y, vx, vy, life: 0.4, color, dmg: 0 });
+    this.projs = this.projs.filter((x) => !x.ghost || x.from !== from);
+    for (const [x, y, vx, vy, color] of m.pr || []) this.projs.push({ owner: 'e', ghost: true, from, x, y, vx, vy, life: 0.4, color, dmg: 0 });
     for (const ev of m.ev || []) this.events.push(ev);
   }
   // 동료: 방장이 알려 준 자리로 부드럽게 (스스로는 움직이지도 때리지도 않는다)
@@ -3809,14 +3811,39 @@ export class World {
     const out = this.coop.out;
     for (const e of this.enemies) {
       if (!e.puppet || e.dead) continue;
-      if (Math.abs(e.kbx) + Math.abs(e.kby) > 1) { out.push({ k: 'kb', id: e.id, x: Math.round(e.kbx), y: Math.round(e.kby) }); }
+      if (Math.abs(e.kbx) + Math.abs(e.kby) > 1) { out.push({ k: 'kb', to: e.owner, id: e.id, x: Math.round(e.kbx), y: Math.round(e.kby) }); }
       e.kbx = 0; e.kby = 0;
-      for (const f of CO_SET) if (e[f] > 0) { out.push({ k: 'set', id: e.id, f, v: Math.round(e[f] * 100) / 100, x: f === 'lureT' ? Math.round(e.lureX) : undefined, y: f === 'lureT' ? Math.round(e.lureY) : undefined }); e[f] = 0; }
-      if (e.st.flee > 0) { out.push({ k: 'set', id: e.id, f: 'flee', v: Math.round(e.st.flee * 100) / 100 }); e.st.flee = 0; }
+      for (const f of CO_SET) if (e[f] > 0) { out.push({ k: 'set', to: e.owner, id: e.id, f, v: Math.round(e[f] * 100) / 100, x: f === 'lureT' ? Math.round(e.lureX) : undefined, y: f === 'lureT' ? Math.round(e.lureY) : undefined }); e[f] = 0; }
+      if (e.st.flee > 0) { out.push({ k: 'set', to: e.owner, id: e.id, f: 'flee', v: Math.round(e.st.flee * 100) / 100 }); e.st.flee = 0; }
     }
     return out.splice(0);
   }
-  // 동료: 방장의 적에게 맞았다 (내 방어 · 회피 · 막기로 셈한다)
+  // 방장: 몬스터마다 맡을 사람 = 가장 가까운 사람 (한 번 맡으면 40 더 가까운 사람이 생겨야 넘긴다)
+  coOwners(me) {
+    const P = this.player, ppl = [...(P.down ? [] : [{ id: me, x: P.x, y: P.y }]), ...[...this.coop.mates.values()].filter((m) => !m.dead)];
+    if (!ppl.length) return [];
+    const out = [];
+    for (const e of this.enemies) {
+      if (e.dead || e.training) continue;
+      const cur = e.owner || me, dist = (q) => Math.hypot(q.x - e.x, q.y - e.y);
+      let best = ppl[0]; for (const q of ppl) if (dist(q) < dist(best)) best = q;
+      const now = ppl.find((q) => q.id === cur);
+      out.push([e.id, now && dist(now) < dist(best) + 40 ? cur : best.id]);
+    }
+    return out;
+  }
+  // 누가 어떤 몬스터를 맡는지 (내가 맡게 되면 내 세계가 그 몬스터를 움직인다)
+  coSetOwners(list, me) {
+    const byId = new Map(this.enemies.map((e) => [e.id, e]));
+    for (const [id, o] of list) {
+      const e = byId.get(id); if (!e || e.dead) continue;
+      const mine = o === me;
+      if (mine && e.puppet) { e.puppet = false; e.x = e.tx ?? e.x; e.y = e.ty ?? e.y; e.tgt = null; e.atkCd = Math.max(e.atkCd, 0.4); }
+      else if (!mine && !e.puppet) { e.puppet = true; e.tx = e.x; e.ty = e.y; e.handoff = 1; }
+      e.owner = o;
+    }
+  }
+  // 방장의 적에게 맞았다 (내 방어 · 회피 · 막기로 셈한다)
   coHurt(m) {
     const src = m.src ? this.enemies.find((e) => e.id === m.src) : null;
     this.hurtPlayer(m.dmg, m.type === 'mag' ? 'mag' : m.type === 'true' ? 'true' : 'phys', src || null, { status: m.status || undefined, fromX: m.fx, fromY: m.fy, direct: !!m.direct });
@@ -3963,7 +3990,7 @@ export class World {
           this.damagePlayerDot(c.dps * 0.5 * (1 - this.d.magDR));
           this.applyPlayerStatus('poison', c.dps);
         }
-        if (this.coop?.role === 'host') for (const m of this.coop.mates.values()) if (!m.dead && Math.hypot(m.x - c.x, m.y - c.y) < c.r + 5) this.coHurtMate(m, c.dps * 0.5, 'mag', null, { direct: true, status: 'poison' });
+        if (this.coop) for (const m of this.coop.mates.values()) if (!m.dead && Math.hypot(m.x - c.x, m.y - c.y) < c.r + 5) this.coHurtMate(m, c.dps * 0.5, 'mag', null, { direct: true, status: 'poison' });
       }
     }
     this.clouds = this.clouds.filter((c) => c.t > 0);

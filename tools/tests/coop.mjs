@@ -59,3 +59,30 @@ ok(!M.player.down && M.player.hp > 0, '층을 깨면 다시 일어난다');
 const H2 = mk('greatsword', 'host'), e0 = H2.enemies[0], hp0 = e0.maxHp;
 H2.coScale(2); ok(Math.abs(e0.maxHp / hp0 - 1.6) < 0.01, '둘이면 몬스터 체력 1.6배');
 H2.coScale(1); ok(Math.abs(e0.maxHp - hp0) < 0.01, '동료가 떠나면 원래대로');
+
+// 똑같이: 가까운 몬스터는 동료가 맡아 동료의 세계가 움직이고 동료를 때린다 · 방장은 그 모습을 받아 본다
+{
+  const H3 = mk('greatsword', 'host'), M3 = mk('berserker', 'member');
+  const t3 = H3.enemies.find((e) => !e.def.elite && !e.lair);
+  M3.player.x = t3.x - 30; M3.player.y = t3.y;
+  const mate3 = { id: 2, r: 5, dead: false }; H3.coop.mates.set(2, mate3);
+  const hostMate = { id: 1, r: 5, dead: false }; M3.coop.mates.set(1, hostMate);
+  M3.coApplySnap(H3.coSnap(), 1);
+  let owned = 0, hpLost = 0, hp0 = M3.player.hp;
+  for (let fr = 0; fr < 60 * 10; fr++) {
+    mate3.x = M3.player.x; mate3.y = M3.player.y; hostMate.x = H3.player.x; hostMate.y = H3.player.y;
+    if (fr % 30 === 0) { const l = H3.coOwners(1); H3.coSetOwners(l, 1); M3.coSetOwners(l, 2); owned = M3.enemies.filter((e) => !e.dead && !e.puppet).length; }
+    M3.step({ moveX: 0, moveY: 0, attack: false, aimX: M3.player.x + 10, aimY: M3.player.y });
+    H3.step({ moveX: 0, moveY: 0, attack: false, aimX: H3.player.x + 10, aimY: H3.player.y });
+    if (fr % 6 === 0) { M3.coApplySnap(H3.coSnap(), 1); H3.coApplySnap(M3.coSnap(), 2); }
+    for (const m of M3.coFlush()) H3.coRecv(m, 2);
+    for (const m of H3.coFlush()) if (m.k === 'hurt') M3.coHurt(m); else M3.coRecv(m, 1);
+    M3.events.length = 0; H3.events.length = 0; M3.signals.length = 0; H3.signals.length = 0;
+  }
+  hpLost = hp0 - M3.player.hp;
+  const me = M3.enemies.find((e) => !e.dead && !e.puppet), he = me && H3.enemies.find((e) => e.id === me.id);
+  console.log(`동료가 맡은 몬스터 ${owned} · 동료가 받은 피해 ${Math.round(hpLost)}`);
+  ok(owned > 0, '가까운 몬스터는 동료가 맡는다 (동료의 세계가 움직인다)');
+  ok(hpLost > 0, '동료가 맡은 몬스터가 동료를 때린다');
+  ok(!me || (he && he.puppet && Math.hypot(me.x - he.x, me.y - he.y) < 24), '방장은 동료가 맡은 몬스터를 받아 본다');
+}
