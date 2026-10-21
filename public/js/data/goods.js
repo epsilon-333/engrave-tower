@@ -292,7 +292,7 @@ export const ARTIFACTS = {
   frozenQuill: { name: '얼어붙은 깃펜', biome: 'snow', icon: 'quill', text: '마탑의 마법사가 떨어뜨린 깃펜. 잉크가 얼어 있다.' },
   pirateCompass: { name: '해적의 나침반', biome: 'coast', icon: 'compass', text: '바늘이 북쪽이 아니라 바다 한가운데를 가리킨다. 용궁 쪽이다.' },
   starStone: { name: '별 모양 돌', biome: 'mountains', icon: 'star', text: '하늘에서 떨어진 돌. 밤이 되면 희미하게 빛난다.' },
-  raptorClaw: { name: '랩터 발톱 화석', biome: 'jungle', icon: 'claw', text: '지금의 랩터보다 훨씬 큰 발톱. 거대 둥지의 조상일지도.' },
+  raptorClaw: { name: '랩터 발톱 화석', biome: 'jungle', icon: 'claw', text: '지금의 랩터보다 훨씬 큰 발톱. 태고의 둥지에 사는 이들의 조상일지도.' },
   boneFlute: { name: '뼈 피리', biome: 'graveyard', icon: 'flute', text: '불면 묘지의 안개가 잠시 걷힌다고 한다.' },
   mossDoll: { name: '이끼 낀 인형', biome: 'forest', icon: 'doll', text: '엘프 아이의 장난감. 세계수의 잎으로 만든 옷을 입고 있다.' },
   witchRing: { name: '늪 마녀의 반지', biome: 'swamp', icon: 'ring', text: '끼면 개구리 울음소리가 들린다. 빼는 게 좋겠다.' },

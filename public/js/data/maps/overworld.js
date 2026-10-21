@@ -357,7 +357,7 @@ export function buildOverworld(zone) {
   const signs = [
     [V.x + 2, V.y - 17, '↑ 각인의 탑  ·  ↖ 이끼 숲 · 독늪  ·  ↗ 꽃바람 들판 · 원시림  ·  ↘ 남쪽 해안'],
     [TWR.x + 3, TWR.y + TWR.ry + 6, '← 폐허 도시 · 그림자 묘지  ·  ↑ 북쪽 바위산 · 서리 설원  ·  → 거울 호수 · 메마른 황야'],
-    [249, 136, '← 서리 설원 (마탑)  ·  → 화산 지대 (용의 둥지)'], [S.elf.x + 14, S.elf.y + 9, '↑ 세계수  ·  ← 이끼 동굴  ·  ↓ 독늪'],
+    [249, 136, '← 서리 설원 (마탑)  ·  → 화산 지대 (홍염 분화구)'], [S.elf.x + 14, S.elf.y + 9, '↑ 세계수  ·  ← 이끼 동굴  ·  ↓ 독늪'],
     [S.knight.x - 8, S.knight.y + 9, '↑ 무너진 왕성  ·  → 원시림'], [342, 186, '→ 황야의 투기장  ·  ← 각인의 탑'],
   ];
   for (const [x, y, text] of signs) { if (inb(x, y) && t[I(x, y)] === T_FLOOR) objects.push({ kind: 'sign', ...at(x, y), text, label: '표지판 읽기', reusable: true }); }

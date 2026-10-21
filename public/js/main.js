@@ -6,6 +6,7 @@ import { computeBuild } from './sim/build.js';
 import { Renderer } from './render/renderer.js';
 import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
+import { createIntro } from './intro/intro.js';
 import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel } from './save.js';
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
 import { codexPoints, levelFor } from './data/codex.js';
@@ -56,7 +57,7 @@ function resetGame() { clearSave(); cloudDelete(); save = null; world = null; sh
 
 function showRaceSelect() {
   gameEl.hidden = true; titleEl.hidden = false;
-  renderRaceSelect(titleEl, (race) => { unlockAudio(); sfx('select'); showStyleSelect(race); });
+  renderRaceSelect(titleEl, (race) => { unlockAudio(); sfx('select'); showStyleSelect(race); }, () => playIntro(showRaceSelect));
   // 종족 카드 미리보기 애니메이션
   const cards = [...titleEl.querySelectorAll('canvas[data-race]')];
   let t = 0;
@@ -109,7 +110,7 @@ function showStyleSelect(race) {
 function showLogin(onDone) {
   gameEl.hidden = true; titleEl.hidden = false;
   titleEl.innerHTML = `<div class="login">
-    <h1>각인의 탑</h1>
+    <h1>아르케</h1>
     <p class="muted">계정으로 로그인하면 어느 기기에서든 이어서 할 수 있습니다.</p>
     <form id="loginForm" class="login-box" autocomplete="on">
       <label for="lgId">아이디</label>
@@ -139,11 +140,24 @@ function showLogin(onDone) {
   $('lgId').focus();
 }
 
+// 소개 영상: 화면 전체를 덮고, 끝나거나 건너뛰면 then()
+function playIntro(then) {
+  const wrap = document.createElement('div'), cv = document.createElement('canvas');
+  wrap.className = 'intro-wrap'; wrap.appendChild(cv); document.body.appendChild(wrap);
+  try { localStorage.setItem('et-intro-seen', '1'); } catch { /* 무시 */ }
+  createIntro(cv, { onDone: () => { wrap.remove(); then(); } }).start();
+}
+// 처음 온 사람은 소개 영상부터, 본 적이 있으면 바로 종족 고르기
+function firstStart() {
+  let seen = false; try { seen = !!localStorage.getItem('et-intro-seen'); } catch { /* 무시 */ }
+  if (seen) showRaceSelect(); else playIntro(showRaceSelect);
+}
+
 // 로그인 직후: 서버 저장이 있으면 그것, 없으면 지금 브라우저의 진행을 계정으로 올린다
 function afterLogin(remote) {
   if (remote) save = migrateSave(remote);
   else if (save && cloud.mode !== 'local') cloudSaveNow(save);
-  if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else showRaceSelect();
+  if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else firstStart();
 }
 
 // 예전 저장 데이터를 새 구조로 옮긴다 (인간·드워프 → 기사, 없어진 슬롯·무기 정리)
@@ -844,7 +858,7 @@ function startLoop() {
 
 function showTutorial() {
   save.tutorial = 1; writeSave(save);
-  showModal(`<h2>각인의 탑에 온 것을 환영한다</h2>
+  showModal(`<h2>아르케에 온 것을 환영한다</h2>
     <div class="tut">
       <p><b>1.</b> 북쪽 <b>관문</b>으로 들어가 필드를 탐험하고, 몬스터가 남기는 <b>잔향</b>을 모으세요.</p>
       <p><b>2.</b> 어떤 몬스터가 어떤 잔향을 주는지는 지역마다 다릅니다. 원하는 각인이 있으면 그 몬스터를 찾아가세요.</p>
@@ -1273,6 +1287,6 @@ if (isTouch()) {
   if (save && remote !== save) cloudSave(save);
   let guest = false; try { guest = !!localStorage.getItem('et-guest'); } catch { /* 무시 */ }
   if (!isClaudePage() && cloud.mode === 'local' && !guest) { showLogin(afterLogin); requestAnimationFrame(frame); return; }
-  if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else showRaceSelect();
+  if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else firstStart();
   requestAnimationFrame(frame);
 })();

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>아르케 · 인트로</title>
+  <style>
+    @font-face { font-family: Galmuri11; font-weight: 400; src: url('assets/fonts/Galmuri11.woff2') format('woff2'); }
+    @font-face { font-family: Galmuri11; font-weight: 700; src: url('assets/fonts/Galmuri11-Bold.woff2') format('woff2'); }
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+    #again { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 18px Galmuri11, sans-serif; padding: 10px 22px; background: #1a1424; color: #f4ecd8; border: 2px solid #5a4e72; cursor: pointer; }
+    #sheet { display: block; max-width: 100vw; max-height: 100vh; margin: auto; image-rendering: pixelated; }
+  </style>
+</head>
+<body>
+  <canvas id="intro"></canvas>
+  <button id="again" hidden>다시 보기</button>
+  <script type="module">
+    import { createIntro, makeStage, TOTAL } from './js/intro/intro.js';
+    const q = new URLSearchParams(location.search), cv = document.getElementById('intro'), again = document.getElementById('again');
+    await document.fonts.load('22px Galmuri11').catch(() => {});
+    await document.fonts.load('bold 22px Galmuri11').catch(() => {});
+    if (q.has('shots')) { // 확인용: 여러 순간을 한 장에 (?shots=1,2.5,4&cols=3)
+      const ts = q.get('shots').split(',').map(Number), cols = +(q.get('cols') || 3), st = makeStage(), S = +(q.get('s') || 2);
+      const sh = document.createElement('canvas'); sh.id = 'sheet'; sh.width = cols * 320 * S; sh.height = Math.ceil(ts.length / cols) * 180 * S;
+      const x = sh.getContext('2d'); x.imageSmoothingEnabled = false; x.fillStyle = '#222'; x.fillRect(0, 0, sh.width, sh.height);
+      ts.forEach((t, i) => { st.draw(t); x.drawImage(st.lo, (i % cols) * 320 * S, Math.floor(i / cols) * 180 * S, 320 * S, 180 * S); x.fillStyle = '#ff0'; x.font = '14px sans-serif'; x.fillText(t.toFixed(1) + 's', (i % cols) * 320 * S + 4, Math.floor(i / cols) * 180 * S + 14); });
+      cv.replaceWith(sh);
+    } else {
+      const play = (at = 0) => { again.hidden = true; createIntro(cv, { startAt: at, loop: q.has('loop'), onDone: () => { again.hidden = false; } }).start(); };
+      again.onclick = () => play(0);
+      play(+(q.get('t') || 0));
+    }
+    window.__TOTAL = TOTAL;
+  </script>
+</body>
+</html>

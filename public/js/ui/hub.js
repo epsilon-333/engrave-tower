@@ -51,7 +51,7 @@ export class Hub {
     if (!tabs.some(([k]) => k === this.tab)) this.tab = tabs[0][0];
     this.root.innerHTML = `
       <header class="hub-top">
-        <div class="title">각인의 탑</div>
+        <div class="title">아르케</div>
         <div class="who">${RACES[s.race].name} · Lv ${s.level} ${(() => { const lv = levelFor(codexPoints(s)); return `<span class="xp" title="도감 점수 ${lv.into}/${lv.need} — 다음 레벨까지"><i style="width:${(lv.into / lv.need) * 100}%"></i></span>`; })()} <span class="gold">◆ ${s.gold} 골드</span></div>
         <button class="close" data-act="close">닫기 ✕</button>
         <nav>${tabs.map(([k, n]) => `<button data-tab="${k}" class="${this.tab === k ? 'on' : ''}">${n}${k === 'char' && s.points ? ` <b class="dot">${s.points}</b>` : ''}${k === 'quest' && (s.quests || []).some((q) => q.done) ? ' <b class="dot">!</b>' : ''}</button>`).join('')}</nav>
@@ -568,10 +568,11 @@ function w2t(w) {
 }
 
 // 종족 선택 화면
-export function renderRaceSelect(root, onPick) {
+export function renderRaceSelect(root, onPick, onIntro) {
   // 골렘족은 새로 고를 수 없다 (예전 저장의 골렘은 그대로 쓸 수 있다)
   root.innerHTML = `<div class="race-select">
-    <h1>각인의 탑</h1>
+    <h1>아르케</h1>
+    ${onIntro ? '<button class="intro-again" id="introAgain">▶ 인트로 다시 보기</button>' : ''}
     <p class="muted">탑에 잠든 고대 문양을 몸에 새겨라. 강한 각인보다 <b>맞물리는 조합</b>이 이긴다.</p>
     <div class="races">${Object.entries(RACES).filter(([id]) => id !== 'golem').map(([id, r]) => `
       <button class="race" data-race="${id}">
@@ -583,4 +584,5 @@ export function renderRaceSelect(root, onPick) {
       </button>`).join('')}</div>
     <p class="muted credit">그래픽: 16x16 DungeonTileset II by 0x72 (CC0) · 효과음: Kenney (CC0) · 글꼴: 갈무리, Noto Sans KR (OFL)</p></div>`;
   root.querySelectorAll('.race').forEach((b) => b.addEventListener('click', () => onPick(b.dataset.race)));
+  root.querySelector('#introAgain')?.addEventListener('click', onIntro);
 }
