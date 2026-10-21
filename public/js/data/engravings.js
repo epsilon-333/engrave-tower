@@ -88,7 +88,7 @@ export const ENGRAVINGS = {
   },
   magmaHide: {
     name: '용암 피부', slot: 'leg', grade: 3, load: 5, tags: ['fire', 'giant'],
-    stats: { pres: 14, tenacity: 10, agi: -4 },
+    stats: { pres: 14, vit: 4, agi: -4 },
     effects: [
       { type: 'on', event: 'hurt', chance: 1, action: { status: 'burn', stacks: 2 }, text: '나를 때린 적에게 화상 2중첩' },
     ],
@@ -396,26 +396,26 @@ export const ENGRAVINGS = {
     stats: { str: 10, sen: 10 },
     effects: [
       { type: 'flag', flag: 'critBleed', text: '치명타가 출혈 2중첩' },
-      { when: { stat: 'sen', gte: 50 }, type: 'flag', flag: 'execute', text: 'HP 15% 이하 일반 적 처형' },
+      { when: { stat: 'sen', gte: 50 }, type: 'add', key: 'lowHunt', v: 0.25, text: 'HP 30% 이하인 적에게 주는 피해 +25%' },
     ],
     recipe: { grave: 2, bone: 6 },
   },
-  // ── 자원 각인 (오러·마나·분노) ──
+  // ── 자원 각인 (오러 · 종족 자원 · 분노) ──
   auraSigil: {
     name: '오러 증폭 문양', slot: 'heart', grade: 3, load: 5, tags: ['brawl'],
     stats: { str: 4, pres: 4 },
     effects: [
-      { when: { race: 'knight' }, type: 'add', key: 'auraTime', v: 2, text: '오러 지속 +2초' },
-      { when: { race: 'knight' }, type: 'flag', flag: 'auraBurst', text: '오러 발동 시 주변 충격파' },
+      { when: { race: 'knight' }, type: 'add', key: 'hurtRes', v: 0.5, text: '맞아서 얻는 오러 +50%' },
+      { when: { race: 'knight' }, type: 'flag', flag: 'resGuard', text: '오러 50 이상이면 받는 피해 -10%' },
     ],
     recipe: { chief: 1, rust: 4 },
   },
   manaSpring: {
-    name: '마나의 샘', slot: 'head', grade: 3, load: 5, tags: ['curse'],
+    name: '샘솟는 기운', slot: 'head', grade: 3, load: 5, tags: ['curse'],
     stats: { spi: 6, mag: 3 },
     effects: [
-      { type: 'on', event: 'kill', chance: 1, action: { mana: 8 }, text: '처치 시 마나 8 회복' },
-      { type: 'mul', key: 'manaRegen', v: 1.15, text: '마나 회복 +15%' },
+      { type: 'on', event: 'kill', chance: 1, action: { res: 8 }, text: '처치 시 종족 자원 +8' },
+      { type: 'mul', key: 'resGain', v: 1.1, text: '얻는 종족 자원 +10%' },
     ],
     recipe: { soul: 3, spore: 3 },
   },
@@ -423,7 +423,7 @@ export const ENGRAVINGS = {
     name: '피의 마법', slot: 'heart', grade: 4, load: 6, tags: ['drain', 'curse'],
     stats: { mag: 6, vit: 6 },
     effects: [
-      { type: 'flag', flag: 'bloodMagic', text: '마나가 모자라면 체력으로 마법 사용' },
+      { type: 'flag', flag: 'bloodMagic', text: '종족 자원이 모자라면 모자란 만큼 체력으로 스킬을 쓴다 (1당 최대 HP 0.5%)' },
       { when: { stat: 'lifesteal', gte: 5 }, type: 'mul', key: 'magAtk', v: 1.1, text: '마법 공격력 +10%' },
     ],
     recipe: { blood: 6, soul: 3 },

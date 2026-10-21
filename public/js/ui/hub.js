@@ -145,6 +145,8 @@ export class Hub {
       .map(([id, n]) => `<span class="echo" style="--c:${ECHOES[id].color}">◆ ${ECHOES[id].name} <b>${n}</b></span>`).join('') || '<span class="muted">잔향이 없습니다. 사냥터에서 몬스터를 사냥하세요.</span>';
 
     const zonesOf = (id) => [...new Set(Object.keys(ENGRAVINGS[id].recipe).map(zoneOfEcho))];
+    // 그 계열의 잔향을 주는 몬스터가 사는 바깥 세계의 던전들
+    const placesOf = (zid) => { const ps = Object.values(ENTRANCES).filter((en) => en.theme === zid).map((en) => en.name); return ps.length ? ps.slice(0, 3).join(' · ') + (ps.length > 3 ? ' 등' : '') : '바깥 세계'; };
     // 거르기: 기본은 지금 클래스에 맞는 각인. 같은 종족의 다른 클래스 · 전체 · 찜 · 새길 수 있음도 고를 수 있다
     let filter = this.altarFilter || `cls:${b.cls}`;
     if (filter.startsWith('cls:') && !CLASS_TAGS[filter.slice(4)]) filter = `cls:${b.cls}`;
@@ -164,7 +166,7 @@ export class Hub {
     const groups = ZONES.map((z) => {
       const ids = Object.keys(ENGRAVINGS).filter((id) => { const zs = zonesOf(id); return zs.length === 1 && zs[0] === z.id && pass(id); });
       if (!ids.length) return '';
-      return `<h4>${z.name} <small>${z.floor}층 · ${ids.length}종</small></h4><div class="cards">${ids.map((id) => this.engravingCard(id, s, b)).join('')}</div>`;
+      return `<h4>${z.name} 계열 <small>${placesOf(z.id)} · ${ids.length}종</small></h4><div class="cards">${ids.map((id) => this.engravingCard(id, s, b)).join('')}</div>`;
     }).join('') + (() => {
       const ids = Object.keys(ENGRAVINGS).filter((id) => zonesOf(id).length > 1 && pass(id));
       if (!ids.length) return '';
@@ -317,7 +319,7 @@ export class Hub {
     const card = (id) => {
       const it = ITEMS[id], has = s.items.includes(id);
       const stats = Object.entries(it.stats).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k]).name} ${v > 0 ? '+' : ''}${v}`).join(', ');
-      const w = it.weapon ? `<div class="c-meta"><b>${weaponHands(it) >= 2 ? `양손 · ${twoHandBonus(id, it).text.replace(/^[^:]+: /, '')}` : `한손 · 왼손에 도구나 ${FAMILY_NAME[weaponFamily(it)] || '무기'}를 함께 든다`}</b> · ${w2t(it.weapon)}</div>` : it.off ? `<div class="c-meta"><b>왼손</b> · ${esc(it.odesc || '')} · 한손 무기와 함께 들 때만</div>` : '';
+      const w = it.weapon ? `<div class="c-meta"><b>${weaponHands(it) >= 2 ? `양손 · ${twoHandBonus(id, it).text.replace(/^[^:]+: /, '')}` : `한손 · 왼손에 도구나 ${FAMILY_NAME[weaponFamily(it)] || '무기'}를 함께 든다`}</b> · ${w2t(it.weapon, s.race)}</div>` : it.off ? `<div class="c-meta"><b>왼손</b> · ${esc(it.odesc || '')} · 한손 무기와 함께 들 때만</div>` : '';
       const req = it.req ? `<div class="c-meta warn">착용 조건: ${Object.entries(it.req).map(([k, v]) => `${STAT_INFO[k].name} ${v}`).join(', ')}</div>` : '';
       const effs = (it.effects || []).map((x) => `<li>${x.when ? `<em>[${esc(condText(x.when))}]</em> ` : ''}${esc(x.text)}</li>`).join('');
       const equipped = Object.values(gear).includes(id);
@@ -572,9 +574,10 @@ function zoneOfEcho(eid) {
   return null;
 }
 
-function w2t(w) {
+// 무기 설명: 우클릭 무기 능력 · (마법사만) 한 번 쏠 때 드는 마력 · 근접/원거리 성질
+function w2t(w, race) {
   const sk = WEAPON_SKILLS[w.skill];
-  return `${sk ? `Q: ${sk.name} (${sk.desc}) · ` : ''}${w.mana ? `마나 ${w.mana} · ` : ''}${w.kind === 'melee' ? '근접 (받는 피해 -20%, 적중 시 적 공격 끊기)' : '원거리 (쏘는 동안 이동 -35%, 근거리 피해 -30%, 먼 거리 +10%)'} · ${w.dmg === 'phys' ? '물리' : '마법'} · 피해 ×${w.mul} · 속도 ${w.speed}${w.count ? ` · ${w.count}발` : ''}${w.pierce ? ` · 관통 ${w.pierce}` : ''}`;
+  return `${sk ? `우클릭: ${sk.name} (${sk.desc}) · ` : ''}${w.mana && race === 'wizard' ? `한 발에 마력 ${w.mana} · ` : ''}${w.kind === 'melee' ? '근접 (받는 피해 -20%, 적중 시 적 공격 끊기)' : '원거리 (쏘는 동안 이동 -35%, 근거리 피해 -30%, 먼 거리 +10%)'} · ${w.dmg === 'phys' ? '물리' : '마법'} · 피해 ×${w.mul} · 속도 ${w.speed}${w.count ? ` · ${w.count}발` : ''}${w.pierce ? ` · 관통 ${w.pierce}` : ''}`;
 }
 
 // 종족 선택 화면

@@ -26,7 +26,7 @@ import { sfx, tone } from '../audio.js';
 import { skyColor, darkness, clockText, partOfDay } from '../sim/time.js';
 
 const FONT = 'Galmuri11, "Malgun Gothic", sans-serif';
-const GLOW = { glowshroom: [26, '#5affd0'], candle: [30, '#ffb04a'], ember: [18, '#ff7a2a'], crystalB: [22, '#7ad8ff'], crystalR: [22, '#ff5a2a'], glowPlant: [24, '#7af0ff'] };
+const GLOW = { glowshroom: [26, '#5affd0'], candle: [30, '#ffb04a'], brazier: [46, '#ffa040'], ember: [18, '#ff7a2a'], crystalB: [22, '#7ad8ff'], crystalR: [22, '#ff5a2a'], glowPlant: [24, '#7af0ff'] };
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 // 활을 겨눈 손: 어깨에서 조준 쪽으로 팔을 뻗은 자리 (위 · 아래로 쏠 때도 활이 겨눈 쪽에 온다)
 const bowHand = (a) => ({ hx: 1 + Math.cos(a) * 11, hy: -9 + Math.sin(a) * 10 });
@@ -364,7 +364,7 @@ export class Renderer {
         case 'meteor': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: '#c9a8ff', t: 0.6, max: 0.6, w: 6 }); this.burst(ev.x, ev.y, '#c9a8ff', 60, 200); this.burst(ev.x, ev.y, '#ffffff', 20, 120); sfx('reaction', { vol: 1, rate: 0.7 }); break;
         case 'telegraphCircle': this.fx.push({ k: 'tcircle', x: ev.x, y: ev.y, r: ev.r, t: ev.dur, max: ev.dur, follow: ev.follow }); break;
         case 'noMana':
-          if ((this.noManaT || 0) < w.t) { this.noManaT = w.t + 1; this.texts.push({ x: ev.x, y: ev.y - 22, text: '마나 부족', color: '#7aa8ff', t: 0.9, vy: -14, vx: 0, label: true }); sfx('error', { vol: 0.3 }); }
+          if ((this.noManaT || 0) < w.t) { this.noManaT = w.t + 1; this.texts.push({ x: ev.x, y: ev.y - 22, text: '마력 부족', color: '#7aa8ff', t: 0.9, vy: -14, vx: 0, label: true }); sfx('error', { vol: 0.3 }); }
           break;
         case 'fuse': this.alerts.set(ev.id, 0.55); sfx('windup', { vol: 0.6, rate: 1.6 }); break;
         case 'emerge': this.burst(ev.x, ev.y + 2, '#8a7a5a', 18, 90); sfx('crack', { vol: 0.5, rate: 1.3 }); break;
@@ -785,6 +785,7 @@ export class Renderer {
     for (const e of w.enemies) if (vis(e.x, e.y)) list.push({ e, y: e.y });
     for (const c of this.corpses) list.push({ c, y: c.y });
     list.push({ p, y: p.y });
+    for (const rp of w.remotes || []) if (vis(rp.x, rp.y)) list.push({ rp, y: rp.y }); // 온라인: 같은 지도의 다른 사람
     for (const al of w.allies || []) list.push({ al, y: al.y });
     if (w.map.props) for (const pr of w.map.props) { const px = (pr.x + pr.w / 2) * TILE, py = (pr.y + pr.h) * TILE, big = pr.kind !== 'tree' && pr.kind !== 'well' && pr.kind !== 'house'; if (pr.big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 240 && py > cy - 40 && py < cy + VH + 460 : big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 140 && py > cy - 40 && py < cy + VH + 260 : vis(px, py - 40)) list.push({ prop: pr, y: py - 2 }); }
     if (w.map.plaza) for (const d of w.map.wallDeco) list.push({ wd: d, y: -1e9 + 1 });
@@ -799,6 +800,7 @@ export class Renderer {
       else if (it.prop) this.drawProp(w, it.prop);
       else if (it.wd) this.drawWallDeco(w, it.wd);
       else if (it.al) this.drawAlly(w, it.al);
+      else if (it.rp) this.drawRemote(w, it.rp);
       else if (it.crop) drawCrop(g, it.crop.x, it.crop.y, it.crop.pl, w.t);
     }
     this.corpses = this.corpses.filter((c) => c.t > 0);
@@ -986,8 +988,41 @@ export class Renderer {
     return fr[Math.floor(t * speed) % fr.length];
   }
 
+  // 다른 사람 (온라인 · 결투 상대): 그 종족의 몸 · 든 무기 · 걷기
+  drawRemote(w, rp) {
+    const g = this.g, art = RACE_ART[rp.race] || RACE_ART.knight, moving = !rp.down && (rp.moving || rp.mo === 'run'), dir = rp.dir || 1;
+    const fr = frames(art.base, moving ? 'run' : 'idle'), img = sprite(fr[Math.floor(w.t * (moving ? 10 : 4) + (rp.id || 0)) % fr.length], (art.tint || '') + (rp.flash > 0 ? ' brightness(2.2)' : ''), false, dir < 0);
+    this.shadow(rp.x, rp.y + 6, 6);
+    if (rp.down) { // 파티 탑에서 쓰러진 동료: 옆으로 누워 흐리게 (층을 깨면 일어난다)
+      g.save(); g.globalAlpha = 0.5; g.translate(Math.round(rp.x), Math.round(rp.y + 4)); g.rotate(-dir * Math.PI / 2);
+      if (img) g.drawImage(img, Math.round(-img.width / 2), Math.round(3 - img.height));
+      g.restore(); rp._top = rp.y - 10; return;
+    }
+    if (img) g.drawImage(img, Math.round(rp.x - img.width / 2), Math.round(rp.y + 7 - img.height));
+    const wa = rp.weapon && ITEMS[rp.weapon] ? weaponArt(rp.weapon, ITEMS) : null, wimg = wa && sprite(wa.s, wa.tint || '');
+    if (rp.mo === 'atk') rp.swingT = (rp.swingT || 0) + 1 / 60; else rp.swingT = 0;
+    const sw = rp.swingT > 0 ? -1.3 + ((rp.swingT * 6) % 1) * 2.6 : 0; // 공격 중: 위에서 아래로 크게 휘두른다
+    if (wimg) { const sc = Math.min(1, 16 / wimg.height); g.save(); g.translate(Math.round(rp.x + dir * 4), Math.round(rp.y - 2)); g.rotate(dir * (0.9 + sw)); g.scale(sc, sc); g.drawImage(wimg, -wimg.width / 2, -wimg.height + 2); g.restore(); }
+    rp._top = rp.y - (img ? img.height - 7 : 18);
+  }
+
+  // 저장 안내 칩(#cloudChip)이 화면 가운데 위를 덮는 높이 (캔버스 픽셀) · 0.5초마다 다시 잰다
+  topSafe() {
+    const now = performance.now();
+    if (this._topSafe && now - this._topSafe.at < 500) return this._topSafe.v;
+    let v = 0;
+    const el = document.getElementById('cloudChip');
+    if (el && !el.hidden && el.getClientRects().length) { // position: fixed 라 offsetParent 로는 못 잰다
+      const r = el.getBoundingClientRect(), cr = this.c.getBoundingClientRect(), mid = cr.left + cr.width / 2;
+      if (r.left < mid && r.right > mid && cr.height > 0) v = Math.max(0, (r.bottom - cr.top) * this.c.height / cr.height);
+    }
+    this._topSafe = { at: now, v };
+    return v;
+  }
+
   drawEnemy(w, e, dt) {
     const g = this.g, def = e.def;
+    if (e.remote) { this.drawRemote(w, { ...e.rp, x: e.x, y: e.y, dir: e.dir, moving: e.moving, flash: e.hitFlash }); e._top = e.y - 18; return; }
     if (def.ai === 'dummy') return this.drawDummy(w, e);
     if (def.ai === 'target') return drawTrainTarget(this, w, e);
     if (e.bones > 0) return drawBonePile(this, w, e); // 수련: 쓰러진 해골이 뼈 무더기로 (곧 다시 일어선다)
@@ -1181,7 +1216,8 @@ export class Renderer {
     const bx = p.x + pose.ox, by = p.y + pose.oy - lift + (p.fallInto && p.fallInto.t / p.fallInto.dur > 0.4 ? (p.fallInto.t / p.fallInto.dur - 0.4) * 14 : 0);
     if (fallA < 1) g.globalAlpha = fallA;
     if (p.buffs?.dragonForm) { this.drawTrueDragon(w, p, by); g.globalAlpha = 1; return; }
-    if (w.state === 'dead' && img) {
+    if (p.down) g.globalAlpha = 0.5;
+    if ((w.state === 'dead' || p.down) && img) {
       // 쓰러진 모습: 옆으로 쓰러져 눕는다
       this.deadT = (this.deadT || 0) + dt;
       const k = easeOut(Math.min(1, this.deadT / 0.35));
@@ -3656,6 +3692,19 @@ export class Renderer {
       this.text(hint, W / 2, hy0, u, '#d8d0e8', 'center', false);
     }
 
+    // 온라인: 다른 사람의 이름 · 말풍선
+    for (const rp of w.remotes || []) {
+      const tx = this.sx(rp.x), ty = this.sy(rp._top ?? rp.y - 18) - 6 * u;
+      if (tx < -40 || tx > W + 40 || ty < -40 || ty > H + 40) continue;
+      const mate = w.myParty && rp.party === w.myParty;
+      this.text(`${rp.gname ? `[${rp.gname}] ` : ''}${rp.name}${rp.duel ? ' ⚔' : ''}`, tx, ty, Math.max(1, u - 1), mate ? '#a8f0a0' : '#bfe8ff', 'center', true, true);
+      if (rp.say && rp.say.until > performance.now()) {
+        g.font = `${10 * Math.max(1, u - 1)}px ${FONT}`;
+        const tw2 = Math.min(220 * u, g.measureText(rp.say.text).width + 12 * u), by = ty - 16 * u;
+        g.fillStyle = 'rgba(250,246,236,0.95)'; g.fillRect(Math.round(tx - tw2 / 2), Math.round(by - 7 * u), Math.round(tw2), Math.round(13 * u));
+        this.text(rp.say.text.length > 34 ? rp.say.text.slice(0, 33) + '…' : rp.say.text, tx, by, Math.max(1, u - 1), '#2a2230', 'center', false);
+      }
+    }
     // 상호작용 안내
     const anim = w.player.fallInto || w.player.drop || w.player.hop; // 뛰어내리는 동안은 안내를 숨긴다
     if (w.near && !w.player.fish && !w.player.gather && !anim) {
@@ -3681,6 +3730,15 @@ export class Renderer {
       this.text('G', tx - tw2 / 2 + 8 * u, ty, u, '#241a00', 'center', false, true);
       this.text(label, tx + 7 * u, ty, u, can ? '#ffffff' : '#c8c0d0', 'center', false);
     }
+    else if (w.nearRemote && !anim) { // 온라인: 가까운 사람에게 결투 신청
+      const rp = w.nearRemote, label = rp.duel ? `${rp.name} (결투 중)` : `${rp.name} · 결투 · 파티 · 길드`, tx = this.sx(rp.x), ty = this.sy(rp.y + 14) + 10 * u;
+      g.font = `${11 * u}px ${FONT}`;
+      const tw2 = g.measureText(label).width + 30 * u;
+      this.panel(tx - tw2 / 2, ty - 8 * u, tw2, 16 * u);
+      g.fillStyle = rp.duel ? '#8a8090' : '#ff9a7a'; g.fillRect(tx - tw2 / 2 + 3 * u, ty - 5 * u, 10 * u, 10 * u);
+      this.text('G', tx - tw2 / 2 + 8 * u, ty, u, '#241a00', 'center', false, true);
+      this.text(label, tx + 7 * u, ty, u, '#ffffff', 'center', false);
+    }
     else if (w.waterAct && !w.player.fish && !anim) {
       const label = w.waterAct, tx = this.sx(w.player.x), ty = this.sy(w.player.y - 30) - 10 * u;
       g.font = `${11 * u}px ${FONT}`;
@@ -3700,16 +3758,23 @@ export class Renderer {
         if (on) { g.fillStyle = 'rgba(160,220,255,0.35)'; g.beginPath(); g.arc(x, y, 2.5 * u, 0, Math.PI * 2); g.fill(); g.fillStyle = '#ffffff'; g.fillRect(x - u, y - 2 * u, u, u); }
       }
     }
+    // 위쪽 가운데 글(결투 · 탑 시간, 정예 체력바)은 저장 안내 칩 아래에 둔다
+    const topY = Math.max(46 * u, this.topSafe() + 9 * u);
+    // 결투: 남은 시간 (30초 안쪽은 붉게)
+    if (w.pvp && w.pvp.left != null) {
+      const v = Math.ceil(w.pvp.left);
+      this.text(`결투 ${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`, W / 2, topY, u, v <= 30 ? '#ff8a7a' : '#e8d8a8', 'center', true, true);
+    }
     // 각인의 탑: 층 · 걸린 시간 / 기준 시간 (넘기면 붉게)
     if (w.tower) {
       const par = 60 + w.tower.f * 2 + (w.tower.f % 5 === 0 ? 45 : 0), tt = w.tower.t, over = tt > par;
       const fmt = (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;
-      this.text(`각인의 탑 ${w.tower.f}층 · ${fmt(tt)} / ${fmt(par)}`, W / 2, 46 * u, u, over ? '#ff8a7a' : '#e8d8a8', 'center', true, true);
+      this.text(`각인의 탑 ${w.tower.f}층 · ${fmt(tt)} / ${fmt(par)}`, W / 2, topY, u, over ? '#ff8a7a' : '#e8d8a8', 'center', true, true);
     }
     // 정예 체력바
     const boss = w.enemies.find((e) => (e.def.elite || e.champion) && e.state === 'chase' && !e.dead);
     if (boss) {
-      const bw2 = Math.min(W * 0.5, 260 * u), bx2 = (W - bw2) / 2, by2 = (w.tower ? 74 : 62) * u; // 화면 위쪽 (아래 스킬 칸을 가리지 않게)
+      const bw2 = Math.min(W * 0.5, 260 * u), bx2 = (W - bw2) / 2, by2 = topY + 28 * u; // 화면 위쪽 (아래 스킬 칸 · 위쪽 저장 안내를 가리지 않게)
       this.text(boss.champion || boss.def.name, W / 2, by2 - 9 * u, u, '#ff9a8a', 'center', true, true);
       this.panel(bx2, by2, bw2, 8 * u);
       g.fillStyle = '#3a1016'; g.fillRect(bx2 + u, by2 + u, bw2 - 2 * u, 6 * u);

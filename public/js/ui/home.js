@@ -106,7 +106,7 @@ export function craftTab(s, ui) {
       <h4>몬스터 부산물 <small>2개까지 · 그 몬스터를 닮은 능력이 붙는다. 같은 것 둘은 능력이 깊어지고, 서로 다른 둘이 맞물리면 조합 능력</small></h4>
       <div class="pot">${chosen}</div><div class="goods">${partBtns}</div></section>
     <section class="panel"><h3>${esc(it.name)}</h3>
-      <p>${w.kind === 'melee' ? '근접' : '원거리'} · ${w.dmg === 'phys' ? '물리' : '마법'} · 피해 ×${w.mul} · 속도 ${w.speed}${w.count ? ` · ${w.count}발` : ''}${w.pierce ? ` · 관통 ${w.pierce}` : ''}${w.mana ? ` · 마나 ${w.mana}` : ''}${sk ? ` · 우클릭: ${sk.name}` : ''}</p>
+      <p>${w.kind === 'melee' ? '근접' : '원거리'} · ${w.dmg === 'phys' ? '물리' : '마법'} · 피해 ×${w.mul} · 속도 ${w.speed}${w.count ? ` · ${w.count}발` : ''}${w.pierce ? ` · 관통 ${w.pierce}` : ''}${w.mana && s.race === 'wizard' ? ` · 한 발에 마력 ${w.mana}` : ''}${sk ? ` · 우클릭: ${sk.name}` : ''}</p>
       <ul class="c-eff">${it.lines.map((l) => `<li>${esc(l)}</li>`).join('') || '<li class="muted">부산물을 넣으면 능력이 붙는다</li>'}</ul>
       <div class="mats">${matsHtml}</div><button data-act="craftW" ${ok ? '' : 'disabled'}>만들기</button></section>
     ${own ? `<section class="panel"><h3>만든 무기</h3><div class="tlist">${own}</div></section>` : ''}

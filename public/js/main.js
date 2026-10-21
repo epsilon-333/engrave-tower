@@ -1,7 +1,7 @@
 // 진입점: 화면 전환(광장 ↔ 필드), 입력, 고정 틱 게임 루프
 import { World, DT, overworldBase } from './sim/world.js';
 import { SEABED_ZONE, seabedMap } from './data/maps/seabed.js';
-import { ARENA_ZONE, ARENA_SETS, buildArena, spawnArenaSet } from './data/maps/arena.js';
+import { ARENA_ZONE, ARENA_SETS, buildArena, spawnArenaSet, DUEL_ZONE, buildDuelArena } from './data/maps/arena.js';
 import { computeBuild } from './sim/build.js';
 import { Renderer } from './render/renderer.js';
 import { loadAssets, sprite, frames } from './render/assets.js';
@@ -22,6 +22,7 @@ import { LEARN, ABILITIES } from './data/learn.js';
 import { CROPS } from './data/goods.js';
 import { GOODS, SELL_BONUS } from './data/goods.js';
 import { KNACKS, knackTick, hasKnack, newKnack } from './data/knacks.js';
+import { net, onNet, netSend, netConnect, netMap, netPos, netLerp } from './net.js';
 import { TOWER_TOP, towerZoneId, towerSize, isBossFloor, towerGrade, towerReward, GRADE_COLOR, betterGrade, towerStarts, parTime } from './data/tower.js';
 import { SANCTUMS, SANCTUM_MAX, TIER_COST, PERK_TIER, TREASURE_TIER, SHARDS_PER_RELIC, sanctumBonusText, SANCT_LIFE, sanctState, affLevel, AFF_LV, AFF_NAME, AFF_REWARD, trainCap, trainSpec, OWN_TRAIN_CAP, OWN_TRAIN_EASE, GIFT_AFF, GIFTS_PER_DAY, TRAIN_AFF, TRAINS_PER_DAY, sanctQuestDef, FIND_NAME, RACE_SHOP } from './data/sanctums.js';
 import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, cloud, isClaudePage, login, register, logout, errorText } from './cloud.js';
@@ -51,6 +52,387 @@ const renderer = new Renderer(canvas);
 const plazaMap = buildPlaza();
 const hub = new Hub(panelEl, () => save, (zone) => { closePanel(); if (zone === '__practice') enterPractice(); else enterZone(zone); }, resetGame, closePanel);
 hub.getWorld = () => world;
+// ───── 온라인: 바깥 세계에서 다른 사람이 보이고, 채팅하고, 결투하고, 파티 · 길드를 맺는다 ─────
+const onlineInfo = () => ({ name: cloud.name || `${RACES[save.race]?.name || ''} 여행자`, race: save.race, cls: save.cls, weapon: save.gear?.weapon, lv: save.level, uid: save.uid, guild: save.guild || null });
+function goOnline() { if (isClaudePage() || !save) return; netConnect(onlineInfo()); }
+// 채팅 창 (Enter로 열고 보낸다)
+const chatEl = document.createElement('div');
+chatEl.id = 'chat'; chatEl.hidden = true;
+chatEl.innerHTML = '<div id="netinfo"></div><div id="chatlog"></div><input id="chatin" maxlength="120" placeholder="말하기 · /p 파티 · /g 길드 · Enter 보내기 · Esc 닫기" hidden>';
+document.body.appendChild(chatEl);
+const chatLog = chatEl.querySelector('#chatlog'), chatIn = chatEl.querySelector('#chatin'), netInfo = chatEl.querySelector('#netinfo');
+function openChat() { chatIn.hidden = false; chatIn.focus(); }
+function closeChat() { chatIn.value = ''; chatIn.hidden = true; chatIn.blur(); }
+chatIn.addEventListener('keydown', (e) => {
+  e.stopPropagation();
+  if (e.key === 'Enter') {
+    let t = chatIn.value.trim(), ch = 'all';
+    const mm = t.match(/^\/(p|g|파|길)\s+/i); // /p 파티 · /g 길드
+    if (mm) { ch = /p|파/i.test(mm[1]) ? 'party' : 'guild'; t = t.slice(mm[0].length); }
+    if (ch === 'party' && !net.party) renderer.banner = { text: '파티가 없다', t: 1.4, color: '#c8b8a0' };
+    else if (ch === 'guild' && !net.guild) renderer.banner = { text: '길드가 없다', t: 1.4, color: '#c8b8a0' };
+    else if (t) netSend({ t: 'chat', text: t, ch });
+    closeChat();
+  }
+  else if (e.key === 'Escape') closeChat();
+});
+onNet('chat', (m) => {
+  const el = document.createElement('p');
+  el.className = m.ch && m.ch !== 'all' ? 'ch-' + m.ch : '';
+  el.innerHTML = `${m.ch === 'party' ? '<i>[파티]</i> ' : m.ch === 'guild' ? '<i>[길드]</i> ' : ''}<b>${esc(m.name)}</b> ${esc(m.text)}`;
+  chatLog.appendChild(el);
+  while (chatLog.children.length > 7) chatLog.firstChild.remove();
+  setTimeout(() => el.classList.add('old'), 15000);
+});
+function onlineBadge() {
+  chatEl.hidden = !net.up || gameEl.hidden;
+  if (!chatEl.hidden) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 탑 · 같은 층 동료 ${net.players.size}명 · Enter 채팅 (/p 파티)` : world?.zone?.id === 'world' ? `온라인 · 근처 ${net.players.size}명 · Enter 채팅 · O 파티 · 길드` : '온라인 · 바깥 세계에서만 서로 보인다 · O 파티 · 길드';
+}
+let lastPP = null;
+function onlineTick(dt) {
+  if (!world || world.practice) { onlineBadge(); return; }
+  const p = world.player, inWorld = world.zone?.id === 'world' && !world.pvp && world.state === 'play';
+  const key = inWorld ? 'world' : coKey(); // 바깥 세계 · 파티 탑의 같은 층에서만 서로 보인다
+  netMap(key, p.x, p.y);
+  if (key) {
+    netLerp(dt);
+    const moving = !!lastPP && Math.hypot(p.x - lastPP.x, p.y - lastPP.y) > 0.3; lastPP = { x: p.x, y: p.y };
+    netPos(p.x, p.y, p.dir, p.swingT > 0 || p.motion ? 'atk' : moving ? 'run' : '');
+    world.remotes = [...net.players.values()];
+    for (const rp of world.remotes) rp.down = !!coState.get(rp.id)?.down && !!coRun;
+    world.myParty = net.party?.id || 0;
+    let best = null, bd = 28;
+    if (inWorld) for (const rp of world.remotes) { const dd = Math.hypot(rp.x - p.x, rp.y - p.y); if (dd < bd) { bd = dd; best = rp; } }
+    world.nearRemote = world.near || world.act ? null : best;
+  } else { world.remotes = null; world.nearRemote = null; }
+  coTick(dt);
+  if ((onlineTick.hudT = (onlineTick.hudT || 0) - dt) <= 0) { onlineTick.hudT = 0.25; partyHudTick(); }
+  if (world.pvp && duel) { duelTick(dt); if (world.state === 'pvpDown') { netSend({ t: 'dend', reason: 'down' }); duelOver(false); } } // 쓰러지면 상대에게 알리고 끝
+  onlineBadge();
+}
+// 결투: 신청 → 수락 → 투기장 → 한쪽이 쓰러지면 끝 (잃는 것은 없다)
+let duel = null, duelBack = null;
+const DUEL_TIME = 180; // 결투 시간 제한 (초)
+function inviteDuel(rp) {
+  if (rp.duel) return;
+  netSend({ t: 'duelInvite', to: rp.id });
+  renderer.banner = { text: `${rp.name}에게 결투를 신청했다`, sub: '상대가 받아들이면 투기장으로 간다', t: 2.4, color: '#ff9a7a' };
+}
+onNet('duelInvite', (m) => {
+  if (!world || paused || world.pvp || world.zone?.id !== 'world' || world.state !== 'play') { netSend({ t: 'duelAnswer', to: m.from, ok: false }); return; }
+  const close = () => { overlay.hidden = true; paused = false; modal = null; clearTimeout(t); };
+  showModal(`<h2>결투 신청</h2><p><b>${esc(m.name)}</b> (${RACES[m.race]?.name || '?'} · Lv ${m.lv || 1}) — 결투 신청이 왔다.</p>
+    <p class="muted">투기장에서 1:1로 싸운다. 대전에서는 피해 60% · 회복 50% · 보호막 60% · CC 60%로 줄어든다. 져도 잃는 것은 없다.</p>
+    <div class="actions"><button id="dAcc">받아들인다</button><button id="dDec" class="ghost">거절한다</button></div>`, () => { close(); netSend({ t: 'duelAnswer', to: m.from, ok: false }); });
+  const t = setTimeout(() => { if (document.getElementById('dDec')) { close(); netSend({ t: 'duelAnswer', to: m.from, ok: false }); } }, 15000);
+  document.getElementById('dAcc').onclick = () => { close(); netSend({ t: 'duelAnswer', to: m.from, ok: true, maxHp: world.d.maxHp }); };
+  document.getElementById('dDec').onclick = () => { close(); netSend({ t: 'duelAnswer', to: m.from, ok: false }); };
+});
+onNet('duelNo', (m) => { renderer.banner = { text: '결투가 열리지 않았다', sub: m.reason, t: 2.4, color: '#c8b8a0' }; });
+onNet('duelStart', (m) => enterDuel(m));
+const duelFoe = () => (world?.pvp ? world.enemies.find((x) => x.remote) : null);
+onNet('duelHp', (m) => { const e = duelFoe(); if (e) { e.maxHp = m.maxHp; e.hp = Math.min(e.hp, m.maxHp); } });
+onNet('dstate', (m) => { const e = duelFoe(); if (e) { e.tx = m.x; e.ty = m.y; e.dir = m.dir; e.hp = m.hp; e.maxHp = m.maxHp; } });
+onNet('dhit', (m) => { if (world?.pvp && duel) world.pvpHit(m); });
+onNet('dskill', (m) => { const e = duelFoe(); if (e && SKILLS[m.id]) world.emit({ t: 'text', x: e.x, y: e.y - 30, text: SKILLS[m.id].name, color: '#ffb0a0' }); });
+onNet('dend', (m) => { if (duel) duelOver(m.reason === 'draw' ? null : m.loser !== net.id, m.reason); });
+onNet('down', () => { if (duel) duelOver(false, 'net'); });
+function enterDuel(m) {
+  if (world?.zone?.id === 'world') { save.zoneMemory.world = world.exportMemory(); duelBack = { x: world.player.x, y: world.player.y }; }
+  overlay.hidden = true; paused = false; modal = null; closeChat();
+  world = new World({ build: buildNow(), mode: 'field', zone: DUEL_ZONE, zoneId: 'duel', seed: 900 + m.id, map: buildDuelArena(), pvp: { opp: m.opp }, story: save.story, codex: save.codex, ...shared() });
+  world.enemies = []; world.camps = []; world.objects = []; world.explored.fill(1); // 결투장: 상대만 남긴다 (포탈 · 상자 없음)
+  const cx = (world.tw * TILE) / 2, cy = (world.th * TILE) / 2, L = cx - 90, R = cx + 90;
+  world.player.x = m.side === 0 ? L : R; world.player.y = cy; world.player.dir = m.side === 0 ? 1 : -1;
+  world.addRemote(m.opp, m.side === 0 ? R : L, cy);
+  world.player.ccT = 3; // 3초 뒤 시작
+  duel = { id: m.id, opp: m.opp, sendT: 0, t: 0 };
+  world.pvp.left = DUEL_TIME;
+  renderer.setWorld(world);
+  renderer.banner = { text: `${josa(m.opp.name, "과", "와")}의 결투`, sub: '3초 뒤 시작 · 대전: 피해 60% · 회복 50% · 보호막 60% · CC 60%', t: 3, color: '#ff9a7a' };
+  netSend({ t: 'duelHp', maxHp: world.d.maxHp });
+  startMusic('cave'); sfx('open'); startLoop();
+}
+function duelTick(dt) {
+  const p = world.player;
+  duel.sendT -= dt;
+  if (duel.sendT <= 0) { duel.sendT = 0.066; netSend({ t: 'dstate', x: Math.round(p.x), y: Math.round(p.y), dir: p.dir, hp: Math.max(0, Math.round(p.hp)), maxHp: world.d.maxHp }); }
+  for (const o of world.pvp.out.splice(0)) netSend(o);
+  // 시간 제한: 끝나면 남은 체력 비율이 낮은 쪽이 진다 (진 쪽이 알린다 · 상대가 말이 없으면 이긴 쪽이 알린다)
+  if (p.ccT > 0 && duel.t === 0) return; // 시작 전 3초는 세지 않는다
+  duel.t += dt; world.pvp.left = Math.max(0, DUEL_TIME - duel.t);
+  if (world.pvp.left > 0) return;
+  const e = duelFoe(), mine = p.hp / world.d.maxHp, theirs = e ? e.hp / (e.maxHp || 1) : 0;
+  if (Math.abs(mine - theirs) < 0.01) { netSend({ t: 'dend', reason: 'draw' }); duelOver(null, 'draw'); }
+  else if (mine < theirs) { netSend({ t: 'dend', reason: 'time' }); duelOver(false, 'time'); }
+  else if (duel.t > DUEL_TIME + 3) { netSend({ t: 'dend', reason: 'time', win: true }); duelOver(true, 'time'); }
+}
+function duelOver(win, reason) {
+  if (!duel) return;
+  const d = duel; duel = null;
+  world.state = 'over';
+  save.pvp ||= { win: 0, lose: 0 };
+  if (reason !== 'net' && win !== null) save.pvp[win ? 'win' : 'lose']++;
+  writeSave(save);
+  sfx(win ? 'levelup' : 'error', { vol: 0.6 });
+  const why = win === null ? '시간이 다 됐다. 남은 체력이 같다.'
+    : reason === 'left' ? (win ? '상대가 결투를 떠났다.' : '결투를 떠났다.')
+    : reason === 'net' ? '연결이 끊겼다.'
+    : reason === 'time' ? (win ? '시간이 다 됐다. 체력이 더 많이 남았다.' : '시간이 다 됐다. 체력이 더 적게 남았다.')
+    : win ? `${esc(josa(d.opp.name, '을', '를'))} 쓰러뜨렸다.` : `${esc(d.opp.name)}에게 졌다.`;
+  showModal(`<h2>${win === null ? '무승부' : win ? '승리!' : '패배…'}</h2><p>${why}</p>
+    <p class="muted">대전 기록 ${save.pvp.win}승 ${save.pvp.lose}패</p><button data-close>마을로 돌아간다</button>`, () => { overlay.hidden = true; paused = false; modal = null; enterWorld(duelBack); });
+}
+
+// ───── 파티 · 길드: 초대는 화면 오른쪽 위 카드로 (게임을 멈추지 않는다) ─────
+const GUILD_COST = 300;
+const invitesEl = document.createElement('div'); invitesEl.id = 'invites'; document.body.appendChild(invitesEl);
+function inviteCard(html, onYes, onNo, sec = 20) {
+  const el = document.createElement('div'); el.className = 'inv';
+  el.innerHTML = `${html}<div class="actions"><button data-y>받아들인다</button><button data-n class="ghost">거절한다</button></div>`;
+  let done = false;
+  const fin = (yes) => { if (done) return; done = true; el.remove(); (yes ? onYes : onNo)?.(); };
+  el.querySelector('[data-y]').onclick = () => fin(true);
+  el.querySelector('[data-n]').onclick = () => fin(false);
+  setTimeout(() => fin(false), sec * 1000);
+  invitesEl.appendChild(el); sfx('open', { vol: 0.5, rate: 1.2 });
+}
+const MAP_NAME = (m) => (!m ? '혼자 있는 곳' : m === 'world' ? '바깥 세계' : m.startsWith('tw') ? `각인의 탑 ${m.split('f')[1]}층` : m);
+const RANK_NAME = { leader: '길드장', officer: '부길드장', member: '길드원' };
+const myRank = () => net.guild?.members.find((x) => x.uid === save.uid)?.rank;
+const isPartyLeader = () => !!net.party && net.party.leader === net.id;
+const seenText = (t) => { if (!t) return '오래전'; const m = (Date.now() - t) / 60000; return m < 60 ? `${Math.max(1, Math.round(m))}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
+onNet('partyInvite', (m) => inviteCard(`<b>파티 초대</b><p>${esc(m.name)} <small>${RACES[m.race]?.name || ''} · Lv ${m.lv || 1}</small></p>`, () => netSend({ t: 'partyAnswer', to: m.from, ok: true }), () => netSend({ t: 'partyAnswer', to: m.from, ok: false })));
+onNet('guildInvite', (m) => inviteCard(`<b>길드 초대</b><p>${esc(m.name)} — 길드 「${esc(m.guild)}」</p>`, () => netSend({ t: 'guildAnswer', to: m.from, ok: true }), () => netSend({ t: 'guildAnswer', to: m.from, ok: false })));
+onNet('partyNo', (m) => { renderer.banner = { text: '파티', sub: m.reason, t: 2.2, color: '#c8b8a0' }; });
+onNet('guildNo', (m) => { renderer.banner = { text: '길드', sub: m.reason, t: 2.2, color: '#c8b8a0' }; });
+onNet('guildMade', (m) => { save.gold = Math.max(0, save.gold - GUILD_COST); writeSave(save); renderer.banner = { text: `길드 「${m.name}」`, sub: '길드를 세웠다 · O 창에서 근처 사람을 초대한다', t: 3, color: '#ffd27a' }; sfx('levelup', { vol: 0.5 }); });
+onNet('party', (m) => {
+  if (!m.id && m.why) renderer.banner = { text: '파티', sub: m.why, t: 2.2, color: '#c8b8a0' };
+  if (coRun?.role === 'member' && (!net.party || net.party.leader !== coRun.host)) coSolo('파티장이 파티를 떠났다 — 혼자 이어 오른다');
+  refreshSocial();
+});
+onNet('guild', (m) => {
+  const g = m.id ? { id: m.id, name: m.name, rank: m.members.find((x) => x.uid === save.uid)?.rank || 'member' } : null;
+  if (JSON.stringify(g) !== JSON.stringify(save.guild || null)) { save.guild = g; writeSave(save); }
+  if (!m.id && m.why) renderer.banner = { text: '길드', sub: m.why, t: 2.2, color: '#c8b8a0' };
+  refreshSocial();
+});
+onNet('down', () => { if (coRun?.role === 'member') coSolo('서버와 연결이 끊겼다 — 혼자 이어 오른다'); });
+
+// 가까운 사람 앞에서 G: 결투 · 파티 · 길드
+function openMeet(rp) {
+  if (rp.duel) { renderer.banner = { text: rp.name, sub: '결투 중이다', t: 1.6, color: '#c8b8a0' }; return; }
+  const inParty = !!net.party?.members.some((x) => x.id === rp.id);
+  const canParty = !inParty && !rp.party && (!net.party || (isPartyLeader() && net.party.members.length < 4));
+  const r = myRank(), canGuild = !!net.guild && (r === 'leader' || r === 'officer') && !rp.gname;
+  showModal(`<h2>${esc(rp.name)}</h2><p class="muted">${RACES[rp.race]?.name || ''} · Lv ${rp.lv || 1}${rp.gname ? ` · 길드 「${esc(rp.gname)}」` : ''}${inParty ? ' · 같은 파티' : rp.party ? ' · 다른 파티에 있다' : ''}</p>
+    <div class="actions col"><button id="mDuel">결투 신청</button>${canParty ? '<button id="mParty">파티 초대</button>' : ''}${canGuild ? '<button id="mGuild">길드 초대</button>' : ''}<button data-close class="ghost">닫기</button></div>`);
+  const close = () => { overlay.hidden = true; paused = false; modal = null; };
+  document.getElementById('mDuel').onclick = () => { close(); inviteDuel(rp); };
+  const bp = document.getElementById('mParty'); if (bp) bp.onclick = () => { close(); netSend({ t: 'partyInvite', to: rp.id }); renderer.banner = { text: `${rp.name}에게 파티 초대를 보냈다`, t: 2, color: '#9fe6a0' }; };
+  const bg = document.getElementById('mGuild'); if (bg) bg.onclick = () => { close(); netSend({ t: 'guildInvite', to: rp.id }); renderer.banner = { text: `${rp.name}에게 길드 초대를 보냈다`, t: 2, color: '#ffd27a' }; };
+}
+
+// 동료 창 (O): 파티 · 길드
+let socialTab = 'party', socialOpen = false;
+function showSocial(tab) {
+  if (tab) socialTab = tab;
+  if (!net.up) { renderer.banner = { text: '온라인이 아니다', sub: '서버와 이어져야 파티 · 길드를 쓸 수 있다', t: 2.2, color: '#c8b8a0' }; return; }
+  showModal(`<div id="social" class="social">${socialHtml()}</div>`, () => { overlay.hidden = true; paused = false; modal = null; socialOpen = false; sfx('close', { vol: 0.4 }); });
+  socialOpen = true; bindSocial();
+}
+function refreshSocial() {
+  if (!socialOpen) return;
+  const el = document.getElementById('social'); if (!el) { socialOpen = false; return; }
+  const keep = {}; el.querySelectorAll('input').forEach((i) => (keep[i.id] = i.value)); // 쓰던 글은 그대로
+  el.innerHTML = socialHtml(); bindSocial();
+  for (const [id, v] of Object.entries(keep)) { const i = document.getElementById(id); if (i) i.value = v; }
+}
+function socialHtml() {
+  const tabs = `<nav class="soc-tabs"><button data-soc="party" class="${socialTab === 'party' ? 'on' : ''}">파티${net.party ? ` ${net.party.members.length}` : ''}</button><button data-soc="guild" class="${socialTab === 'guild' ? 'on' : ''}">길드</button></nav>`;
+  const p = world?.player, near = world?.zone?.id === 'world' && p ? [...net.players.values()].sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)).slice(0, 6) : [];
+  return `<h2>동료</h2>${tabs}${socialTab === 'party' ? partyHtml(near) : guildHtml(near)}<div class="actions"><button data-close class="ghost">닫기</button></div>`;
+}
+function nearHtml(near, kind) {
+  if (!kind) return '';
+  near = near.filter((rp) => (kind === 'party' ? !rp.party : !rp.gname)); // 이미 파티 · 길드에 있는 사람은 초대할 수 없다
+  if (!near.length) return '<p class="muted">근처에 다른 사람이 없다 (바깥 세계에서만 서로 보인다).</p>';
+  return `<h4>근처 사람</h4><div class="soc-list">${near.map((rp) => `<div class="soc-row"><span class="nm"><b>${esc(rp.name)}</b>${rp.gname ? ` <small class="gtag">[${esc(rp.gname)}]</small>` : ''}</span><span class="muted">${RACES[rp.race]?.name || ''} · Lv ${rp.lv || 1}</span><span class="btns"><button class="sm" data-inv="${kind}" data-id="${rp.id}">${kind === 'party' ? '파티 초대' : '길드 초대'}</button></span></div>`).join('')}</div>`;
+}
+function partyHtml(near) {
+  const pt = net.party, lead = isPartyLeader();
+  let h = '';
+  if (!pt) h += '<p class="muted">파티가 없다. 바깥 세계에서 다른 사람에게 다가가 G를 누르거나 아래 근처 사람에게 초대를 보낸다. 파티는 4명까지.</p>';
+  else {
+    h += `<div class="soc-list">${pt.members.map((x) => {
+      const me = x.id === net.id;
+      const btn = me ? '<button class="sm ghost" data-pact="leave">나가기</button>' : lead ? `<button class="sm ghost" data-pact="lead" data-id="${x.id}">파티장 넘기기</button><button class="sm ghost" data-pact="kick" data-id="${x.id}">내보내기</button>` : '';
+      return `<div class="soc-row on"><span class="nm">${x.id === pt.leader ? '<em class="lead">파티장</em> ' : ''}<b>${esc(x.name)}</b>${me ? ' (나)' : ''}</span><span class="muted">${RACES[x.race]?.name || ''} · Lv ${x.lv || 1} · ${MAP_NAME(x.map)}</span><span class="btns">${btn}</span></div>`;
+    }).join('')}</div>
+      <p class="muted">파티장이 각인의 탑 입구에서 「파티와 함께 오르기」를 고르면 같은 층을 함께 오른다. 몬스터를 쓰러뜨리면 모두가 전리품 · 도감을 얻고, 쓰러져도 동료가 층을 깨면 다시 일어난다. 파티 채팅은 /p.</p>`;
+  }
+  return h + nearHtml(near, !pt || (lead && pt.members.length < 4) ? 'party' : null);
+}
+function guildHtml(near) {
+  const g = net.guild;
+  if (!g) return `<p class="muted">길드에 들지 않았다. 길드를 세우면 길드원끼리 채팅(/g)하고 이름 앞에 길드 이름이 붙는다. 길드는 서버에 남는다.</p>
+    <div class="soc-make"><input id="gname" maxlength="12" placeholder="길드 이름 (2~12글자)"><button data-gact="create" ${save.gold >= GUILD_COST ? '' : 'disabled'}>세우기 · ${GUILD_COST} 골드</button></div>
+    <p class="muted">초대를 받으면 화면 오른쪽 위에 카드가 뜬다.</p>`;
+  const r = myRank(), mng = r === 'leader' || r === 'officer';
+  const rows = g.members.map((x) => {
+    const me = x.uid === save.uid;
+    const btn = me ? '<button class="sm ghost" data-gact="leave">나가기</button>'
+      : r === 'leader' ? `${x.rank === 'member' ? `<button class="sm ghost" data-gact="officer" data-uid="${x.uid}">부길드장으로</button>` : `<button class="sm ghost" data-gact="member" data-uid="${x.uid}">길드원으로</button>`}<button class="sm ghost" data-gact="leader" data-uid="${x.uid}">길드장 넘기기</button><button class="sm ghost" data-gact="kick" data-uid="${x.uid}">내보내기</button>`
+      : r === 'officer' && x.rank === 'member' ? `<button class="sm ghost" data-gact="kick" data-uid="${x.uid}">내보내기</button>` : '';
+    return `<div class="soc-row ${x.online ? 'on' : ''}"><span class="nm"><i class="dot"></i><b>${esc(x.name)}</b>${me ? ' (나)' : ''}</span><span class="muted">${RANK_NAME[x.rank]} · ${RACES[x.race]?.name || ''} · Lv ${x.lv || 1}${x.online ? '' : ' · ' + seenText(x.seen)}</span><span class="btns">${btn}</span></div>`;
+  }).join('');
+  return `<h3 class="gname">「${esc(g.name)}」 <small>${g.members.length}명 · 접속 ${g.members.filter((x) => x.online).length}명</small></h3>
+    ${mng ? `<div class="soc-make"><input id="gnotice" maxlength="80" value="${esc(g.notice)}" placeholder="길드 공지"><button class="sm" data-gact="notice">공지 바꾸기</button></div>` : g.notice ? `<p class="gnotice">${esc(g.notice)}</p>` : ''}
+    <div class="soc-list">${rows}</div><p class="muted">길드 채팅: 채팅 창(Enter)에서 앞에 /g 를 붙인다.</p>${nearHtml(near, mng ? 'guild' : null)}`;
+}
+function bindSocial() {
+  const el = document.getElementById('social'); if (!el) return;
+  el.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') el.querySelector(i.id === 'gname' ? '[data-gact="create"]' : '[data-gact="notice"]')?.click(); }));
+  el.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => modal?.()));
+  el.onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    const d = b.dataset;
+    if (d.soc) { socialTab = d.soc; refreshSocial(); return; }
+    if (d.pact === 'leave') netSend({ t: 'partyLeave' });
+    else if (d.pact === 'kick') netSend({ t: 'partyKick', id: +d.id });
+    else if (d.pact === 'lead') netSend({ t: 'partyLead', id: +d.id });
+    else if (d.inv) { netSend({ t: d.inv === 'party' ? 'partyInvite' : 'guildInvite', to: +d.id }); b.disabled = true; b.textContent = '보냈다'; }
+    else if (d.gact === 'create') {
+      const name = document.getElementById('gname')?.value.trim() || '';
+      if (name.length < 2) { renderer.banner = { text: '길드 이름은 두 글자 이상', t: 1.6, color: '#c8b8a0' }; return; }
+      if (save.gold < GUILD_COST) { renderer.banner = { text: `골드가 모자라다 (${GUILD_COST})`, t: 1.6, color: '#c8b8a0' }; return; }
+      netSend({ t: 'guildCreate', name });
+    } else if (d.gact === 'leave') netSend({ t: 'guildLeave' });
+    else if (d.gact === 'kick') netSend({ t: 'guildKick', uid: d.uid });
+    else if (d.gact === 'officer' || d.gact === 'member' || d.gact === 'leader') netSend({ t: 'guildRank', uid: d.uid, rank: d.gact });
+    else if (d.gact === 'notice') { netSend({ t: 'guildNotice', text: document.getElementById('gnotice')?.value || '' }); renderer.banner = { text: '길드 공지를 바꿨다', t: 1.4, color: '#ffd27a' }; }
+  };
+}
+
+// 파티 체력 (화면 왼쪽): 파티 탑에서는 동료의 체력, 밖에서는 어디 있는지
+const partyHud = document.createElement('div'); partyHud.id = 'partyHud'; partyHud.hidden = true; document.body.appendChild(partyHud);
+function partyHudTick() {
+  const pt = net.party;
+  if (!pt || gameEl.hidden || !world) { partyHud.hidden = true; return; }
+  partyHud.hidden = false;
+  const now = performance.now();
+  partyHud.innerHTML = pt.members.filter((x) => x.id !== net.id).map((x) => {
+    const cs = coState.get(x.id), live = coRun && cs && now - cs.t < 3000;
+    const hp = live ? Math.max(0, Math.min(1, cs.hp / Math.max(1, cs.maxHp))) : null;
+    return `<div class="ph ${live && cs.down ? 'down' : ''}"><b>${x.id === pt.leader ? '★ ' : ''}${esc(x.name)}</b>${hp != null ? `<i><s style="width:${Math.round(hp * 100)}%"></s></i>${cs.down ? '<small>쓰러짐</small>' : ''}` : `<small>${MAP_NAME(x.map)}</small>`}</div>`;
+  }).join('');
+}
+
+// ───── 파티 탑: 파티장의 세계가 몬스터를 움직이고, 동료의 세계는 그 모습을 보여 주며 자기 공격을 보낸다 ─────
+let coRun = null;           // { role: 'host' | 'member', host, party, snapT, flushT, meT, lastSnap }
+const coState = new Map();  // 동료의 체력 · 쓰러짐 (id → { hp, maxHp, down, f, t })
+const coKey = () => (coRun && world?.tower ? `tw${coRun.party}f${world.tower.f}` : null);
+const IDLE_INPUT = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, attack: false, dash: false, interact: false, skill: false, s1: false, s2: false, s3: false, s4: false, wskill: false };
+function startCoTower(f) {
+  const seed = (Math.random() * 1e9) >>> 0;
+  enterTower(f, null, { role: 'host', seed });
+  netSend({ t: 'co', k: 'start', f, seed });
+  renderer.banner = { text: `각인의 탑 ${f}층 · 파티`, sub: '동료가 받아들이면 같은 층에 나타난다', t: 3, color: '#9fe6ff' };
+}
+onNet('co', (m) => {
+  if (!world) return;
+  const fromName = net.party?.members.find((x) => x.id === m.from)?.name || '동료';
+  switch (m.k) {
+    case 'start': { // 파티장이 탑에 오른다 → 함께 갈지 묻는다
+      if (net.party?.leader !== m.from) break;
+      const busy = coRun || world.pvp || duel || world.zone?.id !== 'world' || world.state !== 'play';
+      if (busy) { netSend({ t: 'co', to: m.from, k: 'no', why: world.zone?.id !== 'world' ? '바깥 세계에 없다' : '다른 일을 하는 중' }); break; }
+      inviteCard(`<b>파티 탑</b><p>${esc(josa(fromName, "이", "가"))} 각인의 탑 <b>${m.f}층</b>에 오른다</p>`, () => {
+        if (world.zone?.id !== 'world' || world.state !== 'play' || coRun) return;
+        if (modal) { overlay.hidden = true; paused = false; modal = null; }
+        if (!panelEl.hidden) closePanel();
+        enterTower(m.f, null, { role: 'member', seed: m.seed, host: m.from });
+      }, () => netSend({ t: 'co', to: m.from, k: 'no', why: '거절했다' }), 25);
+      break;
+    }
+    case 'no': renderer.banner = { text: `${fromName} — 함께 오르지 않는다`, sub: m.why, t: 2.4, color: '#c8b8a0' }; break;
+    case 'me': coState.set(m.from, { hp: m.hp, maxHp: m.maxHp, down: !!m.down, f: m.f, t: performance.now() }); break;
+    case 'snap':
+      if (coRun?.role === 'member' && m.from === coRun.host && world.tower?.f === m.f && world.coop) { world.coApplySnap(m); coRun.lastSnap = performance.now(); }
+      break;
+    case 'b': // 묶음: 동료 → 파티장(피해 · 상태이상 · CC …) · 파티장 → 동료(맞았다)
+      if (!world.coop || !coRun) break;
+      if (coRun.role === 'host') for (const x of m.l || []) world.coRecv(x, m.from);
+      else if (m.from === coRun.host) for (const x of m.l || []) if (x.k === 'hurt') world.coHurt(x);
+      break;
+    case 'sync': if (coRun?.role === 'host' && world.coop) world.coop.known.clear(); break; // 늦게 온 동료: 적의 종류부터 다시
+    case 'stairs': // 동료가 계단에 닿았다 (파티장이 쓰러져 있어도 층을 깰 수 있게)
+      if (coRun?.role === 'host' && world.state === 'play' && world.tower && (!world.tower.boss || world.tower.boss.dead)) {
+        renderer.banner = { text: `${josa(fromName, '이', '가')} 계단에 닿았다`, t: 2, color: '#9fe6ff' };
+        world.signals.push({ t: 'towerClear', f: world.tower.f, time: world.tower.t, hurt: world.tower.hurt, maxHp: world.d.maxHp }); handleSignals();
+      }
+      break;
+    case 'clear': if (coRun?.role === 'member' && m.from === coRun.host && world.tower?.f === m.f) { world.coRevive(1); world.signals.push({ t: 'towerClear', f: world.tower.f, time: world.tower.t, hurt: world.tower.hurt, maxHp: world.d.maxHp }); handleSignals(); } break;
+    case 'floor': // 파티장이 다음 층으로 → 함께
+      if (coRun?.role === 'member' && m.from === coRun.host) {
+        if (modal) { overlay.hidden = true; paused = false; modal = null; }
+        enterTower(m.f, { loot: world.loot, discovered: world.discovered, hp: Math.max(world.player.hp, world.d.maxHp * 0.3), codexStart: world.codexStart }, { role: 'member', seed: m.seed, host: m.from });
+      }
+      break;
+    case 'end': if (coRun?.role === 'member' && m.from === coRun.host) { coRun = null; if (modal) { overlay.hidden = true; paused = false; modal = null; } world.state = 'play'; renderer.banner = { text: '파티장이 탑을 나갔다', t: 2.4, color: '#c8b8a0' }; endRun('clear'); } break;
+    case 'wipe': if (coRun && m.from === coRun.host) coWipe(); break;
+    case 'bye': if (coRun?.role === 'host') { world.coop?.mates.delete(m.from); renderer.banner = { text: `${josa(fromName, "이", "가")} 탑을 나갔다`, t: 2, color: '#c8b8a0' }; } break;
+  }
+});
+function coTick(dt) {
+  if (!coRun || !world?.coop || !world.tower) return;
+  const w = world, p = w.player, now = performance.now();
+  if ((coRun.meT -= dt) <= 0) { coRun.meT = 0.25; netSend({ t: 'co', k: 'me', hp: Math.round(p.hp), maxHp: w.d.maxHp, down: p.down ? 1 : 0, f: w.tower.f }); }
+  if (coRun.role === 'host') {
+    const mates = w.coop.mates;
+    for (const rp of net.players.values()) { // 같은 층의 동료 (자리는 지도 중계 · 쓰러짐은 me)
+      if (!net.party?.members.some((x) => x.id === rp.id)) continue;
+      let mt = mates.get(rp.id);
+      if (!mt) { mt = { id: rp.id, name: rp.name, r: 5, dead: false }; mates.set(rp.id, mt); }
+      const cs = coState.get(rp.id);
+      mt.x = rp.x; mt.y = rp.y; mt.dead = !!(cs && cs.down && cs.f === w.tower.f);
+    }
+    for (const id of [...mates.keys()]) if (!net.players.has(id)) mates.delete(id);
+    if ((coRun.snapT -= dt) <= 0) { coRun.snapT = 0.1; const s = w.coSnap(); if (mates.size) netSend({ t: 'co', f: w.tower.f, ...s }); }
+    const by = new Map();
+    for (const o of w.coop.out.splice(0)) { if (!by.has(o.to)) by.set(o.to, []); by.get(o.to).push(o); }
+    for (const [to, l] of by) netSend({ t: 'co', to, k: 'b', l });
+    if (p.down && w.state === 'play' && [...mates.values()].every((mt) => mt.dead)) { netSend({ t: 'co', k: 'wipe', f: w.tower.f }); coWipe(); } // 모두 쓰러졌다
+  } else {
+    if ((coRun.flushT -= dt) <= 0) { coRun.flushT = 0.05; const l = w.coFlush(); if (l.length) netSend({ t: 'co', to: coRun.host, k: 'b', l }); }
+    if (w.coop.need && now - (coRun.needT || 0) > 1000) { coRun.needT = now; w.coop.need = false; netSend({ t: 'co', to: coRun.host, k: 'sync' }); }
+    if (now - coRun.lastSnap > 6000 && w.state === 'play') coSolo('파티장의 소식이 끊겼다 — 혼자 이어 오른다');
+  }
+}
+// 파티장을 잃은 동료: 꼭두각시였던 몬스터가 스스로 움직이고, 혼자 이어 오른다
+function coSolo(why) {
+  if (!coRun || !world) return;
+  coRun = null;
+  if (world.coop) {
+    world.coop = null;
+    world.player.down = false;
+    if (world.player.hp <= 0) world.player.hp = world.d.maxHp * 0.3;
+    for (const e of world.enemies) if (e.puppet) { e.puppet = false; e.state = 'chase'; }
+    world.projs = world.projs.filter((x) => !x.ghost);
+  }
+  renderer.banner = { text: '파티 탑이 끝났다', sub: why, t: 3, color: '#c8b8a0' };
+}
+// 모두 쓰러졌다: 다 같이 탑 밖으로 (쓰러진 것과 같다)
+function coWipe() {
+  if (!coRun || !world) return;
+  coRun = null;
+  if (modal) { overlay.hidden = true; paused = false; modal = null; }
+  world.coop = null; world.player.down = false; world.player.hp = 0;
+  world.state = 'dead';
+  renderer.banner = { text: '파티가 모두 쓰러졌다', t: 3, color: '#ff8a7a' };
+}
+
 // ───── 튜토리얼: 마을 광장에서 조작을 하나씩 따라 한다 (건너뛸 수 있다) ─────
 const tutFlags = { interact: false, panel: false };
 const TUT = [
@@ -96,15 +478,19 @@ function showTower() {
   showModal(`<h2>각인의 탑</h2>
     <p class="muted">층마다 짧은 던전이다. 계단에 닿으면 클리어 — 걸린 시간과 받은 피해로 등급(S · A · B · C)과 보상을 받는다. 5층마다 층 수호자를 쓰러뜨려야 계단이 열린다. 오를수록 몬스터가 크게 강해진다. 쓰러지면 탑 밖으로 밀려난다.</p>
     <p>최고 기록 <b>${T.max}층</b> / ${TOWER_TOP}층</p><div class="tw-floors">${floors}</div>
-    <div class="actions">${starts.map((f) => `<button data-tw="${f}">${f}층부터 오르기</button>`).join('')}<button data-close class="ghost">돌아간다</button></div>`);
+    <div class="actions">${starts.map((f) => `<button data-tw="${f}">${f}층부터 오르기</button>`).join('')}<button data-close class="ghost">돌아간다</button></div>
+    ${isPartyLeader() && net.party.members.length > 1 ? `<h4>파티와 함께 <small>${net.party.members.length}명 · 동료에게 함께 갈지 묻는다 (바깥 세계에 있는 동료만)</small></h4><div class="actions">${starts.map((f) => `<button data-twp="${f}">${f}층부터 파티와 오르기</button>`).join('')}</div>` : net.party && !isPartyLeader() ? '<p class="muted">파티에 있다 — 파티장이 파티와 함께 오르기를 고르면 함께 오른다.</p>' : ''}`);
   overlay.querySelectorAll('[data-tw]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; enterTower(+b.dataset.tw); }));
+  overlay.querySelectorAll('[data-twp]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; startCoTower(+b.dataset.twp); }));
 }
-function enterTower(f, carry = null) {
+function enterTower(f, carry = null, co = null) {
   if (world?.zone?.id === 'world') { returnTo = 'tower'; save.zoneMemory.world = world.exportMemory(); }
-  const zid = towerZoneId(f), z = ZONES.find((x) => x.id === zid), seed = (Math.random() * 1e9) >>> 0;
-  world = new World({ build: buildNow(), mode: 'field', zoneId: zid, seed, map: generateField(z, seed, Math.floor(f / 6), towerSize(f)), tower: { f }, story: save.story, codex: save.codex, ...shared() });
+  const zid = towerZoneId(f), z = ZONES.find((x) => x.id === zid), seed = co?.seed ?? ((Math.random() * 1e9) >>> 0); // 파티 탑: 파티장이 정한 씨앗 → 모두 같은 층
+  world = new World({ build: buildNow(), mode: 'field', zoneId: zid, seed, map: generateField(z, seed, Math.floor(f / 6), towerSize(f)), tower: { f }, coop: co ? { role: co.role } : null, story: save.story, codex: save.codex, ...shared() });
+  if (co?.role === 'member') { world.enemies = []; world.camps = []; world.tower.boss = null; } // 몬스터는 파티장이 알려 준다
+  coRun = co ? { role: co.role, host: co.role === 'host' ? net.id : co.host, party: net.party?.id || 0, snapT: 0, flushT: 0, meT: 0, lastSnap: performance.now() } : null;
   world.codexStart = carry?.codexStart ?? codexPoints(save);
-  if (carry) { world.loot = carry.loot; world.discovered = carry.discovered; world.player.hp = Math.min(carry.hp, world.d.maxHp); world.player.mana = carry.mana; }
+  if (carry) { world.loot = carry.loot; world.discovered = carry.discovered; world.player.hp = Math.min(carry.hp, world.d.maxHp); }
   world.goalNeeds = [];
   renderer.setWorld(world);
   renderer.banner = { text: `각인의 탑 ${f}층`, sub: isBossFloor(f) ? '층 수호자가 계단을 지킨다' : `기준 시간 ${mmss(parTime(f))} · 계단을 찾아라`, t: 3, color: isBossFloor(f) ? '#ff9a7a' : '#e8d8a8' };
@@ -120,14 +506,20 @@ function towerClear(s) {
   writeSave(save); cloudSaveNow(save);
   world.state = 'over';
   sfx(grade === 'S' ? 'levelup' : 'open', { vol: 0.7 });
-  const top = f >= TOWER_TOP;
+  const top = f >= TOWER_TOP, coHost = coRun?.role === 'host', coMember = coRun?.role === 'member';
+  if (coHost) { world.coRevive(1); netSend({ t: 'co', k: 'clear', f }); } // 동료도 각자 등급 · 보상을 받는다
   showModal(`<h2>${top ? '탑의 꼭대기에 닿았다' : `${f}층 클리어`}</h2>
     <div class="tw-grade" style="--c:${GRADE_COLOR[grade]}">${grade}</div>
     <p>걸린 시간 <b>${mmss(s.time)}</b> <span class="muted">(기준 ${mmss(parTime(f))})</span> · 받은 피해 <b>${Math.round((s.hurt / Math.max(1, s.maxHp)) * 100)}%</b> <span class="muted">(최대 체력 대비)</span></p>
     <p class="lvup">◆ ${rw.gold} 골드${first ? ' (처음 깬 층 ×2)' : ''}${extra.length ? ' · ' + extra.join(' · ') : ''}</p>
-    <div class="actions">${top ? '' : `<button id="twNext">${f + 1}층으로 오른다</button>`}<button id="twOut" class="ghost">탑에서 나간다</button></div>`, () => {});
-  const carry = () => ({ loot: world.loot, discovered: world.discovered, hp: world.player.hp, mana: world.player.mana, codexStart: world.codexStart });
-  const nx = document.getElementById('twNext'); if (nx) nx.onclick = () => { overlay.hidden = true; paused = false; modal = null; enterTower(f + 1, carry()); };
+    ${coMember ? '<p class="muted">파티장이 다음 층을 고르면 함께 오른다…</p>' : ''}
+    <div class="actions">${top || coMember ? '' : `<button id="twNext">${f + 1}층으로 오른다${coHost ? ' (파티와 함께)' : ''}</button>`}<button id="twOut" class="ghost">탑에서 나간다</button></div>`, () => {});
+  const carry = () => ({ loot: world.loot, discovered: world.discovered, hp: Math.max(world.player.hp, world.d.maxHp * 0.3), codexStart: world.codexStart });
+  const nx = document.getElementById('twNext'); if (nx) nx.onclick = () => {
+    overlay.hidden = true; paused = false; modal = null;
+    if (coHost) { const seed = (Math.random() * 1e9) >>> 0; enterTower(f + 1, carry(), { role: 'host', seed }); netSend({ t: 'co', k: 'floor', f: f + 1, seed }); }
+    else enterTower(f + 1, carry());
+  };
   document.getElementById('twOut').onclick = () => { overlay.hidden = true; paused = false; modal = null; world.state = 'play'; endRun('clear'); };
 }
 
@@ -278,6 +670,7 @@ function migrateSave(sv) {
   if (RACE_MIGRATE[sv.race]) sv.race = RACE_MIGRATE[sv.race];
   if (!RACES[sv.race]) sv.race = 'knight';
   sv.knack ||= newKnack(); // 숙련 (같은 행동을 세어 두었다가 우연히 깨닫는다)
+  sv.uid ||= Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => b.toString(16).padStart(2, '0')).join(''); // 온라인: 길드가 나를 알아보는 번호
   SELL_BONUS.v = hasKnack(sv.knack, 'haggler') ? 1.1 : 1;
   if (sv.slots?.extra) delete sv.slots.extra;
   for (const [old, nw] of [['spiritBranch', 'spiritBow'], ['worldTreeStaff', 'worldTreeBow']]) { // 정령사는 이제 활을 쓴다
@@ -326,6 +719,7 @@ function enterPlaza(first) {
 let returnTo = null, curInterior = null; // curInterior: 지금 들어가 있는 입구 { id, x, y }
 let stash = null; // 집 안에 있는 동안 바깥 세계를 그대로 보관해 둔다 { world, door }
 function enterWorld(at = null, first = false) {
+  goOnline();
   { const el = document.getElementById('practicePanel'); if (el) el.hidden = true; }
   save.zoneMemory ||= {};
   world = new World({ build: buildNow(), mode: 'field', zoneId: 'world', seed: 77, memory: save.zoneMemory.world, story: save.story, codex: save.codex, ...shared() });
@@ -360,7 +754,7 @@ function enterSeabed(x, y) {
   save.zoneMemory.world = ow.exportMemory();
   seaStash = { world: ow };
   world = new World({ build: buildNow(), mode: 'field', zone: SEABED_ZONE, zoneId: 'seabed', seed: 91, map: seabedMap(overworldBase()), memory: save.zoneMemory.seabed, story: save.story, codex: save.codex, ...shared() });
-  world.player.x = x; world.player.y = y; world.player.hp = ow.player.hp; world.player.mana = ow.player.mana; world.player.res = ow.player.res;
+  world.player.x = x; world.player.y = y; world.player.hp = ow.player.hp; world.player.res = ow.player.res;
   world.loot = ow.loot; world.discovered = ow.discovered; world.codexStart = ow.codexStart;
   world.reveal(true);
   if (seaChunks) { world._chunks = seaChunks.c; world._decoBuckets = seaChunks.d; }
@@ -377,7 +771,7 @@ function exitSeabed(x, y, forced) {
   seaStash = null;
   if (!ow) { enterWorld({ x, y: y - 24 }); return; }
   world = ow;
-  world.player.x = x; world.player.y = y; world.player.hp = sea.player.hp; world.player.mana = sea.player.mana; world.player.res = sea.player.res; world.player.dashT = 0;
+  world.player.x = x; world.player.y = y; world.player.hp = sea.player.hp; world.player.res = sea.player.res; world.player.dashT = 0;
   world.signals.length = 0; world.events.length = 0;
   world.setBuild(buildNow()); world.applyPersist();
   renderer.setWorld(world);
@@ -411,7 +805,7 @@ function showWorldIntro() {
       <p>섬 곳곳에 <b>종족 성지</b>가 8곳 있어요. 그 땅에서 성물(조각 5개 = 성물 1개)을 모아 바치면 축복이 쌓여요. 어느 성지든 받을 수 있고, 내 종족의 성지는 1.5배예요. 한 곳에 집중할수록 강해집니다. <b>M</b>으로 지도를 볼 수 있어요.</p>
       <p><b>불</b> 스킬은 키 큰 풀을 태우고, <b>얼음</b> 스킬은 물을 얼려 길을 만듭니다. 호수 가운데 섬에는 어떻게 갈까요?</p>
       <p><b>마을의 집</b>에 들어가 각인사 · 대장장이 · 사서 · 교관 · 의뢰인 · 잡화점 주인을 만나요. 바위를 캐고, 나무를 베고, 반짝이는 흙을 파고, 물가에서 <b>낚시</b>하고, 마을 동쪽 <b>텃밭</b>에서 농사를 지을 수 있어요. 캔 것은 잡화점에서 팔고, 대장간에서 도구와 장비를 만들어요.</p>
-      <p class="keys">WASD 이동 · 좌클릭 공격 · Q·E·R·F 스킬 · Space 대시 · G 상호작용(누르고 있으면 계속 캐기) · I 장비 · B 가방 · J 퀘스트 · X 씨앗 바꾸기 · C 캐릭터 · M 지도 · Esc 메뉴</p>
+      <p class="keys">WASD 이동 · 좌클릭 공격 · Q·E·R·F 스킬 · Space 대시 · G 상호작용(누르고 있으면 계속 캐기) · I 장비 · B 가방 · J 퀘스트 · X 씨앗 바꾸기 · C 캐릭터 · M 지도 · O 파티 · 길드 · Enter 채팅 · Esc 메뉴</p>
     </div>
     <button data-close>모험 시작</button>`);
   save.lifeIntro = 1;
@@ -451,7 +845,7 @@ function enterInterior(id, depth = 0, carry = null) {
   world.codexStart = carry?.codexStart ?? codexPoints(save);
   if (carry) {
     world.loot = carry.loot; world.discovered = carry.discovered;
-    world.player.hp = Math.min(carry.hp, world.d.maxHp); world.player.mana = carry.mana; world.player.aura = carry.aura;
+    world.player.hp = Math.min(carry.hp, world.d.maxHp);
   }
   world.rootMemory = carry?.rootMemory;
   world.goalNeeds = [];
@@ -541,7 +935,7 @@ function buyRaceItem(race, id, lv) {
   const p = raceItemPrice(race, id);
   if (!raceWeapons(race).includes(id) || save.items.includes(id) || save.gold < p || (save.race !== race && lv < 2)) return;
   save.gold -= p; save.items.push(id); writeSave(save); sfx('coin', { vol: 0.6 });
-  renderer.banner = { text: `${ITEMS[id].name}을(를) 샀다`, sub: '장비 창(I)에서 바꿔 든다', t: 2.4, color: SANCTUMS[race].color };
+  renderer.banner = { text: `${josa(ITEMS[id].name, '을', '를')} 샀다`, sub: '장비 창(I)에서 바꿔 든다', t: 2.4, color: SANCTUMS[race].color };
 }
 // 다른 종족의 기술: 스킬 종류에 맞는 능력치(마법 = 마력 · 활 · 던지기 = 민첩 · 나머지 = 근력) + 이 성지의 친밀도 「친구」 + 골드
 function sanctLearnHtml(race, lv) {
@@ -874,7 +1268,7 @@ function travelTo(id) {
 
 function showSleep() {
   if (!canSleep(save.time.min)) { renderer.banner = { text: '아직 잠이 오지 않는다', sub: `지금 ${clockText(save.time)} · 저녁 5시부터 잘 수 있다`, t: 2.2, color: '#c8d0ff' }; return; }
-  showModal(`<h2>잠자리에 들까?</h2><p>아침 6시에 일어난다.</p><ul class="c-eff"><li>체력 · 마나 모두 회복</li><li>물을 준 작물이 한 단계 자란다</li><li>아침 6시 ~ 저녁 6시: <b>개운함</b> (이동 속도 +8% · 받는 피해 -5%)</li><li>지금까지 모은 것을 저장한다</li></ul>
+  showModal(`<h2>잠자리에 들까?</h2><p>아침 6시에 일어난다.</p><ul class="c-eff"><li>체력 모두 회복</li><li>물을 준 작물이 한 단계 자란다</li><li>아침 6시 ~ 저녁 6시: <b>개운함</b> (이동 속도 +8% · 받는 피해 -5%)</li><li>지금까지 모은 것을 저장한다</li></ul>
     <button id="doSleep">잔다</button><button data-close class="ghost">아직</button>`);
   document.getElementById('doSleep').onclick = () => { overlay.hidden = true; paused = false; modal = null; doSleep(); };
 }
@@ -884,7 +1278,7 @@ function doSleep() {
   const now = absMin(save.time), eff = save.effects;
   for (let i = eff.length - 1; i >= 0; i--) if (eff[i].until <= now || eff[i].id === 'rested') eff.splice(i, 1);
   eff.push({ id: 'rested', name: '개운함', mods: { moveSpeed: 1.08, dmgTakenMul: 0.95 }, color: '#ffe8a8', until: now + 12 * 60, dur: 12 * 60, src: 'sleep' });
-  world.player.hp = world.d.maxHp; world.player.mana = world.d.maxMana;
+  world.player.hp = world.d.maxHp;
   world.applyPersist();
   if (stash?.world) { stash.world.player.hp = stash.world.d.maxHp; bankWorld(stash.world); }
   writeSave(save); cloudSaveNow(save);
@@ -919,7 +1313,7 @@ function enterZone(id, depth = 0, carry = null) {
   world.codexStart = carry?.codexStart ?? codexPoints(save);
   if (carry) {
     world.loot = carry.loot; world.discovered = carry.discovered;
-    world.player.hp = Math.min(carry.hp, world.d.maxHp); world.player.mana = carry.mana; world.player.aura = carry.aura;
+    world.player.hp = Math.min(carry.hp, world.d.maxHp);
   }
   world.rootMemory = carry?.rootMemory;
   // 찜한 각인에 아직 모자란 잔향 (필드 화면에 표시)
@@ -1055,6 +1449,8 @@ function showModal(html, onClose) {
 
 function endRun(kind) {
   if (world.practice) { exitPractice(); return; }
+  if (coRun) { netSend(coRun.role === 'host' ? { t: 'co', k: 'end' } : { t: 'co', to: coRun.host, k: 'bye' }); coRun = null; } // 파티 탑에서 나간다
+  if (world.pvp) { netSend({ t: 'dend', reason: 'left' }); duelOver(false, 'left'); return; } // 결투 중 나가기
   const keep = kind === 'clear' ? 1 : kind === 'retreat' ? 0.7 : 0.5;
   // 야영지에 맡긴 몫은 그대로, 나머지만 비율대로 잃는다
   const loot = { ...world.loot, echoes: { ...world.loot.echoes } };
@@ -1104,8 +1500,9 @@ function showPause() {
   const field = world.mode === 'field';
   showModal(`<h2>일시정지</h2>
     <button data-close>계속하기</button>
+    ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button>' : ''}
     ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
-    ${field && !world.practice ? '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
+    ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">결투에서는 잃는 것이 없다. 포기하면 상대의 승리가 된다.</p>' : field && !world.practice ? '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
     ${volumeHtml()}
     ${isClaudePage() ? '' : cloud.mode === 'account' ? `<p class="muted">${esc(cloud.name)} 계정으로 로그인 중</p><button id="logoutBtn" class="ghost">로그아웃</button>` : '<button id="loginBtn" class="ghost">로그인 / 회원가입</button>'}`);
   bindVolume();
@@ -1113,6 +1510,7 @@ function showPause() {
   if (lo) lo.onclick = async () => { await logout(); clearSave(); save = null; world = null; overlay.hidden = true; paused = false; modal = null; showLogin(afterLogin); };
   if (li) li.onclick = () => { overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
   document.getElementById('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
+  const sb = document.getElementById('socialBtn'); if (sb) sb.onclick = () => showSocial();
   if (world.practice) document.getElementById('exitPractice').onclick = () => { overlay.hidden = true; paused = false; modal = null; exitPractice(); };
   else if (field) document.getElementById('retreat').onclick = () => { overlay.hidden = true; endRun('retreat'); };
   else document.getElementById('howto').onclick = () => showTutorial();
@@ -1139,6 +1537,9 @@ addEventListener('keydown', (e) => {
   keys.add(e.code);
   if (e.code === 'Space') { input.dash = true; e.preventDefault(); }
   if (e.code === 'KeyG' && (world.near || world.act)) tutFlags.interact = true;
+  if (e.code === 'KeyG' && world.nearRemote && !world.near && !world.act) openMeet(world.nearRemote);
+  if (e.code === 'KeyO' && !world.practice) showSocial();
+  if (e.code === 'Enter' && net.up && !world.pvp) { e.preventDefault(); openChat(); }
   if (e.code === 'KeyG') input.interact = true;
   if (e.code === 'KeyQ' || e.code === 'Digit1') input.s1 = true;
   if (e.code === 'KeyE' || e.code === 'Digit2') input.s2 = true;
@@ -1265,6 +1666,8 @@ function handleSignals() {
   for (const s of world.signals.splice(0)) {
     if (s.t === 'openPanel') openPanel(s.panel, true);
     if (s.t === 'tower') { showTower(); return; }
+    if (s.t === 'coStairs') { if (coRun) netSend({ t: 'co', to: coRun.host, k: 'stairs' }); continue; }
+    if (s.t === 'coDown') { renderer.banner = { text: '쓰러졌다', sub: '동료가 이 층을 깨면 다시 일어난다 · 모두 쓰러지면 탑 밖으로', t: 3.5, color: '#ff8a7a' }; sfx('error', { vol: 0.5 }); continue; }
     if (s.t === 'towerClear') { towerClear(s); return; }
     else if (s.t === 'dive') { enterSeabed(s.x, s.y); return; }
     else if (s.t === 'surface') { exitSeabed(s.x, s.y, s.forced); return; }
@@ -1341,7 +1744,7 @@ function handleSignals() {
         <button id="goDown">내려간다</button><button data-close class="ghost">아직 아니다</button>`);
       document.getElementById('goDown').onclick = () => {
         overlay.hidden = true;
-        const carry = { loot: world.loot, discovered: world.discovered, hp: world.player.hp, mana: world.player.mana, aura: world.player.aura, codexStart: world.codexStart,
+        const carry = { loot: world.loot, discovered: world.discovered, hp: world.player.hp, codexStart: world.codexStart,
           rootMemory: world.depth ? world.rootMemory : world.exportMemory() };
         if (world.zone.key) enterInterior(world.zone.key, world.depth + 1, carry); else enterZone(world.zone.id, world.depth + 1, carry);
       };
@@ -1358,7 +1761,7 @@ function handleSignals() {
       writeSave(save);
       if (ups) {
         world.setBuild(buildNow());
-        world.player.hp = world.d.maxHp; world.player.mana = world.d.maxMana;
+        world.player.hp = world.d.maxHp;
         renderer.levelUp(world, save.level, ups * 3);
       }
     } else if (s.t === 'journal') {
@@ -1387,11 +1790,11 @@ function tick(ts) {
   last = ts;
   if (world && !gameEl.hidden) {
     if (renderer.hitstop > 0) renderer.hitstop -= dt;
-    else if (!paused && world.state === 'play') {
+    else if ((!paused || coRun) && world.state === 'play') { // 파티 탑: 창을 열어도 세계는 돈다 (동료가 기다리지 않게)
       acc += dt;
-      readInput();
+      if (!paused) readInput();
       while (acc >= DT) {
-        world.step(input);
+        world.step(paused ? IDLE_INPUT : input);
         input.dash = false; input.interact = false; input.skill = false; input.s1 = false; input.s2 = false; input.s3 = false; input.s4 = false; input.wskill = false;
         acc -= DT;
         if (world.signals.length) { handleSignals(); break; }
@@ -1410,6 +1813,7 @@ function tick(ts) {
       else frame.refillT = 0;
     }
     tutorialTick();
+    onlineTick(dt);
     if (world.state === 'dead' || world.state === 'done') {
       endTimer += dt;
       if (endTimer > (world.state === 'dead' ? 1.4 : 0.3)) endRun(world.state === 'dead' ? 'dead' : 'clear');

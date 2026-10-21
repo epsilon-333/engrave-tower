@@ -146,11 +146,11 @@ export function computeBuild(lo) {
     physPen: 0, magPen: 0, knockback: 30, regen: 0,
     dmgMul: 1, dmgTakenMul: 1, burnMul: 1, bleedMul: 1, chillMul: 1, reactionMul: 1, statusDmgMul: 1, reflectMul: 1,
     poisonCap: 10, freezeReduce: 0, cloudSize: 0, dashCd: 1.2, goldMul: 1, projMul: lo.race === 'elf' ? 1.3 : 1,
-    maxMana: 50 + E.spi * 2, manaRegen: 3 + E.spi * 0.08, skillCdMul: 1, auraTime: 5, aimSlow: lo.race === 'elf' ? 0.82 : 0.65,
+    resGain: 1, hurtRes: 0, lowHunt: 0, skillCdMul: 1, aimSlow: lo.race === 'elf' ? 0.82 : 0.65,
     freezeTime: 1.6, castMul: 1,
   };
   // 종족 고유 수치
-  if (lo.race === 'wizard') { d.maxMana *= 1.5; d.manaRegen *= 1.3; d.reactionMul *= 1.5; d.skillCdMul *= 0.75; }
+  if (lo.race === 'wizard') { d.reactionMul *= 1.5; d.skillCdMul *= 0.75; }
   if (lo.race === 'knight') d.moveSpeed *= 0.92;
   if (lo.race === 'undead') d.moveSpeed *= 0.95;
   if (lo.race === 'golem') d.moveSpeed *= 0.85;
@@ -163,7 +163,6 @@ export function computeBuild(lo) {
     else if (e.type === 'on') triggers[e.event].push(e);
   }
   d.maxHp = Math.round(d.maxHp);
-  d.maxMana = Math.round(d.maxMana);
   // 민첩 25부터는 1마다 회피 +0.3%가 더 붙는다 (최대 +15%)
   d.dodge += Math.min(0.15, Math.max(0, stats.agi - AGI_DODGE_FROM) * 0.003);
   d.dodge = Math.min(0.6, d.dodge);

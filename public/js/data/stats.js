@@ -8,7 +8,7 @@ export const STAT_INFO = {
   agi: { name: '민첩', short: '민', desc: '공격 속도, 이동 속도, 회피 (민첩 25부터는 1마다 회피 +0.3%가 더 붙는다 · 최대 +15% · 회피는 최대 60%)' },
   vit: { name: '체력', short: '체', desc: '최대 HP, 자연 회복' },
   sen: { name: '감각', short: '감', desc: '치명타 확률과 피해' },
-  spi: { name: '정신', short: '정', desc: '상태이상 저항·지속 감소, 최대 마나·마나 회복, 쿨타임, 각인 부하 한도' },
+  spi: { name: '정신', short: '정', desc: '상태이상 저항·지속 감소, 쿨타임, 각인 부하 한도' },
   pres: { name: '물리 저항', short: '물저', desc: '받는 물리 피해 감소' },
   mres: { name: '마법 저항', short: '마저', desc: '받는 마법 피해 감소' },
 };
@@ -66,10 +66,10 @@ export const AWAKENINGS = {
     { at: 30, name: '예리함', desc: '치명타 확률 +5%', effects: [{ type: 'add', key: 'crit', v: 0.05 }] },
     { at: 50, name: '약점 간파', desc: '치명타가 적에게 표식(+20% 피해)', effects: [{ type: 'flag', flag: 'markOnCrit' }] },
     { at: 70, name: '급소', desc: '치명타 피해 +50%', effects: [{ type: 'add', key: 'critDmg', v: 0.5 }] },
-    { at: 90, name: '처형', desc: 'HP 10% 이하의 일반 적 즉사', effects: [{ type: 'flag', flag: 'execute' }] },
+    { at: 90, name: '마무리', desc: 'HP 30% 이하인 적에게 주는 피해 +25%', effects: [{ type: 'add', key: 'lowHunt', v: 0.25 }] },
   ],
   spi: [
-    { at: 30, name: '평정', desc: '받는 상태이상 지속 -30%, 마나 회복 +20%', effects: [{ type: 'add', key: 'statusRes', v: 0.3 }, { type: 'mul', key: 'manaRegen', v: 1.2 }] },
+    { at: 30, name: '평정', desc: '받는 상태이상 지속 -30%, 얻는 종족 자원 +10%', effects: [{ type: 'add', key: 'statusRes', v: 0.3 }, { type: 'mul', key: 'resGain', v: 1.1 }] },
     { at: 50, name: '정화', desc: '8초마다 상태이상 해제', effects: [{ type: 'flag', flag: 'cleanse' }] },
     { at: 70, name: '심층 각인', desc: '각인 부하 한도 +6', effects: [{ type: 'add', key: 'loadCap', v: 6 }] },
     { at: 90, name: '명경지수', desc: '상태이상 면역', effects: [{ type: 'flag', flag: 'statusImmune' }] },

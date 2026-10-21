@@ -36,6 +36,34 @@ export function buildArena() {
   };
 }
 
+// 결투장: 모래를 깐 둥근 투기장 (돌담 · 화로 · 흩어진 뼈). 온라인 결투에서 두 사람만 들어온다.
+export const DUEL_ZONE = {
+  ...ARENA_ZONE, id: 'duel', name: '결투장', pal: ['#a88a5c', '#b39466', '#9c7f52'], wall: ['#1e1612', '#4a3a2c', '#6e5a44'],
+  dark: 0.35, deco: ['pebble'], regions: ['결투장'],
+};
+export function buildDuelArena() {
+  const tw = 36, th = 26, t = new Uint8Array(tw * th), cx = tw / 2, cy = th / 2, rx = tw / 2 - 2.5, ry = th / 2 - 2.5;
+  const inside = (x, y) => ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1;
+  for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) t[y * tw + x] = inside(x, y) ? T_FLOOR : T_WALL;
+  const deco = [];
+  // 담 안쪽 가장자리에 화로 8개 (빛이 둘레를 밝힌다)
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8, x = cx + Math.cos(a) * (rx - 1.2), y = cy + Math.sin(a) * (ry - 1.2);
+    deco.push({ x: Math.round(x * 16), y: Math.round(y * 16), kind: 'brazier', v: i % 2 });
+  }
+  // 모래 위 자갈 · 뼈 (가운데는 비워 둔다)
+  for (let i = 0; i < 40; i++) {
+    const x = 3 + ((i * 37) % (tw - 6)), y = 3 + ((i * 53) % (th - 6));
+    if (!inside(x, y) || Math.hypot((x - cx) / rx, (y - cy) / ry) < 0.45) continue;
+    deco.push({ x: x * 16 + 8, y: y * 16 + 8, kind: i % 5 === 0 ? 'bone' : 'pebble', v: i % 3 });
+  }
+  return {
+    tw, th, tiles: t, start: { x: cx, y: cy }, lair: { x: cx, y: cy }, stairs: null,
+    camps: [], champions: [], chests: [], lores: [], secrets: [], deco, regions: null, regionInfo: [{ name: '결투장', types: [] }],
+    camp: [], merchant: [], shrines: [], goblins: [], objects: [], arena: true,
+  };
+}
+
 // 고른 묶음을 플레이어 둘레에 세운다 (먼저 있던 적 · 적 투사체는 치운다)
 export function spawnArenaSet(w, kind) {
   const set = ARENA_SETS[kind] || ARENA_SETS.weak, p = w.player;

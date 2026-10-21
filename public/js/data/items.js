@@ -40,12 +40,12 @@ export const ITEMS = {
   riftGreatsword: { name: '균열의 대검', slot: 'weapon', price: 260, req: { str: 40 }, weapon: { kind: 'melee', dmg: 'phys', mul: 1.75, speed: 0.85, range: 40, arc: 2.6, skill: 'slam' }, stats: { str: 8 }, tags: ['giant'],
     effects: [{ when: { stat: 'str', gte: 50 }, type: 'on', event: 'hit', chance: 0.3, action: { aoe: { r: 50, mul: 0.8, type: 'phys' } }, text: '30% 확률 충격파' }] },
 
-  // ── 원거리 물리 (마나 없음) ──
+  // ── 원거리 물리 ──
   huntBow: { name: '사냥 활', slot: 'weapon', price: 0, starter: true, weapon: { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 1.3, speed: 1.6, projSpeed: 300, range: 200, pierce: 1, skill: 'volley' }, stats: { sen: 3 }, tags: [] },
   longbow: { name: '장궁', slot: 'weapon', price: 180, weapon: { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 1.12, speed: 1.0, projSpeed: 360, range: 260, pierce: 2, charge: true, skill: 'rain' }, stats: { sen: 4, agi: 2 }, tags: ['wind'] },
   throwingAxe: { name: '투척 도끼', slot: 'weapon', price: 140, weapon: { kind: 'proj', dmg: 'phys', mul: 1.1, speed: 1.3, projSpeed: 220, range: 120, boomerang: true, skill: 'axeStorm' }, stats: { str: 3 }, tags: ['brawl'] },
 
-  // ── 마법 (마나 소모) ──
+  // ── 마법 (마법사는 한 발마다 마력을 쓴다) ──
   apprenticeWand: { name: '견습 서리 완드', slot: 'weapon', price: 0, starter: true, weapon: { kind: 'proj', dmg: 'mag', mul: 0.9, speed: 2.0, projSpeed: 260, range: 180, mana: 4, onHit: { status: 'chill', stacks: 1, chance: 0.35 }, skill: 'frostRing' }, stats: { iceAff: 2 }, tags: [] },
   oldTome: { name: '낡은 마도서', slot: 'weapon', price: 0, starter: true, weapon: { kind: 'proj', dmg: 'mag', mul: 0.45, speed: 1.3, projSpeed: 220, range: 175, count: 3, spread: 0.22, splash: 18, mana: 6, onHit: { status: 'burn', stacks: 1, chance: 0.3 }, skill: 'nova' }, stats: { fireAff: 2 }, tags: [] },
   mossStaff: { name: '이끼 지팡이', slot: 'weapon', price: 0, starter: true, weapon: { kind: 'proj', dmg: 'mag', mul: 1.0, speed: 1.2, projSpeed: 170, range: 180, mana: 6, onHit: { status: 'poison', stacks: 2, chance: 1 }, skill: 'poisonPool' }, stats: { toxicity: 2 }, tags: [] },
@@ -82,14 +82,14 @@ export const ITEMS = {
     effects: [{ when: { stat: 'sen', gte: 40 }, type: 'stat', stat: 'pierce', v: 20, text: '관통 +20%' }] },
   sageStone: { name: '현자의 돌', slot: 'acc', price: 180, stats: { spi: 6 }, tags: [],
     effects: [{ when: { minBase: 20 }, type: 'mul', key: 'dmgMul', v: 1.15, text: '피해 +15% (만능)' }] },
-  manaGem: { name: '마나석 목걸이', slot: 'acc', price: 120, stats: { spi: 4 }, tags: [],
-    effects: [{ type: 'mul', key: 'maxMana', v: 1.25, text: '최대 마나 +25%' }, { type: 'mul', key: 'manaRegen', v: 1.2, text: '마나 회복 +20%' }] },
+  manaGem: { name: '공명석 목걸이', slot: 'acc', price: 120, stats: { spi: 4 }, tags: [],
+    effects: [{ type: 'mul', key: 'resGain', v: 1.15, text: '얻는 종족 자원 +15%' }, { type: 'mul', key: 'skillCdMul', v: 0.95, text: '스킬 쿨타임 -5%' }] },
   auraSeal: { name: '기사단 인장', slot: 'acc', price: 140, stats: { pres: 4 }, tags: [],
-    effects: [{ when: { race: 'knight' }, type: 'add', key: 'auraTime', v: 2, text: '오러 지속 +2초' }] },
+    effects: [{ when: { race: 'knight' }, type: 'add', key: 'hurtRes', v: 0.3, text: '맞아서 얻는 오러 +30%' }] },
 
   // ── 성지의 보물: 한 성지의 축복을 5단계까지 받으면 그 성지가 내어 준다 (상점에 없다) ──
   starOrb: { name: '별의 보주', slot: 'acc', price: 0, treasure: 'wizard', stats: { mag: 6, spi: 6 }, tags: [],
-    effects: [{ type: 'mul', key: 'manaRegen', v: 1.3, text: '마나 회복 +30%' }] },
+    effects: [{ type: 'mul', key: 'resGain', v: 1.2, text: '얻는 종족 자원 +20%' }] },
   worldLeaf: { name: '세계수의 잎', slot: 'acc', price: 0, treasure: 'elf', stats: { mag: 5, agi: 5 }, tags: ['wind'],
     effects: [{ type: 'add', key: 'regen', v: 0.004, text: '자연 회복 · 초당 최대 체력의 0.4%' }] },
   royalCrest: { name: '왕가의 휘장', slot: 'acc', price: 0, treasure: 'knight', stats: { pres: 12, vit: 5 }, tags: [],
