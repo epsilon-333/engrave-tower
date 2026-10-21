@@ -5,16 +5,18 @@ const H = {};
 export const onNet = (t, f) => { (H[t] ||= []).push(f); };
 const emit = (t, m) => { for (const f of H[t] || []) f(m); };
 let ws = null, info = null, retry = 0;
+// 내 정보는 보낼 때마다 새로 읽는다 (다시 이어질 때 예전 길드 · 이름을 보내지 않게)
+const hello = () => raw({ t: 'hello', ...(typeof info === 'function' ? info() : info) });
 const raw = (m) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); };
 export const netSend = raw;
 
-export function netConnect(me) {
+export function netConnect(me) { // me: 내 정보 또는 내 정보를 돌려주는 함수
   info = me;
-  if (ws || typeof WebSocket === 'undefined') { if (ws?.readyState === 1) raw({ t: 'hello', ...info }); return; }
+  if (ws || typeof WebSocket === 'undefined') { if (ws?.readyState === 1) hello(); return; }
   try { ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`); } catch { return; }
   ws.onopen = () => {
     net.up = true; retry = 0;
-    raw({ t: 'hello', ...info });
+    hello();
     if (net.map) raw({ t: 'map', map: net.map, x: Math.round(net.x), y: Math.round(net.y) });
     emit('up');
   };

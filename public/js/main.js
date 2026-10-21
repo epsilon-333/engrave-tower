@@ -54,7 +54,7 @@ const hub = new Hub(panelEl, () => save, (zone) => { closePanel(); if (zone === 
 hub.getWorld = () => world;
 // ───── 온라인: 바깥 세계에서 다른 사람이 보이고, 채팅하고, 결투하고, 파티 · 길드를 맺는다 ─────
 const onlineInfo = () => ({ name: cloud.name || `${RACES[save.race]?.name || ''} 여행자`, race: save.race, cls: save.cls, weapon: save.gear?.weapon, lv: save.level, uid: save.uid, guild: save.guild || null });
-function goOnline() { if (isClaudePage() || !save) return; netConnect(onlineInfo()); }
+function goOnline() { if (isClaudePage() || !save) return; netConnect(onlineInfo); }
 // 채팅 창 (Enter로 열고 보낸다)
 const chatEl = document.createElement('div');
 chatEl.id = 'chat'; chatEl.hidden = true;
