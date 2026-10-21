@@ -54,3 +54,8 @@ M.player.hp = 1; M.player.invuln = 0; M.hurtPlayer(9999, 'true', null, { direct:
 ok(M.player.down && M.state === 'play', '파티 탑에서는 쓰러져도 세계가 멈추지 않는다 (유령)');
 M.coRevive();
 ok(!M.player.down && M.player.hp > 0, '층을 깨면 다시 일어난다');
+
+// 인원수에 따라 난이도: 둘이면 체력 1.6배
+const H2 = mk('greatsword', 'host'), e0 = H2.enemies[0], hp0 = e0.maxHp;
+H2.coScale(2); ok(Math.abs(e0.maxHp / hp0 - 1.6) < 0.01, '둘이면 몬스터 체력 1.6배');
+H2.coScale(1); ok(Math.abs(e0.maxHp - hp0) < 0.01, '동료가 떠나면 원래대로');

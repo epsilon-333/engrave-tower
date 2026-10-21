@@ -3708,6 +3708,15 @@ export class World {
     for (const m of mates.values()) { if (m.dead) continue; const dd = Math.hypot(m.x - e.x, m.y - e.y); if (dd < bd) { bd = dd; best = m; } }
     return (e.tgt = best || P);
   }
+  // 방장: 같은 층의 인원수에 맞춰 몬스터를 세게 (1명 늘 때마다 체력 +60% · 공격 +10%) — 남은 체력 비율은 그대로
+  coScale(n) {
+    const c = this.coop; n = Math.max(1, Math.min(4, n));
+    if (c.scale === n) return;
+    const hk = (1 + 0.6 * (n - 1)) / (1 + 0.6 * ((c.scale || 1) - 1)), ak = (1 + 0.1 * (n - 1)) / (1 + 0.1 * ((c.scale || 1) - 1));
+    c.scale = n;
+    for (const e of this.enemies) { if (e.dead || e.training) continue; e.maxHp *= hk; e.hp *= hk; e.atk *= ak; }
+    this.emit({ t: 'text', x: this.player.x, y: this.player.y - 30, text: `${n}명 · 몬스터가 ${n > 1 ? '강해졌다' : '돌아왔다'}`, color: '#9fe6ff' });
+  }
   // 방장: 동료가 맞았다 → 그 동료의 세계가 자기 방어로 다시 셈한다
   coHurtMate(m, amount, type, attacker, opt = {}) {
     const fx = opt.fromX ?? attacker?.x ?? m.x, fy = opt.fromY ?? attacker?.y ?? m.y;
@@ -3721,6 +3730,7 @@ export class World {
       const st = e.st;
       const bits = (st.burn ? 1 : 0) | (st.poison ? 2 : 0) | (st.chill ? 4 : 0) | (st.frozen > 0 ? 8 : 0) | (st.stun > 0 ? 16 : 0) | (e.hidden ? 32 : 0) | (e.state === 'chase' ? 64 : 0) | (st.bleed ? 128 : 0) | (st.curse ? 256 : 0) | (st.fear > 0 ? 512 : 0);
       list.push([e.id, Math.round(e.x), Math.round(e.y), Math.ceil(e.hp), Math.round(e.maxHp), bits, e.dir, Math.round(e.windT * 100), e.ai?.mode === 'dash' ? 2 : e.ai?.mode === 'wind' ? 1 : 0]);
+      if (c.scale > 1 && !e.coScaled && e.summoned) { e.coScaled = true; e.maxHp *= 1 + 0.6 * (c.scale - 1); e.hp *= 1 + 0.6 * (c.scale - 1); }
       if (!c.known.has(e.id)) { c.known.add(e.id); info[e.id] = [e.defId, e.champion || '', e.affix || '', e.scale || 1, e.r, e === this.tower?.boss ? 1 : 0, e.summoned ? 1 : 0, e.lair ? 1 : 0]; }
     }
     const pr = this.projs.filter((x) => x.owner === 'e').map((x) => [Math.round(x.x), Math.round(x.y), Math.round(x.vx), Math.round(x.vy), x.color]);

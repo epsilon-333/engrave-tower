@@ -399,6 +399,7 @@ function coTick(dt) {
       mt.x = rp.x; mt.y = rp.y; mt.dead = !!(cs && cs.down && cs.f === w.tower.f);
     }
     for (const id of [...mates.keys()]) if (!net.players.has(id)) mates.delete(id);
+    w.coScale(1 + mates.size); // 인원수에 따라 난이도
     if ((coRun.snapT -= dt) <= 0) { coRun.snapT = 0.1; const s = w.coSnap(); if (mates.size) netSend({ t: 'co', f: w.tower.f, ...s }); }
     const by = new Map();
     for (const o of w.coop.out.splice(0)) { if (!by.has(o.to)) by.set(o.to, []); by.get(o.to).push(o); }
