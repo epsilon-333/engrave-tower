@@ -18,7 +18,8 @@ for (const [cls, id] of list) {
   if (sk.needSpirit) { p.res = 100; w.castSkillId('summonSpirit', null); }
   p.res = 100; w.castSkillId(id, 0);
   let got = false;
-  for (let f = 0; f < 150 && !got; f++) {
+  const frames = id === 'graspWraith' ? 420 : 150; // 붙잡는 망령은 5초 기를 모은다
+  for (let f = 0; f < frames && !got; f++) {
     w.step({ moveX: 0, moveY: 0, aimX: e.x, aimY: e.y, autoAim: true, h1: !!sk.charge && f < 40 });
     if (w.pvp.out.some((m) => m.t === 'dhit')) got = true;
     w.events.length = 0;

@@ -555,6 +555,10 @@ export function buildOverworld(zone) {
       for (let dy = -2; dy <= 0; dy++) for (let dx = -1; dx <= 1; dx++) occupied[I(best.x + dx, best.y + dy)] = 1;
       waypoints.push({ id: `wp_${id}`, name, start: id === 'village', ...at(best.x, best.y), tx: best.x, ty: best.y });
     }
+    // 포탈 둘레(16칸)에는 몬스터 무리 · 우두머리를 두지 않는다 — 포탈에서 나오자마자 싸우지 않게
+    const nearWp = (x, y) => waypoints.some((w) => Math.hypot(x - w.tx, y - w.ty) < 16);
+    for (let i = camps.length - 1; i >= 0; i--) if (nearWp(camps[i].x, camps[i].y)) camps.splice(i, 1);
+    for (let i = champions.length - 1; i >= 0; i--) if (nearWp(champions[i].x, champions[i].y)) champions.splice(i, 1);
   }
 
   // ───── 13) 종족 성지 마을: 커다란 상징물 · 주민 · 우두머리 · 수련장 (맨 끝에 놓는다) ─────

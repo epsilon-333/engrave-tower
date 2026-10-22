@@ -465,6 +465,7 @@ export class Renderer {
         case 'parry': this.rimFlash = { color: '#fff6c0', t: 0.4, max: 0.4 }; this.shockwave(ev.x, ev.y, 40, '#fff6c0', 24); this.burst(ev.x, ev.y - 6, '#fff6c0', 30, 160); this.texts.push({ x: ev.x, y: ev.y - 26, text: '받아치기!', color: '#ffe080', t: 1, vy: -14, vx: 0, label: true, size: 2 }); this.shake = 5; sfx('hitArmor', { vol: 1 }); sfx('reaction', { vol: 0.5, rate: 1.5 }); break;
         case 'buff': this.rimFlash = { color: ev.color || '#ffffff', t: 0.35, max: 0.35 * 1.8 }; for (let i = 0; i < 7; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 14, y: ev.y, vx: 0, vy: -30 - Math.random() * 25, t: 0.55, max: 0.55, color: ev.color, g: -8 }); sfx('echo', { vol: 0.5 }); break;
         case 'elemShift': this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 24, color: ELEM[ev.elem].color, t: 0.4, max: 0.4, w: 3 }); this.burst(ev.x, ev.y - 6, ELEM[ev.elem].color, 16, 80); this.texts.push({ x: ev.x, y: ev.y - 24, text: `${ELEM[ev.elem].name}${ev.weak ? ' · 약점!' : ''}`, color: ELEM[ev.elem].color, t: 1, vy: -12, vx: 0, label: true }); sfx('open', { vol: 0.5, rate: 1.2 }); break;
+        case 'graspArm': this.fx.push({ k: 'arm', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.55, max: 0.55 }); sfx('dash', { vol: 0.5, rate: 0.6 }); break;
         case 'summonFx': { const col = ev.elem ? ELEM[ev.elem].color : ev.kind === 'clone' ? '#8a6aff' : ev.kind === 'skeleton' ? '#e8e0d0' : '#c45cff';
           if (ev.big && !ev.out) { this.fx.push({ k: 'pillar', x: ev.x, y: ev.y, r: 50, color: col, t: 0.8, max: 0.8 }); for (let i = 0; i < 3; i++) this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 30 + i * 20, color: col, t: 0.5 + i * 0.1, max: 0.5 + i * 0.1, w: 4 }); this.burst(ev.x, ev.y, col, 50, 160); this.shake = 8; } this.burst(ev.x, ev.y, col, ev.out ? 8 : 18, 70); if (!ev.out) { this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 16, color: col, t: 0.35, max: 0.35, w: 2 }); sfx('echo', { vol: 0.35, rate: 1.3 }); } break; }
         case 'allyHit': this.sparkBurst(ev.x, ev.y - 4, ev.kind === 'clone' ? '#b89aff' : '#c45cff', 4); break;
@@ -2289,12 +2290,13 @@ export class Renderer {
       if (Math.random() < 0.2) this.parts.push({ x: al.x + (Math.random() - 0.5) * 10, y: al.y - 6, vx: 0, vy: -20, t: 0.5, max: 0.5, color: '#7ae8ff', g: -10 });
       return;
     }
-    const base = al.kind === 'lich' ? 'big_zombie' : al.kind === 'clone' ? RACE_ART[w.b.race].base : al.kind === 'skeleton' ? 'skelet' : 'necromancer';
-    const tint = al.kind === 'skeleton' ? 'brightness(1.1)' : al.kind === 'lich' ? 'hue-rotate(220deg) saturate(1.4) brightness(0.9)' : al.kind === 'clone' ? 'brightness(0.25) saturate(0) contrast(1.4)' : 'grayscale(0.6) brightness(1.4) hue-rotate(180deg)';
+    if (al.kind === 'grasper' && (al.chg || 0) > 0 && Math.random() < 0.12 + 0.12 * (al.chg / 5)) { const a = Math.random() * Math.PI * 2; this.parts.push({ x: al.x + Math.cos(a) * 16, y: al.y - 8 + Math.sin(a) * 10, vx: -Math.cos(a) * 30, vy: -Math.sin(a) * 20, t: 0.5, max: 0.5, color: '#c8b8ff', g: 0, glow: true }); } // 기를 모은다
+    const base = al.kind === 'lich' ? 'big_zombie' : al.kind === 'lichMage' ? 'skelet' : al.kind === 'clone' ? RACE_ART[w.b.race].base : al.kind === 'skeleton' ? 'skelet' : 'necromancer';
+    const tint = al.kind === 'lichMage' ? 'hue-rotate(240deg) saturate(2) brightness(0.95)' : al.kind === 'grasper' ? 'grayscale(0.8) brightness(1.6) hue-rotate(220deg)' : al.kind === 'skeleton' ? 'brightness(1.1)' : al.kind === 'lich' ? 'hue-rotate(220deg) saturate(1.4) brightness(0.9)' : al.kind === 'clone' ? 'brightness(0.25) saturate(0) contrast(1.4)' : 'grayscale(0.6) brightness(1.4) hue-rotate(180deg)';
     const img = sprite(this.animFrame(base, 'run', w.t + al.id, 10), tint, false, al.dir < 0);
     if (!img) return;
     g.globalAlpha = (al.kind === 'clone' ? 0.75 : 0.7) * fade;
-    const sc = al.kind === 'lich' ? 1.1 : 1;
+    const sc = al.kind === 'lich' ? 1.1 : al.kind === 'lichMage' ? 1.3 : 1;
     g.drawImage(img, Math.round(al.x - img.width * sc / 2), Math.round(al.y + 4 - img.height * sc + Math.sin(w.t * 4 + al.id) * 1.5), img.width * sc, img.height * sc);
     g.globalAlpha = 1;
     if (Math.random() < 0.15) this.parts.push({ x: al.x, y: al.y - 4, vx: 0, vy: -20, t: 0.5, max: 0.5, color: al.kind === 'clone' ? '#8a6aff' : '#c45cff', g: -10 });
@@ -2650,6 +2652,21 @@ export class Renderer {
         if (this.world.player.castT <= 0) f.t = 0;
       } else if (f.k === 'rune') {
         this.runeCircle(f.x, f.y, f.r * (0.6 + 0.4 * easeOut(1 - k)), f.color, this.world.t * 1.5, k);
+      } else if (f.k === 'arm') { // 망령의 팔: 마디진 창백한 팔이 쭉 뻗어 움켜쥐고 줄어든다
+        const age = f.max - f.t, out = easeOut(Math.min(1, age / 0.14)), back = age > 0.3 ? 1 - (age - 0.3) / 0.25 : 1, r = out * Math.max(0, back);
+        const ex = f.x1 + (f.x2 - f.x1) * r, ey = f.y1 + (f.y2 - f.y1) * r, n = 7, ang = Math.atan2(f.y2 - f.y1, f.x2 - f.x1);
+        g.save(); g.lineCap = 'round';
+        for (const [w0, c] of [[5, 'rgba(20,14,30,0.85)'], [3, 'rgba(200,190,230,0.9)']]) {
+          g.strokeStyle = c; g.lineWidth = w0; g.beginPath(); g.moveTo(f.x1, f.y1);
+          for (let i = 1; i <= n; i++) { const q = i / n, wob = Math.sin(q * 9 + age * 30) * 1.6 * (1 - q); g.lineTo(f.x1 + (ex - f.x1) * q - Math.sin(ang) * wob, f.y1 + (ey - f.y1) * q + Math.cos(ang) * wob); }
+          g.stroke();
+        }
+        g.fillStyle = 'rgba(235,228,255,0.95)';
+        for (let i = 1; i < n; i++) { const q = i / n; g.fillRect(Math.round(f.x1 + (ex - f.x1) * q) - 1, Math.round(f.y1 + (ey - f.y1) * q) - 1, 2, 2); } // 마디
+        g.strokeStyle = 'rgba(235,228,255,0.95)'; g.lineWidth = 1.5;
+        for (const da of [-0.7, 0, 0.7]) { g.beginPath(); g.moveTo(ex, ey); g.lineTo(ex + Math.cos(ang + da) * 5, ey + Math.sin(ang + da) * 5); g.stroke(); } // 손가락
+        g.restore();
+        if (Math.random() < 0.5) this.parts.push({ x: ex, y: ey, vx: (Math.random() - 0.5) * 20, vy: -10, t: 0.4, max: 0.4, color: '#c8b8ff', g: -10, glow: true });
       } else if (f.k === 'scrape') {
         g.fillStyle = `rgba(30,22,16,${0.35 * k})`; g.fillRect(Math.round(f.x) - 1, Math.round(f.y), 2, 1);
       } else if (f.k === 'scorch') { // 그을린 땅: 얼룩덜룩한 검댕, 가운데 불씨는 시간이 지나며 식는다

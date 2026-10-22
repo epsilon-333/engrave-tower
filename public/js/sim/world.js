@@ -148,7 +148,10 @@ export class World {
       this.memObjCount = this.objects.length; // 기억(열어 본 것)은 이 순번까지의 오브젝트에만
       if (memory) this.applyMemory(memory);
       // 이동 포탈: 기억(오브젝트 순번) 뒤에 붙인다. 깨어났는지는 이야기 기록(story.flags)에 남는다 (마을 포탈은 처음부터 깨어 있다)
-      for (const wp of m.waypoints || []) { const on = !!wp.start || !!this.story?.flags[`wp:${wp.id}`]; this.objects.push({ kind: 'waypoint', ...wp, active: on, label: on ? '이동 포탈 · 다른 포탈로 가기' : '잠든 포탈 깨우기', reusable: true }); }
+      // 내 종족 성지에서 가장 가까운 포탈은 처음부터 열려 있다
+      const myS = m.objects?.find((o) => o.kind === 'sanctum' && o.race === this.b.race);
+      const homeWp = myS && (m.waypoints || []).reduce((a, w) => (!a || Math.hypot(w.x - myS.x, w.y - myS.y) < Math.hypot(a.x - myS.x, a.y - myS.y) ? w : a), null);
+      for (const wp of m.waypoints || []) { const on = !!wp.start || wp === homeWp || !!this.story?.flags[`wp:${wp.id}`]; this.objects.push({ kind: 'waypoint', ...wp, active: on, label: on ? '이동 포탈 · 다른 포탈로 가기' : '잠든 포탈 깨우기', reusable: true }); }
       // 성지 마을: 우두머리 · 주민 · 수련 안내판 (역시 기억 뒤에), 맡고 있는 '찾기' 의뢰의 물건
       for (const [race, v] of Object.entries(m.villages || {})) this.addVillage(race, v);
       this.syncQuestThings();
@@ -1798,8 +1801,8 @@ export class World {
           const a = this.rng.range(0, Math.PI * 2);
           const elem = op.kind === 'spiritKing' ? ELEM_CYCLE[this.rng.int(0, 2)] : op.elem;
           if (op.kind === 'spiritKing') this.emit({ t: 'banner', text: `${ELEM[elem].name}의 정령왕 강림`, color: ELEM[elem].color });
-          const hp = op.kind === 'skeleton' ? this.d.maxHp * 0.35 : op.kind === 'lich' ? this.d.maxHp * 0.8 : 0, atk = ctx.atk * op.mul * (op.scaleRes ? ctx.resMul : 1) * ctx.bonus;
-          if (op.perm && hp > 0) { const m = { kind: op.kind, maxHp: hp, atk, r: op.kind === 'lich' ? 8 : 6, scale: 1 }; this.minions.push(m); this.spawnMinion(m, p.x + Math.cos(a) * 16, p.y + Math.sin(a) * 16, i); }
+          const hp = op.kind === 'skeleton' ? this.d.maxHp * 0.35 : op.kind === 'lich' ? this.d.maxHp * 0.8 : op.kind === 'lichMage' ? this.d.maxHp * 0.6 : op.kind === 'grasper' ? this.d.maxHp * 0.3 : 0, atk = ctx.atk * op.mul * (op.scaleRes ? ctx.resMul : 1) * ctx.bonus;
+          if (op.perm && hp > 0) { const m = { kind: op.kind, maxHp: hp, atk, r: op.kind === 'lich' ? 8 : 6, scale: op.kind === 'lichMage' ? 1.25 : 1 }; this.minions.push(m); this.spawnMinion(m, p.x + Math.cos(a) * 16, p.y + Math.sin(a) * 16, i); }
           else this.allies.push({ id: this.nextId++, kind: op.kind, perm: !!op.perm, elem, hp, maxHp: hp, x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, t: op.dur, max: op.dur,
             atk, cd: 0.3 + i * 0.2, phase: a, dir: 1 });
           this.emit({ t: 'summonFx', x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, kind: op.kind, elem, big: op.kind === 'spiritKing' || op.kind === 'lich' });
@@ -2532,6 +2535,8 @@ export class World {
               skillHit: (e) => { this.damageEnemy(e, al.atk * 1.4, 'mag', { src: 'aoe', elem: al.elem }); this.applyStatus(e, ELEM[al.elem].status, 1); } });
           }
         }
+      } else if (al.kind === 'grasper' || al.kind === 'lichMage') {
+        this.updateNecroSpecial(al, p);
       } else {
         // 망령·사령 군주·분신: 적을 쫓아가 공격
         // 부하마다 다른 적을 고른다: 이미 다른 부하가 노리는 적은 덜 고른다 (1초마다 다시 고름)
@@ -2900,6 +2905,7 @@ export class World {
     if (e.rooted > 0) { m.root = r1(e.rooted * PVP.cc); e.rooted = 0; }
     if (e.silenceT > 0) { m.sil = r1(e.silenceT * PVP.cc); e.silenceT = 0; }
     if (e.reelT > 0) { const gap = P.r + 12; m.pull = { x: Math.round(P.x + P.aimX * gap), y: Math.round(P.y + P.aimY * gap) }; e.reelT = 0; }
+    if (e.graspT > 0 && e.graspTo) { const G = e.graspTo; m.pull = { x: Math.round(G.x + (e.x > G.x ? 12 : -12)), y: Math.round(G.y) }; e.graspT = 0; } // 붙잡는 망령의 팔
     if (e.armorBreak > 0) { m.ab = e.armorBreak; e.armorBreak = 0; }
     if (st.slowZ > 0) { m.slow = r1(Math.min(3, st.slowZ) * PVP.cc); st.slowZ = 0; }
     if (e.provokeT > 0) { m.taunt = r1(e.provokeT * PVP.cc * 0.5); e.provokeT = 0; }
@@ -3313,6 +3319,49 @@ export class World {
     e.lv = lv; const k = lv - 1;
     e.hp = e.maxHp = Math.round(e.maxHp * (1 + 0.09 * k)); e.atk *= 1 + 0.05 * k; e.rewardMul = 1 + 0.06 * k;
   }
+  // 사령술사의 특별한 부하: 붙잡는 망령 · 리치
+  updateNecroSpecial(al, p) {
+    const pd = Math.hypot(al.x - p.x, al.y - p.y);
+    if (pd > 360) { al.x = p.x; al.y = p.y; this.emit({ t: 'summonFx', x: al.x, y: al.y, kind: al.kind }); }
+    const foes = this.enemies.filter((e) => !e.dead && !e.hidden && !(e.def.ai === 'dummy' && this.mode !== 'plaza'));
+    let tx, ty;
+    if (al.kind === 'grasper') { // 내 뒤쪽 비스듬히 50만큼 떨어져 떠 있다
+      const a = Math.atan2(-0.6, -p.dir); tx = p.x + Math.cos(a) * 50; ty = p.y + Math.sin(a) * 34;
+      al.chg = (al.chg || 0) + DT;
+      if (al.chg >= 5) {
+        let best = null, bd = 200;
+        for (const e of foes) { const d = Math.hypot(e.x - p.x, e.y - p.y); if (d < bd) { bd = d; best = e; } }
+        if (best) {
+          al.chg = 0; al.dir = best.x > al.x ? 1 : -1;
+          best.graspT = 0.5; best.graspTo = al; best.graspK = best.def.elite || best.champion ? 0.5 : 1; best.graspX0 = best.x; best.graspY0 = best.y; best.kbx = 0; best.kby = 0; this.aggro(best);
+          this.emit({ t: 'graspArm', x1: al.x, y1: al.y - 8, x2: best.x, y2: best.y - 6 });
+        } else al.chg = 5;
+      }
+    } else { // 리치: 가장 가까운 적과 90쯤 떨어져 어둠 탄을 쏘고, 8초마다 해골을 일으킨다
+      let tgt = null, bd = 240;
+      for (const e of foes) { const d = Math.hypot(e.x - al.x, e.y - al.y); if (d < bd && Math.hypot(e.x - p.x, e.y - p.y) < 200) { bd = d; tgt = e; } }
+      if (tgt) { const d = bd || 1, k = d < 70 ? -1 : d > 110 ? 1 : 0; tx = al.x + (tgt.x - al.x) / d * 30 * k; ty = al.y + (tgt.y - al.y) / d * 30 * k; al.dir = tgt.x > al.x ? 1 : -1; }
+      else { const a = al.phase + al.id * 1.3; tx = p.x + Math.cos(a) * 30; ty = p.y + Math.sin(a) * 20; }
+      if (tgt && al.cd <= 0) {
+        al.cd = 1.2; const vx = tgt.x - al.x, vy = tgt.y - al.y, l = Math.hypot(vx, vy) || 1;
+        this.projs.push({ owner: 'p', x: al.x, y: al.y - 10, vx: vx / l * 230, vy: vy / l * 230, life: 1.2, dmg: al.atk, type: 'mag', pierce: 0, hit: new Set(), color: '#b06aff', kind: 'skill', elem: 'dark', noTrigger: true,
+          skillHit: (e) => { this.damageEnemy(e, al.atk, 'mag', { src: 'aoe', elem: 'dark' }); this.applyStatus(e, 'curse', 1); } });
+      }
+      al.raiseT = (al.raiseT ?? 3) - DT;
+      if (al.raiseT <= 0) {
+        al.raiseT = 8;
+        if (this.allies.filter((o) => o.lichOf === al.id && o.t > 0).length < 3) {
+          const a = this.rng.range(0, Math.PI * 2); let x = al.x + Math.cos(a) * 16, y = al.y + Math.sin(a) * 16; if (this.blocked(x, y, 4)) { x = al.x; y = al.y; }
+          const hp = this.d.maxHp * 0.2;
+          this.allies.push({ id: this.nextId++, kind: 'skeleton', lichOf: al.id, hp, maxHp: hp, x, y, t: 15, max: 15, atk: al.atk * 0.45, cd: 0.5, phase: a, dir: 1, r: 5 });
+          this.emit({ t: 'summonFx', x, y, kind: 'skeleton' });
+        }
+      }
+    }
+    const vx = tx - al.x, vy = ty - al.y, l = Math.hypot(vx, vy);
+    if (l > 4) { const sp = (al.kind === 'grasper' ? 120 : 75) * DT * (pd > 150 ? 1.6 : 1); al.r = al.r || 5; if (al.kind === 'grasper') { al.x += vx / l * Math.min(l, sp); al.y += vy / l * Math.min(l, sp); } else { const [mx, my] = this.pathDir(al, tx, ty); this.move(al, mx * sp, my * sp); } }
+    if (al.kind !== 'lichMage' || !al.dir) al.dir = al.dir || p.dir;
+  }
   spawnCamp(c) {
     c.members = [];
     for (let i = 0; i < c.n; i++) {
@@ -3485,6 +3534,14 @@ export class World {
       if (dot > 0) this.damageEnemy(e, dot * DT, 'true', { src: 'dot' });
       if (e.dead) continue;
       if (e.trainFlee || e.bones > 0) continue; // 수련: 달아나는 랩터 · 뼈 무더기는 수련이 직접 다룬다
+      if (e.graspT > 0) { // 붙잡는 망령의 팔에 끌려간다 (정예는 반쯤까지)
+        e.graspT -= DT;
+        const G = e.graspTo, gap = (G.r || 5) + e.r + 6, ang = Math.atan2(e.graspY0 - G.y, e.graspX0 - G.x);
+        const tx = e.graspX0 + (G.x + Math.cos(ang) * gap - e.graspX0) * e.graspK, ty = e.graspY0 + (G.y + Math.sin(ang) * gap - e.graspY0) * e.graspK;
+        const rx = tx - e.x, ry = ty - e.y, rl = Math.hypot(rx, ry);
+        if (rl > 3) { const sp = Math.min(rl, 560 * DT); this.move(e, (rx / rl) * sp, (ry / rl) * sp); } else e.graspT = 0;
+        continue;
+      }
       if (e.reelT > 0) { // 작살에 끌려온다: 내 앞 (정예는 반쯤까지)
         e.reelT -= DT;
         const gap = P.r + e.r + 6, tx = P.x + (e.reelX0 - P.x) * (1 - e.reelK) + P.aimX * gap * e.reelK, ty = P.y + (e.reelY0 - P.y) * (1 - e.reelK) + P.aimY * gap * e.reelK;
