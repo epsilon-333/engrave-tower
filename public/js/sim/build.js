@@ -132,10 +132,10 @@ export function computeBuild(lo) {
   // 8) 파생 수치
   const E = {}; for (const k of BASE_STATS) E[k] = eff(Math.max(0, stats[k]));
   const d = {
-    maxHp: 70 + E.vit * 7,
-    physAtk: 4 + E.str * 1.3,
-    dexAtk: 4 + E.agi * 1.15 + E.str * 0.25,
-    magAtk: 4 + E.mag * 1.3,
+    maxHp: 110 + E.vit * 9,                    // 기본 체력을 넉넉히 (예전 70 + 체력 × 7)
+    physAtk: 4 + E.str * 1.1,                  // 기본 공격력은 조금 낮게 (예전 × 1.3)
+    dexAtk: 4 + E.agi * 1.0 + E.str * 0.2,
+    magAtk: 4 + E.mag * 1.1,
     atkSpeed: 1 + 0.7 * E.agi / (E.agi + 110),       // 민첩: 공격 속도 (최대 +70%, 갈수록 덜 오른다)
     moveSpeed: 80 * (1 + 0.3 * E.agi / (E.agi + 90)), // 민첩: 이동 속도 (최대 +30% · 너무 빠르면 어지러워서 갈수록 덜 오른다)
     dodge: 0.45 * E.agi / (E.agi + 110),                // 민첩: 회피 (민첩 20 → 7% · 60 → 16% · 최대 45%)

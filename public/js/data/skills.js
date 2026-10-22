@@ -546,7 +546,7 @@ export const WORD_COMBO = {
 };
 
 // 대전(PvP) 보정: 사람끼리 싸울 때는 피해 · 회복 · 보호막 · CC를 줄여 한 번에 끝나지 않게
-export const PVP = { dmg: 0.6, heal: 0.5, shield: 0.6, cc: 0.6 };
+export const PVP = { dmg: 0.4, heal: 0.5, shield: 0.6, cc: 0.6 }; // 대전: 너무 빨리 끝나지 않게 피해는 40%
 // CC 종류 (숫자로 분명하게): 기절 = 아무것도 못 함 · 빙결 = 못 움직이고 못 때림 · 속박 = 못 움직임 · 공포 = 도망 · 침묵 = 스킬 못 씀 · 둔화 = 느려짐
 export const CC_NAME = { stun: '기절', frozen: '빙결', root: '속박', fear: '공포', silence: '침묵', slow: '둔화' };
 

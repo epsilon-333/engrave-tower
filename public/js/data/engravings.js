@@ -210,7 +210,7 @@ export const ENGRAVINGS = {
   goblinThrow: {
     name: '고블린 투척술', slot: 'arm', grade: 2, load: 3, tags: ['bleed', 'wind'],
     stats: { agi: 3, str: 3 },
-    effects: [{ type: 'on', event: 'dash', chance: 1, action: { shards: { n: 3, mul: 0.5, type: 'phys' } }, text: '대시할 때 단검 3개 투척' }],
+    effects: [{ type: 'on', event: 'dash', chance: 1, action: { shards: { n: 3, mul: 0.6, type: 'phys', dash: true } }, text: '대시할 때 대시한 방향으로 단검 3개 투척 (공격력 60%)' }],
     recipe: { rust: 4, wing: 3 },
   },
   rustChain: {

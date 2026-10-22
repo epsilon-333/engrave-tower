@@ -643,7 +643,7 @@ export class World {
         if (f.has('dashCrit')) p.dashCritReady = true;
         this.emit({ t: 'dash', x: p.x, y: p.y, dx, dy });
         if (f.has('dashAfterimage')) this.afterimage(p.x, p.y, p.x + dx * 64, p.y + dy * 64);
-        for (const tr of this.b.triggers.dash) if (this.rng.chance(tr.chance)) this.doAction(tr.action, null, p);
+        for (const tr of this.b.triggers.dash) if (this.rng.chance(tr.chance)) this.doAction(tr.action, null, { x: p.x, y: p.y, dir: Math.atan2(dy, dx) }); // 대시 방향을 함께 넘긴다
       }
     }
 
@@ -3103,9 +3103,10 @@ export class World {
     }
     if (a.cloud) this.addCloud(pos.x, pos.y, a.cloud.r * (1 + d.cloudSize), 4 + (s.toxicity || 0) * 0.8 + d.magAtk * 0.2, a.cloud.dur, 'p');
     if (a.shards) {
+      const aimed = a.shards.dash && pos.dir != null; // 대시하며 던지는 단검: 대시한 쪽으로 부채꼴
       for (let i = 0; i < a.shards.n; i++) {
-        const ang = this.rng.range(0, Math.PI * 2);
-        this.projs.push({ owner: 'p', x: pos.x, y: pos.y, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.9, dmg: d.magAtk * a.shards.mul, type: a.shards.type, pierce: 0, hit: new Set(), color: '#8ad8ff', homing: true, noTrigger: true });
+        const ang = aimed ? pos.dir + (i - (a.shards.n - 1) / 2) * 0.16 : this.rng.range(0, Math.PI * 2), spd = aimed ? 300 : 200;
+        this.projs.push({ owner: 'p', x: pos.x, y: pos.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 0.9, dmg: (a.shards.type === 'phys' ? d.physAtk : d.magAtk) * a.shards.mul, type: a.shards.type, kind: aimed ? 'knife' : undefined, pierce: 0, hit: new Set(), color: '#8ad8ff', homing: !aimed, noTrigger: true });
       }
     }
   }
@@ -3260,7 +3261,7 @@ export class World {
   makeEnemy(id, x, y, opt = {}) {
     const def = ALL_MONSTERS[id];
     const tm = this.tower ? towerMul(this.tower.f) : null; // 탑: 층마다 복리로 강해진다
-    const dm = tm ? tm.hp : 1 + 0.4 * this.depth, am = 1.5 * (tm ? tm.atk : 1 + 0.25 * this.depth); // 몬스터는 아프게 때린다
+    const dm = 0.8 * (tm ? tm.hp : 1 + 0.4 * this.depth), am = 1.9 * (tm ? tm.atk : 1 + 0.25 * this.depth); // 몬스터는 체력은 낮게 · 더 아프게 때린다
     const e = {
       id: this.nextId++, defId: id, def, x, y, r: def.r, hp: def.hp * dm, maxHp: def.hp * dm, atk: def.atk * am, pres: def.pres, mres: def.mres,
       st: {}, atkCd: 0.5 + this.rng.range(0, 1), shotCd: 1 + this.rng.next() * 1.5, kbx: 0, kby: 0, hitFlash: 0, dead: false,
