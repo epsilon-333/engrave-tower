@@ -39,7 +39,7 @@ export function clearSave() {
 }
 
 export function toLoadout(s) {
-  return { race: s.race, level: s.level, alloc: s.alloc, engravings: s.slots, gear: s.gear, skills: s.skills, cls: s.cls, sanctum: s.sanctum, reinforce: s.reinforce, learned: s.learned, abilities: s.abilities, spirit: s.spirits?.main ? { id: s.spirits.main, star: s.spirits.owned?.[s.spirits.main]?.star || 1, lv: spiritLevel(s.spirits.owned?.[s.spirits.main]?.xp) } : null, train: Object.fromEntries(Object.entries(s.story?.sanct || {}).map(([r, v]) => [r, v.train || 0])) };
+  return { race: s.race, level: s.level, alloc: s.alloc, engravings: s.slots, gear: s.gear, skills: s.skills, cls: s.cls, sanctum: s.sanctum, reinforce: s.reinforce, learned: s.learned, abilities: s.abilities, spirit: s.spirits?.main ? { id: s.spirits.main, star: s.spirits.owned?.[s.spirits.main]?.star || 1, lv: spiritLevel(s.spirits.owned?.[s.spirits.main]?.xp) } : null, spirits2: s.cls === 'spiritcaller' ? (s.spirits?.extra || []).filter((id) => s.spirits.owned?.[id] && id !== s.spirits.main).slice(0, 2).map((id) => ({ id, star: s.spirits.owned[id].star || 1, lv: spiritLevel(s.spirits.owned[id].xp) })) : [], train: Object.fromEntries(Object.entries(s.story?.sanct || {}).map(([r, v]) => [r, v.train || 0])) };
 }
 
 // 사냥 결과 반영. keep = 잔향 보존 비율

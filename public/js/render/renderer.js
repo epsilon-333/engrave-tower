@@ -1275,7 +1275,7 @@ export class Renderer {
     if (p.swim) this.drawSwimLine(w, p, bx, by, dt);
     if (p.boat) this.drawBoat(w, p.x, p.y, p.dir, p.moving, 'front');
     if (!pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
-    if (p.familiar) this.drawFamiliar(w, p); // 불러낸 정령 (어깨 위)
+    if (p.familiar) { this.drawFamiliar(w, p); for (const x of p.famExtra || []) this.drawFamiliar(w, p, x); } // 불러낸 정령 (어깨 위 · 정령사는 셋까지)
     if (busy) this.drawLifeTool(w, p, bx, by);
     if (this.caught) { // 잡은 것을 머리 위로 들어 보인다
       this.caught.t -= dt;
@@ -2099,8 +2099,8 @@ export class Renderer {
   }
 
   // 불러낸 정령: 도트 그림이 날갯짓 · 흔들림 4장으로 움직인다. 강화 중엔 속성 빛 알갱이, 정령의 품이면 내 둘레를 도는 작은 빛 넷
-  drawFamiliar(w, p) {
-    const g = this.g, f = p.familiar, img = spiritSprite(f.id, Math.floor(w.t * (f.emp > 0 ? 10 : 6)) + (f.phase | 0));
+  drawFamiliar(w, p, which = null) {
+    const g = this.g, f = which || p.familiar, img = spiritSprite(f.id, Math.floor(w.t * (f.emp > 0 ? 10 : 6)) + (f.phase | 0));
     if (!img) return;
     const col = ELEM[{ fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' }[f.elem]]?.color || '#9bffb0';
     const fade = f.t < 2 && Math.floor(w.t * 8) % 2 ? 0.45 : 1; // 곧 떠난다

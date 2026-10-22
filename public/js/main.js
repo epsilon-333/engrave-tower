@@ -1018,7 +1018,8 @@ function showSanctum(race, tab = 'bless') {
   // 정령 계약: 정령석 사기 · 계약 1회 / 10회 · 함께하는 정령 고르기
   overlay.querySelectorAll('[data-stone]').forEach((b) => (b.onclick = () => { buyStones(+b.dataset.stone); showSanctum(race, 'spirit'); }));
   overlay.querySelectorAll('[data-pull]').forEach((b) => (b.onclick = () => { pullSpirits(+b.dataset.pull); showSanctum(race, 'spirit'); }));
-  overlay.querySelectorAll('[data-spmain]').forEach((b) => (b.onclick = () => { save.spirits.main = b.dataset.spmain; writeSave(save); world.setBuild(buildNow()); showSanctum(race, 'spirit'); }));
+  overlay.querySelectorAll('[data-spmain]').forEach((b) => (b.onclick = () => { save.spirits.main = b.dataset.spmain; save.spirits.extra = (save.spirits.extra || []).filter((x) => x !== b.dataset.spmain); writeSave(save); world.setBuild(buildNow()); showSanctum(race, 'spirit'); }));
+  overlay.querySelectorAll('[data-spx]').forEach((b) => (b.onclick = () => { const id = b.dataset.spx, L = (save.spirits.extra ||= []); save.spirits.extra = L.includes(id) ? L.filter((x) => x !== id) : [...L, id].slice(0, 2); writeSave(save); world.setBuild(buildNow()); showSanctum(race, 'spirit'); })); // 정령사: 셋까지 함께
   // 종족 상점
   overlay.querySelectorAll('[data-rgood]').forEach((b) => (b.onclick = () => { buyRaceGood(race, b.dataset.rgood, +b.dataset.n || 1); showSanctum(race, 'shop'); }));
   overlay.querySelectorAll('[data-ritem]').forEach((b) => (b.onclick = () => { buyRaceItem(race, b.dataset.ritem, lv); showSanctum(race, 'shop'); }));
@@ -1125,7 +1126,7 @@ function spiritCard(id, owned, main, badge = '') {
     <img src="${spiritIconURL(id)}" alt="">${badge ? `<i class="sp-badge">${badge}</i>` : ''}
     <b>${o ? esc(s.name) : '???'}</b><small style="color:${G.color}">${G.name} · ${SPIRIT_ELEMS[s.elem].name}${o ? ` · ${'★'.repeat(o.star)}${'☆'.repeat(SPIRIT_STAR_MAX - o.star)}` : ''}</small>
     ${o ? (() => { const lv = spiritLevel(o.xp), nx = SPIRIT_LV_XP[lv], pv = SPIRIT_LV_XP[lv - 1]; return `<small>Lv ${lv}${nx ? ` <span class="qbar"><i style="width:${Math.round(((o.xp || 0) - pv) / (nx - pv) * 100)}%"></i></span>` : ' (최고)'}</small>`; })() : ''}
-    ${o ? `<small>${esc(spiritBuffText(id, o.star, spiritLevel(o.xp)))}</small>${main === id ? '<em>함께하는 정령</em>' : `<button class="sm" data-spmain="${id}">함께하기</button>`}` : ''}</div>`;
+    ${o ? `<small>${esc(spiritBuffText(id, o.star, spiritLevel(o.xp)))}</small>${main === id ? '<em>함께하는 정령</em>' : `<button class="sm" data-spmain="${id}">함께하기</button>${save.cls === 'spiritcaller' ? ((save.spirits.extra || []).includes(id) ? `<button class="sm" data-spx="${id}">함께 · 빼기</button>` : `<button class="sm ghost" data-spx="${id}" ${(save.spirits.extra || []).length >= 2 ? 'disabled' : ''}>같이 데려가기</button>`) : ''}`}` : ''}</div>`;
 }
 function spiritHtml() {
   const sv = save.spirits || { owned: {}, main: null }, stones = save.bag?.spiritStone || 0, got = Object.keys(sv.owned || {}).length;

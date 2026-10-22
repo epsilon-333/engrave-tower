@@ -92,11 +92,11 @@ export function craftTab(s, ui) {
   const matBtns = mats.map((m) => { const M = WMATS[m]; return `<button class="sm ${cs.mat === m ? 'on' : 'ghost'}" data-act="cMat" data-id="${m}" title="${M.name}: 위력 ×${M.mul}">${ico(M.good)} ${M.name}</button>`; }).join('');
   const ownParts = Object.entries(s.bag || {}).filter(([id, n]) => n > 0 && PART_FX[id]);
   const partBtns = ownParts.map(([id, n]) => { const used = cs.parts.filter((x) => x === id).length; return `<button class="good ing" data-act="cPart" data-id="${id}" title="${esc(goodTitle(id))}" ${n - used <= 0 || cs.parts.length >= 2 ? 'disabled' : ''}>${ico(id)}<b>${n - used}</b><span>${GOODS[id].name}</span></button>`; }).join('') || '<p class="muted">몬스터 부산물이 없다. 몬스터를 잡으면 가끔 떨어뜨린다 (우두머리는 반드시).</p>';
-  const chosen = [0, 1].map((i) => cs.parts[i] ? `<button class="potslot on" data-act="cPartOut" data-n="${i}" title="${esc(GOODS[cs.parts[i]].name)}">${ico(cs.parts[i])}</button>` : '<span class="potslot"></span>').join('');
+  const chosen = [0, 1].map((i) => cs.parts[i] ? `<button class="potslot on" data-act="cPartOut" data-n="${i}" title="${esc(GOODS[cs.parts[i]].name)}">${ico(cs.parts[i])}<small>${esc(GOODS[cs.parts[i]].name)}</small></button>` : '<span class="potslot"></span>').join('');
   const it = craftItem({ type: cs.type, mat: cs.mat, parts: cs.parts }), cost = craftCost(cs.type, cs.mat, cs.parts);
   const ok = s.gold >= cost.gold && Object.entries(cost.mats).every(([id, n]) => (s.bag?.[id] || 0) >= n);
   const w = it.weapon, sk = WEAPON_SKILLS[w.skill];
-  const matsHtml = Object.entries(cost.mats).map(([id, n]) => { const h = s.bag?.[id] || 0; return `<span class="mat ${h >= n ? 'ok' : 'no'}" title="${esc(GOODS[id]?.name || id)}">${ico(id)}${h}/${n}</span>`; }).join('') + `<span class="mat ${s.gold >= cost.gold ? 'ok' : 'no'}">◆ ${cost.gold}</span>`;
+  const matsHtml = Object.entries(cost.mats).map(([id, n]) => { const h = s.bag?.[id] || 0; return `<span class="mat ${h >= n ? 'ok' : 'no'}" title="${esc(GOODS[id]?.name || id)}">${ico(id)}<em>${esc(GOODS[id]?.name || id)}</em> ${h}/${n}</span>`; }).join('') + `<span class="mat ${s.gold >= cost.gold ? 'ok' : 'no'}">◆ ${cost.gold}</span>`;
   const crafted = s.items.filter((id) => ITEMS[id]?.crafted);
   const own = crafted.map((id) => { const c = ITEMS[id], eq = s.gear?.weapon === id; return `<div class="trow r3"><span><b>${c.name}</b><small>${WCAT_NAME[c.cat]} · 피해 ×${c.weapon.mul} · 속도 ${c.weapon.speed}${c.lines.length ? ' · ' + c.lines.join(' · ') : ''}</small></span>
     <button class="sm" data-act="equipG" data-id="${id}" data-slot="weapon" ${eq ? 'disabled' : ''}>${eq ? '장착 중' : '장착'}</button><button class="sm ghost" data-act="scrap" data-id="${id}" ${eq ? 'disabled' : ''}>버리기</button></div>`; }).join('');

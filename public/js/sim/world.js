@@ -471,6 +471,14 @@ export class World {
       if (this.player.ccT > 0) this.player.ccT -= DT;
       input = { ...input, moveX: 0, moveY: 0, attack: false, dash: false, interact: false, skill: false, s1: false, s2: false, s3: false, s4: false, wskill: false };
     }
+    { // 결투: 상대가 건 묶기 · 침묵 · 공포 (사람에게 걸리는 CC)
+      const p = this.player;
+      for (const k of ['rootT', 'silT', 'fearT', 'abT']) if (p[k] > 0) p[k] -= DT;
+      if (p.abT <= 0) p.ab = 0;
+      if (p.rootT > 0) input = { ...input, moveX: 0, moveY: 0, dash: false };
+      if (p.silT > 0) input = { ...input, s1: false, s2: false, s3: false, s4: false, wskill: false, skill: false };
+      if (p.fearT > 0) { const f = this.enemies.find((x) => x.remote), dx = p.x - (f?.x ?? p.x - 1), dy = p.y - (f?.y ?? p.y), l = Math.hypot(dx, dy) || 1; input = { ...input, moveX: dx / l, moveY: dy / l, attack: false, dash: false, s1: false, s2: false, s3: false, s4: false, wskill: false }; }
+    }
     if (this.state !== 'play') return;
     this.t += DT;
     if (this.clock) { this.clock.min += DT * MIN_PER_SEC; if (this.clock.min >= 1440) { this.clock.min -= 1440; this.clock.day++; } }
@@ -490,6 +498,7 @@ export class World {
     this.updateExplore();
     this.updateOutdoor();
     this.enemies = this.enemies.filter((e) => !e.dead);
+    if (this.pvp) this.pvpFlush();
     if (this.pvp || this.coop) { // 결투 · 파티: 내가 쏜 투사체를 상대 화면에도 (보이기만)
       for (const pr of this.projs) if (pr.owner === 'p' && !pr.ghost && !pr.sent) { pr.sent = 1; (this.projOut ||= []).push([Math.round(pr.x), Math.round(pr.y), Math.round(pr.vx), Math.round(pr.vy), Math.round(Math.min(pr.life, 3) * 100) / 100, pr.color || '', pr.kind || '', pr.big ? 1 : 0]); }
     }
@@ -2114,14 +2123,16 @@ export class World {
     const old = p.familiar;
     p.familiar = { id: S.id, elem: S.elem, grade: S.grade, star: sp.star || 1, lv: sp.lv || 1, t: dur, max: dur, emp, guard: 0, cd: 0.4, x: old?.x ?? p.x - p.dir * 12, y: old?.y ?? p.y - 18, phase: old?.phase || 0 };
     this.emit({ t: 'spiritIn', x: p.familiar.x, y: p.familiar.y + 10, elem: SPIRIT_DMG_ELEM[S.elem], n: 1 + S.grade });
+    // 정령사: 계약한 정령 둘을 더 데리고 다닌다 (버프 70% · 공격은 따로)
+    p.famExtra = (this.b.spirits2 || []).filter((x) => SPIRITS[x.id]).map((x, i) => { const T = SPIRITS[x.id], o = p.famExtra?.[i]; return { id: T.id, elem: T.elem, grade: T.grade, star: x.star || 1, lv: x.lv || 1, slot: i + 1, cd: 0.6 + i * 0.3, x: o?.x ?? p.x, y: o?.y ?? p.y - 18, phase: (i + 1) * 2.1 }; });
     if (!old) this.emit({ t: 'text', x: p.x, y: p.y - 34, text: `${S.name}${'★'.repeat(p.familiar.star)} Lv ${p.familiar.lv}`, color: SPIRIT_GRADES[S.grade].color });
   }
   updateFamiliar() {
     const p = this.player, f = p.familiar;
-    if (!f) { if (p.buffs.spiritBond) delete p.buffs.spiritBond; if (p.buffs.spiritGuard) delete p.buffs.spiritGuard; return; }
+    if (!f) { if (p.buffs.spiritBond) delete p.buffs.spiritBond; if (p.buffs.spiritGuard) delete p.buffs.spiritGuard; delete p.buffs.spiritBond2; delete p.buffs.spiritBond3; p.famExtra = null; return; }
     f.t -= DT; if (f.emp > 0) f.emp -= DT; if (f.guard > 0) f.guard -= DT;
     if (this.t - (p.lastFight ?? -99) < 5 && !this.practice) { f.xpAcc = (f.xpAcc || 0) + DT * (this.b.cls === 'spiritcaller' ? 1.5 : 1); if (f.xpAcc >= 5) { this.signals.push({ t: 'spiritXp', id: f.id, v: f.xpAcc }); f.xpAcc = 0; } } // 함께 싸운 시간 → 정령 레벨
-    if (f.t <= 0 || this.state !== 'play') { this.emit({ t: 'spiritOut', x: f.x, y: f.y + 10, elem: SPIRIT_DMG_ELEM[f.elem] }); p.familiar = null; delete p.buffs.spiritBond; delete p.buffs.spiritGuard; return; }
+    if (f.t <= 0 || this.state !== 'play') { this.emit({ t: 'spiritOut', x: f.x, y: f.y + 10, elem: SPIRIT_DMG_ELEM[f.elem] }); p.familiar = null; p.famExtra = null; delete p.buffs.spiritBond; delete p.buffs.spiritGuard; delete p.buffs.spiritBond2; delete p.buffs.spiritBond3; return; }
     // 어깨 위 (내 뒤쪽)로 따라온다
     f.phase += DT * 2.2;
     const tx = p.x - p.dir * 13, ty = p.y - 20 + Math.sin(f.phase) * 2, k = Math.min(1, DT * 6);
@@ -2133,7 +2144,19 @@ export class World {
       p.buffs.spiritGuard = { t: f.guard, max: 4, mods: { dmgTakenMul: 0.6 }, color: col, name: '정령의 품' };
       if ((f.pushT = (f.pushT || 0) - DT) <= 0) { f.pushT = 0.5; for (const e of this.enemiesNear(p.x, p.y, 34)) { if (e.def.ai === 'dummy') continue; const dx = e.x - p.x, dy = e.y - p.y, l = Math.hypot(dx, dy) || 1, kb = e.def.elite ? 120 : 260; e.kbx += (dx / l) * kb; e.kby += (dy / l) * kb; } }
     } else delete p.buffs.spiritGuard;
-    // 공격: 내 둘레 150 안의 가장 가까운 적에게 속성 탄 (강화 중이면 2배 빠르게 · 피해 +60%)
+    for (const x of p.famExtra || []) { // 둘째 · 셋째 정령: 뒤쪽에 줄지어 따라오며 버프 70%, 따로 쏜다
+      x.phase += DT * 2.2;
+      const ex = p.x - p.dir * (13 + 11 * x.slot), ey = p.y - 22 + x.slot * 5 + Math.sin(x.phase) * 2, kk = Math.min(1, DT * 5);
+      x.x += (ex - x.x) * kk; x.y += (ey - x.y) * kk;
+      const XS = SPIRITS[x.id], xc = ELEM[SPIRIT_DMG_ELEM[x.elem]]?.color || '#9bffb0';
+      p.buffs['spiritBond' + (x.slot + 1)] = { t: f.t, max: f.max, mods: buffMods(spiritBuff(x.id, x.star, 0.7 * (f.emp > 0 ? 1.5 : 1), x.lv)), color: xc, name: `${XS.name}${'★'.repeat(x.star)} Lv ${x.lv}`, spirit: true };
+      x.emp = f.emp; this.famShoot(x);
+    }
+    this.famShoot(f);
+  }
+  // 정령의 공격: 내 둘레 150 안의 가장 가까운 적에게 속성 탄 (강화 중이면 2배 빠르게 · 피해 +60%)
+  famShoot(f) {
+    const p = this.player, E = SPIRIT_ELEMS[f.elem], col = ELEM[SPIRIT_DMG_ELEM[f.elem]]?.color || '#9bffb0';
     f.cd -= DT * (f.emp > 0 ? 2 : 1);
     if (f.cd > 0) return;
     let tgt = null, td = 150;
@@ -2846,8 +2869,29 @@ export class World {
     const p = this.player, e = this.enemies.find((x) => x.remote);
     if (this.state !== 'play') return;
     if (m.dmg > 0) this.hurtPlayer(m.dmg * PVP.dmg, m.type === 'mag' ? 'mag' : 'phys', e, { fromX: e?.x, fromY: e?.y });
-    if (m.cc === 'stun' && m.dur > 0 && !(p.invuln > 0)) { p.ccT = Math.max(p.ccT || 0, m.dur * (1 - this.d.statusRes * 0.5)); this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '기절', color: '#ffd060' }); }
+    if (m.cc === 'stun' && m.dur > 0 && !(p.dashT > 0)) { /* 맞은 직후의 짧은 무적과는 상관없이 (구르는 중에만 피한다) */ p.ccT = Math.max(p.ccT || 0, m.dur * (1 - this.d.statusRes * 0.5)); this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '기절', color: '#ffd060' }); }
     if (m.status && ['burn', 'poison', 'bleed', 'chill'].includes(m.status)) this.applyPlayerStatus(m.status, 8 + (m.stacks || 1) * 4);
+    const res = 1 - this.d.statusRes * 0.5, say = (text, color) => this.emit({ t: 'text', x: p.x, y: p.y - 24, text, color });
+    if (m.cc === 'fear' && m.dur > 0 && !(p.dashT > 0)) { p.fearT = Math.max(p.fearT || 0, m.dur * res); say('공포', '#c45cff'); }
+    if (m.root > 0) { p.rootT = Math.max(p.rootT || 0, m.root * res); say('속박', '#7be38a'); }
+    if (m.sil > 0) { p.silT = Math.max(p.silT || 0, m.sil * res); say('침묵', '#c8b8ff'); }
+    if (m.kx || m.ky) { const k = 0.14 * PVP.cc; this.move(p, Math.max(-60, Math.min(60, m.kx * k)), Math.max(-60, Math.min(60, m.ky * k))); }
+    if (m.pull && !this.blocked(m.pull.x, m.pull.y, 5)) { p.x = m.pull.x; p.y = m.pull.y; say('끌려갔다', '#ffd060'); }
+    if (m.ab > 0) { p.ab = Math.min(5, m.ab); p.abT = 5; }
+  }
+  // 결투: 내 기술이 상대(화면 속 상대)에게 건 것(밀치기 · 얼림 · 공포 · 속박 · 침묵 · 끌어오기 · 갑옷 부수기)을 상대에게 넘기고 비운다
+  pvpFlush() {
+    const e = this.enemies.find((x) => x.remote && !x.dead); if (!e) return;
+    const st = e.st, m = { t: 'dhit', dmg: 0 }, P = this.player, r1 = (v) => Math.round(v * 100) / 100;
+    if (Math.abs(e.kbx) + Math.abs(e.kby) > 1) { m.kx = Math.round(e.kbx); m.ky = Math.round(e.kby); }
+    e.kbx = 0; e.kby = 0;
+    const frz = Math.max(st.frozen || 0, st.stun || 0); if (frz > 0) { m.cc = 'stun'; m.dur = r1(frz * PVP.cc); st.frozen = 0; st.stun = 0; }
+    if (st.flee > 0) { m.cc = m.cc || 'fear'; m.dur = m.dur || r1(st.flee * PVP.cc); st.flee = 0; }
+    if (e.rooted > 0) { m.root = r1(e.rooted * PVP.cc); e.rooted = 0; }
+    if (e.silenceT > 0) { m.sil = r1(e.silenceT * PVP.cc); e.silenceT = 0; }
+    if (e.reelT > 0) { const gap = P.r + 12; m.pull = { x: Math.round(P.x + P.aimX * gap), y: Math.round(P.y + P.aimY * gap) }; e.reelT = 0; }
+    if (e.armorBreak > 0) { m.ab = e.armorBreak; e.armorBreak = 0; }
+    if (Object.keys(m).length > 2) this.pvp.out.push(m);
   }
   // 결투 상대를 세운다 (화면의 적처럼 겨누고 때릴 수 있지만 체력은 상대가 알려 준다)
   addRemote(opp, x, y) {
@@ -3125,7 +3169,7 @@ export class World {
       }
     }
     const dr = type === 'phys' ? d.physDR : d.magDR, raw = amount;
-    let dmg = amount * (1 - dr) * d.dmgTakenMul * this.mod('dmgTakenMul');
+    let dmg = amount * (1 - dr) * d.dmgTakenMul * this.mod('dmgTakenMul') * (1 + 0.05 * (p.ab || 0)); // 갑옷 부수기(결투)
     if (this.b.race === 'knight') dmg *= 0.9;
     if (this.f.has('resGuard') && p.res >= 50) dmg *= 0.9;
     if (front) { dmg *= 0.75; this.addRes(4); this.knack('block'); if (attacker && !attacker.dead) this.damageEnemy(attacker, raw * 0.25, 'phys', { src: 'reflect', color: '#a8c8ff' }); /* 수호기사: 정면으로 막으면 25%를 되갚는다 */ this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }

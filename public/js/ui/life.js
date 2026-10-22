@@ -18,7 +18,7 @@ function weaponText(w) {
 }
 // 재료 목록: 가진 수 / 필요한 수
 function matsHtml(s, mats, gold) {
-  const parts = Object.entries(mats).map(([id, n]) => { const have = s.bag?.[id] || 0; return `<span class="mat ${have >= n ? 'ok' : 'no'}" title="${esc(GOODS[id].name)}">${ico(id)}${have}/${n}</span>`; });
+  const parts = Object.entries(mats).map(([id, n]) => { const have = s.bag?.[id] || 0; return `<span class="mat ${have >= n ? 'ok' : 'no'}" title="${esc(GOODS[id].name)}">${ico(id)}<em>${esc(GOODS[id].name)}</em> ${have}/${n}</span>`; }); // 그림 옆에 이름도
   if (gold) parts.push(`<span class="mat ${s.gold >= gold ? 'ok' : 'no'}">◆ ${gold}</span>`);
   return parts.join('');
 }

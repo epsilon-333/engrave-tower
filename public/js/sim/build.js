@@ -220,7 +220,7 @@ export function computeBuild(lo) {
   }
   const offA = active.find((s2) => s2.def.slot === 'off' || s2 === offSrc);
   const offItem = offA ? (offA === offSrc ? { ...offSrc.def, off: offWeaponPower(offSrc.def), odesc: '왼손에 든 무기' } : offA.def) : null;
-  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
+  return { race: lo.race, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
 }
 
 // 무기 계열: 마법(마도서 · 완드 · 보주 · 인형) / 단검(민첩 칼) / 검 / 도끼 / 둔기 / 던지기 / 채찍
