@@ -4,7 +4,7 @@ import { BASE_STATS, STAT_INFO, SPECIAL_INFO, SLOT_INFO, GRADES, TIERS } from '.
 import { RACES } from '../data/races.js';
 import { WORLD_HISTORY, relation, REL_NAME, REL_COLOR } from '../data/lore.js';
 import { SANCTUMS as SANCT_ALL } from '../data/sanctums.js';
-import { codexPoints, levelFor, codexTotals, monsterStage, STAGE_KILLS, zonePlaces, placeKey, PLACE_ZONES } from '../data/codex.js';
+import { codexPoints, levelFor, codexTotals, monsterStage, STAGE_KILLS, STAGE_MAX, zonePlaces, placeKey, PLACE_ZONES } from '../data/codex.js';
 import { JOURNALS, PEOPLE, STORY_ITEMS } from '../data/story.js';
 import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
 import { ITEMS, STYLES, WEAPON_SKILLS, weaponHands } from '../data/items.js';
@@ -384,7 +384,7 @@ export class Hub {
           const m = MONSTERS[id], n = c.kills?.[id] || 0, st = monsterStage(id, n);
           if (!st) return '<div class="li off">??? <small>아직 만나지 못했다</small></div>';
           const stars = '★'.repeat(st) + '☆'.repeat(3 - st);
-          const next = st < 3 ? ` · 다음 단계까지 ${STAGE_KILLS[st] - n}마리` : ' · <b>완성</b>';
+          const next = st < STAGE_MAX ? ` · 다음 단계까지 ${STAGE_KILLS[st] - n}마리` : ` · <b>완성</b> · 다음 1점까지 ${Math.max(200, (Math.floor(n / 100) + 1) * 100) - n}마리`;
           const info = [`HP ${m.hp} · ${m.type === 'mag' ? '마법' : '물리'} 공격 ${m.atk}`];
           if (st >= 2) info.push(`물리 저항 ${m.pres} / 마법 저항 ${m.mres}${m.status ? ` · ${({ burn: '화상', poison: '중독', bleed: '출혈', chill: '냉기' })[m.status]}을 건다` : ''}`, `떨어뜨림: ${[ECHOES[m.echo.id].name, ...dropsOf(id)].join(', ')}`);
           else info.push('<span class="muted">5마리를 잡으면 약점과 떨어뜨리는 것이 기록된다</span>');

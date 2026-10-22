@@ -337,7 +337,7 @@ export class Renderer {
         case 'crackHit': this.burst(ev.x, ev.y, '#a89880', 6, 60); this.shake = Math.max(this.shake, 1.5); sfx('crack', { vol: 0.6 }); break;
         case 'region':
           if (ev.vista && ev.first) break; // 전망대는 따로 연출
-          this.banner = { text: ev.name, sub: ev.first ? '새 장소 발견 · 도감 +2' : '', t: ev.first ? 3 : 2.2, color: '#e8dcc0' };
+          this.banner = { text: ev.name, sub: [ev.lv ? `권장 Lv ${ev.lv[0]}~${ev.lv[1]}` : '', ev.first ? '새 장소 발견 · 도감 +2' : ''].filter(Boolean).join(' · '), t: ev.first ? 3 : 2.2, color: '#e8dcc0' };
           if (ev.first) sfx('levelup', { vol: 0.4, rate: 1.2 });
           break;
         case 'vista': this.vista = { t: 0, name: ev.name }; sfx('levelup', { vol: 0.5, rate: 0.6 }); break;
@@ -3671,7 +3671,12 @@ export class Renderer {
       this.text(`${AFFIXES[e.affix].name} ${e.def.name}`, this.sx(e.x), this.sy(e._top - 8), Math.max(1, u - 1), AFFIXES[e.affix].color, 'center', true);
     }
     for (const e of w.enemies) if ((e.def.elite || e.champion) && e._top != null && Math.abs(e.x - w.player.x) < 260 && Math.abs(e.y - w.player.y) < 160) {
-      this.text(e.champion || e.def.name, this.sx(e.x), this.sy(e._top - 8), u, '#ff9a8a', 'center', true, true);
+      this.text(`${e.lv ? `Lv ${e.lv} ` : ''}${e.champion || e.def.name}`, this.sx(e.x), this.sy(e._top - 8), u, '#ff9a8a', 'center', true, true);
+    }
+    { // 몬스터 레벨: 내 레벨보다 5 넘게 높으면 빨강, 5 넘게 낮으면 회색
+      const my = w.b.level || 1;
+      for (const e of w.enemies) if (e.lv && !e.dead && !e.champion && !e.def.elite && !e.affix && e._top != null && Math.abs(e.x - w.player.x) < 150 && Math.abs(e.y - w.player.y) < 100)
+        this.text(`Lv ${e.lv}`, this.sx(e.x), this.sy(e._top - 6), Math.max(1, u - 1), e.lv > my + 5 ? '#ff6a5a' : e.lv < my - 5 ? '#9a96a4' : '#f0e6c8', 'center', true);
     }
     for (const e of w.enemies) if (e._pips) {
       let px = Math.round(e.x - (e._pips.length * 6) / 2);
@@ -4087,7 +4092,7 @@ export class Renderer {
     g.drawImage(this.mini, mx, my, mw, mh);
     g.strokeStyle = 'rgba(232,220,192,0.6)'; g.lineWidth = 2; g.strokeRect(mx - 2, my - 2, mw + 4, mh + 4);
     // 가 본 지역의 이름
-    for (const b of BIOME_LIST) if (b.id !== 'tower' && w.explored[b.y * w.tw + b.x]) this.text(b.name, mx + b.x * s, my + b.y * s, Math.max(1, u - 1), 'rgba(255,244,214,0.75)', 'center');
+    for (const b of BIOME_LIST) if (b.id !== 'tower' && w.explored[b.y * w.tw + b.x]) { this.text(b.name, mx + b.x * s, my + b.y * s, Math.max(1, u - 1), 'rgba(255,244,214,0.75)', 'center'); if (b.lv) this.text(`Lv ${b.lv[0]}~${b.lv[1]}`, mx + b.x * s, my + b.y * s + 9 * u, Math.max(1, u - 1), 'rgba(255,214,150,0.7)', 'center'); }
     const seen = (x, y) => w.explored[Math.floor(y / TILE) * w.tw + Math.floor(x / TILE)];
     const P = (x, y) => [mx + (x / TILE) * s, my + (y / TILE) * s];
     for (const o of w.objects) {

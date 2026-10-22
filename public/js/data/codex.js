@@ -6,18 +6,20 @@ import { OW_PLACES, WORLD_ZONE } from './maps/overworld.js';
 import { FISH, ARTIFACTS } from './goods.js';
 export const PLACE_ZONES = [WORLD_ZONE, ...ZONES];
 
-// 몬스터 도감 단계: 처치 수 1 / 5 / 15 (정예 · 보물 고블린은 1마리로 완성)
-export const STAGE_KILLS = [1, 5, 15];
-export const STAGE_POINTS = [1, 1, 2];
+// 몬스터 도감 단계: 처치 수 1 / 5 / 15 / 50 / 100 (정예 · 보물 고블린은 1마리로 완성) · 100마리 뒤에도 100마리마다 1점
+export const STAGE_KILLS = [1, 5, 15, 50, 100];
+export const STAGE_POINTS = [1, 1, 2, 2, 3];
+export const STAGE_MAX = STAGE_KILLS.length;
+export const extraKillPts = (id, kills) => (MONSTERS[id] && !oneKill(MONSTERS[id]) && kills >= 200 ? Math.floor((kills - 100) / 100) : 0);
 export const PLACE_POINTS = 2, JOURNAL_POINTS = 2, LORE_POINTS = 1;
 export const PERSON_POINTS = [1, 1, 1, 2]; // 사연 단계마다
 export const FISH_POINTS = 1, ARTIFACT_POINTS = 2; // 새 물고기 · 땅에서 찾은 유물
 
-const oneKill = (m) => m.elite || m.treasure;
+function oneKill(m) { return m.elite || m.treasure; }
 export function monsterStage(id, kills) {
   const m = MONSTERS[id];
   if (!m || !kills) return 0;
-  if (oneKill(m)) return 3;
+  if (oneKill(m)) return STAGE_MAX;
   return STAGE_KILLS.filter((k) => kills >= k).length;
 }
 const stagePts = (stage) => STAGE_POINTS.slice(0, stage).reduce((a, b) => a + b, 0);
@@ -29,7 +31,7 @@ export const placeKey = (zoneId, name) => `${zoneId}:${name}`;
 export function codexPoints(s) {
   const c = s.codex || {}, f = s.story?.flags || {};
   let pts = 0;
-  for (const [id, n] of Object.entries(c.kills || {})) pts += stagePts(monsterStage(id, n));
+  for (const [id, n] of Object.entries(c.kills || {})) pts += stagePts(monsterStage(id, n)) + extraKillPts(id, n);
   pts += Object.keys(c.places || {}).length * PLACE_POINTS;
   pts += Object.keys(c.journals || {}).filter((id) => JOURNALS[id]).length * JOURNAL_POINTS;
   pts += (c.lore || []).length * LORE_POINTS;
@@ -40,7 +42,7 @@ export function codexPoints(s) {
 }
 
 // 레벨 L → L+1 에 필요한 점수: 3 + L
-export const levelCost = (L) => 3 + L;
+export const levelCost = (L) => Math.min(20, 3 + L); // 17레벨부터는 한 레벨에 20점 (끝없이 오른다)
 export function levelFor(points) {
   let L = 1, need = levelCost(1);
   while (points >= need) { points -= need; L++; need = levelCost(L); }
@@ -52,7 +54,7 @@ export function codexTotals(s) {
   const c = s.codex || {};
   const mons = Object.keys(MONSTERS);
   return {
-    monsters: { done: mons.filter((id) => monsterStage(id, c.kills?.[id]) >= 3).length, seen: mons.filter((id) => c.kills?.[id]).length, all: mons.length },
+    monsters: { done: mons.filter((id) => monsterStage(id, c.kills?.[id]) >= STAGE_MAX).length, seen: mons.filter((id) => c.kills?.[id]).length, all: mons.length },
     places: { done: Object.keys(c.places || {}).length, all: PLACE_ZONES.reduce((a, z) => a + zonePlaces(z).length, 0) },
     records: { done: Object.keys(c.journals || {}).length + (c.lore || []).length, all: Object.keys(JOURNALS).length + LORES.length },
     people: { done: Object.values(PEOPLE).filter((p) => s.story?.flags?.[p.steps[p.steps.length - 1]]).length, all: Object.keys(PEOPLE).length },

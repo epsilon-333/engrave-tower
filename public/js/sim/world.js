@@ -118,7 +118,7 @@ export class World {
       // 구역 우두머리: 구역 몬스터의 강화판, 다시 생기지 않음
       for (const c of m.champions || []) {
         const e = this.makeEnemy(c.type, c.x * TILE + 8, c.y * TILE + 8, { champion: m.regionInfo[c.region].name });
-        e.home = { x: e.x, y: e.y }; e.region = c.region;
+        e.home = { x: e.x, y: e.y }; e.region = c.region; this.applyLevel(e, this.regionLevel(c.region, c.x, c.y) + 2); // 우두머리는 두 레벨 위
         this.enemies.push(e);
       }
       for (const g of m.goblins || []) {
@@ -527,7 +527,7 @@ export class World {
         const key = placeKey(this.zone.id, info.name);
         const first = !!this.codex && !this.codex.places?.[key];
         if (first) { (this.codex.places ||= {})[key] = true; this.signals.push({ t: 'codex' }); }
-        this.emit({ t: 'region', name: info.name, first, vista: info.vista });
+        this.emit({ t: 'region', name: info.name, first, vista: info.vista, lv: this.zone?.id === 'world' && info.lvShow ? info.lv : null });
         if (info.vista && this.story && !this.story.flags.vistaSeen) { this.story.flags.vistaSeen = true; this.emit({ t: 'vista', name: info.name }); this.signals.push({ t: 'save' }); }
       }
     }
@@ -3302,6 +3302,17 @@ export class World {
     return e;
   }
 
+  // 바깥 세계의 지역 레벨: 권장 레벨 안에서 시작 마을에서 멀수록 높다 · 레벨만큼 체력 · 공격력 · 보상이 커진다
+  regionLevel(r, tx, ty) {
+    const info = this.map.regionInfo?.[r]; if (!info?.lv || this.zone?.id !== 'world') return 0;
+    const [lo, hi] = info.lv, st = this.map.start || { x: tx, y: ty }, f = Math.min(1, Math.hypot(tx - st.x, ty - st.y) / 260);
+    return Math.round(lo + (hi - lo) * f);
+  }
+  applyLevel(e, lv) {
+    if (!lv || e.lv) return;
+    e.lv = lv; const k = lv - 1;
+    e.hp = e.maxHp = Math.round(e.maxHp * (1 + 0.09 * k)); e.atk *= 1 + 0.05 * k; e.rewardMul = 1 + 0.06 * k;
+  }
   spawnCamp(c) {
     c.members = [];
     for (let i = 0; i < c.n; i++) {
@@ -3309,7 +3320,7 @@ export class World {
       do { x = c.x * TILE + 8 + this.rng.range(-28, 28); y = c.y * TILE + 8 + this.rng.range(-28, 28); k++; } while (this.blocked(x, y, 6) && k < 20);
       if (this.blocked(x, y, 6)) { x = c.x * TILE + 8; y = c.y * TILE + 8; }
       const e = this.makeEnemy(c.type, x, y);
-      e.camp = c; e.region = c.region; e.home = { x: c.x * TILE + 8, y: c.y * TILE + 8 };
+      e.camp = c; e.region = c.region; e.home = { x: c.x * TILE + 8, y: c.y * TILE + 8 }; this.applyLevel(e, this.regionLevel(c.region, c.x, c.y));
       c.members.push(e);
       this.enemies.push(e);
     }
@@ -3757,7 +3768,7 @@ export class World {
     const def = e.def, st = e.st, d = this.d;
     const bonus = (e.affix ? 2 : 1) * (e.champion ? 5 : 1) * (1 + 0.5 * this.depth);
     if (e.summoned) { this.emit({ t: 'death', x: e.x, y: e.y, color: def.pal.a, defId: e.defId, dir: e.dir }); return; }
-    this.loot.xp += Math.round(def.xp * bonus);
+    this.loot.xp += Math.round(def.xp * bonus * (e.rewardMul || 1));
     this.loot.kills[e.defId] = (this.loot.kills[e.defId] || 0) + 1;
     this.sanctKill(e);
     if (this.codex && MONSTERS[e.defId]) {
@@ -3789,7 +3800,7 @@ export class World {
       for (let i = 0; i < n; i++) this.spawnDrop(e.x, e.y, 'shard', sr);
     }
     if (e.affix && AFFIXES[e.affix].deathCloud) this.addCloud(e.x, e.y, 36, e.atk * 0.3, 3, 'e');
-    const gold = Math.round(def.gold * d.goldMul * bonus * 0.55); // 돈은 쉽게 벌리지 않는다
+    const gold = Math.round(def.gold * d.goldMul * bonus * 0.55 * (e.rewardMul || 1)); // 돈은 쉽게 벌리지 않는다
     if (gold > 0) for (let i = 0, n = def.treasure || e.champion ? 6 : 1; i < n; i++) this.spawnDrop(e.x, e.y, 'gold', null, Math.ceil(gold / n));
     const echoTries = e.champion ? 3 : def.treasure ? 3 : e.affix ? 2 : 1;
     for (let i = 0; i < echoTries; i++) if (this.rng.chance(Math.min(1, def.echo.rate * (1 + 0.25 * this.depth)))) this.spawnDrop(e.x, e.y, 'echo', e.champion || def.treasure ? this.rng.pick(this.zone.pool.map((m) => MONSTERS[m].echo.id)) : def.echo.id);
