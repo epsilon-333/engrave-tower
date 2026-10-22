@@ -54,7 +54,7 @@ const plazaMap = buildPlaza();
 const hub = new Hub(panelEl, () => save, (zone) => { closePanel(); if (zone === '__practice') enterPractice(); else enterZone(zone); }, resetGame, closePanel);
 hub.getWorld = () => world;
 // ───── 온라인: 바깥 세계에서 다른 사람이 보이고, 채팅하고, 결투하고, 파티 · 길드를 맺는다 ─────
-const onlineInfo = () => ({ name: cloud.name || `${RACES[save.race]?.name || ''} 여행자`, race: save.race, cls: save.cls, weapon: save.gear?.weapon, lv: save.level, uid: save.uid, guild: save.guild || null });
+const onlineInfo = () => ({ name: cloud.name || `${RACES[save.race]?.name || ''} 여행자`, race: save.race, cls: save.cls, weapon: save.gear?.weapon, lv: save.level, uid: save.uid, guild: save.guild || null, adminKey: (() => { try { return localStorage.getItem('adminKey') || ''; } catch { return ''; } })() });
 function goOnline() { if (isClaudePage() || !save) return; netConnect(onlineInfo); }
 // 채팅 창 (Enter로 열고 보낸다)
 const chatEl = document.createElement('div');
@@ -76,6 +76,41 @@ chatIn.addEventListener('keydown', (e) => {
     closeChat();
   }
   else if (e.key === 'Escape') closeChat();
+});
+// ───── 랭킹 · 운영자 ─────
+const RANK_RAID = { golem: '고대 골렘', queen: '서리 여왕', dragon: '화룡왕' };
+const fmtTime = (s) => `${Math.floor(s / 60)}분 ${String(Math.round(s % 60)).padStart(2, '0')}초`;
+function rankSend() { if (!net.up || !save) return; netSend({ t: 'rankSet', gold: save.gold | 0, tower: save.tower?.max || 0, raid: save.raid?.best || {} }); }
+onNet('up', () => setTimeout(rankSend, 800));
+setInterval(rankSend, 60000);
+let rankTab = 'gold';
+function showRank() { if (!net.up) { renderer.banner = { text: '랭킹', sub: '서버와 이어져 있을 때만 볼 수 있다', t: 2.2, color: '#c8b8a0' }; return; } rankSend(); netSend({ t: 'rankGet' }); }
+onNet('rank', (m) => {
+  const tabs = [['gold', '돈'], ['tower', '각인의 탑'], ...Object.entries(RANK_RAID).map(([k, n]) => [k, `레이드 · ${n}`])];
+  const list = rankTab === 'gold' ? m.gold : rankTab === 'tower' ? m.tower : m.raid[rankTab] || [];
+  const fmt = (v) => rankTab === 'gold' ? `◆ ${v.toLocaleString()}` : rankTab === 'tower' ? `${v}층` : fmtTime(v);
+  const rows = list.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td class="muted">${RACES[r.race]?.name || ''}</td><td style="text-align:right">${fmt(r.v)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">아직 기록이 없다</td></tr>';
+  showModal(`<h2>랭킹</h2><div class="actions">${tabs.map(([k, n]) => `<button class="sm ${k === rankTab ? '' : 'ghost'}" data-rk="${k}">${n}</button>`).join('')}</div>
+    <p class="muted">${rankTab in RANK_RAID ? '레이드에 들어간 때부터 보스를 쓰러뜨릴 때까지 — 짧을수록 위' : rankTab === 'tower' ? '혼자 · 파티로 오른 가장 높은 층' : '지금 가진 돈'} · 결투 점수는 나중에</p>
+    <table style="width:100%">${rows}</table><div class="actions"><button data-close class="ghost">닫기</button></div>`);
+  overlay.querySelectorAll('[data-rk]').forEach((b) => (b.onclick = () => { rankTab = b.dataset.rk; netSend({ t: 'rankGet' }); }));
+});
+onNet('welcome', (m) => { net.admin = !!m.admin; renderer.admin = net.admin; });
+function showAdmin() { if (net.admin) netSend({ t: 'adminList' }); }
+onNet('adminList', (m) => {
+  const rows = m.list.map((o) => `<tr><td>${esc(o.name)}${o.admin ? ' ★' : ''}</td><td>${RACES[o.race]?.name || ''} Lv ${o.lv || 1}</td><td class="muted">${esc(o.map || '-')}${o.map ? ` (${Math.round((o.x || 0) / 16)}, ${Math.round((o.y || 0) / 16)})` : ''}</td><td class="muted">${esc(o.guild)}${o.partyN ? ` · 파티 ${o.partyN}` : ''}</td><td>${o.rank ? `◆${(o.rank.gold || 0).toLocaleString()} · 탑 ${o.rank.tower || 0}` : ''}</td><td><button class="sm ghost" data-ai="${o.id}">자세히</button></td></tr>`).join('');
+  showModal(`<h2>운영자 · 접속한 사람</h2><p class="muted">지금 ${m.online}명 · 길드 ${m.guilds} · 랭킹 기록 ${m.ranked}</p><table style="width:100%;font-size:0.9em">${rows}</table><div id="adminInfo"></div>
+    <div class="actions"><button id="adRe" class="ghost">새로고침</button><button data-close class="ghost">닫기</button></div>`);
+  document.getElementById('adRe').onclick = showAdmin;
+  overlay.querySelectorAll('[data-ai]').forEach((b) => (b.onclick = () => netSend({ t: 'adminInfo', id: +b.dataset.ai })));
+});
+onNet('adminAsk', (m) => { // 운영자가 내 정보를 본다 (보여 주기만 한다)
+  if (!save) return;
+  netSend({ t: 'adminReply', to: m.from, info: { level: save.level, race: save.race, cls: save.cls, gold: save.gold, stats: world?.b?.stats || null, gear: Object.fromEntries(Object.entries(save.gear || {}).map(([k, v]) => [k, ITEMS[v]?.name || v])), skills: (world?.b?.skills || []).map((id) => SKILLS[id]?.name || id), tower: save.tower?.max || 0, raid: save.raid?.best || {}, zone: world?.zone?.name || '' } });
+});
+onNet('adminInfo', (m) => {
+  const el = document.getElementById('adminInfo'); if (!el) return; const i = m.info || {};
+  el.innerHTML = `<div class="skc"><b>${RACES[i.race]?.name || ''} Lv ${i.level}</b> · ${esc(i.zone || '')} · ◆ ${(i.gold || 0).toLocaleString()} · 탑 ${i.tower}층<div class="muted">장비: ${esc(Object.entries(i.gear || {}).map(([k, v]) => `${k} ${v}`).join(' · ') || '-')}</div><div class="muted">스킬: ${esc((i.skills || []).join(' · ') || '-')}</div>${i.stats ? `<div class="muted">스탯: ${esc(Object.entries(i.stats).map(([k, v]) => `${k} ${Math.round(v)}`).join(' · '))}</div>` : ''}${Object.keys(i.raid || {}).length ? `<div class="muted">레이드: ${Object.entries(i.raid).map(([k, v]) => `${RANK_RAID[k]} ${fmtTime(v)}`).join(' · ')}</div>` : ''}</div>`;
 });
 onNet('chat', (m) => {
   const el = document.createElement('p');
@@ -441,10 +476,12 @@ function showRaid() {
     ${net.party && !isPartyLeader() ? '<p class="muted">파티에 있다 — 파티장이 들어가면 함께 갈지 묻는다.</p>' : ''}<div class="skill-row">${cards}</div><div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
   overlay.querySelectorAll('[data-raid]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; const id = b.dataset.raid; if (lead) startCoRaid(id); else enterRaid(id); }));
 }
+let raidT0 = 0;
 function enterRaid(id, co = null) {
   const r = RAIDS[id]; if (!r) return;
   if (world?.zone?.id === 'world') { curInterior = { id: 'raid', x: world.player.x, y: world.player.y }; save.zoneMemory.world = world.exportMemory(); }
   const seed = co?.seed ?? ((Math.random() * 1e9) >>> 0);
+  raidT0 = performance.now(); // 처치 시간을 잰다
   world = new World({ build: buildNow(), mode: 'field', zone: r.zone, zoneId: r.zone.id, seed, map: buildRaidArena(), raid: { id }, coop: co ? { role: co.role } : null, story: save.story, codex: save.codex, ...shared() });
   world.enemies = []; world.camps = []; world.objects = []; world.explored.fill(1); world.milestones = new Set([50, 80, 100]);
   if (co?.role !== 'member') { const b = world.makeEnemy(r.boss, world.map.lair.x * 16 + 8, world.map.lair.y * 16 + 8, { noAffix: true }); b.champion = r.name; b.home = { x: b.x, y: b.y }; world.enemies.push(b); }
@@ -462,11 +499,13 @@ function startCoRaid(id) {
 function raidClear(s) {
   const r = RAIDS[s.id], R = (save.raid ||= { clears: {}, week: {} }), wk = raidWeek();
   R.clears[s.id] = (R.clears[s.id] || 0) + 1;
+  const took = (performance.now() - raidT0) / 1000, best = (R.best ||= {}); let rec = '';
+  if (raidT0 && took > 5) { if (!best[s.id] || took < best[s.id]) { best[s.id] = Math.round(took); rec = ' · 새 기록!'; } rankSend(); }
   const gold = 300 + r.rec * 20, chest = R.week[s.id] !== wk, extra = [];
   save.gold += gold;
   if (chest) { R.week[s.id] = wk; const g2 = 600 + r.rec * 40; save.gold += g2; extra.push(`주간 보물상자: ◆ ${g2}`); if (bagAdd(lifeOf(), 'spiritStone', 3)) extra.push('정령석 ×3'); }
   writeSave(save); cloudSaveNow(save);
-  renderer.banner = { text: `${r.name} 쓰러뜨림!`, sub: `◆ ${gold}${extra.length ? ' · ' + extra.join(' · ') : ''} · 떨어진 「${GOODS[{ raidGolem: 'golemHeart', raidQueen: 'queenTear', raidDragon: 'dragonCrest' }[r.boss]]?.name}」를 줍자 · 귀환 포탈이 열렸다`, t: 6, color: r.color };
+  renderer.banner = { text: `${r.name} 쓰러뜨림!`, sub: `${fmtTime(took)}${rec} · ◆ ${gold}${extra.length ? ' · ' + extra.join(' · ') : ''} · 떨어진 「${GOODS[{ raidGolem: 'golemHeart', raidQueen: 'queenTear', raidDragon: 'dragonCrest' }[r.boss]]?.name}」를 줍자 · 귀환 포탈이 열렸다`, t: 6, color: r.color };
   sfx('levelup', { vol: 0.8 });
   const p = world.player; world.objects.push({ kind: 'portal', x: p.x, y: p.y - 30, label: '귀환 포탈', color: r.color });
 }
@@ -1706,7 +1745,8 @@ function showPause() {
   const field = world.mode === 'field';
   showModal(`<h2>일시정지</h2>
     <button data-close>계속하기</button>
-    ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button>' : ''}
+    ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button><button id="rankBtn" class="ghost">랭킹 · N</button>' : ''}
+    ${net.admin ? '<button id="adminBtn" class="ghost">운영자 · 접속한 사람</button>' : cloud.name === '운영자' && net.up ? '<p class="muted">운영자 열쇠 (서버의 ADMIN_KEY) <input id="adminKeyIn" type="password" style="width:9em"> <button id="adminKeyGo" class="sm ghost">확인</button></p>' : ''}
     ${isTouch() ? `<div class="actions col"><button id="tMap" class="ghost">지도</button><button id="tQuest" class="ghost">퀘스트</button><button id="tGear" class="ghost">장비 · 어디서 얻나</button>${net.up ? '<button id="tChat" class="ghost">채팅</button>' : ''}</div>` : ''}
     ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
     ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">결투에서는 잃는 것이 없다. 포기하면 상대의 승리가 된다.</p>' : field && !world.practice ? '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
@@ -1718,6 +1758,9 @@ function showPause() {
   if (li) li.onclick = () => { overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
   document.getElementById('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
   const sb = document.getElementById('socialBtn'); if (sb) sb.onclick = () => showSocial();
+  const rb = document.getElementById('rankBtn'); if (rb) rb.onclick = () => showRank();
+  const ab = document.getElementById('adminBtn'); if (ab) ab.onclick = () => showAdmin();
+  const ak = document.getElementById('adminKeyGo'); if (ak) ak.onclick = () => { try { localStorage.setItem('adminKey', document.getElementById('adminKeyIn').value); } catch {} netConnect(onlineInfo); setTimeout(() => { if (modal) showPause(); }, 700); };
   const close0 = () => { overlay.hidden = true; paused = false; modal = null; };
   const tm = document.getElementById('tMap'); if (tm) tm.onclick = () => { close0(); if (world.map?.outdoor) renderer.bigMap = !renderer.bigMap; };
   const tq = document.getElementById('tQuest'); if (tq) tq.onclick = () => { close0(); showQuestLog(); };
@@ -1763,6 +1806,7 @@ addEventListener('keydown', (e) => {
   if ((e.code === 'KeyI' || e.code === 'KeyK') && world.state === 'play') openPanel('gear'); // 장비: 대장간에 가지 않아도 바로 바꾼다
   if (e.code === 'KeyX' && world.life && world.farmRect) { const sd = cycleSeed(world); renderer.banner = { text: sd ? `${GOODS[sd].name} (${save.bag[sd]}개)` : '씨앗이 없다', sub: sd ? '이 씨앗을 심는다 · X로 바꾸기' : '잡화점에서 씨앗을 산다', t: 1.6, color: '#c8e8a0' }; }
   if (e.code === 'KeyM' && world.map?.outdoor) renderer.bigMap = !renderer.bigMap;
+  if (e.code === 'KeyN') showRank(); // 랭킹
   if (e.code === 'KeyJ' && world.state === 'play' && !world.practice) showQuestLog();
   if (e.code === 'KeyH' && world.state === 'play') eatQuick();
   if (e.code === 'KeyZ' && world.state === 'play') world.quickPotion(); // 물약 빨리 마시기

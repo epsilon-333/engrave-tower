@@ -1015,7 +1015,7 @@ export class Renderer {
 
   // 다른 사람 (온라인 · 결투 상대): 그 종족의 몸 · 든 무기 · 걷기
   drawRemote(w, rp) {
-    const g = this.g, art = RACE_ART[rp.race] || RACE_ART.knight, moving = !rp.down && (rp.moving || rp.mo === 'run'), dir = rp.dir || 1;
+    const g = this.g, art = rp.admin ? { base: RACE_ART.knight.base, tint: 'grayscale(1) brightness(2.4) contrast(0.85)' } : RACE_ART[rp.race] || RACE_ART.knight, moving = !rp.down && (rp.moving || rp.mo === 'run'), dir = rp.dir || 1;
     const fr = frames(art.base, moving ? 'run' : 'idle'), img = sprite(fr[Math.floor(w.t * (moving ? 10 : 4) + (rp.id || 0)) % fr.length], (art.tint || '') + (rp.flash > 0 ? ' brightness(2.2)' : ''), false, dir < 0);
     this.shadow(rp.x, rp.y + 6, 6);
     if (rp.down) { // 파티 탑에서 쓰러진 동료: 옆으로 누워 흐리게 (층을 깨면 일어난다)
@@ -1207,7 +1207,7 @@ export class Renderer {
 
   drawPlayer(w, p, dt) {
     const g = this.g;
-    const art = RACE_ART[w.b.race];
+    const art = this.admin && !w.pvp ? { base: RACE_ART.knight.base, tint: 'grayscale(1) brightness(2.4) contrast(0.85)' } : RACE_ART[w.b.race]; // 운영자는 흰 사람 모습
     const moving = p.moving && p.dashT <= 0;
     const soaring = art.base === 'dragonkin' && (p.airT > 0 || p.motion?.kind === 'soar');
     const name = soaring ? this.animFrame('dragonkin', 'soar', w.t, 12) : this.animFrame(art.base, moving ? 'run' : 'idle', moving ? p.walkT : w.t, moving ? 11 : 6);

@@ -93,6 +93,21 @@ function saveGuilds() {
 }
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(GUILD_FILE, JSON.stringify(guilds)); } catch { /* 무시 */ } process.exit(0); });
 const RANKS = ['leader', 'officer', 'member'];
+
+// ───── 랭킹: 돈 · 각인의 탑 최고 층 · 레이드 최단 처치 시간 (저장마다 하나 · 파일에 남는다) ─────
+const RANK_FILE = path.join(DATA_DIR, 'ranking.json');
+let ranking = {};
+try { ranking = JSON.parse(fs.readFileSync(RANK_FILE, 'utf8')) || {}; } catch { ranking = {}; }
+let rankDirty = false;
+setInterval(() => { if (!rankDirty) return; rankDirty = false; fs.mkdir(DATA_DIR, { recursive: true }, () => fs.writeFile(RANK_FILE, JSON.stringify(ranking), () => {})); }, 5000);
+function rankBoard() {
+  const all = Object.values(ranking);
+  const top = (key, desc = true, n = 20) => all.filter((r) => key(r) != null && key(r) > 0).sort((a, b) => (desc ? key(b) - key(a) : key(a) - key(b))).slice(0, n).map((r) => ({ name: r.name, race: r.race, v: key(r) }));
+  const raid = {}; for (const id of ['golem', 'queen', 'dragon']) raid[id] = top((r) => r.raid?.[id], false);
+  return { t: 'rank', gold: top((r) => r.gold), tower: top((r) => r.tower), raid };
+}
+// 운영자: 서버 설정(ADMIN_KEY)의 열쇠를 아는 「운영자」만
+const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const guildByName = (name) => Object.values(guilds).find((g) => g.name.toLowerCase() === name.toLowerCase());
 const canManage = (g, uid) => ['leader', 'officer'].includes(g?.members[uid]?.rank);
 function guildState(g) {
@@ -120,7 +135,7 @@ function guildRemove(g, uid, why) {
 }
 // 받침에 따라 이/가 (한글이 아니면 이(가))
 const iga = (s) => { const c = String(s).charCodeAt(String(s).length - 1) - 0xac00; return c >= 0 && c < 11172 ? s + (c % 28 ? "이" : "가") : s + "이(가)"; };
-const pub = (c) => ({ id: c.id, name: c.name, race: c.race, cls: c.cls, weapon: c.weapon, lv: c.lv, x: c.x, y: c.y, dir: c.dir, mo: c.mo, duel: !!c.duel, party: c.party || 0, gname: (c.guild && guilds[c.guild]?.name) || '' });
+const pub = (c) => ({ id: c.id, admin: !!c.admin, name: c.name, race: c.race, cls: c.cls, weapon: c.weapon, lv: c.lv, x: c.x, y: c.y, dir: c.dir, mo: c.mo, duel: !!c.duel, party: c.party || 0, gname: (c.guild && guilds[c.guild]?.name) || '' });
 function toMap(map, msg, except) { for (const o of clients.values()) if (o.map === map && o !== except) send(o, msg); }
 // 파티 · 길드가 바뀌면 같은 지도의 사람에게 (이름표 · 초대 버튼)
 function pinfo(c) { if (c && !c.closed && c.map) toMap(c.map, { t: 'pinfo', id: c.id, party: c.party || 0, gname: (c.guild && guilds[c.guild]?.name) || '' }, c); }
@@ -163,10 +178,12 @@ function onData(c, d) {
 function handle(c, m) {
   switch (m.t) {
     case 'hello': { // 이름 · 종족 · 클래스 · 무기 · 레벨 · 저장마다 붙은 고유 번호(uid) · 저장에 남은 길드
-      c.name = clean(m.name, 16) || '여행자'; c.race = clean(m.race, 12); c.cls = clean(m.cls, 20); c.weapon = clean(m.weapon, 30); c.lv = +m.lv || 1;
+      c.name = clean(m.name, 16) || '여행자'; c.race = clean(m.race, 12);
+      c.admin = !!ADMIN_KEY && c.name === '운영자' && String(m.adminKey || '') === ADMIN_KEY;
+      if (c.name.includes('운영자') && !c.admin) c.name = '여행자'; // 열쇠 없이 운영자 이름은 쓸 수 없다 c.cls = clean(m.cls, 20); c.weapon = clean(m.weapon, 30); c.lv = +m.lv || 1;
       const uid = clean(m.uid, 40);
       c.uid = uid.length >= 8 ? uid : null;
-      send(c, { t: 'welcome', id: c.id, online: clients.size });
+      send(c, { t: 'welcome', id: c.id, online: clients.size, admin: c.admin });
       if (c.party) partySync(partyOf(c));
       const mg = m.guild && typeof m.guild === 'object' ? m.guild : null, gid = mg && clean(mg.id, 24);
       if (!c.uid || !gid) { c.guild = null; break; }
@@ -224,6 +241,29 @@ function handle(c, m) {
     }
     case 'tradeOffer': case 'tradeConfirm': { const o = c.trade && clients.get(c.trade); if (o) send(o, { ...m, from: c.id }); break; }
     case 'tradeCancel': case 'tradeDone': { const o = c.trade && clients.get(c.trade); if (o) { send(o, { t: m.t, from: c.id }); o.trade = null; } c.trade = null; break; }
+    // ── 랭킹 ──
+    case 'rankSet': { // 내 기록 (돈 · 탑 최고 층 · 레이드 최단 시간)
+      if (!c.uid) break;
+      const r = (ranking[c.uid] ||= { raid: {} });
+      r.name = c.name; r.race = c.race; r.gold = Math.max(0, Math.min(1e9, +m.gold || 0)); r.tower = Math.max(r.tower || 0, Math.min(50, +m.tower || 0));
+      for (const id of ['golem', 'queen', 'dragon']) { const v = +m.raid?.[id]; if (v > 0 && (!r.raid[id] || v < r.raid[id])) r.raid[id] = Math.round(v); }
+      r.at = Date.now(); rankDirty = true;
+      break;
+    }
+    case 'rankGet': send(c, rankBoard()); break;
+    // ── 운영자 ──
+    case 'adminList': {
+      if (!c.admin) break;
+      const list = [...clients.values()].map((o) => ({ ...pub(o), uid: o.uid, map: o.map, guild: (o.guild && guilds[o.guild]?.name) || '', partyN: o.party ? parties.get(o.party)?.members.length : 0, rank: o.uid ? ranking[o.uid] || null : null, idle: Math.round((Date.now() - o.last) / 1000) }));
+      send(c, { t: 'adminList', list, online: clients.size, guilds: Object.keys(guilds).length, ranked: Object.keys(ranking).length });
+      break;
+    }
+    case 'adminInfo': { // 한 사람의 자세한 정보 (그 사람의 화면에 물어본다)
+      if (!c.admin) break;
+      const o = clients.get(+m.id); if (o) send(o, { t: 'adminAsk', from: c.id });
+      break;
+    }
+    case 'adminReply': { const o = clients.get(+m.to); if (o?.admin) send(o, { t: 'adminInfo', id: c.id, info: m.info }); break; }
     // ── 파티 ──
     case 'partyInvite': {
       const o = clients.get(+m.to), pt = partyOf(c), now = Date.now();
