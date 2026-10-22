@@ -145,14 +145,14 @@ export function computeBuild(lo) {
     senseR: 30 + E.sen * 0.8,                            // 감각: 숨은 상자 · 함정을 알아채는 거리
     statusRes: E.spi / (E.spi + 90),
     cdr: E.spi / (E.spi + 160),
-    loadCap: 10 + Math.floor(stats.spi * 0.5),
+    loadCap: 10 + Math.floor(stats.spi / 10), // 정신 10마다 1
     physDR: Math.max(0, stats.pres) / (Math.max(0, stats.pres) + 160), // 방어 1점의 값을 낮췄다 (예전 +100)
     magDR: Math.max(0, stats.mres) / (Math.max(0, stats.mres) + 160),
     physPen: 0, magPen: 0, knockback: 30, regen: 0,
     dmgMul: 1, dmgTakenMul: 1, burnMul: 1, bleedMul: 1, chillMul: 1, reactionMul: 1, statusDmgMul: 1, reflectMul: 1,
     poisonCap: 10, freezeReduce: 0, cloudSize: 0, dashCd: 1.2, goldMul: 1, projMul: lo.race === 'elf' ? 1.3 : 1,
     resGain: 1, hurtRes: 0, lowHunt: 0, skillCdMul: 1, aimSlow: lo.race === 'elf' ? 0.82 : 0.65,
-    freezeTime: 1.6, castMul: 1,
+    freezeTime: 1.6, castMul: 1, costMul: 1,
   };
   // 종족 고유 수치
   if (lo.race === 'wizard') { d.reactionMul *= 1.5; d.skillCdMul *= 0.75; }

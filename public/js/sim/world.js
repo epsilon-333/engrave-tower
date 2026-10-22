@@ -1402,8 +1402,9 @@ export class World {
       if (p.res < def.costAll.min) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
       spent = p.res; p.res = 0;
     } else if (def.cost) {
-      if (p.res < def.cost && !this.bloodPay(def.cost - p.res)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
-      p.res = Math.max(0, p.res - def.cost); spent = def.cost;
+      const cost = def.cost * (this.d.costMul || 1); // 정신 70: 쓰는 자원 -30%
+      if (p.res < cost && !this.bloodPay(cost - p.res)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
+      p.res = Math.max(0, p.res - cost); spent = cost;
     }
     if (def.gain) this.addRes(def.gain);
     let cd = def.cd * this.d.skillCdMul * (1 - this.d.cdr);

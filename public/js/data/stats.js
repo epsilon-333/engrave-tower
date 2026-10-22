@@ -8,7 +8,7 @@ export const STAT_INFO = {
   agi: { name: '민첩', short: '민', desc: '회피 (20 → 7% · 60 → 16% · 최대 45%), 공격 속도 (최대 +70%), 이동 속도 (최대 +30% · 높을수록 덜 오른다)' },
   vit: { name: '체력', short: '체', desc: '최대 HP, 자연 회복' },
   sen: { name: '감각', short: '감', desc: '치명타 확률 · 피해, 약점 찌르기(방어 무시 최대 30%), 숨은 상자를 멀리서 알아챈다' },
-  spi: { name: '정신', short: '정', desc: '상태이상 저항·지속 감소, 쿨타임, 각인 부하 한도' },
+  spi: { name: '정신', short: '정', desc: '상태이상 저항·지속 감소, 쿨타임, 각인 부하 한도 (10마다 +1)' },
   pres: { name: '물리 저항', short: '물저', desc: '받는 물리 피해 감소' },
   mres: { name: '마법 저항', short: '마저', desc: '받는 마법 피해 감소' },
 };
@@ -52,12 +52,12 @@ export const AWAKENINGS = {
   ],
   agi: [
     { at: 30, name: '경쾌', desc: '이동 속도 +15%, 대시 쿨타임 -10%', effects: [{ type: 'mul', key: 'moveSpeed', v: 1.15 }, { type: 'mul', key: 'dashCd', v: 0.9 }] },
-    { at: 50, name: '잔상', desc: '대시 경로에 피해를 주는 잔상', effects: [{ type: 'flag', flag: 'dashAfterimage' }] },
+    { at: 50, name: '날렵함', desc: '회피 +5%, 대시 쿨타임 -15%', effects: [{ type: 'add', key: 'dodge', v: 0.05 }, { type: 'mul', key: 'dashCd', v: 0.85 }] },
     { at: 70, name: '연격', desc: '공격 속도 +20%', effects: [{ type: 'mul', key: 'atkSpeed', v: 1.2 }] },
     { at: 90, name: '질풍', desc: '30% 확률로 한 번 더 공격', effects: [{ type: 'flag', flag: 'doubleAttack' }] },
   ],
   vit: [
-    { at: 30, name: '재생', desc: '초당 최대 HP 1% 회복', effects: [{ type: 'add', key: 'regen', v: 0.01 }] },
+    { at: 30, name: '재생', desc: '초당 최대 HP 0.5% 회복', effects: [{ type: 'add', key: 'regen', v: 0.005 }] },
     { at: 50, name: '거구', desc: '최대 HP +20%', effects: [{ type: 'mul', key: 'maxHp', v: 1.2 }] },
     { at: 70, name: '철혈', desc: '받는 피해 -10%', effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.9 }] },
     { at: 90, name: '불굴', desc: '치명상을 1 HP로 버팀 (90초마다)', effects: [{ type: 'flag', flag: 'lastStand' }] },
@@ -71,7 +71,7 @@ export const AWAKENINGS = {
   spi: [
     { at: 30, name: '평정', desc: '받는 상태이상 지속 -30%, 얻는 종족 자원 +10%', effects: [{ type: 'add', key: 'statusRes', v: 0.3 }, { type: 'mul', key: 'resGain', v: 1.1 }] },
     { at: 50, name: '정화', desc: '8초마다 상태이상 해제', effects: [{ type: 'flag', flag: 'cleanse' }] },
-    { at: 70, name: '심층 각인', desc: '각인 부하 한도 +6', effects: [{ type: 'add', key: 'loadCap', v: 6 }] },
+    { at: 70, name: '절약', desc: '스킬에 쓰는 종족 자원 -30%', effects: [{ type: 'mul', key: 'costMul', v: 0.7 }] },
     { at: 90, name: '명경지수', desc: '상태이상 면역', effects: [{ type: 'flag', flag: 'statusImmune' }] },
   ],
   pres: [
