@@ -64,7 +64,7 @@ export function syncLevel(s) {
   s.codex ||= {}; s.story ||= newStory();
   const { level } = levelFor(codexPoints(s));
   let ups = 0;
-  while (s.level < level) { s.level++; s.points += POINTS_PER_LEVEL + (RACES[s.race].bonusPoints || 0); ups++; }
+  while (s.level < level) { s.level++; s.points += POINTS_PER_LEVEL; ups++; }
   return ups;
 }
 

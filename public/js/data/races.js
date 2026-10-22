@@ -96,5 +96,5 @@ export const RACES = {
 // 예전 저장 데이터의 종족 이름 변환
 export const RACE_MIGRATE = { human: 'knight', dwarf: 'knight', beast: 'dino' };
 
-export const POINTS_PER_LEVEL = 3;
+export const POINTS_PER_LEVEL = 1; // 레벨이 오르면 스탯 포인트 하나
 export function xpToNext(level) { return 20 + level * 18; }

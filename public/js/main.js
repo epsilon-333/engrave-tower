@@ -651,7 +651,7 @@ function onKnackLearned(id) {
 }
 hub.onQuest = () => checkCcMissions();
 hub.onKnack = (act, n = 1) => { for (const id of knackTick((save.knack ||= newKnack()), act, Math.random, n)) onKnackLearned(id); };
-hub.onCodex = () => { const ups = syncLevel(save); if (ups && world) { world.setBuild(buildNow()); renderer.levelUp(world, save.level, ups * 3); } };
+hub.onCodex = () => { const ups = syncLevel(save); if (ups && world) { world.setBuild(buildNow()); renderer.levelUp(world, save.level, ups); } };
 
 let world = null, paused = false, endTimer = 0, last = 0, acc = 0, modal = null;
 
@@ -788,6 +788,14 @@ function migrateSave(sv) {
   registerAllDishes(sv.bag, sv.chest);
   if (RACE_MIGRATE[sv.race]) sv.race = RACE_MIGRATE[sv.race];
   if (!RACES[sv.race]) sv.race = 'knight';
+  if (!sv.statFix2) { // 스탯을 새 규칙으로 다시 센다: 레벨마다 1점, 수련 단계는 지난 날수까지 (넘치면 덜어낸다)
+    sv.statFix2 = true;
+    const total = Math.max(0, (sv.level || 1) - 1), spent = Object.values(sv.alloc || {}).reduce((a, v) => a + (v || 0), 0);
+    if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
+    const S2 = sv.story?.sanct || {}, days = Math.max(1, sv.time?.day || 1);
+    let ranks = Object.values(S2).reduce((a, x) => a + (x?.train || 0), 0);
+    while (ranks > days) { const top = Object.values(S2).filter((x) => x?.train > 0).sort((a, b) => b.train - a.train)[0]; if (!top) break; top.train--; ranks--; }
+  }
   sv.knack ||= newKnack(); // 숙련 (같은 행동을 세어 두었다가 우연히 깨닫는다)
   sv.uid ||= Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => b.toString(16).padStart(2, '0')).join(''); // 온라인: 길드가 나를 알아보는 번호
   SELL_BONUS.v = hasKnack(sv.knack, 'haggler') ? 1.1 : 1;
@@ -1196,6 +1204,8 @@ function blessHtml(race) {
 function offerRelic(race) {
   const S = SANCTUMS[race], own = save.race === race, tier = save.sanctum?.[race] || 0, cost = TIER_COST[tier];
   if ((save.relics[race] || 0) < cost) return;
+  if (save.blessDayAll === today()) { renderer.banner = { text: '오늘은 이미 축복을 받았다', sub: '성지의 축복 · 수련으로 강해지는 것은 하루 한 번씩 (어느 성지든)', t: 2.6, color: '#c8b8a0' }; return; }
+  save.blessDayAll = today();
   save.relics[race] -= cost; save.sanctum[race] = tier + 1;
   const nt = tier + 1;
   let sub = `${sanctumBonusText(race, nt, own)}`;
@@ -1318,8 +1328,9 @@ function finishTraining(s) {
   if (!s.ok) { renderer.banner = { text: '수련 실패', sub: `${s.why || ''} · ${L.train.kind === 'damage' ? `${s.dealt} / ${s.need}` : L.train.kind === 'keep' ? `타오른 화로 ${s.got} / ${s.n}` : `${s.got} / ${s.n}`} · 안내판에서 다시 도전할 수 있다`, t: 3, color: '#c8b8a0' }; return; }
   const cap = trainCap(affLevel(st.aff), save.race === race), gold = trainGold(st.train || 0);
   if (st.trainDay !== today()) { st.trainDay = today(); st.trainToday = 0; }
-  const rankUp = (st.train || 0) < cap;
-  if (rankUp) st.train = (st.train || 0) + 1;
+  const doneToday = save.trainDayAll === today(); // 수련으로 강해지는 것은 하루 한 번 (어느 성지든)
+  const rankUp = (st.train || 0) < cap && !doneToday;
+  if (rankUp) { st.train = (st.train || 0) + 1; save.trainDayAll = today(); }
   save.gold += gold;
   const affOk = st.trainToday < TRAINS_PER_DAY;
   st.trainToday++;
@@ -1327,7 +1338,7 @@ function finishTraining(s) {
   writeSave(save);
   world.setBuild(buildNow());
   const stat = Object.keys(S.unit).map((k) => ({ str: '근력', mag: '마력', agi: '민첩', vit: '체력', sen: '감각', spi: '정신', pres: '물리 저항', mres: '마법 저항' }[k])).join(' · ');
-  renderer.banner = { text: `수련 성공 · ${L.train.name}`, sub: `${rankUp ? `수련 ${st.train}단계 · ${stat} +1 · 다음 단계는 더 어렵다` : '수련 한도에 닿았다'} · 골드 +${gold}${affOk ? ` · 친밀도 +${TRAIN_AFF}` : ''}`, t: 3.6, color: S.color };
+  renderer.banner = { text: `수련 성공 · ${L.train.name}`, sub: `${rankUp ? `수련 ${st.train}단계 · ${stat} +1 · 다음 단계는 더 어렵다` : doneToday ? '오늘은 이미 수련으로 강해졌다 (하루 한 번 · 어느 성지든)' : '수련 한도에 닿았다'} · 골드 +${gold}${affOk ? ` · 친밀도 +${TRAIN_AFF}` : ''}`, t: 3.6, color: S.color };
   sfx('levelup');
 }
 // 성물 조각: 5개가 모이면 성물 하나가 된다
@@ -1619,7 +1630,7 @@ function endRun(kind) {
     <p class="muted">${kind === 'clear' ? '잔향을 모두 가져왔다.' : kind === 'retreat' ? '잔향의 70%만 지켰다.' : '잔향의 절반을 잃었다.'}${bank && kind !== 'clear' ? ' (야영지에 맡긴 몫은 지켰다)' : ''}${world.depth ? ` · 도달: 지하 ${world.depth + 1}층` : ''}</p>
     <div class="echoes">${echoes}</div>
     <p>골드 +${res.gold} · 도감 +${Math.max(0, codexPoints(save) - (world.codexStart ?? codexPoints(save)))}점 · 상자 ${world.loot.chests}개 · 탐험 ${Math.round(world.exploredPct() * 100)}%</p>
-    ${res.ups ? `<p class="lvup">레벨 업! Lv ${save.level} · 스탯 포인트 +${res.ups * 3} (수련 교관에게 가세요)</p>` : ''}
+    ${res.ups ? `<p class="lvup">레벨 업! Lv ${save.level} · 스탯 포인트 +${res.ups}</p>` : ''}
     ${world.discovered.size ? '<p class="lvup">새로 발견한 원소 반응이 서고에 기록되었습니다.</p>' : ''}
     ${done ? `<p class="lvup">완료한 의뢰 ${done}개! 게시판에서 보상을 받으세요.</p>` : ''}
     <button data-close>${world.zone.id === 'world' ? '마을에서 다시 일어난다' : '밖으로 나간다'}</button>`, () => { overlay.hidden = true; const back = world.zone.id === 'world' || kind === 'dead' ? null : curInterior ? { x: curInterior.x, y: curInterior.y } : returnTo || 'tower'; enterWorld(back); });
@@ -1904,7 +1915,7 @@ function handleSignals() {
       if (ups) {
         world.setBuild(buildNow());
         world.player.hp = world.d.maxHp;
-        renderer.levelUp(world, save.level, ups * 3);
+        renderer.levelUp(world, save.level, ups);
       }
     } else if (s.t === 'journal') {
       const j = JOURNALS[s.id];
