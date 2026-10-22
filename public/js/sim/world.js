@@ -84,7 +84,7 @@ export class World {
       swingT: 0, swingAng: 0, swingDir: 1, swingMax: 0.16, walkT: 0, liquidT: 0, onLiquid: false, skillCd: 0, skillMax: 6, spinT: 0,
       lastCast: -9, rage: 0, rageT: 0, lastFight: -9,
       dashCharges: 1, dashRecharge: 0, dashCritReady: false, lastShot: -9, whirlT: 0, whirlTick: 0,
-      res: RACES[this.b.race]?.res?.start || 0, elem: 'fire', elemBonusT: 0, buffs: {}, cds: {}, parryT: 0, parry: null,
+      res: pvp ? Math.max(50, RACES[this.b.race]?.res?.start || 0) : RACES[this.b.race]?.res?.start || 0, /* 결투는 자원 50으로 시작 */ elem: 'fire', elemBonusT: 0, buffs: {}, cds: {}, parryT: 0, parry: null,
       castT: 0, castMax: 0, castSkill: null, channel: null, souls: souls || [], // 사령술사: 거둔 영혼 (저장과 같은 배열 · 30개까지)
       spirits: [], words: [], focus: 0, focusT: 0, stealthT: 0, airT: 0, soar: null, rush: null, leap: null, charging: null, stored: 0, storedT: 0, hist: [], histT: 0,
       motion: null,

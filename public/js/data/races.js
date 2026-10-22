@@ -29,7 +29,7 @@ export const RACES = {
     growth: { pres: 1 },
     mult: { pres: 1.15, vit: 1.1, agi: 0.85, mag: 0.75 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '수호의 맹세',
-    res: { key: 'grit', name: '오러', color: '#ffd84a', hit: 2, kill: 3, hurt: 120, decay: 2 },
+    res: { key: 'grit', name: '오러', color: '#ffd84a', hit: 3, kill: 5, hurt: 120, decay: 1 },
   },
   orc: {
     name: '오크', origin: '황야',
@@ -49,7 +49,7 @@ export const RACES = {
     growth: { mag: 1 },
     mult: { pres: 1.15, mag: 1.1, agi: 0.85, vit: 0.9 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '썩은 몸',
-    res: { key: 'soul', name: '영혼', color: '#c45cff', hit: 1, kill: 25, decay: 1 }, // 적을 쓰러뜨리면 영혼이 많이 오른다
+    res: { key: 'soul', name: '영혼', color: '#c45cff', hit: 5, kill: 25 }, // 맞힐 때마다 · 쓰러뜨리면 많이 오르고, 저절로 줄지 않는다
   },
   assassin: {
     name: '암살자', origin: '뒷골목',
@@ -59,7 +59,7 @@ export const RACES = {
     growth: { sen: 1 },
     mult: { agi: 1.15, sen: 1.2, vit: 0.85, pres: 0.8 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '그림자 사냥꾼',
-    res: { key: 'shadow', name: '그림자', color: '#8a6aff', hit: 1, kill: 5, dodge: 15, crit: 5, dash: 8, decay: 2 },
+    res: { key: 'shadow', name: '그림자', color: '#8a6aff', hit: 3, kill: 8, dodge: 15, crit: 5, dash: 8, decay: 1 },
   },
   elf: {
     name: '엘프', origin: '숲',
@@ -69,7 +69,7 @@ export const RACES = {
     growth: { agi: 1 },
     mult: { agi: 1.1, sen: 1.1, mag: 1.05, str: 0.75, vit: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '정령의 벗',
-    res: { key: 'spirit', name: '정령력', color: '#7be38a', regen: 4, hit: 2, kill: 4 },
+    res: { key: 'spirit', name: '정령력', color: '#7be38a', regen: 5, hit: 3, kill: 5 },
   },
   golem: {
     name: '골렘족', origin: '산맥',
@@ -79,7 +79,7 @@ export const RACES = {
     growth: { vit: 1 },
     mult: {}, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '바위 몸',
-    res: { key: 'stone', name: '암석 에너지', color: '#c8b088', regen: 2, hit: 2, kill: 4, hurt: 100 },
+    res: { key: 'stone', name: '암석 에너지', color: '#c8b088', regen: 3, hit: 3, kill: 5, hurt: 100 },
   },
   dragon: {
     name: '용족', origin: '화산',
@@ -89,7 +89,7 @@ export const RACES = {
     growth: { str: 1 },
     mult: { str: 1.05, mag: 1.05, mres: 1.1, agi: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '용의 피',
-    res: { key: 'dragon', name: '용기', color: '#ff6a2a', hit: 2, kill: 5, burnTick: 1, decay: 2 },
+    res: { key: 'dragon', name: '용기', color: '#ff6a2a', hit: 3, kill: 6, burnTick: 1, decay: 1 },
   },
 };
 
