@@ -474,7 +474,9 @@ export class World {
     }
     { // 결투: 상대가 건 묶기 · 침묵 · 공포 (사람에게 걸리는 CC)
       const p = this.player;
-      for (const k of ['rootT', 'silT', 'fearT', 'abT']) if (p[k] > 0) p[k] -= DT;
+      for (const k of ['rootT', 'silT', 'fearT', 'abT', 'slowT', 'tauntT']) if (p[k] > 0) p[k] -= DT;
+      if (p.slowT > 0) input = { ...input, moveX: input.moveX * 0.45, moveY: input.moveY * 0.45 };
+      if (p.tauntT > 0) { const f = p.tauntAt || this.enemies.find((x) => x.remote); if (f) { const dx = f.x - p.x, dy = f.y - p.y, l = Math.hypot(dx, dy) || 1; input = { ...input, moveX: l > 20 ? dx / l : 0, moveY: l > 20 ? dy / l : 0, aimX: f.x, aimY: f.y }; } } // 도발: 도발한 사람에게 끌려간다
       if (p.abT <= 0) p.ab = 0;
       if (p.rootT > 0) input = { ...input, moveX: 0, moveY: 0, dash: false };
       if (p.silT > 0) input = { ...input, s1: false, s2: false, s3: false, s4: false, wskill: false, skill: false };
@@ -2880,6 +2882,9 @@ export class World {
     if (m.kx || m.ky) { const k = 0.14 * PVP.cc; this.move(p, Math.max(-60, Math.min(60, m.kx * k)), Math.max(-60, Math.min(60, m.ky * k))); }
     if (m.pull && !this.blocked(m.pull.x, m.pull.y, 5)) { p.x = m.pull.x; p.y = m.pull.y; say('끌려갔다', '#ffd060'); }
     if (m.ab > 0) { p.ab = Math.min(5, m.ab); p.abT = 5; }
+    if (m.slow > 0) { p.slowT = Math.max(p.slowT || 0, m.slow * res); say('느려짐', '#9fe3ff'); }
+    if (m.taunt > 0) { p.tauntT = Math.max(p.tauntT || 0, m.taunt * res); p.tauntAt = null; say('도발당함', '#ffd84a'); }
+    if (m.lure) { p.tauntT = Math.max(p.tauntT || 0, m.lure.dur * res); p.tauntAt = { x: m.lure.x, y: m.lure.y }; say('미끼에 끌린다', '#ffd84a'); }
   }
   // 결투: 내 기술이 상대(화면 속 상대)에게 건 것(밀치기 · 얼림 · 공포 · 속박 · 침묵 · 끌어오기 · 갑옷 부수기)을 상대에게 넘기고 비운다
   pvpFlush() {
@@ -2893,6 +2898,11 @@ export class World {
     if (e.silenceT > 0) { m.sil = r1(e.silenceT * PVP.cc); e.silenceT = 0; }
     if (e.reelT > 0) { const gap = P.r + 12; m.pull = { x: Math.round(P.x + P.aimX * gap), y: Math.round(P.y + P.aimY * gap) }; e.reelT = 0; }
     if (e.armorBreak > 0) { m.ab = e.armorBreak; e.armorBreak = 0; }
+    if (st.slowZ > 0) { m.slow = r1(Math.min(3, st.slowZ) * PVP.cc); st.slowZ = 0; }
+    if (e.provokeT > 0) { m.taunt = r1(e.provokeT * PVP.cc * 0.5); e.provokeT = 0; }
+    if (e.lureT > 0) { m.lure = { x: Math.round(e.lureX), y: Math.round(e.lureY), dur: r1(Math.min(2, e.lureT) * PVP.cc) }; e.lureT = 0; } // 미끼: 미끼 쪽으로 끌린다
+    if (e.loseT > 0) { m.sil = Math.max(m.sil || 0, r1(Math.min(3, e.loseT) * PVP.cc * 0.5)); e.loseT = 0; } // 연막: 앞이 안 보여 기술을 못 쓴다
+    for (const k of ['burn', 'poison', 'bleed', 'chill', 'curse']) if (st[k] && (st[k].t -= DT) <= 0) st[k] = null;
     if (Object.keys(m).length > 2) this.pvp.out.push(m);
   }
   // 결투 상대를 세운다 (화면의 적처럼 겨누고 때릴 수 있지만 체력은 상대가 알려 준다)
@@ -3010,7 +3020,7 @@ export class World {
   applyStatus(e, kind, stacks = 1) {
     if (!e || e.dead) return;
     if (e.puppet) { this.coop.out.push({ k: 'st', to: e.owner, id: e.id, kind, n: stacks }); return; }
-    if (e.remote) { this.pvp?.out.push({ t: 'dhit', dmg: 0, status: kind, stacks }); return; }
+    if (e.remote) { this.pvp?.out.push({ t: 'dhit', dmg: 0, status: kind, stacks }); const o = e.st[kind]; e.st[kind] = { n: Math.min(12, (o?.n || 0) + stacks), t: 5 }; return; } // 결투: 상태이상을 여기서도 적어 둔다 (중독 터뜨리기 · 전염 같은 스킬이 보도록)
     const st = e.st;
     if (kind === 'curse') { st.curse = { n: Math.min(12, (st.curse?.n || 0) + stacks), t: 8 }; return; }
     if (kind === 'shock') { st.shock = Math.max(st.shock || 0, 4); this.checkReactions(e); return; }
@@ -3128,6 +3138,7 @@ export class World {
 
   hurtPlayer(amount, type, attacker, opt = {}) {
     const p = this.player, d = this.d, f = this.f;
+    if (this.coTgt?.kind) { const al = this.coTgt; if (al.shield1) { al.shield1 = false; this.emit({ t: 'text', x: al.x, y: al.y - 16, text: '막음', color: '#bfe8ff' }); } else { al.hp -= amount * (al.tauntT > 0 ? 0.7 : 1); this.emit({ t: 'allyHurt', x: al.x, y: al.y, v: amount }); } return; } // 소환체가 맞았다
     if (this.coTgt) { this.coHurtMate(this.coTgt, amount, type, attacker, opt); return; } // 파티 탑 (방장): 이 적이 노린 건 동료
     if (this.state !== 'play' || this.mode === 'plaza' || this.practice || p.down) return;
     if ((p.airT > 0 || p.leap) && !opt.direct) return;
@@ -3414,7 +3425,7 @@ export class World {
     for (const e of this.enemies) {
       if (e.dead) continue;
       if (e.puppet) { this.updatePuppet(e); continue; }
-      const p = host ? this.coPick(e) : P; // 이 적이 노리는 사람 (파티 탑이 아니면 언제나 나)
+      const p = this.coPick(e); // 이 적이 노리는 대상: 처음 어그로를 끈 사람 · 동료 · 소환체
       this.coTgt = p === P ? null : p;
       const def = e.def;
       e.hitFlash = Math.max(0, e.hitFlash - DT);
@@ -3817,24 +3828,25 @@ export class World {
   }
   // ───────────── 파티 탑 ─────────────
   // 방장: 적이 노릴 수 있는 사람 (나 + 같은 층의 동료, 쓰러진 사람은 빼고)
-  coTargets() {
+  coTargets() { // 적이 노릴 수 있는 것: 나 · 같은 층 동료 · 체력이 있는 소환체 (사령술사의 영혼 · 해골 · 리치 등)
     const P = this.player, out = P.down ? [] : [P];
     if (this.coop) for (const m of this.coop.mates.values()) if (!m.dead) out.push(m);
+    for (const a of this.allies) if (a.maxHp > 0 && a.hp > 0 && a.t > 0) { a.r ||= 6; out.push(a); }
     return out;
   }
   // 방장: 이 적이 노릴 사람 — 가장 가까운 사람, 한 번 고르면 잠깐은 그대로 (도발한 사람이 있으면 그 사람)
   coPick(e) {
-    const P = this.player, mates = this.coop.mates;
-    const alive = (t) => t && (t === P ? !P.down : !t.dead && mates.get(t.id) === t);
+    const P = this.player, mates = this.coop?.mates || new Map();
+    const alive = (t) => t && (t === P ? !P.down : t.maxHp > 0 && t.hp != null && t.kind ? t.hp > 0 && t.t > 0 && this.allies.includes(t) : !t.dead && mates.get(t.id) === t);
     if (e.provokeT > 0) {
       const pm = e.provokeBy ? mates.get(e.provokeBy) : null;
       if (pm && alive(pm)) return (e.tgt = pm);
       if (!e.provokeBy && !P.down) return (e.tgt = P);
     }
-    if (alive(e.tgt) && (e.tgtT = (e.tgtT || 0) - DT) > 0) return e.tgt;
-    e.tgtT = 0.7;
-    let best = P.down ? null : P, bd = best ? Math.hypot(P.x - e.x, P.y - e.y) : 1e9;
-    for (const m of mates.values()) { if (m.dead) continue; const dd = Math.hypot(m.x - e.x, m.y - e.y); if (dd < bd) { bd = dd; best = m; } }
+    // 처음 어그로를 끈 대상을 계속 쫓는다 (쓰러지거나 너무 멀어지면 다시 가장 가까운 대상)
+    if (alive(e.tgt) && Math.hypot(e.tgt.x - e.x, e.tgt.y - e.y) < 340) return e.tgt;
+    let best = null, bd = 1e9;
+    for (const t of this.coTargets()) { const dd = Math.hypot(t.x - e.x, t.y - e.y); if (dd < bd) { bd = dd; best = t; } }
     return (e.tgt = best || P);
   }
   // 방장: 같은 층의 인원수에 맞춰 몬스터를 세게 (1명 늘 때마다 체력 +60% · 공격 +10%) — 남은 체력 비율은 그대로

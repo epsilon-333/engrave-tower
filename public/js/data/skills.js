@@ -450,6 +450,15 @@ Object.assign(SKILLS, {
     desc: '쇠사슬로 적 하나를 내 앞까지 끌어오고 0.5초 기절 (공격력 90% 피해).', do: [{ op: 'proj', n: 1, speed: 360, range: 230, mul: 0.9, pull: true, stun: 0.5, kind: 'harpoon' }] },
 });
 
+// CC기(역할 「제어」)는 피해가 거의 없다: 공격력 15% (기절 · 속박 · 공포 · 침묵 · 끌어오기가 본업) · 설명의 피해 숫자도 맞춘다
+for (const sk of Object.values(SKILLS)) {
+  if (sk.role !== '제어') continue;
+  const low = (o) => { if (!o) return; if (o.mul > 0.15) o.mul = 0.15; low(o.sub); };
+  sk.do.forEach(low);
+  sk.desc = sk.desc.replace(/공격력 \d+% ?(피해)?/g, '공격력 15% 피해').replace(/\(공격력 \d+% 피해\)/g, '(공격력 15% 피해)');
+  sk.aim ||= 'near'; // 자동 조준: 가장 가까운 적 (사람도)
+}
+
 const SKILL_KIND = {
   stunStrike: 'body', bolas: 'body', quakeStomp: 'body', fearShout: 'body', silenceSeal: 'body', chainHook: 'body',
   sweep: 'slash', dashSlash: 'slash', swordWave: 'slash', skyfall: 'slash', shadowDance: 'slash', eSoulHarvest: 'slash',
