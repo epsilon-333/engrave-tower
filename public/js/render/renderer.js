@@ -1014,8 +1014,29 @@ export class Renderer {
   }
 
   // 다른 사람 (온라인 · 결투 상대): 그 종족의 몸 · 든 무기 · 걷기
+  // 운영자 모습: 둥근 얼굴에 팔다리가 달린 흰 사람 (짙은 테두리로 어디서든 보인다) · 발이 (x, y)
+  drawAdminFigure(x, y, dir, moving, t, atk = false, s = 1) {
+    const g = this.g, sw = moving ? Math.sin(t * 11) : 0, bob = moving ? Math.abs(Math.sin(t * 11)) * 1 : Math.sin(t * 2) * 0.4;
+    const hipY = y - 7 * s, neckY = y - 15 * s - bob, headY = y - 20 * s - bob;
+    const armA = atk ? -1.2 : sw * 0.7, legA = sw * 0.6;
+    const limbs = [
+      [x, neckY, x, hipY], // 몸
+      [x, hipY, x + Math.sin(legA) * 6 * s, y], [x, hipY, x - Math.sin(legA) * 6 * s, y], // 다리
+      [x, neckY + 1, x + dir * Math.sin(armA + 0.4) * 6 * s, neckY + 1 + Math.cos(armA + 0.4) * 6 * s], // 앞팔
+      [x, neckY + 1, x - dir * Math.sin(-armA + 0.4) * 6 * s, neckY + 1 + Math.cos(-armA + 0.4) * 6 * s], // 뒤팔
+    ];
+    g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+    for (const [w, c] of [[4 * s, '#1c1c26'], [2 * s, '#ffffff']]) {
+      g.strokeStyle = c; g.lineWidth = w; g.beginPath();
+      for (const [a, b, c2, d] of limbs) { g.moveTo(a, b); g.lineTo(c2, d); }
+      g.stroke();
+      g.fillStyle = c; g.beginPath(); g.arc(x, headY, 4.2 * s + (w - 2 * s) / 2, 0, Math.PI * 2); g.fill();
+    }
+    g.fillStyle = '#1c1c26'; g.fillRect(Math.round(x + dir * 1.5 * s), Math.round(headY - 1 * s), Math.max(1, s), Math.max(1, s)); // 눈 (보는 쪽)
+    g.restore();
+  }
   drawRemote(w, rp) {
-    const g = this.g, art = rp.admin ? { base: RACE_ART.knight.base, tint: 'grayscale(1) brightness(2.4) contrast(0.85)' } : RACE_ART[rp.race] || RACE_ART.knight, moving = !rp.down && (rp.moving || rp.mo === 'run'), dir = rp.dir || 1;
+    const g = this.g, art = RACE_ART[rp.race] || RACE_ART.knight, moving = !rp.down && (rp.moving || rp.mo === 'run'), dir = rp.dir || 1;
     const fr = frames(art.base, moving ? 'run' : 'idle'), img = sprite(fr[Math.floor(w.t * (moving ? 10 : 4) + (rp.id || 0)) % fr.length], (art.tint || '') + (rp.flash > 0 ? ' brightness(2.2)' : ''), false, dir < 0);
     this.shadow(rp.x, rp.y + 6, 6);
     if (rp.down) { // 파티 탑에서 쓰러진 동료: 옆으로 누워 흐리게 (층을 깨면 일어난다)
@@ -1023,6 +1044,7 @@ export class Renderer {
       if (img) g.drawImage(img, Math.round(-img.width / 2), Math.round(3 - img.height));
       g.restore(); rp._top = rp.y - 10; return;
     }
+    if (rp.admin) { this.drawAdminFigure(rp.x, rp.y + 6, dir, moving, w.t + (rp.id || 0), rp.mo === 'atk'); rp._top = rp.y - 22; return; } // 운영자: 흰 사람 모습 (무기 없이)
     if (img) g.drawImage(img, Math.round(rp.x - img.width / 2), Math.round(rp.y + 7 - img.height));
     const wa = rp.weapon && ITEMS[rp.weapon] ? weaponArt(rp.weapon, ITEMS) : null, wimg = wa && sprite(wa.s, wa.tint || '');
     if (rp.mo === 'atk') rp.swingT = (rp.swingT || 0) + 1 / 60; else rp.swingT = 0;
@@ -1207,7 +1229,7 @@ export class Renderer {
 
   drawPlayer(w, p, dt) {
     const g = this.g;
-    const art = this.admin && !w.pvp ? { base: RACE_ART.knight.base, tint: 'grayscale(1) brightness(2.4) contrast(0.85)' } : RACE_ART[w.b.race]; // 운영자는 흰 사람 모습
+    const art = RACE_ART[w.b.race];
     const moving = p.moving && p.dashT <= 0;
     const soaring = art.base === 'dragonkin' && (p.airT > 0 || p.motion?.kind === 'soar');
     const name = soaring ? this.animFrame('dragonkin', 'soar', w.t, 12) : this.animFrame(art.base, moving ? 'run' : 'idle', moving ? p.walkT : w.t, moving ? 11 : 6);
@@ -1271,14 +1293,16 @@ export class Renderer {
     if (pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
     const sink = p.swim ? by - 7 : p.boat ? by - 1 : null;
     if (sink != null) { g.save(); g.beginPath(); g.rect(bx - 30, by - 80, 60, sink - (by - 80)); g.clip(); }
-    if (!blink && img && rims.length) {
+    const admin = this.admin && !w.pvp; // 운영자: 종족 그림 대신 흰 사람 모습
+    if (!blink && img && rims.length && !admin) {
       const [col, a] = rims[rims.length - 1];
       const sil = sprite(name, art.tint || '', col, p.dir < 0);
       g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha *= Math.max(0, Math.min(1, a));
       for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) this.drawBody(sil, bx + ox, by + oy, gs, pose, p.dir);
       g.restore();
     }
-    if (!blink && img) this.drawBody(img, bx, by, gs, pose, p.dir);
+    if (!blink && admin) this.drawAdminFigure(bx, by + 2, p.dir, moving, p.walkT || w.t, p.swingT > 0, gs);
+    else if (!blink && img) this.drawBody(img, bx, by, gs, pose, p.dir);
     if (!blink && w.b.offItem && !hideW && OFF_LOOK[w.b.offId] === 'xbow') this.drawOffhand(w, p, pose, bx, by, gs, 'front'); // 손쇠뇌는 몸 앞에
     if (sink != null) g.restore();
     if (p.swim) this.drawSwimLine(w, p, bx, by, dt);
