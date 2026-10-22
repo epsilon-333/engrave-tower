@@ -1847,7 +1847,10 @@ export class World {
         break;
       }
       case 'raiseSouls': {
-        if (!p.souls.length) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '거둔 영혼이 없다', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
+        if (!p.souls.length) { // 거둔 영혼이 없으면 (결투 · 막 시작한 싸움) 떠도는 망령 둘을 대신 부른다
+          for (let i = 0; i < 2; i++) p.souls.push({ defId: 'skeleton', maxHp: this.d.maxHp * 0.6, atk: ctx.atk * 0.9, r: 6, scale: 1, wisp: true });
+          this.emit({ t: 'text', x: p.x, y: p.y - 30, text: '떠도는 망령을 부른다', color: '#7ae8ff' });
+        }
         const living = this.allies.filter((a) => a.kind === 'soul').length;
         if (living >= 10) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '부하는 최대 10마리', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
         // 소환 목록에 넣은 영혼부터, 그다음은 강한 순 (거둔 영혼은 30개까지 모아 두고 사령술사 창에서 고른다)
@@ -4022,7 +4025,7 @@ export class World {
   updateProjs() {
     const p = this.player;
     for (const pr of this.projs) {
-      if (pr.owner === 'p' && pr.type === 'mag' && !pr.fast && !pr.ghost && !pr.boomerang) { pr.fast = 1; pr.vx *= 1.6; pr.vy *= 1.6; pr.life /= 1.6; if (pr.maxLife) pr.maxLife /= 1.6; } // 마법 탄은 빠르게 (사거리는 그대로)
+      if (pr.owner === 'p' && !pr.fast && !pr.ghost && !pr.boomerang) { pr.fast = 1; pr.vx *= 1.6; pr.vy *= 1.6; pr.life /= 1.6; if (pr.maxLife) pr.maxLife /= 1.6; } // 내 탄(마법 · 저주 · 독 · 화살 · 투척)은 빠르게 (사거리는 그대로)
       if (pr.homing) {
         let best = null, bd = 160;
         for (const e of this.enemies) { if (e.dead || pr.hit.has(e.id)) continue; const dd = Math.hypot(e.x - pr.x, e.y - pr.y); if (dd < bd) { bd = dd; best = e; } }
