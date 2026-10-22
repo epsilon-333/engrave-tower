@@ -90,6 +90,56 @@ const WORD_PHRASE = {
 const sentenceLine = (ws) => `${WORD_PHRASE[ws[0]]?.[0] || ''} ${WORD_PHRASE[ws[1]]?.[1] || ''} ${WORD_PHRASE[ws[2]]?.[2] || ''}`.trim();
 const WORD_COLOR = { fire: '#ff7a2a', sky: '#ffcf5a', scale: '#ffb066', wing: '#bfffd0', earth: '#c8a878' };
 
+// 리치(해골 마법사): 금빛 왕관 · 보라 눈 · 금빛 어깨 갑옷과 보석 · 찢어진 검은 로브 (팔은 따로 그려 움직인다)
+const LICH_ROWS = [
+  '.........KK.........',
+  '........KYGK........',
+  '...K....KGGK....K...',
+  '..KGK..KGYGGK..KGK..',
+  '..KGGK.KGGGGK.KGGK..',
+  '...KGGKKGPPGKKGGK...',
+  '....KGGGGPPGGGGK....',
+  '....KgGGGGGGGGgK....',
+  '....KBBBBBBBBBBK....',
+  '....KBBBBBBBBBbK....',
+  '....KBKKBBBBKKbK....',
+  '....KBKPKBBKPKbK....',
+  '....KBBKBBBBKBbK....',
+  '....KBBBBKKBBBbK....',
+  '.....KBKBKBKBbK.....',
+  '.....KKBKBKBKKK.....',
+  '..KKKKKKbbbbKKKKKK..',
+  '.KGGGGGKBBBBKGGGGGK.',
+  '.KGYGGgKBKKBKgGGYGK.',
+  '..KGGgKBBPPBBKgGGK..',
+  '...KKKKBKPPKBKKKK...',
+  '....KRKBBBBBBKRK....',
+  '....KRKKBKKBKKRK....',
+  '....KRRKgGGgKRRK....',
+  '...KRRRKGPPGKRRRK...',
+  '...KRrRRKggKRRrRK...',
+  '...KRrRRRRRRRRrRK...',
+  '..KRRrRRgRRgRRrRRK..',
+  '..KRRrRRgRRgRRrRRK..',
+  '..KRRrRgGRRGgRrRRK..',
+  '.KRRrRRgRRRRgRRrRRK.',
+  '.KRKRrKRRKKRRKrRKRK.',
+  '.K.KRK.KRK.KRK.KRK..',
+  '....K...K....K...K..',
+];
+const LICH_PAL = { K: '#141018', G: '#d8b048', g: '#8a6a28', Y: '#fff0a0', B: '#e8e0c8', b: '#a89c84', P: '#c070ff', R: '#2a2030', r: '#4a3c58' };
+const lichCache = {};
+function lichSprite(frame, flip) { // frame 0~3: 로브 자락이 흔들린다
+  const key = frame + (flip ? 'f' : '');
+  if (lichCache[key]) return lichCache[key];
+  const c = document.createElement('canvas'); c.width = 22; c.height = LICH_ROWS.length; const g = c.getContext('2d');
+  LICH_ROWS.forEach((row, y) => {
+    const sh = y >= 29 ? Math.round(Math.sin(frame * Math.PI / 2 + y * 0.6) * (y - 28) * 0.5) : 0;
+    for (let x = 0; x < row.length; x++) { const ch = row[x]; if (ch === '.') continue; g.fillStyle = LICH_PAL[ch]; g.fillRect((flip ? 19 - x : x) + 1 + sh, y, 1, 1); }
+  });
+  return (lichCache[key] = c);
+}
+
 export class Renderer {
   constructor(canvas) {
     this.c = canvas;
@@ -2291,6 +2341,7 @@ export class Renderer {
       return;
     }
     if (al.kind === 'grasper' && (al.chg || 0) > 0 && Math.random() < 0.12 + 0.12 * (al.chg / 5)) { const a = Math.random() * Math.PI * 2; this.parts.push({ x: al.x + Math.cos(a) * 16, y: al.y - 8 + Math.sin(a) * 10, vx: -Math.cos(a) * 30, vy: -Math.sin(a) * 20, t: 0.5, max: 0.5, color: '#c8b8ff', g: 0, glow: true }); } // 기를 모은다
+    if (al.kind === 'lichMage') { this.drawLich(w, al, fade); return; }
     const base = al.kind === 'lich' ? 'big_zombie' : al.kind === 'lichMage' ? 'skelet' : al.kind === 'clone' ? RACE_ART[w.b.race].base : al.kind === 'skeleton' ? 'skelet' : 'necromancer';
     const tint = al.kind === 'lichMage' ? 'hue-rotate(240deg) saturate(2) brightness(0.95)' : al.kind === 'grasper' ? 'grayscale(0.8) brightness(1.6) hue-rotate(220deg)' : al.kind === 'skeleton' ? 'brightness(1.1)' : al.kind === 'lich' ? 'hue-rotate(220deg) saturate(1.4) brightness(0.9)' : al.kind === 'clone' ? 'brightness(0.25) saturate(0) contrast(1.4)' : 'grayscale(0.6) brightness(1.4) hue-rotate(180deg)';
     const img = sprite(this.animFrame(base, 'run', w.t + al.id, 10), tint, false, al.dir < 0);
@@ -2300,6 +2351,37 @@ export class Renderer {
     g.drawImage(img, Math.round(al.x - img.width * sc / 2), Math.round(al.y + 4 - img.height * sc + Math.sin(w.t * 4 + al.id) * 1.5), img.width * sc, img.height * sc);
     g.globalAlpha = 1;
     if (Math.random() < 0.15) this.parts.push({ x: al.x, y: al.y - 4, vx: 0, vy: -20, t: 0.5, max: 0.5, color: al.kind === 'clone' ? '#8a6aff' : '#c45cff', g: -10 });
+  }
+
+  // 리치: 몸은 픽셀 그림, 팔은 뼈 · 금빛 손톱으로 따로 그려 동작마다 움직인다 (쏠 때 앞으로 · 해골을 일으킬 때 두 팔을 든다)
+  drawLich(w, al, fade) {
+    const g = this.g, dir = al.dir || 1, fr = Math.floor(w.t * 5 + al.id) % 4, img = lichSprite(fr, dir < 0);
+    const bob = Math.sin(w.t * 2.2 + al.id) * 1.5, x0 = Math.round(al.x - 11), y0 = Math.round(al.y + 4 - img.height + bob);
+    this.shadow(al.x, al.y + 4, 8);
+    const cast = Math.max(0, al.castT || 0) / 0.35, lift = Math.max(0, al.liftT || 0) / 0.9;
+    const arm = (side) => { // side 1 = 보는 쪽 팔
+      const sx = al.x + side * dir * 7, sy = y0 + 18;
+      let a = Math.PI / 2 + side * dir * 0.5; // 아래로 비스듬히
+      if (lift > 0) a = -Math.PI / 2 + side * dir * 0.45; // 두 팔을 머리 위로
+      else if (cast > 0 && side === 1) a = dir > 0 ? -0.15 : Math.PI + 0.15; // 앞으로 뻗는다
+      a += Math.sin(w.t * 2 + side) * 0.08;
+      const ex = sx + Math.cos(a) * 9, ey = sy + Math.sin(a) * 9;
+      g.save(); g.lineCap = 'round'; g.strokeStyle = '#141018'; g.lineWidth = 3; g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex, ey); g.stroke();
+      g.strokeStyle = '#e8e0c8'; g.lineWidth = 1; g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex, ey); g.stroke();
+      g.strokeStyle = '#d8b048'; for (const da of [-0.5, 0, 0.5]) { g.beginPath(); g.moveTo(ex, ey); g.lineTo(ex + Math.cos(a + da) * 3.5, ey + Math.sin(a + da) * 3.5); g.stroke(); } // 금빛 갈고리 손톱
+      g.restore();
+      if ((cast > 0 && side === 1) || lift > 0) { this.glow(ex, ey, 5, '#c070ff', 0.6); if (Math.random() < 0.4) this.parts.push({ x: ex, y: ey, vx: (Math.random() - 0.5) * 16, vy: -14, t: 0.4, max: 0.4, color: '#c070ff', g: -10, glow: true }); }
+    };
+    g.globalAlpha = fade;
+    arm(-1);
+    g.drawImage(img, x0, y0);
+    arm(1);
+    g.globalAlpha = 1;
+    this.glow(al.x + dir * 0, y0 + 11, 4, '#c070ff', 0.35 + 0.15 * Math.sin(w.t * 5)); // 빛나는 눈
+    this.glow(al.x, y0 + 20, 3, '#c070ff', 0.3);
+    if (Math.random() < 0.12) this.parts.push({ x: al.x + (Math.random() - 0.5) * 14, y: al.y + 2, vx: 0, vy: -8, t: 0.8, max: 0.8, color: '#6a2aa8', g: -4, glow: true }); // 발밑 보라 안개
+    if (al.maxHp && al.hp < al.maxHp) { const bw = 18, by = y0 - 4; g.fillStyle = '#0d0b10'; g.fillRect(al.x - bw / 2 - 1, by - 1, bw + 2, 4); g.fillStyle = '#c070ff'; g.fillRect(al.x - bw / 2, by, Math.max(0, bw * al.hp / al.maxHp), 2); }
+    al._top = y0;
   }
 
   // 속성이 깃든 화살 · 쇠살의 꼬리

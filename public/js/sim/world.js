@@ -3343,13 +3343,13 @@ export class World {
       if (tgt) { const d = bd || 1, k = d < 70 ? -1 : d > 110 ? 1 : 0; tx = al.x + (tgt.x - al.x) / d * 30 * k; ty = al.y + (tgt.y - al.y) / d * 30 * k; al.dir = tgt.x > al.x ? 1 : -1; }
       else { const a = al.phase + al.id * 1.3; tx = p.x + Math.cos(a) * 30; ty = p.y + Math.sin(a) * 20; }
       if (tgt && al.cd <= 0) {
-        al.cd = 1.2; const vx = tgt.x - al.x, vy = tgt.y - al.y, l = Math.hypot(vx, vy) || 1;
+        al.cd = 1.2; al.castT = 0.35; const vx = tgt.x - al.x, vy = tgt.y - al.y, l = Math.hypot(vx, vy) || 1;
         this.projs.push({ owner: 'p', x: al.x, y: al.y - 10, vx: vx / l * 230, vy: vy / l * 230, life: 1.2, dmg: al.atk, type: 'mag', pierce: 0, hit: new Set(), color: '#b06aff', kind: 'skill', elem: 'dark', noTrigger: true,
           skillHit: (e) => { this.damageEnemy(e, al.atk, 'mag', { src: 'aoe', elem: 'dark' }); this.applyStatus(e, 'curse', 1); } });
       }
       al.raiseT = (al.raiseT ?? 3) - DT;
       if (al.raiseT <= 0) {
-        al.raiseT = 8;
+        al.raiseT = 8; al.liftT = 0.9;
         if (this.allies.filter((o) => o.lichOf === al.id && o.t > 0).length < 3) {
           const a = this.rng.range(0, Math.PI * 2); let x = al.x + Math.cos(a) * 16, y = al.y + Math.sin(a) * 16; if (this.blocked(x, y, 4)) { x = al.x; y = al.y; }
           const hp = this.d.maxHp * 0.2;
@@ -3361,6 +3361,7 @@ export class World {
     const vx = tx - al.x, vy = ty - al.y, l = Math.hypot(vx, vy);
     if (l > 4) { const sp = (al.kind === 'grasper' ? 120 : 75) * DT * (pd > 150 ? 1.6 : 1); al.r = al.r || 5; if (al.kind === 'grasper') { al.x += vx / l * Math.min(l, sp); al.y += vy / l * Math.min(l, sp); } else { const [mx, my] = this.pathDir(al, tx, ty); this.move(al, mx * sp, my * sp); } }
     if (al.kind !== 'lichMage' || !al.dir) al.dir = al.dir || p.dir;
+    if (al.castT > 0) al.castT -= DT; if (al.liftT > 0) al.liftT -= DT;
   }
   spawnCamp(c) {
     c.members = [];

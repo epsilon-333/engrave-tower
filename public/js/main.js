@@ -777,7 +777,7 @@ function showStyleSelect(race) {
   const R = RACES[race];
   titleEl.innerHTML = `<div class="race-select">
     <h1>${R.name}</h1>
-    <p class="muted">클래스를 고르세요. 클래스마다 스킬 6개와 전용 무기가 있습니다. 광장의 공명 제단에서 언제든 바꿀 수 있어요.</p>
+    ${reGolem ? '<p class="lvup">골렘족은 이제 몬스터가 되었어요. 새 종족과 클래스를 골라 주세요 — 레벨 · 장비 · 돈 · 도감은 그대로예요.</p>' : ''}<p class="muted">클래스를 고르세요. 클래스마다 스킬 6개와 전용 무기가 있습니다. 광장의 공명 제단에서 언제든 바꿀 수 있어요.</p>
     <div class="styles">${RACE_CLASSES(race).map((id) => {
       const c = CLASSES[id];
       return `<button class="style" data-style="${id}">
@@ -791,6 +791,13 @@ function showStyleSelect(race) {
   titleEl.querySelectorAll('[data-style]').forEach((b) => (b.onclick = () => {
     const c = CLASSES[b.dataset.style];
     sfx('levelup');
+    if (reGolem) { // 예전 골렘 저장: 종족 · 클래스만 바꾼다
+      reGolem = false; save.race = race; save.cls = b.dataset.style; save.style = c.style;
+      if (!(save.items ||= []).includes(c.weapons[0])) save.items.push(c.weapons[0]);
+      (save.gear ||= {}).weapon = c.weapons[0];
+      refreshQuests(save); writeSave(save); cloudSaveNow(save); titleEl.hidden = true; enterWorld();
+      return;
+    }
     save = newSave(race);
     save.cls = b.dataset.style; save.style = c.style;
     save.items = ['rustySword', c.weapons[0]];
@@ -870,8 +877,10 @@ function firstStart() {
 function afterLogin(remote) {
   if (remote) save = migrateSave(remote);
   else if (save && cloud.mode !== 'local') cloudSaveNow(save);
+  if (save?.race === 'golem') { reGolem = true; titleEl.hidden = false; showRaceSelect(); return; } // 골렘족은 이제 몬스터: 다른 종족을 고른다 (레벨 · 장비 · 돈은 그대로)
   if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else firstStart();
 }
+let reGolem = false;
 
 // 예전 저장 데이터를 새 구조로 옮긴다 (인간·드워프 → 기사, 없어진 슬롯·무기 정리)
 function migrateSave(sv) {
