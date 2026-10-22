@@ -788,13 +788,17 @@ function migrateSave(sv) {
   registerAllDishes(sv.bag, sv.chest);
   if (RACE_MIGRATE[sv.race]) sv.race = RACE_MIGRATE[sv.race];
   if (!RACES[sv.race]) sv.race = 'knight';
-  if (!sv.statFix2) { // 스탯을 새 규칙으로 다시 센다: 레벨마다 1점, 수련 단계는 지난 날수까지 (넘치면 덜어낸다)
+  if (!sv.statFix2) { // 스탯을 새 규칙으로 다시 센다: 레벨마다 1점
     sv.statFix2 = true;
     const total = Math.max(0, (sv.level || 1) - 1), spent = Object.values(sv.alloc || {}).reduce((a, v) => a + (v || 0), 0);
     if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
-    const S2 = sv.story?.sanct || {}, days = Math.max(1, sv.time?.day || 1);
-    let ranks = Object.values(S2).reduce((a, x) => a + (x?.train || 0), 0);
-    while (ranks > days) { const top = Object.values(S2).filter((x) => x?.train > 0).sort((a, b) => b.train - a.train)[0]; if (!top) break; top.train--; ranks--; }
+  }
+  if (!sv.statFix3) { // 지금까지 여러 성지에서 쌓은 수련 단계는 모두 내 종족 성지의 수련으로 옮겨 남긴다
+    sv.statFix3 = true;
+    const S2 = (sv.story ||= {}).sanct ||= {};
+    const total = Object.values(S2).reduce((a, x) => a + (x?.train || 0), 0);
+    for (const x of Object.values(S2)) if (x) x.train = 0;
+    if (total) sanctState(sv.story, sv.race).train = total;
   }
   sv.knack ||= newKnack(); // 숙련 (같은 행동을 세어 두었다가 우연히 깨닫는다)
   sv.uid ||= Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => b.toString(16).padStart(2, '0')).join(''); // 온라인: 길드가 나를 알아보는 번호
