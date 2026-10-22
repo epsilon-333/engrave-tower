@@ -17,7 +17,7 @@ export const G = {
   GRASS: 0, DIRT: 1, SAND: 2, TALL: 3, FLOWER: 4, BURNT: 5, ICE: 6, ROCK: 7, FOREST: 8, STONE: 9, BRIDGE: 10, SNOW: 11, THIN: 12,
   ASH: 13, REDSAND: 14, MUD: 15, DEADGRASS: 16, JUNGLE: 17, COBBLE: 18, LAVA: 19, BOG: 20, CRACKED: 21, OBSIDIAN: 22, BLACKROCK: 23, STAIRS: 24,
 };
-const TW = 480, TH = 360;
+const TW = 640, TH = 480; // 예전 480×360 에서 동쪽 · 남쪽으로 넓혔다 (예전 자리는 그대로)
 export const OW = { TW, TH, VILLAGE: { x: 240, y: 320 }, TOWER: { x: 240, y: 172, rx: 18, ry: 13 }, LAKE: { x: 318, y: 152, rx: 20, ry: 14 }, VOLCANO: { x: 396, y: 60 } };
 
 export const BIOMES = [
@@ -33,6 +33,8 @@ export const BIOMES = [
   { id: 'wasteland', lv: [30, 35], name: '메마른 황야', x: 402, y: 178, w: 1.05, ground: G.REDSAND, road: G.CRACKED, pool: ['desertScorpion', 'sandScorpion', 'hyena', 'orcRaider', 'sandWorm'], trees: 0.012, kinds: ['cactus'] },
   { id: 'jungle', lv: [25, 30], name: '원시림', x: 404, y: 292, w: 1.0, ground: G.JUNGLE, road: G.DIRT, pool: ['lizardWarrior', 'ironBeetle', 'raptor', 'jungleWasp', 'bigBeetle', 'venomSpitter'], trees: 0.27, kinds: ['jungle', 'jungle', 'palm'] },
   { id: 'lake', lv: [1, 5], name: '거울 호수', x: 318, y: 152, w: 0.55, ground: G.GRASS, road: G.DIRT, pool: ['waterSpirit', 'toad', 'leech', 'slime'], trees: 0.02, kinds: ['oak', 'birch'] },
+  { id: 'mistcoast', lv: [10, 15], name: '물안개 해안', x: 562, y: 382, w: 1.1, ground: G.GRASS, road: G.DIRT, pool: ['waterSpirit', 'toad', 'leech', 'spikeSlime', 'harpy'], trees: 0.03, kinds: ['palm', 'oak', 'willow'] },
+  { id: 'canyon', lv: [50, 55], name: '고요한 협곡', x: 566, y: 112, w: 1.1, ground: G.CRACKED, road: G.ROCK, pool: ['watcherEye', 'rockGolem', 'shadowPanther', 'harpy', 'sandWorm'], trees: 0.008, kinds: ['dead', 'cactus'] },
   { id: 'tower', name: '각인의 탑', x: 240, y: 172, w: 0.55, ground: G.GRASS, road: G.STONE, pool: ['bat'], trees: 0, kinds: ['oak'] },
 ];
 const B = Object.fromEntries(BIOMES.map((b, i) => [b.id, i]));
@@ -292,7 +294,7 @@ export function buildOverworld(zone) {
   }
   // 바다 속 용궁: 남동쪽 바다의 작은 섬, 소용돌이 · 해변의 자라가 데려다 준다
   let coast = null;
-  for (let k = 0; k < 300; k++) { const x = Math.round(240 + (440 - 240) * k / 300), y = Math.round(180 + (336 - 180) * k / 300); if (T(x, y) === T_DEEP && bio(x, y) < 0) { coast = { x, y }; break; } }
+  for (let k = 0; k < 600; k++) { const x = Math.round(240 + (640 - 240) * k / 600), y = Math.round(180 + (492 - 180) * k / 600); if (T(x, y) === T_DEEP && bio(x, y) < 0) { coast = { x, y }; break; } }
   coast ||= { x: 420, y: 316 };
   const islet = { x: coast.x + 8, y: coast.y + 6 };
   for (let y = islet.y - 3; y <= islet.y + 3; y++) for (let x = islet.x - 4; x <= islet.x + 4; x++) if (inb(x, y) && ((x - islet.x) / 4) ** 2 + ((y - islet.y) / 2.8) ** 2 <= 1) set(x, y, T_FLOOR, G.SAND);
@@ -466,7 +468,7 @@ export function buildOverworld(zone) {
     if (best) { objects.push({ kind: 'waterSpirit', ...at(best.x, best.y), label: '물의 정령과 이야기', reusable: true }); safe.push({ x: best.x, y: best.y, r: 8 }); }
   }
   const chests = [{ x: island.x, y: island.y, rich: true }, { x: islet.x + 2, y: islet.y - 1, rich: true }];
-  for (let a = 0; a < 20000 && chests.length < 34; a++) { // 상자는 드물게 (예전 56)
+  for (let a = 0; a < 20000 && chests.length < 60; a++) { // 상자는 드물게 (예전 56)
     const x = rng.int(6, TW - 7), y = rng.int(6, TH - 7), k = I(x, y);
     if (BI[k] < 0 || t[k] !== T_FLOOR || !seen[k] || occupied[k] || onPath[k] || nearSafe(x, y, 3) || chests.some((c) => Math.hypot(c.x - x, c.y - y) < 20)) continue;
     let walls = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (T(x + dx, y + dy) !== T_FLOOR) walls++;
@@ -496,7 +498,7 @@ export function buildOverworld(zone) {
   }
   const regionInfo = OW_PLACES.map((name, r) => ({ name, x: 0, y: 0, place: true, types: r < BIOMES.length ? BIOMES[r].pool : ['slime', 'toad'], lv: (r < BIOMES.length && BIOMES[r].lv) || [1, 3], lvShow: r < BIOMES.length && !!BIOMES[r].lv })); // lv: 권장 레벨 (몬스터 강함)
   const camps = [];
-  for (let a = 0; a < 40000 && camps.length < 170; a++) {
+  for (let a = 0; a < 40000 && camps.length < 300; a++) {
     const x = rng.int(6, TW - 7), y = rng.int(6, TH - 7), k = I(x, y), r = regions[k];
     if (t[k] !== T_FLOOR || !seen[k] || occupied[k] || r === R_VILLAGE || r === B.tower || nearSafe(x, y, 6) || Math.hypot(x - V.x, y - V.y) < 34) continue;
     if (camps.some((c) => Math.hypot(c.x - x, c.y - y) < 13)) continue;
@@ -520,14 +522,14 @@ export function buildOverworld(zone) {
   const open8 = (x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (!inb(xx, yy) || t[I(xx, yy)] !== T_FLOOR || occupied[I(xx, yy)]) return false; } return true; };
   const bkey = (k) => (regions[k] === R_COAST ? 'coast' : BIOMES[BI[k]]?.id);
   const taken = (x, y, d) => nodes.some((n) => Math.abs(n.x - x) + Math.abs(n.y - y) < d) || digs.some((n) => Math.abs(n.x - x) + Math.abs(n.y - y) < d) || chests.some((c) => Math.abs(c.x - x) + Math.abs(c.y - y) < 2);
-  for (let a = 0; a < 90000 && nodes.length < 380; a++) {
+  for (let a = 0; a < 90000 && nodes.length < 680; a++) {
     const x = rng.int(4, TW - 5), y = rng.int(4, TH - 5), k = I(x, y);
     if (!seen2[k] || onPath[k] || !open8(x, y) || nearSafe(x, y, 3)) continue;
     const table = BIOME_NODES[bkey(k)];
     if (!table || taken(x, y, 6)) continue;
     nodes.push({ id: nodes.length, type: pickW(table), x, y });
   }
-  for (let a = 0; a < 50000 && digs.length < 120; a++) {
+  for (let a = 0; a < 50000 && digs.length < 210; a++) {
     const x = rng.int(4, TW - 5), y = rng.int(4, TH - 5), k = I(x, y), g = gr[k];
     if (!seen2[k] || onPath[k] || !open8(x, y) || nearSafe(x, y, 3) || g === G.STONE || g === G.COBBLE || g === G.BRIDGE || g === G.STAIRS || g === G.ICE || g === G.BLACKROCK) continue;
     if (!bkey(k) || bkey(k) === 'tower' && rng.chance(0.7) || taken(x, y, 9)) continue;
