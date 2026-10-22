@@ -4022,6 +4022,7 @@ export class World {
   updateProjs() {
     const p = this.player;
     for (const pr of this.projs) {
+      if (pr.owner === 'p' && pr.type === 'mag' && !pr.fast && !pr.ghost && !pr.boomerang) { pr.fast = 1; pr.vx *= 1.6; pr.vy *= 1.6; pr.life /= 1.6; if (pr.maxLife) pr.maxLife /= 1.6; } // 마법 탄은 빠르게 (사거리는 그대로)
       if (pr.homing) {
         let best = null, bd = 160;
         for (const e of this.enemies) { if (e.dead || pr.hit.has(e.id)) continue; const dd = Math.hypot(e.x - pr.x, e.y - pr.y); if (dd < bd) { bd = dd; best = e; } }
