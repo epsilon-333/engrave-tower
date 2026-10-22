@@ -1710,7 +1710,7 @@ function endRun(kind) {
   }
   const res = applyRun(save, loot, 1, world.discovered);
   const memKey = world.zone.key ? memKeyOf(world.zone.key) : world.zone.id;
-  if (!world.tower) (save.zoneMemory ||= {})[memKey] = world.depth ? world.rootMemory || save.zoneMemory[memKey] : world.exportMemory(); // 탑의 층은 기억하지 않는다
+  if (!world.tower && !world.raid) (save.zoneMemory ||= {})[memKey] = world.depth ? world.rootMemory || save.zoneMemory[memKey] : world.exportMemory(); // 탑의 층은 기억하지 않는다
   save.codex.lore = [...new Set([...(save.codex.lore || []), ...world.loot.lores])];
   progressQuests(save, { zone: world.zone.id, kills: world.loot.kills, kept: res.kept, chests: world.loot.chests, explored: world.exploredPct() });
   refreshQuests(save);
@@ -1747,7 +1747,7 @@ function showPause() {
     <button data-close>계속하기</button>
     ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button><button id="rankBtn" class="ghost">랭킹 · N</button>' : ''}
     ${net.admin ? '<button id="adminBtn" class="ghost">운영자 · 접속한 사람</button>' : cloud.name === '운영자' && net.up ? '<p class="muted">운영자 열쇠 (서버의 ADMIN_KEY) <input id="adminKeyIn" type="password" style="width:9em"> <button id="adminKeyGo" class="sm ghost">확인</button></p>' : ''}
-    ${isTouch() ? `<div class="actions col"><button id="tMap" class="ghost">지도</button><button id="tQuest" class="ghost">퀘스트</button><button id="tGear" class="ghost">장비 · 어디서 얻나</button>${net.up ? '<button id="tChat" class="ghost">채팅</button>' : ''}</div>` : ''}
+    ${isTouch() ? `<div class="actions col"><button id="tChar" class="ghost">캐릭터 · 스킬 · 스탯</button><button id="tMap" class="ghost">지도</button><button id="tQuest" class="ghost">퀘스트</button><button id="tGear" class="ghost">장비 · 어디서 얻나</button>${net.up ? '<button id="tChat" class="ghost">채팅</button>' : ''}</div>` : ''}
     ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
     ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">결투에서는 잃는 것이 없다. 포기하면 상대의 승리가 된다.</p>' : field && !world.practice ? '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
     ${volumeHtml()}
@@ -1766,6 +1766,7 @@ function showPause() {
   const tq = document.getElementById('tQuest'); if (tq) tq.onclick = () => { close0(); showQuestLog(); };
   const tg = document.getElementById('tGear'); if (tg) tg.onclick = () => { close0(); openPanel('gear'); };
   const tc = document.getElementById('tChat'); if (tc) tc.onclick = () => { close0(); openChat(); };
+  const tch = document.getElementById('tChar'); if (tch) tch.onclick = () => { close0(); if (!world.practice) openPanel('char'); };
   if (world.practice) document.getElementById('exitPractice').onclick = () => { overlay.hidden = true; paused = false; modal = null; exitPractice(); };
   else if (field) document.getElementById('retreat').onclick = () => { overlay.hidden = true; endRun('retreat'); };
   else document.getElementById('howto').onclick = () => showTutorial();
