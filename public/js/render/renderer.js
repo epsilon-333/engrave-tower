@@ -1868,7 +1868,9 @@ export class Renderer {
     if (!img) return;
     const L = this.bladeLen(wa, P, img, gs), now = w.t, LIFE = 0.12;
     const hx = bx + p.dir * P.hx * gs, hy = by + P.hy * gs;
-    const tr = (this.trail ||= []);
+    let tr = (this.trail ||= []);
+    if (tr.length && (now < tr[tr.length - 1].t || this.trailWorld !== w)) tr = this.trail = []; // 새 세계(층 · 던전)는 시간이 0부터 — 예전 세계의 잔상이 바닥에 박혀 남지 않게
+    this.trailWorld = w;
     if (!tr.length || tr[tr.length - 1].t !== now) tr.push({ x: hx, y: hy, a: P.ang, L, t: now });
     while (tr.length > 2 && now - tr[0].t > LIFE) tr.shift();
     if (tr.length < 3) return;
@@ -1884,7 +1886,7 @@ export class Renderer {
       if (Math.abs(da) > 1.7 || Math.abs(da) < 0.004) continue;
       const n = Math.max(1, Math.ceil(Math.abs(da) / 0.1));
       for (let j = 0; j < n; j++) {
-        const q0 = j / n, q1 = (j + 1) / n, al = strength * Math.max(0, 1 - (now - (s0.t + (s1.t - s0.t) * q1)) / LIFE);
+        const q0 = j / n, q1 = (j + 1) / n, al = strength * Math.max(0, Math.min(1, 1 - (now - (s0.t + (s1.t - s0.t) * q1)) / LIFE));
         if (al <= 0) continue;
         const a0 = s0.a + da * q0, a1 = s0.a + da * q1, l0 = s0.L + (s1.L - s0.L) * q0, l1 = s0.L + (s1.L - s0.L) * q1;
         const x0 = s0.x + (s1.x - s0.x) * q0, y0 = s0.y + (s1.y - s0.y) * q0, x1 = s0.x + (s1.x - s0.x) * q1, y1 = s0.y + (s1.y - s0.y) * q1;
