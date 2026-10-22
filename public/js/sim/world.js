@@ -156,6 +156,7 @@ export class World {
       this.life = life;
     }
     this.applyPersist();
+    this.player.souls.filter((sv) => sv.up).forEach((sv, i) => { const a = i * 0.7; this.raiseSoul(sv, this.player.x + Math.cos(a) * 18, this.player.y + Math.sin(a) * 18, i); }); // 나와 있던 영혼이 따라온다
     if (this.tower) this.tower.bosses = this.enemies.filter((e) => e.champion); // 탑: 이 층의 우두머리 목록 (쓰러뜨리면 줄이 그어진다)
   }
 
@@ -1847,26 +1848,23 @@ export class World {
         break;
       }
       case 'raiseSouls': {
-        if (!p.souls.length) { // 거둔 영혼이 없으면 (결투 · 막 시작한 싸움) 떠도는 망령 둘을 대신 부른다
+        if (!p.souls.some((x) => !x.up)) { // 부를 영혼이 없으면 (결투 · 막 시작한 싸움) 떠도는 망령 둘을 대신 부른다
           for (let i = 0; i < 2; i++) p.souls.push({ defId: 'skeleton', maxHp: this.d.maxHp * 0.6, atk: ctx.atk * 0.9, r: 6, scale: 1, wisp: true });
           this.emit({ t: 'text', x: p.x, y: p.y - 30, text: '떠도는 망령을 부른다', color: '#7ae8ff' });
         }
-        const living = this.allies.filter((a) => a.kind === 'soul').length;
+        const living = p.souls.filter((x) => x.up).length;
         if (living >= 10) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '부하는 최대 10마리', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
         // 소환 목록에 넣은 영혼부터, 그다음은 강한 순 (거둔 영혼은 30개까지 모아 두고 사령술사 창에서 고른다)
-        const order = [...p.souls].sort((a, b) => (b.pick ? 1 : 0) - (a.pick ? 1 : 0) || b.maxHp - a.maxHp);
+        const order = p.souls.filter((x) => !x.up).sort((a, b) => (b.pick ? 1 : 0) - (a.pick ? 1 : 0) || b.maxHp - a.maxHp);
         const raised = order.slice(0, Math.min(op.n, 10 - living));
-        for (const sv of raised) p.souls.splice(p.souls.indexOf(sv), 1);
         raised.forEach((sv, i) => {
           const a = (i / raised.length) * Math.PI * 2 + 0.5;
           let x = p.x + Math.cos(a) * 20, y = p.y + Math.sin(a) * 20;
           if (this.blocked(x, y, 5)) { x = p.x; y = p.y; }
-          const hp = sv.maxHp * 0.5;
-          this.allies.push({ id: this.nextId++, kind: 'soul', perm: true, defId: sv.defId, hp, maxHp: hp, x, y, t: 40, max: 40,
-            atk: sv.atk * 0.5 * ctx.bonus, cd: 0.3 + i * 0.15, phase: a, dir: 1, r: sv.r, scale: sv.scale });
+          this.raiseSoul(sv, x, y, i, ctx.bonus);
           this.emit({ t: 'summonFx', x, y, kind: 'soul', big: i === 0 });
         });
-        this.emit({ t: 'text', x: p.x, y: p.y - 24, text: `영혼 ${raised.length} 소환 · 남은 영혼 ${p.souls.length}`, color: '#7ae8ff' });
+        this.emit({ t: 'text', x: p.x, y: p.y - 24, text: `영혼 ${raised.length} 소환 · 부를 수 있는 영혼 ${p.souls.filter((x) => !x.up).length}`, color: '#7ae8ff' });
         break;
       }
       case 'taunt': {
@@ -2589,6 +2587,7 @@ export class World {
       }
       if (al.tauntT > 0) al.tauntT -= DT;
       if (al.maxHp && al.hp <= 0) al.t = 0;
+      if (al.t <= 0 && al.sv) { const i = this.player.souls.indexOf(al.sv); if (i >= 0) this.player.souls.splice(i, 1); } // 쓰러진 영혼은 사라진다
       if (al.t <= 0) this.emit({ t: 'summonFx', x: al.x, y: al.y, kind: al.kind, elem: al.elem, out: true });
     }
     this.allies = this.allies.filter((a) => a.t > 0);
@@ -3510,7 +3509,7 @@ export class World {
           e.moving = tl > e.r + 8;
           if (!frozen && tl < e.r + 14 && e.atkCd <= 0) {
             e.atkCd = def.elite ? 1.3 : 1.1;
-            al.hp -= e.atk * (al.tauntT > 0 ? 0.7 : 1);
+            if (al.shield1) { al.shield1 = false; this.emit({ t: 'text', x: al.x, y: al.y - 16, text: '막음', color: '#bfe8ff' }); } else al.hp -= e.atk * (al.tauntT > 0 ? 0.7 : 1); // 되살린 영혼: 첫 한 대는 보호막
             this.emit({ t: 'allyHurt', x: al.x, y: al.y, v: e.atk });
             this.emit({ t: 'strike', x: e.x, y: e.y, ang: Math.atan2(ty, tx), r: e.r + 10, id: e.id });
           }
@@ -3804,6 +3803,13 @@ export class World {
   }
 
   addRage() { /* 오크 분노는 종족 자원(res)으로 통합 */ }
+  // 사령술사: 영혼을 되살린다 — 공격력은 그대로, 체력은 절반, 첫 한 대는 보호막. 쓰러질 때까지 남고 다른 곳에 가도 따라온다
+  raiseSoul(sv, x, y, i = 0, bonus = 1) {
+    sv.up = true;
+    const hp = sv.maxHp * 0.5;
+    this.allies.push({ id: this.nextId++, kind: 'soul', perm: true, sv, defId: sv.defId, hp, maxHp: hp, x, y, t: 1e9, max: 1e9, shield1: true,
+      atk: sv.atk * bonus, cd: 0.3 + i * 0.15, phase: i, dir: 1, r: sv.r, scale: sv.scale });
+  }
 
   // 다른 사람이 쏜 투사체 (보이기만 · 맞히지 않는다)
   addGhostProjs(l) {

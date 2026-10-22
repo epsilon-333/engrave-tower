@@ -298,22 +298,23 @@ function tradeCheck() {
 function showSouls() {
   const S = (save.souls ||= []);
   const groups = new Map();
-  S.forEach((sv, i) => { const k = sv.defId; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i); });
+  S.forEach((sv, i) => { if (sv.up) return; const k = sv.defId; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i); });
   const rows = [...groups.entries()].map(([id, idx]) => {
     const def = MONSTERS[id], picked = idx.filter((i) => S[i].pick).length, sv = S[idx[0]];
     return `<div class="soc-row ${picked ? 'on' : ''}"><span class="nm"><b>${esc(def?.name || id)}</b> <small class="muted">×${idx.length}</small></span><span class="muted">체력 ${Math.round(sv.maxHp * 0.5)} · 공격 ${Math.round(sv.atk * 0.5)} · 소환 목록 ${picked}</span>
       <span class="btns"><button class="sm ghost" data-sp="${id}" data-d="-1" ${picked ? '' : 'disabled'}>−</button><button class="sm" data-sp="${id}" data-d="1" ${picked < idx.length ? '' : 'disabled'}>목록 +</button><button class="sm ghost" data-sx="${id}">하나 버리기</button></span></div>`;
   }).join('');
-  showModal(`<div class="social" id="soulBox"><h2>거둔 영혼 <small>${S.length} / 30</small></h2>
-    <p class="muted">「영혼 소환」은 소환 목록에 넣은 영혼부터, 남으면 강한 영혼 순으로 한 번에 10마리까지 되살린다. 되살린 영혼은 목록에서 빠진다.</p>
+  const upN = S.filter((s) => s.up).length;
+  showModal(`<div class="social" id="soulBox"><h2>거둔 영혼 <small>${S.length} / 30 · 나와 있음 ${upN}/10</small></h2>
+    <p class="muted">「영혼 소환」은 소환 목록에 넣은 영혼부터, 남으면 강한 영혼 순으로 10마리까지 되살린다. 되살린 영혼은 공격력 그대로 · 체력 절반 · 첫 한 대는 막고, 쓰러질 때까지 다른 곳에도 따라온다. 영혼은 30개까지 모이고 저절로 줄지 않는다.</p>
     <div class="soc-list">${rows || '<p class="muted">아직 거둔 영혼이 없다. 쓰러뜨린 몬스터에게서 절반쯤 영혼을 거둔다.</p>'}</div>
     <div class="actions"><button id="soulAll" class="ghost">목록 비우기</button><button data-close>닫기</button></div></div>`);
   const box = document.getElementById('soulBox');
   box.onclick = (e) => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.id === 'soulAll') S.forEach((s) => delete s.pick);
-    else if (b.dataset.sp) { const list = S.filter((s) => s.defId === b.dataset.sp); if (+b.dataset.d > 0) { const f = list.find((s) => !s.pick); if (f) f.pick = true; } else { const f = list.find((s) => s.pick); if (f) delete f.pick; } }
-    else if (b.dataset.sx) { const i = S.findIndex((s) => s.defId === b.dataset.sx && !s.pick); const j = i >= 0 ? i : S.findIndex((s) => s.defId === b.dataset.sx); if (j >= 0) S.splice(j, 1); }
+    else if (b.dataset.sp) { const list = S.filter((s) => s.defId === b.dataset.sp && !s.up); if (+b.dataset.d > 0) { const f = list.find((s) => !s.pick); if (f) f.pick = true; } else { const f = list.find((s) => s.pick); if (f) delete f.pick; } }
+    else if (b.dataset.sx) { const i = S.findIndex((s) => s.defId === b.dataset.sx && !s.pick && !s.up); const j = i >= 0 ? i : S.findIndex((s) => s.defId === b.dataset.sx && !s.up); if (j >= 0) S.splice(j, 1); }
     else return;
     writeSave(save); showSouls();
   };
