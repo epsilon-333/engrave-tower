@@ -336,7 +336,7 @@ function handle(c, m) {
       break;
     }
     case 'duelHp': // 시작할 때 내 최대 체력을 상대에게
-    case 'dstate': case 'dhit': case 'dskill': { // 결투 중: 상대에게 그대로
+    case 'dstate': case 'dhit': case 'dskill': case 'dproj': { // 결투 중: 상대에게 그대로
       if (!c.duel) break;
       const o = clients.get(c.duel.opp); if (!o) break;
       send(o, { ...m, from: c.id });

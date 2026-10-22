@@ -12,7 +12,7 @@ const SECS = 30;
 
 function fight(cls, scen, seed, bal) {
   const c = CLASSES[cls];
-  const b = computeBuild({ race: c.race, cls, level: 20, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] }, skills: c.skills.slice(0, 4).concat(c.skills.filter((id) => SKILLS[id]?.ult)).slice(0, 4) });
+  const b = computeBuild({ race: c.race, cls, level: 20, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] }, spirit: { id: 'fire2', star: 1 }, skills: c.skills.slice(0, 4).concat(c.skills.filter((id) => SKILLS[id]?.ult)).slice(0, 4) });
   const w = new World({ build: b, mode: 'field', zoneId: ZONES[1].id, seed }), p = w.player;
   w.balMul = bal; // 측정 중 보정
   if (b.cls === 'necromancer') for (let i = 0; i < 10; i++) p.souls.push({ defId: 'goblin', maxHp: 300, atk: 14, r: 6, scale: 1 }); // 사령술사: 돌아다니며 모아 둔 영혼

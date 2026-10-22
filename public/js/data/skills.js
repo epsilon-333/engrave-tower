@@ -43,7 +43,7 @@ export const CLASSES = {
     skills: ['flameBurst', 'frostChain', 'lightningChain', 'elemMark', 'elemSurge', 'grandFireball'] },
   chronomancer: { race: 'wizard', name: '시공술사', desc: '시간을 늦추고, 되감고, 공간을 접는다.', trait: '느려지거나 얼어 있는 적에게 주는 피해 +20%.', weapons: ['hourglassStaff', 'aeonPendulum'], style: 'frost',
     skills: ['arcaneBarrage', 'blinkBlast', 'slowField', 'rewind', 'gravityCollapse', 'timeStop'] },
-  guardian: { race: 'knight', name: '수호기사', desc: '정면을 방패로 막고 받아친다.', trait: '정면에서 오는 피해 -25%, 정면으로 막을 때마다 오러 +4.', weapons: ['guardSword', 'bastionBlade'], style: 'mirror',
+  guardian: { race: 'knight', name: '수호기사', desc: '정면을 방패로 막고 받아친다.', trait: '정면에서 오는 피해 -25%, 정면으로 막을 때마다 오러 +4 · 받은 피해의 25%를 때린 적에게 되갚는다.', weapons: ['guardSword', 'bastionBlade'], style: 'mirror',
     skills: ['riposte', 'shieldCharge', 'provoke', 'ironWall', 'shieldBash', 'undying'] },
   greatsword: { race: 'knight', name: '대검술사', desc: '느리지만 묵직하다. 힘을 모을수록 강해진다.', trait: '「차지」 스킬은 길게 누르면 1~3단계로 힘을 모은다. 모으는 동안 받는 피해 -25%.', weapons: ['steelGreatsword', 'mountainCleaver'], style: 'giant',
     skills: ['comboSlash', 'dashSlash', 'swordWave', 'steadfast', 'crushBlow', 'skyfall'] },
@@ -148,17 +148,17 @@ export const SKILLS = {
   riposte: { name: '받아치기', role: '방어', cd: 7, scale: 'phys', fx: 'parry', mo: 'guard',
     desc: '0.8초 동안 막기 자세. 그사이 공격받으면 무효로 하고 반격, 주변 적 1.5초 기절, 오러 +30.', do: [{ op: 'parry', dur: 0.8, mul: 2.6, r: 54, gain: 30, stun: 1.5 }] },
   shieldCharge: { name: '방패 돌진', role: '이동', cd: 6, gain: 10, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'charge',
-    desc: '방패를 들고 돌진해 적을 밀쳐내고 0.6초 기절시킨다. 오러 +10.', do: [{ op: 'dash', dist: 90, mul: 1.2, knock: 220, stun: 0.6 }] },
+    desc: '방패를 들고 멀리 돌진해 길 위의 적에게 공격력 160% 피해, 밀쳐내고 0.8초 기절시킨다. 오러 +10.', do: [{ op: 'dash', dist: 125, mul: 1.6, knock: 220, stun: 0.8 }] },
   provoke: { name: '도발', role: '제어', cd: 10, cost: 10, scale: 'phys', fx: 'roar', aim: 'none', mo: 'roar',
     desc: '주변 적이 6초 동안 나만 노린다. 원거리 적도 거리를 두지 않고 다가온다. 오러 10.', do: [{ op: 'provoke', r: 130, dur: 6 }] },
   ironWall: { name: '철벽', role: '방어', cd: 14, cost: 15, scale: 'phys', fx: 'bubble', mo: 'guard',
-    desc: '4초 동안 정면 피해를 완전히 막고, 그동안 오러를 2배로 얻는다. 오러 15.',
+    desc: '4초 동안 정면 피해를 완전히 막고, 막은 피해의 80%를 때린 적에게 되돌려 준다. 그동안 오러를 2배로 얻는다. 오러 15.',
     do: [{ op: 'buff', id: 'ironWall', dur: 4, mods: {}, color: '#a8c8ff', bubble: true }] },
-  shieldBash: { name: '방패 강타', role: '마무리', cd: 8, cost: 35, scale: 'phys', fx: 'smash', aim: 'tank', mo: 'bash',
-    desc: '오러를 실어 방패로 내리친다. 큰 피해와 1.5초 기절, 강하게 밀쳐낸다. 오러 35.', do: [{ op: 'single', range: 50, mul: 3.0, stun: 1.5, knock: 260 }] },
+  shieldBash: { name: '방패 강타', role: '마무리', cd: 8, cost: 30, scale: 'phys', fx: 'smash', aim: 'tank', mo: 'bash',
+    desc: '오러를 실어 방패로 내리친다. 공격력 360% 피해와 1.5초 기절, 강하게 밀쳐낸다. 오러 30.', do: [{ op: 'single', range: 50, mul: 3.6, stun: 1.5, knock: 260 }] },
   undying: { name: '불굴', role: '궁극', cd: 40, costAll: { min: 50 }, scale: 'phys', fx: 'buff', ult: true, mo: 'power',
     desc: '8초 동안 체력이 1 아래로 떨어지지 않고, 받는 피해 -30%. 받은 피해만큼 오러가 차오르고 주변에 충격파.',
-    do: [{ op: 'aoe', at: 'self', r: 90, mul: 1.5, scaleRes: true, knock: 200, fx: 'holy' }, { op: 'buff', id: 'undying', dur: 8, mods: { dmgTakenMul: 0.7 }, color: '#ffd84a', bubble: true }] },
+    do: [{ op: 'aoe', at: 'self', r: 90, mul: 2.2, scaleRes: true, knock: 200, fx: 'holy' }, { op: 'buff', id: 'undying', dur: 8, mods: { dmgTakenMul: 0.7 }, color: '#ffd84a', bubble: true }] },
 
   // ══════ 기사 · 대검술사 (차지) ══════
   sweep: { name: '횡베기', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'sweep', mo: 'sweep', charge: true,
@@ -254,10 +254,10 @@ export const SKILLS = {
   weakMark: { name: '약점 표식', role: '준비', cd: 7, gain: 10, scale: 'phys', fx: 'rune', aim: 'fresh', mo: 'point',
     desc: '적의 약점을 드러낸다. 8초 동안 받는 피해 +35%. 그림자 +10.', do: [{ op: 'single', range: 180, mul: 0.2, weak: 8 }] },
   ambush: { name: '급습', role: '연타', cd: 6, gain: 10, scale: 'phys', fx: 'dash', mo: 'stab',
-    desc: '나와 싸우고 있는 적 가운데 가장 멀리 있는 적에게 파고들어 3번 찌른다. 등 뒤에서 치면 1.5배, 출혈. 그림자 +10.',
-    do: [{ op: 'dash', dist: 240, mul: 0.6, toward: 'farthestEngaged' }, { op: 'channel', dur: 0.36, every: 0.12, sub: { op: 'single', range: 40, mul: 0.8, backstab: true, status: 'bleed', stacks: 1, fx: 'stab' } }] },
+    desc: '겨눈 적(없으면 가장 가까운 적)의 등 뒤로 순식간에 옮겨 가 3번 찌른다. 등 뒤에서 치니 1.5배, 출혈. 그림자 +10.',
+    do: [{ op: 'behind', range: 220 }, { op: 'channel', dur: 0.36, every: 0.12, sub: { op: 'single', range: 40, mul: 0.8, backstab: true, status: 'bleed', stacks: 1, fx: 'stab' } }] },
   stealth: { name: '은신', role: '방어', cd: 14, cost: 20, scale: 'phys', fx: 'smoke', aim: 'none', mo: 'crouch',
-    desc: '3초 동안 모습을 감춘다. 적이 나를 놓치고, 은신 중 첫 공격은 3배. 공격하면 풀린다. 그림자 20.', do: [{ op: 'stealth', dur: 3 }] },
+    desc: '6초 동안 모습을 감춘다. 적이 나를 놓치고, 은신 중 첫 공격은 2배. 공격하면 풀린다. 그림자 20.', do: [{ op: 'stealth', dur: 6 }] },
   shadowEvade: { name: '그림자 회피', role: '방어', cd: 9, gain: 25, scale: 'phys', fx: 'blink', aim: 'away', mo: 'dash',
     desc: '적이 없는 쪽으로 물러나며 0.8초 무적. 그림자 +25.', do: [{ op: 'dash', dist: 80, mul: 0, invuln: 0.8 }] },
   shadowDance: { name: '그림자 춤', role: '궁극', cd: 24, costAll: { min: 50 }, scale: 'phys', fx: 'slashX', ult: true, aim: 'none', mo: 'stab',
@@ -280,17 +280,17 @@ export const SKILLS = {
     desc: '독이 쌓인 모든 적의 독을 한꺼번에 터뜨린다. 중첩과 그림자가 많을수록 크다.', do: [{ op: 'detonate', what: 'poison', mul: 1.1, r: 46, scaleRes: true }] },
 
   // ══════ 엘프 · 정령사 (깃드는 정령) ══════
-  summonSpirit: { name: '정령 부르기', role: '소환', cd: 18, cost: 25, scale: 'best', fx: 'spiritIn', aim: 'none', mo: 'castBig',
-    desc: '계약한 정령 가운데 함께하는 정령을 불러낸다(20초). 나와 있는 동안 정령의 버프가 붙고, 정령이 가까운 적을 그 속성으로 공격한다. 다시 쓰면 시간이 처음부터. 정령력 25.', do: [{ op: 'summonSpirit', dur: 20 }] },
+  summonSpirit: { name: '정령 부르기', role: '소환', cd: 12, cost: 15, scale: 'best', fx: 'spiritIn', aim: 'none', mo: 'castBig',
+    desc: '계약한 정령 가운데 함께하는 정령을 불러낸다(30초). 나와 있는 동안 정령의 버프가 붙고, 정령이 가까운 적을 그 속성으로 공격한다. 다시 쓰면 시간이 처음부터. 정령력 15.', do: [{ op: 'summonSpirit', dur: 30 }] },
   spiritEmpower: { name: '정령 강화', role: '강화', cd: 16, cost: 20, scale: 'best', fx: 'spiritIn', aim: 'none', mo: 'castBig',
     desc: '함께하는 정령이 8초 동안 강해진다: 공격이 2배 빠르고 피해 +60%, 버프 1.5배. 정령이 나와 있지 않으면 강해진 채로 불러낸다(20초). 정령력 20.', do: [{ op: 'spiritEmpower', dur: 8 }] },
   spiritGuard: { name: '정령의 품', role: '방어', cd: 14, cost: 20, scale: 'best', fx: 'spiritIn', aim: 'none', mo: 'castBig',
     desc: '함께하는 정령이 나를 감싸 4초 동안 받는 피해 -40%, 다가온 적을 밀쳐낸다. 정령이 나와 있지 않으면 불러낸다(20초). 정령력 20.', do: [{ op: 'spiritGuard', dur: 4 }] },
   spiritAbsorb: { name: '정령 흡수', role: '준비', cd: 7, scale: 'best', fx: 'absorb', mo: 'channel',
-    desc: '1.2초 동안 주변 적의 생기를 빨아들인다. 맞힌 적 하나마다 정령력 +3.',
-    do: [{ op: 'channel', dur: 1.2, every: 0.3, sub: { op: 'aoe', at: 'self', r: 80, mul: 0.35, gainPerHit: 3, fx: 'absorb' } }] },
-  spiritArrow: { name: '정령의 화살', role: '공격', cd: 4, cost: 15, scale: 'best', fx: 'bolt', mo: 'shoot',
-    desc: '정령의 힘으로 관통하는 큰 화살을 쏜다. 정령이 나와 있으면 그 정령의 속성이 붙고 피해 +50% (등급 · 결속이 높을수록 더). 정령력 15.', do: [{ op: 'spiritArrow', speed: 340, range: 260, mul: 1.4, per: 0.45 }] },
+    desc: '1.2초 동안 주변 적의 생기를 빨아들인다 (0.3초마다 공격력 45%). 맞힌 적 하나마다 정령력 +4.',
+    do: [{ op: 'channel', dur: 1.2, every: 0.3, sub: { op: 'aoe', at: 'self', r: 80, mul: 0.45, gainPerHit: 4, fx: 'absorb' } }] },
+  spiritArrow: { name: '정령의 화살', role: '공격', cd: 3.5, cost: 15, scale: 'best', fx: 'bolt', mo: 'shoot',
+    desc: '정령의 힘으로 관통하는 큰 화살을 쏜다. 정령이 나와 있으면 그 정령의 속성이 붙고 피해 +50% (등급 · 결속이 높을수록 더). 정령력 15.', do: [{ op: 'spiritArrow', speed: 340, range: 260, mul: 1.7, per: 0.45 }] },
   spiritKing: { name: '정령왕 강림', role: '궁극', cd: 36, costAll: { min: 60 }, scale: 'best', fx: 'summon', ult: true, mo: 'castBig',
     desc: '15초 동안 정령왕이 나타나 주먹으로 싸운다. 함께하는 정령이 불 · 바람 · 숲이면 그 왕이, 아니면 불→바람→숲 차례로 온다. 바람은 멀리 날려 버리고, 불은 화염으로 태우고, 숲은 덩굴로 묶는다. 정령력이 많을수록 강하다.',
     do: [{ op: 'kingDescend', dur: 15, mul: 1.1, scaleRes: true }] },
@@ -424,7 +424,7 @@ for (const sk of Object.values(SKILLS)) if (sk.general) sk.race = 'general';
 // ── 스킬 밸런스 보정 (tools/balance.mjs: 단단한 적 3마리에게 6초 동안 넣은 피해 ÷ 재사용 대기, 중간값에서 많이 벗어난 것만) ──
 export const SKILL_BAL = {}; // 스킬 하나씩은 보정하지 않는다 (한 번의 피해로는 알 수 없다) — 클래스 단위 CLASS_BAL로
 // ── 클래스 밸런스 보정 (tools/balance.mjs: 30초 실제 싸움 · 무리 / 단단한 적) ──
-export const CLASS_BAL = {"predator": 1, "behemoth": 0.92, "elementalist": 1.07, "chronomancer": 0.9, "guardian": 1.6, "greatsword": 1.6, "berserker": 0.8, "thrower": 1.08, "necromancer": 0.71, "hexer": 0.96, "shadowblade": 0.97, "venomHunter": 1.6, "spiritcaller": 1.6, "ranger": 1.04, "dragoon": 0.68, "dragonSage": 1.09};
+export const CLASS_BAL = {"predator": 1, "behemoth": 0.92, "elementalist": 1.07, "chronomancer": 0.9, "guardian": 1.6, "greatsword": 1.6, "berserker": 0.8, "thrower": 1.08, "necromancer": 0.71, "hexer": 0.96, "shadowblade": 0.97, "venomHunter": 1.6, "spiritcaller": 1.5, "ranger": 1.04, "dragoon": 0.68, "dragonSage": 1.09};
 
 // ── 돈 · 미션으로 얻는 CC기 (누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다) ──
 export const CC_EXTRA = {

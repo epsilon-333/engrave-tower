@@ -490,6 +490,9 @@ export class World {
     this.updateExplore();
     this.updateOutdoor();
     this.enemies = this.enemies.filter((e) => !e.dead);
+    if (this.pvp || this.coop) { // 결투 · 파티: 내가 쏜 투사체를 상대 화면에도 (보이기만)
+      for (const pr of this.projs) if (pr.owner === 'p' && !pr.ghost && !pr.sent) { pr.sent = 1; (this.projOut ||= []).push([Math.round(pr.x), Math.round(pr.y), Math.round(pr.vx), Math.round(pr.vy), Math.round(Math.min(pr.life, 3) * 100) / 100, pr.color || '', pr.kind || '', pr.big ? 1 : 0]); }
+    }
     if (this.mode === 'field' && Math.floor(this.t * 60) % 6 === 0) this.reveal();
   }
 
@@ -1615,6 +1618,18 @@ export class World {
         if (op.fireTrail) for (let i = 1; i <= 4; i++) this.zones.push({ kind: 'fire', x: x1 + (x2 - x1) * i / 4, y: y1 + (y2 - y1) * i / 4, r: 18, t: 3, tick: 0, atk: ctx.atk });
         break;
       }
+      case 'behind': { // 적의 등 뒤로 옮겨 간다 (등이 막혀 있으면 옆 · 앞)
+        const t = ctx.target && !ctx.target.dead ? ctx.target : this.nearestEnemy(op.range, false);
+        if (!t || Math.hypot(t.x - p.x, t.y - p.y) > op.range) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '닿는 적이 없다', color: '#a8b0c0' }); break; }
+        const x1 = p.x, y1 = p.y, fd = t.dir || (p.x < t.x ? 1 : -1), gap = t.r + p.r + 4;
+        const spots = [[-fd * gap, 0], [0, gap], [0, -gap], [fd * gap, 0]];
+        const sp = spots.find(([ox, oy]) => !this.blocked(t.x + ox, t.y + oy, 5)) || [0, 0];
+        p.x = t.x + sp[0]; p.y = t.y + sp[1]; this.faceTo(t.x, t.y);
+        p.invuln = Math.max(p.invuln, 0.25);
+        this.emit({ t: 'blink', x1, y1, x2: p.x, y2: p.y });
+        ctx.target = t;
+        break;
+      }
       case 'teleport': {
         const x1 = p.x, y1 = p.y;
         let dist = op.dist;
@@ -2125,7 +2140,7 @@ export class World {
     for (const e of this.enemies) { if (e.dead || e.hidden || e.def.ai === 'dummy' && !this.practice && this.mode !== 'plaza') continue; const d2 = Math.hypot(e.x - p.x, e.y - p.y); if (d2 < td) { td = d2; tgt = e; } }
     if (!tgt) { f.cd = 0.2; return; }
     f.cd = 1.15 - 0.08 * f.grade;
-    const elem = SPIRIT_DMG_ELEM[f.elem], dmg = this.skillAtk('best') * 0.42 * E.atk * spiritPower(f.id, f.star, f.lv) * (f.emp > 0 ? 1.6 : 1);
+    const elem = SPIRIT_DMG_ELEM[f.elem], dmg = this.skillAtk('best') * 0.6 * E.atk * spiritPower(f.id, f.star, f.lv) * (f.emp > 0 ? 1.6 : 1);
     const ax = tgt.x - f.x, ay = tgt.y - 8 - f.y, al = Math.hypot(ax, ay) || 1, spd = 230;
     this.projs.push({ owner: 'p', x: f.x, y: f.y, vx: (ax / al) * spd, vy: (ay / al) * spd, life: 1.1, dmg: 0, type: 'mag', pierce: E.pierce ? 2 : 0, hit: new Set(), splash: 0,
       color: col, kind: 'skill', skind: 'spiritBolt', elem, big: false, rot: Math.atan2(ay, ax), homing: true,
@@ -2677,7 +2692,7 @@ export class World {
     this.aggro(e);
     let charge = 1;
     if (p.buffs.charged && !opt.skill) { charge = p.buffs.charged.power || 2.5; p.buffs.charged.t = Math.min(p.buffs.charged.t, 0.05); heavy = true; }
-    if (p.stealthStrike) { charge *= 3; heavy = true; p.stealthStrike = false; this.emit({ t: 'text', x: e.x, y: e.y - 22, text: '기습!', color: '#b89aff' }); }
+    if (p.stealthStrike) { charge *= 2; heavy = true; p.stealthStrike = false; this.emit({ t: 'text', x: e.x, y: e.y - 22, text: '기습!', color: '#b89aff' }); }
     let extra = 0;
     if (p.stored > 0) { extra = p.stored * 3; p.stored = 0; heavy = true; this.emit({ t: 'text', x: e.x, y: e.y - 24, text: '버틴 힘!', color: '#ffe080' }); }
     const bleeding = !!e.st.bleed;
@@ -3077,6 +3092,7 @@ export class World {
       front = (vx * p.aimX + vy * p.aimY) / l > 0.25;
       if (front && p.buffs.ironWall && p.parryT <= 0) {
         this.addRes(8);
+        if (attacker && !attacker.dead) this.damageEnemy(attacker, amount * 0.8, 'phys', { src: 'reflect', color: '#a8c8ff' }); // 철벽: 막은 피해를 되돌린다
         this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8 });
         p.invuln = 0.2;
         return;
@@ -3112,7 +3128,7 @@ export class World {
     let dmg = amount * (1 - dr) * d.dmgTakenMul * this.mod('dmgTakenMul');
     if (this.b.race === 'knight') dmg *= 0.9;
     if (this.f.has('resGuard') && p.res >= 50) dmg *= 0.9;
-    if (front) { dmg *= 0.75; this.addRes(4); this.knack('block'); this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
+    if (front) { dmg *= 0.75; this.addRes(4); this.knack('block'); if (attacker && !attacker.dead) this.damageEnemy(attacker, raw * 0.25, 'phys', { src: 'reflect', color: '#a8c8ff' }); /* 수호기사: 정면으로 막으면 25%를 되갚는다 */ this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
     else if (this.b.weapon.guard && fx != null && !opt.direct) { // 방패를 든 무기: 앞에서 오는 피해를 줄인다
       const vx = fx - p.x, vy = fy - p.y, l = Math.hypot(vx, vy) || 1;
       if ((vx * p.aimX + vy * p.aimY) / l > 0.25) { dmg *= 1 - this.b.weapon.guard; this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
@@ -3741,6 +3757,10 @@ export class World {
 
   addRage() { /* 오크 분노는 종족 자원(res)으로 통합 */ }
 
+  // 다른 사람이 쏜 투사체 (보이기만 · 맞히지 않는다)
+  addGhostProjs(l) {
+    for (const [x, y, vx, vy, life, color, kind, big] of l || []) this.projs.push({ owner: 'p', ghost: true, x, y, vx, vy, life, maxLife: life, color: color || '#ffffff', kind: kind || undefined, big: !!big, hit: new Set(), pierce: 0, dmg: 0 });
+  }
   // ───────────── 파티 탑 ─────────────
   // 방장: 적이 노릴 수 있는 사람 (나 + 같은 층의 동료, 쓰러진 사람은 빼고)
   coTargets() {
@@ -3993,7 +4013,7 @@ export class World {
         pr.life = 0;
       }
       if (pr.life <= 0) continue;
-      if (pr.owner === 'p') {
+      if (pr.owner === 'p' && !pr.ghost) {
         for (const e of this.enemies) {
           if (e.dead || e.hidden || pr.hit.has(e.id)) continue;
           if (Math.hypot(e.x - pr.x, e.y - 4 - pr.y) > e.r + 5) continue; // 몸 가운데 (발밑보다 조금 위) 기준

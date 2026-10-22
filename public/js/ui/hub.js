@@ -18,6 +18,7 @@ import { sfx } from '../audio.js';
 import { SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS } from '../data/skills.js';
 import { getAutoAim, setAutoAim } from '../settings.js';
 import { bagTab, tradeTab, forgeTab, lifeClick, fishCodex, artifactCodex } from './life.js';
+import { whereTab } from './where.js';
 import { storageTab, cookTab, craftTab, learnTab, skillPickHtml, homeClick } from './home.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -47,7 +48,7 @@ export class Hub {
     const s = this.s, b = computeBuild(toLoadout(s));
     this.b = b;
     // 그 집(시설)에서 연 창이면 그 시설의 탭 + 언제나 쓸 수 있는 탭(캐릭터 · 가방 · 도감)만 보인다
-    const tabs = [['char', '캐릭터'], ['gear', '장비'], ['altar', '공명 제단'], ['shop', '대장간'], ['forge', '제작'], ['craft', '무기 만들기'], ['trade', '잡화점'], ['learn', '기술 배우기'], ['cook', '부엌'], ['storage', '보관함'], ['quest', '의뢰'], ['hunt', '관문 정보'], ['bag', '가방'], ['codex', '도감']]
+    const tabs = [['char', '캐릭터'], ['gear', '장비'], ['where', '어디서 얻나'], ['altar', '공명 제단'], ['shop', '대장간'], ['forge', '제작'], ['craft', '무기 만들기'], ['trade', '잡화점'], ['learn', '기술 배우기'], ['cook', '부엌'], ['storage', '보관함'], ['quest', '의뢰'], ['hunt', '관문 정보'], ['bag', '가방'], ['codex', '도감']]
       .filter(([k]) => !this.allowed || this.allowed.includes(k));
     if (!tabs.some(([k]) => k === this.tab)) this.tab = tabs[0][0];
     this.root.innerHTML = `
@@ -62,6 +63,7 @@ export class Hub {
   }
 
   tab_bag(s) { return bagTab(s); }
+  tab_where(s) { return whereTab(s, this.whereQ || ''); }
   tab_storage(s) { return storageTab(s); }
   tab_cook(s) { return cookTab(s, this); }
   tab_craft(s) { return craftTab(s, this); }
@@ -461,6 +463,7 @@ export class Hub {
     const t = ev.target.closest('[data-tab],[data-act]');
     if (!t) return;
     const s = this.s;
+    if (t.dataset.act === 'whereGo') { this.whereQ = this.root.querySelector('#whereQ')?.value || ''; return this.render(); }
     if (t.dataset.tab) {
       sfx('select', { vol: 0.4 });
       this.tab = t.dataset.tab;

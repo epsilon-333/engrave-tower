@@ -134,6 +134,7 @@ const duelFoe = () => (world?.pvp ? world.enemies.find((x) => x.remote) : null);
 onNet('duelHp', (m) => { const e = duelFoe(); if (e) { e.maxHp = m.maxHp; e.hp = Math.min(e.hp, m.maxHp); } });
 onNet('dstate', (m) => { const e = duelFoe(); if (e) { e.tx = m.x; e.ty = m.y; e.dir = m.dir; e.hp = m.hp; e.maxHp = m.maxHp; } });
 onNet('dhit', (m) => { if (world?.pvp && duel) world.pvpHit(m); });
+onNet('dproj', (m) => { if (world?.pvp && duel) world.addGhostProjs(m.l); });
 onNet('dskill', (m) => { const e = duelFoe(); if (e && SKILLS[m.id]) world.emit({ t: 'text', x: e.x, y: e.y - 30, text: SKILLS[m.id].name, color: '#ffb0a0' }); });
 onNet('dend', (m) => { if (duel) duelOver(m.reason === 'draw' ? null : m.loser !== net.id, m.reason); });
 onNet('down', () => { if (duel) duelOver(false, 'net'); });
@@ -158,6 +159,7 @@ function duelTick(dt) {
   duel.sendT -= dt;
   if (duel.sendT <= 0) { duel.sendT = 0.066; netSend({ t: 'dstate', x: Math.round(p.x), y: Math.round(p.y), dir: p.dir, hp: Math.max(0, Math.round(p.hp)), maxHp: world.d.maxHp }); }
   for (const o of world.pvp.out.splice(0)) netSend(o);
+  if (world.projOut?.length) netSend({ t: 'dproj', l: world.projOut.splice(0) }); // 내 투사체를 상대 화면에도
   // 시간 제한: 끝나면 남은 체력 비율이 낮은 쪽이 진다 (진 쪽이 알린다 · 상대가 말이 없으면 이긴 쪽이 알린다)
   if (p.ccT > 0 && duel.t === 0) return; // 시작 전 3초는 세지 않는다
   duel.t += dt; world.pvp.left = Math.max(0, DUEL_TIME - duel.t);
@@ -476,6 +478,7 @@ onNet('co', (m) => {
       if (!world.coop || !coRun) break;
       for (const x of m.l || []) { if (x.k === 'hurt') world.coHurt(x); else world.coRecv(x, m.from); } // 누구든: 맞았다 · 내가 맡은 몬스터에 들어온 공격
       break;
+    case 'pj': if (coRun && coF() === m.f && world.coop) world.addGhostProjs(m.l); break;
     case 'own': if (coRun?.role === 'member' && m.from === coRun.host && coF() === m.f && world.coop) { world.coSetOwners(m.l || [], net.id); coRun.lastSnap = performance.now(); } break; // 내가 맡을 몬스터
     case 'sync': if (world.coop) world.coop.known.clear(); break; // 늦게 온 동료: 적의 종류부터 다시
     case 'next': if (coRun?.role === 'host') document.getElementById('twNext')?.click(); break; // 동료가 다음 층으로 가자고 했다
@@ -517,6 +520,7 @@ function coTick(dt) {
   }
   if ((coRun.knownT -= dt) <= 0 || coRun.knownT == null) { coRun.knownT = 3; w.coop.known.clear(); } // 늦게 온 동료도 몬스터 종류를 알게
   if ((coRun.snapT -= dt) <= 0) { coRun.snapT = 0.1; const s = w.coSnap(); if (mates.size && (s.e.length || s.dead.length || s.ev.length)) netSend({ t: 'co', f: F, ...s }); }
+  if (w.projOut?.length) netSend({ t: 'co', k: 'pj', f: F, l: w.projOut.splice(0) }); // 내 투사체를 동료 화면에도
   const by = new Map();
   for (const o of w.coFlush()) { const to = o.to || coRun.host; if (!by.has(to)) by.set(to, []); by.get(to).push(o); }
   for (const [to, l] of by) netSend({ t: 'co', to, k: 'b', l });
@@ -1552,7 +1556,7 @@ function showTutorial() {
 
 // ───── 패널 (마을 시설) ─────
 // 그 시설(집)에서 열면 그 시설의 탭까지, 키로 열면 캐릭터 · 가방 · 도감만
-const ALWAYS_TABS = ['char', 'gear', 'bag', 'codex'];
+const ALWAYS_TABS = ['char', 'gear', 'where', 'bag', 'codex'];
 const STATION_TABS = { altar: ['altar'], shop: ['shop', 'forge', 'craft'], forge: ['forge', 'shop', 'craft'], codex: ['codex', 'learn'], char: ['char', 'learn'], quest: ['quest'], trade: ['trade'], hunt: ['hunt'], cook: ['cook', 'storage'], storage: ['storage', 'cook'], craft: ['craft', 'storage'] };
 function openPanel(tab, fromStation = false) {
   touch?.reset();
