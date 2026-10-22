@@ -3828,8 +3828,10 @@ export class World {
   }
   // ───────────── 파티 탑 ─────────────
   // 방장: 적이 노릴 수 있는 사람 (나 + 같은 층의 동료, 쓰러진 사람은 빼고)
-  coTargets() { // 적이 노릴 수 있는 것: 나 · 같은 층 동료 · 체력이 있는 소환체 (사령술사의 영혼 · 해골 · 리치 등)
+  coTargets() { // 적이 노릴 수 있는 것: 나 · 같은 층 동료 · 체력이 있는 소환체 (사령술사의 영혼 · 해골 · 리치 등) — 한 틱에 한 번만 모은다
+    if (this._tgT === this.t && this._tgL) return this._tgL;
     const P = this.player, out = P.down ? [] : [P];
+    this._tgT = this.t; this._tgL = out;
     if (this.coop) for (const m of this.coop.mates.values()) if (!m.dead) out.push(m);
     for (const a of this.allies) if (a.maxHp > 0 && a.hp > 0 && a.t > 0) { a.r ||= 6; out.push(a); }
     return out;

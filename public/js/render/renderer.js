@@ -3252,6 +3252,28 @@ export class Renderer {
     }
   }
 
+  // 도트 판에 매 프레임 새로 그리면 무거운 장식물(집 · 상징물 · 마을 물건)은 따로 그려 두고 초당 6번만 고친다
+  drawPropCached(w, pr) {
+    const night = (this.nightK || 0) > 0.42, q = Math.floor(w.t * 6), cache = (this.propCache ||= new Map());
+    const PX = pr.big ? 140 : 48, PT = pr.big ? 280 : 96, PB = pr.big ? 48 : 24, x0 = pr.x * TILE - PX, y0 = pr.y * TILE - PT;
+    let c = cache.get(pr);
+    if (c) { cache.delete(pr); cache.set(pr, c); }
+    else {
+      const cv = document.createElement('canvas'); cv.width = pr.w * TILE + PX * 2; cv.height = pr.h * TILE + PT + PB;
+      const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
+      c = { cv, ctx, px: new PixelCtx(ctx), q: -1, night: null };
+      cache.set(pr, c);
+      if (cache.size > 64) cache.delete(cache.keys().next().value);
+    }
+    if (c.q !== q || c.night !== night || pr.shakeT > 0) {
+      c.ctx.setTransform(1, 0, 0, 1, 0, 0); c.ctx.clearRect(0, 0, c.cv.width, c.cv.height);
+      c.px.setTransform(1, 0, 0, 1, -x0, -y0);
+      drawOutdoorProp(c.px, pr, w.t, night, w.burntTrees);
+      c.q = q; c.night = night;
+    }
+    this.g.drawImage(c.cv, x0, y0);
+  }
+
   drawProp(w, pr) {
     const g = this.g, x = pr.x * TILE, y = pr.y * TILE;
     if (w.map.indoor) {
@@ -3265,7 +3287,8 @@ export class Renderer {
         const [l, top, rr] = LANDMARK_BOX[pr.kind], bx = x + pr.w * 8, by2 = y + pr.h * TILE;
         if (p.y < by2 - 2 && p.y > by2 + top + 20 && p.x > bx + l && p.x < bx + rr) g.globalAlpha = 0.5;
       }
-      drawOutdoorProp(g, pr, w.t, (this.nightK || 0) > 0.42, w.burntTrees);
+      if (pr.kind === 'tree' && !pr.big) drawOutdoorProp(g, pr, w.t, (this.nightK || 0) > 0.42, w.burntTrees);
+      else this.drawPropCached(w, pr); // 마을 · 상징물: 미리 그린 그림을 쓴다 (초당 6번만 다시 그린다)
       g.globalAlpha = 1;
       if (pr.smokeAt && Math.random() < (pr.smokeAt.heavy ? 0.22 : 0.06)) this.parts.push({ x: pr.smokeAt.x + (Math.random() - 0.5) * 4, y: pr.smokeAt.y, vx: 6 + Math.random() * 6, vy: -14 - Math.random() * 8, t: 2.2, max: 2.2, color: pr.smokeAt.heavy ? '#5a5458' : '#a8a4a8', g: -2, big: true }); // 굴뚝 연기
       return;
@@ -3418,11 +3441,19 @@ export class Renderer {
     lg.globalCompositeOperation = 'lighter';
     const L = Math.min(1, dk * 1.25); // 불빛이 얼마나 두드러지는지 (낮엔 0)
     const inView = (x, y, rr) => x > cx - rr && x < cx + VW + rr && y > cy - rr && y < cy + VH + rr;
-    const light = (x, y, rr, col, a = 1) => {
+    const LC = (this.lightCache ||= new Map());
+    const light = (x, y, rr, col, a = 1) => { // 불빛: 크기 · 색 · 세기마다 한 번 그려 둔 도트 빛을 찍는다 (매번 그라데이션을 새로 칠하지 않게)
       if (!inView(x, y, rr) || a <= 0.01) return;
-      const gr = lg.createRadialGradient(x - cx, y - cy, 0, x - cx, y - cy, rr);
-      gr.addColorStop(0, hexA(col, a)); gr.addColorStop(0.45, hexA(col, a * 0.55)); gr.addColorStop(1, hexA(col, 0));
-      lg.fillStyle = gr; lg.fillRect(x - cx - rr, y - cy - rr, rr * 2, rr * 2);
+      const R = Math.max(4, Math.round(rr / 2) * 2), A = Math.round(a * 16) / 16, key = R + col + A;
+      let img = LC.get(key);
+      if (!img) {
+        const cv = document.createElement('canvas'); cv.width = cv.height = R * 2;
+        const px = new PixelCtx(cv.getContext('2d')), gr = px.createRadialGradient(R, R, 0, R, R, R);
+        gr.addColorStop(0, hexA(col, A)); gr.addColorStop(0.45, hexA(col, A * 0.55)); gr.addColorStop(1, hexA(col, 0));
+        px.fillStyle = gr; px.fillRect(0, 0, R * 2, R * 2);
+        img = cv; LC.set(key, img); if (LC.size > 300) LC.delete(LC.keys().next().value);
+      }
+      lg.drawImage(img, Math.round(x - cx - R), Math.round(y - cy - R));
     };
     const fl = (k) => 1 + Math.sin(t * 9 + k) * 0.05 + Math.sin(t * 23 + k * 3) * 0.03;
     if (L > 0) {
