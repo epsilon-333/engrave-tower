@@ -87,7 +87,8 @@ onNet('chat', (m) => {
 });
 function onlineBadge() {
   chatEl.hidden = !net.up || gameEl.hidden;
-  if (!chatEl.hidden) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 탑 · 같은 층 동료 ${net.players.size}명 · Enter 채팅 (/p 파티)` : world?.zone?.id === 'world' ? `온라인 · 근처 ${net.players.size}명 · Enter 채팅 · O 파티 · 길드` : '온라인 · 바깥 세계에서만 서로 보인다 · O 파티 · 길드';
+  if (!chatEl.hidden && isTouch()) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 · 동료 ${net.players.size}명` : `온라인 · 근처 ${net.players.size}명`; // 모바일: 키 안내는 빼고 짧게
+  else if (!chatEl.hidden) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 탑 · 같은 층 동료 ${net.players.size}명 · Enter 채팅 (/p 파티)` : world?.zone?.id === 'world' ? `온라인 · 근처 ${net.players.size}명 · Enter 채팅 · O 파티 · 길드` : '온라인 · 바깥 세계에서만 서로 보인다 · O 파티 · 길드';
 }
 let lastPP = null;
 function onlineTick(dt) {
@@ -1706,6 +1707,7 @@ function showPause() {
   showModal(`<h2>일시정지</h2>
     <button data-close>계속하기</button>
     ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button>' : ''}
+    ${isTouch() ? `<div class="actions col"><button id="tMap" class="ghost">지도</button><button id="tQuest" class="ghost">퀘스트</button><button id="tGear" class="ghost">장비 · 어디서 얻나</button>${net.up ? '<button id="tChat" class="ghost">채팅</button>' : ''}</div>` : ''}
     ${world.b?.cls === 'necromancer' ? `<button id="soulsBtn" class="ghost">거둔 영혼 (${(save.souls || []).length}/30) · U</button>` : ''}
     ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
     ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">결투에서는 잃는 것이 없다. 포기하면 상대의 승리가 된다.</p>' : field && !world.practice ? '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
@@ -1717,6 +1719,11 @@ function showPause() {
   if (li) li.onclick = () => { overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
   document.getElementById('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
   const sb = document.getElementById('socialBtn'); if (sb) sb.onclick = () => showSocial();
+  const close0 = () => { overlay.hidden = true; paused = false; modal = null; };
+  const tm = document.getElementById('tMap'); if (tm) tm.onclick = () => { close0(); if (world.map?.outdoor) renderer.bigMap = !renderer.bigMap; };
+  const tq = document.getElementById('tQuest'); if (tq) tq.onclick = () => { close0(); showQuestLog(); };
+  const tg = document.getElementById('tGear'); if (tg) tg.onclick = () => { close0(); openPanel('gear'); };
+  const tc = document.getElementById('tChat'); if (tc) tc.onclick = () => { close0(); openChat(); };
   const ub = document.getElementById('soulsBtn'); if (ub) ub.onclick = () => showSouls();
   if (world.practice) document.getElementById('exitPractice').onclick = () => { overlay.hidden = true; paused = false; modal = null; exitPractice(); };
   else if (field) document.getElementById('retreat').onclick = () => { overlay.hidden = true; endRun('retreat'); };

@@ -486,3 +486,23 @@ b.dim { color: #e8c890; }
 @media (max-width: 700px) { .trade-cols { grid-template-columns: 1fr; } }
 .mat em { font-style: normal; color: var(--text); margin: 0 2px 0 3px; }
 .potslot small { display: block; font-size: 10px; line-height: 1.1; }
+/* 모바일 세로: 스킬 버튼을 오른쪽 조이스틱 둘레에 부채꼴로 (왼쪽 이동 패드와 겹치지 않게) · 채팅은 위로 */
+@media (pointer: coarse) and (orientation: portrait), (max-width: 520px) and (orientation: portrait) {
+  body.touch #touch .stick { width: 120px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+  body.touch #touch .tb { width: 52px; height: 52px; font-size: 12px; }
+  body.touch #touch .s1 { right: calc(132px + env(safe-area-inset-right, 0px)); bottom: calc(46px + env(safe-area-inset-bottom, 0px)); }
+  body.touch #touch .s2 { right: calc(120px + env(safe-area-inset-right, 0px)); bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
+  body.touch #touch .s3 { right: calc(80px + env(safe-area-inset-right, 0px)); bottom: calc(146px + env(safe-area-inset-bottom, 0px)); }
+  body.touch #touch .s4 { right: calc(22px + env(safe-area-inset-right, 0px)); bottom: calc(158px + env(safe-area-inset-bottom, 0px)); }
+  body.touch #touch .dash { right: calc(186px + env(safe-area-inset-right, 0px)); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; }
+  body.touch #touch .wsk { right: calc(178px + env(safe-area-inset-right, 0px)); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; }
+  body.touch #touch .act { right: calc(140px + env(safe-area-inset-right, 0px)); bottom: calc(176px + env(safe-area-inset-bottom, 0px)); width: 60px; height: 60px; font-size: 14px; }
+  body.touch #touch .menu { left: calc(150px + env(safe-area-inset-left, 0px)); transform: none; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+  body.touch #touch .bag { left: calc(22px + env(safe-area-inset-left, 0px)); bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
+  body.touch #chat { bottom: auto; top: calc(96px + env(safe-area-inset-top, 0px)); left: 8px; width: min(60vw, 260px); font-size: 12px; }
+  body.touch #partyHud { top: calc(130px + env(safe-area-inset-top, 0px)); }
+  body.touch .social, body.touch .modal { font-size: 15px; }
+  body.touch .soc-row { grid-template-columns: 1fr; }
+  body.touch .soc-row .btns { grid-column: 1; grid-row: auto; justify-content: flex-start; }
+  body.touch .modal button { min-height: 40px; }
+}

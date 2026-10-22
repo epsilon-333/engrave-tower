@@ -3916,7 +3916,7 @@ export class Renderer {
     const keys = [...['Q', 'E', 'R', 'F'].slice(0, slots.length - 1), touch ? '무기' : '우클릭'];
     const n = slots.length + 1;
     const total = n * box + (n - 1) * gap;
-    const x0 = touch ? 10 * u : (W - total) / 2, y0 = touch ? 10 * v + 70 * v : H - box - 12 * v;
+    const x0 = touch ? W - total - 8 * u : (W - total) / 2, y0 = touch ? Math.round(H * 0.2) : H - box - 12 * v; // 모바일: 오른쪽 작은 지도 아래 (체력 · 저장 안내와 겹치지 않게)
     // 대시
     const dashMax = d.dashCd * (1 - d.cdr), dashK = p.dashCharges > 0 ? 1 : Math.min(1, 1 - p.dashRecharge / dashMax);
     this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : 'Space', '', null, p.dashCharges > 0 ? 0 : p.dashRecharge);
