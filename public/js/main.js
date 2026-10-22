@@ -292,6 +292,31 @@ function tradeCheck() {
   renderer.banner = { text: `${josa(name, '과', '와')} 교환했다`, sub: offerText(theirs).join(' · ') || '받은 것 없음', t: 3, color: '#ffd27a' }; sfx('coin', { vol: 0.7 });
 }
 
+// ───── 사령술사: 거둔 영혼 (30개까지 모아 두고, 소환 목록에 넣은 것부터 한 번에 10개까지 되살린다) ─────
+function showSouls() {
+  const S = (save.souls ||= []);
+  const groups = new Map();
+  S.forEach((sv, i) => { const k = sv.defId; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i); });
+  const rows = [...groups.entries()].map(([id, idx]) => {
+    const def = MONSTERS[id], picked = idx.filter((i) => S[i].pick).length, sv = S[idx[0]];
+    return `<div class="soc-row ${picked ? 'on' : ''}"><span class="nm"><b>${esc(def?.name || id)}</b> <small class="muted">×${idx.length}</small></span><span class="muted">체력 ${Math.round(sv.maxHp * 0.5)} · 공격 ${Math.round(sv.atk * 0.5)} · 소환 목록 ${picked}</span>
+      <span class="btns"><button class="sm ghost" data-sp="${id}" data-d="-1" ${picked ? '' : 'disabled'}>−</button><button class="sm" data-sp="${id}" data-d="1" ${picked < idx.length ? '' : 'disabled'}>목록 +</button><button class="sm ghost" data-sx="${id}">하나 버리기</button></span></div>`;
+  }).join('');
+  showModal(`<div class="social" id="soulBox"><h2>거둔 영혼 <small>${S.length} / 30</small></h2>
+    <p class="muted">「영혼 소환」은 소환 목록에 넣은 영혼부터, 남으면 강한 영혼 순으로 한 번에 10마리까지 되살린다. 되살린 영혼은 목록에서 빠진다.</p>
+    <div class="soc-list">${rows || '<p class="muted">아직 거둔 영혼이 없다. 쓰러뜨린 몬스터에게서 절반쯤 영혼을 거둔다.</p>'}</div>
+    <div class="actions"><button id="soulAll" class="ghost">목록 비우기</button><button data-close>닫기</button></div></div>`);
+  const box = document.getElementById('soulBox');
+  box.onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.id === 'soulAll') S.forEach((s) => delete s.pick);
+    else if (b.dataset.sp) { const list = S.filter((s) => s.defId === b.dataset.sp); if (+b.dataset.d > 0) { const f = list.find((s) => !s.pick); if (f) f.pick = true; } else { const f = list.find((s) => s.pick); if (f) delete f.pick; } }
+    else if (b.dataset.sx) { const i = S.findIndex((s) => s.defId === b.dataset.sx && !s.pick); const j = i >= 0 ? i : S.findIndex((s) => s.defId === b.dataset.sx); if (j >= 0) S.splice(j, 1); }
+    else return;
+    writeSave(save); showSouls();
+  };
+}
+
 // 동료 창 (O): 파티 · 길드
 let socialTab = 'party', socialOpen = false;
 function showSocial(tab) {
@@ -791,7 +816,7 @@ const buildNow = () => computeBuild(toLoadout(save));
 // 생활 데이터: 저장의 같은 객체를 세계에 넘긴다 (캐고 · 베고 · 낚고 · 키운 것이 곧바로 저장에 남는다)
 const lifeOf = () => ({ get knack() { return (save.knack ||= newKnack()); }, bag: save.bag, tools: save.tools, nodes: save.nodes, chopped: save.chopped, farm: save.farm, fishLog: save.fishLog, artifacts: save.artifacts, farmOpts: save.farmOpts, chest: save.chest, get cap() { return save.bagCap || 30; }, get quickFood() { return save.quickFood; } });
 // 세계마다 함께 넘기는 저장 객체: 생활 · 하루의 시간 · 오래가는 효과(음식 · 잠)
-const shared = () => ({ life: lifeOf(), clock: save.time, persist: save.effects });
+const shared = () => ({ life: lifeOf(), clock: save.time, persist: save.effects, souls: (save.souls ||= []) });
 
 function enterPlaza(first) {
   { const el = document.getElementById('practicePanel'); if (el) el.hidden = true; }
@@ -1608,6 +1633,7 @@ function showPause() {
   showModal(`<h2>일시정지</h2>
     <button data-close>계속하기</button>
     ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button>' : ''}
+    ${world.b?.cls === 'necromancer' ? `<button id="soulsBtn" class="ghost">거둔 영혼 (${(save.souls || []).length}/30) · U</button>` : ''}
     ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
     ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">결투에서는 잃는 것이 없다. 포기하면 상대의 승리가 된다.</p>' : field && !world.practice ? '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
     ${volumeHtml()}
@@ -1618,6 +1644,7 @@ function showPause() {
   if (li) li.onclick = () => { overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
   document.getElementById('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
   const sb = document.getElementById('socialBtn'); if (sb) sb.onclick = () => showSocial();
+  const ub = document.getElementById('soulsBtn'); if (ub) ub.onclick = () => showSouls();
   if (world.practice) document.getElementById('exitPractice').onclick = () => { overlay.hidden = true; paused = false; modal = null; exitPractice(); };
   else if (field) document.getElementById('retreat').onclick = () => { overlay.hidden = true; endRun('retreat'); };
   else document.getElementById('howto').onclick = () => showTutorial();
@@ -1646,6 +1673,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyG' && (world.near || world.act)) tutFlags.interact = true;
   if (e.code === 'KeyG' && world.nearRemote && !world.near && !world.act) openMeet(world.nearRemote);
   if (e.code === 'KeyO' && !world.practice) showSocial();
+  if (e.code === 'KeyU' && world.b?.cls === 'necromancer') showSouls(); // 사령술사: 거둔 영혼
   if (e.code === 'Enter' && net.up && !world.pvp) { e.preventDefault(); openChat(); }
   if (e.code === 'KeyG') input.interact = true;
   if (e.code === 'KeyQ' || e.code === 'Digit1') input.s1 = true;

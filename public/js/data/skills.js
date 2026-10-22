@@ -214,8 +214,8 @@ export const SKILLS = {
 
   // ══════ 언데드 · 사령술사 ══════
   raiseSouls: { name: '영혼 소환', role: '소환', cd: 4, cost: 10, scale: 'mag', fx: 'summon', aim: 'none',
-    desc: '거둔 영혼을 한 번에 최대 5개 되살린다. 원래 몬스터의 체력·공격력 50%로, 쓰러질 때까지 함께 싸운다(시간이 지나도 사라지지 않는다). 부하는 최대 5마리, 나에게서 너무 멀어지면 돌아온다.',
-    do: [{ op: 'raiseSouls', n: 5 }] },
+    desc: '거둔 영혼을 한 번에 최대 10개 되살린다 (사령술사 창에서 고른 영혼부터). 원래 몬스터의 체력·공격력 50%로, 쓰러질 때까지 함께 싸운다(시간이 지나도 사라지지 않는다). 부하는 최대 10마리 · 거둔 영혼은 30개까지 모아 둔다, 나에게서 너무 멀어지면 돌아온다.',
+    do: [{ op: 'raiseSouls', n: 10 }] },
   deathCall: { name: '망자의 부름', role: '제어', cd: 10, cost: 15, scale: 'mag', fx: 'roar', aim: 'none',
     desc: '내 부하들이 울부짖어 주변 적의 시선을 끈다. 6초 동안 적들이 부하만 노리고, 부하는 받는 피해 -30%.',
     do: [{ op: 'taunt', r: 110, dur: 6 }] },
@@ -422,7 +422,9 @@ for (const sk of Object.values(SKILLS)) if (sk.general) sk.race = 'general';
 // slash 베기 · smash 내려찍기 · thrust 찌르기 · shoot 쏘기(활 · 석궁 · 바람총) · throw 던지기 · spell 마법 · parry 받아치기 · shield 방패 · body 몸(무기 상관없음)
 
 // ── 스킬 밸런스 보정 (tools/balance.mjs: 단단한 적 3마리에게 6초 동안 넣은 피해 ÷ 재사용 대기, 중간값에서 많이 벗어난 것만) ──
-export const SKILL_BAL = {"pounce": 0.76, "apexPredator": 2.0, "tailSwipe": 0.89, "flameBurst": 0.3, "lightningChain": 0.54, "grandFireball": 0.6, "arcaneBarrage": 0.31, "blinkBlast": 0.41, "gravityCollapse": 0.37, "shieldBash": 1.6, "undying": 2.0, "comboSlash": 0.57, "crushBlow": 0.54, "crushingBlows": 0.5, "rapidThrow": 0.73, "axeLegion": 0.94, "soulDrain": 0.82, "skeletons": 0.46, "corpseBlast": 0.58, "lichLord": 0.3, "deathFog": 0.54, "doomBrand": 1.16, "ambush": 0.98, "dartFan": 0.96, "spiritAbsorb": 0.86, "spiritArrow": 0.4, "spiritKing": 0.3, "pierceArrow": 0.46, "skyPiercer": 0.86, "breath": 0.3, "dragonClaw": 0.34, "soar": 0.34, "dragonForm": 1.52};
+export const SKILL_BAL = {}; // 스킬 하나씩은 보정하지 않는다 (한 번의 피해로는 알 수 없다) — 클래스 단위 CLASS_BAL로
+// ── 클래스 밸런스 보정 (tools/balance.mjs: 30초 실제 싸움 · 무리 / 단단한 적) ──
+export const CLASS_BAL = {"predator": 1, "behemoth": 0.92, "elementalist": 1.07, "chronomancer": 0.9, "guardian": 1.6, "greatsword": 1.6, "berserker": 0.8, "thrower": 1.08, "necromancer": 0.71, "hexer": 0.96, "shadowblade": 0.97, "venomHunter": 1.6, "spiritcaller": 1.6, "ranger": 1.04, "dragoon": 0.68, "dragonSage": 1.09};
 
 // ── 돈 · 미션으로 얻는 CC기 (누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다) ──
 export const CC_EXTRA = {

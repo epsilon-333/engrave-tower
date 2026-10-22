@@ -5,7 +5,7 @@ import { REACTIONS } from '../data/engravings.js';
 import { WEAPON_SKILLS } from '../data/items.js';
 import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
 import { towerMul, isBossFloor } from '../data/tower.js';
-import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO, SKILL_BAL } from '../data/skills.js';
+import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO, SKILL_BAL, CLASS_BAL } from '../data/skills.js';
 import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower, spiritBuff, buffMods } from '../data/spirits.js';
 const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
 const SPIRIT_DMG_ELEM = { fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' };
@@ -49,7 +49,7 @@ function overworldMap(zone) {
 
 export class World {
   // mode: 'field' | 'plaza'
-  constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null }) {
+  constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null, souls = null }) {
     this.depth = depth;
     // 파티 탑: 방장(host)은 적을 움직이고, 동료(member)는 방장이 알려 준 대로 적을 보여 주며 자기 공격을 방장에게 보낸다
     this.coop = coop ? { role: coop.role, mates: new Map(), out: [], ev: [], known: new Set(), deadIds: [], info: new Map() } : null;
@@ -80,7 +80,7 @@ export class World {
       lastCast: -9, rage: 0, rageT: 0, lastFight: -9,
       dashCharges: 1, dashRecharge: 0, dashCritReady: false, lastShot: -9, whirlT: 0, whirlTick: 0,
       res: RACES[this.b.race]?.res?.start || 0, elem: 'fire', elemBonusT: 0, buffs: {}, cds: {}, parryT: 0, parry: null,
-      castT: 0, castMax: 0, castSkill: null, channel: null, souls: [],
+      castT: 0, castMax: 0, castSkill: null, channel: null, souls: souls || [], // 사령술사: 거둔 영혼 (저장과 같은 배열 · 30개까지)
       spirits: [], words: [], focus: 0, focusT: 0, stealthT: 0, airT: 0, soar: null, rush: null, leap: null, charging: null, stored: 0, storedT: 0, hist: [], histT: 0,
       motion: null,
     };
@@ -671,7 +671,7 @@ export class World {
       if (o.opened && !o.reusable) continue;
       if (o.noPrompt || o.riding) continue;
       const dd = Math.hypot(o.x - p.x, o.y - p.y);
-      if (o.hidden && !o.found) { if (dd < 30) { o.found = true; this.emit({ t: 'text', x: o.x, y: o.y - 18, text: '숨겨진 상자를 찾았다!', color: '#ffe8a0' }); this.emit({ t: 'ring', x: o.x, y: o.y, r: 22, color: '#ffe8a0' }); } else continue; }
+      if (o.hidden && !o.found) { if (dd < (this.d.senseR || 30)) { o.found = true; this.emit({ t: 'text', x: o.x, y: o.y - 18, text: '숨겨진 상자를 찾았다!', color: '#ffe8a0' }); this.emit({ t: 'ring', x: o.x, y: o.y, r: 22, color: '#ffe8a0' }); } else continue; }
       if (dd < (o.reach || 26) && dd < bd) { bd = dd; this.near = o; } // 계산대 너머의 주인처럼 멀리서도 닿는 것은 reach
     }
     if (this.near && (this.near.kind === 'node' || this.near.kind === 'dig') && this.near.depleted) this.near = null;
@@ -1825,9 +1825,11 @@ export class World {
       case 'raiseSouls': {
         if (!p.souls.length) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '거둔 영혼이 없다', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
         const living = this.allies.filter((a) => a.kind === 'soul').length;
-        if (living >= 5) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '부하는 최대 5마리', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
-        p.souls.sort((a, b) => b.maxHp - a.maxHp);
-        const raised = p.souls.splice(0, Math.min(op.n, 5 - living));
+        if (living >= 10) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '부하는 최대 10마리', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
+        // 소환 목록에 넣은 영혼부터, 그다음은 강한 순 (거둔 영혼은 30개까지 모아 두고 사령술사 창에서 고른다)
+        const order = [...p.souls].sort((a, b) => (b.pick ? 1 : 0) - (a.pick ? 1 : 0) || b.maxHp - a.maxHp);
+        const raised = order.slice(0, Math.min(op.n, 10 - living));
+        for (const sv of raised) p.souls.splice(p.souls.indexOf(sv), 1);
         raised.forEach((sv, i) => {
           const a = (i / raised.length) * Math.PI * 2 + 0.5;
           let x = p.x + Math.cos(a) * 20, y = p.y + Math.sin(a) * 20;
@@ -2857,7 +2859,7 @@ export class World {
       if (e.hp <= 0) this.killEnemy(e);
       return amount;
     }
-    let mult = d.dmgMul;
+    let mult = d.dmgMul * (CLASS_BAL[this.b.cls] ?? 1) * (this.balMul ?? 1); // 클래스 밸런스 보정
     if (type === 'phys' || type === 'mag') {
       const pen = Math.min(1, (type === 'phys' ? d.physPen : d.magPen) + (this.s.pierce || 0) / 100);
       const broken = type === 'phys' && e.armorBreak ? 1 - e.armorBreak * 0.05 : 1;
@@ -3668,7 +3670,7 @@ export class World {
       if (this.b.weapon?.kind === 'proj') this.knack('rangedKill');
       if (BEASTS.test(e.defId)) this.knack('hunt');
     }
-    if (this.b.cls === 'necromancer' && !e.summoned && e.def.ai !== 'dummy' && this.player.souls.length < 10 && this.rng.chance(0.5)) {
+    if (this.b.cls === 'necromancer' && !e.summoned && e.def.ai !== 'dummy' && this.player.souls.length < 30 && this.rng.chance(0.5)) {
       this.player.souls.push({ defId: e.defId, maxHp: e.maxHp, atk: e.atk, r: e.r, scale: e.scale || 1 });
       this.emit({ t: 'soulGet', x: e.x, y: e.y, n: this.player.souls.length });
     }

@@ -5,9 +5,9 @@ export const BASE_STATS = ['str', 'mag', 'agi', 'vit', 'sen', 'spi', 'pres', 'mr
 export const STAT_INFO = {
   str: { name: '근력', short: '근', desc: '물리 공격력, 무거운 장비 착용' },
   mag: { name: '마력', short: '마', desc: '마법 공격력, 화상 피해' },
-  agi: { name: '민첩', short: '민', desc: '공격 속도, 이동 속도, 회피 (민첩 25부터는 1마다 회피 +0.3%가 더 붙는다 · 최대 +15% · 회피는 최대 60%)' },
+  agi: { name: '민첩', short: '민', desc: '회피 (20 → 7% · 60 → 16% · 최대 45%), 공격 속도 (최대 +70%), 이동 속도 (최대 +30% · 높을수록 덜 오른다)' },
   vit: { name: '체력', short: '체', desc: '최대 HP, 자연 회복' },
-  sen: { name: '감각', short: '감', desc: '치명타 확률과 피해' },
+  sen: { name: '감각', short: '감', desc: '치명타 확률 · 피해, 약점 찌르기(방어 무시 최대 30%), 숨은 상자를 멀리서 알아챈다' },
   spi: { name: '정신', short: '정', desc: '상태이상 저항·지속 감소, 쿨타임, 각인 부하 한도' },
   pres: { name: '물리 저항', short: '물저', desc: '받는 물리 피해 감소' },
   mres: { name: '마법 저항', short: '마저', desc: '받는 마법 피해 감소' },

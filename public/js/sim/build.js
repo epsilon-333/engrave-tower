@@ -116,6 +116,9 @@ export function computeBuild(lo) {
     if (e.type === 'statPct') stats[e.stat] = Math.round(stats[e.stat] * (1 + e.v));
   }
 
+  // 6.5) 종족 비율 보정: 종족마다 잘 크는 능력치는 더, 못 크는 능력치는 덜
+  for (const [k, m] of Object.entries(race.mult || {})) if (stats[k] > 0) stats[k] = Math.round(stats[k] * m);
+
   // 7) 각성 (최종 스탯 기준)
   const awakenings = [];
   for (const [k, list] of Object.entries(AWAKENINGS)) {
@@ -133,11 +136,13 @@ export function computeBuild(lo) {
     physAtk: 4 + E.str * 1.3,
     dexAtk: 4 + E.agi * 1.15 + E.str * 0.25,
     magAtk: 4 + E.mag * 1.3,
-    atkSpeed: 1 + E.agi * 0.012,
-    moveSpeed: 80 + E.agi * 0.7,
-    dodge: E.agi / (E.agi + 220),
+    atkSpeed: 1 + 0.7 * E.agi / (E.agi + 110),       // 민첩: 공격 속도 (최대 +70%, 갈수록 덜 오른다)
+    moveSpeed: 80 * (1 + 0.3 * E.agi / (E.agi + 90)), // 민첩: 이동 속도 (최대 +30% · 너무 빠르면 어지러워서 갈수록 덜 오른다)
+    dodge: 0.45 * E.agi / (E.agi + 110),                // 민첩: 회피 (민첩 20 → 7% · 60 → 16% · 최대 45%)
     crit: 0.05 + E.sen / (E.sen + 140),
     critDmg: 1.5 + E.sen * 0.006,
+    sensePen: 0.3 * E.sen / (E.sen + 120),               // 감각: 약점을 찔러 방어 무시 (최대 30%)
+    senseR: 30 + E.sen * 0.8,                            // 감각: 숨은 상자 · 함정을 알아채는 거리
     statusRes: E.spi / (E.spi + 90),
     cdr: E.spi / (E.spi + 160),
     loadCap: 10 + Math.floor(stats.spi * 0.5),
@@ -163,8 +168,7 @@ export function computeBuild(lo) {
     else if (e.type === 'on') triggers[e.event].push(e);
   }
   d.maxHp = Math.round(d.maxHp);
-  // 민첩 25부터는 1마다 회피 +0.3%가 더 붙는다 (최대 +15%)
-  d.dodge += Math.min(0.15, Math.max(0, stats.agi - AGI_DODGE_FROM) * 0.003);
+  d.physPen += d.sensePen; d.magPen += d.sensePen;
   d.dodge = Math.min(0.6, d.dodge);
   d.crit = Math.min(0.9, d.crit);
   d.statusRes = Math.min(0.85, d.statusRes);
