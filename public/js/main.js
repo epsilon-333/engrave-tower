@@ -644,12 +644,12 @@ function finishTutorial(done) {
 // ───── 각인의 탑 50층 ─────
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 function showTower() {
-  const T = (save.tower ||= { best: {}, max: 0 }), starts = towerStarts(T.max);
+  const T = (save.tower ||= { best: {}, max: 0 }), next = Math.min(TOWER_TOP, T.max + 1), starts = [...new Set([next, ...towerStarts(T.max)])].sort((a, b) => b - a); // 이어서: 깬 층 다음 층부터
   const floors = Array.from({ length: Math.min(TOWER_TOP, T.max + 1) }, (_, i) => i + 1).map((f) => `<span class="tw-f ${isBossFloor(f) ? 'boss' : ''}" style="--c:${GRADE_COLOR[T.best[f]] || '#5a5068'}">${f}<b>${T.best[f] || '·'}</b></span>`).join('');
   showModal(`<h2>각인의 탑</h2>
     <p class="muted">층마다 짧은 던전이다. 계단에 닿으면 클리어 — 걸린 시간과 받은 피해로 등급(S · A · B · C)과 보상을 받는다. 5층마다 층 수호자를 쓰러뜨려야 계단이 열린다. 오를수록 몬스터가 크게 강해진다. 쓰러지면 탑 밖으로 밀려난다.</p>
     <p>최고 기록 <b>${T.max}층</b> / ${TOWER_TOP}층</p><div class="tw-floors">${floors}</div>
-    <div class="actions">${starts.map((f) => `<button data-tw="${f}">${f}층부터 오르기</button>`).join('')}<button data-close class="ghost">돌아간다</button></div>
+    <div class="actions">${starts.map((f) => `<button data-tw="${f}" class="${f === next ? '' : 'ghost'}">${f === next && T.max ? `이어서 · ${f}층부터` : `${f}층부터 오르기`}</button>`).join('')}<button data-close class="ghost">돌아간다</button></div>
     ${isPartyLeader() && net.party.members.length > 1 ? `<h4>파티와 함께 <small>${net.party.members.length}명 · 동료에게 함께 갈지 묻는다 (바깥 세계에 있는 동료만)</small></h4><div class="actions">${starts.map((f) => `<button data-twp="${f}">${f}층부터 파티와 오르기</button>`).join('')}</div>` : net.party && !isPartyLeader() ? '<p class="muted">파티에 있다 — 파티장이 파티와 함께 오르기를 고르면 함께 오른다.</p>' : ''}`);
   overlay.querySelectorAll('[data-tw]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; enterTower(+b.dataset.tw); }));
   overlay.querySelectorAll('[data-twp]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; startCoTower(+b.dataset.twp); }));
@@ -886,7 +886,7 @@ const buildNow = () => computeBuild(toLoadout(save));
 // 생활 데이터: 저장의 같은 객체를 세계에 넘긴다 (캐고 · 베고 · 낚고 · 키운 것이 곧바로 저장에 남는다)
 const lifeOf = () => ({ get knack() { return (save.knack ||= newKnack()); }, bag: save.bag, tools: save.tools, nodes: save.nodes, chopped: save.chopped, farm: save.farm, fishLog: save.fishLog, artifacts: save.artifacts, farmOpts: save.farmOpts, chest: save.chest, get cap() { return save.bagCap || 30; }, get quickFood() { return save.quickFood; } });
 // 세계마다 함께 넘기는 저장 객체: 생활 · 하루의 시간 · 오래가는 효과(음식 · 잠)
-const shared = () => ({ life: lifeOf(), clock: save.time, persist: save.effects, souls: (save.souls ||= []) });
+const shared = () => ({ life: lifeOf(), clock: save.time, persist: save.effects, minions: (save.minions ||= []) });
 
 function enterPlaza(first) {
   { const el = document.getElementById('practicePanel'); if (el) el.hidden = true; }
@@ -1708,7 +1708,6 @@ function showPause() {
     <button data-close>계속하기</button>
     ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button>' : ''}
     ${isTouch() ? `<div class="actions col"><button id="tMap" class="ghost">지도</button><button id="tQuest" class="ghost">퀘스트</button><button id="tGear" class="ghost">장비 · 어디서 얻나</button>${net.up ? '<button id="tChat" class="ghost">채팅</button>' : ''}</div>` : ''}
-    ${world.b?.cls === 'necromancer' ? `<button id="soulsBtn" class="ghost">거둔 영혼 (${(save.souls || []).length}/30) · U</button>` : ''}
     ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
     ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">결투에서는 잃는 것이 없다. 포기하면 상대의 승리가 된다.</p>' : field && !world.practice ? '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
     ${volumeHtml()}
@@ -1724,7 +1723,6 @@ function showPause() {
   const tq = document.getElementById('tQuest'); if (tq) tq.onclick = () => { close0(); showQuestLog(); };
   const tg = document.getElementById('tGear'); if (tg) tg.onclick = () => { close0(); openPanel('gear'); };
   const tc = document.getElementById('tChat'); if (tc) tc.onclick = () => { close0(); openChat(); };
-  const ub = document.getElementById('soulsBtn'); if (ub) ub.onclick = () => showSouls();
   if (world.practice) document.getElementById('exitPractice').onclick = () => { overlay.hidden = true; paused = false; modal = null; exitPractice(); };
   else if (field) document.getElementById('retreat').onclick = () => { overlay.hidden = true; endRun('retreat'); };
   else document.getElementById('howto').onclick = () => showTutorial();
@@ -1753,7 +1751,6 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyG' && (world.near || world.act)) tutFlags.interact = true;
   if (e.code === 'KeyG' && world.nearRemote && !world.near && !world.act) openMeet(world.nearRemote);
   if (e.code === 'KeyO' && !world.practice) showSocial();
-  if (e.code === 'KeyU' && world.b?.cls === 'necromancer') showSouls(); // 사령술사: 거둔 영혼
   if (e.code === 'Enter' && net.up && !world.pvp) { e.preventDefault(); openChat(); }
   if (e.code === 'KeyG') input.interact = true;
   if (e.code === 'KeyQ' || e.code === 'Digit1') input.s1 = true;

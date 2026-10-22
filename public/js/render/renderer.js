@@ -270,6 +270,14 @@ export class Renderer {
           this.texts.push({ x: ev.x, y: ev.y, text: ev.text, color: ev.color, t: 1.1, vy: -16, vx: 0, label: true });
           if (ev.text === '빙결') sfx('freeze', { vol: 0.6 });
           break;
+        case 'dodgeFx': { // 회피: 큰 「회피!」 + 맞을 쪽 반대로 비켜서는 흐린 잔영
+          this.texts.push({ x: ev.x, y: ev.y - 20, text: '회피!', color: '#bfffe0', t: 0.9, vy: -18, vx: 0, label: true, size: 2, pop: 0.15 });
+          const sd = ev.x >= ev.fx ? 1 : -1;
+          this.fx.push({ k: 'line', x1: ev.x - sd * 8, y1: ev.y - 6, x2: ev.x + sd * 6, y2: ev.y - 6, t: 0.25, max: 0.25 });
+          this.dodgeLean = { t: 0.18, sd };
+          sfx('dash', { vol: 0.35, rate: 1.4 });
+          break;
+        }
         case 'reaction':
           this.texts.push({ x: ev.x, y: ev.y, text: ev.text + '!', color: ev.color, t: 1.4, vy: -12, vx: 0, label: true, size: 2, pop: 0.2 });
           if (ev.r) this.fx.push({ k: 'ring', x: ev.x, y: ev.y + 20, r: ev.r, color: ev.color, t: 0.45, max: 0.45, w: 3 });
@@ -1230,7 +1238,8 @@ export class Renderer {
     let gs = p.buffs?.giant ? 1.5 : p.buffs?.dragonForm ? 1.2 : 1;
     let fallA = 1;
     if (p.fallInto) { const k = Math.min(1, p.fallInto.t / p.fallInto.dur); if (k > 0.4) { const q = (k - 0.4) / 0.6; gs *= 1 - 0.85 * q * q; fallA = 1 - q * 0.8; } }
-    const bx = p.x + pose.ox, by = p.y + pose.oy - lift + (p.fallInto && p.fallInto.t / p.fallInto.dur > 0.4 ? (p.fallInto.t / p.fallInto.dur - 0.4) * 14 : 0);
+    if (this.dodgeLean) { this.dodgeLean.t -= dt; if (this.dodgeLean.t <= 0) this.dodgeLean = null; }
+    const bx = p.x + pose.ox + (this.dodgeLean ? this.dodgeLean.sd * 4 * (this.dodgeLean.t / 0.18) : 0), by = p.y + pose.oy - lift + (p.fallInto && p.fallInto.t / p.fallInto.dur > 0.4 ? (p.fallInto.t / p.fallInto.dur - 0.4) * 14 : 0);
     if (fallA < 1) g.globalAlpha = fallA;
     if (p.buffs?.dragonForm) { this.drawTrueDragon(w, p, by); g.globalAlpha = 1; return; }
     if (p.down) g.globalAlpha = 0.5;
@@ -1881,24 +1890,14 @@ export class Renderer {
     const col = st?.col || (p.buffs?.charged || K === 'great' ? '#fff2c8' : '#e8f2ff'), strength = Math.min(1, turn / 1.6);
     if (K === 'great' && P.whoosh > 0.5 && Math.random() < 0.6) { const t2 = tr[tr.length - 1]; this.parts.push({ x: t2.x + Math.cos(t2.a) * t2.L, y: t2.y + Math.sin(t2.a) * t2.L, vx: (Math.random() - 0.5) * 30, vy: -10, t: 0.25, max: 0.25, color: '#fff4d8', g: 0, line: true }); }
     this.trailDrawnT = now;
-    for (let i = 1; i < tr.length; i++) {
-      const s0 = tr[i - 1], s1 = tr[i], da = Math.atan2(Math.sin(s1.a - s0.a), Math.cos(s1.a - s0.a));
-      if (Math.abs(da) > 1.7 || Math.abs(da) < 0.004) continue;
-      const n = Math.max(1, Math.ceil(Math.abs(da) / 0.1));
-      for (let j = 0; j < n; j++) {
-        const q0 = j / n, q1 = (j + 1) / n, al = strength * Math.max(0, Math.min(1, 1 - (now - (s0.t + (s1.t - s0.t) * q1)) / LIFE));
-        if (al <= 0) continue;
-        const a0 = s0.a + da * q0, a1 = s0.a + da * q1, l0 = s0.L + (s1.L - s0.L) * q0, l1 = s0.L + (s1.L - s0.L) * q1;
-        const x0 = s0.x + (s1.x - s0.x) * q0, y0 = s0.y + (s1.y - s0.y) * q0, x1 = s0.x + (s1.x - s0.x) * q1, y1 = s0.y + (s1.y - s0.y) * q1;
-        const c0 = Math.cos(a0), n0 = Math.sin(a0), c1 = Math.cos(a1), n1 = Math.sin(a1);
-        const band = (f0, f1, c, alpha, add0 = 0, add1 = 0) => { // 칼 길이에 대한 비율 f0~f1 (+ 픽셀 add)
-          g.fillStyle = hexA(c, alpha); g.beginPath();
-          g.moveTo(x0 + c0 * (l0 * f0 + add0), y0 + n0 * (l0 * f0 + add0)); g.lineTo(x0 + c0 * (l0 * f1 + add1), y0 + n0 * (l0 * f1 + add1));
-          g.lineTo(x1 + c1 * (l1 * f1 + add1), y1 + n1 * (l1 * f1 + add1)); g.lineTo(x1 + c1 * (l1 * f0 + add0), y1 + n1 * (l1 * f0 + add0)); g.closePath(); g.fill();
-        };
-        band(0.6, 1, col, 0.45 * al * al, 0, 2);          // 칼날이 지나간 자리
-        band(1, 1, '#ffffff', 0.85 * al * al, -1.2, 1.4); // 칼끝 빛줄
-      }
+    // 잔상 띠 대신: 칼끝이 지나간 자리에 짧게 반짝이는 불티 (휘두른 만큼만)
+    const last = tr[tr.length - 1], prev = tr[tr.length - 2];
+    if (this.sparkT === now) return; this.sparkT = now; // 세계가 멈추면 불티도 멈춘다
+    const n = Math.min(4, Math.ceil(strength * 3));
+    for (let i = 0; i < n; i++) {
+      const k = Math.random(), a = prev.a + (last.a - prev.a) * k, Lk = prev.L + (last.L - prev.L) * k * (0.85 + Math.random() * 0.15);
+      const x = prev.x + (last.x - prev.x) * k + Math.cos(a) * Lk, y = prev.y + (last.y - prev.y) * k + Math.sin(a) * Lk;
+      this.parts.push({ x, y, vx: -Math.sin(a) * (20 + Math.random() * 30) * Math.sign(last.a - prev.a || 1), vy: Math.cos(a) * (20 + Math.random() * 30) * Math.sign(last.a - prev.a || 1) - 10, t: 0.16 + Math.random() * 0.1, max: 0.24, color: col, g: 60, glow: true, size: 1 });
     }
   }
 

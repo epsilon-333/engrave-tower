@@ -49,7 +49,7 @@ export const RACES = {
     growth: { mag: 1 },
     mult: { pres: 1.15, mag: 1.1, agi: 0.85, vit: 0.9 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '썩은 몸',
-    res: { key: 'soul', name: '영혼', color: '#c45cff', hit: 1, kill: 10, decay: 1 },
+    res: { key: 'soul', name: '영혼', color: '#c45cff', hit: 1, kill: 25, decay: 1 }, // 적을 쓰러뜨리면 영혼이 많이 오른다
   },
   assassin: {
     name: '암살자', origin: '뒷골목',

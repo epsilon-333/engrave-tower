@@ -213,8 +213,8 @@ export const SKILLS = {
     do: [{ op: 'buff', id: 'axeLegion', dur: 8, mods: {}, color: '#e8e0f4', scaleRes: true }, { op: 'orbit', n: 6, dur: 8, r: 30, mul: 0.6 }] },
 
   // ══════ 언데드 · 사령술사 ══════
-  raiseSouls: { name: '영혼 소환', role: '소환', cd: 4, cost: 10, scale: 'mag', fx: 'summon', aim: 'none',
-    desc: '거둔 영혼을 한 번에 최대 10개 되살린다 (사령술사 창에서 고른 영혼부터). 원래 몬스터의 체력·공격력 50%로, 쓰러질 때까지 함께 싸운다(시간이 지나도 사라지지 않는다). 부하는 최대 10마리 · 거둔 영혼은 30개까지 모아 둔다, 나에게서 너무 멀어지면 돌아온다.',
+  raiseSouls: { name: '망자 부르기', role: '소환', cd: 6, cost: 15, scale: 'mag', fx: 'summon', aim: 'none',
+    desc: '해골 전사 둘과 뼈 방패병 하나를 부른다. 쓰러질 때까지 남고 다른 곳에 가도 따라온다 (첫 한 대는 막는다). 부하는 최대 10마리. 영혼 15.',
     do: [{ op: 'raiseSouls', n: 10 }] },
   deathCall: { name: '망자의 부름', role: '제어', cd: 10, cost: 15, scale: 'mag', fx: 'roar', aim: 'none',
     desc: '내 부하들이 울부짖어 주변 적의 시선을 끈다. 6초 동안 적들이 부하만 노리고, 부하는 받는 피해 -30%.',
@@ -229,8 +229,8 @@ export const SKILLS = {
     desc: '뼈 우리로 적을 2.5초 가둔다. 갇힌 적은 받는 피해 +30%.', do: [{ op: 'aoe', at: 'aim', r: 36, mul: 0.4, stun: 2.5, prison: true, fx: 'bones' }] },
   corpseBlast: { name: '시체 폭발', role: '마무리', cd: 8, cost: 25, scale: 'mag', elem: 'dark', fx: 'burst', aim: 'none',
     desc: '체력이 가장 낮은 부하 3마리만 터뜨려 큰 범위 피해. 부하의 최대 체력이 클수록 강하다. 부하가 없으면 근처 적 하나를 터뜨린다.', do: [{ op: 'blastSummons', r: 64, mul: 2.4, n: 3 }] },
-  lichLord: { name: '사령 군주', role: '궁극', cd: 30, costAll: { min: 60 }, scale: 'mag', fx: 'summon', ult: true,
-    desc: '쓰러질 때까지 싸우는 강력한 사령 군주를 부르고(하나만), 해골 병사 2마리를 함께 일으킨다. 영혼이 많을수록 강하다.',
+  lichLord: { name: '리치 소환', role: '궁극', cd: 30, costAll: { min: 60 }, scale: 'mag', fx: 'summon', ult: true,
+    desc: '쓰러질 때까지 싸우는 리치를 부르고(하나만), 해골 병사 2마리를 함께 일으킨다. 영혼이 많을수록 강하다. 다른 곳에 가도 따라온다.',
     do: [{ op: 'summon', kind: 'lich', n: 1, dur: 15, mul: 1.8, scaleRes: true, perm: true, max: 1 }, { op: 'summon', kind: 'skeleton', n: 2, dur: 15, mul: 0.6, perm: true, max: 4 }] },
 
   // ══════ 언데드 · 저주술사 ══════

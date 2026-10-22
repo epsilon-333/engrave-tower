@@ -34,7 +34,7 @@ const MOTION_DUR = { blow3: 0.68, slash: 0.3, sweep: 0.42, overhead: 0.5, thrust
 const STATUS_COLOR = { burn: '#ff7a2a', poison: '#9be15d', bleed: '#e0445a', chill: '#9fe3ff', true: '#ffffff' };
 const ACTIVE_RANGE = 440;
 // 몬스터 기술: 종류마다 2~3가지를 섞어 쓴다 (모두 빨간 예고가 먼저 나온다) · 몬스터 정의의 moves 로 바꿀 수 있다
-const AI_MOVES = { chase: ['combo', 'leap'], erratic: ['combo'], burrow: ['leap', 'combo'], ranged: ['fan', 'retreat'], summoner: ['pool', 'heal', 'blink'], charge: ['leap', 'combo', 'pool'], boss: ['leap', 'pool', 'fan', 'combo'] };
+const AI_MOVES = { chase: ['combo', 'leap', 'whirl', 'shove'], erratic: ['combo', 'shove'], burrow: ['leap', 'combo', 'quake'], ranged: ['fan', 'retreat', 'spiral', 'split'], summoner: ['pool', 'heal', 'blink', 'spiral'], charge: ['leap', 'combo', 'pool', 'whirl', 'quake'], boss: ['leap', 'pool', 'fan', 'combo', 'split', 'whirl'] };
 const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 const ALL_MONSTERS = { ...MONSTERS, ...DUMMIES };
 // 파티 탑: 방장의 적이 낸 사건 중 동료 화면에도 보여 줄 것
@@ -52,7 +52,8 @@ function overworldMap(zone) {
 
 export class World {
   // mode: 'field' | 'plaza'
-  constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null, souls = null, raid = null }) {
+  constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null, souls = null, raid = null, minions = null }) {
+    this.minions = minions || []; // 사령술사: 쓰러질 때까지 남는 부하 (저장과 같은 배열 · 다른 곳에도 따라온다)
     this.raid = raid; // 보스 레이드: { id }
     this.depth = depth;
     // 파티 탑: 방장(host)은 적을 움직이고, 동료(member)는 방장이 알려 준 대로 적을 보여 주며 자기 공격을 방장에게 보낸다
@@ -160,7 +161,7 @@ export class World {
       this.life = life;
     }
     this.applyPersist();
-    this.player.souls.filter((sv) => sv.up).forEach((sv, i) => { const a = i * 0.7; this.raiseSoul(sv, this.player.x + Math.cos(a) * 18, this.player.y + Math.sin(a) * 18, i); }); // 나와 있던 영혼이 따라온다
+    this.minions.forEach((m, i) => { const a = i * 0.7; this.spawnMinion(m, this.player.x + Math.cos(a) * 18, this.player.y + Math.sin(a) * 18, i); }); // 나와 있던 부하가 따라온다
     if (this.tower) this.tower.bosses = this.enemies.filter((e) => e.champion); // 탑: 이 층의 우두머리 목록 (쓰러뜨리면 줄이 그어진다)
   }
 
@@ -1796,9 +1797,10 @@ export class World {
           const a = this.rng.range(0, Math.PI * 2);
           const elem = op.kind === 'spiritKing' ? ELEM_CYCLE[this.rng.int(0, 2)] : op.elem;
           if (op.kind === 'spiritKing') this.emit({ t: 'banner', text: `${ELEM[elem].name}의 정령왕 강림`, color: ELEM[elem].color });
-          const hp = op.kind === 'skeleton' ? this.d.maxHp * 0.35 : op.kind === 'lich' ? this.d.maxHp * 0.8 : 0;
-          this.allies.push({ id: this.nextId++, kind: op.kind, perm: !!op.perm, elem, hp, maxHp: hp, x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, t: op.dur, max: op.dur,
-            atk: ctx.atk * op.mul * (op.scaleRes ? ctx.resMul : 1) * ctx.bonus, cd: 0.3 + i * 0.2, phase: a, dir: 1 });
+          const hp = op.kind === 'skeleton' ? this.d.maxHp * 0.35 : op.kind === 'lich' ? this.d.maxHp * 0.8 : 0, atk = ctx.atk * op.mul * (op.scaleRes ? ctx.resMul : 1) * ctx.bonus;
+          if (op.perm && hp > 0) { const m = { kind: op.kind, maxHp: hp, atk, r: op.kind === 'lich' ? 8 : 6, scale: 1 }; this.minions.push(m); this.spawnMinion(m, p.x + Math.cos(a) * 16, p.y + Math.sin(a) * 16, i); }
+          else this.allies.push({ id: this.nextId++, kind: op.kind, perm: !!op.perm, elem, hp, maxHp: hp, x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, t: op.dur, max: op.dur,
+            atk, cd: 0.3 + i * 0.2, phase: a, dir: 1 });
           this.emit({ t: 'summonFx', x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, kind: op.kind, elem, big: op.kind === 'spiritKing' || op.kind === 'lich' });
         }
         break;
@@ -1854,24 +1856,19 @@ export class World {
         }
         break;
       }
-      case 'raiseSouls': {
-        if (!p.souls.some((x) => !x.up)) { // 부를 영혼이 없으면 (결투 · 막 시작한 싸움) 떠도는 망령 둘을 대신 부른다
-          for (let i = 0; i < 2; i++) p.souls.push({ defId: 'skeleton', maxHp: this.d.maxHp * 0.6, atk: ctx.atk * 0.9, r: 6, scale: 1, wisp: true });
-          this.emit({ t: 'text', x: p.x, y: p.y - 30, text: '떠도는 망령을 부른다', color: '#7ae8ff' });
-        }
-        const living = p.souls.filter((x) => x.up).length;
-        if (living >= 10) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '부하는 최대 10마리', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
-        // 소환 목록에 넣은 영혼부터, 그다음은 강한 순 (거둔 영혼은 30개까지 모아 두고 사령술사 창에서 고른다)
-        const order = p.souls.filter((x) => !x.up).sort((a, b) => (b.pick ? 1 : 0) - (a.pick ? 1 : 0) || b.maxHp - a.maxHp);
-        const raised = order.slice(0, Math.min(op.n, 10 - living));
-        raised.forEach((sv, i) => {
-          const a = (i / raised.length) * Math.PI * 2 + 0.5;
+      case 'raiseSouls': { // 망자 부르기: 정해진 부하(해골 전사 둘 · 뼈 방패병 하나)를 부른다 · 쓰러질 때까지 남는다
+        const room = 10 - this.minions.length;
+        if (room <= 0) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '부하는 최대 10마리', color: '#a8b0c0' }); p.cds[ctx.id] = 0.5; this.addRes(ctx.spent); break; }
+        const list = ['skeleton', 'skeleton', 'boneGuard'].slice(0, Math.min(op.n || 3, room));
+        list.forEach((defId, i) => {
+          const a = (i / list.length) * Math.PI * 2 + 0.5;
           let x = p.x + Math.cos(a) * 20, y = p.y + Math.sin(a) * 20;
           if (this.blocked(x, y, 5)) { x = p.x; y = p.y; }
-          this.raiseSoul(sv, x, y, i, ctx.bonus);
+          const m = { kind: 'soul', defId, maxHp: this.d.maxHp * (defId === 'boneGuard' ? 0.6 : 0.4), atk: ctx.atk * (defId === 'boneGuard' ? 0.5 : 0.7) * ctx.bonus, r: 6, scale: defId === 'boneGuard' ? 1.2 : 1 };
+          this.minions.push(m); this.spawnMinion(m, x, y, i);
           this.emit({ t: 'summonFx', x, y, kind: 'soul', big: i === 0 });
         });
-        this.emit({ t: 'text', x: p.x, y: p.y - 24, text: `영혼 ${raised.length} 소환 · 부를 수 있는 영혼 ${p.souls.filter((x) => !x.up).length}`, color: '#7ae8ff' });
+        this.emit({ t: 'text', x: p.x, y: p.y - 24, text: `망자 ${list.length} 소환 · 부하 ${this.minions.length}/10`, color: '#7ae8ff' });
         break;
       }
       case 'taunt': {
@@ -2594,7 +2591,7 @@ export class World {
       }
       if (al.tauntT > 0) al.tauntT -= DT;
       if (al.maxHp && al.hp <= 0) al.t = 0;
-      if (al.t <= 0 && al.sv) { const i = this.player.souls.indexOf(al.sv); if (i >= 0) this.player.souls.splice(i, 1); } // 쓰러진 영혼은 사라진다
+      if (al.t <= 0 && al.mref) { const i = this.minions.indexOf(al.mref); if (i >= 0) this.minions.splice(i, 1); } // 쓰러진 부하는 사라진다
       if (al.t <= 0) this.emit({ t: 'summonFx', x: al.x, y: al.y, kind: al.kind, elem: al.elem, out: true });
     }
     this.allies = this.allies.filter((a) => a.t > 0);
@@ -3178,7 +3175,7 @@ export class World {
       if (p.invuln > 0) return;
       if (this.rng.chance(d.dodge + this.modAdd('dodge'))) {
         if (this.raceRes?.dodge) this.addRes(this.raceRes.dodge);
-        this.emit({ t: 'text', x: p.x, y: p.y - 14, text: '회피', color: '#bfe8d0' });
+        this.emit({ t: 'dodgeFx', x: p.x, y: p.y, fx: fx ?? attacker?.x ?? p.x - p.dir }); // 회피: 크게 보이게 (글씨 · 비켜서는 잔영)
         p.invuln = 0.15;
         if (attacker) this.knack('dodge');
         for (const tr of this.b.triggers.dodge) if (this.rng.chance(tr.chance)) this.doAction(tr.action, attacker, p);
@@ -3752,10 +3749,6 @@ export class World {
       if (this.b.weapon?.kind === 'proj') this.knack('rangedKill');
       if (BEASTS.test(e.defId)) this.knack('hunt');
     }
-    if (this.b.cls === 'necromancer' && !e.summoned && e.def.ai !== 'dummy' && this.player.souls.length < 30 && this.rng.chance(0.5)) {
-      this.player.souls.push({ defId: e.defId, maxHp: e.maxHp, atk: e.atk, r: e.r, scale: e.scale || 1 });
-      this.emit({ t: 'soulGet', x: e.x, y: e.y, n: this.player.souls.length });
-    }
     if (e.doom) {
       this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 90, elem: 'dark', fx: 'doom', ult: true });
       for (const o of this.enemiesNear(e.x, e.y, 90)) { this.applyStatus(o, 'curse', 6); this.damageEnemy(o, e.doom.atk * 1.8, 'mag', { src: 'aoe', elem: 'dark' }); }
@@ -3848,7 +3841,8 @@ export class World {
         heal: this.enemies.some((o) => !o.dead && !o.remote && Math.hypot(o.x - e.x, o.y - e.y) < 100 && o.hp < o.maxHp * 0.7) };
       const phase = def.phaseMoves ? (e.hp > e.maxHp * 0.66 ? 0 : e.hp > e.maxHp * 0.33 ? 1 : 2) : 0;
       if (def.phaseMoves && phase !== (e.raidPhase ?? 0)) { e.raidPhase = phase; this.emit({ t: 'banner', text: `${def.name} · ${phase + 1}단계`, color: '#ff8a5a' }); this.emit({ t: 'shake', v: 4 }); }
-      Object.assign(can, { rain: dist < 260, adds: this.enemies.filter((o) => o.summoner === e.id && !o.dead).length < 3, charge: dist > 50 && dist < 260, mark: true, nova: dist < 120 });
+      Object.assign(can, { spiral: dist < 200, split: dist < 220, whirl: dist < melee + 22, shove: dist < melee + 10, quake: dist < 70,
+        rain: dist < 260, adds: this.enemies.filter((o) => o.summoner === e.id && !o.dead).length < 3, charge: dist > 50 && dist < 260, mark: true, nova: dist < 120 });
       const list = (def.phaseMoves ? def.phaseMoves[phase] : def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]);
       if (!list.length) { e.mvCd = 0.3; return false; } // 지금 쓸 수 있는 기술이 없으면 조금 뒤 다시
       const pick = list[this.rng.int(0, list.length - 1)];
@@ -3858,6 +3852,12 @@ export class World {
       if (pick === 'fan' && dist < 190) { e.mv = { k: 'fan', t: 0.45, ang: Math.atan2(ty - e.y, tx - e.x) }; e.windT = 0.45; e.windMax = 0.45; this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(e.mv.ang) * 120, y2: e.y + Math.sin(e.mv.ang) * 120, dur: 0.45, color: '#ff5a5a' }); return true; }
       if (pick === 'retreat' && dist < 70) { const l = dist || 1; e.mv = { k: 'retreat', t: 0.35, vx: (e.x - p.x) / l, vy: (e.y - p.y) / l }; return true; }
       if (pick === 'pool' && dist < 200) { e.mv = { k: 'pool', t: 1.0, x: tx, y: ty }; this.emit({ t: 'telegraphCircle', x: tx, y: ty, r: 34, dur: 1.0 }); this.emit({ t: 'windup', id: e.id }); return true; }
+      if (pick === 'spiral' || pick === 'split') { // 빙글 도는 탄 · 갈라지는 탄
+        e.mv = { k: pick, t: 0.45, ang: Math.atan2(ty - e.y, tx - e.x) }; e.windT = 0.45; e.windMax = 0.45; this.emit({ t: 'windup', id: e.id }); return true;
+      }
+      if (pick === 'whirl') { e.mv = { k: 'whirl', t: 0.55 }; this.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: e.r + 26, dur: 0.55 }); e.windT = 0.55; e.windMax = 0.55; return true; }
+      if (pick === 'shove') { e.mv = { k: 'shove', t: 0.4 }; e.windT = 0.4; e.windMax = 0.4; this.emit({ t: 'windup', id: e.id }); return true; }
+      if (pick === 'quake') { e.mv = { k: 'quake', t: 0.8, r: 0 }; this.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 70, dur: 0.8 }); e.windT = 0.8; e.windMax = 0.8; return true; }
       if (pick === 'rain') { // 비: 모든 사람 발밑과 둘레에 장판이 떨어진다
         const spots = this.coTargets().map((q) => ({ x: q.x, y: q.y }));
         for (let i = 0; i < 3; i++) spots.push({ x: e.x + this.rng.range(-110, 110), y: e.y + this.rng.range(-80, 80) });
@@ -3919,6 +3919,32 @@ export class World {
         if (mv.t > 0) return true;
         if (def.proj) this.enemyShot(e, Math.atan2(p.y - e.y, p.x - e.x), 1, 0);
         e.mv = null; return true;
+      case 'spiral': case 'split': {
+        if (mv.t > 0) return true;
+        const pr = def.proj || { speed: 140, color: def.type === 'mag' ? '#c9a8ff' : '#e8d8b0' };
+        if (mv.k === 'spiral') for (let i = 0; i < 2; i++) this.projs.push({ owner: 'e', src: e, x: e.x, y: e.y, vx: Math.cos(mv.ang) * pr.speed, vy: Math.sin(mv.ang) * pr.speed, life: 2.4, dmg: e.atk * 0.8, type: def.type, status: pr.status, color: pr.color, curve: i ? 2.6 : -2.6, big: true });
+        else this.projs.push({ owner: 'e', src: e, x: e.x, y: e.y, vx: Math.cos(mv.ang) * pr.speed * 1.1, vy: Math.sin(mv.ang) * pr.speed * 1.1, life: 2, dmg: e.atk, type: def.type, status: pr.status, color: pr.color, splitT: 0.5, big: true });
+        e.mv = null; return true;
+      }
+      case 'whirl': // 회전베기: 둘레를 한 바퀴
+        if (mv.t > 0) return true;
+        this.enemyArea(e, e.x, e.y, e.r + 26, e.atk * 1.2, def.type, def.status); this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 26, color: '#ffd0a0' });
+        e.mv = null; e.atkCd = 1; return true;
+      case 'shove': { // 밀쳐내기: 세게 쳐서 멀리 날린다
+        if (mv.t > 0) return true;
+        const dx = p.x - e.x, dy = p.y - e.y, l = Math.hypot(dx, dy) || 1;
+        if (l < e.r + (p.r || 5) + 16) {
+          this.hurtPlayer(e.atk * 0.9, def.type, e, { status: def.status });
+          if (p === this.player && !p.down) { for (let k = 0; k < 8; k++) this.move(p, (dx / l) * 6, (dy / l) * 6); p.invuln = Math.max(p.invuln, 0.1); }
+          else if (p.kind) { p.x += (dx / l) * 40; p.y += (dy / l) * 40; }
+        }
+        this.emit({ t: 'strike', id: e.id, x: e.x, y: e.y, ang: Math.atan2(dy, dx), r: e.r + 18 }); this.emit({ t: 'shake', v: 2 });
+        e.mv = null; e.atkCd = 1; return true;
+      }
+      case 'quake': // 땅 찍기: 퍼지는 충격파
+        if (mv.t > 0) return true;
+        this.enemyArea(e, e.x, e.y, 70, e.atk * 1.1, def.type, def.status); this.emit({ t: 'ring', x: e.x, y: e.y, r: 70, color: '#c8a070' }); this.emit({ t: 'shake', v: 3 });
+        e.mv = null; return true;
       case 'rain':
         if (mv.t > 0) return true;
         for (const q of mv.spots) { this.enemyArea(e, q.x, q.y, 30, e.atk * 0.9, def.type, def.status); this.emit({ t: 'ring', x: q.x, y: q.y, r: 30, color: def.proj?.color || '#ff5a5a' }); }
@@ -3948,6 +3974,10 @@ export class World {
     e.mv = null; return false;
   }
   // 사령술사: 영혼을 되살린다 — 공격력은 그대로, 체력은 절반, 첫 한 대는 보호막. 쓰러질 때까지 남고 다른 곳에 가도 따라온다
+  // 사령술사의 부하를 세운다 (기록 m은 저장에 남아 다른 곳에서도 다시 선다) · 첫 한 대는 보호막
+  spawnMinion(m, x, y, i = 0) {
+    this.allies.push({ id: this.nextId++, kind: m.kind, perm: true, mref: m, defId: m.defId, hp: m.maxHp, maxHp: m.maxHp, x, y, t: 1e9, max: 1e9, shield1: true, atk: m.atk, cd: 0.3 + i * 0.15, phase: i, dir: 1, r: m.r || 6, scale: m.scale || 1 });
+  }
   raiseSoul(sv, x, y, i = 0, bonus = 1) {
     sv.up = true;
     const hp = sv.maxHp * 0.5;
@@ -4194,6 +4224,12 @@ export class World {
         if (bl < 10) { pr.life = 0; continue; }
       }
       pr.spin = (pr.spin || 0) + DT * 20;
+      if (pr.owner === 'e' && pr.curve) { const c = Math.cos(pr.curve * DT), sn = Math.sin(pr.curve * DT), vx = pr.vx; pr.vx = vx * c - pr.vy * sn; pr.vy = vx * sn + pr.vy * c; pr.curve *= 0.985; } // 빙글 휘며 날아간다
+      if (pr.owner === 'e' && pr.splitT > 0 && (pr.splitT -= DT) <= 0) { // 날아가다 세 갈래로
+        const a0 = Math.atan2(pr.vy, pr.vx), sp = Math.hypot(pr.vx, pr.vy);
+        for (const da of [-0.5, 0, 0.5]) this.projs.push({ ...pr, vx: Math.cos(a0 + da) * sp, vy: Math.sin(a0 + da) * sp, splitT: 0, life: 1.2, dmg: pr.dmg * 0.6, big: false });
+        pr.life = 0; this.emit({ t: 'spark', x: pr.x, y: pr.y, color: pr.color });
+      }
       let ps = 1;
       if (pr.owner !== 'p' && this.zones.length) for (const z of this.zones) if (z.kind === 'slow' && Math.hypot(pr.x - z.x, pr.y - z.y) < z.r) ps = 0.4;
       pr.x += pr.vx * DT * ps; pr.y += pr.vy * DT * ps; pr.life -= DT * ps;
