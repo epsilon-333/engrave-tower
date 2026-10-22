@@ -777,6 +777,23 @@ export class Renderer {
       g.restore();
     }
 
+    // 탑: 층을 깨면 문까지 가는 길이 바닥에 빛나는 점으로 이어진다
+    if (w.tower) {
+      const path = w.towerPath?.();
+      if (path) {
+        let acc = 0;
+        for (let i = 1; i < path.length; i++) {
+          const a0 = path[i - 1], a1 = path[i], seg = Math.hypot(a1.x - a0.x, a1.y - a0.y);
+          for (let d = (10 - acc % 10) % 10; d < seg; d += 10) {
+            const k = d / seg, x = a0.x + (a1.x - a0.x) * k, y = a0.y + (a1.y - a0.y) * k, ph = (acc + d) / 10 - w.t * 3;
+            const al = 0.45 + 0.4 * Math.max(0, Math.sin(ph));
+            g.fillStyle = hexA('#120c1a', 0.5 * al); g.fillRect(Math.round(x) - 2, Math.round(y) - 1, 4, 4);
+            g.fillStyle = hexA('#ffe8a8', al); g.fillRect(Math.round(x) - 1, Math.round(y), 2, 2);
+          }
+          acc += seg;
+        }
+      }
+    }
     // 엔티티 (y 정렬)
     const vis = (x, y) => x > cx - 48 && x < cx + VW + 48 && y > cy - 48 && y < cy + VH + 64;
     const list = [];
@@ -3040,6 +3057,20 @@ export class Renderer {
       o._top = y - 10;
       return;
     }
+    if (o.kind === 'stairs' && o.door) { // 탑의 문: 돌 문틀과 두 짝 나무문 · 층을 깨면 열리며 빛이 샌다
+      const x = Math.round(o.x), y = Math.round(o.y), tr = w.tower, open = tr && (!tr.boss || tr.boss.dead);
+      g.fillStyle = 'rgba(0,0,0,0.35)'; ellipse(g, x, y + 5, 16, 5);
+      g.fillStyle = '#0d0b10'; g.fillRect(x - 15, y - 31, 30, 36);
+      g.fillStyle = '#6a6474'; g.fillRect(x - 14, y - 30, 28, 34); g.fillStyle = '#8a8496'; g.fillRect(x - 14, y - 30, 28, 3);
+      g.fillStyle = '#4a4454'; for (let i = 0; i < 4; i++) g.fillRect(x - 14 + (i % 2) * 22, y - 24 + i * 7, 6, 1);
+      const gap = open ? 5 : 0;
+      if (open) { g.fillStyle = hexA('#ffe8a8', 0.75 + 0.2 * Math.sin(t * 3)); g.fillRect(x - 9, y - 24, 18, 28); }
+      g.fillStyle = '#5a3a22'; g.fillRect(x - 9, y - 24, 9 - gap, 28); g.fillRect(x + gap, y - 24, 9 - gap, 28);
+      g.fillStyle = '#7a5232'; g.fillRect(x - 9, y - 24, 9 - gap, 2); g.fillRect(x + gap, y - 24, 9 - gap, 2);
+      g.fillStyle = '#c8a050'; g.fillRect(x - 3 - gap, y - 11, 2, 2); g.fillRect(x + 1 + gap, y - 11, 2, 2);
+      o._top = o.y - 34;
+      return;
+    }
     if (o.kind === 'stairs') {
       const img = sprite('floor_stairs');
       g.fillStyle = hexA('#ff6040', 0.2 + 0.1 * Math.sin(t * 2)); ellipse(g, o.x, o.y + 4, 14, 7);
@@ -3764,6 +3795,18 @@ export class Renderer {
     if (w.pvp && w.pvp.left != null) {
       const v = Math.ceil(w.pvp.left);
       this.text(`결투 ${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`, W / 2, topY, u, v <= 30 ? '#ff8a7a' : '#e8d8a8', 'center', true, true);
+    }
+    // 각인의 탑: 이 층의 우두머리 목록 (쓰러뜨리면 빨간 줄)
+    if (w.tower?.bosses?.length) {
+      let y = topY + 46 * u;
+      const x = W - 10 * u;
+      this.text('우두머리', x, y, Math.max(1, u - 1), '#c8b8a0', 'right', true, true);
+      for (const b of w.tower.bosses) {
+        y += 13 * u;
+        const name = b.champion || b.def.name, col = b.dead ? '#8a8090' : b === w.tower.boss ? '#ff9a7a' : '#ffd27a';
+        this.text(name, x, y, Math.max(1, u - 1), col, 'right', true, true);
+        if (b.dead) { g.font = `${10 * Math.max(1, u - 1)}px ${FONT}`; const tw2 = g.measureText(name).width; g.fillStyle = '#ff3a3a'; g.fillRect(Math.round(x - tw2), Math.round(y), Math.round(tw2), Math.max(2, u)); }
+      }
     }
     // 각인의 탑: 층 · 걸린 시간 / 기준 시간 (넘기면 붉게)
     if (w.tower) {

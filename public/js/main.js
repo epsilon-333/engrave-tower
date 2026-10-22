@@ -30,7 +30,7 @@ import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
 import { RACES, RACE_MIGRATE } from './data/races.js';
 import { RACE_STORY, relation, allies, ALLY_AFF, REL_NAME, REL_COLOR } from './data/lore.js';
 import { ITEMS, STYLES } from './data/items.js';
-import { CLASSES, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc } from './data/skills.js';
+import { CC_EXTRA, CLASSES, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc } from './data/skills.js';
 import { STAT_INFO } from './data/stats.js';
 import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
 import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText, STONE_PRICE_CALLER, CALLER_RATES, spiritLevel, SPIRIT_LV_XP } from './data/spirits.js';
@@ -141,7 +141,7 @@ function enterDuel(m) {
   if (world?.zone?.id === 'world') { save.zoneMemory.world = world.exportMemory(); duelBack = { x: world.player.x, y: world.player.y }; }
   overlay.hidden = true; paused = false; modal = null; closeChat();
   world = new World({ build: buildNow(), mode: 'field', zone: DUEL_ZONE, zoneId: 'duel', seed: 900 + m.id, map: buildDuelArena(), pvp: { opp: m.opp }, story: save.story, codex: save.codex, ...shared() });
-  world.enemies = []; world.camps = []; world.objects = []; world.explored.fill(1); // 결투장: 상대만 남긴다 (포탈 · 상자 없음)
+  world.enemies = []; world.camps = []; world.objects = []; world.explored.fill(1); world.milestones = new Set([50, 80, 100]); world.regionSeen.add(0); // 결투장: 탐험 달성 · 보상이 뜨지 않게 // 결투장: 상대만 남긴다 (포탈 · 상자 없음)
   const cx = (world.tw * TILE) / 2, cy = (world.th * TILE) / 2, L = cx - 90, R = cx + 90;
   world.player.x = m.side === 0 ? L : R; world.player.y = cy; world.player.dir = m.side === 0 ? 1 : -1;
   world.addRemote(m.opp, m.side === 0 ? R : L, cy);
@@ -173,6 +173,7 @@ function duelOver(win, reason) {
   world.state = 'over';
   save.pvp ||= { win: 0, lose: 0 };
   if (reason !== 'net' && win !== null) save.pvp[win ? 'win' : 'lose']++;
+  checkCcMissions();
   writeSave(save);
   sfx(win ? 'levelup' : 'error', { vol: 0.6 });
   const why = win === null ? '시간이 다 됐다. 남은 체력이 같다.'
@@ -227,11 +228,68 @@ function openMeet(rp) {
   const canParty = !inParty && !rp.party && (!net.party || (isPartyLeader() && net.party.members.length < 4));
   const r = myRank(), canGuild = !!net.guild && (r === 'leader' || r === 'officer') && !rp.gname;
   showModal(`<h2>${esc(rp.name)}</h2><p class="muted">${RACES[rp.race]?.name || ''} · Lv ${rp.lv || 1}${rp.gname ? ` · 길드 「${esc(rp.gname)}」` : ''}${inParty ? ' · 같은 파티' : rp.party ? ' · 다른 파티에 있다' : ''}</p>
-    <div class="actions col"><button id="mDuel">결투 신청</button>${canParty ? '<button id="mParty">파티 초대</button>' : ''}${canGuild ? '<button id="mGuild">길드 초대</button>' : ''}<button data-close class="ghost">닫기</button></div>`);
+    <div class="actions col"><button id="mDuel">결투 신청</button><button id="mTrade">교환 신청</button>${canParty ? '<button id="mParty">파티 초대</button>' : ''}${canGuild ? '<button id="mGuild">길드 초대</button>' : ''}<button data-close class="ghost">닫기</button></div>`);
   const close = () => { overlay.hidden = true; paused = false; modal = null; };
   document.getElementById('mDuel').onclick = () => { close(); inviteDuel(rp); };
+  document.getElementById('mTrade').onclick = () => { close(); netSend({ t: 'tradeInvite', to: rp.id }); renderer.banner = { text: `${rp.name}에게 교환을 신청했다`, t: 2, color: '#ffd27a' }; };
   const bp = document.getElementById('mParty'); if (bp) bp.onclick = () => { close(); netSend({ t: 'partyInvite', to: rp.id }); renderer.banner = { text: `${rp.name}에게 파티 초대를 보냈다`, t: 2, color: '#9fe6a0' }; };
   const bg = document.getElementById('mGuild'); if (bg) bg.onclick = () => { close(); netSend({ t: 'guildInvite', to: rp.id }); renderer.banner = { text: `${rp.name}에게 길드 초대를 보냈다`, t: 2, color: '#ffd27a' }; };
+}
+
+// ───── 교환: 서로 내놓을 것(골드 · 가방의 물건 · 장비)을 정하고, 둘 다 확정하면 주고받는다 ─────
+let trade = null;
+const emptyOffer = () => ({ gold: 0, goods: {}, items: [] });
+onNet('tradeInvite', (m) => inviteCard(`<b>교환 신청</b><p>${esc(m.name)}</p>`, () => netSend({ t: 'tradeAnswer', to: m.from, ok: true }), () => netSend({ t: 'tradeAnswer', to: m.from, ok: false })));
+onNet('tradeNo', (m) => { renderer.banner = { text: '교환', sub: m.reason, t: 2.2, color: '#c8b8a0' }; });
+onNet('tradeStart', (m) => { trade = { with: m.with, name: m.name, mine: emptyOffer(), theirs: emptyOffer(), myOk: false, theirOk: false }; showTrade(); });
+onNet('tradeOffer', (m) => { if (!trade) return; trade.theirs = m.offer; trade.myOk = false; trade.theirOk = false; showTrade(); });
+onNet('tradeConfirm', (m) => { if (!trade) return; trade.theirOk = true; tradeCheck(); });
+onNet('tradeCancel', () => { if (!trade) return; trade = null; if (modal) { overlay.hidden = true; paused = false; modal = null; } renderer.banner = { text: '교환이 취소됐다', t: 2, color: '#c8b8a0' }; });
+onNet('tradeDone', () => {});
+const tradeable = () => ({ goods: Object.entries(save.bag || {}).filter(([id, n]) => n > 0 && GOODS[id]), items: (save.items || []).filter((id) => ITEMS[id] && !Object.values(save.gear || {}).includes(id) && id !== 'rustySword' && !ITEMS[id].starter) });
+const offerText = (o) => [o.gold ? `◆ ${o.gold} 골드` : '', ...Object.entries(o.goods || {}).filter(([, n]) => n > 0).map(([id, n]) => `${GOODS[id]?.name || id} ×${n}`), ...(o.items || []).map((id) => ITEMS[id]?.name || id)].filter(Boolean);
+function sendOffer() { trade.myOk = false; trade.theirOk = false; netSend({ t: 'tradeOffer', offer: trade.mine }); showTrade(); }
+function showTrade() {
+  if (!trade) return;
+  const T = trade, have = tradeable();
+  const goodsRows = have.goods.map(([id, n]) => { const k = T.mine.goods[id] || 0; return `<div class="soc-row"><span class="nm">${esc(GOODS[id].name)} <small class="muted">${n}개</small></span><span class="btns"><button class="sm ghost" data-tg="${id}" data-d="-1" ${k ? '' : 'disabled'}>−</button><b>${k}</b><button class="sm ghost" data-tg="${id}" data-d="1" ${k < n ? '' : 'disabled'}>+</button></span></div>`; }).join('');
+  const itemRows = have.items.map((id) => { const on = T.mine.items.includes(id); return `<div class="soc-row ${on ? 'on' : ''}"><span class="nm">${esc(ITEMS[id].name)}</span><span class="btns"><button class="sm ${on ? '' : 'ghost'}" data-ti="${id}">${on ? '넣었다' : '넣기'}</button></span></div>`; }).join('');
+  const theirs = offerText(T.theirs), mine = offerText(T.mine);
+  showModal(`<div class="social" id="tradeBox"><h2>교환 · ${esc(T.name)}</h2>
+    <div class="trade-cols"><div><h4>내가 줄 것 ${T.myOk ? '<span class="up">✔ 확정</span>' : ''}</h4><p>${mine.length ? mine.map(esc).join(' · ') : '<span class="muted">아직 없다</span>'}</p>
+      <div class="soc-make"><input id="tgold" type="number" min="0" max="${save.gold}" value="${T.mine.gold}" placeholder="골드"><button class="sm" data-tgold>골드 정하기</button></div><small class="muted">가진 골드 ${save.gold}</small>
+      <h4>가방</h4><div class="soc-list trade-list">${goodsRows || '<p class="muted">없음</p>'}</div><h4>장비 (들고 있지 않은 것)</h4><div class="soc-list trade-list">${itemRows || '<p class="muted">없음</p>'}</div></div>
+    <div><h4>받을 것 ${T.theirOk ? '<span class="up">✔ 확정</span>' : ''}</h4><p>${theirs.length ? theirs.map(esc).join(' · ') : '<span class="muted">아직 없다</span>'}</p></div></div>
+    <p class="muted">어느 쪽이든 내놓을 것을 바꾸면 확정이 풀린다. 둘 다 확정하면 바로 주고받는다.</p>
+    <div class="actions"><button id="tOk" ${T.myOk ? 'disabled' : ''}>확정</button><button id="tNo" class="ghost">그만두기</button></div></div>`, () => tradeCancel());
+  const box = document.getElementById('tradeBox');
+  box.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => e.stopPropagation()));
+  box.onclick = (e) => {
+    const b = e.target.closest('button'); if (!b || !trade) return;
+    if (b.id === 'tOk') { trade.myOk = true; netSend({ t: 'tradeConfirm' }); tradeCheck(); return; }
+    if (b.id === 'tNo') { tradeCancel(); return; }
+    if (b.dataset.tgold != null) { trade.mine.gold = Math.max(0, Math.min(save.gold, Math.floor(+document.getElementById('tgold').value || 0))); sendOffer(); return; }
+    if (b.dataset.tg) { const id = b.dataset.tg; trade.mine.goods[id] = Math.max(0, Math.min(save.bag[id] || 0, (trade.mine.goods[id] || 0) + +b.dataset.d)); sendOffer(); return; }
+    if (b.dataset.ti) { const id = b.dataset.ti, L = trade.mine.items; trade.mine.items = L.includes(id) ? L.filter((x) => x !== id) : [...L, id]; sendOffer(); }
+  };
+}
+function tradeCancel() { if (trade) netSend({ t: 'tradeCancel' }); trade = null; overlay.hidden = true; paused = false; modal = null; }
+// 둘 다 확정: 내 것을 내주고 상대 것을 받는다 (각자의 화면이 똑같이 한다)
+function tradeCheck() {
+  if (!trade) return;
+  if (!(trade.myOk && trade.theirOk)) { showTrade(); return; }
+  const { mine, theirs, name } = trade;
+  const okMine = mine.gold <= save.gold && Object.entries(mine.goods).every(([id, n]) => (save.bag[id] || 0) >= n) && mine.items.every((id) => save.items.includes(id));
+  if (!okMine) { tradeCancel(); renderer.banner = { text: '교환 실패', sub: '내놓은 물건이 모자라다', t: 2, color: '#ff9a7a' }; return; }
+  save.gold += (theirs.gold || 0) - mine.gold;
+  for (const [id, n] of Object.entries(mine.goods)) { save.bag[id] -= n; if (save.bag[id] <= 0) delete save.bag[id]; }
+  for (const [id, n] of Object.entries(theirs.goods || {})) if (n > 0 && GOODS[id]) save.bag[id] = (save.bag[id] || 0) + n;
+  save.items = save.items.filter((id) => !mine.items.includes(id));
+  for (const id of theirs.items || []) if (ITEMS[id] && !save.items.includes(id)) save.items.push(id);
+  writeSave(save); cloudSaveNow(save);
+  netSend({ t: 'tradeDone' }); trade = null;
+  overlay.hidden = true; paused = false; modal = null;
+  renderer.banner = { text: `${josa(name, '과', '와')} 교환했다`, sub: offerText(theirs).join(' · ') || '받은 것 없음', t: 3, color: '#ffd27a' }; sfx('coin', { vol: 0.7 });
 }
 
 // 동료 창 (O): 파티 · 길드
@@ -332,8 +390,17 @@ function partyHudTick() {
 // ───── 파티 탑: 파티장의 세계가 몬스터를 움직이고, 동료의 세계는 그 모습을 보여 주며 자기 공격을 보낸다 ─────
 let coRun = null;           // { role: 'host' | 'member', host, party, snapT, flushT, meT, lastSnap }
 const coState = new Map();  // 동료의 체력 · 쓰러짐 (id → { hp, maxHp, down, f, t })
-const coKey = () => (coRun && world?.tower ? `tw${coRun.party}f${world.tower.f}` : null);
+const coKey = () => (coRun && world?.coop ? (coRun.key || (world.tower ? `tw${coRun.party}f${world.tower.f}` : null)) : null);
+const coF = () => coRun?.key || world?.tower?.f; // 같은 곳인지 맞춰 보는 표 (탑은 층 · 던전은 열쇠)
 const IDLE_INPUT = { moveX: 0, moveY: 0, aimX: 0, aimY: 0, attack: false, dash: false, interact: false, skill: false, s1: false, s2: false, s3: false, s4: false, wskill: false };
+function startCoZone(id) {
+  save.zoneSeeds ||= {};
+  if (save.zoneSeeds[id] == null) save.zoneSeeds[id] = (Math.random() * 1e9) >>> 0;
+  const seed = save.zoneSeeds[id];
+  enterInterior(id, 0, null, { role: 'host', seed });
+  netSend({ t: 'co', k: 'zstart', id, seed });
+  renderer.banner = { text: `${ENTRANCES[id].name} · 파티`, sub: '동료가 받아들이면 같은 던전에 나타난다 · 몬스터는 함께, 상자 · 채집은 각자', t: 3, color: '#9fe6ff' };
+}
 function startCoTower(f) {
   const seed = (Math.random() * 1e9) >>> 0;
   enterTower(f, null, { role: 'host', seed });
@@ -356,16 +423,35 @@ onNet('co', (m) => {
       }, () => netSend({ t: 'co', to: m.from, k: 'no', why: '거절했다' }), 25);
       break;
     }
+    case 'zstart': { // 파티장이 던전에 들어간다
+      if (net.party?.leader !== m.from || !ENTRANCES[m.id]) break;
+      const busy = coRun || world.pvp || duel || world.zone?.id !== 'world' || world.state !== 'play';
+      if (busy) { netSend({ t: 'co', to: m.from, k: 'no', why: world.zone?.id !== 'world' ? '바깥 세계에 없다' : '다른 일을 하는 중' }); break; }
+      inviteCard(`<b>파티 던전</b><p>${esc(josa(fromName, '이', '가'))} <b>${esc(ENTRANCES[m.id].name)}</b>에 들어간다</p>`, () => {
+        if (world.zone?.id !== 'world' || world.state !== 'play' || coRun) return;
+        if (modal) { overlay.hidden = true; paused = false; modal = null; }
+        if (!panelEl.hidden) closePanel();
+        curInterior = { id: m.id, x: world.player.x, y: world.player.y };
+        enterInterior(m.id, 0, null, { role: 'member', seed: m.seed, host: m.from });
+      }, () => netSend({ t: 'co', to: m.from, k: 'no', why: '거절했다' }), 25);
+      break;
+    }
+    case 'zdown': // 파티장이 아래층으로 → 함께
+      if (coRun?.role === 'member' && m.from === coRun.host) {
+        if (modal) { overlay.hidden = true; paused = false; modal = null; }
+        enterInterior(m.id, m.depth, { loot: world.loot, discovered: world.discovered, hp: Math.max(world.player.hp, world.d.maxHp * 0.3), codexStart: world.codexStart, rootMemory: world.rootMemory }, { role: 'member', seed: m.seed, host: m.from });
+      }
+      break;
     case 'no': renderer.banner = { text: `${fromName} — 함께 오르지 않는다`, sub: m.why, t: 2.4, color: '#c8b8a0' }; break;
     case 'me': coState.set(m.from, { hp: m.hp, maxHp: m.maxHp, down: !!m.down, f: m.f, t: performance.now() }); break;
     case 'snap':
-      if (coRun && world.tower?.f === m.f && world.coop) { world.coApplySnap(m, m.from); if (m.from === coRun.host) coRun.lastSnap = performance.now(); }
+      if (coRun && coF() === m.f && world.coop) { world.coApplySnap(m, m.from); if (m.from === coRun.host) coRun.lastSnap = performance.now(); }
       break;
     case 'b': // 묶음: 동료 → 파티장(피해 · 상태이상 · CC …) · 파티장 → 동료(맞았다)
       if (!world.coop || !coRun) break;
       for (const x of m.l || []) { if (x.k === 'hurt') world.coHurt(x); else world.coRecv(x, m.from); } // 누구든: 맞았다 · 내가 맡은 몬스터에 들어온 공격
       break;
-    case 'own': if (coRun?.role === 'member' && m.from === coRun.host && world.tower?.f === m.f && world.coop) { world.coSetOwners(m.l || [], net.id); coRun.lastSnap = performance.now(); } break; // 내가 맡을 몬스터
+    case 'own': if (coRun?.role === 'member' && m.from === coRun.host && coF() === m.f && world.coop) { world.coSetOwners(m.l || [], net.id); coRun.lastSnap = performance.now(); } break; // 내가 맡을 몬스터
     case 'sync': if (world.coop) world.coop.known.clear(); break; // 늦게 온 동료: 적의 종류부터 다시
     case 'next': if (coRun?.role === 'host') document.getElementById('twNext')?.click(); break; // 동료가 다음 층으로 가자고 했다
     case 'stairs': // 동료가 계단에 닿았다 (파티장이 쓰러져 있어도 층을 깰 수 있게)
@@ -387,9 +473,9 @@ onNet('co', (m) => {
   }
 });
 function coTick(dt) {
-  if (!coRun || !world?.coop || !world.tower) return;
-  const w = world, p = w.player, now = performance.now(), host = coRun.role === 'host';
-  if ((coRun.meT -= dt) <= 0) { coRun.meT = 0.25; netSend({ t: 'co', k: 'me', hp: Math.round(p.hp), maxHp: w.d.maxHp, down: p.down ? 1 : 0, f: w.tower.f }); }
+  if (!coRun || !world?.coop) return;
+  const w = world, p = w.player, now = performance.now(), host = coRun.role === 'host', F = coF();
+  if ((coRun.meT -= dt) <= 0) { coRun.meT = 0.25; netSend({ t: 'co', k: 'me', hp: Math.round(p.hp), maxHp: w.d.maxHp, down: p.down ? 1 : 0, f: F }); }
   // 같은 층의 동료 (자리는 지도 중계 · 쓰러짐은 me) — 파티장도 동료도 똑같이: 내가 맡은 몬스터는 내 세계가 움직이고 가까운 사람을 노린다
   const mates = w.coop.mates;
   for (const rp of net.players.values()) {
@@ -397,19 +483,19 @@ function coTick(dt) {
     let mt = mates.get(rp.id);
     if (!mt) { mt = { id: rp.id, name: rp.name, r: 5, dead: false }; mates.set(rp.id, mt); }
     const cs = coState.get(rp.id);
-    mt.x = rp.x; mt.y = rp.y; mt.dead = !!(cs && cs.down && cs.f === w.tower.f);
+    mt.x = rp.x; mt.y = rp.y; mt.dead = !!(cs && cs.down && cs.f === F);
   }
   for (const id of [...mates.keys()]) if (!net.players.has(id)) mates.delete(id);
   if (host) {
     w.coScale(1 + mates.size); // 인원수에 따라 난이도
-    if ((coRun.ownT -= dt) <= 0 || coRun.ownT == null) { coRun.ownT = 0.5; const l = w.coOwners(net.id); w.coSetOwners(l, net.id); if (mates.size) netSend({ t: 'co', k: 'own', f: w.tower.f, l }); } // 몬스터마다 가장 가까운 사람이 맡는다
+    if ((coRun.ownT -= dt) <= 0 || coRun.ownT == null) { coRun.ownT = 0.5; const l = w.coOwners(net.id); w.coSetOwners(l, net.id); if (mates.size) netSend({ t: 'co', k: 'own', f: F, l }); } // 몬스터마다 가장 가까운 사람이 맡는다
   }
   if ((coRun.knownT -= dt) <= 0 || coRun.knownT == null) { coRun.knownT = 3; w.coop.known.clear(); } // 늦게 온 동료도 몬스터 종류를 알게
-  if ((coRun.snapT -= dt) <= 0) { coRun.snapT = 0.1; const s = w.coSnap(); if (mates.size && (s.e.length || s.dead.length || s.ev.length)) netSend({ t: 'co', f: w.tower.f, ...s }); }
+  if ((coRun.snapT -= dt) <= 0) { coRun.snapT = 0.1; const s = w.coSnap(); if (mates.size && (s.e.length || s.dead.length || s.ev.length)) netSend({ t: 'co', f: F, ...s }); }
   const by = new Map();
   for (const o of w.coFlush()) { const to = o.to || coRun.host; if (!by.has(to)) by.set(to, []); by.get(to).push(o); }
   for (const [to, l] of by) netSend({ t: 'co', to, k: 'b', l });
-  if (host && p.down && w.state === 'play' && [...mates.values()].every((mt) => mt.dead)) { netSend({ t: 'co', k: 'wipe', f: w.tower.f }); coWipe(); } // 모두 쓰러졌다
+  if (host && p.down && w.state === 'play' && [...mates.values()].every((mt) => mt.dead)) { netSend({ t: 'co', k: 'wipe', f: F }); coWipe(); } // 모두 쓰러졌다
   if (!host && now - coRun.lastSnap > 6000 && w.state === 'play') coSolo('파티장의 소식이 끊겼다 — 혼자 이어 오른다');
 }
 // 파티장을 잃은 동료: 꼭두각시였던 몬스터가 스스로 움직이고, 혼자 이어 오른다
@@ -489,7 +575,7 @@ function enterTower(f, carry = null, co = null) {
   if (world?.zone?.id === 'world') { returnTo = 'tower'; save.zoneMemory.world = world.exportMemory(); }
   const zid = towerZoneId(f), z = ZONES.find((x) => x.id === zid), seed = co?.seed ?? ((Math.random() * 1e9) >>> 0); // 파티 탑: 파티장이 정한 씨앗 → 모두 같은 층
   world = new World({ build: buildNow(), mode: 'field', zoneId: zid, seed, map: generateField(z, seed, Math.floor(f / 6), towerSize(f)), tower: { f }, coop: co ? { role: co.role } : null, story: save.story, codex: save.codex, ...shared() });
-  if (co?.role === 'member') { world.enemies = []; world.camps = []; world.tower.boss = null; } // 몬스터는 파티장이 알려 준다
+  if (co?.role === 'member') { world.enemies = []; world.camps = []; world.tower.boss = null; world.tower.bosses = []; } // 몬스터는 파티장이 알려 준다
   coRun = co ? { role: co.role, host: co.role === 'host' ? net.id : co.host, party: net.party?.id || 0, snapT: 0, flushT: 0, meT: 0, lastSnap: performance.now() } : null;
   world.codexStart = carry?.codexStart ?? codexPoints(save);
   if (carry) { world.loot = carry.loot; world.discovered = carry.discovered; world.player.hp = Math.min(carry.hp, world.d.maxHp); }
@@ -505,7 +591,7 @@ function towerClear(s) {
   const extra = [];
   if (rw.stones && bagAdd(lifeOf(), 'spiritStone', rw.stones)) extra.push(`정령석 ×${rw.stones}`);
   if (rw.potion && bagAdd(lifeOf(), rw.potion, 1)) extra.push(GOODS[rw.potion].name);
-  writeSave(save); cloudSaveNow(save);
+  writeSave(save); cloudSaveNow(save); checkCcMissions();
   world.state = 'over';
   sfx(grade === 'S' ? 'levelup' : 'open', { vol: 0.7 });
   const top = f >= TOWER_TOP, coHost = coRun?.role === 'host', coMember = coRun?.role === 'member';
@@ -533,6 +619,7 @@ function onKnackLearned(id) {
   SELL_BONUS.v = hasKnack(save.knack, 'haggler') ? 1.1 : 1;
   writeSave(save);
 }
+hub.onQuest = () => checkCcMissions();
 hub.onKnack = (act, n = 1) => { for (const id of knackTick((save.knack ||= newKnack()), act, Math.random, n)) onKnackLearned(id); };
 hub.onCodex = () => { const ups = syncLevel(save); if (ups && world) { world.setBuild(buildNow()); renderer.levelUp(world, save.level, ups * 3); } };
 
@@ -834,14 +921,16 @@ function interiorZone(id) {
   const base = def.theme === 'labyrinth' ? LABY_ZONE : def.theme === 'palace' ? PALACE_ZONE : ZONES.find((z) => z.id === def.theme);
   return { base, zone: { ...base, name: def.name, key: id, relic: def.relic, elite: def.elite || base.elite, pool: def.pool || base.pool } };
 }
-function enterInterior(id, depth = 0, carry = null) {
+function enterInterior(id, depth = 0, carry = null, co = null) { // co: 파티 던전 { role, seed, host }
   const def = ENTRANCES[id], { base, zone } = interiorZone(id);
   save.zoneSeeds ||= {}; save.zoneMemory ||= {};
   if (save.zoneSeeds[id] == null) { save.zoneSeeds[id] = ((save.seed >>> 0) + [...id].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) + Math.floor(Math.random() * 1e6)) >>> 0; writeSave(save); }
-  const seed = depth ? (save.zoneSeeds[id] + depth * 104729 + Math.floor(Math.random() * 1e6)) >>> 0 : save.zoneSeeds[id];
+  const seed = co?.seed ?? (depth ? (save.zoneSeeds[id] + depth * 104729 + Math.floor(Math.random() * 1e6)) >>> 0 : save.zoneSeeds[id]);
   let map = null;                                                     // 이끼 동굴 1층은 직접 설계한 맵 (World가 만든다)
   if (!(id === 'mossCave' && !depth)) map = !depth && def.theme === 'labyrinth' ? buildLabyrinth(zone, seed) : !depth && def.theme === 'palace' ? buildPalace(zone, seed) : generateField(zone, seed, depth, def.size || null);
-  world = new World({ build: buildNow(), mode: 'field', zone, zoneId: base.id, seed, depth, map, memory: depth ? null : save.zoneMemory[memKeyOf(id)], story: save.story, codex: save.codex, ...shared() });
+  world = new World({ build: buildNow(), mode: 'field', zone, zoneId: base.id, seed, depth, map, memory: depth || co ? null : save.zoneMemory[memKeyOf(id)], coop: co ? { role: co.role } : null, story: save.story, codex: save.codex, ...shared() });
+  if (co?.role === 'member') { world.enemies = []; world.camps = []; } // 몬스터는 파티가 함께 본다 (상자 · 채집은 각자)
+  coRun = co ? { role: co.role, host: co.role === 'host' ? net.id : co.host, party: net.party?.id || 0, key: `d${net.party?.id || 0}${id.slice(0, 10)}${depth}`, zone: id, depth, snapT: 0, flushT: 0, meT: 0, lastSnap: performance.now() } : null;
   world.mapKnown = id === 'mossCave' && !depth && !!save.story.flags.pinoMap;
   world.bossRelicTaken = !!(def.relic && save.relicSrc?.[`${def.relic}_boss`]);
   world.codexStart = carry?.codexStart ?? codexPoints(save);
@@ -904,6 +993,7 @@ function showSanctum(race, tab = 'bless') {
   // 종족 상점
   overlay.querySelectorAll('[data-rgood]').forEach((b) => (b.onclick = () => { buyRaceGood(race, b.dataset.rgood, +b.dataset.n || 1); showSanctum(race, 'shop'); }));
   overlay.querySelectorAll('[data-ritem]').forEach((b) => (b.onclick = () => { buyRaceItem(race, b.dataset.ritem, lv); showSanctum(race, 'shop'); }));
+  overlay.querySelectorAll('[data-ccbuy]').forEach((b) => (b.onclick = () => { const c = CC_EXTRA[b.dataset.ccbuy]; if (c?.buy && save.gold >= c.buy && !(save.learned || []).includes(b.dataset.ccbuy)) { save.gold -= c.buy; sfx('coin', { vol: 0.6 }); learnSkill(b.dataset.ccbuy, '기술서를 읽었다'); } showSanctum(race, 'shop'); }));
   // 수련
   on('trainGo', () => { overlay.hidden = true; paused = false; modal = null; if (!world.startTraining?.(race)) renderer.banner = { text: '지금은 수련할 수 없다', t: 1.6, color: '#c8b8a0' }; });
 }
@@ -924,7 +1014,21 @@ function raceShopHtml(race, lv) {
   }).join('');
   return `<div class="talk"><p>「${S.name}의 물건이오. 이 땅에서만 구할 수 있지.」</p>${own ? '' : `<p class="muted">무기는 친밀도 「${AFF_NAME[2]}」부터 살 수 있고, 다른 종족에게는 30% 비싸다.</p>`}</div>
     <h4>이 땅의 물건</h4><div class="skill-row">${goods}</div>
-    <h4>${S.name}의 무기</h4><div class="skill-row">${weapons || '<p class="muted">없음</p>'}</div>`;
+    <h4>${S.name}의 무기</h4><div class="skill-row">${weapons || '<p class="muted">없음</p>'}</div>
+    <h4>CC 기술서 <small>누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다</small></h4><div class="skill-row">${ccBooksHtml()}</div>`;
+}
+// CC 기술서: 돈으로 사는 것 · 미션으로 얻는 것
+function ccBooksHtml() {
+  return Object.entries(CC_EXTRA).map(([id, c]) => {
+    const sk = SKILLS[id], has = (save.learned || []).includes(id), prog = c.mission ? ccMissionProgress(c) : null;
+    const act = has ? '<span class="muted">배웠다 · 캐릭터 창(C)에서 넣는다</span>' : c.buy ? `<button class="sm" data-ccbuy="${id}" ${save.gold >= c.buy ? '' : 'disabled'}>◆ ${c.buy}</button>` : `<span class="muted">미션 · ${c.how} (${Math.min(prog, c.need)}/${c.need})</span>`;
+    return `<div class="skc"><div class="c-head"><b>${sk.name}</b><span class="role">${c.buy ? '기술서' : '미션'}</span></div><div class="c-sum">${esc(sk.desc)} · 재사용 ${sk.cd}초</div><div class="c-act">${act}</div></div>`;
+  }).join('');
+}
+const ccMissionProgress = (c) => c.mission === 'quests' ? save.questsDone || 0 : c.mission === 'tower' ? save.tower?.max || 0 : c.mission === 'duel' ? save.pvp?.win || 0 : 0;
+function checkCcMissions() {
+  if (!save) return;
+  for (const [id, c] of Object.entries(CC_EXTRA)) if (c.mission && !(save.learned || []).includes(id) && ccMissionProgress(c) >= c.need) learnSkill(id, `미션 달성 — ${c.how}`);
 }
 function buyRaceGood(race, id, n) {
   if (!(RACE_SHOP[race] || []).includes(id)) return;
@@ -1125,6 +1229,7 @@ function claimSanctQuest(race) {
   const al = allies(race); // 동맹 성지에도 소문이 퍼진다
   for (const r of al) addAff(r, ALLY_AFF);
   writeSave(save); cloudSaveNow(save);
+  save.questsDone = (save.questsDone || 0) + 1; checkCcMissions(); // CC 기술 미션
   renderer.banner = { text: `의뢰 완료 · ${d.title}`, sub: `골드 +${d.reward.gold} · 친밀도 +${d.reward.aff}${al.length ? ` · 소문이 퍼졌다: ${al.map((r) => SANCTUMS[r].name).join(' · ')} +${ALLY_AFF}` : ''}${Object.keys(d.reward.goods || {}).length ? ' · ' + Object.entries(d.reward.goods).map(([id, n]) => `${GOODS[id]?.name} ${n}`).join(' · ') : ''}`, t: 3.4, color: SANCTUMS[race].color };
   sfx('levelup', { vol: 0.6 });
 }
@@ -1592,7 +1697,7 @@ window.visualViewport?.addEventListener('resize', fitCanvas);
 
 // 떠돌이 상인: 이 층 몬스터의 잔향을 골드로 판다 (산 것은 바로 안전하게 보관)
 function showMerchant(zoneId) {
-  const z = ZONES.find((x) => x.id === zoneId);
+  const z0 = ZONES.find((x) => x.id === zoneId) || world.zone, z = z0?.pool && z0.elite && MONSTERS[z0.elite] ? { ...z0, floor: z0.floor || 1 } : ZONES[0]; // 바깥 세계 광장: 동굴 상인의 물건
   const ids = [...new Set(z.pool.map((m) => MONSTERS[m].echo.id))];
   const rare = MONSTERS[z.elite].echo.id;
   world.merchantStock ||= [...ids.slice(0, 4).map((id) => ({ id, price: 18 * z.floor + 10, left: 3 })), { id: rare, price: 160 * z.floor, left: 1 }];
@@ -1679,7 +1784,7 @@ function handleSignals() {
       // 입구: 안쪽 세계로 (권장 레벨보다 많이 낮으면 한 번 묻는다)
       if (world.zone?.id === 'world') save.zoneMemory.world = world.exportMemory();
       if (world.zone?.id === 'seabed') { save.zoneMemory.seabed = world.exportMemory(); seaStash = null; }
-      const { base } = interiorZone(s.entrance), go = () => { curInterior = { id: s.entrance, x: s.x, y: s.y }; enterInterior(s.entrance); if (ENTRANCES[s.entrance]?.prop === 'hole') world.player.drop = { h: 170, v: 0 }; }; // 구멍: 위에서 떨어져 내린다
+      const { base } = interiorZone(s.entrance), go = () => { curInterior = { id: s.entrance, x: s.x, y: s.y }; if (isPartyLeader() && net.party.members.length > 1 && ENTRANCES[s.entrance]?.theme !== 'palace') startCoZone(s.entrance); else enterInterior(s.entrance); if (ENTRANCES[s.entrance]?.prop === 'hole') world.player.drop = { h: 170, v: 0 }; }; // 구멍: 위에서 떨어져 내린다
       if (save.level < base.rec - 2) {
         showModal(`<h2>${ENTRANCES[s.entrance].name}</h2><p>권장 레벨은 ${base.rec}입니다. (현재 Lv ${save.level})</p><p class="muted">위험하지만 들어갈 수 있습니다.</p>
           <button id="goAnyway">그래도 들어간다</button><button data-close class="ghost">돌아간다</button>`);
@@ -1748,7 +1853,8 @@ function handleSignals() {
         overlay.hidden = true;
         const carry = { loot: world.loot, discovered: world.discovered, hp: world.player.hp, codexStart: world.codexStart,
           rootMemory: world.depth ? world.rootMemory : world.exportMemory() };
-        if (world.zone.key) enterInterior(world.zone.key, world.depth + 1, carry); else enterZone(world.zone.id, world.depth + 1, carry);
+        if (world.zone.key && coRun?.role === 'host') { const seed = (Math.random() * 1e9) >>> 0, zid = world.zone.key, dp = world.depth + 1; carry.hp = Math.max(carry.hp, world.d.maxHp * 0.3); enterInterior(zid, dp, carry, { role: 'host', seed }); netSend({ t: 'co', k: 'zdown', id: zid, depth: dp, seed }); }
+        else if (world.zone.key) enterInterior(world.zone.key, world.depth + 1, carry); else enterZone(world.zone.id, world.depth + 1, carry);
       };
       return;
     } else if (s.t === 'merchant') {

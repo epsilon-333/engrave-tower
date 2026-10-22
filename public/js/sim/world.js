@@ -5,7 +5,7 @@ import { REACTIONS } from '../data/engravings.js';
 import { WEAPON_SKILLS } from '../data/items.js';
 import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
 import { towerMul, isBossFloor } from '../data/tower.js';
-import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO } from '../data/skills.js';
+import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO, SKILL_BAL } from '../data/skills.js';
 import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower, spiritBuff, buffMods } from '../data/spirits.js';
 const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
 const SPIRIT_DMG_ELEM = { fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' };
@@ -127,7 +127,8 @@ export class World {
       for (const c of m.camp || []) this.objects.push({ kind: 'camp', x: c.x * TILE + 8, y: c.y * TILE + 8, label: '야영지 · 잔향 맡기고 쉬기', reusable: true });
       for (const c of m.merchant || []) this.objects.push({ kind: 'merchant', x: c.x * TILE + 8, y: c.y * TILE + 8, label: '떠돌이 상인', reusable: true, npc: { name: '떠돌이 상인 오반' } });
       for (const c of m.shrines || []) this.objects.push({ kind: 'shrine', x: c.x * TILE + 8, y: c.y * TILE + 8, label: '낡은 제단 · 축복 받기' });
-      if (m.stairs) this.objects.push({ kind: 'stairs', x: m.stairs.x * TILE + 8, y: m.stairs.y * TILE + 8, label: this.tower ? `계단 · ${this.tower.f}층 클리어` : `아래층으로 (지하 ${depth + 2}층)`, reusable: true });
+      if (m.stairs && this.tower) { const dp = this.towerDoorSpot(m); m.stairs = dp; } // 탑: 문은 걸어서 닿는 넓은 바닥 가운데에
+      if (m.stairs) this.objects.push({ kind: 'stairs', door: !!this.tower, reach: this.tower ? 30 : undefined, x: m.stairs.x * TILE + 8, y: m.stairs.y * TILE + 8, label: this.tower ? `계단 · ${this.tower.f}층 클리어` : `아래층으로 (지하 ${depth + 2}층)`, reusable: true });
       for (const l of m.lores) this.objects.push({ kind: 'lore', x: l.x * TILE + 8, y: l.y * TILE + 8, label: '고대 석판 읽기' });
       for (const b of m.barriers || []) {
         const def = BARRIERS[b.id], o = { kind: 'barrier', id: b.id, look: def.look, axis: b.axis, from: b.from, tiles: b.tiles, x: b.x * TILE + 8, y: b.y * TILE + 8, label: def.name, reusable: true };
@@ -155,6 +156,43 @@ export class World {
       this.life = life;
     }
     this.applyPersist();
+    if (this.tower) this.tower.bosses = this.enemies.filter((e) => e.champion); // 탑: 이 층의 우두머리 목록 (쓰러뜨리면 줄이 그어진다)
+  }
+
+  // 탑의 문 자리: 시작점에서 걸어서 닿고, 둘레 3×3이 모두 바닥인 칸 중 원래 계단에 가장 가까운 곳
+  towerDoorSpot(m) {
+    const tw = m.tw, th = m.th, T = m.tiles, ok = (t) => t === T_FLOOR;
+    const start = m.start.y * tw + m.start.x, seen = new Uint8Array(tw * th), q = [start]; seen[start] = 1;
+    let best = null, bd = 1e9;
+    for (let h = 0; h < q.length; h++) {
+      const i = q[h], x = i % tw, y = (i / tw) | 0;
+      let wide = x > 1 && y > 1 && x < tw - 2 && y < th - 2;
+      for (let dy = -1; wide && dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!ok(T[(y + dy) * tw + x + dx])) { wide = false; break; }
+      const far = Math.hypot(x - m.start.x, y - m.start.y);
+      if (wide && far > 6) { const d = Math.hypot(x - m.stairs.x, y - m.stairs.y); if (d < bd) { bd = d; best = { x, y }; } }
+      for (const [ox, oy] of N8.slice(0, 4)) { const nx = x + ox, ny = y + oy, j = ny * tw + nx; if (nx < 0 || ny < 0 || nx >= tw || ny >= th || seen[j] || T[j] === T_WALL || T[j] === T_DEEP || T[j] === T_CRACK || T[j] === T_GATE || T[j] === T_BUILD) continue; seen[j] = 1; q.push(j); }
+    }
+    return best || m.stairs;
+  }
+  // 탑: 문으로 가는 길 (층을 깬 뒤 · 0.5초마다 다시)
+  towerPath() {
+    const tr = this.tower, door = this.objects.find((o) => o.kind === 'stairs');
+    if (!tr || !door) return null;
+    const open = tr.boss ? tr.boss.dead : this.enemies.filter((e) => !e.dead && !e.training).length <= Math.ceil((tr.total ||= this.enemies.length) * 0.4);
+    if (!open) return null;
+    if ((tr.pathT = (tr.pathT || 0) - DT) > 0 && tr.path) return tr.path;
+    tr.pathT = 0.5;
+    const tw = this.tw, p = this.player, sx = Math.floor(p.x / TILE), sy = Math.floor(p.y / TILE), gx = Math.floor(door.x / TILE), gy = Math.floor(door.y / TILE);
+    const prev = new Int32Array(tw * this.th).fill(-2), q = [sy * tw + sx]; prev[q[0]] = -1;
+    for (let h = 0; h < q.length; h++) {
+      const i = q[h]; if (i === gy * tw + gx) break;
+      const x = i % tw, y = (i / tw) | 0;
+      for (const [ox, oy] of N8.slice(0, 4)) { const nx = x + ox, ny = y + oy, j = ny * tw + nx; if (nx < 0 || ny < 0 || nx >= tw || ny >= this.th || prev[j] !== -2) continue; const t = this.tiles[j]; if (t === T_WALL || t === T_DEEP || t === T_CRACK || t === T_GATE || t === T_BUILD) continue; prev[j] = i; q.push(j); }
+    }
+    const pts = []; let c = gy * tw + gx;
+    if (prev[c] === -2) return (tr.path = null);
+    while (c >= 0) { pts.push({ x: (c % tw) * TILE + 8, y: ((c / tw) | 0) * TILE + 8 }); c = prev[c]; }
+    return (tr.path = pts.reverse());
   }
 
   // 오래가는 효과 (음식 · 잠): 저장에 남아 있어서 집에 들어갔다 나와도 이어진다. 게임 시간으로 끝난다
@@ -748,11 +786,12 @@ export class World {
     if (!v || !L || this.training) return false;
     const rank = this.story?.sanct?.[race]?.train || 0, own = this.b.race === race;
     const T = trainSpec(race, rank, own), d = this.d, atk = Math.max(d.physAtk || 0, d.magAtk || 0, 10), p = this.player;
-    p.x = v.train.x; p.y = v.train.y + 10; p.dashT = 0; p.channel = null; p.motion = null;
+    p.x = v.train.x; p.y = v.train.y + 10; p.dashT = 0;
+    if (this.blocked(p.x, p.y, 5)) p.y = v.train.y; p.channel = null; p.motion = null;
     this.training = { race, mode: T.mode, kind: T.kind, look: T.look, foe: T.foe, n: T.n || 0, time: T.time, t: T.time, ready: 1.6, got: 0, dealt: 0, need: T.mode === 'guard' ? Math.round(atk * T.needMul) : 0, cx: v.train.x, cy: v.train.y, r: v.train.r, atk, spec: T, rank, own, next: 1, guard: 0, guardT: T.sw || 0 };
     const tr = this.training;
-    if (T.mode === 'guard') tr.posts = [-1, 1].map((sd) => this.spawnTrain('trainPost', v.train.x + sd * 36, v.train.y - 6));
-    if (T.mode === 'keepLit') tr.braziers = Array.from({ length: T.k }, (_, i) => { const a = -Math.PI / 2 + (i / T.k) * Math.PI * 2; return this.spawnTrain('trainPost', v.train.x + Math.cos(a) * v.train.r * 0.62, v.train.y + Math.sin(a) * v.train.r * 0.46); });
+    if (T.mode === 'guard') tr.posts = [-1, 1].map((sd) => { const q = this.trainNear(v.train.x + sd * 36, v.train.y - 6); return this.spawnTrain('trainPost', q.x, q.y); });
+    if (T.mode === 'keepLit') tr.braziers = Array.from({ length: T.k }, (_, i) => { const a = -Math.PI / 2 + (i / T.k) * Math.PI * 2, q = this.trainNear(v.train.x + Math.cos(a) * v.train.r * 0.62, v.train.y + Math.sin(a) * v.train.r * 0.46); return this.spawnTrain('trainPost', q.x, q.y); });
     this.emit({ t: 'trainStart', race, x: p.x, y: p.y });
     return true;
   }
@@ -767,13 +806,25 @@ export class World {
     this.emit({ t: 'trainPop', x, y, look: tr.look, trainee: !!e.trainee });
     return e;
   }
+  // 수련 상대를 둘 수 있는 곳: 벽 · 물 · 용암 위가 아니고, 수련장 가운데에서 벽에 막히지 않고 보이는 곳
+  trainOk(x, y, cx, cy) {
+    const t = this.tileAt(x, y);
+    return !this.blocked(x, y, 8) && t !== T_LIQUID && t !== T_DEEP && this.clearLine(cx, cy, x, y);
+  }
+  // 그 근처에서 둘 수 있는 가장 가까운 곳
+  trainNear(x, y) {
+    const tr = this.training;
+    if (this.trainOk(x, y, tr.cx, tr.cy)) return { x, y };
+    for (let r = 8; r <= 80; r += 8) for (let a = 0; a < 12; a++) { const nx = x + Math.cos(a * Math.PI / 6) * r, ny = y + Math.sin(a * Math.PI / 6) * r; if (this.trainOk(nx, ny, tr.cx, tr.cy)) return { x: nx, y: ny }; }
+    return { x: tr.cx, y: tr.cy };
+  }
   trainSpot() { // 수련장 안의 빈 곳 (나와 너무 붙지 않게)
     const tr = this.training, p = this.player;
-    for (let a = 0; a < 40; a++) {
+    for (let a = 0; a < 60; a++) {
       const an = this.rng.range(0, Math.PI * 2), rr = tr.r * (0.3 + this.rng.next() * 0.65), x = tr.cx + Math.cos(an) * rr, y = tr.cy + Math.sin(an) * rr * 0.75;
-      if (!this.blocked(x, y, 7) && Math.hypot(x - p.x, y - p.y) > 40 && !this.enemies.some((e) => e.training && !e.dead && Math.hypot(e.x - x, e.y - y) < 26)) return { x, y };
+      if (this.trainOk(x, y, tr.cx, tr.cy) && Math.hypot(x - p.x, y - p.y) > 40 && !this.enemies.some((e) => e.training && !e.dead && Math.hypot(e.x - x, e.y - y) < 26)) return { x, y };
     }
-    return { x: tr.cx, y: tr.cy - 30 };
+    return this.trainNear(tr.cx, tr.cy - 30);
   }
   updateTraining() {
     const tr = this.training;
@@ -806,7 +857,7 @@ export class World {
       if (live < (sp.live || 3) && left > 0 && tr.spawnCd <= 0) {
         tr.spawnCd = 0.7;
         const an = this.rng.range(0, Math.PI * 2), x = tr.cx + Math.cos(an) * tr.r * 0.9, y = tr.cy + Math.sin(an) * tr.r * 0.7;
-        const s2 = this.blocked(x, y, 6) ? this.trainSpot() : { x, y }, e = this.spawnTrain(tr.foe, s2.x, s2.y);
+        const s2 = this.trainOk(x, y, tr.cx, tr.cy) ? { x, y } : this.trainSpot(), e = this.spawnTrain(tr.foe, s2.x, s2.y);
         if (sp.champion && left === 1) { e.champ = true; e.maxHp = e.hp = e.maxHp * 3; e.atk = Math.round(e.atk * 1.4); e.scale = 1.4; e.r *= 1.3; this.emit({ t: 'text', x: e.x, y: e.y - 26, text: '투기장 챔피언!', color: '#ff8a5a' }); }
       }
     } else if (tr.mode === 'guard' && sp.sw) { // 방패가 다른 허수아비로 옮겨 간다
@@ -951,6 +1002,7 @@ export class World {
         if (this.coop?.role === 'member') { this.signals.push({ t: 'coStairs' }); this.emit({ t: 'text', x: o.x, y: o.y - 22, text: '계단에 닿았다 — 다 같이 오른다', color: '#9fe6ff' }); return; } // 파티 탑: 층을 깨는 건 파티장의 세계
         this.signals.push({ t: 'towerClear', f: this.tower.f, time: this.tower.t, hurt: this.tower.hurt, maxHp: this.d.maxHp }); return;
       }
+      if (this.coop?.role === 'member') { this.emit({ t: 'text', x: o.x, y: o.y - 22, text: '파티장이 내려가면 다 같이 내려간다', color: '#9fe6ff' }); return; }
       this.signals.push({ t: 'descend' }); return;
     }
     if (o.kind === 'shrine') {
@@ -1378,7 +1430,8 @@ export class World {
     // 힘 모으기: 다음 스킬 한 번이 강해진다
     if (p.buffs.charged && id !== 'chargeUp') { bonus *= p.buffs.charged.power || 2.5; p.buffs.charged.t = Math.min(p.buffs.charged.t, 0.05); }
     const boost = this.weaponBoost(id), hf = handFit(def, this.b), fit = hf.fit, cross = crossMul(def, this.b); // 다른 종족 스킬: 능력치가 모자라면 85%
-    const ctx = { def, id, spent, elem, bonus: bonus * boost * fit * cross, fit, hand: hf.hand, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot };
+    const ctx = { def, id, spent, elem, bonus: bonus * boost * fit * cross * (SKILL_BAL[id] ?? 1), // SKILL_BAL: 종족 스킬 밸런스 보정
+      fit, hand: hf.hand, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot };
     if (fit < 0.95 && fit > 0) this.emit({ t: 'text', x: p.x, y: p.y - 26, text: `무기가 맞지 않다 · 피해 ${Math.round(fit * 100)}%`, color: '#c8b8a0' });
     if (this.autoAim) {
       const tg = this.pickTarget(def);
@@ -1713,7 +1766,7 @@ export class World {
           if (op.kind === 'spiritKing') this.emit({ t: 'banner', text: `${ELEM[elem].name}의 정령왕 강림`, color: ELEM[elem].color });
           const hp = op.kind === 'skeleton' ? this.d.maxHp * 0.35 : op.kind === 'lich' ? this.d.maxHp * 0.8 : 0;
           this.allies.push({ id: this.nextId++, kind: op.kind, perm: !!op.perm, elem, hp, maxHp: hp, x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, t: op.dur, max: op.dur,
-            atk: ctx.atk * op.mul * (op.scaleRes ? ctx.resMul : 1), cd: 0.3 + i * 0.2, phase: a, dir: 1 });
+            atk: ctx.atk * op.mul * (op.scaleRes ? ctx.resMul : 1) * ctx.bonus, cd: 0.3 + i * 0.2, phase: a, dir: 1 });
           this.emit({ t: 'summonFx', x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, kind: op.kind, elem, big: op.kind === 'spiritKing' || op.kind === 'lich' });
         }
         break;
@@ -3775,6 +3828,7 @@ export class World {
         e = this.makeEnemy(inf[0], x, y, { noAffix: true, summoned: !!inf[6] });
         Object.assign(e, { id, puppet: true, owner: from, atk: inf[8] || e.atk, champion: inf[1] || undefined, affix: inf[2] || undefined, scale: inf[3], r: inf[4], lair: !!inf[7], tx: x, ty: y });
         if (inf[5] && this.tower) this.tower.boss = e;
+        if (e.champion && this.tower) (this.tower.bosses ||= []).push(e);
         this.enemies.push(e); byId.set(id, e);
       }
       seen.add(id); e.owner = from; e.handoff = 0;
@@ -3940,7 +3994,7 @@ export class World {
       if (pr.owner === 'p') {
         for (const e of this.enemies) {
           if (e.dead || e.hidden || pr.hit.has(e.id)) continue;
-          if (Math.hypot(e.x - pr.x, e.y - pr.y) > e.r + 3) continue;
+          if (Math.hypot(e.x - pr.x, e.y - 4 - pr.y) > e.r + 5) continue; // 몸 가운데 (발밑보다 조금 위) 기준
           pr.hit.add(e.id);
           if (pr.skillHit) pr.skillHit(e, pr);
           else if (pr.noTrigger) this.damageEnemy(e, pr.dmg, pr.type, { src: 'aoe' });

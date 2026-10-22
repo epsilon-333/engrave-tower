@@ -471,7 +471,7 @@ export class Hub {
     sfx(act === 'craft' || act === 'forge' || act === 'toolUp' || act === 'reinforce' ? 'reaction' : act === 'buy' || act === 'tbuy' || act === 'tsell' || act === 'tsellQuick' ? 'coin' : act === 'claim' ? 'levelup' : act === 'close' ? 'close' : 'click', { vol: 0.5 });
     if (lifeClick(this, act, t) || homeClick(this, act, t)) { this.save(); return this.render(); }
     switch (act) {
-      case 'claim': { const r = claimQuest(s, id); if (r) this.toast(`보상: 골드 ${r.q.reward.gold}`); break; }
+      case 'claim': { const r = claimQuest(s, id); if (r) { this.toast(`보상: 골드 ${r.q.reward.gold}`); this.onQuest?.(); } break; }
       case 'alloc': if (s.points > 0) { s.alloc[k] = (s.alloc[k] || 0) + (ev.shiftKey ? Math.min(5, s.points) : 1); s.points -= ev.shiftKey ? Math.min(5, s.points) : 1; } break;
       case 'unalloc': if (s.alloc[k]) { s.alloc[k]--; s.points++; } break;
       case 'respec': for (const v of Object.values(s.alloc)) s.points += v; s.alloc = {}; this.toast('스탯 배분을 초기화했습니다'); break;

@@ -110,6 +110,7 @@ export function claimQuest(s, id) {
   const q = s.quests[i];
   s.quests.splice(i, 1);
   s.gold += q.reward.gold;
+  s.questsDone = (s.questsDone || 0) + 1; // CC 기술 미션
   refreshQuests(s, 1);
   return { q, ups: 0 };
 }

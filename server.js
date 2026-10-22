@@ -49,6 +49,7 @@ function drop(c) {
   c.closed = true; clients.delete(c.id);
   if (c.map) toMap(c.map, { t: 'leave', id: c.id }, c);
   if (c.duel) { const o = clients.get(c.duel.opp); if (o) { send(o, { t: 'dend', reason: 'left' }); o.duel = null; } }
+  if (c.trade) { const o = clients.get(c.trade); if (o) { send(o, { t: 'tradeCancel', from: c.id }); o.trade = null; } }
   partyLeave(c);
   const g = c.guild && guilds[c.guild];
   if (g) { if (g.members[c.uid]) g.members[c.uid].seen = Date.now(); saveGuilds(); guildSync(g); }
@@ -203,6 +204,26 @@ function handle(c, m) {
       else for (const o of clients.values()) send(o, msg);
       break;
     }
+    // ── 교환 (두 사람이 내놓을 것을 정하고 둘 다 확정하면 각자의 화면이 주고받는다) ──
+    case 'tradeInvite': {
+      const o = clients.get(+m.to), now = Date.now();
+      if (now - (c.tInvT || 0) < 1000) break; c.tInvT = now;
+      if (!o || o === c || o.trade || c.trade) { send(c, { t: 'tradeNo', reason: o?.trade ? '상대가 교환 중이다' : '상대를 찾을 수 없다' }); break; }
+      c.tInv = o.id; send(o, { t: 'tradeInvite', from: c.id, name: c.name });
+      break;
+    }
+    case 'tradeAnswer': {
+      const o = clients.get(+m.to);
+      if (!o || o.tInv !== c.id) break;
+      o.tInv = null;
+      if (!m.ok) { send(o, { t: 'tradeNo', reason: `${iga(c.name)} 거절했다` }); break; }
+      if (o.trade || c.trade) break;
+      o.trade = c.id; c.trade = o.id;
+      send(o, { t: 'tradeStart', with: c.id, name: c.name }); send(c, { t: 'tradeStart', with: o.id, name: o.name });
+      break;
+    }
+    case 'tradeOffer': case 'tradeConfirm': { const o = c.trade && clients.get(c.trade); if (o) send(o, { ...m, from: c.id }); break; }
+    case 'tradeCancel': case 'tradeDone': { const o = c.trade && clients.get(c.trade); if (o) { send(o, { t: m.t, from: c.id }); o.trade = null; } c.trade = null; break; }
     // ── 파티 ──
     case 'partyInvite': {
       const o = clients.get(+m.to), pt = partyOf(c), now = Date.now();

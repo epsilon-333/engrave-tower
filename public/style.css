@@ -479,3 +479,8 @@ b.dim { color: #e8c890; }
 .gnotice { padding: 6px 8px; background: rgba(255,210,122,0.08); border-left: 3px solid #ffd27a; }
 .modal .actions.col { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-top: 12px; }
 @media (max-width: 700px) { #invites { top: 96px; } #partyHud { top: 110px; } }
+/* 교환 */
+.trade-cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+.trade-list { max-height: 160px; overflow-y: auto; }
+.trade-cols .btns b { min-width: 18px; text-align: center; }
+@media (max-width: 700px) { .trade-cols { grid-template-columns: 1fr; } }

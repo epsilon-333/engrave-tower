@@ -420,7 +420,36 @@ for (const sk of Object.values(SKILLS)) if (sk.general) sk.race = 'general';
 
 // ── 스킬의 몸놀림: 무기에 따라 쓸 수 있는지 · 얼마나 잘 쓰는지가 달라진다 ──
 // slash 베기 · smash 내려찍기 · thrust 찌르기 · shoot 쏘기(활 · 석궁 · 바람총) · throw 던지기 · spell 마법 · parry 받아치기 · shield 방패 · body 몸(무기 상관없음)
+
+// ── 스킬 밸런스 보정 (tools/balance.mjs: 단단한 적 3마리에게 6초 동안 넣은 피해 ÷ 재사용 대기, 중간값에서 많이 벗어난 것만) ──
+export const SKILL_BAL = {"pounce": 0.76, "apexPredator": 2.0, "tailSwipe": 0.89, "flameBurst": 0.3, "lightningChain": 0.54, "grandFireball": 0.6, "arcaneBarrage": 0.31, "blinkBlast": 0.41, "gravityCollapse": 0.37, "shieldBash": 1.6, "undying": 2.0, "comboSlash": 0.57, "crushBlow": 0.54, "crushingBlows": 0.5, "rapidThrow": 0.73, "axeLegion": 0.94, "soulDrain": 0.82, "skeletons": 0.46, "corpseBlast": 0.58, "lichLord": 0.3, "deathFog": 0.54, "doomBrand": 1.16, "ambush": 0.98, "dartFan": 0.96, "spiritAbsorb": 0.86, "spiritArrow": 0.4, "spiritKing": 0.3, "pierceArrow": 0.46, "skyPiercer": 0.86, "breath": 0.3, "dragonClaw": 0.34, "soar": 0.34, "dragonForm": 1.52};
+
+// ── 돈 · 미션으로 얻는 CC기 (누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다) ──
+export const CC_EXTRA = {
+  stunStrike: { buy: 1500, how: '종족 상점 기술서 · 1500 골드' },
+  bolas: { buy: 1200, how: '종족 상점 기술서 · 1200 골드' },
+  quakeStomp: { buy: 1800, how: '종족 상점 기술서 · 1800 골드' },
+  fearShout: { mission: 'quests', need: 5, how: '마을 · 성지 의뢰를 5번 끝내면' },
+  silenceSeal: { mission: 'tower', need: 10, how: '각인의 탑 10층을 깨면' },
+  chainHook: { mission: 'duel', need: 3, how: '결투에서 3번 이기면' },
+};
+Object.assign(SKILLS, {
+  stunStrike: { name: '기절 일격', role: '제어', cd: 10, cost: 15, scale: 'best', fx: 'smash', aim: 'tank', mo: 'bash',
+    desc: '앞의 적 하나를 세게 쳐서 공격력 130% 피해 · 1.3초 기절.', do: [{ op: 'single', range: 42, mul: 1.3, stun: 1.3, knock: 120 }] },
+  bolas: { name: '올가미', role: '제어', cd: 9, cost: 12, scale: 'best', fx: 'throw', aim: 'near', mo: 'throw',
+    desc: '올가미를 던져 맞은 적에게 공격력 80% 피해 · 1초 기절 · 냉기 2중첩(느려짐).', do: [{ op: 'proj', n: 1, speed: 300, range: 210, mul: 0.8, stun: 1.0, status: 'chill', stacks: 2, kind: 'harpoon' }] },
+  quakeStomp: { name: '발 구르기', role: '제어', cd: 12, cost: 18, scale: 'best', fx: 'smash', aim: 'none', mo: 'bash',
+    desc: '땅을 굴러 둘레 55 안의 적에게 공격력 90% 피해 · 0.8초 기절.', do: [{ op: 'aoe', at: 'self', r: 55, mul: 0.9, stun: 0.8, fx: 'spin' }] },
+  fearShout: { name: '공포의 외침', role: '제어', cd: 14, cost: 20, scale: 'best', fx: 'buff', aim: 'none', mo: 'power',
+    desc: '둘레 75 안의 적이 2.5초 동안 겁에 질려 달아난다 (공격력 30% 피해).', do: [{ op: 'aoe', at: 'self', r: 75, mul: 0.3, flee: 2.5, fx: 'roar' }] },
+  silenceSeal: { name: '침묵의 인장', role: '제어', cd: 16, cost: 20, scale: 'best', fx: 'rune', aim: 'none', mo: 'cast',
+    desc: '둘레 90 안의 적이 3초 동안 공격 · 기술을 쓰지 못한다.', do: [{ op: 'silence', r: 90, dur: 3 }] },
+  chainHook: { name: '쇠사슬 낚기', role: '제어', cd: 8, cost: 12, scale: 'best', fx: 'throw', aim: 'tank', mo: 'throw',
+    desc: '쇠사슬로 적 하나를 내 앞까지 끌어오고 0.5초 기절 (공격력 90% 피해).', do: [{ op: 'proj', n: 1, speed: 360, range: 230, mul: 0.9, pull: true, stun: 0.5, kind: 'harpoon' }] },
+});
+
 const SKILL_KIND = {
+  stunStrike: 'body', bolas: 'body', quakeStomp: 'body', fearShout: 'body', silenceSeal: 'body', chainHook: 'body',
   sweep: 'slash', dashSlash: 'slash', swordWave: 'slash', skyfall: 'slash', shadowDance: 'slash', eSoulHarvest: 'slash',
   crushBlow: 'smash', chargeSmash: 'smash', crushingBlows: 'smash', rageBurst: 'smash', groundSmash: 'smash',
   ambush: 'thrust', comboSlash: 'slash',
