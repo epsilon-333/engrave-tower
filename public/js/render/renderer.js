@@ -13,6 +13,7 @@ import { PixelCtx } from './pixelctx.js';
 import { flameSprite, puffSprite, sparkSprite, dustSprite, BAYER4 } from './pxfx.js';
 import { spiritSprite } from './spirits.js';
 import { G, BIOME_LIST } from '../data/maps/overworld.js';
+import { beastImg } from './beasts.js';
 import { getSprite, drawEchoGem } from './sprites.js';
 import { sprite, frames, atlas } from './assets.js';
 import { renderMap, hash } from './tiles.js';
@@ -515,6 +516,7 @@ export class Renderer {
         case 'parry': this.rimFlash = { color: '#fff6c0', t: 0.4, max: 0.4 }; this.shockwave(ev.x, ev.y, 40, '#fff6c0', 24); this.burst(ev.x, ev.y - 6, '#fff6c0', 30, 160); this.texts.push({ x: ev.x, y: ev.y - 26, text: '받아치기!', color: '#ffe080', t: 1, vy: -14, vx: 0, label: true, size: 2 }); this.shake = 5; sfx('hitArmor', { vol: 1 }); sfx('reaction', { vol: 0.5, rate: 1.5 }); break;
         case 'buff': this.rimFlash = { color: ev.color || '#ffffff', t: 0.35, max: 0.35 * 1.8 }; for (let i = 0; i < 7; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 14, y: ev.y, vx: 0, vy: -30 - Math.random() * 25, t: 0.55, max: 0.55, color: ev.color, g: -8 }); sfx('echo', { vol: 0.5 }); break;
         case 'elemShift': this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 24, color: ELEM[ev.elem].color, t: 0.4, max: 0.4, w: 3 }); this.burst(ev.x, ev.y - 6, ELEM[ev.elem].color, 16, 80); this.texts.push({ x: ev.x, y: ev.y - 24, text: `${ELEM[ev.elem].name}${ev.weak ? ' · 약점!' : ''}`, color: ELEM[ev.elem].color, t: 1, vy: -12, vx: 0, label: true }); sfx('open', { vol: 0.5, rate: 1.2 }); break;
+        case 'beamFx': this.fx.push({ k: 'beam', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.3, max: 0.3 }); sfx('dash', { vol: 0.5, rate: 1.6 }); break;
         case 'graspArm': this.fx.push({ k: 'arm', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.55, max: 0.55 }); sfx('dash', { vol: 0.5, rate: 0.6 }); break;
         case 'summonFx': { const col = ev.elem ? ELEM[ev.elem].color : ev.kind === 'clone' ? '#8a6aff' : ev.kind === 'skeleton' ? '#e8e0d0' : '#c45cff';
           if (ev.big && !ev.out) { this.fx.push({ k: 'pillar', x: ev.x, y: ev.y, r: 50, color: col, t: 0.8, max: 0.8 }); for (let i = 0; i < 3; i++) this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 30 + i * 20, color: col, t: 0.5 + i * 0.1, max: 0.5 + i * 0.1, w: 4 }); this.burst(ev.x, ev.y, col, 50, 160); this.shake = 8; } this.burst(ev.x, ev.y, col, ev.out ? 8 : 18, 70); if (!ev.out) { this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 16, color: col, t: 0.35, max: 0.35, w: 2 }); sfx('echo', { vol: 0.35, rate: 1.3 }); } break; }
@@ -1140,7 +1142,10 @@ export class Renderer {
     const fuse = e.fuse > 0;
     const flash = e.hitFlash > 0 ? true : (wind || fuse) && Math.floor(w.t * (fuse ? 30 : 20)) % 2 ? (fuse ? '#ffffff' : '#ff4040') : false;
     // 그림이 없으면 투명해지지 않도록 고블린 그림으로 대체
-    const img = sprite(name, art.tint || '', flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);
+    const pose = wind ? 'wind' : e.moving ? 'walk' : 'idle', bf = Math.floor((w.t + e.phase) * (e.moving || art.fly ? 9 : 3)) % 4;
+    const img = art.beast ? beastImg(art.beast, pose, bf, e.dir < 0, flash)
+      : art.mimic ? sprite(e.dormant ? 'chest_full_open_anim_f0' : `chest_mimic_open_anim_f${e.moving || wind ? 1 + (Math.floor(w.t * 8) % 2) : 2}`, '', flash, e.dir < 0)
+      : sprite(name, art.tint || '', flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);
     if (!img) return;
     let sq = this.squash.get(e.id) || 0;
     if (sq > 0) { sq -= dt; this.squash.set(e.id, sq); }
@@ -1159,7 +1164,8 @@ export class Renderer {
     this.shadow(e.x, e.y + 3, Math.max(5, img.width * sc * 0.32));
     if (art.ghost) g.globalAlpha = 0.65 + 0.15 * Math.sin(w.t * 3 + e.phase);
     const carryLift = e.carried > 0 ? 18 + (w.player.air || 0) : 0;
-    const dx = Math.round(e.x - w0 / 2 + wobble), dy = Math.round(e.y + 4 - h0 - carryLift + lungeY);
+    const flyUp = art.fly ? 6 + Math.sin(w.t * 3 + e.phase) * 2 : 0; // 나는 몬스터는 땅 위에 떠 있다
+    const dx = Math.round(e.x - w0 / 2 + wobble), dy = Math.round(e.y + 4 - h0 - carryLift + lungeY - flyUp);
     g.drawImage(img, dx, dy, Math.round(w0), Math.round(h0));
     g.globalAlpha = 1;
     if (e.st.frozen > 0) {
@@ -2734,6 +2740,12 @@ export class Renderer {
         if (this.world.player.castT <= 0) f.t = 0;
       } else if (f.k === 'rune') {
         this.runeCircle(f.x, f.y, f.r * (0.6 + 0.4 * easeOut(1 - k)), f.color, this.world.t * 1.5, k);
+      } else if (f.k === 'beam') { // 감시안의 광선: 붉은 빛줄기가 굵어졌다 가늘어진다
+        const q = k, w1 = 5 * q;
+        g.save(); g.lineCap = 'round';
+        g.strokeStyle = `rgba(255,40,40,${0.5 * q})`; g.lineWidth = w1 + 4; g.beginPath(); g.moveTo(f.x1, f.y1); g.lineTo(f.x2, f.y2); g.stroke();
+        g.strokeStyle = `rgba(255,200,180,${q})`; g.lineWidth = Math.max(1, w1); g.beginPath(); g.moveTo(f.x1, f.y1); g.lineTo(f.x2, f.y2); g.stroke();
+        g.restore();
       } else if (f.k === 'arm') { // 망령의 팔: 마디진 창백한 팔이 쭉 뻗어 움켜쥐고 줄어든다
         const age = f.max - f.t, out = easeOut(Math.min(1, age / 0.14)), back = age > 0.3 ? 1 - (age - 0.3) / 0.25 : 1, r = out * Math.max(0, back);
         const ex = f.x1 + (f.x2 - f.x1) * r, ey = f.y1 + (f.y2 - f.y1) * r, n = 7, ang = Math.atan2(f.y2 - f.y1, f.x2 - f.x1);

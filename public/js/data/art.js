@@ -62,6 +62,11 @@ export const MONSTER_ART = {
   labyrinthLord: { base: 'ogre', tint: 'hue-rotate(-40deg) saturate(1.4) brightness(0.8)', scale: 1.5 },
   orcWarlord: { base: 'masked_orc', tint: 'hue-rotate(30deg) saturate(1.2)', scale: 1.6 },
   raptorAlpha: { base: 'lizard_f', tint: 'hue-rotate(-50deg) saturate(1.8) brightness(0.9)', scale: 1.6 },
+  // 새 몬스터 2 (직접 그린 그림)
+  poisonSpider: { beast: 'spider' }, chargeBoar: { beast: 'boar' }, iceWolf: { beast: 'wolf' }, fireBat: { beast: 'bat', fly: true }, toxShroom: { beast: 'shroom' },
+  rockGolem: { beast: 'rockGolem', scale: 1.2 }, desertScorpion: { beast: 'scorpion' }, shadeWraith: { beast: 'ghost', ghost: true, fly: true }, spikeSlime: { beast: 'spikeSlime' },
+  ironBeetle: { beast: 'beetle' }, fireSpirit: { beast: 'fireSpirit', fly: true }, waterSpirit: { beast: 'waterSpirit' }, watcherEye: { beast: 'eye', fly: true }, shadowPanther: { beast: 'panther' },
+  lizardWarrior: { base: 'lizard_m', tint: 'saturate(1.3) brightness(0.95)' }, darkArcher: { base: 'elf_m', tint: 'brightness(0.45) saturate(0.4) hue-rotate(220deg) contrast(1.2)' }, mimic: { mimic: true },
   // 레이드 보스
   raidGolem: { base: 'ogre', tint: 'grayscale(0.7) sepia(0.4) brightness(1.1)', scale: 2.2 },
   raidQueen: { base: 'wizzard_f', tint: 'hue-rotate(170deg) saturate(1.5) brightness(1.2)', scale: 2.1 },

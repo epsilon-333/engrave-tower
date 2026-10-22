@@ -21,18 +21,18 @@ const TW = 480, TH = 360;
 export const OW = { TW, TH, VILLAGE: { x: 240, y: 320 }, TOWER: { x: 240, y: 172, rx: 18, ry: 13 }, LAKE: { x: 318, y: 152, rx: 20, ry: 14 }, VOLCANO: { x: 396, y: 60 } };
 
 export const BIOMES = [
-  { id: 'plains', lv: [1, 5], name: '시작 평원', x: 236, y: 266, w: 1.25, ground: G.GRASS, road: G.DIRT, pool: ['slime', 'mossSlug', 'bat', 'boarRunner'], trees: 0.012, kinds: ['oak', 'oak', 'birch'] },
-  { id: 'meadow', lv: [5, 10], name: '꽃바람 들판', x: 332, y: 248, w: 0.95, ground: G.GRASS, road: G.DIRT, pool: ['goblin', 'slime', 'mudLurker', 'thornSprite', 'boarRunner'], trees: 0.01, kinds: ['oak', 'birch'] },
-  { id: 'forest', lv: [10, 15], name: '이끼 숲', x: 106, y: 226, w: 1.1, ground: G.FOREST, road: G.DIRT, pool: ['goblin', 'goblinShaman', 'caveLurker', 'bat', 'vineSpirit', 'forestArcher'], trees: 0.3, kinds: ['oak', 'oak', 'pine'] },
-  { id: 'swamp', lv: [15, 20], name: '독늪', x: 82, y: 318, w: 0.95, ground: G.MUD, road: G.DIRT, pool: ['toad', 'leech', 'shroom', 'gasBloat', 'bogWitch', 'mudLurker', 'swampTroll'], trees: 0.08, kinds: ['willow', 'willow', 'dead'] },
-  { id: 'ruins', lv: [20, 25], name: '폐허 도시', x: 150, y: 140, w: 0.9, ground: G.GRASS, road: G.COBBLE, pool: ['bandit', 'goblinShaman', 'shieldDemon', 'imp', 'ruinSentinel', 'cultist'], trees: 0.015, kinds: ['oak', 'dead'] },
-  { id: 'graveyard', lv: [35, 40], name: '그림자 묘지', x: 64, y: 76, w: 0.95, ground: G.DEADGRASS, road: G.DIRT, pool: ['skeleton', 'wraith', 'ghoul', 'tinyCorpse', 'necroAcolyte', 'boneGuard', 'wraithKnight', 'boneArcher'], trees: 0.05, kinds: ['dead'] },
-  { id: 'snow', lv: [40, 45], name: '서리 설원', x: 176, y: 40, w: 1.0, ground: G.SNOW, road: G.STONE, pool: ['frostWolf', 'glassSpider', 'frostSlug', 'iceShaman', 'snowLurker', 'iceGolem', 'iceArcher', 'yeti'], trees: 0.05, kinds: ['snowpine'] },
-  { id: 'mountains', lv: [30, 35], name: '북쪽 바위산', x: 272, y: 86, w: 1.0, ground: G.ROCK, road: G.DIRT, pool: ['bat', 'caveLurker', 'goblin', 'frostWolf', 'rockThrower', 'harpy'], trees: 0.025, kinds: ['pine'] },
-  { id: 'volcano', lv: [45, 50], name: '화산 지대', x: 396, y: 64, w: 1.0, ground: G.ASH, road: G.BLACKROCK, pool: ['salamander', 'magmaGolem', 'imp', 'pumpkinFiend', 'chortShaman', 'shieldDemon', 'lavaLizard'], trees: 0.012, kinds: ['charred'] },
-  { id: 'wasteland', lv: [30, 35], name: '메마른 황야', x: 402, y: 178, w: 1.05, ground: G.REDSAND, road: G.CRACKED, pool: ['sandScorpion', 'hyena', 'orcRaider', 'sandWorm'], trees: 0.012, kinds: ['cactus'] },
-  { id: 'jungle', lv: [25, 30], name: '원시림', x: 404, y: 292, w: 1.0, ground: G.JUNGLE, road: G.DIRT, pool: ['raptor', 'jungleWasp', 'bigBeetle', 'venomSpitter'], trees: 0.27, kinds: ['jungle', 'jungle', 'palm'] },
-  { id: 'lake', lv: [1, 5], name: '거울 호수', x: 318, y: 152, w: 0.55, ground: G.GRASS, road: G.DIRT, pool: ['toad', 'leech', 'slime'], trees: 0.02, kinds: ['oak', 'birch'] },
+  { id: 'plains', lv: [1, 5], name: '시작 평원', x: 236, y: 266, w: 1.25, ground: G.GRASS, road: G.DIRT, pool: ['chargeBoar', 'slime', 'mossSlug', 'bat', 'boarRunner'], trees: 0.012, kinds: ['oak', 'oak', 'birch'] },
+  { id: 'meadow', lv: [5, 10], name: '꽃바람 들판', x: 332, y: 248, w: 0.95, ground: G.GRASS, road: G.DIRT, pool: ['spikeSlime', 'goblin', 'slime', 'mudLurker', 'thornSprite', 'boarRunner'], trees: 0.01, kinds: ['oak', 'birch'] },
+  { id: 'forest', lv: [10, 15], name: '이끼 숲', x: 106, y: 226, w: 1.1, ground: G.FOREST, road: G.DIRT, pool: ['poisonSpider', 'goblin', 'goblinShaman', 'caveLurker', 'bat', 'vineSpirit', 'forestArcher'], trees: 0.3, kinds: ['oak', 'oak', 'pine'] },
+  { id: 'swamp', lv: [15, 20], name: '독늪', x: 82, y: 318, w: 0.95, ground: G.MUD, road: G.DIRT, pool: ['toxShroom', 'toad', 'leech', 'shroom', 'gasBloat', 'bogWitch', 'mudLurker', 'swampTroll'], trees: 0.08, kinds: ['willow', 'willow', 'dead'] },
+  { id: 'ruins', lv: [20, 25], name: '폐허 도시', x: 150, y: 140, w: 0.9, ground: G.GRASS, road: G.COBBLE, pool: ['darkArcher', 'watcherEye', 'bandit', 'goblinShaman', 'shieldDemon', 'imp', 'ruinSentinel', 'cultist'], trees: 0.015, kinds: ['oak', 'dead'] },
+  { id: 'graveyard', lv: [35, 40], name: '그림자 묘지', x: 64, y: 76, w: 0.95, ground: G.DEADGRASS, road: G.DIRT, pool: ['shadeWraith', 'shadowPanther', 'skeleton', 'wraith', 'ghoul', 'tinyCorpse', 'necroAcolyte', 'boneGuard', 'wraithKnight', 'boneArcher'], trees: 0.05, kinds: ['dead'] },
+  { id: 'snow', lv: [40, 45], name: '서리 설원', x: 176, y: 40, w: 1.0, ground: G.SNOW, road: G.STONE, pool: ['iceWolf', 'frostWolf', 'glassSpider', 'frostSlug', 'iceShaman', 'snowLurker', 'iceGolem', 'iceArcher', 'yeti'], trees: 0.05, kinds: ['snowpine'] },
+  { id: 'mountains', lv: [30, 35], name: '북쪽 바위산', x: 272, y: 86, w: 1.0, ground: G.ROCK, road: G.DIRT, pool: ['rockGolem', 'watcherEye', 'bat', 'caveLurker', 'goblin', 'frostWolf', 'rockThrower', 'harpy'], trees: 0.025, kinds: ['pine'] },
+  { id: 'volcano', lv: [45, 50], name: '화산 지대', x: 396, y: 64, w: 1.0, ground: G.ASH, road: G.BLACKROCK, pool: ['fireBat', 'fireSpirit', 'salamander', 'magmaGolem', 'imp', 'pumpkinFiend', 'chortShaman', 'shieldDemon', 'lavaLizard'], trees: 0.012, kinds: ['charred'] },
+  { id: 'wasteland', lv: [30, 35], name: '메마른 황야', x: 402, y: 178, w: 1.05, ground: G.REDSAND, road: G.CRACKED, pool: ['desertScorpion', 'sandScorpion', 'hyena', 'orcRaider', 'sandWorm'], trees: 0.012, kinds: ['cactus'] },
+  { id: 'jungle', lv: [25, 30], name: '원시림', x: 404, y: 292, w: 1.0, ground: G.JUNGLE, road: G.DIRT, pool: ['lizardWarrior', 'ironBeetle', 'raptor', 'jungleWasp', 'bigBeetle', 'venomSpitter'], trees: 0.27, kinds: ['jungle', 'jungle', 'palm'] },
+  { id: 'lake', lv: [1, 5], name: '거울 호수', x: 318, y: 152, w: 0.55, ground: G.GRASS, road: G.DIRT, pool: ['waterSpirit', 'toad', 'leech', 'slime'], trees: 0.02, kinds: ['oak', 'birch'] },
   { id: 'tower', name: '각인의 탑', x: 240, y: 172, w: 0.55, ground: G.GRASS, road: G.STONE, pool: ['bat'], trees: 0, kinds: ['oak'] },
 ];
 const B = Object.fromEntries(BIOMES.map((b, i) => [b.id, i]));

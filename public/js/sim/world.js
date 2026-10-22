@@ -121,6 +121,13 @@ export class World {
         e.home = { x: e.x, y: e.y }; e.region = c.region; this.applyLevel(e, this.regionLevel(c.region, c.x, c.y) + 2); // 우두머리는 두 레벨 위
         this.enemies.push(e);
       }
+      if (m.outdoor && this.zone?.id === 'world') (m.chests || []).forEach((c, i) => { // 미믹: 상자 아홉 개 중 하나 옆에 상자인 척 숨어 있다
+        if (c.rich || i % 9 !== 4) return;
+        const tx = c.x + 2, ty = c.y; if (this.blocked(tx * TILE + 8, ty * TILE + 8, 6)) return;
+        const e = this.makeEnemy('mimic', tx * TILE + 8, ty * TILE + 8, { noAffix: true }); e.home = { x: e.x, y: e.y }; e.dormant = true;
+        const r = m.regions?.[ty * this.tw + tx]; if (r >= 0) { e.region = r; this.applyLevel(e, this.regionLevel(r, tx, ty)); }
+        this.enemies.push(e);
+      });
       for (const g of m.goblins || []) {
         const e = this.makeEnemy('treasureGoblin', g.x * TILE + 8, g.y * TILE + 8, { noAffix: true });
         e.home = { x: e.x, y: e.y };
@@ -2925,6 +2932,8 @@ export class World {
 
   damageEnemy(e, amount, type, opt = {}) {
     if (e.dead || e.hidden) return 0;
+    if (e.invulnT > 0) { if (!opt.fromDot) this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '무적', color: '#c8a8ff' }); return 0; } // 망령: 순간이동 뒤 잠깐 무적
+    if (e.dormant) { e.dormant = false; e.state = 'chase'; this.aggro(e); this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '미믹!', color: '#ff5a3a' }); }
     const d = this.d, p = this.player;
     if (opt.linked) { // 사슬로 나눠 받는 피해: 이미 셈한 피해를 그대로 (배율 · 흡혈 없음)
       e.hp -= amount;
@@ -2940,6 +2949,7 @@ export class World {
       return amount;
     }
     let mult = d.dmgMul * (CLASS_BAL[this.b.cls] ?? 1) * (this.balMul ?? 1); // 클래스 밸런스 보정
+    if (e.def.frontGuard && !opt.fromDot) mult *= (p.x - e.x) * (e.dir || 1) > 0 ? 0.4 : 1.3; // 철갑 딱정벌레: 정면은 단단하고 뒤가 약점
     if (type === 'phys' || type === 'mag') {
       const pen = Math.min(1, (type === 'phys' ? d.physPen : d.magPen) + (this.s.pierce || 0) / 100);
       const broken = type === 'phys' && e.armorBreak ? 1 - e.armorBreak * 0.05 : 1;
@@ -3535,6 +3545,17 @@ export class World {
       if (dot > 0) this.damageEnemy(e, dot * DT, 'true', { src: 'dot' });
       if (e.dead) continue;
       if (e.trainFlee || e.bones > 0) continue; // 수련: 달아나는 랩터 · 뼈 무더기는 수련이 직접 다룬다
+      if (e.dormant) { // 미믹: 가까이 오면 깨어난다
+        if (Math.hypot(P.x - e.x, P.y - e.y) < 34) { e.dormant = false; e.state = 'chase'; this.aggro(e); this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '미믹!', color: '#ff5a3a' }); this.emit({ t: 'shake', v: 2 }); }
+        else continue;
+      }
+      if (e.invulnT > 0) e.invulnT -= DT;
+      if (e.def.splitAt && !e.didSplit && !e.summoned && e.hp > 0 && e.hp < e.maxHp * e.def.splitAt) { // 물의 정령: 체력이 절반이 되면 둘로 갈라진다
+        e.didSplit = true; const half = Math.round(e.hp / 2); e.hp = half;
+        const c2 = this.makeEnemy(e.defId, e.x + 10, e.y, { summoned: true, noAffix: true }); c2.maxHp = e.maxHp; c2.hp = half; c2.atk = e.atk; c2.lv = e.lv; c2.rewardMul = e.rewardMul; c2.didSplit = true; c2.state = 'chase'; c2.home = { ...(e.home || { x: e.x, y: e.y }) };
+        if (this.blocked(c2.x, c2.y, c2.r)) { c2.x = e.x; c2.y = e.y; }
+        this.enemies.push(c2); this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '갈라졌다', color: '#7ad0ff' }); this.emit({ t: 'ring', x: e.x, y: e.y, r: 18, color: '#4aa8e8' });
+      }
       if (e.graspT > 0) { // 붙잡는 망령의 팔에 끌려간다 (정예는 반쯤까지)
         e.graspT -= DT;
         const G = e.graspTo, gap = (G.r || 5) + e.r + 6, ang = Math.atan2(e.graspY0 - G.y, e.graspX0 - G.x);
@@ -3911,7 +3932,7 @@ export class World {
         heal: this.enemies.some((o) => !o.dead && !o.remote && Math.hypot(o.x - e.x, o.y - e.y) < 100 && o.hp < o.maxHp * 0.7) };
       const phase = def.phaseMoves ? (e.hp > e.maxHp * 0.66 ? 0 : e.hp > e.maxHp * 0.33 ? 1 : 2) : 0;
       if (def.phaseMoves && phase !== (e.raidPhase ?? 0)) { e.raidPhase = phase; this.emit({ t: 'banner', text: `${def.name} · ${phase + 1}단계`, color: '#ff8a5a' }); this.emit({ t: 'shake', v: 4 }); }
-      Object.assign(can, { spiral: dist < 200, split: dist < 220, whirl: dist < melee + 22, shove: dist < melee + 10, quake: dist < 70,
+      Object.assign(can, { beam: dist < 230, spiral: dist < 200, split: dist < 220, whirl: dist < melee + 22, shove: dist < melee + 10, quake: dist < 70,
         rain: dist < 260, adds: this.enemies.filter((o) => o.summoner === e.id && !o.dead).length < 3, charge: dist > 50 && dist < 260, mark: true, nova: dist < 120 });
       const list = (def.phaseMoves ? def.phaseMoves[phase] : def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]);
       if (!list.length) { e.mvCd = 0.3; return false; } // 지금 쓸 수 있는 기술이 없으면 조금 뒤 다시
@@ -3948,6 +3969,10 @@ export class World {
       if (pick === 'nova') { // 둘레 폭발: 멀리 떨어져야 산다
         e.mv = { k: 'nova', t: 1.2 }; this.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 110, dur: 1.2, follow: null }); e.windT = 1.2; e.windMax = 1.2; return true;
       }
+      if (pick === 'beam') { // 감시안: 조준선을 보여 준 뒤 광선
+        const a = Math.atan2(ty - e.y, tx - e.x); e.mv = { k: 'beam', t: 0.9, ang: a };
+        this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 230, y2: e.y + Math.sin(a) * 230, dur: 0.9, color: '#ff3a3a', w: 6 }); e.windT = 0.9; e.windMax = 0.9; return true;
+      }
       if (pick === 'heal') {
         const hurt = this.enemies.filter((o) => !o.dead && !o.remote && Math.hypot(o.x - e.x, o.y - e.y) < 100 && o.hp < o.maxHp * 0.7);
         if (!hurt.length) return false;
@@ -3956,7 +3981,7 @@ export class World {
       }
       if (pick === 'blink' && dist > 60) {
         const a = this.rng.range(0, Math.PI * 2), nx = p.x + Math.cos(a) * 70, ny = p.y + Math.sin(a) * 70;
-        if (!this.blocked(nx, ny, e.r)) { this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: nx, y2: ny }); e.x = nx; e.y = ny; e.shotCd = Math.min(e.shotCd, 0.3); }
+        if (!this.blocked(nx, ny, e.r)) { this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: nx, y2: ny }); e.x = nx; e.y = ny; e.shotCd = Math.min(e.shotCd, 0.3); if (def.blinkInv) e.invulnT = def.blinkInv; }
         return false;
       }
       return false;
@@ -4019,6 +4044,12 @@ export class World {
         if (mv.t > 0) return true;
         for (const q of mv.spots) { this.enemyArea(e, q.x, q.y, 30, e.atk * 0.9, def.type, def.status); this.emit({ t: 'ring', x: q.x, y: q.y, r: 30, color: def.proj?.color || '#ff5a5a' }); }
         e.mv = null; return false;
+      case 'beam': {
+        if (mv.t > 0) return true;
+        const x2 = e.x + Math.cos(mv.ang) * 230, y2 = e.y + Math.sin(mv.ang) * 230;
+        for (const q of this.coTargets()) { const vx = x2 - e.x, vy = y2 - e.y, l2 = vx * vx + vy * vy, k = Math.max(0, Math.min(1, ((q.x - e.x) * vx + (q.y - e.y) * vy) / l2)); if (Math.hypot(q.x - e.x - vx * k, q.y - e.y - vy * k) < 7 + (q.r || 5)) this.enemyArea(e, q.x, q.y, 2, e.atk * 1.5, def.type, def.status); }
+        this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2 }); e.mv = null; return true;
+      }
       case 'charge': {
         if (mv.t > mv.run) return true;
         const sp = def.speed * 9 * DT, nx = e.x + Math.cos(mv.ang) * sp, ny = e.y + Math.sin(mv.ang) * sp;

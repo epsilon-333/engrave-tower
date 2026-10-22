@@ -94,6 +94,27 @@ export const MONSTERS = {
   graveKeeper: { name: '묘지기', shape: 'golem', scale: 2.2, elite: true, pal: { a: '#3a2a4a', b: '#1a1024', c: '#c45cff', e: '#00ff9a' }, hp: 5200, atk: 38, type: 'mag', speed: 34, ai: 'boss', range: 170, proj: { speed: 150, color: '#c45cff', status: 'bleed', spread: 11 }, r: 15, xp: 700, gold: 400, pres: 100, mres: 100, echo: { id: 'grave', rate: 1 } },
 };
 
+// ── 새 몬스터 2: 직접 그린 그림 (render/beasts.js) ──
+Object.assign(MONSTERS, {
+  poisonSpider: { name: '독거미', shape: 'quad', pal: { a: '#8a40b8' }, hp: 110, atk: 12, type: 'phys', speed: 82, ai: 'chase', status: 'poison', moves: ['leap', 'combo'], r: 6, xp: 18, gold: 9, pres: 10, mres: 10, echo: {'id': 'venom', 'rate': 0.4} },
+  chargeBoar: { name: '돌진 멧돼지', shape: 'quad', pal: { a: '#8a5a34' }, hp: 90, atk: 11, type: 'phys', speed: 60, ai: 'chase', moves: ['charge'], r: 7, xp: 10, gold: 5, pres: 12, mres: 0, echo: {'id': 'goo', 'rate': 0.4} },
+  iceWolf: { name: '얼음 늑대', shape: 'quad', pal: { a: '#6a9ac8' }, hp: 180, atk: 18, type: 'phys', speed: 100, ai: 'chase', status: 'chill', moves: ['combo', 'leap'], r: 6, xp: 30, gold: 16, pres: 20, mres: 30, echo: {'id': 'frost', 'rate': 0.4} },
+  fireBat: { name: '화염 박쥐', shape: 'flyer', pal: { a: '#ff7a2a' }, hp: 90, atk: 16, type: 'mag', speed: 112, ai: 'erratic', status: 'burn', proj: { speed: 170, color: '#ff7a2a', status: 'burn' }, moves: ['leap', 'fan'], r: 5, xp: 22, gold: 12, pres: 0, mres: 40, echo: {'id': 'cinder', 'rate': 0.4} },
+  toxShroom: { name: '독버섯', shape: 'quad', pal: { a: '#9a3ab0' }, hp: 140, atk: 10, type: 'mag', speed: 30, ai: 'chase', status: 'poison', moves: ['pool'], r: 7, xp: 16, gold: 8, pres: 10, mres: 20, echo: {'id': 'spore', 'rate': 0.4} },
+  rockGolem: { name: '바위 골렘', shape: 'golem', pal: { a: '#7a7680' }, hp: 420, atk: 24, type: 'phys', speed: 32, ai: 'chase', moves: ['quake', 'combo'], r: 9, xp: 46, gold: 24, pres: 120, mres: 30, echo: {'id': 'rust', 'rate': 0.4} },
+  desertScorpion: { name: '사막 전갈', shape: 'quad', pal: { a: '#c8944e' }, hp: 170, atk: 16, type: 'phys', speed: 70, ai: 'chase', status: 'poison', proj: { speed: 160, color: '#c8e040', status: 'poison' }, moves: ['combo', 'spiral'], r: 7, xp: 28, gold: 15, pres: 40, mres: 10, echo: {'id': 'venom', 'rate': 0.4} },
+  shadeWraith: { name: '망령', shape: 'flyer', ghost: true, pal: { a: '#9a6ae0' }, hp: 200, atk: 20, type: 'mag', speed: 80, ai: 'erratic', moves: ['blink', 'combo'], blinkInv: 1, r: 6, xp: 34, gold: 18, pres: 200, mres: 20, echo: {'id': 'soul', 'rate': 0.4} },
+  spikeSlime: { name: '가시 슬라임', shape: 'blob', pal: { a: '#8a3ad0' }, hp: 100, atk: 9, type: 'phys', speed: 55, ai: 'chase', reflect: 0.3, proj: { speed: 150, color: '#d8b8ff', spread: 5 }, moves: ['leap', 'fan'], r: 7, xp: 12, gold: 6, pres: 10, mres: 10, echo: {'id': 'goo', 'rate': 0.45} },
+  lizardWarrior: { name: '도마뱀 전사', shape: 'humanoid', pal: { a: '#5aa040' }, hp: 200, atk: 20, type: 'phys', speed: 80, ai: 'chase', moves: ['combo', 'retreat', 'leap'], r: 6, xp: 32, gold: 17, pres: 30, mres: 15, echo: {'id': 'blood', 'rate': 0.45} },
+  darkArcher: { name: '어둠 궁수', shape: 'humanoid', pal: { a: '#3a2a4a' }, hp: 130, atk: 17, type: 'phys', speed: 75, ai: 'ranged', proj: { speed: 210, color: '#8a6aaa' }, moves: ['retreat', 'fan'], r: 6, xp: 26, gold: 14, pres: 10, mres: 20, echo: {'id': 'rust', 'rate': 0.4} },
+  ironBeetle: { name: '철갑 딱정벌레', shape: 'quad', pal: { a: '#5a7088' }, hp: 260, atk: 18, type: 'phys', speed: 50, ai: 'chase', moves: ['leap'], frontGuard: true, r: 8, xp: 34, gold: 18, pres: 80, mres: 20, echo: {'id': 'spore', 'rate': 0.45} },
+  fireSpirit: { name: '불꽃 정령', shape: 'flyer', pal: { a: '#ff7a2a' }, hp: 70, atk: 30, type: 'mag', speed: 60, ai: 'ranged', status: 'burn', proj: { speed: 190, color: '#ff7a2a', status: 'burn' }, r: 5, xp: 30, gold: 16, pres: 0, mres: 30, echo: {'id': 'ember', 'rate': 0.4} },
+  waterSpirit: { name: '물의 정령', shape: 'flyer', pal: { a: '#3a9ae0' }, hp: 160, atk: 12, type: 'mag', speed: 55, ai: 'ranged', status: 'chill', proj: { speed: 170, color: '#4aa8e8', status: 'chill' }, moves: ['heal'], splitAt: 0.5, r: 6, xp: 18, gold: 9, pres: 10, mres: 40, echo: {'id': 'frost', 'rate': 0.4} },
+  watcherEye: { name: '감시안', shape: 'flyer', pal: { a: '#f0e8ec' }, hp: 180, atk: 22, type: 'mag', speed: 50, ai: 'ranged', proj: { speed: 200, color: '#ff3a3a' }, moves: ['beam'], r: 7, xp: 32, gold: 17, pres: 20, mres: 50, echo: {'id': 'mirror', 'rate': 0.4} },
+  shadowPanther: { name: '그림자 표범', shape: 'quad', pal: { a: '#2a2434' }, hp: 200, atk: 22, type: 'phys', speed: 120, ai: 'chase', status: 'bleed', moves: ['leap', 'leap', 'blink'], r: 7, xp: 36, gold: 19, pres: 20, mres: 20, echo: {'id': 'blood', 'rate': 0.4} },
+  mimic: { name: '미믹', shape: 'quad', pal: { a: '#a8743e' }, hp: 300, atk: 26, type: 'phys', speed: 70, ai: 'chase', moves: ['combo', 'leap'], mimic: true, r: 7, xp: 40, gold: 60, pres: 40, mres: 40, echo: {'id': 'rust', 'rate': 1} },
+});
+
 // ── 레이드 보스: 체력이 셋으로 나뉘어 단계마다 기술이 바뀐다 (phaseMoves) ──
 Object.assign(MONSTERS, {
   raidGolem: { name: '고대 골렘', shape: 'golem', scale: 2.4, elite: true, raid: true, pal: { a: '#8a7a5a' }, hp: 14000, atk: 34, type: 'phys', speed: 34, ai: 'boss', proj: { speed: 160, color: '#c8a86a', spread: 3 }, shield: 0.2, r: 16, xp: 600, gold: 400, pres: 80, mres: 30, echo: { id: 'core', rate: 1 },
