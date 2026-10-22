@@ -3261,7 +3261,7 @@ export class World {
   makeEnemy(id, x, y, opt = {}) {
     const def = ALL_MONSTERS[id];
     const tm = this.tower ? towerMul(this.tower.f) : null; // 탑: 층마다 복리로 강해진다
-    const dm = 0.8 * (tm ? tm.hp : 1 + 0.4 * this.depth), am = 1.9 * (tm ? tm.atk : 1 + 0.25 * this.depth); // 몬스터는 체력은 낮게 · 더 아프게 때린다
+    const dm = 0.8 * (tm ? tm.hp : 1 + 0.4 * this.depth), am = 3.8 * (tm ? tm.atk : 1 + 0.25 * this.depth); // 몬스터는 체력은 낮게 · 더 아프게 때린다
     const e = {
       id: this.nextId++, defId: id, def, x, y, r: def.r, hp: def.hp * dm, maxHp: def.hp * dm, atk: def.atk * am, pres: def.pres, mres: def.mres,
       st: {}, atkCd: 0.5 + this.rng.range(0, 1), shotCd: 1 + this.rng.next() * 1.5, kbx: 0, kby: 0, hitFlash: 0, dead: false,

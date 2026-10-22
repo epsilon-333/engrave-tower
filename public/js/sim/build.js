@@ -132,7 +132,7 @@ export function computeBuild(lo) {
   // 8) 파생 수치
   const E = {}; for (const k of BASE_STATS) E[k] = eff(Math.max(0, stats[k]));
   const d = {
-    maxHp: 110 + E.vit * 9,                    // 기본 체력을 넉넉히 (예전 70 + 체력 × 7)
+    maxHp: 220 + E.vit * 18,                   // 기본 체력을 넉넉히 (몬스터 공격력과 함께 두 배)
     physAtk: 4 + E.str * 1.1,                  // 기본 공격력은 조금 낮게 (예전 × 1.3)
     dexAtk: 4 + E.agi * 1.0 + E.str * 0.2,
     magAtk: 4 + E.mag * 1.1,
