@@ -62,6 +62,23 @@ export const MONSTER_ART = {
   labyrinthLord: { base: 'ogre', tint: 'hue-rotate(-40deg) saturate(1.4) brightness(0.8)', scale: 1.5 },
   orcWarlord: { base: 'masked_orc', tint: 'hue-rotate(30deg) saturate(1.2)', scale: 1.6 },
   raptorAlpha: { base: 'lizard_f', tint: 'hue-rotate(-50deg) saturate(1.8) brightness(0.9)', scale: 1.6 },
+  // 새 몬스터
+  boarRunner: { base: 'chort', tint: 'sepia(0.8) saturate(1.4) hue-rotate(-20deg) brightness(0.85)' },
+  thornSprite: { base: 'imp', tint: 'hue-rotate(80deg) saturate(1.6) brightness(1.2)' },
+  vineSpirit: { base: 'swampy', tint: 'hue-rotate(10deg) saturate(1.8) brightness(0.9)', scale: 1.2 },
+  forestArcher: { base: 'elf_m', tint: 'hue-rotate(40deg) saturate(1.2) brightness(0.8)' },
+  swampTroll: { base: 'ogre', tint: 'hue-rotate(60deg) saturate(0.8) brightness(0.8)', scale: 1.1 },
+  ruinSentinel: { base: 'big_zombie', tint: 'grayscale(0.9) brightness(1.1)', scale: 1.1 },
+  cultist: { base: 'necromancer', tint: 'hue-rotate(200deg) saturate(1.4) brightness(0.8)' },
+  wraithKnight: { base: 'knight_m', tint: 'hue-rotate(170deg) saturate(1.3) brightness(1.2)', ghost: true },
+  boneArcher: { base: 'skelet', tint: 'sepia(0.5) brightness(0.95)' },
+  iceArcher: { base: 'elf_f', tint: 'hue-rotate(170deg) saturate(1.2) brightness(1.15)' },
+  yeti: { base: 'ogre', tint: 'grayscale(0.9) brightness(1.7)', scale: 1.2 },
+  rockThrower: { base: 'dwarf_m', tint: 'sepia(0.6) brightness(0.85)', scale: 1.15 },
+  harpy: { base: 'angel', tint: 'sepia(0.9) saturate(1.3) hue-rotate(-20deg)' },
+  lavaLizard: { base: 'lizard_m', tint: 'hue-rotate(-60deg) saturate(2) brightness(0.9)' },
+  sandWorm: { base: 'slug', tint: 'sepia(1) saturate(1.5) hue-rotate(-10deg) brightness(1.1)', scale: 1.3 },
+  venomSpitter: { base: 'muddy', tint: 'hue-rotate(40deg) saturate(2) brightness(1.1)' },
   fallenKnight: { base: 'knight_m', tint: 'grayscale(0.6) hue-rotate(220deg) brightness(0.75) saturate(1.5)', scale: 1.6 },
 };
 

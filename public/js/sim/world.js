@@ -32,6 +32,8 @@ const WINDUP = { blow3: 0.08, throw: 0.12, throwBig: 0.2, shoot: 0.12, overhead:
 const MOTION_DUR = { blow3: 0.68, slash: 0.3, sweep: 0.42, overhead: 0.5, thrust: 0.3, spin: 0.38, dash: 0.25, leap: 0.45, cast: 0.3, castBig: 0.45, throw: 0.3, throwBig: 0.45, roar: 0.55, guard: 0.5, bite: 0.35, shoot: 0.3, power: 0.6, stomp: 0.45, claw: 0.3, breath: 1.2, headbutt: 0.35, charge: 0.4, bash: 0.4, chop: 0.6, stab: 0.4, point: 0.3, crouch: 0.4, channel: 1.2, aim: 0.5, dashSlash: 0.35 };
 const STATUS_COLOR = { burn: '#ff7a2a', poison: '#9be15d', bleed: '#e0445a', chill: '#9fe3ff', true: '#ffffff' };
 const ACTIVE_RANGE = 440;
+// 몬스터 기술: 종류마다 2~3가지를 섞어 쓴다 (모두 빨간 예고가 먼저 나온다) · 몬스터 정의의 moves 로 바꿀 수 있다
+const AI_MOVES = { chase: ['combo', 'leap'], erratic: ['combo'], burrow: ['leap', 'combo'], ranged: ['fan', 'retreat'], summoner: ['pool', 'heal', 'blink'], charge: ['leap', 'combo', 'pool'], boss: ['leap', 'pool', 'fan', 'combo'] };
 const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 const ALL_MONSTERS = { ...MONSTERS, ...DUMMIES };
 // 파티 탑: 방장의 적이 낸 사건 중 동료 화면에도 보여 줄 것
@@ -2947,6 +2949,7 @@ export class World {
       else if (e.dir && Math.sign(p.x - e.x) === -e.dir && e.def.ai !== 'dummy') this.knack('backstab');
     }
     if (e.st.mark > 0) mult *= 1.2;
+    if (e.guardT > 0) mult *= 0.6; // 몬스터 회복 · 보호: 잠깐 받는 피해 -40%
     if (e.st.curse && this.b.offItem?.offCurse) mult *= 1 + 0.02 * e.st.curse.n; // 저주 인형: 저주 중첩마다 받는 피해 +2%
     if (e.st.frozen > 0 && this.f.has('frozenVuln')) mult *= 1.5;
     if (d.lowHunt && e.hp < e.maxHp * 0.3) mult *= 1 + d.lowHunt; // 마무리: 체력 30% 밑의 적
@@ -3464,6 +3467,7 @@ export class World {
       for (const k of ['shock', 'weak', 'elemMark', 'fear', 'stun']) if (st[k] > 0) { st[k] -= DT; if (st[k] <= 0 && k === 'stun') e.prison = false; }
       if (this.b.race === 'dragon' && st.burn) this.addRes(DT * (this.raceRes.burnTick || 1), true);
       for (const k of ['frozen', 'mark', 'septic', 'slowZ']) if (st[k] > 0) st[k] -= DT;
+      if (e.guardT > 0) e.guardT -= DT;
       if (e.rooted > 0) e.rooted -= DT;
       const dot = burn + poison + bleed + curse;
       if (dot > 0) this.damageEnemy(e, dot * DT, 'true', { src: 'dot' });
@@ -3546,8 +3550,9 @@ export class World {
       if (e.state === 'chase') {
         const fromHome = Math.hypot(e.x - e.home.x, e.y - e.home.y);
         e.leashT = dist > 260 ? e.leashT + DT : 0;
-        if (fromHome > 420 || e.leashT > 3) { e.state = 'return'; }
+        if (fromHome > 420 || e.leashT > 3) { e.state = 'return'; e.mv = null; }
       }
+      if (e.state === 'chase' && this.enemyMove(e, p, dist, frozen)) { e.kbx *= 0.85; e.kby *= 0.85; continue; } // 몬스터 기술 (연속 베기 · 뛰어들기 · 부채꼴 · 장판 · 회복 · 순간이동)
 
       if (e.state === 'idle') {
         e.wanderT -= DT;
@@ -3814,6 +3819,87 @@ export class World {
   }
 
   addRage() { /* 오크 분노는 종족 자원(res)으로 통합 */ }
+
+  // ───────────── 몬스터 기술 ─────────────
+  // 둘레의 사람 · 동료 · 소환체 모두에게 (장판 · 착지 충격)
+  enemyArea(e, x, y, r, dmg, type, status) {
+    const prev = this.coTgt;
+    for (const t of this.coTargets()) if (Math.hypot(t.x - x, t.y - y) < r + (t.r || 5)) { this.coTgt = t === this.player ? null : t; this.hurtPlayer(dmg, type, e, { status, fromX: x, fromY: y }); }
+    this.coTgt = prev;
+  }
+  // true면 이번 틱은 기술 중 (평소 걷기 · 휘두르기는 쉰다)
+  enemyMove(e, p, dist, frozen) {
+    const def = e.def;
+    if (frozen || e.silenceT > 0 || e.st.flee > 0 || e.loseT > 0 || e.remote || e.training) { if (e.mv && frozen) e.mv = null; return false; }
+    // 정예 · 우두머리: 체력 절반 아래에서 분노 (빨라지고 자주 쓴다)
+    if ((def.elite || e.champion) && !e.enraged && e.hp < e.maxHp * 0.5) {
+      e.enraged = true; e.speedMul *= 1.3; e.atkRate *= 1.35;
+      this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '분노!', color: '#ff5a3a' }); this.emit({ t: 'shake', v: 3 });
+    }
+    const mv = e.mv;
+    if (!mv) {
+      if ((e.mvCd = (e.mvCd ?? 2 + this.rng.range(0, 2)) - DT) > 0 || e.windT > 0 || dist > 200) return false;
+      const melee = e.r + (p.r || 5) + 10, tx = p.x, ty = p.y;
+      const can = { combo: dist < melee + 16, leap: dist > 40 && dist < 170, fan: dist < 190, retreat: dist < 70, pool: dist < 200, blink: dist > 60,
+        heal: this.enemies.some((o) => !o.dead && !o.remote && Math.hypot(o.x - e.x, o.y - e.y) < 100 && o.hp < o.maxHp * 0.7) };
+      const list = (def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]);
+      if (!list.length) { e.mvCd = 0.3; return false; } // 지금 쓸 수 있는 기술이 없으면 조금 뒤 다시
+      const pick = list[this.rng.int(0, list.length - 1)];
+      e.mvCd = (def.elite || e.champion ? 2.4 : 3.5) / (e.enraged ? 1.4 : 1) + this.rng.range(0, 1.5);
+      if (pick === 'combo' && dist < melee + 16) { e.mv = { k: 'combo', t: 0.35, n: 3 }; e.windT = 0.35; e.windMax = 0.35; this.emit({ t: 'windup', id: e.id }); return true; }
+      if (pick === 'leap' && dist > 40 && dist < 170) { e.mv = { k: 'leap', t: 0.75, max: 0.75, x0: e.x, y0: e.y, x: tx, y: ty }; this.emit({ t: 'telegraphCircle', x: tx, y: ty, r: 30, dur: 0.75 }); return true; }
+      if (pick === 'fan' && dist < 190) { e.mv = { k: 'fan', t: 0.45, ang: Math.atan2(ty - e.y, tx - e.x) }; e.windT = 0.45; e.windMax = 0.45; this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(e.mv.ang) * 120, y2: e.y + Math.sin(e.mv.ang) * 120, dur: 0.45, color: '#ff5a5a' }); return true; }
+      if (pick === 'retreat' && dist < 70) { const l = dist || 1; e.mv = { k: 'retreat', t: 0.35, vx: (e.x - p.x) / l, vy: (e.y - p.y) / l }; return true; }
+      if (pick === 'pool' && dist < 200) { e.mv = { k: 'pool', t: 1.0, x: tx, y: ty }; this.emit({ t: 'telegraphCircle', x: tx, y: ty, r: 34, dur: 1.0 }); this.emit({ t: 'windup', id: e.id }); return true; }
+      if (pick === 'heal') {
+        const hurt = this.enemies.filter((o) => !o.dead && !o.remote && Math.hypot(o.x - e.x, o.y - e.y) < 100 && o.hp < o.maxHp * 0.7);
+        if (!hurt.length) return false;
+        for (const o of hurt) { o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.25); o.guardT = 3; this.emit({ t: 'text', x: o.x, y: o.y - 18, text: '회복', color: '#7be38a' }); }
+        this.emit({ t: 'ring', x: e.x, y: e.y, r: 100, color: '#7be38a' }); return false;
+      }
+      if (pick === 'blink' && dist > 60) {
+        const a = this.rng.range(0, Math.PI * 2), nx = p.x + Math.cos(a) * 70, ny = p.y + Math.sin(a) * 70;
+        if (!this.blocked(nx, ny, e.r)) { this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: nx, y2: ny }); e.x = nx; e.y = ny; e.shotCd = Math.min(e.shotCd, 0.3); }
+        return false;
+      }
+      return false;
+    }
+    mv.t -= DT;
+    switch (mv.k) {
+      case 'combo': // 연속 베기: 예고 뒤 세 번 (0.22초 간격)
+        if (mv.t > 0) return true;
+        if (Math.hypot(p.x - e.x, p.y - e.y) < e.r + (p.r || 5) + 12) this.hurtPlayer(e.atk * 0.6, def.type, e, { status: def.status });
+        this.emit({ t: 'strike', id: e.id, x: e.x, y: e.y, ang: Math.atan2(p.y - e.y, p.x - e.x), r: e.r + 16 });
+        if (--mv.n > 0) { mv.t = 0.22; return true; }
+        e.mv = null; e.atkCd = 1; return true;
+      case 'leap': { // 뛰어들기: 예고 원으로 날아가 내려찍는다
+        const k = 1 - Math.max(0, mv.t) / mv.max, nx = mv.x0 + (mv.x - mv.x0) * k, ny = mv.y0 + (mv.y - mv.y0) * k;
+        if (!this.blocked(nx, ny, e.r)) { e.x = nx; e.y = ny; }
+        e.moving = true; e.jumpH = Math.sin(k * Math.PI) * 18;
+        if (mv.t > 0) return true;
+        e.jumpH = 0; this.enemyArea(e, e.x, e.y, 30, e.atk * 1.3, def.type, def.status);
+        this.emit({ t: 'ring', x: e.x, y: e.y, r: 30, color: '#ff8a5a' }); this.emit({ t: 'shake', v: 2.5 });
+        e.mv = null; return true;
+      }
+      case 'fan': { // 부채꼴: 다섯 발
+        if (mv.t > 0) return true;
+        const pr = def.proj || { speed: 150, color: def.type === 'mag' ? '#c9a8ff' : '#e8d8b0' };
+        for (let i = 0; i < 5; i++) { const a = mv.ang + (i - 2) * 0.2; this.projs.push({ owner: 'e', src: e, x: e.x, y: e.y, vx: Math.cos(a) * pr.speed * 1.2, vy: Math.sin(a) * pr.speed * 1.2, life: 2, dmg: e.atk * 0.7, type: def.type, status: pr.status, color: pr.color }); }
+        e.mv = null; return true;
+      }
+      case 'retreat': // 물러나며 한 발
+        this.move(e, mv.vx * def.speed * 2.4 * DT, mv.vy * def.speed * 2.4 * DT); e.moving = true;
+        if (mv.t > 0) return true;
+        if (def.proj) this.enemyShot(e, Math.atan2(p.y - e.y, p.x - e.x), 1, 0);
+        e.mv = null; return true;
+      case 'pool': // 장판: 예고 원이 터진다
+        if (mv.t > 0) return true;
+        this.enemyArea(e, mv.x, mv.y, 34, e.atk * 1.4, 'mag', def.status || (def.type === 'mag' ? 'burn' : null));
+        this.emit({ t: 'ring', x: mv.x, y: mv.y, r: 34, color: def.proj?.color || '#ff5a8a' });
+        e.mv = null; return false;
+    }
+    e.mv = null; return false;
+  }
   // 사령술사: 영혼을 되살린다 — 공격력은 그대로, 체력은 절반, 첫 한 대는 보호막. 쓰러질 때까지 남고 다른 곳에 가도 따라온다
   raiseSoul(sv, x, y, i = 0, bonus = 1) {
     sv.up = true;

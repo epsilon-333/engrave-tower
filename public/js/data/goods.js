@@ -212,6 +212,9 @@ export const MONSTER_DROPS = {
   orcRaider: [['orcTusk', 0.22]], raptor: [['raptorClaw', 0.22], ['beastMeat', 0.3]], jungleWasp: [['waspSting', 0.22]], bigBeetle: [['beetleShell', 0.22]],
   bandit: [['banditCloth', 0.22]], coralCrab: [['crabClaw', 0.22], ['crabMeat', 0.3]], jellyfish: [['jellyTentacle', 0.22]], seaSerpent: [['serpentScale', 0.22], ['serpentMeat', 0.3]],
   wisp: [['wispEssence', 0.35]],
+  boarRunner: [['beastMeat', 0.35]], thornSprite: [['herb', 0.25]], vineSpirit: [['sporeSac', 0.25], ['herb', 0.2]], forestArcher: [['goblinTooth', 0.2]], swampTroll: [['poisonGland', 0.3], ['rotFlesh', 0.2]],
+  ruinSentinel: [['ironOre', 0.3]], cultist: [['soulDust', 0.25]], wraithKnight: [['soulDust', 0.3]], boneArcher: [['boneShard', 0.3]], iceArcher: [['frostFang', 0.25]], yeti: [['beastMeat', 0.35], ['frostFang', 0.2]],
+  rockThrower: [['stone', 0.5], ['ironOre', 0.15]], harpy: [['batWing', 0.3]], lavaLizard: [['emberDust', 0.3], ['salaTail', 0.2]], sandWorm: [['scorpionSting', 0.25]], venomSpitter: [['poisonGland', 0.3], ['frogLeg', 0.3]],
   goblinChief: [['chiefMask', 1]], swampQueen: [['giantHeart', 1]], riftGuard: [['riftCore', 1]], frostWitch: [['witchCrown', 1]], graveKeeper: [['graveLantern', 1]],
   dragonGuard: [['dragonScale', 1]], labyrinthLord: [['lordHorn', 1]], orcWarlord: [['warlordTusk', 1]], raptorAlpha: [['alphaClaw', 1], ['beastMeat', 1]], fallenKnight: [['fallenCrest', 1]],
 };
