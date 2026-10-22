@@ -198,6 +198,9 @@ Object.assign(GOODS, {
   warlordTusk: PT('족장의 엄니', 'tusk', ['#f4ecc8', '#ffffff', '#c8a050'], '오크 족장', 130, true),
   alphaClaw: PT('우두머리 발톱', 'claw', ['#c8f07a', '#ffffff', '#3a8a2a'], '우두머리 랩터', 130, true),
   fallenCrest: PT('타락한 문장', 'crest', ['#4a4a5a', '#c45cff', '#ff3a3a'], '타락한 기사', 140, true),
+  golemHeart: PT('고대 골렘의 심장', 'core', ['#c8a86a', '#fff0c0', '#5a4a2a'], '고대 골렘 (레이드)', 600, true),
+  queenTear: PT('서리 여왕의 눈물', 'shard', ['#9fe3ff', '#ffffff', '#3a6a9a'], '서리 여왕 (레이드)', 800, true),
+  dragonCrest: PT('화룡왕의 문장', 'crest', ['#ff7a3a', '#ffe14a', '#5a1a0a'], '화룡왕 (레이드)', 1000, true),
 });
 // 몬스터 → 떨어뜨리는 것 [물건, 확률] (우두머리는 반드시)
 export const MONSTER_DROPS = {
@@ -212,6 +215,7 @@ export const MONSTER_DROPS = {
   orcRaider: [['orcTusk', 0.22]], raptor: [['raptorClaw', 0.22], ['beastMeat', 0.3]], jungleWasp: [['waspSting', 0.22]], bigBeetle: [['beetleShell', 0.22]],
   bandit: [['banditCloth', 0.22]], coralCrab: [['crabClaw', 0.22], ['crabMeat', 0.3]], jellyfish: [['jellyTentacle', 0.22]], seaSerpent: [['serpentScale', 0.22], ['serpentMeat', 0.3]],
   wisp: [['wispEssence', 0.35]],
+  raidGolem: [['golemHeart', 1]], raidQueen: [['queenTear', 1]], raidDragon: [['dragonCrest', 1]],
   boarRunner: [['beastMeat', 0.35]], thornSprite: [['herb', 0.25]], vineSpirit: [['sporeSac', 0.25], ['herb', 0.2]], forestArcher: [['goblinTooth', 0.2]], swampTroll: [['poisonGland', 0.3], ['rotFlesh', 0.2]],
   ruinSentinel: [['ironOre', 0.3]], cultist: [['soulDust', 0.25]], wraithKnight: [['soulDust', 0.3]], boneArcher: [['boneShard', 0.3]], iceArcher: [['frostFang', 0.25]], yeti: [['beastMeat', 0.35], ['frostFang', 0.2]],
   rockThrower: [['stone', 0.5], ['ironOre', 0.15]], harpy: [['batWing', 0.3]], lavaLizard: [['emberDust', 0.3], ['salaTail', 0.2]], sandWorm: [['scorpionSting', 0.25]], venomSpitter: [['poisonGland', 0.3], ['frogLeg', 0.3]],

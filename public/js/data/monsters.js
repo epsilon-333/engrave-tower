@@ -94,6 +94,16 @@ export const MONSTERS = {
   graveKeeper: { name: '묘지기', shape: 'golem', scale: 2.2, elite: true, pal: { a: '#3a2a4a', b: '#1a1024', c: '#c45cff', e: '#00ff9a' }, hp: 5200, atk: 38, type: 'mag', speed: 34, ai: 'boss', range: 170, proj: { speed: 150, color: '#c45cff', status: 'bleed', spread: 11 }, r: 15, xp: 700, gold: 400, pres: 100, mres: 100, echo: { id: 'grave', rate: 1 } },
 };
 
+// ── 레이드 보스: 체력이 셋으로 나뉘어 단계마다 기술이 바뀐다 (phaseMoves) ──
+Object.assign(MONSTERS, {
+  raidGolem: { name: '고대 골렘', shape: 'golem', scale: 2.4, elite: true, raid: true, pal: { a: '#8a7a5a' }, hp: 14000, atk: 34, type: 'phys', speed: 34, ai: 'boss', proj: { speed: 160, color: '#c8a86a', spread: 3 }, shield: 0.2, r: 16, xp: 600, gold: 400, pres: 80, mres: 30, echo: { id: 'core', rate: 1 },
+    phaseMoves: [['leap', 'combo', 'nova'], ['leap', 'nova', 'adds', 'rain'], ['leap', 'nova', 'rain', 'charge', 'adds']], adds: 'ruinSentinel' },
+  raidQueen: { name: '서리 여왕', shape: 'humanoid', scale: 2.2, elite: true, raid: true, pal: { a: '#9fe3ff' }, hp: 16000, atk: 36, type: 'mag', speed: 40, ai: 'boss', status: 'chill', proj: { speed: 180, color: '#9fe3ff', status: 'chill', spread: 5 }, r: 14, xp: 800, gold: 500, pres: 30, mres: 80, echo: { id: 'witch', rate: 1 },
+    phaseMoves: [['fan', 'rain', 'blink'], ['mark', 'rain', 'fan', 'adds'], ['mark', 'nova', 'rain', 'blink', 'adds']], adds: 'iceArcher' },
+  raidDragon: { name: '화룡왕', shape: 'quad', scale: 2.6, elite: true, raid: true, pal: { a: '#d8501a' }, hp: 19000, atk: 40, type: 'mag', speed: 46, ai: 'boss', status: 'burn', proj: { speed: 190, color: '#ff7a2a', status: 'burn', spread: 5 }, r: 17, xp: 1000, gold: 650, pres: 60, mres: 60, echo: { id: 'magma', rate: 1 },
+    phaseMoves: [['charge', 'fan', 'combo'], ['charge', 'rain', 'mark', 'adds'], ['charge', 'nova', 'rain', 'mark', 'adds']], adds: 'lavaLizard' },
+});
+
 // ── 새 몬스터: 지역마다 하나둘 (기술은 moves — 연속 베기 · 뛰어들기 · 부채꼴 · 물러나며 쏘기 · 장판 · 회복 · 순간이동) ──
 Object.assign(MONSTERS, {
   boarRunner: { name: '멧돼지 돌격병', shape: 'quad', pal: { a: '#8a5a3a', b: '#5a3a22', c: '#c8a07a', e: '#ffdd44' }, hp: 46, atk: 7, type: 'phys', speed: 66, ai: 'chase', moves: ['leap', 'combo'], r: 7, xp: 5, gold: 3, pres: 8, mres: 0, echo: { id: 'goo', rate: 0.4 } },

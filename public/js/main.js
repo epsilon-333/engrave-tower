@@ -23,6 +23,7 @@ import { CROPS } from './data/goods.js';
 import { GOODS, SELL_BONUS } from './data/goods.js';
 import { KNACKS, knackTick, hasKnack, newKnack } from './data/knacks.js';
 import { net, onNet, netSend, netConnect, netMap, netPos, netLerp } from './net.js';
+import { RAIDS, raidWeek, buildRaidArena } from './data/raid.js';
 import { TOWER_TOP, towerZoneId, towerSize, isBossFloor, towerGrade, towerReward, GRADE_COLOR, betterGrade, towerStarts, parTime } from './data/tower.js';
 import { SANCTUMS, SANCTUM_MAX, TIER_COST, PERK_TIER, TREASURE_TIER, SHARDS_PER_RELIC, sanctumBonusText, SANCT_LIFE, sanctState, affLevel, AFF_LV, AFF_NAME, AFF_REWARD, trainCap, trainSpec, OWN_TRAIN_CAP, OWN_TRAIN_EASE, GIFT_AFF, GIFTS_PER_DAY, TRAIN_AFF, TRAINS_PER_DAY, sanctQuestDef, FIND_NAME, RACE_SHOP } from './data/sanctums.js';
 import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, cloud, isClaudePage, login, register, logout, errorText } from './cloud.js';
@@ -429,6 +430,45 @@ function startCoZone(id) {
   netSend({ t: 'co', k: 'zstart', id, seed });
   renderer.banner = { text: `${ENTRANCES[id].name} · 파티`, sub: '동료가 받아들이면 같은 던전에 나타난다 · 몬스터는 함께, 상자 · 채집은 각자', t: 3, color: '#9fe6ff' };
 }
+// ───── 보스 레이드 ─────
+function showRaid() {
+  const R = (save.raid ||= { clears: {}, week: {} }), wk = raidWeek(), lead = isPartyLeader() && net.party.members.length > 1;
+  const cards = Object.entries(RAIDS).map(([id, r]) => `<div class="skc"><div class="c-head"><b style="color:${r.color}">${r.name}</b><span class="role">권장 Lv ${r.rec}</span></div><div class="c-sum">${esc(r.desc)}</div>
+    <div class="muted">깬 횟수 ${R.clears[id] || 0}${R.week[id] === wk ? ' · 이번 주 보물상자 받음' : ' · 이번 주 보물상자 남음'}</div>
+    <div class="c-act"><button class="sm" data-raid="${id}">${lead ? '파티와 들어가기' : '들어가기'}</button></div></div>`).join('');
+  showModal(`<h2>레이드 제단</h2><p class="muted">거대한 보스와 싸우는 둥근 방. 체력이 셋으로 나뉘어 단계마다 패턴이 바뀐다 — 빨간 예고를 보고 피하고, 「표식」이 붙으면 동료에게서 떨어진다. 파티(최대 4명)로 오면 함께 싸운다 (인원수만큼 보스가 단단해진다).</p>
+    ${net.party && !isPartyLeader() ? '<p class="muted">파티에 있다 — 파티장이 들어가면 함께 갈지 묻는다.</p>' : ''}<div class="skill-row">${cards}</div><div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
+  overlay.querySelectorAll('[data-raid]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; const id = b.dataset.raid; if (lead) startCoRaid(id); else enterRaid(id); }));
+}
+function enterRaid(id, co = null) {
+  const r = RAIDS[id]; if (!r) return;
+  if (world?.zone?.id === 'world') { curInterior = { id: 'raid', x: world.player.x, y: world.player.y }; save.zoneMemory.world = world.exportMemory(); }
+  const seed = co?.seed ?? ((Math.random() * 1e9) >>> 0);
+  world = new World({ build: buildNow(), mode: 'field', zone: r.zone, zoneId: r.zone.id, seed, map: buildRaidArena(), raid: { id }, coop: co ? { role: co.role } : null, story: save.story, codex: save.codex, ...shared() });
+  world.enemies = []; world.camps = []; world.objects = []; world.explored.fill(1); world.milestones = new Set([50, 80, 100]);
+  if (co?.role !== 'member') { const b = world.makeEnemy(r.boss, world.map.lair.x * 16 + 8, world.map.lair.y * 16 + 8, { noAffix: true }); b.champion = r.name; b.home = { x: b.x, y: b.y }; world.enemies.push(b); }
+  coRun = co ? { role: co.role, host: co.role === 'host' ? net.id : co.host, party: net.party?.id || 0, key: `r${net.party?.id || 0}${id}`, snapT: 0, flushT: 0, meT: 0, lastSnap: performance.now() } : null;
+  world.codexStart = codexPoints(save); world.goalNeeds = [];
+  renderer.setWorld(world);
+  renderer.banner = { text: r.name, sub: '빨간 예고를 보고 피하라 · 「표식」이 붙으면 동료에게서 떨어져라', t: 3.5, color: r.color };
+  startMusic(r.zone.id.includes('dragon') ? 'rift' : r.zone.id.includes('queen') ? 'frost' : 'cave'); sfx('open'); startLoop();
+}
+function startCoRaid(id) {
+  const seed = (Math.random() * 1e9) >>> 0;
+  enterRaid(id, { role: 'host', seed });
+  netSend({ t: 'co', k: 'rstart', id, seed });
+}
+function raidClear(s) {
+  const r = RAIDS[s.id], R = (save.raid ||= { clears: {}, week: {} }), wk = raidWeek();
+  R.clears[s.id] = (R.clears[s.id] || 0) + 1;
+  const gold = 300 + r.rec * 20, chest = R.week[s.id] !== wk, extra = [];
+  save.gold += gold;
+  if (chest) { R.week[s.id] = wk; const g2 = 600 + r.rec * 40; save.gold += g2; extra.push(`주간 보물상자: ◆ ${g2}`); if (bagAdd(lifeOf(), 'spiritStone', 3)) extra.push('정령석 ×3'); }
+  writeSave(save); cloudSaveNow(save);
+  renderer.banner = { text: `${r.name} 쓰러뜨림!`, sub: `◆ ${gold}${extra.length ? ' · ' + extra.join(' · ') : ''} · 떨어진 「${GOODS[{ raidGolem: 'golemHeart', raidQueen: 'queenTear', raidDragon: 'dragonCrest' }[r.boss]]?.name}」를 줍자 · 귀환 포탈이 열렸다`, t: 6, color: r.color };
+  sfx('levelup', { vol: 0.8 });
+  const p = world.player; world.objects.push({ kind: 'portal', x: p.x, y: p.y - 30, label: '귀환 포탈', color: r.color });
+}
 function startCoTower(f) {
   const seed = (Math.random() * 1e9) >>> 0;
   enterTower(f, null, { role: 'host', seed });
@@ -461,6 +501,18 @@ onNet('co', (m) => {
         if (!panelEl.hidden) closePanel();
         curInterior = { id: m.id, x: world.player.x, y: world.player.y };
         enterInterior(m.id, 0, null, { role: 'member', seed: m.seed, host: m.from });
+      }, () => netSend({ t: 'co', to: m.from, k: 'no', why: '거절했다' }), 25);
+      break;
+    }
+    case 'rstart': { // 파티장이 레이드에 들어간다
+      if (net.party?.leader !== m.from || !RAIDS[m.id]) break;
+      const busy = coRun || world.pvp || duel || world.zone?.id !== 'world' || world.state !== 'play';
+      if (busy) { netSend({ t: 'co', to: m.from, k: 'no', why: world.zone?.id !== 'world' ? '바깥 세계에 없다' : '다른 일을 하는 중' }); break; }
+      inviteCard(`<b>보스 레이드</b><p>${esc(josa(fromName, '이', '가'))} <b>${esc(RAIDS[m.id].name)}</b>에게 간다</p>`, () => {
+        if (world.zone?.id !== 'world' || world.state !== 'play' || coRun) return;
+        if (modal) { overlay.hidden = true; paused = false; modal = null; }
+        if (!panelEl.hidden) closePanel();
+        enterRaid(m.id, { role: 'member', seed: m.seed, host: m.from });
       }, () => netSend({ t: 'co', to: m.from, k: 'no', why: '거절했다' }), 25);
       break;
     }
@@ -1822,6 +1874,8 @@ function handleSignals() {
   for (const s of world.signals.splice(0)) {
     if (s.t === 'openPanel') openPanel(s.panel, true);
     if (s.t === 'tower') { showTower(); return; }
+    if (s.t === 'raid') { showRaid(); return; }
+    if (s.t === 'raidClear') { raidClear(s); return; }
     if (s.t === 'coStairs') { if (coRun) netSend({ t: 'co', to: coRun.host, k: 'stairs' }); continue; }
     if (s.t === 'coDown') { renderer.banner = { text: '쓰러졌다', sub: '동료가 이 층을 깨면 다시 일어난다 · 모두 쓰러지면 탑 밖으로', t: 3.5, color: '#ff8a7a' }; sfx('error', { vol: 0.5 }); continue; }
     if (s.t === 'towerClear') { towerClear(s); return; }

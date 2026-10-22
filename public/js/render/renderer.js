@@ -3059,6 +3059,18 @@ export class Renderer {
       o._top = y - 10;
       return;
     }
+    if (o.kind === 'raidAltar') { // 레이드 제단: 검은 돌 제단 위에 붉은 결정이 떠 있다
+      const x = Math.round(o.x), y = Math.round(o.y), b = Math.sin(t * 2.2) * 1.5;
+      g.fillStyle = 'rgba(0,0,0,0.35)'; ellipse(g, x, y + 5, 15, 5);
+      g.fillStyle = '#0d0b10'; g.fillRect(x - 13, y - 9, 26, 15);
+      g.fillStyle = '#3a3440'; g.fillRect(x - 12, y - 8, 24, 13); g.fillStyle = '#5a5262'; g.fillRect(x - 12, y - 8, 24, 2);
+      g.fillStyle = '#2a2430'; g.fillRect(x - 9, y - 4, 18, 1);
+      g.fillStyle = '#0d0b10'; g.fillRect(x - 5, y - 25 + b, 10, 13);
+      g.fillStyle = '#c8243a'; g.fillRect(x - 4, y - 24 + b, 8, 11); g.fillStyle = '#ff5a6a'; g.fillRect(x - 3, y - 23 + b, 3, 6); g.fillStyle = '#ffd0d8'; g.fillRect(x - 2, y - 22 + b, 1, 2);
+      if (Math.random() < 0.08) this.parts.push({ x: x + (Math.random() - 0.5) * 10, y: y - 18, vx: 0, vy: -14, t: 0.9, max: 0.9, color: '#ff5a6a', g: -8, glow: true });
+      o._top = o.y - 30;
+      return;
+    }
     if (o.kind === 'stairs' && o.door) { // 탑의 문: 돌 문틀과 두 짝 나무문 · 층을 깨면 열리며 빛이 샌다
       const x = Math.round(o.x), y = Math.round(o.y), tr = w.tower, open = tr && (!tr.boss || tr.boss.dead);
       g.fillStyle = 'rgba(0,0,0,0.35)'; ellipse(g, x, y + 5, 16, 5);
@@ -3465,6 +3477,7 @@ export class Renderer {
         else if (o.kind === 'door') light(o.x, o.y - 18, 54, '#ffcf7a', 0.75 * L);
         else if (o.kind === 'sanctum') light(o.x + 16, o.y - 16, 72, SANCTUMS[o.race]?.color || '#ffffff', 0.55 * L);
         else if (o.kind === 'towerDoor') light(o.x, o.y - 8, 70, '#90ffe0', 0.6 * L);
+        else if (o.kind === 'raidAltar') light(o.x, o.y - 18, 60, '#ff5a6a', 0.6 * L);
         else if (o.kind === 'waypoint' && o.active) light(o.x, o.y - 10, 60, '#8ad8ff', 0.6 * L);
         else if (o.kind === 'relic' && !o.opened) light(o.x, o.y - 14, 40, SANCTUMS[o.race]?.color || '#ffffff', 0.7 * L);
         else if (o.kind === 'merchant' || o.kind === 'npc' || o.kind === 'turtle') light(o.x, o.y - 10, 46, '#ffd890', 0.5 * L);
@@ -4062,6 +4075,7 @@ export class Renderer {
       else if (o.kind === 'waypoint') { g.fillStyle = '#0d0b10'; g.fillRect(px - 3 * u, py - 4 * u, 6 * u, 7 * u); g.fillStyle = o.active ? '#8ad8ff' : '#6a6478'; g.fillRect(px - 2 * u, py - 3 * u, 4 * u, 5 * u); if (o.active) { g.fillStyle = '#e8faff'; g.fillRect(px - u, py - 2 * u, 2 * u, 2 * u); } }
       else if (o.kind === 'rest') this.text('바람결 마을', px, py - 10 * u, Math.max(1, u - 1), '#ffd76a', 'center');
       else if (o.kind === 'towerDoor') this.text('각인의 탑', px, py - 26 * u, Math.max(1, u - 1), '#9ff0d8', 'center');
+      else if (o.kind === 'raidAltar') this.text('레이드', px, py - 26 * u, Math.max(1, u - 1), '#ff9aa8', 'center');
     }
     const [ppx, ppy] = P(w.player.x, w.player.y);
     if (Math.floor(w.t * 3) % 2 === 0) { g.fillStyle = '#ffffff'; g.beginPath(); g.arc(ppx, ppy, 3.5 * u, 0, Math.PI * 2); g.fill(); g.strokeStyle = '#1a1410'; g.stroke(); }

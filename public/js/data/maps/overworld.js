@@ -254,6 +254,7 @@ export function buildOverworld(zone) {
   for (let dx = -1; dx <= 1; dx++) for (let dy = 0; dy < 4; dy++) set(TWR.x + dx, TWR.y + TWR.ry - dy, T_FLOOR, G.STAIRS);
   prop('tower', TWR.x - 2, TWR.y - 3, 5, 4);
   objects.push({ kind: 'towerDoor', ...at(TWR.x, TWR.y + 1), label: '각인의 탑 · 위층으로', reusable: true });
+  objects.push({ kind: 'raidAltar', ...at(TWR.x + 7, TWR.y + 4), label: '레이드 제단 · 보스 레이드', reusable: true }); // 보스 레이드 (탑 옆)
   safe.push({ x: TWR.x, y: TWR.y, r: 16 });
   // 종족 성지 8곳: 건물 + 수호자 (앞에 돌바닥)
   const SANCT = [

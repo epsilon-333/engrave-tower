@@ -5,6 +5,7 @@ import { REACTIONS } from '../data/engravings.js';
 import { WEAPON_SKILLS } from '../data/items.js';
 import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
 import { towerMul, isBossFloor } from '../data/tower.js';
+import { RAID_BOSS } from '../data/raid.js';
 import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO, SKILL_BAL, CLASS_BAL } from '../data/skills.js';
 import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower, spiritBuff, buffMods } from '../data/spirits.js';
 const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
@@ -51,7 +52,8 @@ function overworldMap(zone) {
 
 export class World {
   // mode: 'field' | 'plaza'
-  constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null, souls = null }) {
+  constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null, souls = null, raid = null }) {
+    this.raid = raid; // 보스 레이드: { id }
     this.depth = depth;
     // 파티 탑: 방장(host)은 적을 움직이고, 동료(member)는 방장이 알려 준 대로 적을 보여 주며 자기 공격을 방장에게 보낸다
     this.coop = coop ? { role: coop.role, mates: new Map(), out: [], ev: [], known: new Set(), deadIds: [], info: new Map() } : null;
@@ -996,7 +998,8 @@ export class World {
     }
     if (o.kind === 'rest') { this.player.hp = this.d.maxHp; this.emit({ t: 'camp', x: o.x, y: o.y }); this.signals.push({ t: 'rest' }); return; }
     if (o.kind === 'caveDoor') { this.signals.push({ t: 'enterZone', zone: o.zone, from: 'cave' }); return; }
-    if (o.kind === 'towerDoor') { this.signals.push({ t: 'tower' }); return; } // 각인의 탑 50층 (예전 층 고르기는 보류)
+    if (o.kind === 'towerDoor') { this.signals.push({ t: 'tower' }); return; }
+    if (o.kind === 'raidAltar') { this.signals.push({ t: 'raid' }); return; } // 레이드 제단 // 각인의 탑 50층 (예전 층 고르기는 보류)
     if (o.kind === 'journal') {
       if (this.codex && !this.codex.journals?.[o.id]) { (this.codex.journals ||= {})[o.id] = true; this.signals.push({ t: 'codex' }); this.emit({ t: 'text', x: o.x, y: o.y - 18, text: '기록 도감에 남겼다', color: '#e8d8a8' }); }
       o.read = true;
@@ -3780,6 +3783,7 @@ export class World {
     }
     this.emit({ t: 'death', x: e.x, y: e.y, color: def.pal.a, big: def.elite, defId: e.defId, dir: e.dir });
     if (def.elite || e.champion) { this.emit({ t: 'hitstop', v: 0.25 }); this.emit({ t: 'banner', text: `${e.champion || def.name} 처치!`, color: '#ffcf5a' }); }
+    if (this.raid && RAID_BOSS.has(e.defId)) this.signals.push({ t: 'raidClear', id: this.raid.id }); // 레이드 보스를 쓰러뜨렸다
     if (e.lair && this.zone?.relic && !this.depth) this.signals.push({ t: 'relic', race: this.zone.relic, rid: `${this.zone.relic}_boss` });
     // 성물 조각: 그 성지의 땅에서만 나온다 (바깥은 그 지역의 몬스터, 지하는 그 던전의 몬스터와 우두머리)
     const sr = this.map.outdoor ? BIOME_SANCTUM[BIOME_LIST[e.region]?.id] : this.zone?.relic;
@@ -3842,7 +3846,10 @@ export class World {
       const melee = e.r + (p.r || 5) + 10, tx = p.x, ty = p.y;
       const can = { combo: dist < melee + 16, leap: dist > 40 && dist < 170, fan: dist < 190, retreat: dist < 70, pool: dist < 200, blink: dist > 60,
         heal: this.enemies.some((o) => !o.dead && !o.remote && Math.hypot(o.x - e.x, o.y - e.y) < 100 && o.hp < o.maxHp * 0.7) };
-      const list = (def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]);
+      const phase = def.phaseMoves ? (e.hp > e.maxHp * 0.66 ? 0 : e.hp > e.maxHp * 0.33 ? 1 : 2) : 0;
+      if (def.phaseMoves && phase !== (e.raidPhase ?? 0)) { e.raidPhase = phase; this.emit({ t: 'banner', text: `${def.name} · ${phase + 1}단계`, color: '#ff8a5a' }); this.emit({ t: 'shake', v: 4 }); }
+      Object.assign(can, { rain: dist < 260, adds: this.enemies.filter((o) => o.summoner === e.id && !o.dead).length < 3, charge: dist > 50 && dist < 260, mark: true, nova: dist < 120 });
+      const list = (def.phaseMoves ? def.phaseMoves[phase] : def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]);
       if (!list.length) { e.mvCd = 0.3; return false; } // 지금 쓸 수 있는 기술이 없으면 조금 뒤 다시
       const pick = list[this.rng.int(0, list.length - 1)];
       e.mvCd = (def.elite || e.champion ? 2.4 : 3.5) / (e.enraged ? 1.4 : 1) + this.rng.range(0, 1.5);
@@ -3851,6 +3858,26 @@ export class World {
       if (pick === 'fan' && dist < 190) { e.mv = { k: 'fan', t: 0.45, ang: Math.atan2(ty - e.y, tx - e.x) }; e.windT = 0.45; e.windMax = 0.45; this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(e.mv.ang) * 120, y2: e.y + Math.sin(e.mv.ang) * 120, dur: 0.45, color: '#ff5a5a' }); return true; }
       if (pick === 'retreat' && dist < 70) { const l = dist || 1; e.mv = { k: 'retreat', t: 0.35, vx: (e.x - p.x) / l, vy: (e.y - p.y) / l }; return true; }
       if (pick === 'pool' && dist < 200) { e.mv = { k: 'pool', t: 1.0, x: tx, y: ty }; this.emit({ t: 'telegraphCircle', x: tx, y: ty, r: 34, dur: 1.0 }); this.emit({ t: 'windup', id: e.id }); return true; }
+      if (pick === 'rain') { // 비: 모든 사람 발밑과 둘레에 장판이 떨어진다
+        const spots = this.coTargets().map((q) => ({ x: q.x, y: q.y }));
+        for (let i = 0; i < 3; i++) spots.push({ x: e.x + this.rng.range(-110, 110), y: e.y + this.rng.range(-80, 80) });
+        e.mv = { k: 'rain', t: 1.1, spots }; for (const q of spots) this.emit({ t: 'telegraphCircle', x: q.x, y: q.y, r: 30, dur: 1.1 }); return true;
+      }
+      if (pick === 'adds') { // 부하를 깨운다
+        for (let i = 0; i < 2; i++) { const a = this.rng.range(0, Math.PI * 2); let x = e.x + Math.cos(a) * 40, y = e.y + Math.sin(a) * 40; if (this.blocked(x, y, 6)) { x = e.x; y = e.y; } const m = this.makeEnemy(def.adds || 'goblin', x, y, { summoned: true }); m.summoner = e.id; m.state = 'chase'; m.home = { ...e.home }; this.enemies.push(m); }
+        this.emit({ t: 'summon', x: e.x, y: e.y }); this.emit({ t: 'text', x: e.x, y: e.y - 40, text: '부하를 깨운다', color: '#ffb07a' }); return false;
+      }
+      if (pick === 'charge') { // 돌진: 굵은 예고선을 따라 끝까지
+        const a = Math.atan2(ty - e.y, tx - e.x); e.mv = { k: 'charge', t: 0.8, ang: a, run: 0.55 };
+        this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 260, y2: e.y + Math.sin(a) * 260, dur: 0.8, color: '#ff3a3a', w: e.r * 2 }); e.windT = 0.8; e.windMax = 0.8; return true;
+      }
+      if (pick === 'mark') { // 표식: 한 사람을 따라다니는 원이 터진다 (동료에게서 떨어져야 한다)
+        const tg = this.rng.pick(this.coTargets()) || p; e.mv = { k: 'mark', t: 2.2, tg };
+        this.emit({ t: 'telegraphCircle', x: tg.x, y: tg.y, r: 40, dur: 2.2, follow: tg === this.player ? 'p' : null }); this.emit({ t: 'text', x: tg.x, y: tg.y - 26, text: '표식!', color: '#ff5a5a' }); return true;
+      }
+      if (pick === 'nova') { // 둘레 폭발: 멀리 떨어져야 산다
+        e.mv = { k: 'nova', t: 1.2 }; this.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 110, dur: 1.2, follow: null }); e.windT = 1.2; e.windMax = 1.2; return true;
+      }
       if (pick === 'heal') {
         const hurt = this.enemies.filter((o) => !o.dead && !o.remote && Math.hypot(o.x - e.x, o.y - e.y) < 100 && o.hp < o.maxHp * 0.7);
         if (!hurt.length) return false;
@@ -3891,6 +3918,26 @@ export class World {
         this.move(e, mv.vx * def.speed * 2.4 * DT, mv.vy * def.speed * 2.4 * DT); e.moving = true;
         if (mv.t > 0) return true;
         if (def.proj) this.enemyShot(e, Math.atan2(p.y - e.y, p.x - e.x), 1, 0);
+        e.mv = null; return true;
+      case 'rain':
+        if (mv.t > 0) return true;
+        for (const q of mv.spots) { this.enemyArea(e, q.x, q.y, 30, e.atk * 0.9, def.type, def.status); this.emit({ t: 'ring', x: q.x, y: q.y, r: 30, color: def.proj?.color || '#ff5a5a' }); }
+        e.mv = null; return false;
+      case 'charge': {
+        if (mv.t > mv.run) return true;
+        const sp = def.speed * 9 * DT, nx = e.x + Math.cos(mv.ang) * sp, ny = e.y + Math.sin(mv.ang) * sp;
+        if (this.blocked(nx, ny, e.r)) { mv.t = 0; } else { e.x = nx; e.y = ny; e.moving = true; }
+        for (const q of this.coTargets()) if (!mv.hit?.has(q) && Math.hypot(q.x - e.x, q.y - e.y) < e.r + (q.r || 5) + 4) { (mv.hit ||= new Set()).add(q); this.enemyArea(e, q.x, q.y, 2, e.atk * 1.6, def.type, def.status); }
+        if (mv.t > 0) return true;
+        this.emit({ t: 'shake', v: 3 }); e.mv = null; return true;
+      }
+      case 'mark':
+        if (mv.t > 0) return false; // 표식 동안 보스는 움직인다
+        this.enemyArea(e, mv.tg.x, mv.tg.y, 40, e.atk * 1.8, def.type, def.status); this.emit({ t: 'ring', x: mv.tg.x, y: mv.tg.y, r: 40, color: '#ff5a5a' }); this.emit({ t: 'shake', v: 3 });
+        e.mv = null; return false;
+      case 'nova':
+        if (mv.t > 0) return true;
+        this.enemyArea(e, e.x, e.y, 110, e.atk * 1.5, def.type, def.status); this.emit({ t: 'ring', x: e.x, y: e.y, r: 110, color: '#ff8a3a' }); this.emit({ t: 'shake', v: 5 });
         e.mv = null; return true;
       case 'pool': // 장판: 예고 원이 터진다
         if (mv.t > 0) return true;
