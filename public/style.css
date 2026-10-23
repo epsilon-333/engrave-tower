@@ -506,3 +506,11 @@ b.dim { color: #e8c890; }
   body.touch .soc-row .btns { grid-column: 1; grid-row: auto; justify-content: flex-start; }
   body.touch .modal button { min-height: 40px; }
 }
+
+/* 항해 · 시세판 */
+#voyBar { position: absolute; left: 50%; transform: translateX(-50%); top: calc(48px + env(safe-area-inset-top, 0px)); z-index: 5; min-width: min(360px, 80vw); padding: 6px 12px 8px; background: rgba(12, 22, 36, 0.86); border: 2px solid #3a6a9a; color: #e8f4ff; font-size: 14px; text-align: center; pointer-events: none; }
+#voyBar i { display: block; height: 4px; margin-top: 5px; background: linear-gradient(90deg, #3a8cc0, #9fd8ff); }
+.price-board { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+.price-board th, .price-board td { border: 1px solid #3a3450; padding: 4px 6px; text-align: center; }
+.price-board th { background: #221a34; color: #ffd27a; font-weight: 600; }
+.price-board td:first-child { text-align: left; }
