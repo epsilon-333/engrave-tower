@@ -68,6 +68,7 @@ export class World {
     this.mode = mode;
     this.setBuild(build);
     this.zone = zone || (zoneId === 'world' ? WORLD_ZONE : zoneId ? ZONES.find((z) => z.id === zoneId) : null);
+    this.zoneId = zoneId || this.zone?.id || null; // 지금 있는 곳 (바깥 세계 · 섬 · 지하 도시 · 배)
     this.rng = createRng(seed);
     this.map = map || (this.zone?.id === 'world' ? overworldMap(this.zone) : this.zone?.id === 'cave' && !depth && !practice ? buildCave1(this.zone) : generateField(this.zone, seed, depth));
     const m = this.map;
@@ -515,6 +516,8 @@ export class World {
     this.updateDelayed();
     this.updateAllies();
     if (this.voyage) this.updateVoyage();
+    if (this.skirmish && !this.skirmish.done && this.skirmish.foes.every((e) => e.dead)) { this.skirmish.done = true; this.signals.push({ t: 'skirmishWon', id: this.skirmish.id }); }
+    if (this.happenT === undefined || (this.happenT -= DT) <= 0) { this.happenT = 0.25; this.updateHappenings(); }
     if (this.pit?.e?.dead) { this.signals.push({ t: 'pitWon', bet: this.pit.bet, tier: this.pit.tier }); this.pit = null; }
     this.updateZones();
     this.updateFlow();
@@ -967,18 +970,46 @@ export class World {
     }
     if (v.t >= v.dur) { v.done = true; this.signals.push({ t: 'voyageEnd' }); }
   }
+  // 무리를 불러 세운다 (벌어지는 일 · 경비병 · 고위 관계자의 호위): list = [[몬스터, 수, 이름표]]
+  spawnGroup(list, x, y, lv, opt = {}) {
+    const out = [];
+    let k = 0;
+    for (const [id, n, tag] of list) for (let i = 0; i < n; i++, k++) {
+      const a = (k / Math.max(1, list.reduce((s, q) => s + q[1], 0))) * Math.PI * 2 + 0.4;
+      let ex = x + Math.cos(a) * (opt.r || 40), ey = y + Math.sin(a) * (opt.r || 40) * 0.8;
+      if (this.blocked(ex, ey, 6)) { ex = x + Math.cos(a) * 16; ey = y + Math.sin(a) * 12; }
+      if (this.blocked(ex, ey, 6)) { ex = x; ey = y; }
+      const e = this.makeEnemy(id, ex, ey, { noAffix: true });
+      this.applyLevel(e, lv); if (tag) { e.tag = tag; if (e.def.elite) e.champion = tag; }
+      e.state = opt.idle ? 'idle' : 'chase'; e.home = { x: ex, y: ey };
+      this.enemies.push(e); out.push(e);
+      this.emit({ t: 'summon', x: ex, y: ey, color: '#c8c0b0' });
+    }
+    return out;
+  }
+  // 벌어지는 일: 길을 따라 느릿느릿 움직이고, 시간이 다 되면 끝난다 (싸우는 중이면 기다린다)
+  updateHappenings() {
+    for (const o of this.objects) {
+      if (o.kind !== 'happening' || o.gone) continue;
+      if (o.engaged) continue;
+      if (this.t > o.endT) { o.gone = true; o.reusable = false; this.signals.push({ t: 'happeningGone', id: o.hid }); continue; }
+      if (o.dest) { const dx = o.dest.x - o.x, dy = o.dest.y - o.y, l = Math.hypot(dx, dy); if (l > 4) { const nx = o.x + dx / l * 3, ny = o.y + dy / l * 3; if (!this.blocked(nx, ny, 6)) { o.x = nx; o.y = ny; o.dir = dx > 0 ? 1 : -1; } } }
+    }
+    this.objects = this.objects.filter((o) => !(o.kind === 'happening' && o.gone && this.t > o.endT + 1));
+  }
+
   // 해적 · 바다뱀이 갑판에 올라탄다
   spawnBoarders(kind, level) {
     const v = this.voyage, spots = this.map.board || [];
     const lv = Math.max(1, level);
-    const list = kind === 'serpent' ? [['seaSerpent', 1, 2.4]] : [['bandit', 3 + Math.min(3, Math.floor(lv / 12)), 1], ['darkArcher', 2, 1], ['bandit', 1, 2.2]];
+    const list = kind === 'serpent' ? [['seaSerpent', 1, 2.4]] : kind === 'merchant' ? [['royalGuard', 3, 1], ['bandit', 1, 1.8]] : [['bandit', 3 + Math.min(3, Math.floor(lv / 12)), 1], ['darkArcher', 2, 1], ['bandit', 1, 2.2]];
     let k = 0;
     for (const [id, n, big] of list) for (let i = 0; i < n; i++, k++) {
       const s = spots[(k * 3 + 1) % spots.length] || { x: this.player.x + 60, y: this.player.y };
       const e = this.makeEnemy(id, s.x, s.y, { noAffix: true });
       const m = 0.7 + lv * 0.06;
       e.maxHp = e.hp = Math.round(e.maxHp * m * big); e.atk = Math.round(e.atk * (0.6 + lv * 0.03) * (big > 1 ? 1.3 : 1));
-      if (big > 1) e.champion = kind === 'serpent' ? '거대 바다뱀' : '해적 두목'; else e.tag = id === 'bandit' ? '해적' : '해적 궁수';
+      if (big > 1) e.champion = kind === 'serpent' ? '거대 바다뱀' : kind === 'merchant' ? '상선 호위대장' : '해적 두목'; else e.tag = kind === 'merchant' ? '상선 호위병' : id === 'bandit' ? '해적' : '해적 궁수';
       e.state = 'chase'; e.home = { x: s.x, y: s.y };
       this.enemies.push(e);
       this.emit({ t: 'summon', x: s.x, y: s.y, color: kind === 'serpent' ? '#3ab8b0' : '#c8c0b0' });
@@ -1024,7 +1055,8 @@ export class World {
       return;
     }
     if (o.kind === 'merchant') { this.signals.push({ t: 'merchant', zone: this.zone.id, depth: this.depth }); return; }
-    if (o.kind === 'npc' || o.kind === 'priceBoard' || o.kind === 'ladderUp' || o.kind === 'hiddenWay') { this.signals.push({ t: 'npc', id: o.id }); return; }
+    if (o.kind === 'happening') { this.signals.push({ t: 'happening', id: o.hid }); return; }
+    if (o.kind === 'npc' || o.kind === 'priceBoard' || o.kind === 'ladderUp' || o.kind === 'hiddenWay' || o.kind === 'chronicle') { this.signals.push({ t: 'npc', id: o.id }); return; }
     if (o.kind === 'entrance') {
       if (ENTRANCES[o.id]?.prop === 'hole') { const p = this.player; p.fallInto = { t: 0, dur: 0.75, x0: p.x, y0: p.y, tx: o.x, ty: o.y - 14, id: o.id, ox: o.x, oy: o.y }; this.motion('leap', 0.4); this.emit({ t: 'hopStart', x: p.x, y: p.y }); return; }
       this.signals.push({ t: 'enterZone', entrance: o.id, x: o.x, y: o.y }); return;
@@ -1429,6 +1461,7 @@ export class World {
     let m = 1;
     for (const bf of Object.values(p.buffs)) if (bf.mods[key] && key !== 'lifesteal' && key !== 'reflect' && key !== 'pres') m *= bf.mods[key];
     if (this.b.race === 'dino' && p.res >= 50 && (key === 'atkSpeed' || key === 'moveSpeed')) m *= 1.1;
+    if (key === 'moveSpeed' && this.mounted && this.t - p.lastFight > 3 && this.map.outdoor) m *= 1.35;
     return m;
   }
   modAdd(key) {
@@ -2980,7 +3013,7 @@ export class World {
   }
 
   damageEnemy(e, amount, type, opt = {}) {
-    if (e.dead || e.hidden) return 0;
+    if (e.dead || e.hidden || e.begging) return 0;
     if (e.invulnT > 0) { if (!opt.fromDot) this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '무적', color: '#c8a8ff' }); return 0; } // 망령: 순간이동 뒤 잠깐 무적
     if (e.dormant) { e.dormant = false; e.state = 'chase'; this.aggro(e); this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '미믹!', color: '#ff5a3a' }); }
     const d = this.d, p = this.player;
@@ -3384,7 +3417,7 @@ export class World {
 
   // 바깥 세계의 지역 레벨: 권장 레벨 안에서 시작 마을에서 멀수록 높다 · 레벨만큼 체력 · 공격력 · 보상이 커진다
   regionLevel(r, tx, ty) {
-    const info = this.map.regionInfo?.[r]; if (!info?.lv || (this.zone?.id !== 'world' && this.zone?.id !== 'nokt')) return 0;
+    const info = this.map.regionInfo?.[r]; if (!info?.lv || (this.zone?.id !== 'world' && this.zone?.id !== 'nokt' && !this.zone?.island)) return 0;
     const [lo, hi] = info.lv, st = this.map.start || { x: tx, y: ty }, f = Math.min(1, Math.hypot(tx - st.x, ty - st.y) / 260);
     return Math.round(lo + (hi - lo) * f);
   }
@@ -3888,6 +3921,11 @@ export class World {
 
   killEnemy(e, selfDestruct = false) {
     if (e.dead) return;
+    if (e.official && !e.finish) {
+      e.hp = 1; e.begging = true; e.st = { stun: 9999 }; e.windT = 0; e.state = 'idle';
+      if (!e.beggedSent) { e.beggedSent = true; this.signals.push({ t: 'officialDown', id: e.official, eid: e.id }); this.emit({ t: 'text', x: e.x, y: e.y - 24, text: '살려 주시오!', color: '#ffe8a8' }); }
+      return;
+    }
     e.dead = true;
     if (this.coop) this.coop.deadIds.push(e.id);
     if (e.training) { // 수련 상대: 전리품 · 도감 · 의뢰 없이 수련만 센다

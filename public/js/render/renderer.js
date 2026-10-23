@@ -2340,6 +2340,16 @@ export class Renderer {
       return;
     }
     if (al.kind === 'spiritKing') { this.drawSpiritKing(w, al, fade); return; }
+    if (al.whelp) { // 아기 용: 작은 붉은 용이 파닥거리며 따라온다
+      const x = Math.round(al.x), y = Math.round(al.y + Math.sin(w.t * 6) * 2), f = Math.sin(w.t * 18) > 0, d = w.player.x < al.x ? -1 : 1;
+      g.fillStyle = 'rgba(0,0,0,0.25)'; ellipse(g, x, al.y + 14, 6, 2);
+      g.fillStyle = '#1a0c0a'; g.fillRect(x - 6, y - 4, 12, 8); g.fillStyle = '#d8482a'; g.fillRect(x - 5, y - 3, 10, 6); g.fillStyle = '#ffb060'; g.fillRect(x - 3, y, 6, 2);
+      g.fillStyle = '#1a0c0a'; g.fillRect(x + d * 4, y - 8, 6 * d, 6); g.fillStyle = '#e8582a'; g.fillRect(x + d * 5, y - 7, 4 * d, 4); g.fillStyle = '#ffe080'; g.fillRect(x + d * 7, y - 6, 1, 1);
+      g.fillStyle = '#a8301a'; if (f) { g.fillRect(x - 9, y - 9, 6, 5); g.fillRect(x + 3, y - 9, 6, 5); } else { g.fillRect(x - 10, y - 2, 6, 3); g.fillRect(x + 4, y - 2, 6, 3); }
+      g.fillStyle = '#d8482a'; g.fillRect(x - d * 9, y + 1, 4, 2);
+      if (Math.random() < 0.15) this.parts.push({ x: x + d * 9, y: y - 5, vx: d * 20, vy: -6, t: 0.4, max: 0.4, color: '#ff9a3a', g: -10 });
+      return;
+    }
     if (al.kind === 'spirit') {
       const col = ELEM[al.elem].color;
       g.fillStyle = hexA(col, 0.25 * fade); disc(g, al.x, al.y, 8);
@@ -3101,6 +3111,15 @@ export class Renderer {
     if (o.kind === 'relic') { drawRelic(this.g, o, w.t, SANCTUMS[o.race]?.color || '#ffffff', o.opened); return; }
     if (o.kind === 'sign') { drawSign(this.g, o); o._top = o.y - 22; return; }
     if (o.kind === 'hiddenWay') { o._top = o.y - 26; return; }
+    if (o.kind === 'chronicle') { // 연대기 비석: 이름이 새겨진 검은 돌
+      const x = Math.round(o.x), y = Math.round(o.y);
+      g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, x, y + 4, 12, 3);
+      g.fillStyle = '#16141c'; g.fillRect(x - 10, y - 30, 20, 34); g.fillStyle = '#3a3848'; g.fillRect(x - 9, y - 29, 18, 32);
+      g.fillStyle = '#4a4858'; g.fillRect(x - 9, y - 29, 18, 3); g.fillStyle = '#ffd27a'; g.fillRect(x - 5, y - 24, 10, 1);
+      g.fillStyle = '#a8a4b8'; for (let k = 0; k < 6; k++) g.fillRect(x - 6, y - 19 + k * 3, 6 + ((k * 3) % 6), 1);
+      o._top = y - 32; return;
+    }
+    if (o.kind === 'happening') { this.drawHappening(w, o); return; }
     if (o.kind === 'ladderUp') { // 위로 이어진 나무 사다리 · 위에서 새어 드는 빛
       const x = Math.round(o.x), y = Math.round(o.y);
       const gr = g.createLinearGradient(0, y - 60, 0, y); gr.addColorStop(0, 'rgba(255,240,200,0.35)'); gr.addColorStop(1, 'rgba(255,240,200,0)');
@@ -3344,6 +3363,34 @@ export class Renderer {
       g.fillStyle = glow;
       g.fillRect(x + 3, y + 4, 6, 1); g.fillRect(x + 5, y + 4, 1, 9); g.fillRect(x + 3, y + 9, 2, 1); g.fillRect(x + 7, y + 11, 2, 1); g.fillRect(x + 3, y + 15, 6, 1);
     }
+  }
+
+  // 벌어지는 일: 상단 마차 · 세금 마차 · 순찰대 · 교단 신도
+  drawHappening(w, o) {
+    const g = this.g, x = Math.round(o.x), y = Math.round(o.y), d = o.dir || 1;
+    const person = (base, tint, px, py, face) => { const img = sprite(this.animFrame(base, o.dest && !o.engaged ? 'run' : 'idle', w.t + px * 0.1, 8), tint || '', false, face < 0); if (img) { this.shadow(px, py + 4, 5); g.drawImage(img, Math.round(px - img.width / 2), Math.round(py + 5 - img.height)); } };
+    if (o.etype === 'caravan' || o.etype === 'taxWagon') {
+      const tax = o.etype === 'taxWagon';
+      for (const [ox] of [[-14], [16]]) {
+        const wx = x + ox * d;
+        g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, wx, y + 6, 14, 4);
+        g.fillStyle = '#1a1410'; g.fillRect(wx - 12, y - 14, 24, 16); g.fillStyle = tax ? '#6a4a8a' : '#8a5a32'; g.fillRect(wx - 11, y - 13, 22, 10);
+        g.fillStyle = tax ? '#e8d8a8' : '#e8dcc0'; g.beginPath(); g.ellipse(wx, y - 14, 11, 8, 0, Math.PI, 0); g.fill();
+        if (tax) { g.fillStyle = '#ffd76a'; g.fillRect(wx - 2, y - 19, 4, 4); }
+        for (const sx of [-8, 8]) { g.fillStyle = '#1a1410'; g.beginPath(); g.arc(wx + sx, y + 2, 4, 0, Math.PI * 2); g.fill(); g.fillStyle = '#7a5232'; g.beginPath(); g.arc(wx + sx, y + 2, 3, 0, Math.PI * 2); g.fill(); }
+      }
+      person(tax ? 'knight_m' : 'dwarf_m', tax ? '' : 'sepia(0.5)', x - 34 * d, y, d);
+      if (tax) person('knight_m', 'hue-rotate(30deg)', x + 36 * d, y, d);
+    } else if (o.etype === 'patrol') {
+      person('knight_m', 'grayscale(0.3)', x - 10, y, 1); person('knight_m', 'grayscale(0.3)', x + 12, y - 4, -1);
+      person('dwarf_f', 'sepia(0.6)', x + 2, y + 8, 1);
+      g.fillStyle = '#7a5232'; g.fillRect(x + 20, y + 2, 14, 6); g.fillStyle = '#c8a040'; g.fillRect(x + 22, y, 4, 3); // 엎어진 수레
+    } else if (o.etype === 'cult') {
+      g.strokeStyle = `rgba(160,120,255,${0.4 + 0.2 * Math.sin(w.t * 3)})`; g.lineWidth = 1; g.beginPath(); g.ellipse(x, y + 3, 22, 9, 0, 0, Math.PI * 2); g.stroke();
+      for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + w.t * 0.2; person('necromancer', 'brightness(0.5) saturate(0.3)', x + Math.cos(a) * 22, y + Math.sin(a) * 9, Math.cos(a) > 0 ? -1 : 1); }
+    }
+    if (!o.engaged && !o.gone) this.bang(x, y - 34 + Math.sin(w.t * 5) * 1.5, o.etype === 'cult' ? '#b98aff' : '#ffd040');
+    o._top = y - 30;
   }
 
   drawNpc(w, o) {
@@ -3838,6 +3885,21 @@ export class Renderer {
     for (const o of w.objects) if (o.kind === 'waypoint' && o._top != null && Math.hypot(o.x - w.player.x, o.y - w.player.y) < 110) this.text(o.active ? `${o.name} 포탈` : '잠든 포탈', this.sx(o.x), this.sy(o._top - 5), u, o.active ? '#bfefff' : '#b0a8bc', 'center');
     if (w.mode === 'plaza' || w.practice) { // 허수아비 이름 · 초당 피해 (광장 · 연습 실험장)
       for (const e of w.enemies) if (e.tag && !e.dead && e._top != null) this.text(e.tag, this.sx(e.x), this.sy(e._top - 9), Math.max(1, u - 1), '#ffd8a0', 'center', true);
+      if (w.title && w.mode === 'field' && !w.pvp) this.text(w.title.text, this.sx(w.player.x), this.sy(w.player.y - 34), Math.max(1, u - 1), w.title.color, 'center', true);
+      if (w.track) { // 고른 일 · 목적지로 가는 방향 화살표 (화면 가장자리)
+        const W = this.c.width, H = this.c.height, tx = this.sx(w.track.x), ty = this.sy(w.track.y), m = 34 * u / 2;
+        const on = tx > m && tx < W - m && ty > m && ty < H - m;
+        const g2 = this.g;
+        if (on) { const b = Math.sin(w.t * 5) * 4; g2.fillStyle = '#ffd040'; g2.beginPath(); g2.moveTo(tx, ty - 30 + b); g2.lineTo(tx - 7, ty - 42 + b); g2.lineTo(tx + 7, ty - 42 + b); g2.closePath(); g2.fill(); }
+        else {
+          const cx = W / 2, cy = H / 2, a = Math.atan2(ty - cy, tx - cx), k = Math.min((W / 2 - m) / Math.abs(Math.cos(a) || 1e-6), (H / 2 - m) / Math.abs(Math.sin(a) || 1e-6));
+          const ax = cx + Math.cos(a) * k, ay = cy + Math.sin(a) * k, r = 10 * Math.max(1, u / 2);
+          g2.fillStyle = 'rgba(10,8,16,0.75)'; g2.beginPath(); g2.arc(ax, ay, r + 5, 0, Math.PI * 2); g2.fill();
+          g2.fillStyle = '#ffd040'; g2.beginPath(); g2.moveTo(ax + Math.cos(a) * r, ay + Math.sin(a) * r); g2.lineTo(ax + Math.cos(a + 2.4) * r, ay + Math.sin(a + 2.4) * r); g2.lineTo(ax + Math.cos(a - 2.4) * r, ay + Math.sin(a - 2.4) * r); g2.closePath(); g2.fill();
+          const dist = Math.round(Math.hypot(w.track.x - w.player.x, w.track.y - w.player.y) / 16);
+          this.text(`${w.track.name || ''} ${dist}칸`, ax - Math.cos(a) * (r + 18), ay - Math.sin(a) * (r + 12), Math.max(1, u - 1), '#ffe8a8', 'center', true);
+        }
+      }
       for (const e of w.enemies) if (e.def.ai === 'dummy') {
         this.text(e.def.name, this.sx(e.x), this.sy(e.y + 14), u, '#d8d0e8', 'center');
         if (e.dps > 0) this.text(`DPS ${Math.round(e.dps)}`, this.sx(e.x), this.sy(e.y - 20), u, '#ffcf5a', 'center', true, true);

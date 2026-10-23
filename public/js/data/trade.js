@@ -18,7 +18,22 @@ export const CARGO = {
   forbiddenTome: { name: '금서', price: 90, desc: '왕국이 불태우라 명한 책. 바람결 항구의 몇몇 학자가 몰래 산다.', icon: { t: 'cloth', c: ['#4a2a5a', '#7a4a8a', '#2a1a3a'] }, contraband: true },
 };
 for (const [id, c] of Object.entries(CARGO)) GOODS[id] = { name: c.name, cat: 'cargo', price: c.price, desc: c.desc, icon: c.icon };
-export const CARGO_CAP = 20; // 몸에 지는 교역품 (짐수레 · 배는 나중에)
+// 정치에 쓰는 물건 (증거)
+GOODS.taxLedger = { name: '세금 장부', cat: 'junk', price: 60, desc: '세금 마차에서 훔친 장부. 녹트 하벤의 중개인이 산다 — 녹타리스 가입 증거.', icon: { t: 'cloth', c: ['#6a4a8a', '#c8a0ff', '#3a2a5a'] } };
+GOODS.officialSeal = { name: '관리의 인장', cat: 'junk', price: 90, desc: '쓰러진 고위 관계자에게서 빼앗은 인장. 증거로도, 장물로도 쓴다.', icon: { t: 'crest', c: ['#ffd76a', '#c89a3a', '#6a4a1a'] } };
+export const CARGO_CAP = 20; // 몸에 지는 교역품
+// 내 배 (황금 돛 섬 조선소): 짐칸만큼 더 실을 수 있고, 배삯 없이 아는 항구 어디로든 빨리 간다
+export const SHIPS = [
+  { name: '작은 범선', price: 1500, hold: 20, speed: 0.75, desc: '돛 하나짜리 날렵한 배. 짐칸 20.' },
+  { name: '중형 상선', price: 5000, hold: 60, speed: 0.7, desc: '돛 둘 · 넓은 짐칸 60. 상단 일에 알맞다.' },
+  { name: '큰 갤리온', price: 15000, hold: 120, speed: 0.65, desc: '대포 구멍이 난 커다란 배. 짐칸 120. 해적질에도 쓸 만하다.' },
+];
+export const cargoCap = (save) => CARGO_CAP + (save.ship ? SHIPS[save.ship.tier].hold : 0);
+// 상인 길드(황금 돛 연맹) 계급: 교역으로 번 돈(판 값 합계)으로 오른다 · 오를수록 교역소에서 더 받는다
+export const GUILD_RANKS = [
+  { name: '행상', need: 0, bonus: 0 }, { name: '상인', need: 3000, bonus: 0.03 }, { name: '대상인', need: 15000, bonus: 0.06 }, { name: '무역왕', need: 50000, bonus: 0.1 },
+];
+export const guildRank = (save) => { const r = save.trade?.revenue || 0; let k = 0; GUILD_RANKS.forEach((g, i) => { if (r >= g.need && save.trade?.joined) k = i; }); return save.trade?.joined ? k : -1; };
 
 // ── 항구: mult < 1 이면 그 항구 특산품(싸게 판다), > 1 이면 그 항구에서 귀한 물건(비싸게 사 준다) ──
 export const PORTS = {
@@ -27,7 +42,7 @@ export const PORTS = {
     market: { windWheat: 0.6, woolBale: 0.65, mistSalt: 1.4, driedFish: 1.35, iceCrystal: 1.2, redSpice: 1.3, goldSilk: 1.25, pirateRum: 1.2, forbiddenTome: 1.45 },
     routes: [
       { to: 'portE', fare: 30, time: 12, desc: '섬 남쪽 바다를 돌아 동쪽 해안으로' },
-      { to: 'gold', fare: 60, closed: true }, { to: 'sand', fare: 90, closed: true },
+      { to: 'gold', fare: 60, time: 12, desc: '남쪽 바다 건너 상인 공화국으로' }, { to: 'sand', fare: 90, time: 12, desc: '남서쪽 뜨거운 바다를 건너 사막의 섬으로' },
     ],
   },
   portE: {
@@ -35,7 +50,7 @@ export const PORTS = {
     market: { mistSalt: 0.6, driedFish: 0.6, windWheat: 1.35, woolBale: 1.3, iceCrystal: 1.25, redSpice: 1.4, goldSilk: 1.2, pirateRum: 1.3, blackPowder: 1.5 },
     routes: [
       { to: 'portS', fare: 30, time: 12, desc: '섬 남쪽 바다를 돌아 남쪽 항구로' },
-      { to: 'frost', fare: 80, closed: true }, { to: 'skull', fare: 70, closed: true },
+      { to: 'frost', fare: 80, time: 12, desc: '북동쪽 얼음 바다를 건너 공국으로' }, { to: 'skull', fare: 70, time: 12, desc: '동쪽 암초 사이 해적 소굴로' },
     ],
   },
 };
@@ -48,10 +63,25 @@ export const BLACK_MARKET = {
   },
 };
 Object.assign(PORTS, BLACK_MARKET);
-// 아직 만들지 않은 섬 (뱃길 목록에 「준비 중」으로 보인다)
-export const ISLANDS = {
-  gold: '황금 돛 섬 (황금 돛 연맹)', sand: '붉은 모래 섬 (모래바람 술탄국)', frost: '서리왕관 섬 (하얀 왕관 공국)', skull: '해골 군도 (해적 연합)',
-};
+// 바다 건너 섬의 항구 (hidden: 기록을 모아야 열리는 뱃길)
+const R = (to, fare, desc, extra = {}) => ({ to, fare, time: 12, desc, ...extra });
+Object.assign(PORTS, {
+  gold: { name: '황금 돛 섬', where: '황금 돛 연맹의 거대 항구', master: '항구장 마리넬', trader: '교역상 도로', island: true,
+    market: { goldSilk: 0.6, iceCrystal: 1.3, redSpice: 1.35, pirateRum: 1.2, windWheat: 1.2, woolBale: 1.25, mistSalt: 1.2, driedFish: 1.1, blackPowder: 1.2 },
+    routes: [R('portS', 60, '북쪽 바람결의 섬 남쪽 항구로'), R('sand', 70, '서쪽 사막의 섬으로'), R('skull', 60, '동쪽 해적 소굴로'), R('frost', 90, '북동쪽 얼음 섬으로')] },
+  frost: { name: '서리왕관 섬', where: '하얀 왕관 공국의 얼음 항구', master: '항구 관리관 이스벤', trader: '교역상 니엘', island: true,
+    market: { iceCrystal: 0.6, redSpice: 1.6, goldSilk: 1.3, pirateRum: 1.4, windWheat: 1.4, driedFish: 1.3, woolBale: 1.5, mistSalt: 1.2 },
+    routes: [R('portE', 80, '남서쪽 바람결의 섬 안개 부두로'), R('gold', 90, '남쪽 상인 공화국으로'), R('mist', 120, '안개 속으로… 기록이 가리키는 뱃길', { hidden: true })] },
+  sand: { name: '붉은 모래 섬', where: '모래바람 술탄국의 오아시스 항구', master: '항구 감독관 자이드', trader: '향신료 상인 라나', island: true,
+    market: { redSpice: 0.6, iceCrystal: 1.9, goldSilk: 1.3, windWheat: 1.3, mistSalt: 1.4, pirateRum: 1.2, woolBale: 1.1, driedFish: 1.3 },
+    routes: [R('portS', 90, '북동쪽 바람결의 섬 남쪽 항구로'), R('gold', 70, '동쪽 상인 공화국으로')] },
+  skull: { name: '해골 군도', where: '해적 연합의 소굴 블랙코브', master: '부두 두목 갈고리 잭', trader: '장물아비 루시', island: true, lawless: true,
+    market: { pirateRum: 0.6, blackPowder: 1.8, forbiddenTome: 1.6, goldSilk: 1.4, redSpice: 1.3, iceCrystal: 1.3, windWheat: 1.3, driedFish: 1.2, woolBale: 1.2 },
+    routes: [R('portE', 70, '서쪽 바람결의 섬 안개 부두로'), R('gold', 60, '서남쪽 상인 공화국으로'), R('mist', 110, '안개 속으로… 기록이 가리키는 뱃길', { hidden: true })] },
+  mist: { name: '안개 너머의 섬', where: '버려진 선착장', master: '겁먹은 뱃사공', trader: '', island: true, market: {},
+    routes: [R('skull', 110, '안개를 빠져나가 해적 소굴로'), R('frost', 120, '안개를 빠져나가 얼음 섬으로')] },
+});
+export const ISLANDS = {};
 export const destName = (id) => PORTS[id]?.name || ISLANDS[id] || id;
 
 // ── 시세: 사면 오르고 팔면 내린다(한 개마다 3%), 2분마다 한 칸씩 제자리로 ──
@@ -78,7 +108,8 @@ export function sellPrice(save, portId, id) {
   const m = PORTS[portId].market[id];
   if (!m) return null;
   const st = marketState(save, portId);
-  return Math.max(1, Math.round(CARGO[id].price * m * 0.85 * (1 - STEP * (st.sell[id] || 0))));
+  const gb = guildRank(save) > 0 ? GUILD_RANKS[guildRank(save)].bonus : 0;
+  return Math.max(1, Math.round(CARGO[id].price * m * (0.85 + gb) * (1 - STEP * (st.sell[id] || 0))));
 }
 export function noteTrade(save, portId, id, side, n) {
   const st = marketState(save, portId);
@@ -109,6 +140,14 @@ export const SEA_EVENTS = {
     choices: [
       { id: 'fight', label: '작살을 들고 싸운다', hint: '이기면 바다뱀 비늘 · 명성. 지면 다친다' },
       { id: 'flee', label: '돛을 펴고 달아난다', hint: '안전하지만 아무것도 없다' },
+    ],
+  },
+  merchantShip: {
+    title: '짐을 가득 실은 상선', chance: 0, own: 0.2,
+    text: '수평선에 황금 돛 연맹 깃발을 단 상선이 보인다. 짐칸이 무거워 느리다. 호위는 몇 명뿐이다.',
+    choices: [
+      { id: 'raid', label: '덮친다 (해적질)', hint: '호위를 쓰러뜨리면 교역품 · 돈. 악명 +10' },
+      { id: 'pass', label: '지나친다', hint: '아무 일도 없다' },
     ],
   },
   castaway: {

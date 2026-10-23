@@ -514,3 +514,12 @@ b.dim { color: #e8c890; }
 .price-board th, .price-board td { border: 1px solid #3a3450; padding: 4px 6px; text-align: center; }
 .price-board th { background: #221a34; color: #ffd27a; font-weight: 600; }
 .price-board td:first-child { text-align: left; }
+
+/* 근처에서 벌어지는 일 */
+#happenPanel { position: absolute; right: calc(8px + env(safe-area-inset-right, 0px)); top: calc(210px + env(safe-area-inset-top, 0px)); z-index: 5; width: min(220px, 46vw); background: rgba(16, 12, 26, 0.82); border: 2px solid #4a4068; padding: 6px 8px; font-size: 13px; color: #e8e0f4; }
+#happenPanel b { color: #ffd27a; display: block; margin-bottom: 4px; }
+#happenPanel .hp-row { padding: 4px 6px; margin: 2px 0; background: rgba(255,255,255,0.05); cursor: pointer; display: grid; }
+#happenPanel .hp-row small { color: #a8a0c0; font-size: 11px; }
+#happenPanel .hp-row.on { background: rgba(255, 210, 122, 0.18); outline: 1px solid #ffd27a; }
+#happenPanel .hp-row.off { color: #a8a0c0; text-align: center; }
+.modal .warn { color: #ff8a80; }

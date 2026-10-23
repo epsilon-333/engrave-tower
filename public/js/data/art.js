@@ -55,6 +55,7 @@ export const MONSTER_ART = {
   jungleWasp: { base: 'imp', tint: 'hue-rotate(60deg) saturate(1.8) brightness(1.3)' },
   bigBeetle: { base: 'ogre', tint: 'hue-rotate(120deg) saturate(0.9) brightness(0.75)' },
   bandit: { base: 'dwarf_m', tint: 'grayscale(0.7) brightness(0.8)' },
+  royalGuard: { base: 'knight_m', tint: 'saturate(0.8) brightness(0.95)' },
   coralCrab: { base: 'muddy', tint: 'hue-rotate(-40deg) saturate(2) brightness(1.2)' },
   jellyfish: { base: 'swampy', tint: 'hue-rotate(220deg) saturate(1.6) brightness(1.3)' },
   seaSerpent: { base: 'slug', tint: 'hue-rotate(120deg) saturate(1.6) brightness(1.1)' },
@@ -101,6 +102,12 @@ export const NPC_ART = {
   store: { base: 'wizzard_m', tint: 'sepia(0.75) saturate(1.3) hue-rotate(-12deg) brightness(1.05)' },
   pino: { base: 'elf_m', tint: 'sepia(0.55) saturate(1.3) hue-rotate(-12deg)' },
   turtle: { base: 'swampy', tint: 'hue-rotate(40deg) saturate(0.8)' },
+  // 정치 · 섬 · 성지 시설
+  recruiter: { base: 'knight_m', tint: 'hue-rotate(40deg) saturate(1.2) brightness(1.05)' }, official: { base: 'knight_f', tint: 'hue-rotate(30deg) saturate(1.3)' },
+  kingArt: { base: 'knight_m', tint: 'sepia(0.6) saturate(2) hue-rotate(-10deg) brightness(1.1)' }, kaila: { base: 'knight_f', tint: 'grayscale(0.6) brightness(0.7) hue-rotate(220deg)' },
+  innkeeper: { base: 'dwarf_f', tint: 'sepia(0.4)' }, smith: { base: 'dwarf_m', tint: 'brightness(0.9)' },
+  guildMaster: { base: 'wizzard_f', tint: 'sepia(0.7) saturate(1.8) hue-rotate(-15deg)' }, auctioneer: { base: 'doc', tint: 'hue-rotate(40deg)' }, shipwright: { base: 'dwarf_m', tint: 'hue-rotate(180deg) saturate(0.6)' },
+  dinoTamer: { base: 'lizard_m', tint: 'hue-rotate(40deg)' }, dragonElder: { base: 'dragonkin', tint: 'brightness(0.95)' },
   // 녹트 하벤
   broker: { base: 'elf_m', tint: 'brightness(0.55) saturate(0.4) hue-rotate(200deg)' }, fence: { base: 'dwarf_m', tint: 'hue-rotate(80deg) saturate(0.7) brightness(0.8)' },
   forger: { base: 'doc', tint: 'sepia(0.6) brightness(0.85)' }, healer: { base: 'wizzard_f', tint: 'hue-rotate(110deg) saturate(0.8)' },
