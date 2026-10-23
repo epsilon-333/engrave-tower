@@ -13,6 +13,9 @@ export const CARGO = {
   redSpice: { name: '붉은 향신료', price: 55, desc: '붉은 모래 섬 오아시스의 향신료. 추운 섬에서 귀하다.', icon: { t: 'dust', c: ['#e0582a', '#ffb060', '#8a2a10'] }, island: 'sand' },
   goldSilk: { name: '금빛 비단', price: 80, desc: '황금 돛 섬 상단이 들여오는 비단.', icon: { t: 'cloth', c: ['#ffe08a', '#e8b040', '#a8782a'] }, island: 'gold' },
   pirateRum: { name: '해적 럼주', price: 45, desc: '해골 군도에서 빚은 독한 술.', icon: { t: 'bottle', c: ['#8a4a2a', '#c87a3a', '#4a2a18'] }, island: 'skull' },
+  // 밀수품: 녹트 하벤 암시장에서만 판다. 왕국 경비병에게 걸리면 빼앗긴다(나중에)
+  blackPowder: { name: '화약 통', price: 70, desc: '녹타리스가 몰래 빚는 화약. 안개 부두 뒷골목에서 값을 쳐준다.', icon: { t: 'pot', c: ['#3a3a42', '#6a6a72', '#1a1a20'] }, contraband: true },
+  forbiddenTome: { name: '금서', price: 90, desc: '왕국이 불태우라 명한 책. 바람결 항구의 몇몇 학자가 몰래 산다.', icon: { t: 'cloth', c: ['#4a2a5a', '#7a4a8a', '#2a1a3a'] }, contraband: true },
 };
 for (const [id, c] of Object.entries(CARGO)) GOODS[id] = { name: c.name, cat: 'cargo', price: c.price, desc: c.desc, icon: c.icon };
 export const CARGO_CAP = 20; // 몸에 지는 교역품 (짐수레 · 배는 나중에)
@@ -21,7 +24,7 @@ export const CARGO_CAP = 20; // 몸에 지는 교역품 (짐수레 · 배는 나
 export const PORTS = {
   portS: {
     name: '바람결 항구', where: '바람결 마을 남쪽 해안', master: '항구지기 오렌', trader: '교역상 미라',
-    market: { windWheat: 0.6, woolBale: 0.65, mistSalt: 1.4, driedFish: 1.35, iceCrystal: 1.2, redSpice: 1.3, goldSilk: 1.25, pirateRum: 1.2 },
+    market: { windWheat: 0.6, woolBale: 0.65, mistSalt: 1.4, driedFish: 1.35, iceCrystal: 1.2, redSpice: 1.3, goldSilk: 1.25, pirateRum: 1.2, forbiddenTome: 1.45 },
     routes: [
       { to: 'portE', fare: 30, time: 12, desc: '섬 남쪽 바다를 돌아 동쪽 해안으로' },
       { to: 'gold', fare: 60, closed: true }, { to: 'sand', fare: 90, closed: true },
@@ -29,13 +32,22 @@ export const PORTS = {
   },
   portE: {
     name: '안개 부두', where: '물안개 해안 동쪽 끝', master: '선장 하겔', trader: '교역상 브린',
-    market: { mistSalt: 0.6, driedFish: 0.6, windWheat: 1.35, woolBale: 1.3, iceCrystal: 1.25, redSpice: 1.4, goldSilk: 1.2, pirateRum: 1.3 },
+    market: { mistSalt: 0.6, driedFish: 0.6, windWheat: 1.35, woolBale: 1.3, iceCrystal: 1.25, redSpice: 1.4, goldSilk: 1.2, pirateRum: 1.3, blackPowder: 1.5 },
     routes: [
       { to: 'portS', fare: 30, time: 12, desc: '섬 남쪽 바다를 돌아 남쪽 항구로' },
       { to: 'frost', fare: 80, closed: true }, { to: 'skull', fare: 70, closed: true },
     ],
   },
 };
+// 녹트 하벤 암시장: 밀수품을 싸게 팔고, 어떤 교역품이든 조금 싸게 사 준다 (장물도 묻지 않는다)
+export const BLACK_MARKET = {
+  noktBlack: {
+    name: '녹트 하벤 암시장', trader: '장물아비 스크라', black: true,
+    market: { blackPowder: 0.55, forbiddenTome: 0.55, windWheat: 0.95, woolBale: 0.95, mistSalt: 0.95, driedFish: 0.95, iceCrystal: 1.1, redSpice: 1.1, goldSilk: 1.1, pirateRum: 1.1 },
+    routes: [],
+  },
+};
+Object.assign(PORTS, BLACK_MARKET);
 // 아직 만들지 않은 섬 (뱃길 목록에 「준비 중」으로 보인다)
 export const ISLANDS = {
   gold: '황금 돛 섬 (황금 돛 연맹)', sand: '붉은 모래 섬 (모래바람 술탄국)', frost: '서리왕관 섬 (하얀 왕관 공국)', skull: '해골 군도 (해적 연합)',

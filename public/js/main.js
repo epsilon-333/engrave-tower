@@ -44,6 +44,7 @@ import { unlockAudio, sfx, startMusic, getVolume, setVolume } from './audio.js';
 import { setupTouch, isTouch } from './touch.js';
 import { PORTS, CARGO, CARGO_CAP, destName, buyPrice as portBuy, sellPrice as portSell, noteTrade, rememberPrices, cargoCount, SEA_EVENTS } from './data/trade.js';
 import { SHIP_ZONE, buildShipDeck } from './data/maps/ship.js';
+import { NOKT_ZONE, buildNoktHaven } from './data/maps/nokt.js';
 
 let save = loadSave();
 const titleEl = document.getElementById('title');
@@ -2041,12 +2042,14 @@ function handleSignals() {
       showModal(`<h2>${j.title}</h2><p class="muted">${j.where}</p><div class="journal">${esc(j.text).replace(/\n/g, '<br>')}</div><button data-close>덮는다</button>`);
       return;
     } else if (s.t === 'npc') {
-      if (portTalk(s.id)) return;
+      if (portTalk(s.id) || noktTalk(s.id)) return;
       talkTo(s.id);
       return;
     } else if (s.t === 'seaEvent') {
       showSeaEvent(s.id);
       return;
+    } else if (s.t === 'pitWon' || s.t === 'pitLost') {
+      pitResult(s);
     } else if (s.t === 'voyageWon' || s.t === 'voyageLost') {
       voyageResult(s);
     } else if (s.t === 'voyageEnd') {
@@ -2141,7 +2144,7 @@ function portShowTrade(pid) {
 }
 const portAgo = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? '방금' : m < 60 ? `${m}분 전` : `${Math.round(m / 60)}시간 전`; };
 function portBoardHtml(pid) {
-  const P = PORTS[pid], other = Object.keys(PORTS).filter((k) => k !== pid);
+  const P = PORTS[pid], other = Object.keys(PORTS).filter((k) => k !== pid && PORTS[k].routes.length);
   const seen = save.market?.seen || {};
   const head = `<tr><th>물건</th><th>여기서 사기</th><th>여기서 팔기</th>${other.map((o) => `<th>${esc(PORTS[o].name)}에서 팔기<br><small>${seen[o] ? portAgo(seen[o].t) + ' 본 값' : '모름'}</small></th>`).join('')}</tr>`;
   const rows = Object.keys(P.market).filter((id) => !CARGO[id].island).map((id) => `<tr><td>${esc(CARGO[id].name)}</td><td>${portBuy(save, pid, id) ?? '—'}</td><td>${portSell(save, pid, id) ?? '—'}</td>${other.map((o) => `<td>${seen[o]?.prices?.[id]?.sell ?? '?'}</td>`).join('')}</tr>`).join('');
@@ -2175,8 +2178,9 @@ function shipTalk(role) {
   if (role === 'captain') {
     showModal(`<h2>선장</h2><p>"${esc(destName(v.to))}까지 ${v.fighting ? '— 지금은 배가 멈췄소! 갑판의 놈들부터 치워 주시오!' : `대략 ${left}초면 닿겠소.`} ${v.extra > 0 ? `소동 탓에 ${Math.round(v.extra)}초쯤 늦어졌소.` : '바다가 조용하길 빕시다.'}"</p><div class="actions"><button data-close>알겠다</button></div>`);
   } else if (role === 'sailor') {
-    const r = SEA_RUMORS[Math.floor(Math.random() * SEA_RUMORS.length)];
-    showModal(`<h2>선원</h2><p>"${esc(r)}"</p><div class="actions"><button data-close>고개를 끄덕인다</button></div>`);
+    const k = Math.random() < 0.4 ? learnNoktWay() : null;
+    const r = k ? NOKT_WAYS[k].rumor : SEA_RUMORS[Math.floor(Math.random() * SEA_RUMORS.length)];
+    showModal(`<h2>선원</h2><p>"${esc(r)}"</p>${k ? `<p class="muted">새로 안 곳: ${esc(NOKT_WAYS[k].name)}</p>` : ''}<div class="actions"><button data-close>고개를 끄덕인다</button></div>`);
   } else if (role === 'info') {
     const to = v.to, can = PORTS[to];
     showModal(`<h2>상인 정보원</h2><p>"${can ? `${esc(PORTS[to].name)} 시세가 궁금하시오? ◆ 10이면 오늘 아침 소식을 알려 드리지.` : '그 섬 시세는 나도 모르오.'}"</p>${portGoldRow()}
@@ -2255,6 +2259,150 @@ function updateVoyBar() {
   const k = Math.min(1, v.t / v.dur), txt = v.fighting ? '⚓ 배가 멈췄다 — 갑판의 적을 모두 쓰러뜨리자' : `⛵ ${destName(v.to)}까지 약 ${Math.max(0, Math.ceil(v.dur - v.t))}초`;
   if (el.dataset.txt !== txt) { el.dataset.txt = txt; el.innerHTML = `<span>${esc(txt)}</span><i style="width:${Math.round(k * 100)}%"></i>`; }
   else el.querySelector('i').style.width = `${Math.round(k * 100)}%`;
+}
+
+// ═══════ 녹트 하벤 (반란 세력 녹타리스의 지하 도시) ═══════
+// 숨은 입구 셋은 처음엔 모른다. 소문꾼 · 배 위 선원 · 녹트 하벤 사람들에게서 들어야 들어갈 수 있다.
+const NOKT_WAYS = {
+  well: { name: '폐허 도시의 무너진 우물', look: '돌 테두리가 무너진 오래된 우물이다. 밑에서 서늘한 바람과 함께 희미한 횃불 냄새가 올라온다.', rumor: '폐허 도시 한가운데 무너진 우물 말이오, 밧줄을 타고 내려가면 바닥이 아니라 굴이 나온다더군. 밤의 사람들이 드나든다오.' },
+  sewer: { name: '왕도 하수구', look: '무너진 왕성 남쪽 들판의 녹슨 하수구 철창. 창살 하나가 유난히 매끈하다. 누군가 자주 열고 닫은 것처럼.', rumor: '왕성 남쪽 하수구 철창, 셋째 창살이 빠진다오. 왕국 수로를 따라가면 녹트 하벤이지. 경비병들 코앞이라 대담한 놈들만 쓰지만.' },
+  mine: { name: '황야의 옛 광산', look: '황야 바위에 박힌 버려진 광산 입구. 「위험 · 출입 금지」 팻말 뒤로 새 발자국이 나 있다.', rumor: '황야의 버려진 광산은 진짜로 버려진 게 아니오. 드워프가 파던 갱도가 지하 도시까지 이어져 있지. 안쪽엔 괴물도 산다더군.' },
+};
+const noktOf = () => (save.nokt ||= { known: {} });
+// 아직 모르는 입구 하나를 알려 준다 (없으면 null)
+function learnNoktWay() {
+  const N = noktOf(), left = Object.keys(NOKT_WAYS).filter((k) => !N.known[k]);
+  if (!left.length) return null;
+  const k = left[Math.floor(Math.random() * left.length)];
+  N.known[k] = true; writeSave(save);
+  return k;
+}
+let noktStash = null;
+function noktTalk(id) {
+  if (id.startsWith('noktIn_')) {
+    const k = id.slice(7), W = NOKT_WAYS[k];
+    if (!noktOf().known[k]) { showModal(`<h2>${esc(W.name)}</h2><p>${esc(W.look)}</p><p class="muted">무엇인가 있는 것 같지만, 어떻게 들어가는지 모른다. 소문을 들어 보자.</p><div class="actions"><button data-close>돌아선다</button></div>`); return true; }
+    showModal(`<h2>${esc(W.name)}</h2><p>${esc(W.look)}</p><p>소문대로라면 이 아래가 녹트 하벤이다.</p><div class="actions"><button id="noktGo">내려간다</button><button data-close class="ghost">그만둔다</button></div>`);
+    document.getElementById('noktGo').onclick = () => { overlay.hidden = true; paused = false; modal = null; enterNokt(k); };
+    return true;
+  }
+  if (id === 'rumor_village') {
+    const left = Object.keys(NOKT_WAYS).filter((k) => !noktOf().known[k]);
+    showModal(`<h2>뒷골목 소문꾼 테오</h2><p>"정보는 공짜가 아니오. ◆ 15면 쓸 만한 이야기 하나 해 드리지. ${left.length ? '요즘 밤에 사람들이 사라지는 곳들 얘기라든가…' : '…라고 하고 싶은데, 당신은 이미 다 아는 눈치구려.'}"</p>${portGoldRow()}
+      <div class="actions"><button id="buyRumor" ${save.gold >= 15 ? '' : 'disabled'}>◆ 15 내고 듣는다</button><button data-close class="ghost">됐다</button></div>`);
+    document.getElementById('buyRumor').onclick = () => {
+      save.gold -= 15; sfx('coin', { vol: 0.5 });
+      const k = learnNoktWay();
+      const text = k ? NOKT_WAYS[k].rumor : SEA_RUMORS[Math.floor(Math.random() * SEA_RUMORS.length)];
+      showModal(`<h2>소문</h2><p>"${esc(text)}"</p>${k ? `<p class="muted">새로 안 곳: ${esc(NOKT_WAYS[k].name)} — 지도에서 찾아가 보자</p>` : ''}<div class="actions"><button data-close>고개를 끄덕인다</button></div>`);
+      writeSave(save);
+    };
+    return true;
+  }
+  if (!id.startsWith('nokt_')) return false;
+  const role = id.slice(5);
+  const say = (title, text, extra = '') => showModal(`<h2>${esc(title)}</h2><p>"${esc(text)}"</p>${extra}<div class="actions"><button data-close>돌아선다</button></div>`);
+  if (role.startsWith('exit_')) { exitNokt(role.slice(5)); return true; }
+  if (role === 'broker') {
+    const k = learnNoktWay();
+    say('중개인 벡', `녹타리스? 그런 이름은 처음 듣는군… 하고 시치미를 떼야 하는데, 여기까지 내려온 걸 보니 눈치는 있는 사람이구려. 아직 당신을 믿을 수는 없소. 밖에서 무슨 일을 하고 다니는지 지켜보겠소.${k ? ` 아, 그리고 — ${NOKT_WAYS[k].rumor}` : ''}`, k ? `<p class="muted">새로 안 곳: ${esc(NOKT_WAYS[k].name)}</p>` : '');
+    return true;
+  }
+  if (role === 'black') { portShowTrade('noktBlack'); return true; }
+  if (role === 'rebel1' || role === 'rebel2') {
+    const lines = ['카일라 단장님은 옛 기사단장이었소. 왕이 성지 조각을 빼앗아 가는 걸 보다 못해 나오셨지.', '여기선 칼집에서 칼 빼지 마시오. 시비는 투기장에서나 거는 거요.', '동쪽 갱도 깊은 곳에 이상한 표식이 늘고 있소. 교단이라나… 왕국보다 그쪽이 더 무섭소.', '안개 부두에 화약 통을 가져가면 값을 잘 쳐주는 사람이 있소. 경비병만 조심하면.'];
+    say('녹타리스 반란군', lines[Math.floor(Math.random() * lines.length)]);
+    return true;
+  }
+  if (role === 'guard') { say('갱도 파수꾼', '이 너머가 깊은 갱도요. 들어갈수록 험하오 — 무너진 갱 Lv 15~22, 버려진 채굴장 Lv 22~30, 맨 안쪽 교단의 흔적은 Lv 32~40. 거기서 나는 소리는 들은 척도 하지 마시오.'); return true; }
+  if (role === 'healer') {
+    world.player.hp = world.d.maxHp; world.player.st = {};
+    save.zoneMemory ||= {}; save.zoneMemory.nokt = world.exportMemory(); writeSave(save);
+    say('치료사 엘레', '여긴 다친 반란군이 쉬어 가는 곳이오. 상처는 다 싸맸소. 몸 성히 다니시오.', '<p class="muted">체력을 모두 되찾았다 · 저장했다</p>');
+    sfx('levelup', { vol: 0.4 });
+    return true;
+  }
+  if (role === 'forge') {
+    const R = repOf(), cost = 15;
+    showModal(`<h2>위조꾼 몰</h2><p>"장부에 적힌 이름 한 줄 지우는 데 ◆ ${cost}씩. 소문이란 게 돈 앞에선 금방 잊히거든. 현상금이 붙으면 그것도 여기서 지워 드리지."</p>
+      <p class="muted">지금 악명 <b>${R.infamy}</b> · 명성 <b>${R.fame}</b></p>${portGoldRow()}
+      <div class="actions"><button id="wipe5" ${R.infamy > 0 && save.gold >= cost * Math.min(5, R.infamy) ? '' : 'disabled'}>악명 5 지우기 · ◆ ${cost * Math.min(5, R.infamy || 5)}</button><button data-close class="ghost">됐다</button></div>`);
+    document.getElementById('wipe5').onclick = () => { const n = Math.min(5, R.infamy); save.gold -= cost * n; R.infamy -= n; writeSave(save); sfx('coin', { vol: 0.5 }); noktTalk('nokt_forge'); };
+    return true;
+  }
+  if (role === 'pit') { showPit(); return true; }
+  return false;
+}
+// 지하 투기장: 돈을 걸고 싸운다. 이기면 건 돈의 두 배, 지면 건 돈을 잃는다 (쓰러지지는 않는다)
+const PIT_TIERS = [
+  { id: 'low', name: '하급 · 떠돌이 칼잡이', bet: 30, foe: 'bandit', lv: 15, hp: 2.2 },
+  { id: 'mid', name: '중급 · 황야의 약탈자', bet: 80, foe: 'orcRaider', lv: 25, hp: 3 },
+  { id: 'high', name: '상급 · 도마뱀 투사', bet: 200, foe: 'lizardWarrior', lv: 35, hp: 4 },
+];
+function showPit() {
+  if (world.pit) { showModal('<h2>지하 투기장</h2><p>"싸움 중이오! 구경꾼들이 소리를 지른다."</p><div class="actions"><button data-close>알겠다</button></div>'); return; }
+  showModal(`<h2>지하 투기장 · 주인 그롬</h2><p>"돈을 걸고 모래판에 들어가시오. 이기면 두 배, 지면 그 돈은 내 거요. 죽진 않소 — 쓰러지면 끌어내 주지."</p>${portGoldRow()}
+    <div class="soc-list">${PIT_TIERS.map((T, i) => `<div class="soc-row"><span class="nm"><b>${esc(T.name)}</b></span><span class="muted">상대 Lv ${T.lv} · 이기면 ◆ ${T.bet * 2}</span><span class="btns"><button class="sm" data-pit="${i}" ${save.gold >= T.bet ? '' : 'disabled'}>◆ ${T.bet} 건다</button></span></div>`).join('')}</div>
+    <div class="actions"><button data-close class="ghost">됐다</button></div>`);
+  overlay.querySelectorAll('[data-pit]').forEach((b) => (b.onclick = () => {
+    const T = PIT_TIERS[+b.dataset.pit];
+    if (save.gold < T.bet) return;
+    save.gold -= T.bet; writeSave(save);
+    overlay.hidden = true; paused = false; modal = null;
+    const P = world.map.pit, p = world.player;
+    p.x = P.x * TILE + 8 - 40; p.y = P.y * TILE + 8; p.invuln = 1;
+    const e = world.makeEnemy(T.foe, P.x * TILE + 8 + 40, P.y * TILE + 8, { noAffix: true });
+    world.applyLevel(e, T.lv); e.hp = e.maxHp = Math.round(e.maxHp * T.hp); e.champion = T.name.split('· ')[1];
+    e.state = 'chase'; e.home = { x: e.x, y: e.y };
+    world.enemies.push(e);
+    world.pit = { e, bet: T.bet, tier: T.id };
+    renderer.banner = { text: '싸워라!', sub: `${T.name} · 걸린 돈 ◆ ${T.bet}`, t: 2.4, color: '#ff9a7a' };
+    sfx('hitHeavy', { vol: 0.8, rate: 0.7 });
+  }));
+}
+function pitResult(s) {
+  if (s.t === 'pitWon') { save.gold += s.bet * 2; repOf().fame += 1; renderer.banner = { text: `이겼다! ◆ ${s.bet * 2}`, sub: '구경꾼들이 발을 구른다 · 명성 +1', t: 3, color: '#ffd27a' }; sfx('levelup', { vol: 0.6 }); }
+  else renderer.banner = { text: '모래판에 쓰러졌다', sub: `건 돈 ◆ ${s.bet}을 잃었다`, t: 3, color: '#ffb0a0' };
+  writeSave(save);
+}
+function enterNokt(way) {
+  const ow = world;
+  save.zoneMemory ||= {};
+  if (ow.zoneId === 'world') save.zoneMemory.world = ow.exportMemory();
+  noktStash = { world: ow, way };
+  world = new World({ build: buildNow(), mode: 'field', zone: NOKT_ZONE, zoneId: 'nokt', seed: 333, map: buildNoktHaven(), memory: save.zoneMemory.nokt, story: save.story, codex: save.codex, ...shared() });
+  const ex = world.map.exits[way];
+  world.player.x = ex.x * TILE + 8; world.player.y = ex.y * TILE + 8 + 10;
+  world.player.hp = ow.player.hp; world.player.res = ow.player.res;
+  world.loot = ow.loot; world.discovered = ow.discovered; world.codexStart = ow.codexStart;
+  world.reveal(true);
+  renderer.setWorld(world);
+  renderer.banner = { text: '녹트 하벤', sub: '밤의 항구 — 반란 세력 녹타리스의 지하 도시', t: 3.6, color: '#c8a0ff' };
+  noktOf().visited = true;
+  startMusic('cave'); sfx('drop', { vol: 0.6, rate: 0.7 });
+  writeSave(save);
+  startLoop();
+}
+function exitNokt(way) {
+  save.zoneMemory ||= {}; save.zoneMemory.nokt = world.exportMemory();
+  noktOf().known[way] = true; // 나가 본 길은 안다
+  const city = world, st = noktStash; noktStash = null;
+  const pos = overworldBase().hidden?.[way];
+  const at = pos ? { x: pos.x * TILE + 8, y: pos.y * TILE + 8 } : null;
+  if (!st?.world || st.world.zoneId !== 'world') { enterWorld(at ? { x: at.x, y: at.y - 24 + 30 } : null); }
+  else {
+    world = st.world;
+    if (at) { world.player.x = at.x; world.player.y = at.y + 26; }
+    world.signals.length = 0; world.events.length = 0;
+    world.setBuild(buildNow()); world.applyPersist();
+    for (const al of world.allies) { al.x = world.player.x + (Math.random() - 0.5) * 30; al.y = world.player.y + 10; }
+    renderer.setWorld(world);
+    startMusic('plaza'); startLoop();
+  }
+  world.player.hp = Math.min(world.d.maxHp, city.player.hp); world.player.res = city.player.res;
+  world.reveal(true);
+  renderer.banner = { text: NOKT_WAYS[way].name, sub: '땅 위로 나왔다', t: 2.6, color: '#ffe8a8' };
+  writeSave(save);
 }
 
 let autosaveT = 0;

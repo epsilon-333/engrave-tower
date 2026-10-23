@@ -432,6 +432,40 @@ export function drawOutdoorProp(g, pr, t, night, burntTrees) {
   if (pr.big && drawLandmark(g, pr, t, night)) return; // 성지 마을의 커다란 상징물
   if (drawVillageProp(g, pr, t, night)) return;      // 성지 마을의 작은 것들
   switch (pr.kind) {
+    case 'brokenWell': { // 폐허 도시의 무너진 우물: 반쯤 허물어진 돌 테두리 · 검은 구멍 · 늘어진 밧줄
+      shadowEllipse(g, cx, by - 4, 20, 6, 0.28);
+      g.fillStyle = OL; g.beginPath(); g.ellipse(cx, by - 9, 19, 9, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#8a8478'; g.beginPath(); g.ellipse(cx, by - 9, 18, 8, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#05040a'; g.beginPath(); g.ellipse(cx, by - 10, 12, 5, 0, 0, Math.PI * 2); g.fill();
+      for (let k = 0; k < 7; k++) { const a = Math.PI * (0.05 + k * 0.13); R(g, k % 2 ? '#a8a294' : '#6e685c', cx + Math.cos(a) * 16 - 3, by - 9 + Math.sin(a) * 7 - 2, 6, 4); }
+      R(g, OL, cx - 18, by - 18, 6, 7); R(g, '#9c968a', cx - 17, by - 17, 4, 5); R(g, '#7a7468', cx + 10, by - 14, 6, 3);
+      R(g, '#5a4a32', cx + 13, by - 30, 2, 18); R(g, '#c8b080', cx + 2, by - 29, 12, 1); R(g, '#c8b080', cx + 2, by - 29, 1, 16);
+      return;
+    }
+    case 'sewerGrate': { // 왕도 하수구: 돌 둔덕 속 녹슨 쇠창살, 이끼 · 물방울
+      shadowEllipse(g, cx, by - 2, 22, 5, 0.25);
+      g.fillStyle = OL; g.beginPath(); g.moveTo(x - 4, by); g.lineTo(x + 2, by - 22); g.lineTo(x + W - 2, by - 22); g.lineTo(x + W + 4, by); g.closePath(); g.fill();
+      g.fillStyle = '#7a7468'; g.beginPath(); g.moveTo(x - 3, by - 1); g.lineTo(x + 3, by - 21); g.lineTo(x + W - 3, by - 21); g.lineTo(x + W + 3, by - 1); g.closePath(); g.fill();
+      R(g, OL, cx - 11, by - 17, 22, 16); R(g, '#0a0a10', cx - 10, by - 16, 20, 15);
+      for (let k = 0; k < 5; k++) R(g, '#7a4a2a', cx - 9 + k * 4, by - 16, 2, 15);
+      R(g, '#8a5a32', cx - 10, by - 11, 20, 2);
+      R(g, '#4a7a3a', x + 1, by - 6, 6, 3); R(g, '#4a7a3a', x + W - 7, by - 9, 5, 2);
+      if (Math.floor(t * 2) % 3 === 0) R(g, '#7ad8ff', cx + 3, by - 2 + (Math.floor(t * 6) % 3), 1, 2);
+      return;
+    }
+    case 'oldMine': { // 황야의 옛 광산: 바위에 박힌 나무 틀 입구, 녹슨 레일, 깨진 표지
+      shadowEllipse(g, cx, by - 2, 24, 6, 0.28);
+      g.fillStyle = OL; g.beginPath(); g.ellipse(cx, by - 12, 24, 16, 0, Math.PI, 0); g.fill();
+      g.fillStyle = '#9a6a42'; g.beginPath(); g.ellipse(cx, by - 12, 23, 15, 0, Math.PI, 0); g.fill();
+      R(g, '#9a6a42', x - 4, by - 12, W + 8, 12);
+      R(g, '#05040a', cx - 10, by - 22, 20, 22);
+      for (const sx of [-12, 10]) { R(g, OL, cx + sx - 1, by - 25, 5, 25); R(g, '#6a4a2a', cx + sx, by - 24, 3, 24); }
+      R(g, OL, cx - 14, by - 27, 28, 5); R(g, '#7a5232', cx - 13, by - 26, 26, 3);
+      for (let k = 0; k < 4; k++) R(g, '#5a3a22', cx - 7, by - 4 - k * 4, 14, 1);
+      R(g, '#8a8a92', cx - 6, by - 18, 1, 18); R(g, '#8a8a92', cx + 5, by - 18, 1, 18);
+      R(g, OL, cx + 16, by - 18, 12, 8); R(g, '#c8a070', cx + 17, by - 17, 10, 6); R(g, '#a0302a', cx + 19, by - 15, 6, 1);
+      return;
+    }
     case 'ship': {
       const bob = Math.round(Math.sin(t * 1.6 + pr.x) * 1);
       const hy = by - 6 + bob, hx0 = x - 4, hx1 = x + W + 8; // 선체 아래쪽 선(물 높이)

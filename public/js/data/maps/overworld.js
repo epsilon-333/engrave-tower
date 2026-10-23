@@ -221,6 +221,7 @@ export function buildOverworld(zone) {
   }
   prop('well', V.x + 4, V.y + 2, 2, 1);
   objects.push({ kind: 'rest', ...at(V.x, V.y), label: '마을 모닥불 · 쉬고 저장하기', reusable: true });
+  objects.push({ kind: 'npc', id: 'rumor_village', art: 'rumorer', ...at(V.x - 17, V.y + 9), label: '뒷골목 소문꾼 테오와 이야기', reusable: true });
   // 텃밭: 흙밭 + 울타리(서쪽에 문) + 허수아비 + 표지판
   for (let y = FARM.y0; y <= FARM.y1; y++) for (let x = FARM.x0; x <= FARM.x1; x++) set(x, y, T_FLOOR, G.DIRT);
   prop('fence', FARM.x0 - 1, FARM.y0 - 1, FARM.x1 - FARM.x0 + 3, 1, { dir: 'h' });
@@ -340,6 +341,25 @@ export function buildOverworld(zone) {
     safe.push({ x: c.x, y: c.y, r: 16 });
     ports[id] = P;
   };
+  // ───── 6-3) 녹트 하벤(지하 도시)으로 가는 숨은 입구 셋: 폐허 도시의 무너진 우물 · 왕도 하수구 · 황야의 옛 광산 (처음엔 모른다) ─────
+  const hidden = {};
+  const hiddenWay = (id, kind, bi, tx, ty, label) => {
+    let best = null, bd = 1e9;
+    for (let y = ty - 14; y <= ty + 14; y++) for (let x = tx - 14; x <= tx + 14; x++) {
+      if (!inb(x, y) || bio(x, y) !== bi || t[I(x, y)] !== T_FLOOR || occupied[I(x, y)] || LV[I(x, y)]) continue;
+      let ok = true; for (let yy = y - 3; yy <= y + 3 && ok; yy++) for (let xx = x - 3; xx <= x + 3; xx++) if (!inb(xx, yy) || occupied[I(xx, yy)] || t[I(xx, yy)] === T_BUILD) { ok = false; break; }
+      const d = Math.hypot(x - tx, y - ty); if (ok && d < bd) { bd = d; best = { x, y }; }
+    }
+    if (!best) return;
+    clear(best.x, best.y, 3, null);
+    prop(kind, best.x - 1, best.y - 2, 3, 2);
+    objects.push({ kind: 'hiddenWay', id: 'noktIn_' + id, ...at(best.x, best.y), label, reusable: true });
+    hidden[id] = best; safe.push({ x: best.x, y: best.y, r: 5 });
+  };
+  hiddenWay('well', 'brokenWell', B.ruins, 168, 154, '무너진 우물을 살펴본다');
+  hiddenWay('sewer', 'sewerGrate', B.meadow, 336, 252, '녹슨 하수구 철창을 살펴본다');
+  hiddenWay('mine', 'oldMine', B.wasteland, 384, 202, '버려진 광산 입구를 살펴본다');
+
   harbor('portS', V.x, V.y + 16, 0, 1);
   harbor('portE', BIOMES[B.mistcoast].x + 10, BIOMES[B.mistcoast].y, 1, 0);
 
@@ -608,7 +628,7 @@ export function buildOverworld(zone) {
   return {
     tw: TW, th: TH, tiles: t, ground: gr, outdoor: true, designed: 'overworld', level: LV, biome: BI, waypoints, villages,
     start: { x: V.x, y: V.y + 4 }, lair, stairs: null, camps, champions, chests, lores, secrets, deco, regions, regionInfo,
-    camp, merchant: [{ x: V.x - 5, y: V.y - 2 }], shrines, goblins, props, objects, onPath, sanctums, entrances, farm: FARM, nodes, digs, docks, ports,
+    camp, merchant: [{ x: V.x - 5, y: V.y - 2 }], shrines, goblins, props, objects, onPath, sanctums, entrances, farm: FARM, nodes, digs, docks, ports, hidden,
   };
 }
 

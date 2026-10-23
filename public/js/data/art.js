@@ -101,6 +101,11 @@ export const NPC_ART = {
   store: { base: 'wizzard_m', tint: 'sepia(0.75) saturate(1.3) hue-rotate(-12deg) brightness(1.05)' },
   pino: { base: 'elf_m', tint: 'sepia(0.55) saturate(1.3) hue-rotate(-12deg)' },
   turtle: { base: 'swampy', tint: 'hue-rotate(40deg) saturate(0.8)' },
+  // 녹트 하벤
+  broker: { base: 'elf_m', tint: 'brightness(0.55) saturate(0.4) hue-rotate(200deg)' }, fence: { base: 'dwarf_m', tint: 'hue-rotate(80deg) saturate(0.7) brightness(0.8)' },
+  forger: { base: 'doc', tint: 'sepia(0.6) brightness(0.85)' }, healer: { base: 'wizzard_f', tint: 'hue-rotate(110deg) saturate(0.8)' },
+  pitBoss: { base: 'orc_warrior', tint: 'saturate(1.2) brightness(0.95)' }, rebel: { base: 'knight_m', tint: 'grayscale(0.7) brightness(0.55)' }, rebel2: { base: 'elf_f', tint: 'grayscale(0.6) brightness(0.6) hue-rotate(200deg)' },
+  rumorer: { base: 'elf_m', tint: 'sepia(0.4) brightness(0.8) hue-rotate(-20deg)' },
   // 항구 · 배
   portMaster: { base: 'dwarf_m', tint: 'hue-rotate(190deg) saturate(0.9)' }, shipCaptainE: { base: 'dwarf_m', tint: 'hue-rotate(120deg) saturate(0.8) brightness(0.95)' },
   trader: { base: 'dwarf_f', tint: 'hue-rotate(-20deg) saturate(1.3)' }, shipCaptain: { base: 'knight_m', tint: 'hue-rotate(180deg) saturate(0.6) brightness(0.95)' },

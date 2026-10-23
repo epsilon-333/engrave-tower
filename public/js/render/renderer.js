@@ -3100,6 +3100,16 @@ export class Renderer {
     if (o.kind === 'station' || o.kind === 'merchant') return this.drawNpc(w, o);
     if (o.kind === 'relic') { drawRelic(this.g, o, w.t, SANCTUMS[o.race]?.color || '#ffffff', o.opened); return; }
     if (o.kind === 'sign') { drawSign(this.g, o); o._top = o.y - 22; return; }
+    if (o.kind === 'hiddenWay') { o._top = o.y - 26; return; }
+    if (o.kind === 'ladderUp') { // 위로 이어진 나무 사다리 · 위에서 새어 드는 빛
+      const x = Math.round(o.x), y = Math.round(o.y);
+      const gr = g.createLinearGradient(0, y - 60, 0, y); gr.addColorStop(0, 'rgba(255,240,200,0.35)'); gr.addColorStop(1, 'rgba(255,240,200,0)');
+      g.fillStyle = gr; g.fillRect(x - 14, y - 60, 28, 60);
+      g.fillStyle = '#1a1410'; g.fillRect(x - 8, y - 46, 3, 50); g.fillRect(x + 5, y - 46, 3, 50);
+      g.fillStyle = '#8a6440'; g.fillRect(x - 7, y - 46, 1, 50); g.fillRect(x + 6, y - 46, 1, 50);
+      for (let k = 0; k < 7; k++) { g.fillStyle = '#1a1410'; g.fillRect(x - 6, y - 42 + k * 7, 12, 3); g.fillStyle = '#a07a52'; g.fillRect(x - 6, y - 42 + k * 7, 12, 1); }
+      o._top = y - 48; return;
+    }
     if (o.kind === 'priceBoard') { // 시세판: 나무 판 두 장에 분필 글씨
       const x = Math.round(o.x), y = Math.round(o.y);
       g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, x, y + 4, 12, 3);

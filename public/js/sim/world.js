@@ -133,7 +133,7 @@ export class World {
         e.home = { x: e.x, y: e.y };
         this.enemies.push(e);
       }
-      if (!m.outdoor) this.objects.push({ kind: 'portal', x: sx, y: sy - 14, label: '귀환 포탈 (잔향 전부 보존)', color: this.zone.portal });
+      if (!m.outdoor && !m.ship && !m.nokt) this.objects.push({ kind: 'portal', x: sx, y: sy - 14, label: '귀환 포탈 (잔향 전부 보존)', color: this.zone.portal });
       for (const o of m.objects || []) this.objects.push({ ...o });
       for (const c of m.chests) this.objects.push({ kind: 'chest', x: c.x * TILE + 8, y: c.y * TILE + 8, rich: c.rich, trap: c.trap, hidden: !!(c.rich && m.outdoor), label: c.rich ? '숨겨진 보물 상자' : '보물 상자' });
       for (const c of m.camp || []) this.objects.push({ kind: 'camp', x: c.x * TILE + 8, y: c.y * TILE + 8, label: '야영지 · 잔향 맡기고 쉬기', reusable: true });
@@ -141,7 +141,7 @@ export class World {
       for (const c of m.shrines || []) this.objects.push({ kind: 'shrine', x: c.x * TILE + 8, y: c.y * TILE + 8, label: '낡은 제단 · 축복 받기' });
       if (m.stairs && this.tower) { const dp = this.towerDoorSpot(m); m.stairs = dp; } // 탑: 문은 걸어서 닿는 넓은 바닥 가운데에
       if (m.stairs) this.objects.push({ kind: 'stairs', door: !!this.tower, reach: this.tower ? 30 : undefined, x: m.stairs.x * TILE + 8, y: m.stairs.y * TILE + 8, label: this.tower ? `계단 · ${this.tower.f}층 클리어` : `아래층으로 (지하 ${depth + 2}층)`, reusable: true });
-      for (const l of m.lores) this.objects.push({ kind: 'lore', x: l.x * TILE + 8, y: l.y * TILE + 8, label: '고대 석판 읽기' });
+      for (const l of m.lores) this.objects.push({ kind: 'lore', x: l.x * TILE + 8, y: l.y * TILE + 8, label: l.text ? '찢어진 기록 읽기' : '고대 석판 읽기', text: l.text });
       for (const b of m.barriers || []) {
         const def = BARRIERS[b.id], o = { kind: 'barrier', id: b.id, look: def.look, axis: b.axis, from: b.from, tiles: b.tiles, x: b.x * TILE + 8, y: b.y * TILE + 8, label: def.name, reusable: true };
         this.objects.push(o);
@@ -515,6 +515,7 @@ export class World {
     this.updateDelayed();
     this.updateAllies();
     if (this.voyage) this.updateVoyage();
+    if (this.pit?.e?.dead) { this.signals.push({ t: 'pitWon', bet: this.pit.bet, tier: this.pit.tier }); this.pit = null; }
     this.updateZones();
     this.updateFlow();
     this.updateEnemies();
@@ -1023,7 +1024,7 @@ export class World {
       return;
     }
     if (o.kind === 'merchant') { this.signals.push({ t: 'merchant', zone: this.zone.id, depth: this.depth }); return; }
-    if (o.kind === 'npc' || o.kind === 'priceBoard') { this.signals.push({ t: 'npc', id: o.id }); return; }
+    if (o.kind === 'npc' || o.kind === 'priceBoard' || o.kind === 'ladderUp' || o.kind === 'hiddenWay') { this.signals.push({ t: 'npc', id: o.id }); return; }
     if (o.kind === 'entrance') {
       if (ENTRANCES[o.id]?.prop === 'hole') { const p = this.player; p.fallInto = { t: 0, dur: 0.75, x0: p.x, y0: p.y, tx: o.x, ty: o.y - 14, id: o.id, ox: o.x, oy: o.y }; this.motion('leap', 0.4); this.emit({ t: 'hopStart', x: p.x, y: p.y }); return; }
       this.signals.push({ t: 'enterZone', entrance: o.id, x: o.x, y: o.y }); return;
@@ -1131,7 +1132,7 @@ export class World {
     }
     if (o.kind === 'lore') {
       o.opened = true;
-      const text = LORES[this.rng.int(0, LORES.length - 1)];
+      const text = o.text || LORES[this.rng.int(0, LORES.length - 1)];
       this.loot.lores.push(text);
       if (this.codex && !(this.codex.lore || []).includes(text)) { (this.codex.lore ||= []).push(text); this.signals.push({ t: 'codex' }); this.emit({ t: 'text', x: o.x, y: o.y - 16, text: '새 기록 · 도감 +1', color: '#8fd0ff' }); }
       this.signals.push({ t: 'lore', text });
@@ -3327,6 +3328,12 @@ export class World {
       this.emit({ t: 'text', x: p.x, y: p.y - 18, text: '불굴!', color: '#ffd060' });
       return;
     }
+    if (this.pit?.e && !this.pit.e.dead) {
+      p.hp = Math.max(1, Math.round(this.d.maxHp * 0.2)); p.invuln = 2;
+      const e = this.pit.e; e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: '#3a3a4a' });
+      this.signals.push({ t: 'pitLost', bet: this.pit.bet }); this.pit = null;
+      return;
+    }
     if (this.voyage) {
       p.hp = Math.max(1, Math.round(this.d.maxHp * 0.15)); p.invuln = 2;
       const foes = this.enemies.filter((e) => !e.dead);
@@ -3377,7 +3384,7 @@ export class World {
 
   // 바깥 세계의 지역 레벨: 권장 레벨 안에서 시작 마을에서 멀수록 높다 · 레벨만큼 체력 · 공격력 · 보상이 커진다
   regionLevel(r, tx, ty) {
-    const info = this.map.regionInfo?.[r]; if (!info?.lv || this.zone?.id !== 'world') return 0;
+    const info = this.map.regionInfo?.[r]; if (!info?.lv || (this.zone?.id !== 'world' && this.zone?.id !== 'nokt')) return 0;
     const [lo, hi] = info.lv, st = this.map.start || { x: tx, y: ty }, f = Math.min(1, Math.hypot(tx - st.x, ty - st.y) / 260);
     return Math.round(lo + (hi - lo) * f);
   }

@@ -77,6 +77,13 @@ export function renderMap(world) {
   for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) if (at(x, y) === T_LIQUID) liquid(og, x * TILE, y * TILE, x, y, z, at);
   if (world.map.palace) palaceStatic(og, world.map.palace);
   if (world.map.ship) shipStatic(og, world, at);
+  if (world.map.bridges) for (const b of world.map.bridges) { // 수로 위 돌다리
+    const px = b.x * TILE, py = b.y * TILE, has = (dx) => world.map.bridges.some((q) => q.x === b.x + dx && q.y === b.y);
+    og.fillStyle = '#6e645a'; og.fillRect(px, py, TILE, TILE); og.fillStyle = '#7e7468'; og.fillRect(px + 1, py + 1, 6, 6); og.fillRect(px + 9, py + 9, 6, 6);
+    og.fillStyle = 'rgba(0,0,0,0.25)'; og.fillRect(px, py + 7, TILE, 1); og.fillRect(px + 8, py, 1, TILE);
+    if (!has(-1)) { og.fillStyle = '#2a221c'; og.fillRect(px, py, 3, TILE); og.fillStyle = '#9a8e80'; og.fillRect(px, py, 2, TILE); }
+    if (!has(1)) { og.fillStyle = '#2a221c'; og.fillRect(px + TILE - 3, py, 3, TILE); og.fillStyle = '#9a8e80'; og.fillRect(px + TILE - 2, py, 2, TILE); }
+  }
   return out;
 }
 
