@@ -1580,7 +1580,7 @@ export class World {
       e.kbx += (dx / l) * op.knock * 2; e.kby += (dy / l) * op.knock * 2;
       if (this.b.cls === 'behemoth') { e.kbHot = op.launch ? 0.7 : 0.45; e.kbAtk = ctx.atk; }
     }
-    if (op.pull) { e.reelT = e.def.elite ? 0.18 : 0.45; e.reelK = e.def.elite ? 0.45 : 1; e.reelX0 = e.x; e.reelY0 = e.y; e.kbx = 0; e.kby = 0; this.aggro(e); this.emit({ t: 'reel', id: e.id }); }
+    if (op.pull) { e.reelT = 0.6; e.reelK = e.def.elite ? 0.85 : 1; /* 쇠사슬 · 작살: 내 바로 앞까지 */ e.reelX0 = e.x; e.reelY0 = e.y; e.kbx = 0; e.kby = 0; this.aggro(e); this.emit({ t: 'reel', id: e.id }); }
     return false;
   }
 
@@ -3336,14 +3336,15 @@ export class World {
     const foes = this.enemies.filter((e) => !e.dead && !e.hidden && !(e.def.ai === 'dummy' && this.mode !== 'plaza'));
     let tx, ty;
     if (al.kind === 'grasper') { // 내 뒤쪽 비스듬히 50만큼 떨어져 떠 있다
-      const a = Math.atan2(-0.6, -p.dir); tx = p.x + Math.cos(a) * 50; ty = p.y + Math.sin(a) * 34;
+      al.side ||= -(p.dir || 1); // 처음 불렀을 때 내 뒤쪽 · 그 뒤로는 그쪽을 지킨다 (끌고 간 적이 다시 내 앞으로 오지 않게)
+      const a = Math.atan2(-0.35, al.side); tx = p.x + Math.cos(a) * 125; ty = p.y + Math.sin(a) * 70; // 나와 멀리 떨어져 떠 있다
       al.chg = (al.chg || 0) + DT;
       if (al.chg >= 5) {
         let best = null, bd = 200;
         for (const e of foes) { const d = Math.hypot(e.x - p.x, e.y - p.y); if (d < bd) { bd = d; best = e; } }
         if (best) {
           al.chg = 0; al.dir = best.x > al.x ? 1 : -1;
-          best.graspT = 0.5; best.graspTo = al; best.graspK = best.def.elite || best.champion ? 0.5 : 1; best.graspX0 = best.x; best.graspY0 = best.y; best.kbx = 0; best.kby = 0; this.aggro(best);
+          best.graspT = 1.2; best.graspTo = al; best.graspK = 1; /* 정예까지 망령 앞까지 끝까지 끌려간다 */ best.graspX0 = best.x; best.graspY0 = best.y; best.kbx = 0; best.kby = 0; this.aggro(best);
           this.emit({ t: 'graspArm', x1: al.x, y1: al.y - 8, x2: best.x, y2: best.y - 6 });
         } else al.chg = 5;
       }
@@ -3561,12 +3562,12 @@ export class World {
         const G = e.graspTo, gap = (G.r || 5) + e.r + 6, ang = Math.atan2(e.graspY0 - G.y, e.graspX0 - G.x);
         const tx = e.graspX0 + (G.x + Math.cos(ang) * gap - e.graspX0) * e.graspK, ty = e.graspY0 + (G.y + Math.sin(ang) * gap - e.graspY0) * e.graspK;
         const rx = tx - e.x, ry = ty - e.y, rl = Math.hypot(rx, ry);
-        if (rl > 3) { const sp = Math.min(rl, 560 * DT); this.move(e, (rx / rl) * sp, (ry / rl) * sp); } else e.graspT = 0;
+        if (rl > 3 && e.graspT > 0) { const sp = Math.min(rl, 560 * DT); this.move(e, (rx / rl) * sp, (ry / rl) * sp); } else { e.graspT = 0; e.st.stun = Math.max(e.st.stun || 0, 0.6); } // 다 끌려가면 0.6초 붙잡혀 있다
         continue;
       }
       if (e.reelT > 0) { // 작살에 끌려온다: 내 앞 (정예는 반쯤까지)
         e.reelT -= DT;
-        const gap = P.r + e.r + 6, tx = P.x + (e.reelX0 - P.x) * (1 - e.reelK) + P.aimX * gap * e.reelK, ty = P.y + (e.reelY0 - P.y) * (1 - e.reelK) + P.aimY * gap * e.reelK;
+        const gap = P.r + e.r + 2, tx = P.x + (e.reelX0 - P.x) * (1 - e.reelK) + P.aimX * gap * e.reelK, ty = P.y + (e.reelY0 - P.y) * (1 - e.reelK) + P.aimY * gap * e.reelK;
         const rx = tx - e.x, ry = ty - e.y, rl = Math.hypot(rx, ry);
         if (rl > 3) { const sp = Math.min(rl, 640 * DT); this.move(e, (rx / rl) * sp, (ry / rl) * sp); } else e.reelT = 0;
         continue;

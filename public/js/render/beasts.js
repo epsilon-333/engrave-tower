@@ -177,6 +177,19 @@ const B = {
     P.l(8, cy + 2, 10, cy + 1, '#e04050'); P.l(15, cy + 3, 14, cy + 1, '#e04050'); // 핏줄
     const ix = 13 + (pose === 'wind' ? 1 : 0); P.e(ix, cy, 2.6, 2.6, pose === 'wind' ? '#ff3a3a' : '#c8302a'); P.e(ix, cy, 1.2, 1.4, '#141018'); P.p(ix - 1, cy - 1, '#ffffff');
   } },
+  // 붙잡는 망령(사령술사의 부하): 창백한 푸른 수의 · 깊은 두건 속 두 눈 · 길게 늘어진 뼈 팔 · 흩날리는 끝자락
+  grasper: { W: 22, H: 26, draw(P, f, pose) {
+    const wv = [0, 1, 0, -1][f], reach = pose === 'wind' ? 2 : 0;
+    for (let y = 11; y < 25; y++) { const t = (y - 11) / 14, w0 = 5.5 - t * 3.5, x = 11 + Math.sin(y * 0.7 + f * 1.6) * t * 2; P.r(x - w0, y, w0 * 2, 1, '#5a7a98'); if (w0 > 2) P.r(x - w0 + 1, y, w0 * 2 - 2, 1, y % 3 ? '#8aaccc' : '#7a9cbc'); }
+    for (let i = 0; i < 3; i++) P.p(8 + i * 3 + Math.round(Math.sin(f * 1.6 + i) * 1), 24 + (i % 2), '#a8c8e8'); // 찢어진 끝자락
+    P.e(11, 8, 6, 6.5, '#4a6a88'); P.e(11, 7, 5, 5.5, '#9abcdc'); P.e(10, 4, 3, 2, '#d0e8ff');
+    P.e(11, 9, 3.4, 3.4, '#0e141e'); P.p(9, 9, '#e8fbff'); P.p(13, 9, '#e8fbff'); P.p(9, 10, '#7ae8ff'); P.p(13, 10, '#7ae8ff'); // 두건 속 눈
+    for (const s of [-1, 1]) { // 뼈 팔: 늘어뜨렸다가 기를 모으면 앞으로 든다
+      const sx = 11 + s * 5, sy = 13, ex = 11 + s * (8 + reach), ey = 20 + wv * s - reach * 3;
+      P.l(sx, sy, ex, ey, '#e8e0c8'); P.p(ex, ey + 1, '#e8e0c8'); P.p(ex + s, ey + 1, '#e8e0c8'); P.p(ex - s, ey + 2, '#e8e0c8'); // 손가락
+      P.l(sx, sy, sx + s * 2, sy + 3, '#7a9cbc'); // 소매
+    }
+  } },
   // 그림자 표범: 검은 몸 · 보라 발톱과 눈 · 날렵한 꼬리
   panther: { W: 26, H: 15, draw(P, f, pose) {
     const st = pose === 'walk' ? f : 0, by = 7 + (pose === 'wind' ? 2 : 0), stretch = pose === 'walk' && f % 2 ? 1 : 0;

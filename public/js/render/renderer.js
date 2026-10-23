@@ -2348,6 +2348,16 @@ export class Renderer {
     }
     if (al.kind === 'grasper' && (al.chg || 0) > 0 && Math.random() < 0.12 + 0.12 * (al.chg / 5)) { const a = Math.random() * Math.PI * 2; this.parts.push({ x: al.x + Math.cos(a) * 16, y: al.y - 8 + Math.sin(a) * 10, vx: -Math.cos(a) * 30, vy: -Math.sin(a) * 20, t: 0.5, max: 0.5, color: '#c8b8ff', g: 0, glow: true }); } // 기를 모은다
     if (al.kind === 'lichMage') { this.drawLich(w, al, fade); return; }
+    if (al.kind === 'grasper') { // 붙잡는 망령: 떠서 흔들리고, 기를 모을수록 손을 든다
+      const img = beastImg('grasper', (al.chg || 0) > 3.5 ? 'wind' : 'idle', Math.floor(w.t * 5 + al.id) % 4, (al.dir || 1) < 0, false);
+      const fy = Math.sin(w.t * 2.4 + al.id) * 2;
+      this.shadow(al.x, al.y + 4, 5);
+      g.globalAlpha = 0.85 * fade; g.drawImage(img, Math.round(al.x - img.width / 2), Math.round(al.y - img.height - 4 + fy)); g.globalAlpha = 1;
+      if (al.maxHp && al.hp < al.maxHp) { const bw = 16, by = Math.round(al.y - img.height - 8 + fy); g.fillStyle = '#0d0b10'; g.fillRect(al.x - bw / 2 - 1, by - 1, bw + 2, 4); g.fillStyle = '#7ae8ff'; g.fillRect(al.x - bw / 2, by, Math.max(0, bw * al.hp / al.maxHp), 2); }
+      al._top = al.y - img.height - 4;
+      if ((al.chg || 0) > 0 && Math.random() < 0.1 + 0.15 * (al.chg / 5)) { const a = Math.random() * Math.PI * 2; this.parts.push({ x: al.x + Math.cos(a) * 16, y: al.y - 14 + Math.sin(a) * 10, vx: -Math.cos(a) * 30, vy: -Math.sin(a) * 20, t: 0.5, max: 0.5, color: '#9ae8ff', g: 0, glow: true }); }
+      return;
+    }
     const base = al.kind === 'lich' ? 'big_zombie' : al.kind === 'lichMage' ? 'skelet' : al.kind === 'clone' ? RACE_ART[w.b.race].base : al.kind === 'skeleton' ? 'skelet' : 'necromancer';
     const tint = al.kind === 'lichMage' ? 'hue-rotate(240deg) saturate(2) brightness(0.95)' : al.kind === 'grasper' ? 'grayscale(0.8) brightness(1.6) hue-rotate(220deg)' : al.kind === 'skeleton' ? 'brightness(1.1)' : al.kind === 'lich' ? 'hue-rotate(220deg) saturate(1.4) brightness(0.9)' : al.kind === 'clone' ? 'brightness(0.25) saturate(0) contrast(1.4)' : 'grayscale(0.6) brightness(1.4) hue-rotate(180deg)';
     const img = sprite(this.animFrame(base, 'run', w.t + al.id, 10), tint, false, al.dir < 0);
