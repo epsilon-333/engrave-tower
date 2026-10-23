@@ -19,8 +19,9 @@ export function drawLeader(r, w, o) {
   r.shadow(o.x, o.y + 4, 8);
   if (!img) return;
   const W0 = img.width * sc, H0 = img.height * sc, x0 = o.x - W0 / 2, y0 = o.y + 5 - H0, sw = Math.sin(w.t * 1.6 + o.x) * 1.5;
-  // 망토 (몸 뒤에서 바람에 날린다)
+  // 망토 (몸 뒤에서 바람에 날린다) — 새 그림은 망토 · 왕관이 그림 안에 있다
   const top = y0 + H0 * 0.34, bot = o.y + 4;
+  if (A.baked) { g.drawImage(img, Math.round(x0), Math.round(y0), Math.round(W0), Math.round(H0)); o._top = y0 - 4; const st0 = w.story?.sanct?.[o.race], L0 = SANCT_LIFE[o.race]; const rd0 = !!st0?.cur?.done, fr0 = !st0?.cur && (st0?.step || 0) < L0.quests.length; if (rd0 || fr0) mark(g, o.x, o._top - 22 + Math.sin(w.t * 5) * 1.5, rd0 ? '?' : '!'); return; }
   poly(g, OL, [[o.x - 7, top], [o.x + 7, top], [o.x + 9 - dir * 4 + sw, bot], [o.x - 9 - dir * 4 + sw, bot]]);
   poly(g, A.cape, [[o.x - 6, top + 1], [o.x + 6, top + 1], [o.x + 8 - dir * 4 + sw, bot - 1], [o.x - 8 - dir * 4 + sw, bot - 1]]);
   poly(g, 'rgba(255,255,255,0.12)', [[o.x - 6, top + 1], [o.x - 2, top + 1], [o.x - 4 - dir * 4 + sw, bot - 1], [o.x - 8 - dir * 4 + sw, bot - 1]]);
@@ -49,7 +50,7 @@ function crown(g, kind, x, y, hi, t, dir) {
 // ───── 주민: 하는 일마다 동작 · 손에 든 것 · 날아가는 화살 · 마법 · 칼 ─────
 const CYCLE = { archer: 2.6, caster: 3.0, thrower: 2.2, spar: 1.5, drum: 0.75, dig: 1.8, smith: 1.1, read: 5, stargaze: 6, meditate: 4, tend: 3, wander: 3, patrol: 3, idle: 4 };
 export function drawResident(r, w, o, dt) {
-  const g = r.g, rd = o.rd, t = w.t, act = o.say ? 'idle' : rd.act, sc = rd.small ? 0.78 : 1;
+  const g = r.g, rd = o.rd, t = w.t, act = o.say ? 'idle' : rd.act, sc = rd.small && !rd.base.startsWith('p_') ? 0.78 : 1;
   const cyc = CYCLE[act] || 3, k = ((t + o.phase * 0.5) % cyc) / cyc, prevK = o._k ?? k; o._k = k;
   const crossed = (at) => (prevK < at && k >= at) || (prevK > k && at < k); // 이번 프레임에 그 순간을 지났다
   const face = o.say ? (Math.sign(w.player.x - o.x) || 1) : (o.face || 1);
@@ -58,7 +59,7 @@ export function drawResident(r, w, o, dt) {
   if (act === 'archer') { const pull = k < 0.55 ? k / 0.55 : 0; hold = { item: 'bow', pull, ang: pat ? Math.atan2(pat.y - 22 - (o.y - 10), (pat.x - o.x)) : 0 }; lean = -pull; if (crossed(0.55) && pat) shoot(r, w, o, 'arrow'); }
   else if (act === 'caster') { const up = k < 0.5 ? k / 0.5 : 1 - (k - 0.5) * 2; hold = { item: 'staff', up }; if (k > 0.3 && k < 0.5 && Math.random() < 0.4) r.parts.push({ x: o.x + face * 6, y: o.y - 22 - up * 4, vx: (Math.random() - 0.5) * 10, vy: -10, t: 0.4, max: 0.4, color: '#c9a8ff', g: 0, glow: true, size: 1 }); if (crossed(0.5) && pat) shoot(r, w, o, 'bolt'); }
   else if (act === 'thrower') { const wind = k < 0.45 ? k / 0.45 : 0; hold = { item: 'knife', wind }; lean = k > 0.45 && k < 0.6 ? 1.5 : -wind; if (crossed(0.45) && pat) shoot(r, w, o, 'knife'); }
-  else if (act === 'spar') { const mine = rd.pair % 2 === 0 ? k < 0.5 : k >= 0.5, q = mine ? Math.sin(((k % 0.5) / 0.5) * Math.PI) : 0; lean = q * 3; hold = { item: rd.base.startsWith('orc') || rd.base.startsWith('masked') ? 'axe' : rd.base.startsWith('lizard') ? 'spear' : 'sword', swing: q }; if (rd.pair % 2 === 0 && (crossed(0.2) || crossed(0.7))) clash(r, o, face); }
+  else if (act === 'spar') { const mine = rd.pair % 2 === 0 ? k < 0.5 : k >= 0.5, q = mine ? Math.sin(((k % 0.5) / 0.5) * Math.PI) : 0; lean = q * 3; hold = { item: o.race === 'orc' ? 'axe' : o.race === 'dino' ? 'spear' : 'sword', swing: q }; if (rd.pair % 2 === 0 && (crossed(0.2) || crossed(0.7))) clash(r, o, face); }
   else if (act === 'drum') { const q = k < 0.5 ? k / 0.5 : 1 - (k - 0.5) * 2; hold = { item: 'stick', q }; if (crossed(0.5) && pat) { hitProp(w, pat); for (let i = 0; i < 4; i++) r.parts.push({ x: pat.x + (Math.random() - 0.5) * 16, y: pat.y - 6, vx: (Math.random() - 0.5) * 30, vy: -10, t: 0.4, max: 0.4, color: '#c8b8a0', g: 0, steam: true }); } }
   else if (act === 'dig') { const q = k < 0.5 ? k / 0.5 : 1 - (k - 0.5) * 2; hold = { item: 'shovel', q }; lean = q * 1.5; if (crossed(0.5) && pat) for (let i = 0; i < 6; i++) r.parts.push({ x: o.x + face * 9, y: o.y + 2, vx: face * (10 + Math.random() * 30), vy: -30 - Math.random() * 30, t: 0.5, max: 0.5, color: Math.random() < 0.5 ? '#5a4a3a' : '#7a6a54', g: 200 }); }
   else if (act === 'smith') { const q = k < 0.6 ? k / 0.6 : 1 - (k - 0.6) / 0.4; hold = { item: 'hammer', q }; if (crossed(0.6) && pat) { hitProp(w, pat); for (let i = 0; i < 7; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 2; r.parts.push({ x: pat.x, y: pat.y - 16, vx: Math.cos(a) * (40 + Math.random() * 60), vy: Math.sin(a) * (40 + Math.random() * 60), t: 0.35, max: 0.35, color: Math.random() < 0.5 ? '#ffd27a' : '#fff4d0', g: 260, glow: true, size: 1 }); } } }

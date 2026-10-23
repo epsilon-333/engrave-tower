@@ -523,3 +523,5 @@ b.dim { color: #e8c890; }
 #happenPanel .hp-row.on { background: rgba(255, 210, 122, 0.18); outline: 1px solid #ffd27a; }
 #happenPanel .hp-row.off { color: #a8a0c0; text-align: center; }
 .modal .warn { color: #ff8a80; }
+
+#touch .mount { left: calc(50% - 96px); bottom: calc(10px + env(safe-area-inset-bottom, 0px)); width: auto; height: 46px; border-radius: 23px; padding: 0 14px; background: rgba(58, 126, 154, 0.9); }

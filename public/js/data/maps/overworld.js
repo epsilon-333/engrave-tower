@@ -26,8 +26,8 @@ export const BIOMES = [
   { id: 'forest', lv: [10, 15], name: '이끼 숲', x: 106, y: 226, w: 1.1, ground: G.FOREST, road: G.DIRT, pool: ['poisonSpider', 'goblin', 'goblinShaman', 'caveLurker', 'bat', 'vineSpirit', 'forestArcher'], trees: 0.3, kinds: ['oak', 'oak', 'pine'] },
   { id: 'swamp', lv: [15, 20], name: '독늪', x: 82, y: 318, w: 0.95, ground: G.MUD, road: G.DIRT, pool: ['toxShroom', 'toad', 'leech', 'shroom', 'gasBloat', 'bogWitch', 'mudLurker', 'swampTroll'], trees: 0.08, kinds: ['willow', 'willow', 'dead'] },
   { id: 'ruins', lv: [20, 25], name: '폐허 도시', x: 150, y: 140, w: 0.9, ground: G.GRASS, road: G.COBBLE, pool: ['darkArcher', 'watcherEye', 'bandit', 'goblinShaman', 'shieldDemon', 'imp', 'ruinSentinel', 'cultist'], trees: 0.015, kinds: ['oak', 'dead'] },
-  { id: 'graveyard', lv: [35, 40], name: '그림자 묘지', x: 64, y: 76, w: 0.95, ground: G.DEADGRASS, road: G.DIRT, pool: ['shadeWraith', 'shadowPanther', 'skeleton', 'wraith', 'ghoul', 'tinyCorpse', 'necroAcolyte', 'boneGuard', 'wraithKnight', 'boneArcher'], trees: 0.05, kinds: ['dead'] },
-  { id: 'snow', lv: [40, 45], name: '서리 설원', x: 176, y: 40, w: 1.0, ground: G.SNOW, road: G.STONE, pool: ['iceWolf', 'frostWolf', 'glassSpider', 'frostSlug', 'iceShaman', 'snowLurker', 'iceGolem', 'iceArcher', 'yeti'], trees: 0.05, kinds: ['snowpine'] },
+  { id: 'graveyard', lv: [35, 40], name: '그림자 묘지', x: 100, y: 100, w: 0.95, ground: G.DEADGRASS, road: G.DIRT, pool: ['shadeWraith', 'shadowPanther', 'skeleton', 'wraith', 'ghoul', 'tinyCorpse', 'necroAcolyte', 'boneGuard', 'wraithKnight', 'boneArcher'], trees: 0.05, kinds: ['dead'] },
+  { id: 'snow', lv: [40, 45], name: '서리 설원', x: 180, y: 62, w: 1.0, ground: G.SNOW, road: G.STONE, pool: ['iceWolf', 'frostWolf', 'glassSpider', 'frostSlug', 'iceShaman', 'snowLurker', 'iceGolem', 'iceArcher', 'yeti'], trees: 0.05, kinds: ['snowpine'] },
   { id: 'mountains', lv: [30, 35], name: '북쪽 바위산', x: 272, y: 86, w: 1.0, ground: G.ROCK, road: G.DIRT, pool: ['rockGolem', 'watcherEye', 'bat', 'caveLurker', 'goblin', 'frostWolf', 'rockThrower', 'harpy'], trees: 0.025, kinds: ['pine'] },
   { id: 'volcano', lv: [45, 50], name: '화산 지대', x: 396, y: 64, w: 1.0, ground: G.ASH, road: G.BLACKROCK, pool: ['fireBat', 'fireSpirit', 'salamander', 'magmaGolem', 'imp', 'pumpkinFiend', 'chortShaman', 'shieldDemon', 'lavaLizard'], trees: 0.012, kinds: ['charred'] },
   { id: 'wasteland', lv: [30, 35], name: '메마른 황야', x: 402, y: 178, w: 1.05, ground: G.REDSAND, road: G.CRACKED, pool: ['desertScorpion', 'sandScorpion', 'hyena', 'orcRaider', 'sandWorm'], trees: 0.012, kinds: ['cactus'] },
@@ -79,8 +79,8 @@ export function buildOverworld(zone) {
 
   // ───── 1) 섬과 바다 ─────
   for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
-    const ax = Math.abs((x - TW / 2) / (TW * 0.47)), ay = Math.abs((y - TH / 2) / (TH * 0.465));
-    const d = Math.pow(ax ** 3.2 + ay ** 3.2, 1 / 3.2) + (N1(x * 0.03, y * 0.03) - 0.5) * 0.12; // 둥근 사각형 섬 (귀퉁이까지 땅)
+    const ax = Math.abs((x - TW / 2) / (TW * 0.48)), ay = Math.abs((y - TH / 2) / (TH * 0.485));
+    const d = Math.pow(ax ** 5 + ay ** 5, 1 / 5) + (N1(x * 0.03, y * 0.03) - 0.5) * 0.12; // 둥근 사각형 섬 (넓힌 뒤에도 옛 북서쪽 땅이 바다에 잠기지 않게 귀퉁이까지 땅)
     if (d > 1.0) set(x, y, T_DEEP, G.SAND);
     else if (d > 0.975) set(x, y, T_LIQUID, G.SAND);
     else if (d > 0.945) set(x, y, T_FLOOR, G.SAND);
@@ -261,8 +261,8 @@ export function buildOverworld(zone) {
   safe.push({ x: TWR.x, y: TWR.y, r: 16 });
   // 종족 성지 8곳: 건물 + 수호자 (앞에 돌바닥)
   const SANCT = [
-    ['wizard', 'mageTower', 172, 30, 3, 3], ['elf', 'worldTree', 94, 216, 3, 2], ['knight', 'castle', 326, 238, 11, 5], ['orc', 'arena', 404, 176, 9, 5],
-    ['undead', 'mausoleum', 62, 70, 5, 3], ['assassin', 'guildHouse', 140, 130, 5, 3], ['dino', 'nest', 410, 292, 5, 3], ['dragon', 'dragonNest', 372, 86, 5, 3],
+    ['wizard', 'mageTower', 176, 50, 3, 3], ['elf', 'worldTree', 94, 216, 3, 2], ['knight', 'castle', 326, 238, 11, 5], ['orc', 'arena', 404, 176, 9, 5],
+    ['undead', 'mausoleum', 96, 92, 5, 3], ['assassin', 'guildHouse', 140, 130, 5, 3], ['dino', 'nest', 410, 292, 5, 3], ['dragon', 'dragonNest', 372, 86, 5, 3],
   ];
   const sanctums = {};
   for (const [race, kind, x, y, w, h] of SANCT) {
@@ -275,7 +275,7 @@ export function buildOverworld(zone) {
   }
   // 입구들: 동굴 입구는 바위로 감싼다, 구멍은 들판에 뚫린다
   const ENTR = [
-    ['mossCave', 60, 248], ['forestCave', 128, 202], ['sunkenTemple', 86, 314], ['crypt', 92, 96], ['iceCave', 214, 26], ['riftCave', 412, 96],
+    ['mossCave', 60, 248], ['forestCave', 128, 202], ['sunkenTemple', 86, 314], ['crypt', 120, 120], ['iceCave', 220, 46], ['riftCave', 412, 96],
     ['labyrinth', 160, 150], ['wasteHole', 424, 210], ['jungleHole', 382, 312], ['castleCrypt', 318, 250], ['mtCave1', 250, 66], ['mtCave2', 302, 58], ['plainsHole', 198, 282],
   ];
   const entrances = {};
@@ -312,12 +312,13 @@ export function buildOverworld(zone) {
   const harbor = (id, sx, sy, dx, dy) => {
     // 바다(섬 밖 깊은 물)에 닿을 때까지 걸어간다 → 그 바로 앞이 물가
     let x = sx, y = sy, shore = null;
-    for (let k = 0; k < 400 && inb(x, y); k++, x += dx, y += dy) { if (T(x, y) === T_DEEP && bio(x, y) < 0) break; shore = { x, y }; }
+    // 땅 끝(물이 시작되기 바로 앞)에서 멈춘다 — 얕은 물을 땅으로 착각하면 광장 · 사람이 물 위에 놓인다
+    for (let k = 0; k < 400 && inb(x, y); k++, x += dx, y += dy) { if (T(x, y) === T_DEEP || T(x, y) === T_LIQUID) break; shore = { x, y }; }
     if (!shore) return;
     const c = { x: shore.x - dx * 9, y: shore.y - dy * 9 }; // 항구 광장 가운데
     for (let yy = c.y - 9; yy <= c.y + 9; yy++) for (let xx = c.x - 11; xx <= c.x + 11; xx++) {
       if (!inb(xx, yy) || Math.hypot((xx - c.x) / 11, (yy - c.y) / 9) > 1) continue;
-      if (bio(xx, yy) < 0) continue; // 바다는 그대로 (모래 곶이 생기지 않게)
+      if (t[I(xx, yy)] === T_DEEP || t[I(xx, yy)] === T_LIQUID) continue; // 물은 그대로 (모래 곶이 생기지 않게)
       set(xx, yy, T_FLOOR, Math.hypot((xx - c.x) / 7, (yy - c.y) / 5) < 1 ? G.COBBLE : G.SAND); LV[I(xx, yy)] = 0;
     }
     // 물가에서 바다로 나무 부두 (폭 3칸 · 9칸)
@@ -325,8 +326,10 @@ export function buildOverworld(zone) {
     for (let i = -1; i < 9; i++) for (let w = -1; w <= 1; w++) set(pier0.x + dx * i + px * w, pier0.y + dy * i + py * w, T_FLOOR, G.BRIDGE);
     const end = { x: pier0.x + dx * 8, y: pier0.y + dy * 8 };
     // 부두 옆에 정박한 큰 배 (부두 오른쪽 · 아래쪽)
-    const ship = dx ? { x: end.x - 7, y: end.y + 2 } : { x: end.x + 2, y: end.y - 3 };
-    prop('ship', ship.x, ship.y, 8, 3, { flag: id === 'portS' ? '#3a6a9a' : '#5a8a7a' });
+    const ship = dx ? { x: end.x - 6, y: end.y - 5 } : { x: end.x + 3, y: end.y - 3 }; // 돛이 부두를 덮지 않게: 가로 부두면 위쪽, 세로 부두면 오른쪽에 한 칸 띄워
+    // 배는 물 위에 떠 있다: 칸은 깊은 물 그대로 두고(바닥을 모래로 칠하지 않는다) 자리만 막는다
+    for (let yy = ship.y; yy < ship.y + 3; yy++) for (let xx = ship.x; xx < ship.x + 8; xx++) if (inb(xx, yy)) { if (t[I(xx, yy)] !== T_DEEP) set(xx, yy, T_DEEP); occupied[I(xx, yy)] = 1; }
+    props.push({ kind: 'ship', x: ship.x, y: ship.y, w: 8, h: 3, flag: id === 'portS' ? '#3a6a9a' : '#5a8a7a' });
     const tile = (o) => ({ x: o.x, y: o.y });
     // 항구지기(배편) · 교역상 · 시세판 · 교역소 건물 · 가로등
     const P = { id, center: c, arrive: at(pier0.x + dx * 6, pier0.y + dy * 6), dock: tile(end) };
@@ -563,7 +566,7 @@ export function buildOverworld(zone) {
     if (camps.some((c) => Math.hypot(c.x - x, c.y - y) < 13)) continue;
     camps.push({ x, y, type: rng.pick(regionInfo[r].types), n: rng.int(2, 4), region: r });
   }
-  const champions = [[B.forest, 'goblin', 80, 250], [B.swamp, 'bogWitch', 70, 300], [B.wasteland, 'orcRaider', 430, 160], [B.jungle, 'raptor', 430, 280], [B.ruins, 'bandit', 176, 124], [B.mountains, 'frostWolf', 284, 70], [B.volcano, 'magmaGolem', 420, 52], [B.snow, 'iceShaman', 150, 34]]
+  const champions = [[B.forest, 'goblin', 80, 250], [B.swamp, 'bogWitch', 70, 300], [B.wasteland, 'orcRaider', 430, 160], [B.jungle, 'raptor', 430, 280], [B.ruins, 'bandit', 176, 124], [B.mountains, 'frostWolf', 284, 70], [B.volcano, 'magmaGolem', 420, 52], [B.snow, 'iceShaman', 150, 56]]
     .map(([region, type, x0, y0]) => { const c = biomeTiles(region, (x, y) => Math.hypot(x - x0, y - y0) < 16 && !nearSafe(x, y, 4))[0]; return c ? { x: c.x, y: c.y, type, region } : null; }).filter(Boolean);
   const pick = (n, cond) => { const out = []; for (let a = 0; a < 6000 && out.length < n; a++) { const x = rng.int(6, TW - 7), y = rng.int(6, TH - 7), k = I(x, y); if (t[k] === T_FLOOR && seen[k] && !occupied[k] && !nearSafe(x, y, 4) && cond(x, y, k) && !out.some((o) => Math.hypot(o.x - x, o.y - y) < 30)) out.push({ x, y, region: regions[k] }); } return out; };
   const lores = pick(12, () => true);

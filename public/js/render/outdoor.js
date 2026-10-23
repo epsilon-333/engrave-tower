@@ -494,6 +494,22 @@ export function drawOutdoorProp(g, pr, t, night, burntTrees) {
       for (let k = 0; k < W + 8; k += 6) R(g, 'rgba(230,246,255,0.55)', hx0 + 6 + k + wv * 2, by - 4 + (k % 12 ? 0 : 1), 4, 1);
       return;
     }
+    case 'wreck': { // 뭍에 얹힌 난파선: 기울어진 선체 · 부러진 돛대 · 찢긴 돛 · 뚫린 구멍
+      const hx0 = x - 6, hx1 = x + W + 8, hy = by - 2, tilt = 9;
+      R(g, 'rgba(20,14,8,0.3)', x - 4, by - 5, W + 12, 7);
+      g.fillStyle = OL; g.beginPath(); g.moveTo(hx0 - 1, hy - 30); g.lineTo(hx0 + 8, hy + 1); g.lineTo(hx1 - 14, hy + 1 - tilt); g.lineTo(hx1 + 1, hy - 28 - tilt); g.lineTo(hx1 - 16, hy - 20 - tilt); g.lineTo(hx0 + 14, hy - 20); g.lineTo(hx0 + 13, hy - 30); g.closePath(); g.fill();
+      g.fillStyle = '#5a3a24'; g.beginPath(); g.moveTo(hx0, hy - 29); g.lineTo(hx0 + 9, hy); g.lineTo(hx1 - 14, hy - tilt); g.lineTo(hx1, hy - 27 - tilt); g.lineTo(hx1 - 16, hy - 19 - tilt); g.lineTo(hx0 + 14, hy - 19); g.lineTo(hx0 + 12, hy - 29); g.closePath(); g.fill();
+      g.fillStyle = '#7a5232'; g.beginPath(); g.moveTo(hx0 + 13, hy - 19); g.lineTo(hx1 - 16, hy - 19 - tilt); g.lineTo(hx1 - 17, hy - 16 - tilt); g.lineTo(hx0 + 13, hy - 16); g.closePath(); g.fill(); // 갑판 가장자리
+      for (let row = 0; row < 3; row++) for (let k = 0; k < 7; k++) { const px = hx0 + 12 + k * 14 + row * 5, py = hy - 6 - row * 5 - tilt * (px - hx0) / (hx1 - hx0); R(g, '#3e2616', px, py, 12, 1); } // 판자 이음
+      R(g, '#4a2e1a', hx0 + 1, hy - 38, 12, 9); R(g, OL, hx0 + 1, hy - 39, 12, 1); R(g, '#1a100a', hx0 + 4, hy - 36, 3, 3); // 무너진 고물 선실
+      for (const [hx, hw] of [[0.3, 10], [0.62, 7]]) { const px = hx0 + (hx1 - hx0) * hx, py = hy - 13 - tilt * hx; R(g, OL, px, py, hw, 6); R(g, '#1a100a', px + 1, py + 1, hw - 2, 4); R(g, '#7a5232', px - 1, py + 2, 2, 1); } // 뚫린 구멍
+      const mx = x + W * 0.42, mt = hy - 19 - tilt * 0.42;
+      g.save(); g.translate(mx, mt); g.rotate(0.28); R(g, OL, -2, -38, 4, 38); R(g, '#6a4628', -1, -38, 2, 38); R(g, OL, -12, -32, 24, 3); // 기울어진 돛대
+      g.fillStyle = OL; g.beginPath(); g.moveTo(-11, -30); g.lineTo(10, -30); g.lineTo(6, -14); g.lineTo(1, -20); g.lineTo(-4, -11); g.lineTo(-10, -18); g.closePath(); g.fill();
+      g.fillStyle = '#c8bca0'; g.beginPath(); g.moveTo(-10, -29); g.lineTo(9, -29); g.lineTo(5, -15); g.lineTo(1, -21); g.lineTo(-4, -12); g.lineTo(-9, -19); g.closePath(); g.fill(); R(g, '#1a1a1a', -9, -25, 18, 2); g.restore(); // 찢긴 검은 줄 돛
+      R(g, OL, x + W * 0.78 - 2, mt - 14 + 3, 4, 14); R(g, '#6a4628', x + W * 0.78 - 1, mt - 14 + 3, 2, 14); R(g, '#e8dcc0', x + W * 0.78 - 2, mt - 15 + 3, 4, 2); // 부러진 뒷돛대
+      return;
+    }
     case 'tree': {
       const burnt = burntTrees?.has(`${pr.x},${pr.y}`);
       if (pr.chopped) { drawStump(g, pr, burnt || pr.tree === 'charred'); return; }

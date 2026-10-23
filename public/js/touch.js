@@ -15,6 +15,7 @@ export function setupTouch({ input, getWorld, onMenu, onBag }) {
     <button class="tb s4" data-btn="s4">4</button>
     <button class="tb wsk" data-btn="wskill">무기</button>
     <button class="tb dash" data-btn="dash">대시</button>
+    <button class="tb mount" data-btn="mount" hidden>탈것</button>
     <button class="tb act" data-btn="interact" hidden>G</button>
     <button class="tb menu" data-btn="menu" aria-label="메뉴">≡</button>
     <button class="tb bag" data-btn="bag" hidden>캐릭터</button>`;
@@ -94,6 +95,7 @@ export function setupTouch({ input, getWorld, onMenu, onBag }) {
       }
       // 상황에 따라 보이는 버튼
       root.querySelector('[data-btn=interact]').hidden = !w.near;
+      { const mb = root.querySelector('[data-btn=mount]'); mb.hidden = !w.mountKind || !w.map.outdoor; mb.textContent = w.player.riding ? '내리기' : '탈것'; }
       root.querySelector('[data-btn=interact]').textContent = w.near ? (w.near.kind === 'chest' ? '열기' : w.near.kind === 'gate' ? '입장' : '확인') : 'G';
       const sks = w.b.skills || [];
       for (let i = 0; i < 4; i++) {

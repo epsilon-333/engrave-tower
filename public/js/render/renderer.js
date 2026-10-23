@@ -439,6 +439,9 @@ export class Renderer {
         }
         case 'tauntLink': this.fx.push({ k: 'link', ...ev, color: ev.color || '#c45cff', t: 0.5, max: 0.5 }); break;
         case 'allyHurt': this.sparkBurst(ev.x, ev.y - 6, '#7ae8ff', 3); break;
+        case 'mountOn': sfx('dash', { vol: 0.6, rate: 0.7 }); this.burst(ev.x, ev.y + 2, '#9a8e7e', 10, 50); this.texts.push({ x: ev.x, y: ev.y - 30, text: '랩터에 올라탔다 · V로 내린다', color: '#9fe8b0', t: 1.4, vy: -10, vx: 0, label: true }); break;
+        case 'mountOff': sfx('step', { vol: 0.5 }); this.burst(ev.x, ev.y + 2, '#9a8e7e', 6, 40); break;
+        case 'raptorLeap': sfx('dash', { vol: 0.7, rate: 0.85 }); for (let i = 0; i < 8; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 14, y: ev.y + 4, vx: (Math.random() - 0.5) * 40, vy: -20 - Math.random() * 20, t: 0.5, max: 0.5, color: '#9a8e7e', g: 80, dust: true, v: (Math.random() * 4) | 0 }); break;
         case 'lockOn': sfx('open', { vol: 0.25, rate: 1.8 }); break; // 자동 조준 표적은 그리지 않는다 (네 모서리 꺾쇠가 바닥의 노란 화살표처럼 보였다)
         case 'fall': this.fx.push({ k: 'fall', x: ev.x, y: ev.y, r: ev.r, kind: ev.kind, t: ev.dur, max: ev.dur }); break;
         case 'lineTele': this.fx.push({ k: 'lineTele', ...ev, t: ev.dur, max: ev.dur }); break;
@@ -1358,7 +1361,7 @@ export class Renderer {
       if (dt > 0 && Math.random() < 0.08) this.parts.push({ x: tx, y: ty + 1, vx: -p.dir * 4, vy: -1, t: 0.4, max: 0.4, color: '#8a7a66', g: 0, dust: true, v: (Math.random() * 4) | 0 });
       if (dt > 0 && Math.random() < 0.3) this.fx.push({ k: 'scrape', x: tx, y: ty + 1, t: 0.6, max: 0.6 });
     }
-    const busy = p.gather || p.fish, hideW = busy || p.swim; // 헤엄칠 때는 무기를 들지 않는다
+    const busy = p.gather || p.fish, hideW = busy || p.swim || p.riding; // 헤엄칠 때는 무기를 들지 않는다
     if (p.boat) this.drawBoat(w, p.x, p.y, p.dir, p.moving, 'back');
     if (w.map.underwater && dt > 0 && Math.random() < dt * 1.6) this.parts.push({ x: bx + p.dir * 3, y: by - 14, vx: (Math.random() - 0.5) * 6, vy: -26 - Math.random() * 14, t: 1.4, max: 1.4, color: '#e0f6ff', g: -6, bubble: true });
     const wart = weaponArt(w.b.weaponId, ITEMS);
@@ -1366,8 +1369,16 @@ export class Renderer {
     else if (w.b.offItem && !hideW) this.drawOffhand(w, p, pose, bx, by, gs); // 왼손 도구 (한손 무기일 때)
     if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx - p.dir * (back ? -1 : 4) * gs, by - (back ? 7 : 5) * gs, this.fistMetal(wart), p.dir); }
     if (pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
-    const sink = p.swim ? by - 7 : p.boat ? by - 1 : null;
-    if (sink != null) { g.save(); g.beginPath(); g.rect(bx - 30, by - 80, 60, sink - (by - 80)); g.clip(); }
+    let rideY = 0;
+    if (p.riding) { // 탄 랩터: 달리면 달리기 동작, 서 있으면 숨쉬기 · 위로 들썩인다
+      const rmov = p.moving && p.dashT <= 0, rf = this.animFrame('raptor_mount', rmov ? 'run' : 'idle', rmov ? p.walkT * 1.4 : w.t, rmov ? 14 : 5);
+      const rimg = sprite(rf, '', p.hitFlash > 0 ? '#ff6060' : false, p.dir < 0);
+      const bounce = rmov ? Math.round(Math.abs(Math.sin(p.walkT * 9)) * 1.5) : 0;
+      if (rimg) g.drawImage(rimg, Math.round(p.x - rimg.width / 2 + p.dir * 2), Math.round(p.y + 6 - rimg.height - bounce));
+      rideY = 11 + bounce; // 엉덩이가 안장(발에서 7px 위)에 닿게 앉힌다 — 몸 그림은 발이 by+5
+    }
+    const sink = p.swim ? by - 7 : p.boat ? by - 1 : p.riding ? by - rideY : null; // 탄 사람의 다리는 랩터 몸에 가린다
+    if (sink != null) { g.save(); g.beginPath(); g.rect(bx - 30, by - 80, 60, sink - (by - 80)); g.clip(); if (p.riding) g.translate(0, -rideY); }
     const admin = this.admin && !w.pvp; // 운영자: 종족 그림 대신 흰 사람 모습
     if (!blink && img && rims.length && !admin) {
       const [col, a] = rims[rims.length - 1];
@@ -3369,25 +3380,53 @@ export class Renderer {
   drawHappening(w, o) {
     const g = this.g, x = Math.round(o.x), y = Math.round(o.y), d = o.dir || 1;
     const person = (base, tint, px, py, face) => { const img = sprite(this.animFrame(base, o.dest && !o.engaged ? 'run' : 'idle', w.t + px * 0.1, 8), tint || '', false, face < 0); if (img) { this.shadow(px, py + 4, 5); g.drawImage(img, Math.round(px - img.width / 2), Math.round(py + 5 - img.height)); } };
+    const moving = o.dest && !o.engaged;
     if (o.etype === 'caravan' || o.etype === 'taxWagon') {
+      // 말이 앞에서 끌고 · 마부는 앞 마차 마부석에 앉는다 · 세금 마차는 호위병이 옆에서 걷는다
       const tax = o.etype === 'taxWagon';
-      for (const [ox] of [[-14], [16]]) {
-        const wx = x + ox * d;
-        g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, wx, y + 6, 14, 4);
-        g.fillStyle = '#1a1410'; g.fillRect(wx - 12, y - 14, 24, 16); g.fillStyle = tax ? '#6a4a8a' : '#8a5a32'; g.fillRect(wx - 11, y - 13, 22, 10);
-        g.fillStyle = tax ? '#e8d8a8' : '#e8dcc0'; g.beginPath(); g.ellipse(wx, y - 14, 11, 8, 0, Math.PI, 0); g.fill();
-        if (tax) { g.fillStyle = '#ffd76a'; g.fillRect(wx - 2, y - 19, 4, 4); }
-        for (const sx of [-8, 8]) { g.fillStyle = '#1a1410'; g.beginPath(); g.arc(wx + sx, y + 2, 4, 0, Math.PI * 2); g.fill(); g.fillStyle = '#7a5232'; g.beginPath(); g.arc(wx + sx, y + 2, 3, 0, Math.PI * 2); g.fill(); }
-      }
-      person(tax ? 'knight_m' : 'dwarf_m', tax ? '' : 'sepia(0.5)', x - 34 * d, y, d);
-      if (tax) person('knight_m', 'hue-rotate(30deg)', x + 36 * d, y, d);
+      const wagon = (wx, front) => {
+        g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, wx, y + 6, 15, 4);
+        g.fillStyle = '#1a1410'; g.fillRect(wx - 13, y - 14, 26, 16); g.fillStyle = tax ? '#5a3a7a' : '#7a4e2a'; g.fillRect(wx - 12, y - 13, 24, 11);
+        g.fillStyle = tax ? '#7a5a9a' : '#9a6a3a'; g.fillRect(wx - 12, y - 13, 24, 2); g.fillStyle = '#4a3020'; for (let k = -8; k <= 8; k += 8) g.fillRect(wx + k, y - 11, 1, 9);
+        g.fillStyle = '#1a1410'; g.beginPath(); g.ellipse(wx - d * 2, y - 14, 12, 9, 0, Math.PI, 0); g.fill();
+        g.fillStyle = tax ? '#e8d8a8' : '#ece0c4'; g.beginPath(); g.ellipse(wx - d * 2, y - 14, 11, 8, 0, Math.PI, 0); g.fill();
+        g.fillStyle = 'rgba(0,0,0,0.12)'; for (let k = -6; k <= 6; k += 6) g.fillRect(wx - d * 2 + k, y - 21, 1, 7);
+        if (tax) { g.fillStyle = '#1a1410'; g.fillRect(wx - 3, y - 20, 6, 5); g.fillStyle = '#ffd76a'; g.fillRect(wx - 2, y - 19, 4, 3); } // 왕실 문장
+        if (front) { g.fillStyle = '#1a1410'; g.fillRect(wx + d * 9 - 4, y - 16, 9, 4); g.fillStyle = '#7a4e2a'; g.fillRect(wx + d * 9 - 3, y - 15, 7, 2); } // 마부석
+        const rot = moving ? w.t * 6 : 0;
+        for (const sx of [-8, 8]) {
+          g.fillStyle = '#1a1410'; g.beginPath(); g.arc(wx + sx, y + 2, 4.5, 0, Math.PI * 2); g.fill(); g.fillStyle = '#7a5232'; g.beginPath(); g.arc(wx + sx, y + 2, 3.5, 0, Math.PI * 2); g.fill();
+          g.fillStyle = '#3a2618'; for (let k = 0; k < 2; k++) { const a = rot + k * Math.PI / 2; g.fillRect(Math.round(wx + sx + Math.cos(a) * 2.5) - 0.5, Math.round(y + 2 + Math.sin(a) * 2.5) - 0.5, 1, 1); g.fillRect(Math.round(wx + sx - Math.cos(a) * 2.5) - 0.5, Math.round(y + 2 - Math.sin(a) * 2.5) - 0.5, 1, 1); }
+        }
+      };
+      const front = x + d * 6, back = x - d * 24;
+      const hf = sprite(this.animFrame('c_horse', moving ? 'run' : 'idle', w.t + o.x * 0.01, moving ? 9 : 4), '', false, d < 0);
+      const hx = front + d * 31;
+      if (hf) { this.shadow(hx, y + 4, 10); g.drawImage(hf, Math.round(hx - hf.width / 2), Math.round(y + 5 - hf.height)); }
+      g.strokeStyle = '#3a2214'; g.lineWidth = 1; g.beginPath(); g.moveTo(front + d * 12, y - 6); g.lineTo(hx - d * 6, y - 12); g.stroke(); // 끌채
+      if (!tax) wagon(back, false);
+      wagon(front, true);
+      // 마부: 마부석에 앉아 고삐를 잡는다 (다리는 마차에 가려진다)
+      const dr = sprite(this.animFrame(tax ? 'p_taxman' : 'p_wagonDriver', 'idle', w.t, 4), '', false, d < 0);
+      if (dr) { g.save(); g.beginPath(); g.rect(front + d * 9 - 14, y - 60, 28, 46); g.clip(); g.drawImage(dr, Math.round(front + d * 9 - dr.width / 2), Math.round(y - 13 - dr.height + 8)); g.restore(); }
+      if (tax) person('p_royalGuard', '', x - d * 24, y + 10, d);
     } else if (o.etype === 'patrol') {
-      person('knight_m', 'grayscale(0.3)', x - 10, y, 1); person('knight_m', 'grayscale(0.3)', x + 12, y - 4, -1);
-      person('dwarf_f', 'sepia(0.6)', x + 2, y + 8, 1);
-      g.fillStyle = '#7a5232'; g.fillRect(x + 20, y + 2, 14, 6); g.fillStyle = '#c8a040'; g.fillRect(x + 22, y, 4, 3); // 엎어진 수레
+      // 순찰대가 농부를 다그친다: 병사 둘 · 무릎 꿇은 농부 · 우는 아이 · 엎어진 수레
+      person('p_royalGuard', '', x - 16, y - 2, 1); person('p_royalGuard', '', x + 16, y - 2, -1);
+      person('p_farmer', '', x, y + 6, 1); person('p_peasantKid', '', x - 30, y + 10, 1);
+      g.fillStyle = 'rgba(0,0,0,0.25)'; ellipse(g, x + 34, y + 6, 10, 3);
+      g.fillStyle = '#1a1410'; g.fillRect(x + 25, y - 4, 18, 9); g.fillStyle = '#7a5232'; g.fillRect(x + 26, y - 3, 16, 7); g.fillStyle = '#5a3a22'; g.fillRect(x + 26, y + 1, 16, 1); // 엎어진 수레
+      g.fillStyle = '#1a1410'; g.beginPath(); g.arc(x + 41, y - 6, 4, 0, Math.PI * 2); g.fill(); g.fillStyle = '#7a5232'; g.beginPath(); g.arc(x + 41, y - 6, 3, 0, Math.PI * 2); g.fill();
+      for (const [ox, oy, c] of [[22, 6, '#c8a040'], [19, 8, '#d84a3a'], [46, 7, '#c8a040'], [24, 9, '#8ac848']]) { g.fillStyle = '#1a1410'; g.fillRect(x + ox - 1, y + oy - 1, 4, 4); g.fillStyle = c; g.fillRect(x + ox, y + oy, 2, 2); } // 쏟아진 곡식 · 사과
     } else if (o.etype === 'cult') {
-      g.strokeStyle = `rgba(160,120,255,${0.4 + 0.2 * Math.sin(w.t * 3)})`; g.lineWidth = 1; g.beginPath(); g.ellipse(x, y + 3, 22, 9, 0, 0, Math.PI * 2); g.stroke();
-      for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + w.t * 0.2; person('necromancer', 'brightness(0.5) saturate(0.3)', x + Math.cos(a) * 22, y + Math.sin(a) * 9, Math.cos(a) > 0 ? -1 : 1); }
+      // 교단 의식: 가운데 돌 제단과 촛불, 신도 넷이 둘러선다
+      g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, x, y + 5, 12, 3);
+      g.fillStyle = '#1a1418'; g.fillRect(x - 10, y - 8, 20, 13); g.fillStyle = '#5a5262'; g.fillRect(x - 9, y - 7, 18, 11); g.fillStyle = '#6e6678'; g.fillRect(x - 9, y - 7, 18, 2); g.fillStyle = '#3a3442'; g.fillRect(x - 9, y + 2, 18, 2);
+      g.fillStyle = '#4a1a5a'; g.fillRect(x - 6, y - 7, 12, 8); g.fillStyle = '#b98aff'; g.fillRect(x - 1, y - 5, 2, 4); g.fillRect(x - 2, y - 4, 4, 1); // 제단 천 · 꺼진 등불 문양
+      for (const cx of [-7, 7]) { g.fillStyle = '#1a1418'; g.fillRect(x + cx - 1, y - 13, 3, 6); g.fillStyle = '#e8e0d0'; g.fillRect(x + cx, y - 12, 1, 5); const fl = Math.sin(w.t * 9 + cx) > 0 ? 1 : 0; g.fillStyle = '#b98aff'; g.fillRect(x + cx, y - 15 - fl, 1, 2 + fl); }
+      const spots = [[-26, -6, 1], [26, -6, -1], [-20, 12, 1], [20, 12, -1]];
+      for (const [ox, oy, f] of spots.filter((s) => s[1] < 0)) person('p_m_cultist', '', x + ox, y + oy, f);
+      for (const [ox, oy, f] of spots.filter((s) => s[1] > 0)) person('p_m_cultist', '', x + ox, y + oy, f);
     }
     if (!o.engaged && !o.gone) this.bang(x, y - 34 + Math.sin(w.t * 5) * 1.5, o.etype === 'cult' ? '#b98aff' : '#ffd040');
     o._top = y - 30;
@@ -3395,7 +3434,7 @@ export class Renderer {
 
   drawNpc(w, o) {
     const g = this.g;
-    const art = NPC_ART[o.art || o.station || o.kind];
+    const art = NPC_ART[o.art || o.station || o.kind] || { base: 'p_' + (o.art || o.station || 'farmer') }; // 그 밖의 사람은 people.py 그림 이름 그대로
     const name = this.animFrame(art.base, 'idle', w.t + o.x * 0.01, 5);
     const img = sprite(name, art.tint || '', false, w.player.x < o.x);
     this.shadow(o.x, o.y + 4, 6);

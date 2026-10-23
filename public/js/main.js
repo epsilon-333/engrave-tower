@@ -48,6 +48,7 @@ import { NOKT_ZONE, buildNoktHaven } from './data/maps/nokt.js';
 import { ISLAND_DEFS, islandZone, islandMap } from './data/maps/islands.js';
 import { FACTIONS, RANKS, LOYALTY, newPol, titleOf, bounty, OFFICIALS, officialNow, HAPPENINGS, FOES, CULT_LORE, mistClues, MIST_NEED } from './data/politics.js';
 import { SHIPS, cargoCap, GUILD_RANKS, guildRank } from './data/trade.js';
+import { ENG_STEP, ENG_MAX } from './sim/build.js';
 
 let save = loadSave();
 const titleEl = document.getElementById('title');
@@ -1828,6 +1829,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyN') showRank(); // 랭킹
   if (e.code === 'KeyJ' && world.state === 'play' && !world.practice) showQuestLog();
   if (e.code === 'KeyH' && world.state === 'play') eatQuick();
+  if (e.code === 'KeyV' && world.state === 'play') input.mount = true; // 탈것 타기 · 내리기
   if (e.code === 'KeyZ' && world.state === 'play') world.quickPotion(); // 물약 빨리 마시기
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
@@ -2436,7 +2438,14 @@ function exitNokt(way) {
 }
 
 // ═══════ 바다 건너 섬 · 황금 돛 연맹(상인 길드 · 경매장 · 조선소 · 내 가게) · 섬의 일 · 성지의 새 시설 ═══════
-const freeSpot = (w, x, y) => { for (let r = 0; r < 60; r += 4) for (let a = 0; a < 12; a++) { const tx = x + Math.cos(a / 12 * Math.PI * 2) * r, ty = y + Math.sin(a / 12 * Math.PI * 2) * r; if (!w.blocked(tx, ty, 6)) return { x: tx, y: ty }; } return { x, y }; };
+// 사람 · 물건을 세울 자리: 마른 땅(물 · 건물 칸 아님) · 막히지 않음 · 다른 사람과 겹치지 않음 — 가까운 곳부터 넓혀 가며 찾는다
+const freeSpot = (w, x, y) => {
+  const dry = (tx, ty) => { const k = Math.floor(ty / TILE) * w.tw + Math.floor(tx / TILE); return w.tiles ? w.tiles[k] === 0 : true; };
+  const crowd = (tx, ty) => w.objects.some((o) => o.kind !== 'door' && Math.abs(o.x - tx) < 18 && Math.abs(o.y - ty) < 14);
+  for (let r = 0; r < 200; r += 4) for (let a = 0; a < 16; a++) { const tx = x + Math.cos(a / 16 * Math.PI * 2) * r, ty = y + Math.sin(a / 16 * Math.PI * 2) * r; if (!w.blocked(tx, ty, 6) && dry(tx, ty) && dry(tx, ty + 6) && !crowd(tx, ty)) return { x: tx, y: ty, ok: r < 72 }; }
+  for (let r = 0; r < 60; r += 4) for (let a = 0; a < 12; a++) { const tx = x + Math.cos(a / 12 * Math.PI * 2) * r, ty = y + Math.sin(a / 12 * Math.PI * 2) * r; if (!w.blocked(tx, ty, 6)) return { x: tx, y: ty }; }
+  return { x, y };
+};
 // 섬마다 따로 벤 나무 기록 (본섬 기록이 지워지지 않게)
 function islandLife(id) { const L = lifeOf(); L.chopped = ((save.islandChop ||= {})[id] ||= {}); return L; }
 function enterIsland(id, carry = null) {
@@ -2457,7 +2466,7 @@ function enterIsland(id, carry = null) {
 // 세계에 들어갈 때마다 붙이는 것: 이름 위 지위 · 탈것 · 아기 용 · 연대기 비석 · 고위 관계자 · 성지의 새 시설
 function worldExtras(w) {
   w.title = titleOf(save); lastTitle = w.title.text;
-  w.mounted = !!save.mount;
+  w.mountKind = save.mount ? 'raptor' : null;
   if (save.whelp && !w.allies.some((a) => a.whelp)) w.allies.push({ id: w.nextId++, kind: 'spirit', elem: 'fire', whelp: true, x: w.player.x + 12, y: w.player.y - 10, t: 1e9, max: 1e9, atk: w.skillAtk('best') * 0.35, cd: 1, phase: 0, dir: 1 });
   if (w.zoneId === 'world') {
     const ow = overworldBase(), kd = ow.villages?.knight?.door || (ow.sanctums?.knight && { x: ow.sanctums.knight.x * TILE + 8, y: ow.sanctums.knight.y * TILE + 8 });
@@ -2465,22 +2474,37 @@ function worldExtras(w) {
       const put = (o, dx, dy) => { const s = freeSpot(w, kd.x + dx * TILE, kd.y + dy * TILE); w.objects.push({ ...o, x: s.x, y: s.y, reusable: true }); };
       put({ kind: 'npc', id: 'pol_recruiter', art: 'recruiter', label: '아우렐리온 모병관과 이야기 · 입단' }, -15, 2);
       put({ kind: 'chronicle', id: 'chronicle', label: '연대기 비석 읽기' }, 15, 2);
-      for (const id of Object.keys(OFFICIALS)) { const O = OFFICIALS[id]; if (O.where !== 'castle') continue; const now = officialNow(save, id); if (now) put({ kind: 'npc', id: 'official_' + id, art: O.king ? 'kingArt' : 'official', label: `${O.title} ${now.name}${now.gen > 1 ? ` (${now.gen}대째)` : ''}` }, O.at[0], O.at[1] + 8); }
+      for (const id of Object.keys(OFFICIALS)) { const O = OFFICIALS[id]; if (O.where !== 'castle') continue; const now = officialNow(save, id); if (now) put({ kind: 'npc', id: 'official_' + id, art: O.king ? 'king' : id, label: `${O.title} ${now.name}${now.gen > 1 ? ` (${now.gen}대째)` : ''}` }, O.at[0], O.at[1] + 8); }
     }
     // 성지마다 숙소(부활 지점) · 종족 대장간 · 고유 콘텐츠
     for (const [race, v] of Object.entries(ow.villages || {})) {
       const d = v.door; if (!d) continue;
-      const put = (o, dx, dy) => { const s = freeSpot(w, d.x + dx * TILE, d.y + dy * TILE); w.objects.push({ ...o, x: s.x, y: s.y, reusable: true }); };
+      // 문 앞이 바다 · 호수면 반대쪽 · 옆쪽으로 (바닷가 성지에서 사람이 물 위에 서지 않게)
+      const put = (o, dx, dy) => {
+        let s = null;
+        for (const [a, b] of [[dx, dy], [dx, -dy], [dy, dx], [-dy, -dx]]) { const c = freeSpot(w, d.x + a * TILE, d.y + b * TILE); if (c.ok) { s = c; break; } }
+        if (!s) { // 네 방향 다 물이면: 문 둘레 마른 땅 중 원래 자리에 가장 가까운 곳
+          const tx0 = d.x + dx * TILE, ty0 = d.y + dy * TILE; let bd = 1e9;
+          for (let y = -18; y <= 18; y++) for (let x = -18; x <= 18; x++) {
+            const px = d.x + x * TILE, py = d.y + y * TILE, k = Math.floor(py / TILE) * w.tw + Math.floor(px / TILE);
+            if (w.tiles[k] !== 0 || w.blocked(px, py, 6) || w.objects.some((q) => Math.abs(q.x - px) < 18 && Math.abs(q.y - py) < 14)) continue;
+            const dd = Math.hypot(px - tx0, py - ty0); if (dd < bd) { bd = dd; s = { x: px, y: py }; }
+          }
+          s ||= freeSpot(w, tx0, ty0);
+        }
+        w.objects.push({ ...o, x: s.x, y: s.y, reusable: true });
+      };
       put({ kind: 'npc', id: 'sanct_inn_' + race, art: 'innkeeper', label: `${SANCTUMS[race].name} 숙소 · 쉬기 · 부활 지점` }, -9, 14);
       put({ kind: 'npc', id: 'sanct_forge_' + race, art: 'smith', label: `${SANCTUMS[race].name} 종족 대장간` }, 9, 14);
       put({ kind: 'npc', id: 'sanct_uniq_' + race, art: UNIQ[race].art, label: UNIQ[race].label }, 0, 17);
+      if (race === 'dragon') put({ kind: 'npc', id: 'sanct_egg_dragon', art: 'dragonElder', label: '용알 부화장 · 작은 용 동료' }, 6, 19);
     }
     if (save.respawnAt && w.respawnPending) { const v = ow.villages?.[save.respawnAt]; if (v?.door) { const s = freeSpot(w, v.door.x - 9 * TILE, v.door.y + 16 * TILE); w.player.x = s.x; w.player.y = s.y; w.reveal(true); } }
   }
   if (w.zoneId === 'nokt') {
     const put = (o, tx, ty) => { const s = freeSpot(w, tx * TILE + 8, ty * TILE + 8); w.objects.push({ ...o, x: s.x, y: s.y, reusable: true }); };
     put({ kind: 'chronicle', id: 'chronicle', label: '연대기 비석 읽기' }, 56, 46);
-    for (const id of Object.keys(OFFICIALS)) { const O = OFFICIALS[id]; if (O.where !== 'nokt') continue; const now = officialNow(save, id); if (now) put({ kind: 'npc', id: 'official_' + id, art: O.king ? 'kaila' : 'rebel', label: `${O.title} ${now.name}${now.gen > 1 ? ` (${now.gen}대째)` : ''}` }, O.at[0], O.at[1]); }
+    for (const id of Object.keys(OFFICIALS)) { const O = OFFICIALS[id]; if (O.where !== 'nokt') continue; const now = officialNow(save, id); if (now) put({ kind: 'npc', id: 'official_' + id, art: O.king ? 'kaila' : id, label: `${O.title} ${now.name}${now.gen > 1 ? ` (${now.gen}대째)` : ''}` }, O.at[0], O.at[1]); }
   }
   // 비밀 의뢰 표적 · 용병 의뢰 대상이 이 세계에 있으면 세운다
   const C = save.contract;
@@ -2525,7 +2549,7 @@ const UNIQ = {
   wizard: { art: 'altar', label: '주문 연구실 · 주문서 만들기' }, elf: { art: 'library', label: '정령 교감소 · 정령석 바꾸기' },
   knight: { art: 'trainer', label: '마상 창 시합장 · 기사 서임식' }, orc: { art: 'pitBoss', label: '투기 대회 등급전' },
   undead: { art: 'healer', label: '강령 의식 · 떠도는 영혼의 사연' }, assassin: { art: 'broker', label: '그림자 길드 · 비밀 의뢰' },
-  dino: { art: 'dinoTamer', label: '공룡 길들이기 · 탈것' }, dragon: { art: 'dragonElder', label: '용알 부화장 · 작은 용 동료' },
+  dino: { art: 'dinoTamer', label: '공룡 길들이기 · 탈것' }, dragon: { art: 'res_dragon_0', label: '용족 대장장이 카스 · 각인 강화' },
 };
 function sanctTalk(id) {
   const [, kind, race] = id.split('_');
@@ -2592,9 +2616,27 @@ function sanctTalk(id) {
   }
   if (race === 'dino') {
     const need = own ? 6 : 10;
-    if (save.mount) { showModal(`<h2>공룡 길들이기</h2><p>"네 랩터는 잘 지내지? 싸우지 않을 때 등에 올라타면 훨씬 빨리 달린다."</p><p class="muted">탈것: 길들인 랩터 (싸우지 않을 때 바깥에서 이동 속도 +35%)</p><div class="actions"><button data-close>고맙다</button></div>`); return; }
+    if (save.mount) { showModal(`<h2>공룡 길들이기</h2><p>"네 랩터는 잘 지내지? 등에 올라타면 바람처럼 달린다."</p><p class="muted">탈것: 길들인 랩터 — V(모바일 「탈것」)로 올라타면 1.75배 빠르게 달리고, 대시는 멀리 뛰어오른다. 공격하거나 세게 맞으면 내린다.</p><div class="actions"><button data-close>고맙다</button></div>`); return; }
     showModal(`<h2>공룡 길들이기</h2><p>"새끼 랩터 한 마리가 사람을 잘 따른다. 짐승 고기 ${need}덩이로 배를 채워 주면 너를 태워 줄 거다."</p><p class="muted">짐승 고기 ${save.bag.beastMeat || 0}개</p><div class="actions"><button id="tame" ${(save.bag.beastMeat || 0) >= need ? '' : 'disabled'}>고기를 준다</button><button data-close class="ghost">됐다</button></div>`);
-    document.getElementById('tame').onclick = () => { save.bag.beastMeat -= need; if (!save.bag.beastMeat) delete save.bag.beastMeat; save.mount = true; world.mounted = true; overlay.hidden = true; paused = false; modal = null; done('랩터를 길들였다 · 싸우지 않을 때 이동 속도 +35%'); };
+    document.getElementById('tame').onclick = () => { save.bag.beastMeat -= need; if (!save.bag.beastMeat) delete save.bag.beastMeat; save.mount = true; world.mountKind = 'raptor'; overlay.hidden = true; paused = false; modal = null; done('랩터를 길들였다 · V(모바일은 「탈것」 버튼)로 타고 내린다'); };
+    return;
+  }
+  if (race === 'dragon' && kind === 'uniq') { // 각인 강화: 용암 화로에 각인을 다시 달군다
+    const owned = Object.keys(save.owned || {}).filter((k) => save.owned[k] > 0 && ENGRAVINGS[k]);
+    const L = (save.engLv ||= {}), disc = own ? 0.7 : 1;
+    const cost = (lv) => ({ gold: Math.round(150 * (lv + 1) * (lv + 1) * disc), obsidian: lv + 1, fireBloom: lv });
+    const rows = owned.map((k) => { const lv = L[k] || 0, c = cost(lv), can = lv < ENG_MAX && save.gold >= c.gold && (save.bag.obsidian || 0) >= c.obsidian && (save.bag.fireBloom || 0) >= c.fireBloom;
+      return `<div class="soc-row ${lv ? 'on' : ''}"><span class="nm"><b>${esc(ENGRAVINGS[k].name)}</b> <small class="muted">+${lv} / ${ENG_MAX} · 수치 +${Math.round(lv * ENG_STEP * 100)}%</small></span><span class="muted">${lv >= ENG_MAX ? '가장 높은 단계' : `◆ ${c.gold} · 흑요석 ${c.obsidian}${c.fireBloom ? ` · 불꽃 꽃 ${c.fireBloom}` : ''}`}</span><span class="btns">${lv < ENG_MAX ? `<button class="sm" data-elv="${k}" ${can ? '' : 'disabled'}>+${lv + 1}로 강화</button>` : ''}</span></div>`; }).join('');
+    showModal(`<h2>용족 대장장이 카스 · 각인 강화</h2><p>"용암 화로에 각인을 다시 달구면 문양이 깊어진다. 단계마다 각인의 능력치와 효과가 12%씩 강해지지. 흑요석과 불꽃 꽃을 가져와라."${own ? ' (용족은 30% 싸게)' : ''}</p>${portGoldRow()}<p class="muted">흑요석 ${save.bag.obsidian || 0} · 불꽃 꽃 ${save.bag.fireBloom || 0}</p>
+      <div class="soc-list">${rows || '<p class="muted">새긴 각인이 없다. 공명 제단에서 먼저 새기자.</p>'}</div><div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
+    overlay.querySelectorAll('[data-elv]').forEach((b) => (b.onclick = () => {
+      const k = b.dataset.elv, lv = L[k] || 0, c = cost(lv);
+      save.gold -= c.gold; save.bag.obsidian -= c.obsidian; if (!save.bag.obsidian) delete save.bag.obsidian; if (c.fireBloom) { save.bag.fireBloom -= c.fireBloom; if (!save.bag.fireBloom) delete save.bag.fireBloom; }
+      L[k] = lv + 1; world.setBuild(buildNow()); writeSave(save); sfx('reaction', { vol: 0.7, rate: 0.8 });
+      renderer.banner = { text: `${ENGRAVINGS[k].name} +${lv + 1}`, sub: `각인 수치 +${Math.round((lv + 1) * ENG_STEP * 100)}%`, t: 2.8, color: '#ff9a3a' };
+      if (lv + 1 === ENG_MAX) addChronicle(`${heroName()}이(가) 용의 둥지에서 「${ENGRAVINGS[k].name}」을(를) 끝까지 달궜다`);
+      sanctTalk(id);
+    }));
     return;
   }
   if (race === 'dragon') {
@@ -2986,7 +3028,7 @@ function tick(ts) {
       if (!paused) readInput();
       while (acc >= DT) {
         world.step(paused ? IDLE_INPUT : input);
-        input.dash = false; input.interact = false; input.skill = false; input.s1 = false; input.s2 = false; input.s3 = false; input.s4 = false; input.wskill = false;
+        input.dash = false; input.interact = false; input.skill = false; input.s1 = false; input.s2 = false; input.s3 = false; input.s4 = false; input.wskill = false; input.mount = false;
         acc -= DT;
         if (world.signals.length) { handleSignals(); break; }
       }
@@ -3015,7 +3057,7 @@ function tick(ts) {
 }
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-window.__game = { get world() { return world; }, renderer, hub, dbg: { spawnHappening: () => spawnHappening(), enterIsland: (id) => enterIsland(id), save: () => save } }; // 디버그용
+window.__game = { get world() { return world; }, renderer, hub, dbg: { spawnHappening: () => spawnHappening(), enterIsland: (id) => enterIsland(id), save: () => save, talk: (id) => sanctTalk(id) } }; // 디버그용
 
 // 로그인·저장 상태 표시
 const chip = document.createElement('div');

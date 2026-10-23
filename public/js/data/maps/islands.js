@@ -13,40 +13,40 @@ export const ISLAND_DEFS = {
     name: '황금 돛 섬', nation: '황금 돛 연맹', mood: '운하 · 시장 · 거대 항구', tw: 210, th: 150, biome: 'meadow', ground: G.GRASS, road: G.COBBLE, wild: G.GRASS,
     trees: 0.018, kinds: ['oak', 'birch', 'palm'], lv: [10, 30], elite: 'goblinChief', roof: ['#c8a040', '#b8483a', '#3a6a9a', '#8a4a8a'], canals: true,
     regions: ['황금 돛 항구 도시', '운하 들판', '포도밭 언덕', '도적의 고개'], pools: [null, ['slime', 'spikeSlime', 'boarRunner', 'goblin'], ['goblin', 'forestArcher', 'harpy', 'bandit'], ['bandit', 'darkArcher', 'orcRaider', 'harpy']],
-    npcs: [['gold_master', 'portMaster', -6, 6, '항구장 마리넬과 이야기 · 배 타기'], ['gold_trade', 'trader', 6, -6, '교역상 도로와 이야기 · 교역품'], ['gold_board', null, 9, -6, '시세판 보기'],
+    npcs: [['gold_master', 'goldHarbor', -6, 6, '항구장 마리넬과 이야기 · 배 타기'], ['gold_trade', 'goldTrader', 6, -6, '교역상 도로와 이야기 · 교역품'], ['gold_board', null, 9, -6, '시세판 보기'],
       ['gold_guild', 'guildMaster', -8, -6, '상인 길드장 벨루아와 이야기 · 길드 · 납품 계약'], ['gold_auction', 'auctioneer', 0, -9, '경매사 오토와 이야기 · 경매장'], ['gold_yard', 'shipwright', 10, 4, '조선공 드레크와 이야기 · 내 배'],
-      ['gold_shop', 'trader', -10, 2, '점포 거리 관리인과 이야기 · 내 가게']],
+      ['gold_shop', 'goldShop', -10, 2, '점포 거리 관리인과 이야기 · 내 가게']],
     lore: ['황금 돛 연맹 회의록: 연맹은 아우렐리온에도, 녹타리스에도 물건을 판다. 은화에는 깃발이 그려져 있지 않으니까.'],
   },
   frost: {
     name: '서리왕관 섬', nation: '하얀 왕관 공국', mood: '눈 덮인 요새 도시 · 빙하', tw: 190, th: 150, biome: 'snow', ground: G.SNOW, road: G.STONE, wild: G.SNOW,
     trees: 0.05, kinds: ['snowpine'], lv: [35, 50], elite: 'iceGolem', roof: ['#5a7a9a', '#3a4a6a', '#e8eef8'], fortress: true,
     regions: ['하얀 왕관 요새 도시', '얼음 평원', '빙하 협곡', '서리 늑대 숲'], pools: [null, ['iceWolf', 'frostWolf', 'frostSlug', 'snowLurker'], ['iceGolem', 'glassSpider', 'iceShaman', 'iceArcher'], ['frostWolf', 'yeti', 'iceWolf', 'iceArcher']],
-    npcs: [['frost_master', 'shipCaptainE', -6, 6, '항구 관리관 이스벤과 이야기 · 배 타기'], ['frost_trade', 'trader', 6, -6, '교역상 니엘과 이야기 · 교역품'], ['frost_board', null, 9, -6, '시세판 보기'],
-      ['frost_merc', 'rebel', -8, -6, '용병대장 하르크와 이야기 · 용병 의뢰']],
+    npcs: [['frost_master', 'frostHarbor', -6, 6, '항구 관리관 이스벤과 이야기 · 배 타기'], ['frost_trade', 'frostTrader', 6, -6, '교역상 니엘과 이야기 · 교역품'], ['frost_board', null, 9, -6, '시세판 보기'],
+      ['frost_merc', 'mercCaptain', -8, -6, '용병대장 하르크와 이야기 · 용병 의뢰']],
     lore: ['공국 비밀 장부: 녹타리스로 보낸 장검 200자루, 석궁 80정. 왕관 공께서 말씀하시길 「에드릭이 약해질수록 우리 국경은 넓어진다.」'],
   },
   sand: {
     name: '붉은 모래 섬', nation: '모래바람 술탄국', mood: '사막 · 오아시스 도시 · 피라미드 유적', tw: 200, th: 150, biome: 'wasteland', ground: G.REDSAND, road: G.CRACKED, wild: G.REDSAND,
     trees: 0.012, kinds: ['cactus', 'palm'], lv: [25, 45], elite: 'sandWorm', roof: ['#e8c890', '#c8784a', '#f4e8c8'], oasis: true, pyramid: true,
     regions: ['오아시스 도시 카샤르', '붉은 사구', '피라미드 유적', '전갈 골짜기'], pools: [null, ['desertScorpion', 'hyena', 'sandScorpion'], ['ruinSentinel', 'watcherEye', 'sandWorm', 'cultist'], ['sandScorpion', 'desertScorpion', 'orcRaider', 'hyena']],
-    npcs: [['sand_master', 'portMaster', -6, 6, '항구 감독관 자이드와 이야기 · 배 타기'], ['sand_trade', 'trader', 6, -6, '향신료 상인 라나와 이야기 · 교역품'], ['sand_board', null, 9, -6, '시세판 보기'],
-      ['sand_arena', 'pitBoss', -8, -6, '술탄의 투기장 진행자 말리크와 이야기 · 투기장 대회'], ['sand_caravan', 'sailor', 10, 4, '대상(카라반) 대장 오마르와 이야기 · 호위']],
+    npcs: [['sand_master', 'sandHarbor', -6, 6, '항구 감독관 자이드와 이야기 · 배 타기'], ['sand_trade', 'spiceSeller', 6, -6, '향신료 상인 라나와 이야기 · 교역품'], ['sand_board', null, 9, -6, '시세판 보기'],
+      ['sand_arena', 'sultanHost', -8, -6, '술탄의 투기장 진행자 말리크와 이야기 · 투기장 대회'], ['sand_caravan', 'caravanMaster', 10, 4, '대상(카라반) 대장 오마르와 이야기 · 호위']],
     lore: ['피라미드 벽화: 여덟 개의 불꽃이 하나의 탑을 밝힌다. 그 아래 엎드린 사람들. 그리고 불꽃을 하나씩 끄는, 얼굴 없는 무리.'],
   },
   skull: {
     name: '해골 군도', nation: '해적 연합 (나라 없음)', mood: '작은 섬 여럿 · 해적 소굴', tw: 200, th: 150, biome: 'jungle', ground: G.JUNGLE, road: G.DIRT, wild: G.JUNGLE,
     trees: 0.12, kinds: ['palm', 'jungle'], lv: [20, 45], elite: 'orcWarlord', roof: ['#5a3a22', '#7a5232', '#3a2a1a'], archipelago: true, lawless: true,
     regions: ['해적 소굴 블랙코브', '야자 해변', '난파선 무덤', '해골 바위'], pools: [null, ['raptor', 'jungleWasp', 'venomSpitter', 'toad'], ['bandit', 'darkArcher', 'seaSerpent', 'skeleton'], ['lizardWarrior', 'bandit', 'boneArcher', 'orcRaider']],
-    npcs: [['skull_master', 'shipCaptainE', -6, 6, '부두 두목 갈고리 잭과 이야기 · 배 타기'], ['skull_trade', 'fence', 6, -6, '장물아비 루시와 이야기 · 교역품'], ['skull_board', null, 9, -6, '시세판 보기'],
-      ['skull_captain', 'pitBoss', -8, -6, '해적왕 레드 메리와 이야기 · 해적 의뢰'], ['skull_bounty', 'rumorer', 10, 4, '현상금 게시판 · 사냥꾼 브래그']],
+    npcs: [['skull_master', 'skullHarbor', -6, 6, '부두 두목 갈고리 잭과 이야기 · 배 타기'], ['skull_trade', 'fence', 6, -6, '장물아비 루시와 이야기 · 교역품'], ['skull_board', null, 9, -6, '시세판 보기'],
+      ['skull_captain', 'pirateQueen', -8, -6, '해적왕 레드 메리와 이야기 · 해적 의뢰'], ['skull_bounty', 'bountyHunter', 10, 4, '현상금 게시판 · 사냥꾼 브래그']],
     lore: ['해적 규약 제1조: 여기선 누구의 현상금도 묻지 않는다. 제2조: 술값은 먼저 낸다.'],
   },
   mist: {
     name: '안개 너머의 섬', nation: '교단의 땅', mood: '늘 안개 · 고대 유적', tw: 190, th: 150, biome: 'graveyard', ground: G.DEADGRASS, road: G.STONE, wild: G.DEADGRASS,
     trees: 0.04, kinds: ['dead'], lv: [50, 60], elite: 'wraithKnight', roof: ['#4a4a5a', '#3a3a4a'], ruins: true, hidden: true,
     regions: ['버려진 선착장', '안개 숲', '고대 유적', '꺼진 등불의 제단'], pools: [null, ['shadeWraith', 'shadowPanther', 'wraith', 'ghoul'], ['cultist', 'necroAcolyte', 'watcherEye', 'wraithKnight'], ['cultist', 'wraithKnight', 'boneGuard', 'shadeWraith']],
-    npcs: [['mist_master', 'sailor', -6, 6, '겁먹은 뱃사공과 이야기 · 돌아가는 배'], ['mist_cult', 'broker', 8, -6, '안개 속의 신도와 이야기']],
+    npcs: [['mist_master', 'ferryman', -6, 6, '겁먹은 뱃사공과 이야기 · 돌아가는 배'], ['mist_cult', 'cultist', 8, -6, '안개 속의 신도와 이야기']],
     lore: ['꺼진 등불의 제단 비문: 빛이 모두 꺼지는 날 섬은 처음으로 돌아간다. 우리는 끄는 자, 다시 켜는 자. 탑 꼭대기의 불꽃은 마지막에 끈다.', '교단 신도의 일기: 왕이 조각을 한곳에 모으고 있다. 스승님은 웃으셨다. 「모아 주니 고맙지 않은가.」'],
   },
 };
@@ -140,7 +140,9 @@ export function buildIsland(id) {
   for (let i = -1; i < 9; i++) for (let w = -1; w <= 1; w++) set(cx + w, shore.y + 1 + i, T_FLOOR, G.BRIDGE);
   for (let y = town.y; y <= shore.y; y++) for (let x = cx - 1; x <= cx + 1; x++) if (inb(x, y) && t[I(x, y)] !== T_BUILD) { set(x, y, T_FLOOR, D.road); onPath[I(x, y)] = 1; }
   const end = { x: cx, y: shore.y + 9 };
-  prop('ship', end.x + 2, end.y - 3, 8, 3, { flag: D.roof[0] });
+  // 정박한 배: 부두 오른쪽에 한 칸 띄워 물 위에 띄운다 (바닥을 모래로 칠하지 않는다)
+  for (let yy = end.y - 3; yy < end.y; yy++) for (let xx = end.x + 3; xx < end.x + 11; xx++) if (inb(xx, yy)) { if (t[I(xx, yy)] !== T_DEEP) set(xx, yy, T_DEEP); occupied[I(xx, yy)] = 1; }
+  props.push({ kind: 'ship', x: end.x + 3, y: end.y - 3, w: 8, h: 3, flag: D.roof[0] });
   const arrive = at(cx, shore.y + 6);
   // 6) 사람들
   for (const [nid, art, dx, dy, label] of D.npcs) {
@@ -160,7 +162,7 @@ export function buildIsland(id) {
   const lores = [];
   if (D.pyramid) { const p = seeds[2]; prop('templeRuin', p.x - 2, p.y - 3, 5, 3); lores.push({ x: p.x, y: p.y + 2, text: D.lore[0] }); }
   if (D.ruins) { const p = seeds[2]; prop('labyrinthGate', p.x - 2, p.y - 3, 5, 3); const q = seeds[3]; prop('cryptStairs', q.x - 1, q.y - 2, 3, 2); D.lore.forEach((txt, i) => lores.push({ x: (i ? q : p).x + 3, y: (i ? q : p).y + 2, text: txt })); }
-  if (D.archipelago) { const p = seeds[2]; prop('ship', p.x - 4, p.y + 4, 8, 3, { flag: '#1a1a1a' }); }
+  if (D.archipelago) { const p = seeds[2]; for (let y = p.y; y <= p.y + 10; y++) for (let x = p.x - 8; x <= p.x + 8; x++) if (land(x, y) && Math.hypot((x - p.x) / 8, (y - p.y - 5) / 5) < 1) gr[I(x, y)] = G.SAND; prop('wreck', p.x - 4, p.y + 4, 8, 3); } // 뭍에 얹힌 해적선 잔해
   if (!D.pyramid && !D.ruins) lores.push({ x: seeds[1].x + 3, y: seeds[1].y, text: D.lore[0] });
   // 9) 나무 · 장식
   const trees = new Set();
@@ -168,6 +170,7 @@ export function buildIsland(id) {
   for (let y = 3; y < TH - 3; y++) for (let x = 3; x < TW - 3; x++) {
     const k = I(x, y);
     if (!land(x, y) || occupied[k] || onPath[k] || nearTown(x, y) || gr[k] === G.SAND) continue;
+    if (D.archipelago && Math.hypot((x - seeds[2].x) / 9, (y - seeds[2].y - 5) / 6) < 1) continue; // 난파선 둘레는 트인 모래밭
     if (rng.chance(D.trees * (0.5 + N1(x * 0.06, y * 0.06) * 1.2)) && !trees.has(I(x - 1, y)) && !trees.has(I(x, y - 1)) && !trees.has(I(x + 1, y - 1)) && !trees.has(I(x - 1, y - 1))) { trees.add(k); prop('tree', x, y, 1, 1, { tree: rng.pick(D.kinds), v: rng.int(0, 3) }); }
   }
   const deco = [];

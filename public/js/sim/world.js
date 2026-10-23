@@ -663,11 +663,13 @@ export class World {
       const water = p.boat ? 150 / Math.max(1, d.moveSpeed) : p.swim ? (this.b.abilities?.waterBlessing ? 0.8 : 0.55) * (this.hasKnack('swimmer') ? 1.3 : 1) : this.map.underwater ? 0.8 : 1;
       const spd = p.castT > 0 ? 0 : d.moveSpeed * this.mod('moveSpeed') * (p.boat ? 1 : 1 - slow) * (aiming ? d.aimSlow : 1) * (p.channel ? 0.5 : 1) * (p.charging ? 0.4 : 1) * this.predatorSpeed(mx, my, ml) * water;
       this.move(p, mx * spd * DT, my * spd * DT);
+      if (inp.mount) this.toggleMount();
       if (inp.dash && p.boat && this.canSwim) { p.boat.riding = false; p.boat = null; this.emit({ t: 'splash', x: p.x, y: p.y }); } // 배에서 물로 뛰어든다
       else if (inp.dash && (p.boat || p.swim)) { /* 물 위에서는 대시가 없다 */ }
       else if (inp.dash && p.dashCharges > 0 && p.dashCd <= 0) {
         const dx = ml > 0 ? mx : p.aimX, dy = ml > 0 ? my : p.aimY;
-        p.dashT = 0.16; p.dvx = dx * 400; p.dvy = dy * 400; p.invuln = Math.max(p.invuln, 0.22);
+        p.dashT = 0.16; p.dvx = dx * 400 * (p.riding ? 1.5 : 1); p.dvy = dy * 400 * (p.riding ? 1.5 : 1); p.invuln = Math.max(p.invuln, 0.22);
+        if (p.riding) this.emit({ t: 'raptorLeap', x: p.x, y: p.y });
         p.dashCharges--; if (p.dashRecharge <= 0) p.dashRecharge = d.dashCd * (1 - d.cdr);
         this.knack('dash');
         if (p.castT > 0) { p.castT = 0; p.castSkill = null; this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '시전 취소', color: '#a8b0c0' }); }
@@ -688,6 +690,7 @@ export class World {
     }
     p.attackHeld = !!inp.attack;
     if (p.pendingDouble >= 0) { p.pendingDouble -= DT; if (p.pendingDouble < 0) this.attack(0.12); }
+    if (inp.attack && p.riding) { this.dismount(); p.atkCd = Math.max(p.atkCd, 0.25); }
     if (inp.attack && p.atkCd <= 0 && p.castT <= 0 && !p.channel && !p.charging && !p.rush && !p.leap && !(p.windupT > 0) && !p.swim && !p.combo && !p.fallInto && !p.drop && !p.hop) {
       const mom = this.mod('atkSpeed');
       p.atkCd = 1 / (this.b.weapon.speed * d.atkSpeed * mom);
@@ -1461,7 +1464,7 @@ export class World {
     let m = 1;
     for (const bf of Object.values(p.buffs)) if (bf.mods[key] && key !== 'lifesteal' && key !== 'reflect' && key !== 'pres') m *= bf.mods[key];
     if (this.b.race === 'dino' && p.res >= 50 && (key === 'atkSpeed' || key === 'moveSpeed')) m *= 1.1;
-    if (key === 'moveSpeed' && this.mounted && this.t - p.lastFight > 3 && this.map.outdoor) m *= 1.35;
+    if (key === 'moveSpeed' && p.riding) m *= 1.75;
     return m;
   }
   modAdd(key) {
@@ -1477,8 +1480,19 @@ export class World {
   }
 
   // ═══════ 스킬 사용 ═══════
+  // 탈것 (공룡 수인 거대 둥지에서 길들인 랩터): 바깥 세계 · 섬에서만, 물 · 배 위는 안 된다
+  toggleMount() {
+    const p = this.player;
+    if (p.riding) { this.dismount(); return; }
+    if (!this.mountKind) { this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '탈것이 없다 (거대 둥지에서 길들인다)', color: '#a8b0c0' }); return; }
+    if (!this.map.outdoor || this.map.underwater || p.swim || p.boat || p.castT > 0 || p.channel) { this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '여기서는 탈 수 없다', color: '#a8b0c0' }); return; }
+    p.riding = this.mountKind; this.emit({ t: 'mountOn', x: p.x, y: p.y });
+  }
+  dismount() { const p = this.player; if (!p.riding) return; p.riding = null; this.emit({ t: 'mountOff', x: p.x, y: p.y }); }
+
   castSkillId(id, slot) {
     const p = this.player;
+    if (p.riding) this.dismount();
     // 비상 중에 다시 누르면 바로 내리꽂는다
     if (id === 'soar' && p.airT > 0) { this.landSoar(); return; }
     if (p.castT > 0 || p.channel || p.charging || p.rush || p.leap || p.windupT > 0 || p.combo || p.fallInto || p.drop || p.hop) return;
@@ -3244,6 +3258,7 @@ export class World {
     if (this.coTgt) { this.coHurtMate(this.coTgt, amount, type, attacker, opt); return; } // 파티 탑 (방장): 이 적이 노린 건 동료
     if (this.state !== 'play' || this.mode === 'plaza' || this.practice || p.down) return;
     if ((p.airT > 0 || p.leap) && !opt.direct) return;
+    if (p.riding && amount > this.d.maxHp * 0.08 && !opt.direct) { this.dismount(); this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '랩터에서 떨어졌다!', color: '#ffb0a0' }); }
     // 수호기사: 정면 공격은 25% 덜 받고 오러를 얻는다. 철벽 중에는 완전히 막는다
     let front = false;
     const fx = opt.fromX ?? attacker?.x, fy = opt.fromY ?? attacker?.y;

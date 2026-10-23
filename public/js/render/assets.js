@@ -34,6 +34,15 @@ export async function loadAssets() {
     load('assets/custom/dragon_fire.png'), load('assets/custom/king_fire.png'), load('assets/custom/king_wind.png'), load('assets/custom/king_forest.png'),
   ]);
   reg(dkI, dkM, 'dragonkin');
+  // 사람: 뼈대 도트(tools/people.py) — 마을 사람 · 성지 주민 · 우두머리 · 관리 · 상인 · 사람 모양 몬스터를 하나하나 그렸다
+  const [pI, pM] = await Promise.all([load('assets/custom/people.png'), json('assets/custom/people.json')]);
+  if (pI && pM) for (const [id, c] of Object.entries(pM.chars)) reg(pI, { w: pM.w, h: pM.h, anims: c.anims }, 'p_' + id);
+  // 랩터 (tools/raptor.py): 야생 · 우두머리 · 안장 얹은 탈것
+  const [rM, r1, r2, r3] = await Promise.all([json('assets/custom/raptors.json'), load('assets/custom/raptor.png'), load('assets/custom/raptor_alpha.png'), load('assets/custom/raptor_mount.png')]);
+  if (rM) { reg(r1, rM.raptor, 'raptor_beast'); reg(r2, rM.raptor_alpha, 'raptor_alpha'); reg(r3, rM.raptor_mount, 'raptor_mount'); }
+  // 짐승 · 괴물 (tools/creatures.py): 크기가 제각각이라 한 장에 세로로 쌓여 있다 (y0 = 그 몬스터 칸의 시작 줄)
+  const [cI, cM] = await Promise.all([load('assets/custom/creatures.png'), json('assets/custom/creatures.json')]);
+  if (cI && cM) for (const [id, c] of Object.entries(cM)) for (const [anim, { row, n }] of Object.entries(c.anims)) for (let i = 0; i < n; i++) atlas[`c_${id}_${anim}_anim_f${i}`] = { x: i * c.w, y: c.y0 + row * c.h, w: c.w, h: c.h, src: cI };
   if (meta) {
     reg(drI, meta.dragon_fire, 'true_dragon'); atlas.true_dragon_meta = meta.dragon_fire;
     reg(kF, meta.king_fire, 'king_fire'); reg(kW, meta.king_wind, 'king_wind'); reg(kG, meta.king_forest, 'king_forest');
