@@ -1830,6 +1830,16 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 addEventListener('pointerdown', () => unlockAudio(), { once: true });
 
 let touch = null;
+// 터치 G 버튼: 키보드 G와 같은 일을 한다 (창 닫기 · 대화 넘기기 · 사람 만나기 · 상호작용). false면 입력을 넣지 않는다
+function touchInteract() {
+  unlockAudio();
+  if (!world || gameEl.hidden) return false;
+  if (!panelEl.hidden) { closePanel(); return false; }
+  if (modal) { modal(); return false; }
+  if (paused) return false;
+  if (world.near || world.act) tutFlags.interact = true;
+  if (world.nearRemote && !world.near && !world.act) openMeet(world.nearRemote);
+}
 function readInput() {
   input.autoAim = getAutoAim();
   if (touch) { touch.apply(); return; }
@@ -2111,7 +2121,7 @@ onCloud(() => {
 // 모바일: 터치 조작 화면 켜기
 if (isTouch()) {
   document.body.classList.add('touch');
-  touch = setupTouch({ input, getWorld: () => world, onMenu: () => { unlockAudio(); escAction(); }, onBag: () => openPanel('char') });
+  touch = setupTouch({ input, getWorld: () => world, onMenu: () => { unlockAudio(); escAction(); }, onBag: () => openPanel('char'), onInteract: touchInteract });
   addEventListener('pointerdown', () => { try { if (!document.fullscreenElement && innerHeight < 600) document.documentElement.requestFullscreen?.().catch(() => {}); } catch { /* 무시 */ } }, { once: true });
 }
 
