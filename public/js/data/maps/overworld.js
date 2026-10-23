@@ -1,4 +1,4 @@
-// 바람결의 섬: 하나로 이어진 넓은 세계 (480×360칸). 마을에서 시작해 어디로든 걸어간다.
+// 바람결의 섬: 하나로 이어진 넓은 세계 (800×600칸). 남쪽 「바람결 항구」 · 동쪽 「안개 부두」에서 배를 탄다. 마을에서 시작해 어디로든 걸어간다.
 // 지역마다 땅 · 높낮이 · 물 · 나무 · 몬스터가 다르고, 종족 성지 8곳과 안으로 들어가는 곳(동굴 · 구멍 · 던전 · 미궁 · 용궁)이 흩어져 있다.
 //
 //      그림자 묘지        서리 설원 (마탑)        북쪽 바위산            화산 지대 (용의 둥지)
@@ -17,7 +17,7 @@ export const G = {
   GRASS: 0, DIRT: 1, SAND: 2, TALL: 3, FLOWER: 4, BURNT: 5, ICE: 6, ROCK: 7, FOREST: 8, STONE: 9, BRIDGE: 10, SNOW: 11, THIN: 12,
   ASH: 13, REDSAND: 14, MUD: 15, DEADGRASS: 16, JUNGLE: 17, COBBLE: 18, LAVA: 19, BOG: 20, CRACKED: 21, OBSIDIAN: 22, BLACKROCK: 23, STAIRS: 24,
 };
-const TW = 640, TH = 480; // 예전 480×360 에서 동쪽 · 남쪽으로 넓혔다 (예전 자리는 그대로)
+const TW = 800, TH = 600; // 480×360 → 640×480 → 800×600: 동쪽 · 남쪽으로 넓혔다 (예전 자리는 그대로)
 export const OW = { TW, TH, VILLAGE: { x: 240, y: 320 }, TOWER: { x: 240, y: 172, rx: 18, ry: 13 }, LAKE: { x: 318, y: 152, rx: 20, ry: 14 }, VOLCANO: { x: 396, y: 60 } };
 
 export const BIOMES = [
@@ -294,7 +294,7 @@ export function buildOverworld(zone) {
   }
   // 바다 속 용궁: 남동쪽 바다의 작은 섬, 소용돌이 · 해변의 자라가 데려다 준다
   let coast = null;
-  for (let k = 0; k < 600; k++) { const x = Math.round(240 + (640 - 240) * k / 600), y = Math.round(180 + (492 - 180) * k / 600); if (T(x, y) === T_DEEP && bio(x, y) < 0) { coast = { x, y }; break; } }
+  for (let k = 0; k < 600; k++) { const x = Math.round(240 + (TW - 240) * k / 600), y = Math.round(180 + (TH + 12 - 180) * k / 600); if (T(x, y) === T_DEEP && bio(x, y) < 0) { coast = { x, y }; break; } }
   coast ||= { x: 420, y: 316 };
   const islet = { x: coast.x + 8, y: coast.y + 6 };
   for (let y = islet.y - 3; y <= islet.y + 3; y++) for (let x = islet.x - 4; x <= islet.x + 4; x++) if (inb(x, y) && ((x - islet.x) / 4) ** 2 + ((y - islet.y) / 2.8) ** 2 <= 1) set(x, y, T_FLOOR, G.SAND);
@@ -305,6 +305,43 @@ export function buildOverworld(zone) {
   for (let k = 0; k < 20 && !(T(beach.x, beach.y) === T_FLOOR && gr[I(beach.x, beach.y)] === G.SAND); k++) { beach.x--; beach.y--; }
   objects.push({ kind: 'turtle', ...at(beach.x, beach.y), label: '바닷가의 자라와 이야기', reusable: true });
   entrances.palace = islet; safe.push({ x: beach.x, y: beach.y, r: 6 });
+
+  // ───── 6-2) 항구 두 곳: 남쪽 「바람결 항구」(마을 남쪽 해안) · 동쪽 「안개 부두」(물안개 해안). 교역소 · 시세판 · 큰 배 ─────
+  const ports = {};
+  const harbor = (id, sx, sy, dx, dy) => {
+    // 바다(섬 밖 깊은 물)에 닿을 때까지 걸어간다 → 그 바로 앞이 물가
+    let x = sx, y = sy, shore = null;
+    for (let k = 0; k < 400 && inb(x, y); k++, x += dx, y += dy) { if (T(x, y) === T_DEEP && bio(x, y) < 0) break; shore = { x, y }; }
+    if (!shore) return;
+    const c = { x: shore.x - dx * 9, y: shore.y - dy * 9 }; // 항구 광장 가운데
+    for (let yy = c.y - 9; yy <= c.y + 9; yy++) for (let xx = c.x - 11; xx <= c.x + 11; xx++) {
+      if (!inb(xx, yy) || Math.hypot((xx - c.x) / 11, (yy - c.y) / 9) > 1) continue;
+      if (bio(xx, yy) < 0) continue; // 바다는 그대로 (모래 곶이 생기지 않게)
+      set(xx, yy, T_FLOOR, Math.hypot((xx - c.x) / 7, (yy - c.y) / 5) < 1 ? G.COBBLE : G.SAND); LV[I(xx, yy)] = 0;
+    }
+    // 물가에서 바다로 나무 부두 (폭 3칸 · 9칸)
+    const px = dx ? 0 : 1, py = dx ? 1 : 0, pier0 = { x: shore.x + dx, y: shore.y + dy };
+    for (let i = -1; i < 9; i++) for (let w = -1; w <= 1; w++) set(pier0.x + dx * i + px * w, pier0.y + dy * i + py * w, T_FLOOR, G.BRIDGE);
+    const end = { x: pier0.x + dx * 8, y: pier0.y + dy * 8 };
+    // 부두 옆에 정박한 큰 배 (부두 오른쪽 · 아래쪽)
+    const ship = dx ? { x: end.x - 7, y: end.y + 2 } : { x: end.x + 2, y: end.y - 3 };
+    prop('ship', ship.x, ship.y, 8, 3, { flag: id === 'portS' ? '#3a6a9a' : '#5a8a7a' });
+    const tile = (o) => ({ x: o.x, y: o.y });
+    // 항구지기(배편) · 교역상 · 시세판 · 교역소 건물 · 가로등
+    const P = { id, center: c, arrive: at(pier0.x + dx * 6, pier0.y + dy * 6), dock: tile(end) };
+    const side = { x: -dy, y: dx }; // 부두 왼쪽 방향
+    const masterT = { x: pier0.x - dx * 2 + side.x * 3, y: pier0.y - dy * 2 + side.y * 3 };
+    const office = { x: c.x - side.x * 6 - (dx ? 2 : 3), y: c.y - side.y * 6 - (dx ? 3 : 2) };
+    prop('house', office.x, office.y, 6, 3, { roof: '#3a6a9a' });
+    objects.push({ kind: 'npc', id: id + '_master', art: id === 'portS' ? 'portMaster' : 'shipCaptainE', ...at(masterT.x, masterT.y), label: `${id === 'portS' ? '항구지기 오렌' : '선장 하겔'}과 이야기 · 배 타기`, reusable: true });
+    objects.push({ kind: 'npc', id: id + '_trade', art: 'trader', ...at(office.x + 3, office.y + 4), label: `${id === 'portS' ? '교역상 미라' : '교역상 브린'}과 이야기 · 교역품 사고팔기`, reusable: true });
+    objects.push({ kind: 'priceBoard', id: id + '_board', ...at(office.x + 6, office.y + 4), label: '시세판 보기', reusable: true });
+    for (const [lx, ly] of [[pier0.x - dx + side.x * 2, pier0.y - dy + side.y * 2], [pier0.x - dx - side.x * 2, pier0.y - dy - side.y * 2], [c.x + side.x * 7, c.y + side.y * 7]]) if (inb(lx, ly) && t[I(lx, ly)] === T_FLOOR) prop('lampPost', lx, ly, 1, 1);
+    safe.push({ x: c.x, y: c.y, r: 16 });
+    ports[id] = P;
+  };
+  harbor('portS', V.x, V.y + 16, 0, 1);
+  harbor('portE', BIOMES[B.mistcoast].x + 10, BIOMES[B.mistcoast].y, 1, 0);
 
   // ───── 7) 길: 마을에서 각 지역으로 (물은 다리, 절벽은 계단) ─────
   const onPath = new Uint8Array(TW * TH);
@@ -343,6 +380,8 @@ export function buildOverworld(zone) {
   road([[V.x + 21, V.y + 10], [300, 326], [beach.x - 4, beach.y], [beach.x, beach.y]]);
   road([[V.x - 26, V.y - 8], [E.plainsHole.x, E.plainsHole.y + 1]]);
   road([[290, 176], [296, 168], [L.x - L.rx - 1, L.y + 3]]);
+  if (ports.portS) road([[V.x + 1, V.y + 10], [ports.portS.center.x, ports.portS.center.y]]);
+  if (ports.portE) road([[S.knight.x + 8, S.knight.y + 4], [460, 330], [BIOMES[B.mistcoast].x, BIOMES[B.mistcoast].y], [ports.portE.center.x, ports.portE.center.y]]);
   // 선착장: 물가에서 나무 다리를 물로 몇 칸 내고, 끝에 배를 둔다
   const docks = [];
   const pier = (sx, sy, dx, dy, len = 3) => {
@@ -546,7 +585,7 @@ export function buildOverworld(zone) {
     const free = (x, y) => !near(objTiles, x, y, 5) && !near(chests, x, y, 4) && !near(camps, x, y, 10) && !near(nodes, x, y, 3) && !near(digs, x, y, 3) && !near(lores, x, y, 4) && !near(camp, x, y, 4) && !near(shrines, x, y, 4) && !near(waypoints, x, y, 24);
     // 탑 지역: 탑 앞(남쪽)에 둔다 — 탑 뒤는 높은 탑 그림에 가려 안 보인다
     const behindTower = (x, y) => Math.abs(x - OW.TOWER.x) <= 6 && y <= OW.TOWER.y + 3 && y >= OW.TOWER.y - 17;
-    const SPOTS = [['village', '바람결 마을', V.x + 12, V.y + 8, -1], ...BIOMES.map((b) => [b.id, b.name, b.id === 'tower' ? b.x + 8 : b.x, b.id === 'tower' ? b.y + 9 : b.y, B[b.id]])];
+    const SPOTS = [['village', '바람결 마을', V.x + 12, V.y + 8, -1], ...Object.values(ports).map((P) => [P.id, P.id === 'portS' ? '바람결 항구' : '안개 부두', P.center.x, P.center.y - 4, -1]), ...BIOMES.map((b) => [b.id, b.name, b.id === 'tower' ? b.x + 8 : b.x, b.id === 'tower' ? b.y + 9 : b.y, B[b.id]])];
     for (const [id, name, cx, cy, bi] of SPOTS) {
       const cand = [];
       for (let y = cy - 34; y <= cy + 34; y++) for (let x = cx - 34; x <= cx + 34; x++) if (inb(x, y) && (bi < 0 || BI[I(x, y)] === bi) && t[I(x, y)] === T_FLOOR && !occupied[I(x, y)] && seen2[I(x, y)] && !behindTower(x, y)) cand.push({ x, y, d: Math.hypot(x - cx, y - cy) + (roadNear(x, y) ? 0 : 14) });
@@ -569,7 +608,7 @@ export function buildOverworld(zone) {
   return {
     tw: TW, th: TH, tiles: t, ground: gr, outdoor: true, designed: 'overworld', level: LV, biome: BI, waypoints, villages,
     start: { x: V.x, y: V.y + 4 }, lair, stairs: null, camps, champions, chests, lores, secrets, deco, regions, regionInfo,
-    camp, merchant: [{ x: V.x - 5, y: V.y - 2 }], shrines, goblins, props, objects, onPath, sanctums, entrances, farm: FARM, nodes, digs, docks,
+    camp, merchant: [{ x: V.x - 5, y: V.y - 2 }], shrines, goblins, props, objects, onPath, sanctums, entrances, farm: FARM, nodes, digs, docks, ports,
   };
 }
 

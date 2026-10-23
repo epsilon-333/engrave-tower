@@ -242,7 +242,17 @@ export class World {
     return h;
   }
   applyMemory(m) {
-    if (!m || m.tw !== this.tw || m.th !== this.th) return;
+    if (!m) return;
+    if (m.tw !== this.tw || m.th !== this.th) {
+      // 섬이 넓어진 예전 기록: 칸 위치를 옮겨 탐험한 곳만 살린다 (예전 자리는 그대로이므로)
+      if (!(m.tw <= this.tw && m.th <= this.th)) return;
+      try {
+        const bin = atob(m.explored || '');
+        for (let y = 0; y < m.th; y++) for (let x = 0; x < m.tw; x++) { const i = y * m.tw + x; if (bin.charCodeAt(i >> 3) & (1 << (i & 7))) this.explored[y * this.tw + x] = 1; }
+      } catch { /* 손상된 기록은 무시 */ }
+      this.regionSeen = new Set(m.regions || []); this.milestones = new Set(m.milestones || []);
+      return;
+    }
     try {
       const bin = atob(m.explored || '');
       for (let i = 0; i < this.explored.length; i++) if (bin.charCodeAt(i >> 3) & (1 << (i & 7))) this.explored[i] = 1;
@@ -504,6 +514,7 @@ export class World {
     updateLife(this, input);
     this.updateDelayed();
     this.updateAllies();
+    if (this.voyage) this.updateVoyage();
     this.updateZones();
     this.updateFlow();
     this.updateEnemies();
@@ -542,7 +553,7 @@ export class World {
       }
     }
     this.mileT -= DT;
-    if (this.mileT <= 0 && !this.practice) {
+    if (this.mileT <= 0 && !this.practice && !this.voyage) {
       this.mileT = 1;
       const pct = this.exploredPct();
       for (const ms of [50, 80, 100]) {
@@ -938,6 +949,43 @@ export class World {
     this.signals.push({ t: 'trainingDone', race: tr.race, ok, why, got: tr.got, n: tr.n, dealt: Math.round(tr.dealt), need: tr.need });
   }
 
+  // ═══════ 항해: 시간이 흘러 목적지에 닿는다. 싸우는 동안은 배가 멈춘다(항해가 길어진다) ═══════
+  updateVoyage() {
+    const v = this.voyage;
+    if (v.fighting) {
+      if (!this.enemies.some((e) => !e.dead)) { const kind = v.fighting; v.fighting = null; v.extra += this.t - v.fightT0; this.signals.push({ t: 'voyageWon', kind }); }
+      return;
+    }
+    if (v.waiting) return; // 선택지 창이 떠 있다
+    v.t += DT;
+    if (!v.rolled && v.t >= v.eventAt) {
+      v.rolled = true;
+      const r = this.rng.next();
+      let acc = 0;
+      for (const [id, ev] of Object.entries(v.events)) { acc += ev.chance; if (r < acc) { v.event = id; v.waiting = true; this.signals.push({ t: 'seaEvent', id }); break; } }
+    }
+    if (v.t >= v.dur) { v.done = true; this.signals.push({ t: 'voyageEnd' }); }
+  }
+  // 해적 · 바다뱀이 갑판에 올라탄다
+  spawnBoarders(kind, level) {
+    const v = this.voyage, spots = this.map.board || [];
+    const lv = Math.max(1, level);
+    const list = kind === 'serpent' ? [['seaSerpent', 1, 2.4]] : [['bandit', 3 + Math.min(3, Math.floor(lv / 12)), 1], ['darkArcher', 2, 1], ['bandit', 1, 2.2]];
+    let k = 0;
+    for (const [id, n, big] of list) for (let i = 0; i < n; i++, k++) {
+      const s = spots[(k * 3 + 1) % spots.length] || { x: this.player.x + 60, y: this.player.y };
+      const e = this.makeEnemy(id, s.x, s.y, { noAffix: true });
+      const m = 0.7 + lv * 0.06;
+      e.maxHp = e.hp = Math.round(e.maxHp * m * big); e.atk = Math.round(e.atk * (0.6 + lv * 0.03) * (big > 1 ? 1.3 : 1));
+      if (big > 1) e.champion = kind === 'serpent' ? '거대 바다뱀' : '해적 두목'; else e.tag = id === 'bandit' ? '해적' : '해적 궁수';
+      e.state = 'chase'; e.home = { x: s.x, y: s.y };
+      this.enemies.push(e);
+      this.emit({ t: 'summon', x: s.x, y: s.y, color: kind === 'serpent' ? '#3ab8b0' : '#c8c0b0' });
+    }
+    v.fighting = kind; v.fightT0 = this.t; v.waiting = false;
+    this.emit({ t: 'shake', v: 6 });
+  }
+
   // 이동 포탈로 건너간다: 도착한 포탈 바로 앞(남쪽)에 선다. 부하 · 소환수도 함께 온다
   teleportTo(id) {
     const o = this.objects.find((q) => q.kind === 'waypoint' && q.id === id && q.active), p = this.player;
@@ -975,7 +1023,7 @@ export class World {
       return;
     }
     if (o.kind === 'merchant') { this.signals.push({ t: 'merchant', zone: this.zone.id, depth: this.depth }); return; }
-    if (o.kind === 'npc') { this.signals.push({ t: 'npc', id: o.id }); return; }
+    if (o.kind === 'npc' || o.kind === 'priceBoard') { this.signals.push({ t: 'npc', id: o.id }); return; }
     if (o.kind === 'entrance') {
       if (ENTRANCES[o.id]?.prop === 'hole') { const p = this.player; p.fallInto = { t: 0, dur: 0.75, x0: p.x, y0: p.y, tx: o.x, ty: o.y - 14, id: o.id, ox: o.x, oy: o.y }; this.motion('leap', 0.4); this.emit({ t: 'hopStart', x: p.x, y: p.y }); return; }
       this.signals.push({ t: 'enterZone', entrance: o.id, x: o.x, y: o.y }); return;
@@ -3277,6 +3325,15 @@ export class World {
     if (this.f.has('lastStand') && p.lastStandCd <= 0) {
       p.lastStandCd = 90; p.hp = 1; p.invuln = 1;
       this.emit({ t: 'text', x: p.x, y: p.y - 18, text: '불굴!', color: '#ffd060' });
+      return;
+    }
+    if (this.voyage) {
+      p.hp = Math.max(1, Math.round(this.d.maxHp * 0.15)); p.invuln = 2;
+      const foes = this.enemies.filter((e) => !e.dead);
+      for (const e of foes) { e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: '#3a3a4a' }); }
+      if (this.voyage.fighting) this.voyage.extra += this.t - this.voyage.fightT0;
+      this.voyage.fighting = null;
+      this.signals.push({ t: 'voyageLost', kind: this.voyage.event });
       return;
     }
     p.hp = 0;

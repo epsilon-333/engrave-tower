@@ -101,6 +101,10 @@ export const NPC_ART = {
   store: { base: 'wizzard_m', tint: 'sepia(0.75) saturate(1.3) hue-rotate(-12deg) brightness(1.05)' },
   pino: { base: 'elf_m', tint: 'sepia(0.55) saturate(1.3) hue-rotate(-12deg)' },
   turtle: { base: 'swampy', tint: 'hue-rotate(40deg) saturate(0.8)' },
+  // 항구 · 배
+  portMaster: { base: 'dwarf_m', tint: 'hue-rotate(190deg) saturate(0.9)' }, shipCaptainE: { base: 'dwarf_m', tint: 'hue-rotate(120deg) saturate(0.8) brightness(0.95)' },
+  trader: { base: 'dwarf_f', tint: 'hue-rotate(-20deg) saturate(1.3)' }, shipCaptain: { base: 'knight_m', tint: 'hue-rotate(180deg) saturate(0.6) brightness(0.95)' },
+  sailor: { base: 'elf_m', tint: 'hue-rotate(170deg) saturate(0.7)' }, infoMerchant: { base: 'wizzard_m', tint: 'sepia(0.75) saturate(1.3) hue-rotate(-12deg) brightness(1.05)' },
   // 종족 성지 수호자
   keep_wizard: { base: 'wizzard_f', tint: 'hue-rotate(40deg)' }, keep_elf: { base: 'elf_f' }, keep_knight: { base: 'knight_f' }, keep_orc: { base: 'orc_shaman' },
   keep_undead: { base: 'necromancer', tint: 'hue-rotate(40deg)' }, keep_assassin: { base: 'hood_assassin', tint: 'brightness(1.2)' }, keep_dino: { base: 'lizard_f', tint: 'hue-rotate(20deg)' }, keep_dragon: { base: 'dragonkin', tint: 'brightness(1.1)' },

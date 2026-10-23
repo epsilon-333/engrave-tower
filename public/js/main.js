@@ -42,6 +42,8 @@ import { RACE_ART } from './data/art.js';
 import { buildPlaza } from './data/plaza.js';
 import { unlockAudio, sfx, startMusic, getVolume, setVolume } from './audio.js';
 import { setupTouch, isTouch } from './touch.js';
+import { PORTS, CARGO, CARGO_CAP, destName, buyPrice as portBuy, sellPrice as portSell, noteTrade, rememberPrices, cargoCount, SEA_EVENTS } from './data/trade.js';
+import { SHIP_ZONE, buildShipDeck } from './data/maps/ship.js';
 
 let save = loadSave();
 const titleEl = document.getElementById('title');
@@ -1751,7 +1753,7 @@ function bindVolume() {
 }
 
 function showPause() {
-  const field = world.mode === 'field';
+  const field = world.mode === 'field' && !world.voyage;
   showModal(`<h2>일시정지</h2>
     <button data-close>계속하기</button>
     ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button><button id="rankBtn" class="ghost">랭킹 · N</button>' : ''}
@@ -2039,7 +2041,17 @@ function handleSignals() {
       showModal(`<h2>${j.title}</h2><p class="muted">${j.where}</p><div class="journal">${esc(j.text).replace(/\n/g, '<br>')}</div><button data-close>덮는다</button>`);
       return;
     } else if (s.t === 'npc') {
+      if (portTalk(s.id)) return;
       talkTo(s.id);
+      return;
+    } else if (s.t === 'seaEvent') {
+      showSeaEvent(s.id);
+      return;
+    } else if (s.t === 'voyageWon' || s.t === 'voyageLost') {
+      voyageResult(s);
+    } else if (s.t === 'voyageEnd') {
+      world.signals.length = 0;
+      arriveVoyage();
       return;
     } else if (s.t === 'lore') {
       sfx('lore');
@@ -2049,9 +2061,205 @@ function handleSignals() {
   world.signals.length = 0;
 }
 
+// ═══════ 항구 · 배 · 교역 ═══════
+// 항구지기(배편) · 교역상(사고팔기) · 시세판, 배 위의 선장 · 선원 · 상인 정보원. 처리했으면 true
+const SEA_RUMORS = [
+  '녹타리스라는 이름 들어 봤소? 왕도 뒷골목에 중개인이 숨어 산다더군. 날마다 자리를 옮긴다지.',
+  '에드릭 왕이 빛을 되살린다며 성지 조각을 걷어 간다오. 세금도 또 올랐고… 쉿, 크게 말하지 마시오.',
+  '황금 돛 섬에는 경매장이 있소. 언젠가 뱃길이 열리면 비단을 한 짐 실어 와야지.',
+  '하얀 왕관 공국이 녹타리스에 몰래 칼을 대 준다는 소문이 있소. 그러니 왕국이랑 사이가 나쁘지.',
+  '해골 군도에선 현상금 붙은 놈도 술 한잔 얻어먹는다오. 경비병이 하나도 없거든.',
+  '안개 너머에 섬이 하나 더 있다는 뱃사람 이야기, 믿소? 기록을 모으면 뱃길이 보인다던데.',
+  '바닷바람이 동쪽으로 불 땐 해적이 잘 나오오. 짐을 많이 실었으면 칼을 가까이 두시오.',
+  '안개 부두 소금을 남쪽 항구에 가져가면 값이 곱절이오. 남쪽 밀은 그 반대고.',
+];
+const repOf = () => (save.rep ||= { fame: 0, infamy: 0 });
+const portGoldRow = () => `<p class="muted">가진 돈 <b>◆ ${save.gold}</b> · 교역품 짐 <b>${cargoCount(save.bag)} / ${CARGO_CAP}</b></p>`;
+function portTalk(id) {
+  const [pid, role] = id.split('_');
+  if (pid === 'ship' && world.voyage) { shipTalk(role); return true; }
+  const P = PORTS[pid];
+  if (!P) return false;
+  if (role === 'master') portShowRoutes(pid);
+  else if (role === 'trade') portShowTrade(pid);
+  else if (role === 'board') portShowBoard(pid);
+  return true;
+}
+function portShowRoutes(pid) {
+  const P = PORTS[pid];
+  const rows = P.routes.map((r, i) => r.closed
+    ? `<div class="soc-row"><span class="nm"><b>${esc(destName(r.to))}</b></span><span class="muted">아직 뱃길이 열리지 않았다 (준비 중)</span><span class="btns"><button class="sm ghost" disabled>배삯 ◆ ${r.fare}</button></span></div>`
+    : `<div class="soc-row on"><span class="nm"><b>${esc(destName(r.to))}</b></span><span class="muted">${esc(r.desc)} · 배 위에서 약 1분</span><span class="btns"><button class="sm" data-route="${i}" ${save.gold >= r.fare ? '' : 'disabled'}>배 타기 · ◆ ${r.fare}</button></span></div>`).join('');
+  showModal(`<h2>${esc(P.name)} · ${esc(P.master)}</h2>
+    <p>"어디로 가시오? 배삯만 내면 바로 띄우오. 바다에선 무슨 일이 생길지 모르니 각오는 하고."</p>
+    ${portGoldRow()}<div class="soc-list">${rows}</div>
+    <p class="muted">배 위에서는 걸어 다니며 선장 · 선원 · 상인 정보원과 이야기할 수 있다. 해적이 올라타면 싸우는 동안 배가 멈춘다.</p>
+    <div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
+  overlay.querySelectorAll('[data-route]').forEach((b) => (b.onclick = () => {
+    const r = P.routes[+b.dataset.route];
+    if (save.gold < r.fare) return;
+    save.gold -= r.fare;
+    overlay.hidden = true; paused = false; modal = null;
+    startVoyage(pid, r.to, r);
+  }));
+}
+function portShowTrade(pid) {
+  const P = PORTS[pid];
+  const draw = () => {
+    rememberPrices(save, pid);
+    const rows = Object.keys(P.market).filter((id) => P.market[id] < 1 || (save.bag[id] || 0) > 0 || !CARGO[id].island).map((id) => {
+      const have = save.bag[id] || 0, bp = portBuy(save, pid, id), sp = portSell(save, pid, id), local = P.market[id] < 1;
+      return `<div class="soc-row ${local ? 'on' : ''}"><span class="nm"><b>${esc(CARGO[id].name)}</b> <small class="muted">${local ? '이 항구 특산품' : P.market[id] >= 1.3 ? '여기서 귀하다' : ''} · 가진 것 ${have}</small></span>
+        <span class="btns">${bp != null ? `<button class="sm" data-buy="${id}" data-n="1" ${save.gold >= bp ? '' : 'disabled'}>사기 ◆${bp}</button><button class="sm ghost" data-buy="${id}" data-n="5" ${save.gold >= bp * 5 ? '' : 'disabled'}>5개</button>` : ''}
+        <button class="sm ${have ? '' : 'ghost'}" data-sell="${id}" data-n="1" ${have ? '' : 'disabled'}>팔기 ◆${sp}</button><button class="sm ghost" data-sell="${id}" data-n="${have}" ${have > 1 ? '' : 'disabled'}>모두</button></span></div>`;
+    }).join('');
+    showModal(`<h2>${esc(P.name)} 교역소 · ${esc(P.trader)}</h2>
+      <p>"이 항구에서 나는 건 싸게 팔고, 다른 데서 나는 건 비싸게 사 주지. 많이 사 가면 값이 오르고, 많이 팔면 내려가오. 시간이 지나면 제자리로 돌아오고."</p>
+      ${portGoldRow()}<div class="soc-list">${rows}</div>
+      <p class="muted">몸에 지고 다닐 수 있는 교역품은 ${CARGO_CAP}개까지. 짐수레 · 내 배는 나중에 생긴다.</p>
+      <div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
+    overlay.querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => {
+      const id = b.dataset.buy; let n = +b.dataset.n, got = 0;
+      while (n-- > 0) {
+        const p = portBuy(save, pid, id);
+        if (save.gold < p || cargoCount(save.bag) >= CARGO_CAP || !bagAdd(lifeOf(), id, 1)) break;
+        save.gold -= p; noteTrade(save, pid, id, 'buy', 1); got++;
+      }
+      if (!got) renderer.banner = { text: cargoCount(save.bag) >= CARGO_CAP ? '짐이 너무 많다' : '살 수 없다', t: 1.4, color: '#ffb0a0' };
+      else sfx('coin', { vol: 0.5 });
+      writeSave(save); draw();
+    }));
+    overlay.querySelectorAll('[data-sell]').forEach((b) => (b.onclick = () => {
+      const id = b.dataset.sell; let n = +b.dataset.n, earn = 0;
+      while (n-- > 0 && (save.bag[id] || 0) > 0) { const p = portSell(save, pid, id); save.bag[id]--; save.gold += p; earn += p; noteTrade(save, pid, id, 'sell', 1); }
+      if (!save.bag[id]) delete save.bag[id];
+      if (earn) { sfx('coin', { vol: 0.6 }); renderer.banner = { text: `◆ ${earn} 받았다`, t: 1.2, color: '#ffd27a' }; }
+      writeSave(save); draw();
+    }));
+  };
+  draw();
+}
+const portAgo = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? '방금' : m < 60 ? `${m}분 전` : `${Math.round(m / 60)}시간 전`; };
+function portBoardHtml(pid) {
+  const P = PORTS[pid], other = Object.keys(PORTS).filter((k) => k !== pid);
+  const seen = save.market?.seen || {};
+  const head = `<tr><th>물건</th><th>여기서 사기</th><th>여기서 팔기</th>${other.map((o) => `<th>${esc(PORTS[o].name)}에서 팔기<br><small>${seen[o] ? portAgo(seen[o].t) + ' 본 값' : '모름'}</small></th>`).join('')}</tr>`;
+  const rows = Object.keys(P.market).filter((id) => !CARGO[id].island).map((id) => `<tr><td>${esc(CARGO[id].name)}</td><td>${portBuy(save, pid, id) ?? '—'}</td><td>${portSell(save, pid, id) ?? '—'}</td>${other.map((o) => `<td>${seen[o]?.prices?.[id]?.sell ?? '?'}</td>`).join('')}</tr>`).join('');
+  return `<table class="price-board">${head}${rows}</table>`;
+}
+function portShowBoard(pid) {
+  rememberPrices(save, pid);
+  showModal(`<h2>${esc(PORTS[pid].name)} 시세판</h2><p class="muted">다른 항구 값은 마지막으로 거기 갔을 때 본 값이다. 배 위의 상인 정보원에게 돈을 내면 지금 값을 들을 수 있다.</p>${portBoardHtml(pid)}<div class="actions"><button data-close>닫는다</button></div>`);
+}
+// ── 항해: 배 갑판 위를 걸어 다니며 간다 (약 1분, 사건이 나면 길어진다) ──
+let voyStash = null;
+function startVoyage(from, to, route) {
+  const ow = world;
+  save.zoneMemory ||= {};
+  if (ow.zoneId === 'world' || ow.zone?.id === 'world') save.zoneMemory.world = ow.exportMemory();
+  voyStash = { world: ow, from, to };
+  world = new World({ build: buildNow(), mode: 'field', zone: SHIP_ZONE, zoneId: 'ship', seed: (Date.now() % 1e6) | 0, map: buildShipDeck(), story: save.story, codex: save.codex, ...shared() });
+  world.player.hp = ow.player.hp; world.player.res = ow.player.res;
+  world.loot = ow.loot; world.discovered = ow.discovered; world.codexStart = ow.codexStart;
+  world.explored.fill(1);
+  world.voyage = { from, to, t: 0, dur: (route.time || 12) * 5, eventAt: 14 + Math.random() * 26, events: SEA_EVENTS, rolled: false, extra: 0 };
+  renderer.setWorld(world);
+  renderer.banner = { text: `${destName(to)}(으)로`, sub: '배 위를 걸어 다닐 수 있다 · 선장 · 선원 · 상인 정보원과 이야기해 보자', t: 3.4, color: '#9fd8ff' };
+  startMusic('palace');
+  sfx('open', { vol: 0.6, rate: 0.7 });
+  writeSave(save);
+  startLoop();
+}
+function shipTalk(role) {
+  const v = world.voyage, left = Math.max(0, Math.ceil(v.dur - v.t));
+  if (role === 'captain') {
+    showModal(`<h2>선장</h2><p>"${esc(destName(v.to))}까지 ${v.fighting ? '— 지금은 배가 멈췄소! 갑판의 놈들부터 치워 주시오!' : `대략 ${left}초면 닿겠소.`} ${v.extra > 0 ? `소동 탓에 ${Math.round(v.extra)}초쯤 늦어졌소.` : '바다가 조용하길 빕시다.'}"</p><div class="actions"><button data-close>알겠다</button></div>`);
+  } else if (role === 'sailor') {
+    const r = SEA_RUMORS[Math.floor(Math.random() * SEA_RUMORS.length)];
+    showModal(`<h2>선원</h2><p>"${esc(r)}"</p><div class="actions"><button data-close>고개를 끄덕인다</button></div>`);
+  } else if (role === 'info') {
+    const to = v.to, can = PORTS[to];
+    showModal(`<h2>상인 정보원</h2><p>"${can ? `${esc(PORTS[to].name)} 시세가 궁금하시오? ◆ 10이면 오늘 아침 소식을 알려 드리지.` : '그 섬 시세는 나도 모르오.'}"</p>${portGoldRow()}
+      <div class="actions">${can ? `<button id="buyInfo" ${save.gold >= 10 ? '' : 'disabled'}>◆ 10 내고 듣는다</button>` : ''}<button data-close class="ghost">됐다</button></div>`);
+    const b = document.getElementById('buyInfo');
+    if (b) b.onclick = () => {
+      save.gold -= 10; rememberPrices(save, to); writeSave(save); sfx('coin', { vol: 0.5 });
+      showModal(`<h2>${esc(PORTS[to].name)} 시세 (지금)</h2>${portBoardHtml(to)}<div class="actions"><button data-close>고맙소</button></div>`);
+    };
+  }
+}
+function showSeaEvent(id) {
+  const ev = SEA_EVENTS[id], v = world.voyage;
+  showModal(`<h2>${esc(ev.title)}</h2><p>${esc(ev.text)}</p><div class="soc-list">${ev.choices.map((c) => `<div class="soc-row"><span class="nm"><b>${esc(c.label)}</b></span><span class="muted">${esc(c.hint)}</span><span class="btns"><button class="sm" data-ch="${c.id}">고른다</button></span></div>`).join('')}</div>`, () => {});
+  const done = (msg, color = '#ffe8a8') => { overlay.hidden = true; paused = false; modal = null; v.waiting = false; if (msg) renderer.banner = { text: msg.text, sub: msg.sub, t: 3.4, color }; writeSave(save); };
+  overlay.querySelectorAll('[data-ch]').forEach((b) => (b.onclick = () => {
+    const c = b.dataset.ch, lv = save.level || 1;
+    if (c === 'fight') { done({ text: id === 'serpent' ? '바다뱀이 갑판으로 기어오른다!' : '해적이 갑판에 올라탔다!', sub: '모두 쓰러뜨려야 배가 다시 나아간다' }, '#ff9a7a'); world.spawnBoarders(id === 'serpent' ? 'serpent' : 'pirates', lv); return; }
+    if (c === 'join') { const g = 40 + lv * 3; save.gold += g; repOf().infamy += 8; done({ text: `해적과 함께 승객들의 짐을 털었다 · ◆ ${g}`, sub: `악명 +8 (지금 ${repOf().infamy}) — 언젠가 이 일이 소문날지도 모른다` }, '#ff7a7a'); return; }
+    if (c === 'pay') { let lost = 0; for (const k of Object.keys(CARGO)) { const n = save.bag[k] || 0, l = Math.ceil(n / 2); if (l) { save.bag[k] = n - l; lost += l; if (!save.bag[k]) delete save.bag[k]; } } done({ text: lost ? `교역품 ${lost}개를 내주었다` : '내줄 짐이 없다는 걸 알자 해적이 침을 뱉고 떠났다', sub: '해적선이 멀어진다' }); return; }
+    if (c === 'flee') { v.dur += 8; done({ text: '돛을 펴고 멀리 돌아갔다', sub: '뱃길이 8초 길어졌다' }); return; }
+    if (c === 'save') {
+      repOf().fame += 3; v.dur += 5;
+      const gift = ['windWheat', 'woolBale', 'mistSalt', 'driedFish'][Math.floor(Math.random() * 4)];
+      const gave = Math.random() < 0.5 && cargoCount(save.bag) + 2 <= CARGO_CAP && bagAdd(lifeOf(), gift, 2);
+      if (!gave) save.gold += 25;
+      done({ text: '표류자를 건져 올렸다', sub: `명성 +3 · 고맙다며 ${gave ? `${CARGO[gift].name} 2개` : '◆ 25'}를 건넸다` }, '#9fe8b0');
+      return;
+    }
+    done(null);
+  }));
+}
+function voyageResult(s) {
+  const lv = save.level || 1;
+  if (s.t === 'voyageWon') {
+    if (s.kind === 'serpent') { const g = 40 + lv * 3; save.gold += g; repOf().fame += 4; const sc = bagAdd(lifeOf(), 'serpentScale', 2); renderer.banner = { text: `거대 바다뱀을 물리쳤다 · ◆ ${g}`, sub: `명성 +4${sc ? ' · 바다뱀 비늘 2개' : ''} · 배가 다시 나아간다`, t: 3.6, color: '#9fe8b0' }; }
+    else { const g = 50 + lv * 4; save.gold += g; repOf().fame += 5; const rum = cargoCount(save.bag) + 2 <= CARGO_CAP && bagAdd(lifeOf(), 'pirateRum', 2); renderer.banner = { text: `해적을 물리쳤다 · ◆ ${g}`, sub: `명성 +5${rum ? ' · 해적 럼주 2병' : ''} · 배가 다시 나아간다`, t: 3.6, color: '#9fe8b0' }; }
+  } else {
+    if (s.kind === 'serpent') renderer.banner = { text: '바다뱀에게 밀려 쓰러졌다', sub: '선원들이 작살로 쫓아냈다 · 배가 다시 나아간다', t: 3.6, color: '#ffb0a0' };
+    else {
+      let lost = 0; for (const k of Object.keys(CARGO)) { const n = save.bag[k] || 0, l = Math.ceil(n / 2); if (l) { save.bag[k] = n - l; lost += l; if (!save.bag[k]) delete save.bag[k]; } }
+      const g = Math.floor(save.gold * 0.1); save.gold -= g;
+      renderer.banner = { text: '해적에게 졌다', sub: `교역품 ${lost}개와 ◆ ${g}를 빼앗겼다 · 해적은 떠났다`, t: 3.8, color: '#ffb0a0' };
+    }
+  }
+  writeSave(save);
+}
+function arriveVoyage() {
+  const ship = world, st = voyStash, P = overworldBase().ports?.[st?.to];
+  voyStash = null;
+  if (!st || !P) { enterWorld(); return; }
+  const took = Math.round(ship.voyage.t + ship.voyage.extra);
+  if (!st.world || st.world.zoneId !== 'world') enterWorld({ x: P.arrive.x, y: P.arrive.y - 24 });
+  else {
+    world = st.world;
+    world.player.x = P.arrive.x; world.player.y = P.arrive.y; world.player.dashT = 0;
+    world.signals.length = 0; world.events.length = 0;
+    world.setBuild(buildNow()); world.applyPersist();
+    for (const al of world.allies) { al.x = P.arrive.x + (Math.random() - 0.5) * 30; al.y = P.arrive.y + 10; }
+    renderer.setWorld(world);
+    startMusic('plaza'); startLoop();
+  }
+  world.player.hp = Math.min(world.d.maxHp, ship.player.hp); world.player.res = ship.player.res;
+  world.reveal(true);
+  rememberPrices(save, st.to);
+  renderer.banner = { text: `${PORTS[st.to].name}에 닿았다`, sub: `뱃길 ${took}초 · 교역소에서 짐을 팔아 보자`, t: 3.6, color: '#9fd8ff' };
+  sfx('open', { vol: 0.6 });
+  writeSave(save);
+}
+function updateVoyBar() {
+  let el = document.getElementById('voyBar');
+  const v = world?.voyage;
+  if (!v || gameEl.hidden) { if (el) el.hidden = true; return; }
+  if (!el) { el = document.createElement('div'); el.id = 'voyBar'; gameEl.appendChild(el); }
+  el.hidden = false;
+  const k = Math.min(1, v.t / v.dur), txt = v.fighting ? '⚓ 배가 멈췄다 — 갑판의 적을 모두 쓰러뜨리자' : `⛵ ${destName(v.to)}까지 약 ${Math.max(0, Math.ceil(v.dur - v.t))}초`;
+  if (el.dataset.txt !== txt) { el.dataset.txt = txt; el.innerHTML = `<span>${esc(txt)}</span><i style="width:${Math.round(k * 100)}%"></i>`; }
+  else el.querySelector('i').style.width = `${Math.round(k * 100)}%`;
+}
+
 let autosaveT = 0;
 function frame(ts) {
-  try { tick(ts); } catch (err) { if (!frame.warned) { frame.warned = true; console.error(err); } } // 한 번의 오류로 게임이 멈추지 않게
+  try { tick(ts); updateVoyBar(); } catch (err) { if (!frame.warned) { frame.warned = true; console.error(err); } } // 한 번의 오류로 게임이 멈추지 않게
   requestAnimationFrame(frame);
 }
 function tick(ts) {

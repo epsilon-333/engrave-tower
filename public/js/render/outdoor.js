@@ -432,6 +432,34 @@ export function drawOutdoorProp(g, pr, t, night, burntTrees) {
   if (pr.big && drawLandmark(g, pr, t, night)) return; // 성지 마을의 커다란 상징물
   if (drawVillageProp(g, pr, t, night)) return;      // 성지 마을의 작은 것들
   switch (pr.kind) {
+    case 'ship': {
+      const bob = Math.round(Math.sin(t * 1.6 + pr.x) * 1);
+      const hy = by - 6 + bob, hx0 = x - 4, hx1 = x + W + 8; // 선체 아래쪽 선(물 높이)
+      // 물결과 그림자
+      R(g, 'rgba(10,30,50,0.35)', x - 6, by - 6, W + 18, 8);
+      // 선체: 고물(왼쪽)은 높고 네모, 이물(오른쪽)은 뾰족하게 위로
+      g.fillStyle = OL; g.beginPath(); g.moveTo(hx0 - 1, hy - 23); g.lineTo(hx0 + 6, hy + 1); g.lineTo(hx1 - 14, hy + 1); g.lineTo(hx1 + 1, hy - 19); g.lineTo(hx1 - 4, hy - 19); g.lineTo(hx1 - 16, hy - 15); g.lineTo(hx0 + 14, hy - 15); g.lineTo(hx0 + 13, hy - 23); g.closePath(); g.fill();
+      g.fillStyle = '#6a4226'; g.beginPath(); g.moveTo(hx0, hy - 22); g.lineTo(hx0 + 7, hy); g.lineTo(hx1 - 14, hy); g.lineTo(hx1, hy - 18); g.lineTo(hx1 - 4, hy - 18); g.lineTo(hx1 - 16, hy - 14); g.lineTo(hx0 + 14, hy - 14); g.lineTo(hx0 + 12, hy - 22); g.closePath(); g.fill();
+      R(g, '#8a5a32', hx0 + 4, hy - 13, W - 6, 3); R(g, '#4a2a16', hx0 + 6, hy - 6, W - 10, 2); R(g, '#c89a3a', hx0 + 5, hy - 10, W - 8, 1); // 띠 · 금빛 줄
+      for (let k = 0; k < 5; k++) { R(g, OL, hx0 + 16 + k * 16, hy - 9, 5, 5); R(g, '#1a2a3a', hx0 + 17 + k * 16, hy - 8, 3, 3); } // 현창
+      R(g, '#5a3a22', hx0 + 1, hy - 30, 12, 8); R(g, OL, hx0 + 1, hy - 31, 12, 1); R(g, '#ffd27a', hx0 + 4, hy - 28, 3, 3); // 고물 선실
+      // 돛대 둘과 돛
+      for (const [mx, mh, sw] of [[cx - 16, 78, 30], [cx + 22, 64, 24]]) {
+        R(g, OL, mx - 2, hy - 14 - mh, 4, mh); R(g, '#7a5232', mx - 1, hy - 14 - mh, 2, mh);
+        R(g, OL, mx - sw / 2 - 1, hy - 14 - mh + 6, sw + 2, 3);
+        const top = hy - 14 - mh + 8, sh = mh * 0.62, swell = Math.round(Math.sin(t * 2 + mx) * 1.5);
+        g.fillStyle = OL; g.beginPath(); g.moveTo(mx - sw / 2 - 1, top - 1); g.lineTo(mx + sw / 2 + 1, top - 1); g.lineTo(mx + sw / 2 + 3 + swell, top + sh + 1); g.lineTo(mx - sw / 2 + 1 + swell, top + sh + 1); g.closePath(); g.fill();
+        g.fillStyle = '#f0e8d4'; g.beginPath(); g.moveTo(mx - sw / 2, top); g.lineTo(mx + sw / 2, top); g.lineTo(mx + sw / 2 + 2 + swell, top + sh); g.lineTo(mx - sw / 2 + 2 + swell, top + sh); g.closePath(); g.fill();
+        R(g, pr.flag || '#3a6a9a', mx - sw / 2 + 2, top + sh * 0.4, sw, 4); R(g, 'rgba(0,0,0,0.08)', mx - sw / 2, top, 3, sh);
+        const fw = Math.round(6 + Math.sin(t * 5 + mx) * 2); R(g, OL, mx, hy - 14 - mh - 6, fw + 1, 6); R(g, pr.flag || '#3a6a9a', mx + 1, hy - 14 - mh - 5, fw, 4); // 깃발
+      }
+      // 이물 쪽 밧줄
+      g.fillStyle = OL; for (let k = 0; k < 10; k++) R(g, OL, cx + 22 + k * 3.2, hy - 76 + k * 6, 1, 2);
+      // 뱃전에 부딪히는 물결
+      const wv = Math.floor(t * 4) % 3;
+      for (let k = 0; k < W + 8; k += 6) R(g, 'rgba(230,246,255,0.55)', hx0 + 6 + k + wv * 2, by - 4 + (k % 12 ? 0 : 1), 4, 1);
+      return;
+    }
     case 'tree': {
       const burnt = burntTrees?.has(`${pr.x},${pr.y}`);
       if (pr.chopped) { drawStump(g, pr, burnt || pr.tree === 'charred'); return; }

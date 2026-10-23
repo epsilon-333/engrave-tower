@@ -2,7 +2,7 @@
 // + 도구(곡괭이 · 도끼 · 삽 · 괭이 · 물뿌리개 · 낚싯대) · 자원 덩어리 · 땅 파기 · 낚시 · 농사 · 대장간 제작 · 잡화점 시세
 // icon: 그림 종류(t)와 색(c). 그림은 render/icons.js 가 그린다.
 
-export const GOOD_CATS = { food: '요리', ore: '광석 · 돌', gem: '보석', wood: '나무', forage: '채집물', meat: '고기', part: '몬스터 부산물', dig: '땅에서 나온 것', bait: '미끼', fish: '물고기', crop: '작물', seed: '씨앗', potion: '물약', scroll: '주문서', junk: '잡동사니' };
+export const GOOD_CATS = { food: '요리', ore: '광석 · 돌', gem: '보석', wood: '나무', forage: '채집물', meat: '고기', part: '몬스터 부산물', dig: '땅에서 나온 것', bait: '미끼', fish: '물고기', crop: '작물', seed: '씨앗', potion: '물약', scroll: '주문서', junk: '잡동사니', cargo: '교역품' };
 
 // ── 가방: 물건 종류마다 한 칸 (같은 물건은 몇 개든 한 칸). 잡화점에서 칸을 늘린다 ──
 export const BAG_START = 30;

@@ -759,6 +759,7 @@ export class Renderer {
     if (w.map.outdoor) { this.drawChunks(w, cx, cy); this.drawOutdoorLife(w, cx, cy); if (w.farmRect && w.life) for (const [key, pl] of Object.entries(w.life.farm)) { const [fx, fy] = key.split(',').map(Number); drawSoil(g, fx, fy, !!pl.wateredAt, w.t); } }
     else g.drawImage(this.mapCanvasNight && (this.nightK || 0) > 0.42 ? this.mapCanvasNight : this.mapCanvas, 0, 0);
     this.drawLiquidAnim(w, cx, cy);
+    if (w.map.ship) this.drawSailing(w);
     if (w.map.plaza) this.drawPlazaFloor(w);
 
     const dfill = (x, y, rx, ry, hex, d) => { if (g.ditherEllipse) g.ditherEllipse(x, y, rx, ry, hex, d * 0.72); else { g.fillStyle = hexA(hex, d * 0.6); ellipse(g, x, y, rx, ry); } };
@@ -945,7 +946,7 @@ export class Renderer {
     this.parts = this.parts.filter((q) => q.t > 0);
 
     if (w.zone?.id === 'palace' || w.zone?.id === 'labyrinth' || w.zone?.id === 'seabed') this.drawAmbience(w, cx, cy, dt);
-    if (w.mode === 'field' && !w.map.outdoor) { this.drawLight(w, cx, cy); this.drawFog(w, cx, cy); } // 바깥 세계는 화면을 가리지 않는다 (안 가 본 곳은 지도에서만)
+    if (w.mode === 'field' && !w.map.outdoor && !w.map.ship) { this.drawLight(w, cx, cy); this.drawFog(w, cx, cy); } // 바깥 세계는 화면을 가리지 않는다 (안 가 본 곳은 지도에서만)
 
     // 1배 세계 판을 화면 배율로 키워 옮긴다 (도트 그대로). 글씨 · 화면 표시는 그 위에 실제 해상도로
     this.g = g = main;
@@ -1027,6 +1028,23 @@ export class Renderer {
       }
     }
     this.ambient = list.filter((b) => b.life > 0 && b.y > cy - 10);
+  }
+
+  // 항해 중: 바다 물결 · 거품이 뒤(왼쪽)로 흘러가 배가 나아가는 것처럼 보인다. 싸우는 동안은 배가 멈춘다
+  drawSailing(w) {
+    const g = this.g, v = w.voyage, spd = v && !v.fighting ? 70 : 8, W = w.tw * TILE, H = w.th * TILE;
+    const st = (this.sailFx ||= { off: 0, foam: [] });
+    st.off = (st.off + spd / 60) % 64;
+    g.fillStyle = 'rgba(255,255,255,0.10)';
+    for (let y = 8; y < H; y += 22) for (let x = -64 + ((y * 7) % 64); x < W + 64; x += 64) {
+      const xx = Math.round(x - st.off), yy = y + Math.round(Math.sin((x + y) * 0.05 + w.t * 1.5) * 2);
+      g.fillRect(xx, yy, 14, 1); g.fillRect(xx + 4, yy + 1, 8, 1);
+    }
+    if (Math.random() < 0.6) st.foam.push({ x: W * 0.86 + Math.random() * 30, y: (12.5 + (Math.random() < 0.5 ? -6.6 : 6.6)) * TILE + Math.random() * 6 - 3, t: 2.4 });
+    g.fillStyle = 'rgba(235,248,255,0.65)';
+    for (const f of st.foam) { f.t -= 1 / 60; f.x -= spd / 60 * 1.6; const k = Math.max(0, f.t / 2.4); g.globalAlpha = k * 0.8; g.fillRect(Math.round(f.x), Math.round(f.y), 3 + Math.round((1 - k) * 6), 1); }
+    g.globalAlpha = 1;
+    st.foam = st.foam.filter((f) => f.t > 0);
   }
 
   drawLiquidAnim(w, cx, cy) {
@@ -3082,6 +3100,15 @@ export class Renderer {
     if (o.kind === 'station' || o.kind === 'merchant') return this.drawNpc(w, o);
     if (o.kind === 'relic') { drawRelic(this.g, o, w.t, SANCTUMS[o.race]?.color || '#ffffff', o.opened); return; }
     if (o.kind === 'sign') { drawSign(this.g, o); o._top = o.y - 22; return; }
+    if (o.kind === 'priceBoard') { // 시세판: 나무 판 두 장에 분필 글씨
+      const x = Math.round(o.x), y = Math.round(o.y);
+      g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, x, y + 4, 12, 3);
+      g.fillStyle = '#1a1410'; g.fillRect(x - 10, y - 4, 3, 9); g.fillRect(x + 7, y - 4, 3, 9); g.fillRect(x - 14, y - 26, 28, 20);
+      g.fillStyle = '#2a3a2e'; g.fillRect(x - 13, y - 25, 26, 18); g.fillStyle = '#7a5232'; g.fillRect(x - 14, y - 27, 28, 2);
+      g.fillStyle = '#e8e4d8'; for (let k = 0; k < 4; k++) { g.fillRect(x - 11, y - 22 + k * 4, 9, 1); g.fillRect(x + 1, y - 22 + k * 4, 7 + (k % 2) * 2, 1); }
+      g.fillStyle = '#ffd27a'; g.fillRect(x + 9, y - 22, 2, 1); g.fillStyle = '#7ae87a'; g.fillRect(x + 9, y - 18, 2, 1);
+      o._top = o.y - 28; return;
+    }
     if (o.kind === 'turtle') { drawTurtle(this.g, o, w.t); o._top = o.y - 12; return; }
     if (o.kind === 'boat') { if (!o.riding) this.drawBoat(w, o.x, o.y, o.dir || 1, false, 'all'); o._top = o.y - 12; return; }
     if (o.kind === 'vent') { // 거품 구멍: 바위 틈에서 거품이 끊임없이 솟는다
@@ -3451,6 +3478,25 @@ export class Renderer {
     }
     if (pr.kind === 'column') { const s = sprite('column'); if (s) g.drawImage(s, x, y + TILE - 48); return; }
     if (pr.kind === 'crate') { const s = sprite('crate'); if (s) g.drawImage(s, x, y - 8); return; }
+    if (pr.kind === 'barrelProp') { // 갑판의 술통
+      g.fillStyle = '#1a1410'; g.fillRect(x + 2, y - 6, 12, 20); g.fillStyle = '#8a5a32'; g.fillRect(x + 3, y - 5, 10, 18);
+      g.fillStyle = '#a8703e'; g.fillRect(x + 5, y - 5, 3, 18); g.fillStyle = '#4a4a52'; g.fillRect(x + 3, y - 2, 10, 2); g.fillRect(x + 3, y + 8, 10, 2);
+      g.fillStyle = '#6a4226'; g.fillRect(x + 4, y - 6, 8, 2); return;
+    }
+    if (pr.kind === 'mast') { // 돛대: 갑판에서 솟아 화면 위로, 펄럭이는 큰 돛
+      const mx = x + 8, top = y - 150, sw = pr.sail === 'main' ? 92 : 74, sh = pr.sail === 'main' ? 96 : 80, sway = Math.sin(w.t * 1.6) * 3;
+      g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(mx - 30, y + 10, 60, 5);
+      g.fillStyle = '#1a1410'; g.fillRect(mx - 4, top, 8, 166); g.fillStyle = '#7a5232'; g.fillRect(mx - 3, top, 6, 166); g.fillStyle = '#a07a52'; g.fillRect(mx - 2, top, 2, 166);
+      g.fillStyle = '#1a1410'; g.fillRect(mx - sw / 2 - 2, top + 10, sw + 4, 5); g.fillRect(mx - sw / 2 + 6, top + 14 + sh, sw - 12, 4);
+      g.globalAlpha = 0.93;
+      g.fillStyle = '#1a1410'; g.beginPath(); g.moveTo(mx - sw / 2 - 1, top + 13); g.lineTo(mx + sw / 2 + 1, top + 13); g.quadraticCurveTo(mx + sw / 2 + 10 + sway, top + 14 + sh / 2, mx + sw / 2 - 6, top + 15 + sh); g.lineTo(mx - sw / 2 + 6, top + 15 + sh); g.quadraticCurveTo(mx - sw / 2 + 10 + sway, top + 14 + sh / 2, mx - sw / 2 - 1, top + 13); g.fill();
+      g.fillStyle = '#f2ead6'; g.beginPath(); g.moveTo(mx - sw / 2, top + 14); g.lineTo(mx + sw / 2, top + 14); g.quadraticCurveTo(mx + sw / 2 + 9 + sway, top + 14 + sh / 2, mx + sw / 2 - 6, top + 14 + sh); g.lineTo(mx - sw / 2 + 6, top + 14 + sh); g.quadraticCurveTo(mx - sw / 2 + 9 + sway, top + 14 + sh / 2, mx - sw / 2, top + 14); g.fill();
+      g.fillStyle = '#d8ccb0'; for (let k = 1; k < 4; k++) g.fillRect(mx - sw / 2 + 4, top + 14 + k * sh / 4, sw - 4, 1);
+      g.fillStyle = '#3a6a9a'; g.fillRect(mx - sw / 2 + 6, top + 14 + sh * 0.45, sw - 8, 7);
+      g.globalAlpha = 1;
+      const fw = Math.round(14 + Math.sin(w.t * 6) * 3); g.fillStyle = '#1a1410'; g.fillRect(mx, top - 10, fw + 2, 9); g.fillStyle = '#c8402a'; g.fillRect(mx + 1, top - 9, fw, 7);
+      return;
+    }
     if (pr.kind === 'shelf') {
       const W = pr.w * TILE;
       g.fillStyle = '#0d0b10'; g.fillRect(x - 1, y - 17, W + 2, 34);
