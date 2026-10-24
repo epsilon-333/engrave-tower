@@ -2,7 +2,8 @@
 // 몇 초마다 「지금 무엇이 가장 급한가」를 점수로 따져 할 일을 고른다. 그래서 날마다 · 사람마다 하는 일이 다르다.
 // 잠은 자기 집(건물) 안에 들어가서 잔다. 경비는 낮 · 밤 근무조가 교대한다 (밤 근무조는 횃불을 들고 순찰).
 // 설정에서 「NPC 공격」이 켜져 있으면 누구든 때릴 수 있다 — 맞으면 화가 나서 싸우고, 경비는 함께 덤빈다.
-import { TILE } from './mapgen.js';
+import { TILE, T_FLOOR } from './mapgen.js';
+import { NODES } from '../data/goods.js';
 
 // 자리를 지키는 사람 (가게 · 시설 · 관리) · 경비
 const POST = /altar|library|board|shop|store|trainer|merchant|inn|smith|portMaster|shipCaptain|trader|infoMerchant|broker|fence|forger|healer|pitBoss|recruiter|king|guildMaster|auctioneer|shipwright|mercCaptain|keeper|pino|exec|sage|priest|clerk|banker|cook|chef|tailor|jeweler|alchem/i;
@@ -37,6 +38,8 @@ export function initNpcLife(w) {
     // 욕구 (0 = 채워짐, 1 = 급함) · 저마다 다른 데서 시작
     o.need = { hunger: rnd(seed, 7) * 0.6, energy: rnd(seed, 8) * 0.5, social: rnd(seed, 9), fun: rnd(seed, 10) };
     o.coins = Math.round(20 + rnd(seed, 11) * 80);
+    o.maxHp = o.hp = o.role === 'guard' ? 260 : 120;
+    o.hunter = o.role === 'folk' && o.trait.brave > 0.55; o.gatherer = o.role === 'folk' && !o.hunter && o.trait.diligent > 0.35; // 사냥꾼 · 채집꾼
     o.bed = (o.role === 'guard' ? nearest(o, BARRACKS, 30) : null) || nearest(o, null, 30); // 잘 곳 (없으면 제자리에서 꾸벅꾸벅 선 채로)
     o.night = o.role === 'guard' && rnd(seed, 12) < 0.4; // 밤 근무조
     const near = npcs.filter((q) => Math.hypot(q.x - o.x, q.y - o.y) < 14 * TILE);
@@ -102,6 +105,15 @@ function choose(w, o, min) {
   };
   if (o.traveler && w.coach && min >= 450 && min < 480 && !o.atCapital && rnd(o.seed, (w.clock?.day || 1) * 7) < 0.5) sc.travel = 2; // 어떤 날은 왕도에 다녀온다
   if (o.atCapital && min >= 930) sc.travel = 2;
+  // 사냥 · 마을 지키기 · 채집: 둘레를 3초마다 살핀다
+  if ((o.scanT = (o.scanT || 0) - 1) <= 0) { o.scanT = 3; o.prey = findPrey(w, o); o.patch = o.gatherer ? findNode(w, o) : null; }
+  if (o.prey && !o.prey.dead && o.hp > o.maxHp * 0.5) {
+    const nearHome = Math.hypot(o.prey.x - o.home.x, o.prey.y - o.home.y) < 10 * TILE;
+    if (o.role === 'guard' && onShift(o, min) && nearHome) sc.hunt = 1.6; // 경비: 마을 가까이 온 몬스터를 쫓아낸다
+    else if (o.hunter && isDay(min)) sc.hunt = 0.55 + T.brave * 0.5 + (o.coins < 40 ? 0.3 : 0);
+  }
+  if (o.patch && !o.patch.depleted && isDay(min)) sc.gather = 0.5 + T.diligent * 0.5 + (o.coins < 40 ? 0.2 : 0);
+  if (o.hp < o.maxHp * 0.5) sc.sleep += 0.6; // 다쳤으면 쉬러 간다
   const E = w.econ, tax = E?.tax ?? 0.1, day = w.clock?.day || 1;
   if (o.role === 'guard' && onShift(o, min) && tax >= 0.15) sc.collect = 0.25 + tax + (1 - T.honest) * 0.4; // 세금 걷기 (정직하지 않은 경비일수록 억지로)
   if (o.role === 'folk' && o.coins < 15 && T.loyal < 0.3 && tax >= 0.15 && !o.rebel) sc.rebel = 0.4 + (0.3 - T.loyal) * 3; // 녹타리스로 간다
@@ -126,6 +138,8 @@ function start(w, o, act, min) {
     if (mate) { o.sparWith = mate; mate.sparWith = o; mate.doing = 'fun'; mate.doT = 0; const cx = (o.x + mate.x) / 2, cy = (o.y + mate.y) / 2; o.goal = { x: cx - 9, y: cy, then: 'spar' }; mate.goal = { x: cx + 9, y: cy, then: 'spar' }; return; }
     const a = (o.seed % 628) / 100, rad = 16 + (o.seed % 3) * 6; o.goal = { x: o.gather.x + Math.cos(a) * rad, y: o.gather.y + Math.sin(a) * rad * 0.6, then: 'play' }; return;
   }
+  if (act === 'hunt' && o.prey) { o.goal = { x: o.prey.x, y: o.prey.y, then: 'hunt', run: true, chase: o.prey }; return; }
+  if (act === 'gather' && o.patch) { o.goal = { x: o.patch.x + (o.patch.x > o.x ? -10 : 10), y: o.patch.y + 4, then: 'gather' }; return; }
   if (act === 'collect') { // 근처에서 돈이 모자란 사람을 찾아 세금을 내라고 다그친다
     const v = w.objects.filter((q) => q.kind === 'npc' && q.role === 'folk' && q.home && !q.away && !q.hostile && !q.harassedBy && Math.hypot(q.x - o.x, q.y - o.y) < 12 * TILE).sort((a, b) => a.coins - b.coins)[0];
     if (!v) { o.doing = 'work'; start(w, o, 'work', min); return; }
@@ -157,13 +171,15 @@ function satisfy(o, DT) {
 const doneWith = (o, min) => { const N = o.need, a = o.act;
   if (o.doing === 'work' && !onShift(o, min)) return true; // 근무 시간이 끝나면 일을 접는다
   if (o.doing === 'harassed') return !o.harassedBy;
+  if (o.doing === 'hunt') return !o.prey || o.prey.dead || o.hp < o.maxHp * 0.35 || o.doT > 90;
+  if (o.doing === 'gather') return !o.patch || o.patch.depleted || o.doT > 60;
   if (o.doing === 'collect') return !o.harass && o.doT > 2;
   if (o.doing === 'rebel') return !o.goal; // 길이 막혔으면 다른 쪽으로 다시 떠난다
   if (o.doing === 'sleep') return N.energy < 0.05;
   if (o.doing === 'eat') return N.hunger < 0.05;
   if (o.doing === 'social') return N.social < 0.08 || o.doT > 40;
   if (o.doing === 'fun') return N.fun < 0.08 || o.doT > 60;
-  if (o.doing === 'work') return o.role === 'post' ? o.doT > 90 + o.trait.diligent * 90 : o.doT > 25 + o.trait.diligent * 40; // 가게 사람은 오래 일하고 잠깐 쉰다
+  if (o.doing === 'work') { if (o.role === 'post' && !o.goal && o.doT % 9 < 0.02 && o.doT > 1) { const a = rnd(o.seed, Math.floor(o.doT)) * Math.PI * 2; o.goal = { x: o.home.x + Math.cos(a) * 16, y: o.home.y + Math.sin(a) * 8, then: 'work' }; } return o.role === 'post' ? o.doT > 90 + o.trait.diligent * 90 : o.doT > 25 + o.trait.diligent * 40; } // 가게 사람은 오래 일하고 · 가게 앞을 오가며 · 잠깐 쉰다
   return o.doT > 6 && !o.goal && a !== 'walk'; };
 
 export function updateNpcLife(w, DT) {
@@ -183,7 +199,8 @@ export function updateNpcLife(w, DT) {
     if (o.fleeT > 0) { o.fleeT -= DT; const a = Math.atan2(o.y - p.y, o.x - p.x); step(w, o, o.x + Math.cos(a) * 30, o.y + Math.sin(a) * 30, 60, DT); o.act = 'run'; continue; }
     if (!o.doing || doneWith(o, min)) { if (o.sparWith && o.sparWith.sparWith === o) o.sparWith.sparWith = null; o.sparWith = null; o.talkTo = null; start(w, o, choose(w, o, min), min); }
     if (o.role === 'guard' && o.mem && o.mem.op <= -60 && w.npcAttack && Math.hypot(p.x - o.x, p.y - o.y) < 90) { w.emit({ t: 'text', x: o.x, y: o.y - 26, text: '저놈이다! 잡아라!', color: '#ff5a4a' }); provokeNpc(w, o, 'law'); continue; } // 나를 증오하는 경비는 보이면 덤빈다
-    const talkNear = Math.hypot(p.x - o.x, p.y - o.y) < 26; // 말 걸 수 있게 가까이 오면 멈춰 선다
+    if (Math.hypot(p.x - o.x, p.y - o.y) < 26 && !p.moving) o.lingerT = (o.lingerT || 0) + DT; else o.lingerT = 0;
+    const talkNear = o.lingerT > 0.6 && o.doing !== 'hunt'; // 내가 곁에 멈춰 서 있을 때만 (말 걸려는 것) 멈춘다 · 그냥 지나가면 하던 일을 한다
     if (talkNear && o.act !== 'doze') { if (o.act === 'walk') o.act = 'idle'; o.face = p.x < o.x ? -1 : 1; continue; }
     if (o.goal) {
       o.goalT = (o.goalT || 0) + DT;
@@ -197,6 +214,9 @@ export function updateNpcLife(w, DT) {
       if (arrived) { const g = o.goal; o.goal = null; o.goalT = 0; o.act = g.then || 'idle'; if (g.board) boardCoach(w, o); if (o.act === 'enterBed') goToBed(w, o); if (o.act === 'eatIn') o.away = true; } // 집에 들어가 먹는다
       else o.act = 'walk';
     }
+    if (o.doing === 'hunt' && o.prey && !o.prey.dead) huntTick(w, o, DT);
+    if (o.act === 'gather' && o.patch && !o.patch.depleted && o.doT > 0) gatherTick(w, o, DT);
+    if (o.hp < o.maxHp && o.act !== 'hunt') o.hp = Math.min(o.maxHp, o.hp + DT * (o.asleep ? 4 : 0.6));
     if (o.act === 'talk' && o.talkTo) o.face = o.talkTo.x < o.x ? -1 : 1;
     if (o.act === 'spar' && o.sparWith) o.face = o.sparWith.x < o.x ? -1 : 1;
   }
@@ -247,6 +267,50 @@ function updateCoach(w, DT, min) {
   c.moving = true;
 }
 function boardCoach(w, o) { const c = w.coach; if (!c || Math.hypot(c.x - o.x, c.y - o.y) > 40) return; o.riding = c; o.away = true; c.riders.push(o); }
+
+// ───────── 사냥 · 채집 ─────────
+const PREY_SKIP = new Set(['townsfolk', 'royalGuard', 'treasureGoblin', 'mimic']);
+function findPrey(w, o) { // 집 둘레의 몬스터 (경비는 마을 가까이 · 사냥꾼은 조금 멀리까지)
+  const R = (o.role === 'guard' ? 12 : 40) * TILE; let best = null, bd = R;
+  for (const e of w.enemies) {
+    if (e.dead || e.hidden || e.npcRef || e.dormant || e.official || e.def.ai === 'dummy' || PREY_SKIP.has(e.defId) || e.def.elite || e.champion) continue;
+    if (o.role !== 'guard' && (e.lv || 1) > 12) continue; // 사냥꾼은 만만한 것만
+    const d = Math.hypot(e.x - o.home.x, e.y - o.home.y); if (d < bd) { bd = d; best = e; }
+  }
+  return best;
+}
+function findNode(w, o) {
+  let best = null, bd = 30 * TILE;
+  for (const q of w.objects) { if (q.kind !== 'node' || q.depleted || q.npcBusy) continue; const d = Math.hypot(q.x - o.home.x, q.y - o.home.y); if (d < bd) { bd = d; best = q; } }
+  return best;
+}
+function huntTick(w, o, DT) {
+  const e = o.prey, d = Math.hypot(e.x - o.x, e.y - o.y);
+  if (d > 20) { o.goalUpd = (o.goalUpd || 0) - DT; if (o.goalUpd <= 0 || !o.goal) { o.goalUpd = 1; o.goal = { x: e.x, y: e.y, then: 'hunt', run: true }; } return; }
+  o.goal = null; o.act = 'hunt'; o.face = e.x < o.x ? -1 : 1;
+  o.swingT = (o.swingT || 0) - DT;
+  if (o.swingT <= 0) { // 한 대 (경비는 기술 이름도)
+    o.swingT = o.role === 'guard' ? 0.9 : 1.2;
+    const dmg = Math.round((o.role === 'guard' ? 22 : 12) * (0.8 + Math.random() * 0.4));
+    e.hp -= dmg; e.hitFlash = 0.12; w.emit({ t: 'dmg', x: e.x, y: e.y - 12, v: dmg, small: true, color: '#e8d8c0' });
+    if (o.role === 'guard' && Math.random() < 0.3) w.emit({ t: 'text', x: o.x, y: o.y - 26, text: ['연속 베기', '돌진 찌르기', '회전 베기'][Math.floor(Math.random() * 3)], color: '#ffd0a0' });
+    if (e.hp <= 0) { e.dead = true; w.emit({ t: 'death', x: e.x, y: e.y, color: e.def.pal?.a || '#a89880', defId: e.defId, dir: e.dir }); o.coins += 4 + Math.floor(Math.random() * 6); o.need.fun = Math.max(0, o.need.fun - 0.3); w.emit({ t: 'text', x: o.x, y: o.y - 26, text: o.role === 'guard' ? '마을은 안전하다' : '잡았다!', color: '#ffe8a8' }); o.prey = null; o.doT = 999; return; }
+  }
+  // 몬스터도 사람을 향해 덤빈다 (내가 멀리 있을 때) · 사람이 다친다
+  if (Math.hypot(e.x - w.player.x, e.y - w.player.y) > 200) { e.dir = o.x < e.x ? -1 : 1; e.moving = false; if (d > 12) w.move(e, (o.x - e.x) / d * 40 * DT, (o.y - e.y) / d * 40 * DT); }
+  o.hurtT = (o.hurtT || 0) - DT;
+  if (o.hurtT <= 0) { o.hurtT = 1.4; const h = Math.round((e.atk || 8) * 0.5); o.hp -= h; w.emit({ t: 'dmg', x: o.x, y: o.y - 18, v: h, small: true, color: '#ff8a7a' }); if (o.hp < o.maxHp * 0.35) { w.emit({ t: 'text', x: o.x, y: o.y - 26, text: '후퇴!', color: '#ffd0a0' }); o.prey = null; o.doT = 999; } }
+}
+function gatherTick(w, o, DT) {
+  const q = o.patch; q.npcBusy = o; o.gatherT = (o.gatherT || 0) + DT;
+  if (Math.random() < DT * 1.2) w.emit({ t: 'gatherHit', x: q.x, y: q.y - 6, type: q.type, tool: 'hand' });
+  if (o.gatherT < 6) return;
+  o.gatherT = 0; q.npcBusy = null;
+  const def = NODES[q.type] || {}; q.depleted = true; q.respawnAt = Date.now() + (def.respawn || 120) * 1000; // 다 캤다 (다시 생기기까지는 플레이어가 캔 것과 같다)
+  if (q.key && w.life?.nodes) w.life.nodes[q.key] = q.respawnAt;
+  if (q.block) w.tiles[q.ty * w.tw + q.tx] = T_FLOOR;
+  o.coins += 3 + Math.floor(Math.random() * 5); o.patch = null; o.doT = 999;
+}
 
 // ───────── 공격: 맞으면 화가 나 싸운다 ─────────
 const NPC_FOE = (o) => (o.role === 'guard' ? 'royalGuard' : 'townsfolk');

@@ -3490,13 +3490,13 @@ export class Renderer {
     const g = this.g;
     if (o.away) { o._top = null; return; } // 기절 · 집 안
     const art = NPC_ART[o.art || o.station || o.kind] || { base: 'p_' + (o.art || o.station || 'farmer') }; // 그 밖의 사람은 people.py 그림 이름 그대로
-    const act = o.act || 'idle', kind = act === 'walk' || act === 'run' || act === 'fight' ? 'run' : act === 'work' || act === 'spar' ? 'work' : 'idle';
+    const act = o.act || 'idle', kind = act === 'walk' || act === 'run' || act === 'fight' ? 'run' : act === 'work' || act === 'spar' || act === 'hunt' || act === 'gather' ? 'work' : 'idle';
     const name = this.animFrame(art.base, kind, w.t + o.x * 0.01, kind === 'run' ? 9 : kind === 'work' ? 7 : 5);
     const face = o.face != null ? o.face < 0 : w.player.x < o.x;
     const img = sprite(name, art.tint || '', o.hostile?.hitFlash > 0 ? true : false, face);
     this.shadow(o.x, o.y + 4, 6);
     if (act === 'doze' && Math.random() < 0.01) this.texts.push({ x: o.x + 6, y: o.y - 26, text: 'z', color: '#c8d8ff', t: 1.4, vy: -10, vx: 4 }); // 잘 곳이 없으면 선 채로 꾸벅꾸벅
-    const bob = act === 'play' ? Math.abs(Math.sin(w.t * 5 + o.x)) * 2 : 0, lunge = act === 'spar' ? Math.sin(w.t * 9 + o.x) * 2 * (face ? -1 : 1) : 0;
+    const bob = act === 'play' ? Math.abs(Math.sin(w.t * 5 + o.x)) * 2 : act === 'gather' ? Math.abs(Math.sin(w.t * 6 + o.x)) * 1.5 : 0, lunge = act === 'spar' || act === 'hunt' ? Math.sin(w.t * 9 + o.x) * 2.5 * (face ? -1 : 1) : 0;
     if (img) g.drawImage(img, Math.round(o.x - img.width / 2 + lunge), Math.round(o.y + 5 - img.height - bob));
     o._top = o.y + 5 - (img ? img.height : 24);
     if (act === 'watch' && o.night && w.night) this.glow?.(o.x + (face ? -5 : 5), o.y - 14, 10, '#ffb050', 0.55); // 밤 근무조의 횃불
@@ -3506,6 +3506,7 @@ export class Renderer {
     if (act === 'eat' && Math.random() < 0.006) this.texts.push({ x: o.x, y: o._top - 2, text: '냠', color: '#ffe0a0', t: 1, vy: -8, vx: 0 });
     if (act === 'play' && Math.random() < 0.004) this.texts.push({ x: o.x, y: o._top - 2, text: ['♪', '하하', '…', '오!', '♫'][Math.floor(Math.random() * 5)], color: '#ffe8a8', t: 1.4, vy: -8, vx: 0 });
     if (act === 'spar' && Math.random() < 0.05) { this.parts.push({ x: o.x + (face ? -7 : 7), y: o.y - 10, vx: (Math.random() - 0.5) * 60, vy: -30, t: 0.25, max: 0.25, color: '#fff0b0', g: 120, glow: true }); if (Math.random() < 0.2) sfx('hit', { vol: 0.12, rate: 1.4 }); }
+    if (!o.hostile && o.hp < o.maxHp) { const bw = 14, by = Math.round(o._top - 5); g.fillStyle = '#0d0b10'; g.fillRect(o.x - bw / 2 - 1, by - 1, bw + 2, 4); g.fillStyle = '#7be38a'; g.fillRect(o.x - bw / 2, by, Math.max(0, bw * o.hp / o.maxHp), 2); } // 사냥하다 다친 사람
     if (o.hostile && o.hostile.hp < o.hostile.maxHp) { const bw = 16, by = Math.round(o._top - 5); g.fillStyle = '#0d0b10'; g.fillRect(o.x - bw / 2 - 1, by - 1, bw + 2, 4); g.fillStyle = '#e8484a'; g.fillRect(o.x - bw / 2, by, Math.max(0, bw * o.hostile.hp / o.hostile.maxHp), 2); }
     if (o.station === 'board' && w.questReady) this.bang(o.x, o._top - 12 + Math.sin(w.t * 5) * 1.5, '#ffd040');
   }
