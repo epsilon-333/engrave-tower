@@ -1062,6 +1062,7 @@ export class World {
     }
     if (o.kind === 'merchant') { this.signals.push({ t: 'merchant', zone: this.zone.id, depth: this.depth }); return; }
     if (o.kind === 'happening') { this.signals.push({ t: 'happening', id: o.hid }); return; }
+    if (o.kind === 'coach') { this.signals.push({ t: 'coach' }); return; } // 역마차 타기
     if (o.kind === 'npc' || o.kind === 'priceBoard' || o.kind === 'ladderUp' || o.kind === 'hiddenWay' || o.kind === 'chronicle') { this.signals.push({ t: 'npc', id: o.id }); return; }
     if (o.kind === 'entrance') {
       if (ENTRANCES[o.id]?.prop === 'hole') { const p = this.player; p.fallInto = { t: 0, dur: 0.75, x0: p.x, y0: p.y, tx: o.x, ty: o.y - 14, id: o.id, ox: o.x, oy: o.y }; this.motion('leap', 0.4); this.emit({ t: 'hopStart', x: p.x, y: p.y }); return; }

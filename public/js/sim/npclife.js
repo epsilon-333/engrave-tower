@@ -22,12 +22,12 @@ export function initNpcLife(w) {
   // 역마차: 바깥 세계에서 마을 ↔ 왕도 남문 (길을 따라)
   const m = w.map;
   if (m.onPath && m.capital?.gates?.s && m.start && w.zone?.id === 'world') {
-    const path = roadPath(w, m.start, m.capital.gates.s);
+    const path0 = roadPath(w, m.start, m.capital.gates.s), path = path0 && path0.slice(4); // 정류장은 마을 시작 자리에서 조금 떨어진 길 위
     if (path && path.length > 20) {
-      const coach = { kind: 'coach', x: path[0].x, y: path[0].y, path, i: 0, dirn: 1, dir: 1, wait: 0, label: '역마차 (마을 ↔ 왕도)', reusable: true, riders: [] };
+      const coach = { kind: 'coach', x: path[0].x, y: path[0].y, path, i: 0, dirn: 1, dir: 1, wait: 0, label: '역마차 타기 (마을 ↔ 왕도 · ◆ 20)', reusable: true, riders: [] };
       w.objects.push(coach); w.coach = coach;
-      const folk = npcs.filter((o) => o.role === 'folk' && Math.hypot(o.x - path[0].x, o.y - path[0].y) < 20 * TILE);
-      if (folk.length) { folk[0].traveler = true; }
+      const d0 = (o) => Math.hypot(o.x - path[0].x, o.y - path[0].y), folk = npcs.filter((o) => o.role !== 'post' && o.role !== 'guard' && d0(o) < 60 * TILE).sort((a, b) => d0(a) - d0(b));
+      if (folk.length) folk[0].traveler = true; // 마을 사람 하나가 역마차로 왕도에 다녀온다
     }
   }
 }
@@ -36,8 +36,13 @@ function roadPath(w, a, b) {
   const tw = w.tw, th = w.th, on = w.map.onPath, ax = Math.floor(a.x), ay = Math.floor(a.y), bx = Math.floor(b.x), by = Math.floor(b.y);
   const near = (x, y) => { let best = -1, bd = 1e9; for (let dy = -8; dy <= 8; dy++) for (let dx = -8; dx <= 8; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= tw || yy >= th || !on[yy * tw + xx]) continue; const d = dx * dx + dy * dy; if (d < bd) { bd = d; best = yy * tw + xx; } } return best; };
   const s = near(ax, ay), e = near(bx, by); if (s < 0 || e < 0) return null;
+  const x0 = Math.max(0, Math.min(ax, bx) - 30), x1 = Math.min(tw - 1, Math.max(ax, bx) + 30), y0 = Math.max(0, Math.min(ay, by) - 30), y1 = Math.min(th - 1, Math.max(ay, by) + 30);
+  return bfs(w, s, e, (n) => on[n]) || bfs(w, s, e, (n) => { const x = n % tw, y = (n / tw) | 0; return x >= x0 && x <= x1 && y >= y0 && y <= y1 && !w.blocked(x * TILE + 8, y * TILE + 8, 5); }); // 길이 끊겨 있으면 걸을 수 있는 땅으로
+}
+function bfs(w, s, e, ok) {
+  const tw = w.tw, th = w.th;
   const prev = new Int32Array(tw * th).fill(-1); prev[s] = s; const q = [s];
-  for (let h = 0; h < q.length; h++) { const k = q[h]; if (k === e) break; const x = k % tw, y = (k / tw) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= tw || yy >= th) continue; const n = yy * tw + xx; if (prev[n] >= 0 || !on[n]) continue; prev[n] = k; q.push(n); } }
+  for (let h = 0; h < q.length; h++) { const k = q[h]; if (k === e) break; const x = k % tw, y = (k / tw) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= tw || yy >= th) continue; const n = yy * tw + xx; if (prev[n] >= 0 || !ok(n)) continue; prev[n] = k; q.push(n); } }
   if (prev[e] < 0) return null;
   const out = []; for (let k = e; k !== s; k = prev[k]) out.push({ x: (k % tw) * TILE + 8, y: ((k / tw) | 0) * TILE + 8 }); out.push({ x: (s % tw) * TILE + 8, y: ((s / tw) | 0) * TILE + 8 });
   return out.reverse().filter((_, i, arr) => i % 2 === 0 || i === arr.length - 1);

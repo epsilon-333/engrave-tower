@@ -2052,6 +2052,13 @@ function handleSignals() {
       sfx('lore');
       showModal(`<h2>${j.title}</h2><p class="muted">${j.where}</p><div class="journal">${esc(j.text).replace(/\n/g, '<br>')}</div><button data-close>덮는다</button>`);
       return;
+    } else if (s.t === 'coach') { // 역마차: 반대쪽 끝(마을 ↔ 왕도 남문)으로
+      const c = world.coach, p = world.player; if (!c) return;
+      if (save.gold < 20) { renderer.banner = { text: '역마차', sub: '삯이 모자란다 (◆ 20)', t: 2, color: '#c8b8a0' }; return; }
+      const A = c.path[0], B = c.path[c.path.length - 1], toB = Math.hypot(p.x - A.x, p.y - A.y) < Math.hypot(p.x - B.x, p.y - B.y), T = toB ? B : A;
+      save.gold -= 20; writeSave(save); p.x = T.x + 14; p.y = T.y + 10; sfx('open', { vol: 0.5 });
+      renderer.banner = { text: '역마차', sub: toB ? '덜컹덜컹… 왕도 남문에 내렸다' : '덜컹덜컹… 바람결 마을에 내렸다', t: 2.6, color: '#e8dcc0' };
+      return;
     } else if (s.t === 'npcHostile' || s.t === 'npcDown') {
       npcStruck(s);
     } else if (s.t === 'npc') {
