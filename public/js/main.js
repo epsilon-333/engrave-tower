@@ -49,6 +49,7 @@ import { NOKT_ZONE, buildNoktHaven } from './data/maps/nokt.js';
 import { ISLAND_DEFS, islandZone, islandMap } from './data/maps/islands.js';
 import { FACTIONS, RANKS, LOYALTY, newPol, titleOf, bounty, OFFICIALS, officialNow, HAPPENINGS, FOES, CULT_LORE, mistClues, MIST_NEED } from './data/politics.js';
 import { SHIPS, cargoCap, GUILD_RANKS, guildRank } from './data/trade.js';
+import { econOf, econTick, planCaravan, deliver, caravanLost, taxArrived, taxLost, marketGossip, TOWNS } from './data/econ.js';
 import { ENG_STEP, ENG_MAX } from './sim/build.js';
 
 let save = loadSave();
@@ -2060,6 +2061,8 @@ function handleSignals() {
       save.gold -= 20; writeSave(save); p.x = T.x + 14; p.y = T.y + 10; sfx('open', { vol: 0.5 });
       renderer.banner = { text: '역마차', sub: toB ? '덜컹덜컹… 왕도 남문에 내렸다' : '덜컹덜컹… 바람결 마을에 내렸다', t: 2.6, color: '#e8dcc0' };
       return;
+    } else if (s.t === 'happeningGone') { // 아무 일 없이 도착했다
+      const h = HAPPEN_LIST.find((q) => q.id === s.id); if (h?.cv && !h.o.engaged) deliver(save, h.cv); if (h?.type === 'taxWagon' && !h.o.engaged) taxArrived(save, 300);
     } else if (s.t === 'happeningHit') { // 벌어지는 일을 공격했다
       const h = HAPPEN_LIST.find((q) => q.id === s.id); if (h) happeningAct(h, { caravan: 'raid', taxWagon: 'rob', patrol: 'stop', cult: 'stop' }[h.type]);
     } else if (s.t === 'npcHostile' || s.t === 'npcDown') {
@@ -2981,11 +2984,14 @@ function spawnHappening() {
   if (!at) return;
   let dest = null;
   if (type === 'caravan' || type === 'taxWagon') for (let a = 0; a < 200 && !dest; a++) { const ang = Math.random() * Math.PI * 2, tx = Math.floor(at.x / TILE + Math.cos(ang) * 40), ty = Math.floor(at.y / TILE + Math.sin(ang) * 40); if (tx > 1 && ty > 1 && tx < w.tw - 2 && ty < w.th - 2 && m.onPath[ty * w.tw + tx]) dest = { x: tx * TILE + 8, y: ty * TILE + 8 }; }
+  const cv = type === 'caravan' ? planCaravan(save) : null; // 남는 마을에서 모자란 마을로 진짜 물건을 싣고 간다
+  if (type === 'caravan' && !cv) return; // 실어 나를 게 없으면 상단도 안 다닌다
   const H = HAPPENINGS[type], hid = `h${++happenSeq}`;
   const r = m.regions?.[Math.floor(at.y / TILE) * w.tw + Math.floor(at.x / TILE)], where = m.regionInfo?.[r]?.name || '근처';
   const o = { kind: 'happening', hid, etype: type, x: at.x, y: at.y, dest, dir: 1, endT: w.t + H.minutes * 60, label: `${H.name} · G 살펴보기 (${DEED_SHORT[type]})`, reusable: true };
   w.objects.push(o);
-  HAPPEN_LIST.push({ id: hid, type, o, where });
+  HAPPEN_LIST.push({ id: hid, type, o, where, cv });
+  if (cv) o.label = `상단 (${TOWNS[cv.from].name} → ${TOWNS[cv.to].name} · ${CARGO[cv.good].name} ${cv.n}) · G 살펴보기 (${DEED_SHORT.caravan})`;
   w.emit({ t: 'text', x: p.x, y: p.y - 30, text: `근처에서 ${H.name}`, color: '#ffe8a8' });
 }
 const ALIGN = { aurelion: { caravan: 'escort', taxWagon: 'guard', cult: 'stop', patrol: 'side' }, noctaris: { caravan: 'raid', taxWagon: 'rob', patrol: 'stop', cult: 'stop' } };
@@ -3051,6 +3057,8 @@ function happeningDone(h, c, aligned) {
   if (r.item) bagAdd(lifeOf(), r.item, 1);
   if (r.lore) { const t = CULT_LORE[Math.floor(Math.random() * CULT_LORE.length)]; save.codex.lore ||= []; if (!save.codex.lore.includes(t)) save.codex.lore.push(t); renderer.banner = { text: '교단의 기록을 엿들었다', sub: t.slice(0, 60) + '…', t: 4.5, color: '#b98aff' }; }
   if (!P.tested && P.faction !== 'noctaris' && ALIGN.aurelion[h.type] === c.id) P.tested = true;
+  if (h.cv) { if (c.id === 'raid') caravanLost(save, h.cv); else deliver(save, h.cv); } // 털리면 안 닿고, 지켜 내면 닿는다
+  if (h.type === 'taxWagon') { if (c.id === 'rob') taxLost(save, 300); else if (c.id === 'guard') taxArrived(save, 300); }
   witness(world, h.o.x, h.o.y, c.id, { raid: 25, rob: 20, escort: -20, guard: -15, stop: -10 }[c.id] || 0);
   polGain(r, aligned);
   if (c.id === 'raid' || c.id === 'rob') addChronicle(`${h.where}에서 ${h.type === 'taxWagon' ? '세금 마차' : '상단'}이(가) 털렸다 — ${heroName()}`);
@@ -3085,12 +3093,13 @@ function barkTick(dt) {
   const vac = ['taxChief', 'treasurer', 'knightCommander', 'royalMage'].find((id) => !officialNow(save, id));
   if (h && Math.random() < 0.6) line = { caravan: `${h.where} 쪽으로 상단이 간다더군. 짐이 꽤 많던데…`, taxWagon: `${h.where}에 세금 마차가 지나가. 저걸 누가 털면 속이 시원할 텐데.`, patrol: `${h.where}에서 순찰대가 또 농부를 괴롭힌대.`, cult: `${h.where}에 검은 옷 사람들이 모였대. 소름 돋아.` }[h.type];
   else if (vac && Math.random() < 0.4) line = `${OFFICIALS[vac].title} 자리가 비었다더군. 누가 해치웠대.`;
-  else line = BARK_TIPS[Math.floor(Math.random() * BARK_TIPS.length)];
+  else { const mg = marketGossip(save), en = econOf(save).news[0]; line = mg.length && Math.random() < 0.4 ? mg[Math.floor(Math.random() * mg.length)] : en && Date.now() - en.t < 20 * 60e3 && Math.random() < 0.4 ? `들었어? ${en.text}.` : BARK_TIPS[Math.floor(Math.random() * BARK_TIPS.length)]; }
   renderer.texts.push({ x: o.x, y: (o._top ?? o.y - 24) - 4, text: line, color: '#f4ecd8', t: 4.5, vy: -3, vx: 0, label: true });
 }
 function politicsTick(dt) {
   if (!world || !save || gameEl.hidden || paused) return;
   const w = world;
+  if (save.time) econTick(save, absMin(save.time)); // 마을마다 만들고 쓴다
   if (w.map.outdoor || w.objects.some((q) => q.kind === 'npc')) barkTick(dt);
   if (!save.flags?.deedTip && w.state === 'play' && w.zone?.id === 'world') { (save.flags ||= {}).deedTip = true; renderer.banner = { text: '고르는 창은 없다 — 직접 하면 된다', sub: '때리면 싸움 · 돈을 건네면 뇌물 · 기부 · 후원 · 곁에 머물면 호위 (설정에서 NPC 공격 끄기)', t: 7, color: '#ffe8a8' }; }
   if (w.map.outdoor && !w.voyage && w.state === 'play') {

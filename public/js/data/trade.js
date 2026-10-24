@@ -1,6 +1,7 @@
 // 항구 · 배 · 교역: 섬마다 특산품과 시세가 다르다. 많이 팔면 떨어지고, 사 가면 오르고, 시간이 지나면 제자리로 돌아온다.
 // 지금은 본섬의 두 항구(바람결 항구 · 안개 부두)만 열려 있고, 다른 섬 뱃길은 섬을 만들면서 하나씩 연다.
 import { GOODS } from './goods.js';
+import { TOWNS, priceMul, econOf } from './econ.js';
 
 // ── 교역품 (가방에 쌓이지만 몸에 지는 짐은 CARGO_CAP 개까지) ──
 export const CARGO = {
@@ -106,7 +107,7 @@ export function buyPrice(save, portId, id) {
   const m = PORTS[portId].market[id];
   if (!m || m >= 1) return null;
   const st = marketState(save, portId);
-  return Math.round(CARGO[id].price * m * (1 + STEP * (st.buy[id] || 0)));
+  return Math.round(CARGO[id].price * m * (1 + STEP * (st.buy[id] || 0)) * (TOWNS[portId] ? priceMul(save, portId, id) : 1)); // 마을 재고가 모자라면 비싸다
 }
 // 항구가 사 주는 값(내가 파는 값)
 export function sellPrice(save, portId, id) {
@@ -114,11 +115,12 @@ export function sellPrice(save, portId, id) {
   if (!m) return null;
   const st = marketState(save, portId);
   const gb = guildRank(save) > 0 ? GUILD_RANKS[guildRank(save)].bonus : 0;
-  return Math.max(1, Math.round(CARGO[id].price * m * (0.85 + gb) * (1 - STEP * (st.sell[id] || 0))));
+  return Math.max(1, Math.round(CARGO[id].price * m * (0.85 + gb) * (1 - STEP * (st.sell[id] || 0)) * (TOWNS[portId] ? priceMul(save, portId, id) : 1)));
 }
 export function noteTrade(save, portId, id, side, n) {
   const st = marketState(save, portId);
   st[side][id] = Math.min(30, (st[side][id] || 0) + n);
+  if (TOWNS[portId]) { const S = econOf(save).stock[portId]; if (S[id] != null) S[id] = Math.max(0, Math.min(400, S[id] + (side === 'sell' ? n : -n))); } // 내가 사고팔면 그 마을 창고가 바뀐다
 }
 // 이 항구 시세를 기록해 둔다 (다른 항구 시세판에서 「지난번에 본 값」으로 보인다)
 export function rememberPrices(save, portId) {
