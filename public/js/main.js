@@ -2059,6 +2059,8 @@ function handleSignals() {
       save.gold -= 20; writeSave(save); p.x = T.x + 14; p.y = T.y + 10; sfx('open', { vol: 0.5 });
       renderer.banner = { text: '역마차', sub: toB ? '덜컹덜컹… 왕도 남문에 내렸다' : '덜컹덜컹… 바람결 마을에 내렸다', t: 2.6, color: '#e8dcc0' };
       return;
+    } else if (s.t === 'happeningHit') { // 벌어지는 일을 공격했다
+      const h = HAPPEN_LIST.find((q) => q.id === s.id); if (h) happeningAct(h, { caravan: 'raid', taxWagon: 'rob', patrol: 'stop', cult: 'stop' }[h.type]);
     } else if (s.t === 'npcHostile' || s.t === 'npcDown') {
       npcStruck(s);
     } else if (s.t === 'npc') {
@@ -2966,13 +2968,48 @@ function spawnHappening() {
   if (type === 'caravan' || type === 'taxWagon') for (let a = 0; a < 200 && !dest; a++) { const ang = Math.random() * Math.PI * 2, tx = Math.floor(at.x / TILE + Math.cos(ang) * 40), ty = Math.floor(at.y / TILE + Math.sin(ang) * 40); if (tx > 1 && ty > 1 && tx < w.tw - 2 && ty < w.th - 2 && m.onPath[ty * w.tw + tx]) dest = { x: tx * TILE + 8, y: ty * TILE + 8 }; }
   const H = HAPPENINGS[type], hid = `h${++happenSeq}`;
   const r = m.regions?.[Math.floor(at.y / TILE) * w.tw + Math.floor(at.x / TILE)], where = m.regionInfo?.[r]?.name || '근처';
-  const o = { kind: 'happening', hid, etype: type, x: at.x, y: at.y, dest, dir: 1, endT: w.t + H.minutes * 60, label: `${H.name} · 다가가서 살펴본다`, reusable: true };
+  const o = { kind: 'happening', hid, etype: type, x: at.x, y: at.y, dest, dir: 1, endT: w.t + H.minutes * 60, label: `${H.name} · G 살펴보기 (${DEED_SHORT[type]})`, reusable: true };
   w.objects.push(o);
   HAPPEN_LIST.push({ id: hid, type, o, where });
   w.emit({ t: 'text', x: p.x, y: p.y - 30, text: `근처에서 ${H.name}`, color: '#ffe8a8' });
 }
 const ALIGN = { aurelion: { caravan: 'escort', taxWagon: 'guard', cult: 'stop', patrol: 'side' }, noctaris: { caravan: 'raid', taxWagon: 'rob', patrol: 'stop', cult: 'stop' } };
+// 벌어지는 일은 고르는 창이 없다: 공격하면 싸움 · 곁에 머물면 호위/엿듣기 · 돈을 건네면 뇌물 · 기부 · 헌금
+const DEED = { // [하는 일, 그러면 되는 것]
+  caravan: [['⚔ 상단을 공격한다', '습격 — 호위병과 싸우고, 이기면 교역품 · 돈 (악명 · 투쟁 +)'], ['곁에 머문다', '도적이 매복하면 호위 — 물리치면 수고비 (명성 · 공훈 +)'], ['그냥 지나간다', '아무 일도 없다']],
+  taxWagon: [['⚔ 마차를 공격한다', '약탈 — 세금 호위병과 싸우고, 이기면 큰돈 (투쟁 · 악명 +)'], ['곁에 머문다', '반란군이 노리면 호위 — 물리치면 공훈 · 명성'], ['그냥 지나간다', '아무 일도 없다']],
+  patrol: [['⚔ 순찰대를 공격한다', '말리기 — 이기면 명성 (공훈 -)'], ['◆ 순찰대에게 돈을 건넨다', '뇌물 — 순찰대가 물러간다 (공훈 + · 악명 +)'], ['◆ 농부에게 돈을 건넨다', '기부 — 명성 +'], ['그냥 지나간다', '아무 일도 없다']],
+  cult: [['⚔ 신도를 공격한다', '막기 — 이기면 명성'], ['가까이 숨어 지켜본다 (10초)', '엿듣기 — 교단의 기록 (안개 너머 뱃길의 단서)'], ['◆ 돈을 바친다 (50 이상)', '교단의 신뢰 (숨겨진 길)'], ['그냥 지나간다', '아무 일도 없다']],
+};
+const DEED_SHORT = { caravan: '공격=습격 · 곁에=호위', taxWagon: '공격=약탈 · 곁에=호위', patrol: '공격=말리기 · 돈=뇌물/기부', cult: '공격=막기 · 숨어서=엿듣기 · 돈=헌금' };
+function happeningAct(h, id) { // 행동이 정해졌다 → 싸우거나 바로 끝낸다
+  const H = HAPPENINGS[h.type], P = polOf(), c = H.choices.find((q) => q.id === id); if (!c) return;
+  const aligned = !!(P.faction && ALIGN[P.faction][h.type] === c.id);
+  if (c.fight) {
+    h.o.engaged = true; h.choice = c; h.aligned = aligned;
+    const foes = world.spawnGroup(FOES[c.fight], h.o.x + 30, h.o.y, Math.max(5, Math.min(60, save.level + 1)), { r: 50 });
+    world.skirmish = { id: h.id, foes };
+    renderer.banner = { text: { raid: '상단 습격!', rob: '세금 마차 약탈!', escort: '매복이다! 상단을 지켜라', guard: '반란군이 마차를 노린다!', stop: '싸움이 붙었다' }[c.id] || c.label, sub: '모두 쓰러뜨리자', t: 2.4, color: '#ff9a7a' };
+    return;
+  }
+  happeningDone(h, c, aligned);
+}
 function happeningTalk(hid) {
+  const h = HAPPEN_LIST.find((q) => q.id === hid); if (!h || h.o.engaged || h.o.gone) return;
+  const H = HAPPENINGS[h.type], D = DEED[h.type] || [];
+  const gives = h.type === 'patrol' ? [['patrolBribe', '순찰대에게 ◆ 60'], ['farmerGive', '농부에게 ◆ 40']] : h.type === 'cult' ? [['cultGive', '교단에 ◆ 50']] : [];
+  showModal(`<h2>${esc(H.name)}</h2><p>${esc(H.text)}</p><p class="muted">고르는 창은 없다 — 직접 하면 그렇게 된다.</p><div class="soc-list">${D.map(([a, b]) => `<div class="soc-row"><span class="nm"><b>${esc(a)}</b></span><span class="muted">${esc(b)}</span></div>`).join('')}</div>
+    <div class="actions">${gives.map(([k, l]) => `<button class="sm" data-hg="${k}">${esc(l)}</button>`).join('')}<button data-close class="ghost">닫기</button></div>`);
+  overlay.querySelectorAll('[data-hg]').forEach((b) => (b.onclick = () => {
+    const k = b.dataset.hg, cost = k === 'patrolBribe' ? 60 : k === 'farmerGive' ? 40 : 50;
+    if (save.gold < cost) { renderer.banner = { text: '돈이 모자란다', t: 1.6, color: '#c8b8a0' }; return; }
+    save.gold -= cost; overlay.hidden = true; paused = false; modal = null; sfx('coin', { vol: 0.6 });
+    if (k === 'patrolBribe') happeningAct(h, 'side');
+    else if (k === 'cultGive') happeningAct(h, 'help');
+    else { polGain({ fame: 3 }); world.emit({ t: 'text', x: h.o.x, y: h.o.y - 30, text: '고맙습니다…!', color: '#ffe8a8' }); renderer.banner = { text: '농부에게 돈을 건넸다', sub: '기부 · 명성 +3', t: 2.4, color: '#9fe8b0' }; }
+  }));
+}
+function happeningTalkOld(hid) {
   const h = HAPPEN_LIST.find((q) => q.id === hid); if (!h || h.o.engaged || h.o.gone) return;
   const H = HAPPENINGS[h.type], P = polOf();
   showModal(`<h2>${esc(H.name)}</h2><p>${esc(H.text)}</p><div class="soc-list">${H.choices.map((c) => `<div class="soc-row ${P.faction && ALIGN[P.faction][h.type] === c.id ? 'on' : ''}"><span class="nm"><b>${esc(c.label)}</b></span><span class="muted">${esc(c.hint)}${P.faction && ALIGN[P.faction][h.type] === c.id ? ` · ${FACTIONS[P.faction].name} 의뢰 (×1.5)` : ''}</span><span class="btns"><button class="sm" data-hc="${c.id}">고른다</button></span></div>`).join('')}</div>`);
@@ -3021,6 +3058,13 @@ function politicsTick(dt) {
   if (w.map.outdoor && !w.voyage && w.state === 'play') {
     happenClock -= dt;
     HAPPEN_LIST = HAPPEN_LIST.filter((h) => w.objects.includes(h.o) && !h.o.gone);
+    for (const h of HAPPEN_LIST) { // 곁에 머물면: 상단 · 세금 마차는 매복이 오고(호위), 교단 의식은 엿듣게 된다
+      if (h.o.engaged) continue;
+      const d = Math.hypot(h.o.x - w.player.x, h.o.y - w.player.y);
+      h.nearT = d < (h.type === 'cult' ? 60 : 100) ? (h.nearT || 0) + dt : 0;
+      if ((h.type === 'caravan' || h.type === 'taxWagon') && h.nearT > 6) { h.o.engaged = true; happeningAct(h, h.type === 'caravan' ? 'escort' : 'guard'); }
+      else if (h.type === 'cult' && h.nearT > 10 && !h.listened) { h.listened = true; const c = HAPPENINGS.cult.choices.find((q) => q.id === 'listen'); const r = { ...c.reward }; if (r.lore) { const t = CULT_LORE[Math.floor(Math.random() * CULT_LORE.length)]; save.codex.lore ||= []; if (!save.codex.lore.includes(t)) save.codex.lore.push(t); renderer.banner = { text: '교단의 기록을 엿들었다', sub: t.slice(0, 60) + '…', t: 4, color: '#c8a0ff' }; writeSave(save); } }
+    }
     if (happenClock <= 0) { happenClock = 100 + Math.random() * 60; if (HAPPEN_LIST.length < 3) spawnHappening(); }
     // 현상금이 붙었으면 (해골 군도 빼고) 경비병이 쫓아온다, 배신자는 원래 집단이 쫓는다
     hunterClock -= dt;
@@ -3156,7 +3200,7 @@ function updateHappenPanel() {
   el.hidden = false;
   const p = w.player;
   if (w.track?.hid) { const h = HAPPEN_LIST.find((q) => q.id === w.track.hid); if (h) { w.track.x = h.o.x; w.track.y = h.o.y; } else w.track = null; }
-  el.innerHTML = `<b>근처에서 벌어지는 일</b>${HAPPEN_LIST.slice(0, 3).map((h) => { const d = Math.round(Math.hypot(h.o.x - p.x, h.o.y - p.y) / TILE), left = Math.max(0, Math.ceil((h.o.endT - w.t) / 60)); return `<div class="hp-row ${w.track?.hid === h.id ? 'on' : ''}" data-tr="${h.id}">${esc(HAPPENINGS[h.type].name)}<small>${esc(h.where)} · ${d}칸 · ${left}분</small></div>`; }).join('')}${w.track ? '<div class="hp-row off" data-tr="off">안내 끄기</div>' : ''}`;
+  el.innerHTML = `<b>근처에서 벌어지는 일</b>${HAPPEN_LIST.slice(0, 3).map((h) => { const d = Math.round(Math.hypot(h.o.x - p.x, h.o.y - p.y) / TILE), left = Math.max(0, Math.ceil((h.o.endT - w.t) / 60)); return `<div class="hp-row ${w.track?.hid === h.id ? 'on' : ''}" data-tr="${h.id}">${esc(HAPPENINGS[h.type].name)}<small>${esc(h.where)} · ${d}칸 · ${left}분</small><small class="deed">${esc(DEED_SHORT[h.type] || '')}</small></div>`; }).join('')}${w.track ? '<div class="hp-row off" data-tr="off">안내 끄기</div>' : ''}`;
 }
 function chronicleTalk() {
   const C = save.chronicle || [];

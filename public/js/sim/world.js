@@ -4485,7 +4485,7 @@ export class World {
       }
       if (pr.life <= 0) continue;
       if (pr.owner === 'p' && !pr.ghost) {
-        if (this.npcAttack) for (const o of this.objects) if (o.kind === 'npc' && o.home && !o.hostile && !o.away && !o.knockedUntil && Math.hypot(o.x - pr.x, o.y - pr.y) < 9) { pokeNpcs(this, o.x, o.y, 1); if (!pr.pierce) pr.life = 0; break; }
+        if (this.npcAttack) for (const o of this.objects) if ((o.kind === 'npc' && o.home && !o.hostile && !o.away && !o.knockedUntil && Math.hypot(o.x - pr.x, o.y - pr.y) < 9) || (o.kind === 'happening' && !o.gone && !o.engaged && Math.hypot(o.x - pr.x, o.y - pr.y) < 18)) { pokeNpcs(this, o.x, o.y, 1); if (!pr.pierce) pr.life = 0; break; }
         for (const e of this.enemies) {
           if (e.dead || e.hidden || pr.hit.has(e.id)) continue;
           if (Math.hypot(e.x - pr.x, e.y - 4 - pr.y) > e.r + 5) continue; // 몸 가운데 (발밑보다 조금 위) 기준

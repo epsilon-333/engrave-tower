@@ -152,5 +152,6 @@ export function npcDown(w, e) {
 // 내 공격이 닿은 곳 근처의 NPC
 export function pokeNpcs(w, x, y, r) {
   if (!w.npcAttack) return;
+  for (const o of w.objects) if (o.kind === 'happening' && !o.gone && !o.engaged && Math.hypot(o.x - x, o.y - y) <= r + 22) { o.engaged = true; w.signals.push({ t: 'happeningHit', id: o.hid }); }
   for (const o of w.objects) if (o.kind === 'npc' && o.home && !o.hostile && !o.knockedUntil && !o.away && Math.hypot(o.x - x, o.y - y) <= r + 6) provokeNpc(w, o);
 }
