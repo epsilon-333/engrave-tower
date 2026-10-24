@@ -28,8 +28,9 @@ export function initNpcLife(w) {
     const seed = hashStr(`${o.kind}|${o.id || o.station || o.art}|${i}`);
     o.home = { x: o.x, y: o.y }; o.role = o.kind === 'npc' ? roleOf(o) : o.kind === 'turtle' ? 'folk' : 'post'; o.seed = seed; o.act = 'idle';
     o.homebody = o.kind === 'turtle' || o.kind === 'sanctum'; // 멀리 안 가는 사람 (바닷가 자라 · 성지 수호자)
+    if (String(o.id).startsWith('official_')) { o.role = 'post'; o.official = String(o.id).slice(9); o.nightWork = false; } // 고위 관계자: 저택 앞에서 일하고 · 저택에 들어가 자고 · 귀족끼리 어울린다
     // 밤에 장사하는 사람: 장물아비 · 위조꾼 · 정보상 · 떠돌이 상인 · 여관 · 술집, 그리고 상인 몇몇
-    o.nightWork = o.role === 'post' && (/fence|forger|infoMerchant|rumor|broker|inn|tavern|bar|night/i.test(`${o.art || ''} ${o.id || ''} ${o.station || ''}`) || o.kind === 'merchant' || rnd(seed, 14) < 0.15);
+    o.nightWork = !o.official && o.role === 'post' && (/fence|forger|infoMerchant|rumor|broker|innkeeper|tavern|bartender/i.test(`${o.art || ''} ${o.id || ''} ${o.station || ''}`) || o.kind === 'merchant' || rnd(seed, 14) < 0.15);
     // 성향 (0~1): 성실 · 용감 · 탐욕 · 사교 · 정직 · 왕실 충성
     o.trait = { diligent: rnd(seed, 1), brave: rnd(seed, 2), greedy: rnd(seed, 3), social: rnd(seed, 4), honest: rnd(seed, 5), loyal: rnd(seed, 6) };
     if (o.role === 'guard') { o.trait.brave = 0.4 + o.trait.brave * 0.6; o.trait.loyal = 0.3 + o.trait.loyal * 0.7; }
@@ -45,7 +46,7 @@ export function initNpcLife(w) {
     if (o.mem.left) { o.away = true; o.reusable = false; o.gone = true; } // 녹타리스로 떠난 사람은 돌아오지 않는다
   });
   // 역마차: 바깥 세계에서 마을 ↔ 왕도 남문 (길을 따라 · 나무를 피해서)
-  if (m.onPath && m.capital?.gates?.s && m.start && w.zone?.id === 'world') {
+  if (!w.coach && m.onPath && m.capital?.gates?.s && m.start && w.zone?.id === 'world') {
     const path0 = roadPath(w, m.start, m.capital.gates.s), path = path0 && path0.slice(4);
     if (path && path.length > 20) {
       const coach = { kind: 'coach', x: path[0].x, y: path[0].y, path, i: 0, dirn: 1, dir: 1, vy: 0, wait: 0, label: '역마차 타기 (마을 ↔ 왕도 · ◆ 20)', reusable: true, riders: [] };
@@ -153,7 +154,8 @@ function satisfy(o, DT) {
   if (a === 'demand' && o.harass) { const v = o.harass; if (o.doT > 20 || v.hostile || v.away) { const take = Math.min(v.coins, 10); v.coins -= take; o.coins += take; v.trait.loyal = Math.max(0, v.trait.loyal - 0.08); v.harassedBy = null; v.doing = null; o.harass = null; o.doT = 99; } } // 돈을 뜯기면 왕실이 더 싫어진다
   if (a === 'work' || a === 'watch') o.coins += k * (0.3 + o.trait.diligent * 0.3);
 }
-const doneWith = (o) => { const N = o.need, a = o.act;
+const doneWith = (o, min) => { const N = o.need, a = o.act;
+  if (o.doing === 'work' && !onShift(o, min)) return true; // 근무 시간이 끝나면 일을 접는다
   if (o.doing === 'harassed') return !o.harassedBy;
   if (o.doing === 'collect') return !o.harass && o.doT > 2;
   if (o.doing === 'rebel') return !o.goal; // 길이 막혔으면 다른 쪽으로 다시 떠난다
@@ -166,6 +168,7 @@ const doneWith = (o) => { const N = o.need, a = o.act;
 
 export function updateNpcLife(w, DT) {
   if (!w.npcInit) initNpcLife(w); // 집 안 · 광장 같은 곳도 처음 한 번
+  w.lateT = (w.lateT || 0) - DT; if (w.lateT <= 0) { w.lateT = 2; if (w.objects.some((o) => isPerson(o) && !o.home && o.leaving == null)) initNpcLife(w); } // 나중에 놓인 사람(왕도 고위 관계자 · 모병관 등)도
   const p = w.player, min = w.clock?.min ?? 720;
   w.decayT = (w.decayT || 0) + DT;
   if (w.decayT >= 1) { const k = w.decayT; w.decayT = 0; for (const o of w.objects) if (o.mem && o.mem.op) { const d = Math.min(Math.abs(o.mem.op), k / 90); o.mem.op -= Math.sign(o.mem.op) * d; } } // 시간이 지나면 아주 조금씩 보통으로 돌아온다 (게임 1시간 ≈ 0.7)
@@ -178,7 +181,7 @@ export function updateNpcLife(w, DT) {
     satisfy(o, DT); o.doT += DT;
     if (o.asleep) { if (o.need.energy < 0.05 || ((o.role === 'guard' || o.role === 'post') && onShift(o, min) && o.need.energy < 0.45)) wakeUp(o); continue; } // 집 안에서 잔다
     if (o.fleeT > 0) { o.fleeT -= DT; const a = Math.atan2(o.y - p.y, o.x - p.x); step(w, o, o.x + Math.cos(a) * 30, o.y + Math.sin(a) * 30, 60, DT); o.act = 'run'; continue; }
-    if (!o.doing || doneWith(o)) { if (o.sparWith && o.sparWith.sparWith === o) o.sparWith.sparWith = null; o.sparWith = null; o.talkTo = null; start(w, o, choose(w, o, min), min); }
+    if (!o.doing || doneWith(o, min)) { if (o.sparWith && o.sparWith.sparWith === o) o.sparWith.sparWith = null; o.sparWith = null; o.talkTo = null; start(w, o, choose(w, o, min), min); }
     if (o.role === 'guard' && o.mem && o.mem.op <= -60 && w.npcAttack && Math.hypot(p.x - o.x, p.y - o.y) < 90) { w.emit({ t: 'text', x: o.x, y: o.y - 26, text: '저놈이다! 잡아라!', color: '#ff5a4a' }); provokeNpc(w, o, 'law'); continue; } // 나를 증오하는 경비는 보이면 덤빈다
     const talkNear = Math.hypot(p.x - o.x, p.y - o.y) < 26; // 말 걸 수 있게 가까이 오면 멈춰 선다
     if (talkNear && o.act !== 'doze') { if (o.act === 'walk') o.act = 'idle'; o.face = p.x < o.x ? -1 : 1; continue; }
@@ -249,7 +252,10 @@ function boardCoach(w, o) { const c = w.coach; if (!c || Math.hypot(c.x - o.x, c
 const NPC_FOE = (o) => (o.role === 'guard' ? 'royalGuard' : 'townsfolk');
 export function provokeNpc(w, o, why = 'hit') {
   if (o.hostile || o.knockedUntil || o.away || !o.home) return;
+  if (o.official) { o.away = true; o.home = null; o.reusable = false; w.signals.push({ t: 'officialAttack', id: o.official, x: o.x, y: o.y }); return; } // 고위 관계자는 호위를 부른다
   const e = w.makeEnemy(NPC_FOE(o), o.x, o.y, { noAffix: true });
+  if (o.role === 'guard') { e.moves = ['combo', 'leap', 'shove', 'whirl']; e.skillNames = { combo: '연속 베기', leap: '돌진 찌르기', shove: '방패 밀치기', whirl: '회전 베기' }; }
+  else e.moves = []; // 일반 주민 · 상인은 주먹질만
   e.npcRef = o; e.state = 'chase'; e.home = { ...o.home }; e.champion = null; e.alert = 9;
   if (o.role === 'post') { e.hp = e.maxHp = Math.round(e.maxHp * 1.4); }
   o.hostile = e; o.label0 ||= o.label; o.reusable = false; o.goal = null; o.riding = null;

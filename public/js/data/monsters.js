@@ -119,6 +119,9 @@ Object.assign(MONSTERS, {
 // ── 공격당한 주민 (NPC가 화나서 싸울 때의 몸) ──
 Object.assign(MONSTERS, { townsfolk: { name: '화난 주민', shape: 'humanoid', pal: { a: '#c8a888' }, hp: 160, atk: 10, type: 'phys', speed: 70, ai: 'chase', r: 6, xp: 0, gold: 0, pres: 10, mres: 10 } });
 
+// 왕국 경비 · 근위병은 어디서든 플레이어처럼 기술을 쓴다
+if (MONSTERS.royalGuard) Object.assign(MONSTERS.royalGuard, { moves: ['combo', 'leap', 'shove', 'whirl'], skillNames: { combo: '연속 베기', leap: '돌진 찌르기', shove: '방패 밀치기', whirl: '회전 베기' } });
+
 // ── 레이드 보스: 체력이 셋으로 나뉘어 단계마다 기술이 바뀐다 (phaseMoves) ──
 Object.assign(MONSTERS, {
   raidGolem: { name: '고대 골렘', shape: 'golem', scale: 2.4, elite: true, raid: true, pal: { a: '#8a7a5a' }, hp: 14000, atk: 34, type: 'phys', speed: 34, ai: 'boss', proj: { speed: 160, color: '#c8a86a', spread: 3 }, shield: 0.2, r: 16, xp: 600, gold: 400, pres: 80, mres: 30, echo: { id: 'core', rate: 1 },

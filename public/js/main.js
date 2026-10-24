@@ -2061,6 +2061,9 @@ function handleSignals() {
       save.gold -= 20; writeSave(save); p.x = T.x + 14; p.y = T.y + 10; sfx('open', { vol: 0.5 });
       renderer.banner = { text: '역마차', sub: toB ? '덜컹덜컹… 왕도 남문에 내렸다' : '덜컹덜컹… 바람결 마을에 내렸다', t: 2.6, color: '#e8dcc0' };
       return;
+    } else if (s.t === 'officialAttack') { // 고위 관계자를 그냥 때렸다
+      const P = polOf(), now = officialNow(save, s.id); if (now && P.faction === now.side) { P.faction = null; P.rank = 0; P.traitor = Date.now(); addChronicle(`${heroName()}이(가) 자기 세력의 ${now.title}에게 칼을 겨눴다`); }
+      startOfficialFight(s.id, { x: s.x, y: s.y });
     } else if (s.t === 'npcEvent') { // NPC가 스스로 일으킨 일
       const near = Math.hypot(s.x - world.player.x, s.y - world.player.y) < 300, nm = String(s.name || '누군가').split(' ')[0];
       if (s.k === 'rebel') { const E = econOf(save); E.rebels = (E.rebels || 0) + 1; addChronicle(`${nm}이(가) 살림을 접고 녹타리스로 떠났다 (세금 ${Math.round(E.tax * 100)}%)`); if (near) renderer.banner = { text: `${nm}이(가) 마을을 떠난다`, sub: '가난과 세금에 지쳐 녹타리스에 들어간다고 한다', t: 3, color: '#c8a0ff' }; }
@@ -2937,14 +2940,32 @@ function officialTalk(oid) {
   document.getElementById('attackO').onclick = () => {
     close();
     if (mine) { P.faction = null; P.rank = 0; P.traitor = Date.now(); addChronicle(`${heroName()}이(가) 자기 세력의 ${now.title}에게 칼을 겨눴다`); }
-    const o = world.objects.find((q) => q.id === 'official_' + oid); if (o) { o.reusable = false; o.opened = true; o.gone = true; world.objects.splice(world.objects.indexOf(o), 1); }
-    const x = o?.x ?? world.player.x + 40, y = o?.y ?? world.player.y;
-    const [boss] = world.spawnGroup([[now.monster, 1, null]], x, y, now.lv, { r: 1 });
-    boss.hp = boss.maxHp = Math.round(boss.maxHp * now.hp); boss.champion = label; boss.official = oid; boss.scale = now.king ? 1.5 : 1.2;
-    const gl = now.guards.map(([m, n]) => [m, n, now.side === 'aurelion' ? '왕국 근위병' : '녹타리스 호위']);
-    world.spawnGroup(gl, x, y, now.lv - 2, { r: 46 });
-    renderer.banner = { text: `${label}을(를) 공격했다!`, sub: '호위병이 달려든다', t: 3, color: '#ff7a5a' };
+    startOfficialFight(oid);
   };
+}
+// 고위 관계자 · 호위와의 싸움 (말을 걸고 공격하든, 그냥 때리든) · 관계자와 호위는 플레이어처럼 기술을 쓴다
+const OFFICIAL_SKILLS = {
+  taxChief: { moves: ['retreat', 'fan', 'blink'], names: { retreat: '물러나며 쏘기', fan: '단검 흩뿌리기', blink: '연막 걸음' } },
+  treasurer: { moves: ['pool', 'blink', 'spiral', 'heal'], names: { pool: '저주의 금화', blink: '점멸', spiral: '금화 소용돌이', heal: '치유의 물약' } },
+  knightCommander: { moves: ['leap', 'whirl', 'combo', 'quake'], names: { leap: '도약 강타', whirl: '회전 베기', combo: '삼연격', quake: '대지 가르기' } },
+  royalMage: { moves: ['fan', 'pool', 'blink', 'spiral', 'split'], names: { fan: '얼음 화살 부채', pool: '서리 장판', blink: '점멸', spiral: '냉기 소용돌이', split: '갈라지는 얼음창' } },
+  king: { moves: ['leap', 'whirl', 'nova', 'combo', 'quake'], names: { leap: '왕의 도약', whirl: '왕검 회전', nova: '빛의 폭발', combo: '왕검 연격', quake: '대지 가르기' } },
+  quartermaster: { moves: ['retreat', 'fan', 'pool'], names: { retreat: '물러나며 쏘기', fan: '화약 흩뿌리기', pool: '기름 웅덩이' } },
+  spymaster: { moves: ['blink', 'fan', 'split', 'retreat'], names: { blink: '그림자 걸음', fan: '독침 부채', split: '갈라지는 화살', retreat: '물러나며 쏘기' } },
+  leader: { moves: ['leap', 'whirl', 'blink', 'combo', 'nova'], names: { leap: '봉기의 도약', whirl: '잿빛 회전', blink: '그림자 걸음', combo: '연격', nova: '밤의 폭발' } },
+};
+const GUARD_SKILLS = { moves: ['combo', 'leap', 'shove', 'whirl'], names: { combo: '연속 베기', leap: '돌진 찌르기', shove: '방패 밀치기', whirl: '회전 베기' } };
+function startOfficialFight(oid, at) {
+  const now = officialNow(save, oid); if (!now) return;
+  const label = `${now.title} ${now.name}${now.gen > 1 ? ` (${now.gen}대째)` : ''}`;
+  const o = world.objects.find((q) => q.id === 'official_' + oid); if (o) { o.reusable = false; o.opened = true; o.gone = true; world.objects.splice(world.objects.indexOf(o), 1); }
+  const x = at?.x ?? o?.x ?? world.player.x + 40, y = at?.y ?? o?.y ?? world.player.y;
+  const [boss] = world.spawnGroup([[now.monster, 1, null]], x, y, now.lv, { r: 1 });
+  boss.hp = boss.maxHp = Math.round(boss.maxHp * now.hp); boss.champion = label; boss.official = oid; boss.scale = now.king ? 1.5 : 1.2;
+  const S = OFFICIAL_SKILLS[oid]; if (S) { boss.moves = S.moves; boss.skillNames = S.names; }
+  const gl = now.guards.map(([m, n]) => [m, n, now.side === 'aurelion' ? '왕국 근위병' : '녹타리스 호위']);
+  for (const g of world.spawnGroup(gl, x, y, now.lv - 2, { r: 46 }) || []) { g.moves = GUARD_SKILLS.moves; g.skillNames = GUARD_SKILLS.names; }
+  renderer.banner = { text: `${label}을(를) 공격했다!`, sub: '호위병이 달려든다', t: 3, color: '#ff7a5a' };
 }
 function officialDown(s) {
   const now = officialNow(save, s.id), e = world.enemies.find((q) => q.id === s.eid); if (!now || !e) return;

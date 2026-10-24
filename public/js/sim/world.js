@@ -4068,10 +4068,11 @@ export class World {
       if (def.phaseMoves && phase !== (e.raidPhase ?? 0)) { e.raidPhase = phase; this.emit({ t: 'banner', text: `${def.name} · ${phase + 1}단계`, color: '#ff8a5a' }); this.emit({ t: 'shake', v: 4 }); }
       Object.assign(can, { beam: dist < 230, spiral: dist < 200, split: dist < 220, whirl: dist < melee + 22, shove: dist < melee + 10, quake: dist < 70,
         rain: dist < 260, adds: this.enemies.filter((o) => o.summoner === e.id && !o.dead).length < 3, charge: dist > 50 && dist < 260, mark: true, nova: dist < 120 });
-      const list = (def.phaseMoves ? def.phaseMoves[phase] : def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]);
+      const list = (def.phaseMoves ? def.phaseMoves[phase] : e.moves || def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]);
       if (!list.length) { e.mvCd = 0.3; return false; } // 지금 쓸 수 있는 기술이 없으면 조금 뒤 다시
       const pick = list[this.rng.int(0, list.length - 1)];
-      e.mvCd = (def.elite || e.champion ? 2.4 : 3.5) / (e.enraged ? 1.4 : 1) + this.rng.range(0, 1.5);
+      e.mvCd = (def.elite || e.champion ? 2.4 : 3.5) / (e.enraged ? 1.4 : 1) / (e.moves ? 1.5 : 1) + this.rng.range(0, 1.5); // 사람(경비 · 관리)은 기술을 더 자주
+      const sn = (e.skillNames || def.skillNames)?.[pick]; if (sn) this.emit({ t: 'text', x: e.x, y: e.y - 30, text: sn, color: '#ffd0a0' }); // 플레이어 스킬처럼 이름이 뜬다
       if (pick === 'combo' && dist < melee + 16) { e.mv = { k: 'combo', t: 0.35, n: 3 }; e.windT = 0.35; e.windMax = 0.35; this.emit({ t: 'windup', id: e.id }); return true; }
       if (pick === 'leap' && dist > 40 && dist < 170) { e.mv = { k: 'leap', t: 0.75, max: 0.75, x0: e.x, y0: e.y, x: tx, y: ty }; this.emit({ t: 'telegraphCircle', x: tx, y: ty, r: 30, dur: 0.75 }); return true; }
       if (pick === 'fan' && dist < 190) { e.mv = { k: 'fan', t: 0.45, ang: Math.atan2(ty - e.y, tx - e.x) }; e.windT = 0.45; e.windMax = 0.45; this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(e.mv.ang) * 120, y2: e.y + Math.sin(e.mv.ang) * 120, dur: 0.45, color: '#ff5a5a' }); return true; }
