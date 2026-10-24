@@ -973,8 +973,9 @@ export class World {
       v.rolled = true;
       const r = this.rng.next();
       let acc = 0;
-      for (const [id, ev] of Object.entries(v.events)) { acc += ev.chance; if (r < acc) { v.event = id; v.waiting = true; this.signals.push({ t: 'seaEvent', id }); break; } }
+      for (const [id, ev] of Object.entries(v.events)) { acc += ev.chance; if (r < acc) { v.approach = { id, t: 0, dur: 14 }; this.emit({ t: 'seaSight', id }); break; } } // 수평선에 보이고 다가온다
     }
+    if (v.approach) { v.approach.t += DT; if (v.approach.t >= v.approach.dur) { const id = v.approach.id; v.approach = null; v.event = id; v.waiting = true; this.signals.push({ t: 'seaEvent', id }); } }
     if (v.t >= v.dur) { v.done = true; this.signals.push({ t: 'voyageEnd' }); }
   }
   // 무리를 불러 세운다 (벌어지는 일 · 경비병 · 고위 관계자의 호위): list = [[몬스터, 수, 이름표]]

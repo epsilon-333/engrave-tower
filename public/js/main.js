@@ -2997,12 +2997,50 @@ function spawnHappening() {
 const ALIGN = { aurelion: { caravan: 'escort', taxWagon: 'guard', cult: 'stop', patrol: 'side' }, noctaris: { caravan: 'raid', taxWagon: 'rob', patrol: 'stop', cult: 'stop' } };
 // 벌어지는 일은 고르는 창이 없다: 공격하면 싸움 · 곁에 머물면 호위/엿듣기 · 돈을 건네면 뇌물 · 기부 · 헌금
 const DEED = { // [하는 일, 그러면 되는 것]
-  caravan: [['⚔ 상단을 공격한다', '습격 — 호위병과 싸우고, 이기면 교역품 · 돈 (악명 · 투쟁 +)'], ['곁에 머문다', '도적이 매복하면 호위 — 물리치면 수고비 (명성 · 공훈 +)'], ['그냥 지나간다', '아무 일도 없다']],
-  taxWagon: [['⚔ 마차를 공격한다', '약탈 — 세금 호위병과 싸우고, 이기면 큰돈 (투쟁 · 악명 +)'], ['곁에 머문다', '반란군이 노리면 호위 — 물리치면 공훈 · 명성'], ['그냥 지나간다', '아무 일도 없다']],
+  caravan: [['⚔ 상단을 공격한다', '습격 — 호위병과 싸우고, 이기면 교역품 · 돈 (악명 · 투쟁 +)'], ['곁에서 같이 간다', '근처 도적 무리가 상단을 보고 덮치면 호위 — 물리치면 수고비 (명성 · 공훈 +) · 아무도 안 지키면 털린다'], ['그냥 지나간다', '아무 일도 없다']],
+  taxWagon: [['⚔ 마차를 공격한다', '약탈 — 세금 호위병과 싸우고, 이기면 큰돈 (투쟁 · 악명 +)'], ['곁에서 같이 간다', '근처 도적이 덮치면 호위 — 물리치면 공훈 · 명성'], ['그냥 지나간다', '아무 일도 없다']],
   patrol: [['⚔ 순찰대를 공격한다', '말리기 — 이기면 명성 (공훈 -)'], ['◆ 순찰대에게 돈을 건넨다', '뇌물 — 순찰대가 물러간다 (공훈 + · 악명 +)'], ['◆ 농부에게 돈을 건넨다', '기부 — 명성 +'], ['그냥 지나간다', '아무 일도 없다']],
   cult: [['⚔ 신도를 공격한다', '막기 — 이기면 명성'], ['가까이 숨어 지켜본다 (10초)', '엿듣기 — 교단의 기록 (안개 너머 뱃길의 단서)'], ['◆ 돈을 바친다 (50 이상)', '교단의 신뢰 (숨겨진 길)'], ['그냥 지나간다', '아무 일도 없다']],
 };
-const DEED_SHORT = { caravan: '공격=습격 · 곁에=호위', taxWagon: '공격=약탈 · 곁에=호위', patrol: '공격=말리기 · 돈=뇌물/기부', cult: '공격=막기 · 숨어서=엿듣기 · 돈=헌금' };
+const DEED_SHORT = { caravan: '공격=습격 · 도적이 덮치면 호위', taxWagon: '공격=약탈 · 도적이 덮치면 호위', patrol: '공격=말리기 · 돈=뇌물/기부', cult: '공격=막기 · 숨어서=엿듣기 · 돈=헌금' };
+// 도적은 땅에서 솟지 않는다: 길 근처 도적 무리(실제 몬스터)가 지나가는 상단을 보면 걸어와서 덮친다.
+// 내가 곁에 있으면 호위 싸움이 되고, 아무도 안 지키면 털린다 (물건은 도착하지 않는다 · 값이 오른다).
+const AMBUSHERS = new Set(['bandit', 'darkArcher', 'orcRaider', 'forestArcher', 'cultist', 'hyena']);
+function ambushTick(h, dt) {
+  const w = world, o = h.o, p = w.player;
+  if (!h.ambush) {
+    h.scanT = (h.scanT || 0) - dt; if (h.scanT > 0) return; h.scanT = 2;
+    const foes = w.enemies.filter((e) => !e.dead && !e.npcRef && !e.ambushing && AMBUSHERS.has(e.defId) && e.state !== 'chase' && Math.hypot(e.x - o.x, e.y - o.y) < 26 * TILE).slice(0, 3);
+    if (!foes.length) return;
+    h.ambush = { foes, t: 0 }; for (const e of foes) { e.ambushing = h.id; w.emit({ t: 'text', x: e.x, y: e.y - 22, text: h.type === 'taxWagon' ? '세금 마차다!' : '상단이다!', color: '#ff9a7a' }); }
+    if (Math.hypot(p.x - o.x, p.y - o.y) < 260) renderer.banner = { text: '도적들이 상단을 노린다', sub: '저쪽에서 다가오고 있다 — 지키거나, 지켜보거나', t: 3, color: '#ffb07a' };
+    return;
+  }
+  const A = h.ambush, alive = A.foes.filter((e) => !e.dead);
+  if (!alive.length) { if (h.choice) return; happeningAct(h, h.type === 'caravan' ? 'escort' : 'guard'); return; } // 다 쓰러졌는데 싸움으로 안 잡혔으면(멀리서 쏴 쓰러뜨림) 호위로 친다
+  let reached = false;
+  for (const e of alive) {
+    if (e.state === 'chase' && e.ambushing) continue; // 나와 싸우는 중
+    const dx = o.x - e.x, dy = o.y - e.y, l = Math.hypot(dx, dy);
+    if (l > 34) { w.move(e, dx / l * 55 * dt, dy / l * 55 * dt); e.dir = dx > 0 ? 1 : -1; e.moving = true; } else reached = true;
+  }
+  if (reached && !o.engaged) { o.engaged = true; w.emit({ t: 'text', x: o.x, y: o.y - 30, text: '도와줘요! 도적이다!', color: '#ffe0a0' }); }
+  if (o.engaged && !h.choice) {
+    if (Math.hypot(p.x - o.x, p.y - o.y) < 170 || alive.some((e) => e.state === 'chase')) { // 내가 곁에 있다 → 호위 싸움
+      h.choice = HAPPENINGS[h.type].choices.find((q) => q.id === (h.type === 'caravan' ? 'escort' : 'guard')); h.aligned = !!(polOf().faction && ALIGN[polOf().faction][h.type] === h.choice.id);
+      world.skirmish = { id: h.id, foes: alive }; renderer.banner = { text: h.type === 'caravan' ? '상단을 지켜라!' : '세금 마차를 지켜라!', sub: '덮친 도적을 모두 쓰러뜨리자', t: 2.4, color: '#ff9a7a' };
+      return;
+    }
+    A.t += dt;
+    if (A.t > 12) { // 아무도 안 지켰다 → 털렸다
+      if (h.cv) caravanLost(save, h.cv); if (h.type === 'taxWagon') taxLost(save, 300);
+      addChronicle(`${h.where}에서 ${h.type === 'taxWagon' ? '세금 마차' : '상단'}이(가) 도적에게 털렸다`);
+      for (const e of alive) { e.ambushing = null; }
+      o.gone = true; o.reusable = false; o.endT = w.t; HAPPEN_LIST = HAPPEN_LIST.filter((q) => q !== h);
+      if (Math.hypot(p.x - o.x, p.y - o.y) < 400) renderer.banner = { text: '상단이 털렸다', sub: '실은 물건은 도착하지 못한다', t: 2.6, color: '#c8b8a0' };
+    }
+  }
+}
 function happeningAct(h, id) { // 행동이 정해졌다 → 싸우거나 바로 끝낸다
   const H = HAPPENINGS[h.type], P = polOf(), c = H.choices.find((q) => q.id === id); if (!c) return;
   const aligned = !!(P.faction && ALIGN[P.faction][h.type] === c.id);
@@ -3109,7 +3147,7 @@ function politicsTick(dt) {
       if (h.o.engaged) continue;
       const d = Math.hypot(h.o.x - w.player.x, h.o.y - w.player.y);
       h.nearT = d < (h.type === 'cult' ? 60 : 100) ? (h.nearT || 0) + dt : 0;
-      if ((h.type === 'caravan' || h.type === 'taxWagon') && h.nearT > 6) { h.o.engaged = true; happeningAct(h, h.type === 'caravan' ? 'escort' : 'guard'); }
+      if (h.type === 'caravan' || h.type === 'taxWagon') ambushTick(h, dt);
       else if (h.type === 'cult' && h.nearT > 10 && !h.listened) { h.listened = true; const c = HAPPENINGS.cult.choices.find((q) => q.id === 'listen'); const r = { ...c.reward }; if (r.lore) { const t = CULT_LORE[Math.floor(Math.random() * CULT_LORE.length)]; save.codex.lore ||= []; if (!save.codex.lore.includes(t)) save.codex.lore.push(t); renderer.banner = { text: '교단의 기록을 엿들었다', sub: t.slice(0, 60) + '…', t: 4, color: '#c8a0ff' }; writeSave(save); } }
     }
     if (happenClock <= 0) { happenClock = 100 + Math.random() * 60; if (HAPPEN_LIST.length < 3) spawnHappening(); }

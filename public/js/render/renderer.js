@@ -520,6 +520,7 @@ export class Renderer {
         case 'buff': this.rimFlash = { color: ev.color || '#ffffff', t: 0.35, max: 0.35 * 1.8 }; for (let i = 0; i < 7; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 14, y: ev.y, vx: 0, vy: -30 - Math.random() * 25, t: 0.55, max: 0.55, color: ev.color, g: -8 }); sfx('echo', { vol: 0.5 }); break;
         case 'elemShift': this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 24, color: ELEM[ev.elem].color, t: 0.4, max: 0.4, w: 3 }); this.burst(ev.x, ev.y - 6, ELEM[ev.elem].color, 16, 80); this.texts.push({ x: ev.x, y: ev.y - 24, text: `${ELEM[ev.elem].name}${ev.weak ? ' · 약점!' : ''}`, color: ELEM[ev.elem].color, t: 1, vy: -12, vx: 0, label: true }); sfx('open', { vol: 0.5, rate: 1.2 }); break;
         case 'beamFx': this.fx.push({ k: 'beam', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.3, max: 0.3 }); sfx('dash', { vol: 0.5, rate: 1.6 }); break;
+        case 'seaSight': this.banner = { text: ev.id === 'pirates' ? '수평선에 검은 돛이 보인다' : ev.id === 'serpent' ? '물결 사이로 커다란 등지느러미가…' : ev.id === 'castaway' ? '저 멀리 뗏목이 떠 있다' : '저 멀리 상선이 보인다', sub: '점점 다가온다', t: 3, color: ev.id === 'pirates' ? '#ff9a7a' : '#bfe8ff' }; break;
         case 'graspArm': this.fx.push({ k: 'arm', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.55, max: 0.55 }); sfx('dash', { vol: 0.5, rate: 0.6 }); break;
         case 'summonFx': { const col = ev.elem ? ELEM[ev.elem].color : ev.kind === 'clone' ? '#8a6aff' : ev.kind === 'skeleton' ? '#e8e0d0' : '#c45cff';
           if (ev.big && !ev.out) { this.fx.push({ k: 'pillar', x: ev.x, y: ev.y, r: 50, color: col, t: 0.8, max: 0.8 }); for (let i = 0; i < 3; i++) this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 30 + i * 20, color: col, t: 0.5 + i * 0.1, max: 0.5 + i * 0.1, w: 4 }); this.burst(ev.x, ev.y, col, 50, 160); this.shake = 8; } this.burst(ev.x, ev.y, col, ev.out ? 8 : 18, 70); if (!ev.out) { this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 16, color: col, t: 0.35, max: 0.35, w: 2 }); sfx('echo', { vol: 0.35, rate: 1.3 }); } break; }
@@ -1048,6 +1049,34 @@ export class Renderer {
     for (const f of st.foam) { f.t -= 1 / 60; f.x -= spd / 60 * 1.6; const k = Math.max(0, f.t / 2.4); g.globalAlpha = k * 0.8; g.fillRect(Math.round(f.x), Math.round(f.y), 3 + Math.round((1 - k) * 6), 1); }
     g.globalAlpha = 1;
     st.foam = st.foam.filter((f) => f.t > 0);
+    const A = v?.approach; if (A) this.drawApproach(w, A, W, H); // 다가오는 배 · 바다뱀
+  }
+  // 수평선에서 다가오는 것: 해적선(검은 돛 · 해골) · 상선(흰 돛) · 바다뱀(물결 사이 등지느러미)
+  drawApproach(w, A, W, H) {
+    const g = this.g, k = Math.min(1, A.t / A.dur), x = Math.round(W + 60 - k * (W * 0.12 + 110)), y = Math.round(12.5 * TILE + Math.sin(w.t * 1.2) * 3), s = 0.55 + k * 0.45;
+    if (A.id === 'serpent') {
+      for (let i = 0; i < 4; i++) { const bx = x + i * 14 * s, by = y + Math.sin(w.t * 3 + i) * 3; g.fillStyle = '#1a3a3a'; g.beginPath(); g.ellipse(bx, by, 7 * s, 4 * s, 0, Math.PI, 0); g.fill(); g.fillStyle = '#3a7a6a'; g.beginPath(); g.ellipse(bx, by, 6 * s, 3 * s, 0, Math.PI, 0); g.fill(); }
+      g.fillStyle = 'rgba(235,248,255,0.6)'; for (let i = 0; i < 3; i++) g.fillRect(x - 6 + i * 20 * s, y + 2, 6, 1);
+      return;
+    }
+    if (A.id === 'castaway') { // 뗏목 위의 표류자
+      g.fillStyle = '#1a1410'; g.fillRect(x - 13, y - 2, 26, 6); g.fillStyle = '#8a6a3a'; g.fillRect(x - 12, y - 1, 24, 4); g.fillStyle = '#5a4028'; for (let i = -10; i <= 10; i += 5) g.fillRect(x + i, y - 1, 1, 4);
+      g.fillStyle = '#1a1410'; g.fillRect(x - 3, y - 12, 6, 10); g.fillStyle = '#c8a07a'; g.fillRect(x - 2, y - 11, 4, 4); g.fillStyle = '#6a8ab8'; g.fillRect(x - 2, y - 7, 4, 5);
+      if (Math.floor(w.t * 2) % 2) { g.fillStyle = '#c8a07a'; g.fillRect(x + 2, y - 15, 1, 4); } // 손을 흔든다
+      return;
+    }
+    const pirate = A.id === 'pirates';
+    g.save(); g.translate(x, y); g.scale(s, s);
+    g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(0, 10, 40, 6, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#1a1410'; g.beginPath(); g.moveTo(-40, 0); g.lineTo(40, 0); g.lineTo(30, 10); g.lineTo(-32, 10); g.closePath(); g.fill();
+    g.fillStyle = pirate ? '#3a2418' : '#6a4a2a'; g.fillRect(-36, 1, 70, 6); g.fillStyle = pirate ? '#5a3a24' : '#8a6a3a'; g.fillRect(-36, 1, 70, 2);
+    g.fillStyle = '#2a1a10'; g.fillRect(-2, -46, 3, 46); g.fillRect(-22, -32, 2, 32);
+    const sail = pirate ? '#1a1a22' : '#ece4d0', edge = pirate ? '#3a3a48' : '#c8bca0';
+    g.fillStyle = edge; g.fillRect(-16, -44, 30, 26); g.fillStyle = sail; g.fillRect(-15, -43, 28, 24);
+    g.fillStyle = edge; g.fillRect(-32, -30, 20, 18); g.fillStyle = sail; g.fillRect(-31, -29, 18, 16);
+    if (pirate) { g.fillStyle = '#e8e0c8'; g.fillRect(-4, -36, 6, 5); g.fillRect(-3, -31, 4, 2); g.fillStyle = '#1a1a22'; g.fillRect(-3, -35, 1, 1); g.fillRect(0, -35, 1, 1); g.fillStyle = '#c02020'; g.fillRect(0, -54, 8, 4); } // 해골 · 붉은 깃발
+    else { g.fillStyle = '#ffd76a'; g.fillRect(0, -54, 8, 4); }
+    g.restore();
   }
 
   drawLiquidAnim(w, cx, cy) {
