@@ -2061,6 +2061,10 @@ function handleSignals() {
       save.gold -= 20; writeSave(save); p.x = T.x + 14; p.y = T.y + 10; sfx('open', { vol: 0.5 });
       renderer.banner = { text: '역마차', sub: toB ? '덜컹덜컹… 왕도 남문에 내렸다' : '덜컹덜컹… 바람결 마을에 내렸다', t: 2.6, color: '#e8dcc0' };
       return;
+    } else if (s.t === 'npcEvent') { // NPC가 스스로 일으킨 일
+      const near = Math.hypot(s.x - world.player.x, s.y - world.player.y) < 300, nm = String(s.name || '누군가').split(' ')[0];
+      if (s.k === 'rebel') { const E = econOf(save); E.rebels = (E.rebels || 0) + 1; addChronicle(`${nm}이(가) 살림을 접고 녹타리스로 떠났다 (세금 ${Math.round(E.tax * 100)}%)`); if (near) renderer.banner = { text: `${nm}이(가) 마을을 떠난다`, sub: '가난과 세금에 지쳐 녹타리스에 들어간다고 한다', t: 3, color: '#c8a0ff' }; }
+      if (s.k === 'harass' && near) renderer.banner = { text: '경비가 세금을 다그친다', sub: `${nm}이(가) 돈을 뜯기는 중 — 경비를 때리면 말리기, 그 사람에게 돈을 건네면 기부`, t: 3, color: '#ffb0a0' };
     } else if (s.t === 'happeningGone') { // 아무 일 없이 도착했다
       const h = HAPPEN_LIST.find((q) => q.id === s.id); if (h?.cv && !h.o.engaged) deliver(save, h.cv); if (h?.type === 'taxWagon' && !h.o.engaged) taxArrived(save, 300);
     } else if (s.t === 'happeningHit') { // 벌어지는 일을 공격했다
@@ -2977,7 +2981,7 @@ let HAPPEN_LIST = [], happenClock = 0, hunterClock = 0, titleClock = 0, happenSe
 function spawnHappening() {
   const w = world, m = w.map, p = w.player;
   if (!m.outdoor || !m.onPath || w.voyage || w.pvp || w.raid) return;
-  const kinds = ['caravan', 'caravan', 'patrol', 'cult', ...(officialNow(save, 'taxChief') && w.zoneId === 'world' ? ['taxWagon', 'taxWagon'] : [])];
+  const kinds = ['caravan', 'caravan', 'cult', /* 순찰대의 횡포는 이제 진짜 경비가 세금을 걷으며 벌인다 */ ...(officialNow(save, 'taxChief') && w.zoneId === 'world' ? ['taxWagon', 'taxWagon'] : [])];
   const type = kinds[Math.floor(Math.random() * kinds.length)];
   let at = null;
   for (let a = 0; a < 200 && !at; a++) { const r = 30 + Math.random() * 50, ang = Math.random() * Math.PI * 2, tx = Math.floor(p.x / TILE + Math.cos(ang) * r), ty = Math.floor(p.y / TILE + Math.sin(ang) * r); if (tx < 2 || ty < 2 || tx >= w.tw - 2 || ty >= w.th - 2) continue; const k = ty * w.tw + tx; if (m.onPath[k] && !w.blocked(tx * TILE + 8, ty * TILE + 8, 8)) at = { x: tx * TILE + 8, y: ty * TILE + 8 }; }
@@ -3314,7 +3318,7 @@ function tick(ts) {
   const dt = Math.min(0.1, (ts - last) / 1000 || 0);
   last = ts;
   if (world && !gameEl.hidden) {
-    world.npcAttack = getNpcAttack();
+    world.npcAttack = getNpcAttack(); world.econ = econOf(save);
     if (renderer.hitstop > 0) renderer.hitstop -= dt;
     else if ((!paused || coRun) && world.state === 'play') { // 파티 탑: 창을 열어도 세계는 돈다 (동료가 기다리지 않게)
       acc += dt;

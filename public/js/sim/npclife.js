@@ -34,6 +34,7 @@ export function initNpcLife(w) {
     o.gather = { x: near.reduce((a, q) => a + q.x, 0) / near.length, y: near.reduce((a, q) => a + q.y, 0) / near.length };
     o.friends = near.filter((q) => q !== o).sort((a, b) => rnd(seed ^ b.x, 13) - rnd(seed ^ a.x, 13)).slice(0, 3);
     o.mem = (w.npcMem[o.id] ||= { op: 0, knows: {} }); // 나에 대한 생각 (-100 ~ 100) · 알고 있는 내 행동
+    if (o.mem.left) { o.away = true; o.reusable = false; o.gone = true; } // 녹타리스로 떠난 사람은 돌아오지 않는다
   });
   // 역마차: 바깥 세계에서 마을 ↔ 왕도 남문 (길을 따라 · 나무를 피해서)
   if (m.onPath && m.capital?.gates?.s && m.start && w.zone?.id === 'world') {
@@ -88,6 +89,10 @@ function choose(w, o, min) {
   };
   if (o.traveler && w.coach && min >= 450 && min < 480 && !o.atCapital && rnd(o.seed, (w.clock?.day || 1) * 7) < 0.5) sc.travel = 2; // 어떤 날은 왕도에 다녀온다
   if (o.atCapital && min >= 930) sc.travel = 2;
+  const E = w.econ, tax = E?.tax ?? 0.1, day = w.clock?.day || 1;
+  if (o.role === 'guard' && onShift(o, min) && tax >= 0.15) sc.collect = 0.25 + tax + (1 - T.honest) * 0.4; // 세금 걷기 (정직하지 않은 경비일수록 억지로)
+  if (o.role === 'folk' && o.coins < 15 && T.loyal < 0.3 && tax >= 0.15 && !o.rebel) sc.rebel = 0.4 + (0.3 - T.loyal) * 3; // 녹타리스로 간다
+  if (day % 7 === 0 && min >= 1080 && min < 1320) sc.fun += 0.8; // 이레마다 저녁 축제
   let best = 'wander', bv = -9; for (const [k, v] of Object.entries(sc)) if (v > bv) { bv = v; best = k; }
   return best;
 }
@@ -108,6 +113,17 @@ function start(w, o, act, min) {
     if (mate) { o.sparWith = mate; mate.sparWith = o; mate.doing = 'fun'; mate.doT = 0; const cx = (o.x + mate.x) / 2, cy = (o.y + mate.y) / 2; o.goal = { x: cx - 9, y: cy, then: 'spar' }; mate.goal = { x: cx + 9, y: cy, then: 'spar' }; return; }
     const a = (o.seed % 628) / 100, rad = 16 + (o.seed % 3) * 6; o.goal = { x: o.gather.x + Math.cos(a) * rad, y: o.gather.y + Math.sin(a) * rad * 0.6, then: 'play' }; return;
   }
+  if (act === 'collect') { // 근처에서 돈이 모자란 사람을 찾아 세금을 내라고 다그친다
+    const v = w.objects.filter((q) => q.kind === 'npc' && q.role === 'folk' && q.home && !q.away && !q.hostile && !q.harassedBy && Math.hypot(q.x - o.x, q.y - o.y) < 12 * TILE).sort((a, b) => a.coins - b.coins)[0];
+    if (!v) { o.doing = 'work'; start(w, o, 'work', min); return; }
+    o.harass = v; v.harassedBy = o; v.goal = null; v.doing = 'harassed'; v.doT = 0; v.act = 'cower';
+    o.goal = { x: v.x + (v.x > o.x ? -12 : 12), y: v.y, then: 'demand' }; w.signals.push({ t: 'npcEvent', k: 'harass', x: v.x, y: v.y, name: v.label0 || v.label }); return;
+  }
+  if (act === 'rebel') { // 짐을 싸서 녹트 하벤 쪽(마을 밖)으로 떠난다
+    if (!o.rebel) w.signals.push({ t: 'npcEvent', k: 'rebel', x: o.x, y: o.y, name: o.label0 || o.label, id: o.id });
+    o.rebel = true; if (o.mem) o.mem.left = true;
+    const a = rnd(o.seed, 77) * Math.PI * 2; o.goal = { x: o.x + Math.cos(a) * 20 * TILE, y: o.y + Math.sin(a) * 20 * TILE, then: 'gone' }; return;
+  }
   if (act === 'travel' && w.coach) { const c = w.coach, S = o.atCapital ? c.path[c.path.length - 1] : c.path[0]; o.goal = { x: S.x, y: S.y, then: 'idle', board: true }; return; }
   o.goal = { ...wanderTo(o.role === 'post' ? 2 : 4), then: 'idle' };
 }
@@ -122,9 +138,13 @@ function satisfy(o, DT) {
   if (a === 'eat' || a === 'eatIn') { N.hunger = Math.max(0, N.hunger - k / 12); if (o.doT < DT * 2) o.coins = Math.max(0, o.coins - 3); }
   if (a === 'talk') { N.social = Math.max(0, N.social - k / 15); if (o.talkTo) { o.talkTo.need.social = Math.max(0, o.talkTo.need.social - k / 15); if (Math.random() < DT * 0.08) gossip(o, o.talkTo); } }
   if (a === 'play' || a === 'spar') N.fun = Math.max(0, N.fun - k / 20);
+  if (a === 'demand' && o.harass) { const v = o.harass; if (o.doT > 20 || v.hostile || v.away) { const take = Math.min(v.coins, 10); v.coins -= take; o.coins += take; v.trait.loyal = Math.max(0, v.trait.loyal - 0.08); v.harassedBy = null; v.doing = null; o.harass = null; o.doT = 99; } } // 돈을 뜯기면 왕실이 더 싫어진다
   if (a === 'work' || a === 'watch') o.coins += k * (0.3 + o.trait.diligent * 0.3);
 }
 const doneWith = (o) => { const N = o.need, a = o.act;
+  if (o.doing === 'harassed') return !o.harassedBy;
+  if (o.doing === 'collect') return !o.harass && o.doT > 2;
+  if (o.doing === 'rebel') return !o.goal; // 길이 막혔으면 다른 쪽으로 다시 떠난다
   if (o.doing === 'sleep') return N.energy < 0.05;
   if (o.doing === 'eat') return N.hunger < 0.05;
   if (o.doing === 'social') return N.social < 0.08 || o.doT > 40;
@@ -136,7 +156,7 @@ export function updateNpcLife(w, DT) {
   const p = w.player, min = w.clock?.min ?? 720;
   updateCoach(w, DT, min);
   for (const o of w.objects) {
-    if (o.kind !== 'npc' || !o.home || o.leaving != null) continue;
+    if (o.kind !== 'npc' || !o.home || o.leaving != null || o.gone) continue;
     if (o.knockedUntil) { if (w.t < o.knockedUntil) continue; o.knockedUntil = 0; o.away = false; o.x = o.home.x; o.y = o.home.y; o.label = o.label0 || o.label; o.reusable = true; } // 기절했다 돌아온다
     if (o.hostile) { const e = o.hostile; if (e.dead) { o.hostile = null; continue; } o.x = e.x; o.y = e.y; o.act = 'fight'; o.face = e.dir; if (Math.hypot(e.x - p.x, e.y - p.y) > 420) calmDown(w, o); continue; }
     if (o.riding) { o.x = o.riding.x; o.y = o.riding.y; continue; }
@@ -155,6 +175,7 @@ export function updateNpcLife(w, DT) {
       let arrived = step(w, o, wp?.x ?? o.x, wp?.y ?? o.y, o.goal?.run ? 46 : 26, DT) && (!R || !R.length);
       if (!arrived && o.goal && o.goalT > 30) { if (Math.hypot(o.goal.x - o.x, o.goal.y - o.y) < 48) arrived = true; else if (o.goal.then === 'enterBed') { o.bedBad = true; o.goal = null; o.act = 'doze'; } else { o.goal = null; o.act = 'idle'; o.doT = 99; } } // 30초 넘게 못 가면 포기
       if (!o.goal) { o.goalT = 0; continue; }
+      if (arrived && o.goal?.then === 'gone') { o.away = true; o.home = null; o.reusable = false; continue; } // 떠났다
       if (arrived) { const g = o.goal; o.goal = null; o.goalT = 0; o.act = g.then || 'idle'; if (g.board) boardCoach(w, o); if (o.act === 'enterBed') goToBed(w, o); if (o.act === 'eatIn') o.away = true; } // 집에 들어가 먹는다
       else o.act = 'walk';
     }

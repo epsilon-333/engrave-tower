@@ -3500,6 +3500,8 @@ export class Renderer {
     o._top = o.y + 5 - (img ? img.height : 24);
     if (act === 'watch' && o.night && w.night) this.glow?.(o.x + (face ? -5 : 5), o.y - 14, 10, '#ffb050', 0.55); // 밤 근무조의 횃불
     if (act === 'talk' && Math.random() < 0.006) this.texts.push({ x: o.x, y: o._top - 2, text: ['…', '그래서?', '하하', '정말?', '흠'][Math.floor(Math.random() * 5)], color: '#f4ecd8', t: 1.4, vy: -8, vx: 0 });
+    if (act === 'demand' && Math.random() < 0.012) this.texts.push({ x: o.x, y: o._top - 2, text: ['세금 내놔!', '왕명이다!', '이것뿐이야?'][Math.floor(Math.random() * 3)], color: '#ffb0a0', t: 1.6, vy: -8, vx: 0 });
+    if (act === 'cower' && Math.random() < 0.01) this.texts.push({ x: o.x, y: o._top - 2, text: ['제발…', '돈이 없어요', '내일 드릴게요'][Math.floor(Math.random() * 3)], color: '#d8d0e8', t: 1.6, vy: -8, vx: 0 });
     if (act === 'eat' && Math.random() < 0.006) this.texts.push({ x: o.x, y: o._top - 2, text: '냠', color: '#ffe0a0', t: 1, vy: -8, vx: 0 });
     if (act === 'play' && Math.random() < 0.004) this.texts.push({ x: o.x, y: o._top - 2, text: ['♪', '하하', '…', '오!', '♫'][Math.floor(Math.random() * 5)], color: '#ffe8a8', t: 1.4, vy: -8, vx: 0 });
     if (act === 'spar' && Math.random() < 0.05) { this.parts.push({ x: o.x + (face ? -7 : 7), y: o.y - 10, vx: (Math.random() - 0.5) * 60, vy: -30, t: 0.25, max: 0.25, color: '#fff0b0', g: 120, glow: true }); if (Math.random() < 0.2) sfx('hit', { vol: 0.12, rate: 1.4 }); }
