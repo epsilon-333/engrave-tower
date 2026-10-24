@@ -3052,9 +3052,31 @@ function skirmishWon(s) {
   const h = HAPPEN_LIST.find((q) => q.id === s.id); if (h) happeningDone(h, h.choice, h.aligned);
 }
 // 매 프레임: 벌어지는 일 · 쫓아오는 경비병 · 지위 · 오른쪽 패널 · 비밀 의뢰
+// 지나가는 사람이 소문 · 요령을 한마디씩 (무엇을 할 수 있는지 자연스럽게 알게)
+let barkClock = 0;
+const BARK_TIPS = [
+  '경비한테 돈을 쥐여 주면 못 본 척해 준다더군.', '사람을 함부로 때리면 경비가 몰려와. 조심해.', '녹타리스 중개인은 날마다 자리를 옮긴대.',
+  '왕도 모병관한테 가면 아우렐리온에 들 수 있지.', '어려운 사람한테 돈을 건네면 다들 알아준다네.', '역마차 타면 왕도 남문까지 금방이야. 삯은 ◆ 20.',
+  '상단 곁에 붙어 있으면 도적이 덤빌 때 돕게 될 거야.', '교단 의식 근처에 숨어 있으면 이상한 노래가 들린대.', '현상금이 붙으면 해골 군도로 도망가는 놈들이 많지.',
+];
+function barkTick(dt) {
+  const w = world, p = w.player; barkClock -= dt; if (barkClock > 0) return; barkClock = 1;
+  const o = w.objects.find((q) => q.kind === 'npc' && q.home && !q.hostile && !q.away && q.act !== 'sleep' && Math.hypot(q.x - p.x, q.y - p.y) < 60 && (q.barkT || 0) < w.t);
+  if (!o) return;
+  o.barkT = w.t + 150 + Math.random() * 90;
+  let line;
+  const h = HAPPEN_LIST.find((q) => !q.o.gone && !q.o.engaged);
+  const vac = ['taxChief', 'treasurer', 'knightCommander', 'royalMage'].find((id) => !officialNow(save, id));
+  if (h && Math.random() < 0.6) line = { caravan: `${h.where} 쪽으로 상단이 간다더군. 짐이 꽤 많던데…`, taxWagon: `${h.where}에 세금 마차가 지나가. 저걸 누가 털면 속이 시원할 텐데.`, patrol: `${h.where}에서 순찰대가 또 농부를 괴롭힌대.`, cult: `${h.where}에 검은 옷 사람들이 모였대. 소름 돋아.` }[h.type];
+  else if (vac && Math.random() < 0.4) line = `${OFFICIALS[vac].title} 자리가 비었다더군. 누가 해치웠대.`;
+  else line = BARK_TIPS[Math.floor(Math.random() * BARK_TIPS.length)];
+  renderer.texts.push({ x: o.x, y: (o._top ?? o.y - 24) - 4, text: line, color: '#f4ecd8', t: 4.5, vy: -3, vx: 0, label: true });
+}
 function politicsTick(dt) {
   if (!world || !save || gameEl.hidden || paused) return;
   const w = world;
+  if (w.map.outdoor || w.objects.some((q) => q.kind === 'npc')) barkTick(dt);
+  if (!save.flags?.deedTip && w.state === 'play' && w.zone?.id === 'world') { (save.flags ||= {}).deedTip = true; renderer.banner = { text: '고르는 창은 없다 — 직접 하면 된다', sub: '때리면 싸움 · 돈을 건네면 뇌물 · 기부 · 후원 · 곁에 머물면 호위 (설정에서 NPC 공격 끄기)', t: 7, color: '#ffe8a8' }; }
   if (w.map.outdoor && !w.voyage && w.state === 'play') {
     happenClock -= dt;
     HAPPEN_LIST = HAPPEN_LIST.filter((h) => w.objects.includes(h.o) && !h.o.gone);
