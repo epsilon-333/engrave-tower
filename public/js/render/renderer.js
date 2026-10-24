@@ -3244,7 +3244,7 @@ export class Renderer {
     if (o.kind === 'node') { drawNode(g, o, t); o._top = o.y - (o.depleted ? 6 : 22); return; }
     if (o.kind === 'dig') { drawDig(g, o, t); o._top = o.y - 8; return; }
     if (o.kind === 'sanctum') { this.drawNpc(w, o); return; }
-    if (o.kind === 'coach') { this.drawHappening(w, { ...o, etype: 'caravan', dest: o.moving, engaged: !o.moving }); o._top = o.y - 30; return; } // 역마차
+    if (o.kind === 'coach') { if (o.vy) this.drawCoachV(w, o); else this.drawHappening(w, { ...o, etype: 'caravan', dest: o.moving, engaged: !o.moving }); o._top = o.y - 30; return; } // 역마차 (세로로 가면 앞 · 뒷모습)
     if (o.kind === 'npc') {
       if (o.away) { o._top = null; return; }
       if (o.leaving != null) { o.leaving -= dt * 0.6; if (o.leaving <= 0) { w.objects.splice(w.objects.indexOf(o), 1); return; } g.globalAlpha = o.leaving; }
@@ -3379,6 +3379,28 @@ export class Renderer {
     }
   }
 
+  // 역마차 앞 · 뒷모습: 말이 앞에서 끌고(아래로 가면 아래에), 덮개 마차 뒤로 바퀴 둘이 보인다
+  drawCoachV(w, o) {
+    const g = this.g, x = Math.round(o.x), y = Math.round(o.y), down = o.vy > 0, bob = o.moving ? Math.floor(w.t * 8) % 2 : 0;
+    const horse = (hy) => { // 말 (위에서 비스듬히 본 모습): 몸통 · 머리 · 다리
+      g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, x, hy + 6, 6, 3);
+      g.fillStyle = '#1a1410'; g.fillRect(x - 5, hy - 9, 10, 15);
+      g.fillStyle = '#7a4e2a'; g.fillRect(x - 4, hy - 8, 8, 13); g.fillStyle = '#9a6a3a'; g.fillRect(x - 3, hy - 8, 2, 12);
+      g.fillStyle = '#3a2416'; g.fillRect(x - 1, hy - 8, 2, 13); // 갈기
+      const hh = down ? hy + 5 : hy - 12; g.fillStyle = '#1a1410'; g.fillRect(x - 3, hh - 1, 6, 7); g.fillStyle = '#8a5a32'; g.fillRect(x - 2, hh, 4, 5); if (down) { g.fillStyle = '#141018'; g.fillRect(x - 2, hh + 1, 1, 1); g.fillRect(x + 1, hh + 1, 1, 1); }
+      g.fillStyle = '#2a1a10'; for (const lx of [-4, 3]) { g.fillRect(x + lx, hy + 4 + (lx < 0 ? bob : 1 - bob), 1, 3); }
+    };
+    const cart = (cy) => {
+      g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, x, cy + 8, 13, 4);
+      g.fillStyle = '#1a1410'; g.fillRect(x - 12, cy - 16, 24, 22);
+      g.fillStyle = '#7a4e2a'; g.fillRect(x - 11, cy - 6, 22, 11); g.fillStyle = '#9a6a3a'; g.fillRect(x - 11, cy - 6, 22, 2);
+      g.fillStyle = '#ece0c4'; g.fillRect(x - 11, cy - 15, 22, 9); g.fillStyle = 'rgba(0,0,0,0.12)'; for (let k = -6; k <= 6; k += 6) g.fillRect(x + k, cy - 15, 1, 9); // 덮개
+      if (!down) { g.fillStyle = '#2a1a10'; g.fillRect(x - 5, cy - 12, 10, 6); } // 뒤에서 보면 덮개 안이 어둡다
+      for (const sx of [-12, 10]) { g.fillStyle = '#1a1410'; g.fillRect(x + sx, cy - 2, 3, 9); g.fillStyle = '#7a5232'; g.fillRect(x + sx + 1, cy - 1 + bob, 1, 7); } // 바퀴 (옆에서 본 테두리)
+    };
+    if (down) { cart(y - 6); horse(y + 12); } else { horse(y - 20); cart(y + 2); }
+  }
+
   // 벌어지는 일: 상단 마차 · 세금 마차 · 순찰대 · 교단 신도
   drawHappening(w, o) {
     const g = this.g, x = Math.round(o.x), y = Math.round(o.y), d = o.dir || 1;
@@ -3443,14 +3465,13 @@ export class Renderer {
     const face = o.face != null ? o.face < 0 : w.player.x < o.x;
     const img = sprite(name, art.tint || '', o.hostile?.hitFlash > 0 ? true : false, face);
     this.shadow(o.x, o.y + 4, 6);
-    if (img && act === 'sleep') { // 누워서 잔다 · Zz
-      g.save(); g.translate(Math.round(o.x), Math.round(o.y + 3)); g.rotate(-Math.PI / 2); g.drawImage(img, Math.round(-img.height + 4), Math.round(-img.width / 2)); g.restore();
-      if (Math.floor(w.t * 2 + o.x) % 6 === 0 && Math.random() < 0.05) this.texts.push({ x: o.x + 6, y: o.y - 10, text: 'z', color: '#c8d8ff', t: 1.4, vy: -10, vx: 4 });
-      o._top = o.y - 8; return;
-    }
+    if (act === 'doze' && Math.random() < 0.01) this.texts.push({ x: o.x + 6, y: o.y - 26, text: 'z', color: '#c8d8ff', t: 1.4, vy: -10, vx: 4 }); // 잘 곳이 없으면 선 채로 꾸벅꾸벅
     const bob = act === 'play' ? Math.abs(Math.sin(w.t * 5 + o.x)) * 2 : 0, lunge = act === 'spar' ? Math.sin(w.t * 9 + o.x) * 2 * (face ? -1 : 1) : 0;
     if (img) g.drawImage(img, Math.round(o.x - img.width / 2 + lunge), Math.round(o.y + 5 - img.height - bob));
     o._top = o.y + 5 - (img ? img.height : 24);
+    if (act === 'watch' && o.night && w.night) this.glow?.(o.x + (face ? -5 : 5), o.y - 14, 10, '#ffb050', 0.55); // 밤 근무조의 횃불
+    if (act === 'talk' && Math.random() < 0.006) this.texts.push({ x: o.x, y: o._top - 2, text: ['…', '그래서?', '하하', '정말?', '흠'][Math.floor(Math.random() * 5)], color: '#f4ecd8', t: 1.4, vy: -8, vx: 0 });
+    if (act === 'eat' && Math.random() < 0.006) this.texts.push({ x: o.x, y: o._top - 2, text: '냠', color: '#ffe0a0', t: 1, vy: -8, vx: 0 });
     if (act === 'play' && Math.random() < 0.004) this.texts.push({ x: o.x, y: o._top - 2, text: ['♪', '하하', '…', '오!', '♫'][Math.floor(Math.random() * 5)], color: '#ffe8a8', t: 1.4, vy: -8, vx: 0 });
     if (act === 'spar' && Math.random() < 0.05) { this.parts.push({ x: o.x + (face ? -7 : 7), y: o.y - 10, vx: (Math.random() - 0.5) * 60, vy: -30, t: 0.25, max: 0.25, color: '#fff0b0', g: 120, glow: true }); if (Math.random() < 0.2) sfx('hit', { vol: 0.12, rate: 1.4 }); }
     if (o.hostile && o.hostile.hp < o.hostile.maxHp) { const bw = 16, by = Math.round(o._top - 5); g.fillStyle = '#0d0b10'; g.fillRect(o.x - bw / 2 - 1, by - 1, bw + 2, 4); g.fillStyle = '#e8484a'; g.fillRect(o.x - bw / 2, by, Math.max(0, bw * o.hostile.hp / o.hostile.maxHp), 2); }
