@@ -7,6 +7,9 @@ import { TILE } from './mapgen.js';
 // 자리를 지키는 사람 (가게 · 시설 · 관리) · 경비
 const POST = /altar|library|board|shop|store|trainer|merchant|inn|smith|portMaster|shipCaptain|trader|infoMerchant|broker|fence|forger|healer|pitBoss|recruiter|king|guildMaster|auctioneer|shipwright|mercCaptain|keeper|pino|exec|sage|priest|clerk|banker|cook|chef|tailor|jeweler|alchem/i;
 const GUARD = /guard|knight|soldier|rebel|sentry|captain|warrior|mercen/i;
+// 사람: 돌아다니는 NPC + 제자리 사람(가게 · 시설 주인 · 성지 수호자 · 자라 등) — 모두 때릴 수 있다
+const PERSON = new Set(['npc', 'station', 'merchant', 'sanctum', 'turtle']);
+export const isPerson = (o) => PERSON.has(o.kind);
 export const roleOf = (o) => (GUARD.test(o.art || o.id || '') ? 'guard' : POST.test(o.art || o.id || '') ? 'post' : 'folk');
 const hashStr = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
 const rnd = (seed, k) => { let x = (Math.imul(seed ^ (k * 0x9e3779b1), 2654435761)) >>> 0; x ^= x >>> 15; x = Math.imul(x, 2246822519) >>> 0; x ^= x >>> 13; return (x >>> 0) / 4294967296; };
@@ -14,7 +17,9 @@ const HOUSE = /^house|^wallTower$|^castle$/;
 const BARRACKS = /wallTower|castle|house_manor|house_guild|house_dojo/;
 
 export function initNpcLife(w) {
+  w.npcInit = true;
   const m = w.map, npcs = w.objects.filter((o) => o.kind === 'npc' && !o.static);
+  for (const o of w.objects) if (isPerson(o) && (o.kind !== 'npc' || o.static) && !o.home) { o.home = { x: o.x, y: o.y }; o.fixed = true; o.role = o.kind === 'npc' ? roleOf(o) : 'post'; o.seed = hashStr(`${o.kind}|${o.id || o.station || o.art}|${o.x}`); o.trait = { diligent: 0.6, brave: rnd(o.seed, 2), greedy: rnd(o.seed, 3), social: 0.5, honest: rnd(o.seed, 5), loyal: rnd(o.seed, 6) }; o.need = { hunger: 0, energy: 0, social: 0, fun: 0 }; o.coins = 80; o.friends = []; o.mem = (w.npcMem[o.id || o.station || o.kind] ||= { op: 0, knows: {} }); } // 제자리 사람: 움직이지 않지만 맞으면 싸우고 기억한다
   // 집 = 건물 소품의 문 앞 (아래 가운데)
   const free = (x, y) => { for (let r = 0; r <= 4; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const xx = x + dx * TILE, yy = y + dy * TILE; if (!w.blocked(xx, yy, 5)) return { x: xx, y: yy }; } return null; }; // 문 앞의 걸을 수 있는 자리
   const houses = (m.props || []).filter((p) => HOUSE.test(p.kind)).map((p) => { const d = free((p.x + p.w / 2) * TILE, (p.y + p.h) * TILE + 8); return d && { kind: p.kind, ...d }; }).filter(Boolean);
@@ -155,13 +160,17 @@ const doneWith = (o) => { const N = o.need, a = o.act;
   return o.doT > 6 && !o.goal && a !== 'walk'; };
 
 export function updateNpcLife(w, DT) {
+  if (!w.npcInit) initNpcLife(w); // 집 안 · 광장 같은 곳도 처음 한 번
   const p = w.player, min = w.clock?.min ?? 720;
+  w.decayT = (w.decayT || 0) + DT;
+  if (w.decayT >= 1) { const k = w.decayT; w.decayT = 0; for (const o of w.objects) if (o.mem && o.mem.op) { const d = Math.min(Math.abs(o.mem.op), k / 90); o.mem.op -= Math.sign(o.mem.op) * d; } } // 시간이 지나면 아주 조금씩 보통으로 돌아온다 (게임 1시간 ≈ 0.7)
   updateCoach(w, DT, min);
   for (const o of w.objects) {
-    if (o.kind !== 'npc' || !o.home || o.leaving != null || o.gone) continue;
+    if (!isPerson(o) || !o.home || o.leaving != null || o.gone) continue;
     if (o.knockedUntil) { if (w.t < o.knockedUntil) continue; o.knockedUntil = 0; o.away = false; o.x = o.home.x; o.y = o.home.y; o.label = o.label0 || o.label; o.reusable = true; } // 기절했다 돌아온다
     if (o.hostile) { const e = o.hostile; if (e.dead) { o.hostile = null; continue; } o.x = e.x; o.y = e.y; o.act = 'fight'; o.face = e.dir; if (Math.hypot(e.x - p.x, e.y - p.y) > 420) calmDown(w, o); continue; }
     if (o.riding) { o.x = o.riding.x; o.y = o.riding.y; continue; }
+    if (o.fixed) { o.x = o.home.x; o.y = o.home.y; continue; } // 제자리 사람은 자리를 지킨다
     satisfy(o, DT); o.doT += DT;
     if (o.asleep) { if (o.need.energy < 0.05 || (o.role === 'guard' && onShift(o, min) && o.need.energy < 0.3)) wakeUp(o); continue; } // 집 안에서 잔다
     if (o.fleeT > 0) { o.fleeT -= DT; const a = Math.atan2(o.y - p.y, o.x - p.x); step(w, o, o.x + Math.cos(a) * 30, o.y + Math.sin(a) * 30, 60, DT); o.act = 'run'; continue; }
@@ -250,10 +259,10 @@ export function provokeNpc(w, o, why = 'hit') {
 // 같은 동네 경비는 함께 덤비고, 겁 많은 사람들은 달아난다
 function alarm(w, o) {
   for (const q of w.objects) {
-    if (q === o || q.kind !== 'npc' || !q.home || q.hostile || q.knockedUntil || q.away) continue;
+    if (q === o || !isPerson(q) || !q.home || q.hostile || q.knockedUntil || q.away) continue;
     const d = Math.hypot(q.x - o.x, q.y - o.y);
     if (q.role === 'guard' && d < 12 * TILE) provokeNpc(w, q, 'ally');
-    else if (d < 9 * TILE) q.fleeT = 6;
+    else if (d < 9 * TILE && !q.fixed) q.fleeT = 6;
   }
 }
 function calmDown(w, o) { const e = o.hostile; if (e) { e.dead = true; e.gone = true; w.enemies = w.enemies.filter((q) => q !== e); } o.hostile = null; o.reusable = true; o.label = o.label0 || o.label; o.x = o.home.x; o.y = o.home.y; o.act = 'idle'; o.doing = null; }
@@ -270,7 +279,7 @@ export const deedText = (k) => DEED_TEXT[k] || k;
 export function witness(w, x, y, deed, weight, victim = null) {
   let n = 0;
   for (const o of w.objects) {
-    if (o.kind !== 'npc' || !o.mem || o.away || o.asleep || o.knockedUntil) continue;
+    if (!isPerson(o) || !o.mem || o.away || o.asleep || o.knockedUntil) continue;
     if (o !== victim && Math.hypot(o.x - x, o.y - y) > 10 * TILE) continue;
     n++; learn(o, deed, weight, 1);
   }
@@ -294,5 +303,5 @@ export const opinionText = (op) => (op >= 50 ? '당신을 아주 좋아한다' :
 export function pokeNpcs(w, x, y, r) {
   if (!w.npcAttack) return;
   for (const o of w.objects) if (o.kind === 'happening' && !o.gone && !o.engaged && Math.hypot(o.x - x, o.y - y) <= r + 22) { o.engaged = true; w.signals.push({ t: 'happeningHit', id: o.hid }); }
-  for (const o of w.objects) if (o.kind === 'npc' && o.home && !o.hostile && !o.knockedUntil && !o.away && Math.hypot(o.x - x, o.y - y) <= r + 6) provokeNpc(w, o);
+  for (const o of w.objects) if (isPerson(o) && o.home && !o.hostile && !o.knockedUntil && !o.away && Math.hypot(o.x - x, o.y - y) <= r + 6) provokeNpc(w, o);
 }

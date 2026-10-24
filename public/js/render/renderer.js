@@ -3488,6 +3488,7 @@ export class Renderer {
 
   drawNpc(w, o) {
     const g = this.g;
+    if (o.away) { o._top = null; return; } // 기절 · 집 안
     const art = NPC_ART[o.art || o.station || o.kind] || { base: 'p_' + (o.art || o.station || 'farmer') }; // 그 밖의 사람은 people.py 그림 이름 그대로
     const act = o.act || 'idle', kind = act === 'walk' || act === 'run' || act === 'fight' ? 'run' : act === 'work' || act === 'spar' ? 'work' : 'idle';
     const name = this.animFrame(art.base, kind, w.t + o.x * 0.01, kind === 'run' ? 9 : kind === 'work' ? 7 : 5);

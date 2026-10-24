@@ -6,7 +6,7 @@ import { WEAPON_SKILLS } from '../data/items.js';
 import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
 import { towerMul, isBossFloor } from '../data/tower.js';
 import { RAID_BOSS } from '../data/raid.js';
-import { initNpcLife, updateNpcLife, pokeNpcs, npcDown } from './npclife.js';
+import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
 import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO, SKILL_BAL, CLASS_BAL } from '../data/skills.js';
 import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower, spiritBuff, buffMods } from '../data/spirits.js';
 const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
@@ -4487,7 +4487,7 @@ export class World {
       }
       if (pr.life <= 0) continue;
       if (pr.owner === 'p' && !pr.ghost) {
-        if (this.npcAttack) for (const o of this.objects) if ((o.kind === 'npc' && o.home && !o.hostile && !o.away && !o.knockedUntil && Math.hypot(o.x - pr.x, o.y - pr.y) < 9) || (o.kind === 'happening' && !o.gone && !o.engaged && Math.hypot(o.x - pr.x, o.y - pr.y) < 18)) { pokeNpcs(this, o.x, o.y, 1); if (!pr.pierce) pr.life = 0; break; }
+        if (this.npcAttack) for (const o of this.objects) if ((isPerson(o) && o.home && !o.hostile && !o.away && !o.knockedUntil && Math.hypot(o.x - pr.x, o.y - pr.y) < 9) || (o.kind === 'happening' && !o.gone && !o.engaged && Math.hypot(o.x - pr.x, o.y - pr.y) < 18)) { pokeNpcs(this, o.x, o.y, 1); if (!pr.pierce) pr.life = 0; break; }
         for (const e of this.enemies) {
           if (e.dead || e.hidden || pr.hit.has(e.id)) continue;
           if (Math.hypot(e.x - pr.x, e.y - 4 - pr.y) > e.r + 5) continue; // 몸 가운데 (발밑보다 조금 위) 기준

@@ -2072,7 +2072,7 @@ function handleSignals() {
     } else if (s.t === 'npcHostile' || s.t === 'npcDown') {
       npcStruck(s);
     } else if (s.t === 'npc') {
-      talkNpc = world.near?.kind === 'npc' && world.near.home ? world.near : null; // 말 거는 사람 (돈을 건넬 수 있다)
+      talkNpc = world.near?.home && world.near.mem ? world.near : null; // 말 거는 사람 (돈을 건넬 수 있다)
       if (arcTalk(s.id) || portTalk(s.id) || noktTalk(s.id)) return;
       talkTo(s.id);
       return;
