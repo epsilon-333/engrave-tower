@@ -862,7 +862,7 @@ export class Renderer {
     // 엔티티 (y 정렬)
     const vis = (x, y) => x > cx - 48 && x < cx + VW + 48 && y > cy - 48 && y < cy + VH + 64;
     const list = [];
-    for (const o of w.objects) if (vis(o.x, o.y)) list.push({ o, y: o.kind === 'gate' ? -1e9 : o.y });
+    for (const o of w.objects) if (vis(o.x, o.y)) list.push({ o, y: o.kind === 'gate' ? -1e9 : o.sortY ?? o.y }); // sortY: 처형대 위 사람처럼 바닥보다 높이 선 것
     for (const dr of w.drops) list.push({ dr, y: dr.y });
     for (const e of w.enemies) if (vis(e.x, e.y)) list.push({ e, y: e.y });
     for (const c of this.corpses) list.push({ c, y: c.y });
@@ -3542,7 +3542,7 @@ export class Renderer {
       const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
       c = { cv, ctx, px: new PixelCtx(ctx), q: -1, night: null };
       cache.set(pr, c);
-      if (cache.size > 64) cache.delete(cache.keys().next().value);
+      if (cache.size > 200) cache.delete(cache.keys().next().value); // 왕도 성벽 조각이 많아 넉넉히
     }
     if (c.q !== q || c.night !== night || pr.shakeT > 0) {
       c.ctx.setTransform(1, 0, 0, 1, 0, 0); c.ctx.clearRect(0, 0, c.cv.width, c.cv.height);

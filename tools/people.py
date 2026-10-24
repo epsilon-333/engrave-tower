@@ -434,6 +434,30 @@ person('m_wraith', race='undead', outfit='robe', cloth='#c8d0e0', trim='#8a9ab8'
 person('m_cultist', race='human', outfit='robe', cloth='#2a1a3a', trim='#9a6ae8', hat='hood', hatc='#1e1430', item='dagger', closedEyes=True)
 person('m_raidQueen', race='elf', body='tall', outfit='dress', cloth='#c8e8ff', trim='#5ab8f8', hair='#ffffff', hairStyle='long', hat='crown', item='scepter', cape='#5ab8f8', skin='#e0f4ff', gem='#7ad8ff')
 person('m_orcRaider', race='orc', outfit='armor', metal='#6a5a4a', cloth='#5a2a1a', hat='helm', item='axe', brows=True)
+# ── 왕도 아우렐리온 ──
+person('cap_gate', race='human', body='tall', outfit='armor', metal='#c8ccd8', cloth='#2a4a9a', tabard=True, hat='helm', plume=True, featherc='#ffd76a', item='spear', beard='stache', hair='#5a3a22', brows=True)          # 성문 대장 로웰
+person('cap_jailer', race='human', body='stout', outfit='vest', cloth='#4a4a52', vestc='#2a2a30', hair='#3a3028', hairStyle='bald', beard='full', item='lantern', brows=True, skin='tan')                                  # 간수장 그롬
+person('cap_herald', race='human', outfit='noble', cloth='#2a4a9a', trim='#ffd76a', hair='#c8a060', hairStyle='short', hat='cap', hatc='#8a1a2a', item='scroll', collar=True)                                            # 전령 피에르
+person('cap_exec', race='human', body='stout', outfit='vest', cloth='#2a2024', vestc='#140e12', hat='hood', hatc='#140e12', item='axe', skin='#c89070')                                              # 집행인
+person('cap_prisoner', race='human', outfit='rags', cloth='#8a8070', hair='#3a2a1a', hairStyle='wild', beard='full', skin='tan', closedEyes=True)                                                                      # 끌려온 죄수
+person('cap_prisonerYard', race='elf', outfit='rags', cloth='#7a7a6a', hair='#a8a090', hairStyle='long', brows=True)                                                                                                  # 감옥 마당의 죄수
+person('cap_trader', race='human', body='stout', outfit='coat', cloth='#6a2a4a', inner='#e8d8b0', hair='#2a1a14', hairStyle='short', beard='stache', hat='tophat', hatc='#3a1a2a', item='ledger')                         # 왕도 교역상 마틸드
+person('cap_baker', race='human', body='stout', outfit='apron', cloth='#c8a070', apronc='#f4ecd8', hair='#e8c070', hairStyle='bun', hat='chef', item='basket', blush=True)                                               # 빵집 안나
+person('cap_armorer', race='dragon', outfit='apron', cloth='#5a4a3a', apronc='#3a2a1e', hair='#8a2a1a', hairStyle='short', item='hammer', brows=True)                                                                  # 갑옷 장인 도르크
+person('cap_fruit', race='human', body='elder', outfit='dress', cloth='#6a8a3a', trim='#e8c040', hair='#d8d0c8', hairStyle='bun', hat='straw', item='basket')                                                           # 과일 장수 할머니
+person('cap_cloth', race='elf', outfit='dress', cloth='#a83a6a', trim='#f4d8e8', hair='#2a1a3a', hairStyle='long', item='scroll')                                                                                     # 옷감 장수 리엔
+person('cap_fish', race='lizard', outfit='apron', cloth='#3a6a7a', apronc='#c8d8d8', scalec='#5a8a7a', item='dagger')                                                                                                # 생선 장수 실라
+person('cap_noble1', race='human', outfit='dress', cloth='#e8c8e8', trim='#ffffff', hair='#ffd88a', hairStyle='braids', hat='tiara', item='book', blush=True)                                                           # 귀족 아가씨 셀레스트
+person('cap_noble2', race='human', outfit='noble', cloth='#3a2a6a', trim='#ffd76a', hair='#1a1418', hairStyle='short', beard='stache', hat='tophat', hatc='#1a1418', item='cane', cape='#2a1a4a')                         # 귀족 바르텔
+person('cap_maid', race='human', outfit='apron', cloth='#2a2a3a', apronc='#ffffff', hair='#6a3a22', hairStyle='bun', item='broom')                                                                                    # 저택 하녀
+person('cap_beggar', race='human', body='elder', outfit='rags', cloth='#6a6052', hair='#8a8a80', hairStyle='wild', beard='long', item='cane')                                                                           # 거지 노인
+person('cap_folk1', race='human', outfit='tunic', cloth='#8a5a3a', pants='#4a3a2a', hair='#3a2a1a', hairStyle='short', item='mug', skin='tan')
+person('cap_folk2', race='human', outfit='dress', cloth='#3a6a9a', trim='#e8e0d0', hair='#a8582a', hairStyle='pony', item='basket')
+person('cap_folk3', race='orc', outfit='vest', cloth='#6a6a5a', vestc='#3a3a2a', hairStyle='mohawk', hair='#1a1a14', item='axe')
+person('cap_folk4', race='human', body='elder', outfit='coat', cloth='#5a5a4a', inner='#a89878', hair='#c8c8c0', hairStyle='bald', beard='full', item='pipe')
+person('cap_folk5', race='elf', outfit='tunic', cloth='#4a7a5a', pants='#3a4a3a', hair='#e8d8a8', hairStyle='pony', item='book')
+person('cap_kid', race='human', body='child', outfit='tunic', cloth='#c84a3a', pants='#4a3a5a', hair='#3a2a1a', hairStyle='spiky', blush=True)
+
 # 사람 모양 몬스터 (예전엔 다른 몬스터 그림에 색만 바꿔 썼다)
 person('m_goblinShaman', race='human', body='child', skin='#7ab04a', ears='goblin', outfit='robe', cloth='#6a4a2a', trim='#c8b070', hairStyle='bald', hat='feathers', featherc='#e85030', item='staff', glowc='#9be15d', brows=True)
 person('m_chortShaman', race='human', body='child', skin='#c8483a', ears='goblin', outfit='rags', cloth='#3a2a2a', hairStyle='bald', hat='horns', item='staff', glowc='#ff9a3a', eyec='#ffd040')

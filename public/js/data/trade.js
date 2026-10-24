@@ -8,6 +8,7 @@ export const CARGO = {
   woolBale: { name: '양털 뭉치', price: 40, desc: '시작 평원 목장의 양털. 바닷바람이 찬 안개 부두에서 잘 팔린다.', icon: { t: 'cloth', c: ['#f4f0e8', '#d8d0c0', '#a89c88'] } },
   mistSalt: { name: '안개 소금', price: 26, desc: '물안개 해안의 염전에서 말린 소금. 남쪽 마을에선 늘 모자란다.', icon: { t: 'dust', c: ['#f4f8ff', '#c8d8e8', '#8aa0b8'] } },
   driedFish: { name: '말린 생선', price: 22, desc: '안개 부두 어부들이 말린 생선. 남쪽 항구 선원들이 좋아한다.', icon: { t: 'plateFish', c: ['#c8a070', '#8a6a4a', '#5a4030'] } },
+  royalWine: { name: '왕실 포도주', price: 50, desc: '왕도 아우렐리온 포도원의 붉은 술. 바다 건너 섬들에서 귀하게 친다.', icon: { t: 'bottle', c: ['#8a1a2a', '#c83a4a', '#4a0a14'] } },
   // 다른 섬 특산품 (뱃길이 열리면 그 섬에서 판다)
   iceCrystal: { name: '얼음 수정', price: 60, desc: '서리왕관 섬의 빙하에서 캔 수정. 붉은 모래 섬에서 아주 비싸다.', icon: { t: 'shard', c: ['#bfe8ff', '#ffffff', '#5aa0c8'] }, island: 'frost' },
   redSpice: { name: '붉은 향신료', price: 55, desc: '붉은 모래 섬 오아시스의 향신료. 추운 섬에서 귀하다.', icon: { t: 'dust', c: ['#e0582a', '#ffb060', '#8a2a10'] }, island: 'sand' },
@@ -47,13 +48,17 @@ export const PORTS = {
   },
   portE: {
     name: '안개 부두', where: '물안개 해안 동쪽 끝', master: '선장 하겔', trader: '교역상 브린',
-    market: { mistSalt: 0.6, driedFish: 0.6, windWheat: 1.35, woolBale: 1.3, iceCrystal: 1.25, redSpice: 1.4, goldSilk: 1.2, pirateRum: 1.3, blackPowder: 1.5 },
+    market: { royalWine: 1.3, mistSalt: 0.6, driedFish: 0.6, windWheat: 1.35, woolBale: 1.3, iceCrystal: 1.25, redSpice: 1.4, goldSilk: 1.2, pirateRum: 1.3, blackPowder: 1.5 },
     routes: [
       { to: 'portS', fare: 30, time: 12, desc: '섬 남쪽 바다를 돌아 남쪽 항구로' },
       { to: 'frost', fare: 80, time: 12, desc: '북동쪽 얼음 바다를 건너 공국으로' }, { to: 'skull', fare: 70, time: 12, desc: '동쪽 암초 사이 해적 소굴로' },
     ],
   },
 };
+// 왕도 시장: 바다는 없지만 교역소는 있다 (밀수품은 받지 않는다). 왕실 포도주가 특산품, 사치품은 비싸게 사 준다
+PORTS.capital = { name: '왕도 시장', where: '왕도 아우렐리온 남동쪽 시장', master: null, trader: '교역상 마틸드', inland: true,
+  market: { royalWine: 0.6, windWheat: 0.95, woolBale: 1.0, mistSalt: 1.25, driedFish: 1.2, goldSilk: 1.5, redSpice: 1.4, iceCrystal: 1.3, pirateRum: 1.1 },
+  routes: [] };
 // 녹트 하벤 암시장: 밀수품을 싸게 팔고, 어떤 교역품이든 조금 싸게 사 준다 (장물도 묻지 않는다)
 export const BLACK_MARKET = {
   noktBlack: {
@@ -67,16 +72,16 @@ Object.assign(PORTS, BLACK_MARKET);
 const R = (to, fare, desc, extra = {}) => ({ to, fare, time: 12, desc, ...extra });
 Object.assign(PORTS, {
   gold: { name: '황금 돛 섬', where: '황금 돛 연맹의 거대 항구', master: '항구장 마리넬', trader: '교역상 도로', island: true,
-    market: { goldSilk: 0.6, iceCrystal: 1.3, redSpice: 1.35, pirateRum: 1.2, windWheat: 1.2, woolBale: 1.25, mistSalt: 1.2, driedFish: 1.1, blackPowder: 1.2 },
+    market: { royalWine: 1.45, goldSilk: 0.6, iceCrystal: 1.3, redSpice: 1.35, pirateRum: 1.2, windWheat: 1.2, woolBale: 1.25, mistSalt: 1.2, driedFish: 1.1, blackPowder: 1.2 },
     routes: [R('portS', 60, '북쪽 바람결의 섬 남쪽 항구로'), R('sand', 70, '서쪽 사막의 섬으로'), R('skull', 60, '동쪽 해적 소굴로'), R('frost', 90, '북동쪽 얼음 섬으로')] },
   frost: { name: '서리왕관 섬', where: '하얀 왕관 공국의 얼음 항구', master: '항구 관리관 이스벤', trader: '교역상 니엘', island: true,
-    market: { iceCrystal: 0.6, redSpice: 1.6, goldSilk: 1.3, pirateRum: 1.4, windWheat: 1.4, driedFish: 1.3, woolBale: 1.5, mistSalt: 1.2 },
+    market: { royalWine: 1.5, iceCrystal: 0.6, redSpice: 1.6, goldSilk: 1.3, pirateRum: 1.4, windWheat: 1.4, driedFish: 1.3, woolBale: 1.5, mistSalt: 1.2 },
     routes: [R('portE', 80, '남서쪽 바람결의 섬 안개 부두로'), R('gold', 90, '남쪽 상인 공화국으로'), R('mist', 120, '안개 속으로… 기록이 가리키는 뱃길', { hidden: true })] },
   sand: { name: '붉은 모래 섬', where: '모래바람 술탄국의 오아시스 항구', master: '항구 감독관 자이드', trader: '향신료 상인 라나', island: true,
-    market: { redSpice: 0.6, iceCrystal: 1.9, goldSilk: 1.3, windWheat: 1.3, mistSalt: 1.4, pirateRum: 1.2, woolBale: 1.1, driedFish: 1.3 },
+    market: { royalWine: 1.35, redSpice: 0.6, iceCrystal: 1.9, goldSilk: 1.3, windWheat: 1.3, mistSalt: 1.4, pirateRum: 1.2, woolBale: 1.1, driedFish: 1.3 },
     routes: [R('portS', 90, '북동쪽 바람결의 섬 남쪽 항구로'), R('gold', 70, '동쪽 상인 공화국으로')] },
   skull: { name: '해골 군도', where: '해적 연합의 소굴 블랙코브', master: '부두 두목 갈고리 잭', trader: '장물아비 루시', island: true, lawless: true,
-    market: { pirateRum: 0.6, blackPowder: 1.8, forbiddenTome: 1.6, goldSilk: 1.4, redSpice: 1.3, iceCrystal: 1.3, windWheat: 1.3, driedFish: 1.2, woolBale: 1.2 },
+    market: { royalWine: 1.6, pirateRum: 0.6, blackPowder: 1.8, forbiddenTome: 1.6, goldSilk: 1.4, redSpice: 1.3, iceCrystal: 1.3, windWheat: 1.3, driedFish: 1.2, woolBale: 1.2 },
     routes: [R('portE', 70, '서쪽 바람결의 섬 안개 부두로'), R('gold', 60, '서남쪽 상인 공화국으로'), R('mist', 110, '안개 속으로… 기록이 가리키는 뱃길', { hidden: true })] },
   mist: { name: '안개 너머의 섬', where: '버려진 선착장', master: '겁먹은 뱃사공', trader: '', island: true, market: {},
     routes: [R('skull', 110, '안개를 빠져나가 해적 소굴로'), R('frost', 120, '안개를 빠져나가 얼음 섬으로')] },

@@ -9,6 +9,7 @@
 //                              바람결 마을                     ~ 남쪽 해안 ~  (자라)   ~ 바다 (용궁) ~
 import { buildSanctumVillages } from './sanctvillage.js';
 import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_DEEP } from '../../sim/mapgen.js';
+import { buildCapital, capInside } from './capital.js';
 import { createRng } from '../../sim/rng.js';
 import { HOUSES } from './houses.js';
 import { BIOME_NODES } from '../goods.js';
@@ -273,10 +274,12 @@ export function buildOverworld(zone) {
     objects.push({ kind: 'sanctum', race, art: `keep_${race}`, ...at(door.x - 2, door.y), label: '성지 수호자와 이야기', reusable: true });
     sanctums[race] = door; safe.push({ x: door.x, y: door.y, r: 11 });
   }
+  // 왕도 아우렐리온: 기사 성지(왕성) 둘레의 성벽 도시 — 길 · 나무 · 몬스터보다 먼저 짓는다
+  const capital = buildCapital({ t, gr, LV, G, set, occupied, props, objects, inb, I, at });
   // 입구들: 동굴 입구는 바위로 감싼다, 구멍은 들판에 뚫린다
   const ENTR = [
     ['mossCave', 60, 248], ['forestCave', 128, 202], ['sunkenTemple', 86, 314], ['crypt', 120, 120], ['iceCave', 220, 46], ['riftCave', 412, 96],
-    ['labyrinth', 160, 150], ['wasteHole', 424, 210], ['jungleHole', 382, 312], ['castleCrypt', 318, 250], ['mtCave1', 250, 66], ['mtCave2', 302, 58], ['plainsHole', 198, 282],
+    ['labyrinth', 160, 150], ['wasteHole', 424, 210], ['jungleHole', 382, 312], ['castleCrypt', capital.crypt.x, capital.crypt.y], ['mtCave1', 250, 66], ['mtCave2', 302, 58], ['plainsHole', 198, 282],
   ];
   const entrances = {};
   for (const [id, x, y] of ENTR) {
@@ -360,7 +363,7 @@ export function buildOverworld(zone) {
     hidden[id] = best; safe.push({ x: best.x, y: best.y, r: 5 });
   };
   hiddenWay('well', 'brokenWell', B.ruins, 168, 154, '무너진 우물을 살펴본다');
-  hiddenWay('sewer', 'sewerGrate', B.meadow, 336, 252, '녹슨 하수구 철창을 살펴본다');
+  hiddenWay('sewer', 'sewerGrate', bio(capital.sewer.x, capital.sewer.y), capital.sewer.x, capital.sewer.y, '녹슨 하수구 철창을 살펴본다');
   hiddenWay('mine', 'oldMine', B.wasteland, 384, 202, '버려진 광산 입구를 살펴본다');
 
   harbor('portS', V.x, V.y + 16, 0, 1);
@@ -397,14 +400,16 @@ export function buildOverworld(zone) {
   road([[S.wizard.x + 10, S.wizard.y], [E.iceCave.x, E.iceCave.y + 1]]);
   road([[246, 132], [290, 104], [E.mtCave2.x, E.mtCave2.y + 1], [340, 92], [S.dragon.x, S.dragon.y], [E.riftCave.x, E.riftCave.y + 1]]);
   road([[TWR.x + 18, TWR.y + 4], [290, 176], [340, 182], [380, 184], [S.orc.x, S.orc.y], [E.wasteHole.x, E.wasteHole.y + 1]]);
-  road([[V.x + 22, V.y - 12], [290, 292], [S.knight.x - 6, S.knight.y + 6], [S.knight.x, S.knight.y], [E.castleCrypt.x, E.castleCrypt.y + 1]]);
-  road([[S.knight.x + 8, S.knight.y + 4], [370, 278], [S.dino.x, S.dino.y], [E.jungleHole.x, E.jungleHole.y + 1]]);
+  const CG = capital.gates; // 왕도로 가는 길은 성문으로 들어온다 (성 안 길은 왕도가 깔아 두었다)
+  road([[V.x + 22, V.y - 12], [300, 302], [CG.s.x, CG.s.y + 6], [CG.s.x, CG.s.y + 1]]);
+  road([[CG.e.x + 1, CG.e.y], [372, 270], [370, 278], [S.dino.x, S.dino.y], [E.jungleHole.x, E.jungleHole.y + 1]]);
+  road([[CG.w.x - 1, CG.w.y], [262, 262], [244, 252], [TWR.x + 4, TWR.y + TWR.ry + 4]]);
   road([[S.orc.x, S.orc.y + 8], [410, 240], [S.dino.x, S.dino.y - 6]]);
   road([[V.x + 21, V.y + 10], [300, 326], [beach.x - 4, beach.y], [beach.x, beach.y]]);
   road([[V.x - 26, V.y - 8], [E.plainsHole.x, E.plainsHole.y + 1]]);
   road([[290, 176], [296, 168], [L.x - L.rx - 1, L.y + 3]]);
   if (ports.portS) road([[V.x + 1, V.y + 10], [ports.portS.center.x, ports.portS.center.y]]);
-  if (ports.portE) road([[S.knight.x + 8, S.knight.y + 4], [460, 330], [BIOMES[B.mistcoast].x, BIOMES[B.mistcoast].y], [ports.portE.center.x, ports.portE.center.y]]);
+  if (ports.portE) road([[CG.e.x + 6, CG.e.y + 4], [460, 330], [BIOMES[B.mistcoast].x, BIOMES[B.mistcoast].y], [ports.portE.center.x, ports.portE.center.y]]);
   // 선착장: 물가에서 나무 다리를 물로 몇 칸 내고, 끝에 배를 둔다
   const docks = [];
   const pier = (sx, sy, dx, dy, len = 3) => {
@@ -423,12 +428,13 @@ export function buildOverworld(zone) {
     [V.x + 2, V.y - 17, '↑ 각인의 탑  ·  ↖ 이끼 숲 · 독늪  ·  ↗ 꽃바람 들판 · 원시림  ·  ↘ 남쪽 해안'],
     [TWR.x + 3, TWR.y + TWR.ry + 6, '← 폐허 도시 · 그림자 묘지  ·  ↑ 북쪽 바위산 · 서리 설원  ·  → 거울 호수 · 메마른 황야'],
     [249, 136, '← 서리 설원 (마탑)  ·  → 화산 지대 (홍염 분화구)'], [S.elf.x + 14, S.elf.y + 9, '↑ 세계수  ·  ← 이끼 동굴  ·  ↓ 독늪'],
-    [S.knight.x - 8, S.knight.y + 9, '↑ 무너진 왕성  ·  → 원시림'], [342, 186, '→ 황야의 투기장  ·  ← 각인의 탑'],
+    [capital.outside.sign.x, capital.outside.sign.y, '↑ 왕도 아우렐리온 (남문)  ·  → 원시림 · 안개 부두'], [342, 186, '→ 황야의 투기장  ·  ← 각인의 탑'],
   ];
   for (const [x, y, text] of signs) { if (inb(x, y) && t[I(x, y)] === T_FLOOR) objects.push({ kind: 'sign', ...at(x, y), text, label: '표지판 읽기', reusable: true }); }
 
   // ───── 8) 나무 · 키 큰 풀 · 꽃 · 장식 ─────
-  const nearSafe = (x, y, pad = 0) => safe.some((s) => Math.hypot(x - s.x, y - s.y) < s.r * 0.6 + pad);
+  for (const k of capital.streets) onPath[k] = 1;
+  const nearSafe = (x, y, pad = 0) => capInside(x, y, pad) || safe.some((s) => Math.hypot(x - s.x, y - s.y) < s.r * 0.6 + pad); // 왕도 안은 나무 · 몬스터 무리 · 상자를 두지 않는다
   const trees = new Set(), deco = [];
   const dc = (x, y, kind) => deco.push({ x: x * TILE + rng.int(2, 13), y: y * TILE + rng.int(4, 14), kind, v: rng.int(0, 3) });
   for (let y = 3; y < TH - 3; y++) for (let x = 3; x < TW - 3; x++) {
@@ -631,7 +637,7 @@ export function buildOverworld(zone) {
   return {
     tw: TW, th: TH, tiles: t, ground: gr, outdoor: true, designed: 'overworld', level: LV, biome: BI, waypoints, villages,
     start: { x: V.x, y: V.y + 4 }, lair, stairs: null, camps, champions, chests, lores, secrets, deco, regions, regionInfo,
-    camp, merchant: [{ x: V.x - 5, y: V.y - 2 }], shrines, goblins, props, objects, onPath, sanctums, entrances, farm: FARM, nodes, digs, docks, ports, hidden,
+    camp, merchant: [{ x: V.x - 5, y: V.y - 2 }], shrines, goblins, props, objects, onPath, sanctums, entrances, farm: FARM, nodes, digs, docks, ports, hidden, capital,
   };
 }
 

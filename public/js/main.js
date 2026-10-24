@@ -2133,12 +2133,12 @@ function portShowTrade(pid) {
     rememberPrices(save, pid);
     const rows = Object.keys(P.market).filter((id) => P.market[id] < 1 || (save.bag[id] || 0) > 0 || !CARGO[id].island).map((id) => {
       const have = save.bag[id] || 0, bp = portBuy(save, pid, id), sp = portSell(save, pid, id), local = P.market[id] < 1;
-      return `<div class="soc-row ${local ? 'on' : ''}"><span class="nm"><b>${esc(CARGO[id].name)}</b> <small class="muted">${local ? '이 항구 특산품' : P.market[id] >= 1.3 ? '여기서 귀하다' : ''} · 가진 것 ${have}</small></span>
+      return `<div class="soc-row ${local ? 'on' : ''}"><span class="nm"><b>${esc(CARGO[id].name)}</b> <small class="muted">${local ? (P.inland ? '이 시장 특산품' : '이 항구 특산품') : P.market[id] >= 1.3 ? '여기서 귀하다' : ''} · 가진 것 ${have}</small></span>
         <span class="btns">${bp != null ? `<button class="sm" data-buy="${id}" data-n="1" ${save.gold >= bp ? '' : 'disabled'}>사기 ◆${bp}</button><button class="sm ghost" data-buy="${id}" data-n="5" ${save.gold >= bp * 5 ? '' : 'disabled'}>5개</button>` : ''}
         <button class="sm ${have ? '' : 'ghost'}" data-sell="${id}" data-n="1" ${have ? '' : 'disabled'}>팔기 ◆${sp}</button><button class="sm ghost" data-sell="${id}" data-n="${have}" ${have > 1 ? '' : 'disabled'}>모두</button></span></div>`;
     }).join('');
     showModal(`<h2>${esc(P.name)} 교역소 · ${esc(P.trader)}</h2>
-      <p>"이 항구에서 나는 건 싸게 팔고, 다른 데서 나는 건 비싸게 사 주지. 많이 사 가면 값이 오르고, 많이 팔면 내려가오. 시간이 지나면 제자리로 돌아오고."</p>
+      <p>"${P.inland ? '왕도에서' : '이 항구에서'} 나는 건 싸게 팔고, 다른 데서 나는 건 비싸게 사 주지. 많이 사 가면 값이 오르고, 많이 팔면 내려가오. 시간이 지나면 제자리로 돌아오고."</p>
       ${portGoldRow()}<div class="soc-list">${rows}</div>
       <p class="muted">몸에 지고 다닐 수 있는 교역품은 ${CARGO_CAP}개까지. 짐수레 · 내 배는 나중에 생긴다.</p>
       <div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
@@ -2472,9 +2472,16 @@ function worldExtras(w) {
     const ow = overworldBase(), kd = ow.villages?.knight?.door || (ow.sanctums?.knight && { x: ow.sanctums.knight.x * TILE + 8, y: ow.sanctums.knight.y * TILE + 8 });
     if (kd) {
       const put = (o, dx, dy) => { const s = freeSpot(w, kd.x + dx * TILE, kd.y + dy * TILE); w.objects.push({ ...o, x: s.x, y: s.y, reusable: true }); };
-      put({ kind: 'npc', id: 'pol_recruiter', art: 'recruiter', label: '아우렐리온 모병관과 이야기 · 입단' }, -15, 2);
-      put({ kind: 'chronicle', id: 'chronicle', label: '연대기 비석 읽기' }, 15, 2);
-      for (const id of Object.keys(OFFICIALS)) { const O = OFFICIALS[id]; if (O.where !== 'castle') continue; const now = officialNow(save, id); if (now) put({ kind: 'npc', id: 'official_' + id, art: O.king ? 'king' : id, label: `${O.title} ${now.name}${now.gen > 1 ? ` (${now.gen}대째)` : ''}` }, O.at[0], O.at[1] + 8); }
+      // 왕도: 모병관 · 연대기 비석은 남문 앞, 고위 관계자는 귀족 거리의 자기 저택 앞 (국왕은 왕성 문 앞)
+      const CAPM = ow.capital, putAt = (o, tx, ty) => { const s = freeSpot(w, tx * TILE + 8, ty * TILE + 8); w.objects.push({ ...o, x: s.x, y: s.y, reusable: true }); };
+      if (CAPM) { putAt({ kind: 'npc', id: 'pol_recruiter', art: 'recruiter', label: '아우렐리온 모병관과 이야기 · 입단' }, CAPM.outside.recruiter.x, CAPM.outside.recruiter.y); putAt({ kind: 'chronicle', id: 'chronicle', label: '연대기 비석 읽기' }, CAPM.outside.chronicle.x, CAPM.outside.chronicle.y); }
+      else { put({ kind: 'npc', id: 'pol_recruiter', art: 'recruiter', label: '아우렐리온 모병관과 이야기 · 입단' }, -15, 2); put({ kind: 'chronicle', id: 'chronicle', label: '연대기 비석 읽기' }, 15, 2); }
+      for (const id of Object.keys(OFFICIALS)) {
+        const O = OFFICIALS[id]; if (O.where !== 'castle') continue; const now = officialNow(save, id); if (!now) continue;
+        const o = { kind: 'npc', id: 'official_' + id, art: O.king ? 'king' : id, label: `${O.title} ${now.name}${now.gen > 1 ? ` (${now.gen}대째)` : ''}` };
+        const home = O.king ? CAPM?.king : CAPM?.homes?.[id];
+        if (home) putAt(o, home.x, home.y); else put(o, O.at[0], O.at[1] + 8);
+      }
     }
     // 성지마다 숙소(부활 지점) · 종족 대장간 · 고유 콘텐츠
     for (const [race, v] of Object.entries(ow.villages || {})) {
@@ -2949,6 +2956,9 @@ function happeningDone(h, c, aligned) {
   writeSave(save);
 }
 function skirmishWon(s) {
+  if (s.id === 'capGuard') { polGain({ infamy: 3 }); renderer.banner = { text: '왕도 경비대를 물리쳤다', sub: '악명 +3 · 더 많은 경비병이 올 것이다', t: 3, color: '#ffb0a0' }; return; }
+  if (s.id === 'capRescue') { const P = polOf(); polGain({ infamy: 6, struggle: P.faction === 'noctaris' ? 20 : 0, fame: P.faction === 'noctaris' ? 0 : 3 }, P.faction === 'noctaris'); capExec.active = false; capExec.next = Date.now() + 6 * 60e3; capStageSync(); addChronicle(`${heroName()}이(가) 왕도 처형대에서 죄수 ${capExec.name}을(를) 구해 냈다`); renderer.banner = { text: `${capExec.name}을(를) 구해 냈다`, sub: P.faction === 'noctaris' ? '투쟁 +20 · 악명 +6' : '명성 +3 · 악명 +6', t: 3.4, color: '#c8a0ff' }; writeSave(save); return; }
+  if (s.id === 'capRaid') { polGain({ struggle: 35, infamy: 10 }, true); (save.capital ||= {}).raidT = Date.now(); addChronicle(`${heroName()}이(가) 왕도 감옥을 습격해 갇힌 반란군을 풀어 줬다`); renderer.banner = { text: '감옥 습격 성공', sub: '갇힌 반란군이 풀려났다 · 투쟁 +35 · 악명 +10', t: 3.6, color: '#c8a0ff' }; writeSave(save); return; }
   if (s.id === 'hunt') { polGain({ infamy: 2 }); renderer.banner = { text: '쫓아온 경비병을 물리쳤다', sub: '악명 +2', t: 2.4, color: '#ffb0a0' }; return; }
   if (s.id === 'sandCaravan') { const g = 150 + save.level * 4; polGain({ fame: 4, gold: g }); renderer.banner = { text: '대상을 지켜 냈다', sub: `◆ ${g} · 명성 +4`, t: 3, color: '#9fe8b0' }; return; }
   const h = HAPPEN_LIST.find((q) => q.id === s.id); if (h) happeningDone(h, h.choice, h.aligned);
@@ -2973,6 +2983,7 @@ function politicsTick(dt) {
       }
     }
   }
+  capitalTick(dt);
   // 비밀 의뢰 표적을 쓰러뜨렸나
   const C = save.contract;
   if (C && !C.done && C.zone === w.zoneId && w.enemies.some((e) => e.contract && e.dead)) { C.done = true; save.contract = null; w.track = null; polGain({ gold: C.reward, infamy: 2 }); addChronicle(`${C.where}에 숨어 있던 ${C.name}이(가) 누군가에게 쓰러졌다`); renderer.banner = { text: '비밀 의뢰 완료', sub: `◆ ${C.reward} · 악명 +2`, t: 3, color: '#b89aff' }; }
@@ -2985,6 +2996,106 @@ function politicsTick(dt) {
     lastTitle = T.text;
     updateHappenPanel();
   }
+}
+// ── 왕도 아우렐리온: 성문 검문 · 수배범 단속 · 처형대 · 감옥 · 시장 사람들 ──
+const capExec = { active: false, next: Date.now() + 90e3, end: 0, name: '' };
+let capWasIn = false, capGuardT = 0;
+const capMap = () => (world?.zoneId === 'world' ? world.map.capital : null);
+const capIn = (C, p) => { const tx = p.x / TILE, ty = p.y / TILE; return tx > C.x0 && tx < C.x1 + 1 && ty > C.y0 && ty < C.y1 + 1; };
+const CONTRA = ['blackPowder', 'forbiddenTome'];
+const PRISONER_NAMES = ['반란군 정찰병 로이', '밀수꾼 테사', '세금을 못 낸 농부 한스', '녹타리스 전령 미카', '탈영병 브루노', '금서를 베낀 필경사 오린'];
+function capStageSync() { // 처형이 잡히면 처형대 위에 죄수를 세운다
+  const w = world, C = capMap(); if (!C) return;
+  w.objects = w.objects.filter((o) => o.id !== 'cap_prisoner');
+  if (capExec.active) w.objects.push({ kind: 'npc', id: 'cap_prisoner', art: 'cap_prisoner', x: C.stage.x, y: C.stage.y, sortY: C.stage.sortY, label: `끌려온 죄수 ${capExec.name}`, reusable: true, onStage: true });
+}
+function capGuards(n, tag, at) {
+  const w = world, p = w.player, a = at || { x: p.x + 90, y: p.y + 30 };
+  return w.spawnGroup([['royalGuard', n, tag]], a.x, a.y, Math.max(8, save.level + 3), {});
+}
+function capitalTick(dt) {
+  const w = world, C = capMap(); if (!C || w.state !== 'play') { capWasIn = false; return; }
+  const now = Date.now(), inside = capIn(C, w.player);
+  // 처형 일정: 6분마다 3분 동안 죄수가 처형대에 선다
+  if (!capExec.active && now > capExec.next) { capExec.active = true; capExec.end = now + 180e3; capExec.name = PRISONER_NAMES[Math.floor(Math.random() * PRISONER_NAMES.length)]; capStageSync(); if (inside) renderer.banner = { text: '처형대에 죄수가 끌려 나왔다', sub: '전령에게 가 보자 (남서쪽 처형장)', t: 3, color: '#ffb0a0' }; }
+  if (capExec.active && now > capExec.end && !w.skirmish?.foes?.some((e) => !e.dead && e.capRescue)) { capExec.active = false; capExec.next = now + 6 * 60e3; capStageSync(); addChronicle(`왕도 처형대에서 ${capExec.name}이(가) 처형됐다`); }
+  if (capExec.active && !w.objects.some((o) => o.id === 'cap_prisoner')) capStageSync();
+  // 성 안으로 들어온 순간: 이름 알림 · 검문
+  if (inside && !capWasIn) {
+    renderer.banner = { text: '왕도 아우렐리온', sub: '에드릭 왕국의 수도 · 귀족 거리 · 감옥 · 처형장 · 시장', t: 3, color: '#ffd76a' };
+    const held = CONTRA.filter((k) => (save.bag[k] || 0) > 0);
+    if (held.length && !modal) capContraband(held);
+  }
+  capWasIn = inside;
+  // 수배범: 성 안에선 곧바로 경비대가 달려든다
+  capGuardT -= dt;
+  if (inside && bounty(save) > 0 && capGuardT <= 0 && !w.skirmish?.foes?.some((e) => !e.dead)) {
+    capGuardT = 45;
+    w.skirmish = { id: 'capGuard', foes: capGuards(3, '왕도 경비병') };
+    renderer.banner = { text: `수배범이다! 현상금 ◆ ${bounty(save)}`, sub: '왕도 경비대가 달려든다 · 감옥 간수장에게 벌금을 내면 풀린다', t: 3.2, color: '#ff7a5a' };
+  }
+}
+function capContraband(held) {
+  const val = held.reduce((a, k) => a + (save.bag[k] || 0) * CARGO[k].price, 0), bribe = Math.round(val * 0.5);
+  showModal(`<h2>성문 검문</h2><p>성문 대장 로웰: "짐을 풀어 보시오. …이건 왕국이 금한 물건이군. ${held.map((k) => `${esc(CARGO[k].name)} ${save.bag[k]}개`).join(', ')}."</p>
+    <p class="muted">밀수품 값 ◆ ${val}</p>${portGoldRow()}
+    <div class="actions"><button id="cbGive">내준다 (빼앗긴다)</button><button id="cbBribe" ${save.gold >= bribe ? '' : 'disabled'}>뒷돈을 찔러 준다 (◆ ${bribe})</button><button id="cbRun" class="ghost">밀치고 들어간다 (싸움 · 악명 +5)</button></div>`);
+  const close = () => { overlay.hidden = true; paused = false; modal = null; writeSave(save); };
+  document.getElementById('cbGive').onclick = () => { for (const k of held) delete save.bag[k]; close(); renderer.banner = { text: '밀수품을 빼앗겼다', t: 2.4, color: '#ffb0a0' }; };
+  document.getElementById('cbBribe').onclick = () => { save.gold -= bribe; polGain({ infamy: 1 }); close(); sfx('coin', { vol: 0.5 }); renderer.banner = { text: '못 본 척해 준다', sub: '악명 +1', t: 2.4, color: '#ffd27a' }; };
+  document.getElementById('cbRun').onclick = () => { polGain({ infamy: 5 }); close(); world.skirmish = { id: 'capGuard', foes: capGuards(3, '성문 경비병') }; renderer.banner = { text: '검문을 뚫었다!', sub: '악명 +5 · 경비병이 쫓아온다', t: 2.6, color: '#ff7a5a' }; };
+}
+const CAP_LINES = {
+  cap_noble1: ['"아버지는 재무대신 댁 연회에만 가라고 하세요. 시장은 냄새난다나요. 저는 시장이 더 좋은데."', '"요즘 밤마다 하수구 쪽에서 발소리가 들린대요. 쥐라기엔 너무 크고요."'],
+  cap_noble2: ['"녹타리스? 굶주린 개들이지. 세금이 무거우면 덜 먹으면 될 일을."', '"남작 작위라… 공훈만 쌓으면 자네도 귀족 거리에 집을 얻을지 모르지. 물론 내 옆집은 사절이네."'],
+  cap_maid: ['"세리장 나리 댁은 금고가 셋이에요. 열쇠는 늘 허리에 차고 다니시고요."', '"기사단장님은 새벽마다 혼자 성벽을 도세요. 누구를 기다리는 것처럼."'],
+  cap_folk1: ['"왕성 술집 맥주가 반 잔으로 줄었소. 세금이 또 올랐다나."', '"처형대엔 가 보지 마시오. 볼 게 못 되오."'],
+  cap_kid: ['"나 커서 기사단장 될 거야! …아니면 반란군. 반란군이 더 멋있대!"', '"감옥 마당 엘프 아저씨가 나한테 별 이야기 해 줬어."'],
+  cap_folk2: ['"남쪽 항구 밀이 여기선 조금 싸요. 대신 금빛 비단은 여기서 금값이죠."', '"왕실 포도주를 섬으로 가져가면 곱절은 받는대요."'],
+  cap_folk3: ['"짐 나르는 오크는 성문에서 두 번씩 뒤진다. 화약 같은 건 꿈도 꾸지 마라."'],
+  cap_folk4: ['"내가 젊을 땐 처형이 한 해에 한 번이었네. 이젠 엿새에 한 번이지."', '"전령 피에르는 포고문을 읽기만 하지 쓰진 않아. 쓰는 건 재무대신이야."'],
+  cap_folk5: ['"사면을 청할 수도 있대요. 돈이 있으면요. 이 나라에선 정의도 값이 있죠."'],
+  cap_beggar: ['"한 푼만… 고맙소. 답례로 하나 알려 드리지. 저 구석 하수구 철창, 셋째 창살이 빠지오."', '"왕도 밑엔 또 하나의 도시가 있다오. 빛 대신 등불로 사는."'],
+  cap_fruit: ['"사과 하나 들고 가요, 공짜야. 우리 손자가 성문 경비병이거든."', '"과일 값 올린 건 내가 아니라 세리장이야."'],
+  cap_cloth: ['"세계수 숲 실로 짠 천이에요. 귀족 아가씨들이 줄을 서죠."'],
+  cap_fish: ['"안개 부두 생선이 사흘이면 여기 오지. 마차가 털리지만 않으면."'],
+  cap_prisonerYard: ['"나는 별을 읽은 죄로 갇혔소. 왕의 별이 지는 걸 봤다고 말했을 뿐인데."', '"간수장 그롬은 돈이면 다 되는 사람이오. 당신 이름이 수배지에 오르면 그를 찾으시오."'],
+  cap_guard_prison: ['"면회는 간수장에게 말하시오."'], cap_guard_s1: ['"왕도에 온 것을 환영하오. 밀수품은 성문에서 빼앗소."'], cap_guard_s2: ['"수배지에 이름이 오른 자는 성 안에서 곧바로 잡아들인다."'],
+  cap_guard_w: ['"서문 밖으로 가면 각인의 탑이오."'], cap_guard_e: ['"동문 밖은 원시림과 안개 부두로 가는 길이오."'],
+};
+function capitalTalk(id) {
+  const P = polOf(), R = repOf(), done = () => { overlay.hidden = true; paused = false; modal = null; writeSave(save); };
+  if (id === 'cap_gate') {
+    const held = CONTRA.filter((k) => (save.bag[k] || 0) > 0);
+    showModal(`<h2>성문 대장 로웰</h2><p>"왕도 아우렐리온이오. 규칙은 셋. 밀수품은 성문에서 빼앗고, 수배지에 오른 자는 잡아들이며, 왕의 사람에게 칼을 뽑으면 목이 처형대에 오르오."</p>
+      <ul><li>북서쪽: 귀족 거리 — 고위 관계자들의 저택</li><li>북동쪽: 감옥 — 간수장 그롬 (벌금)</li><li>남서쪽: 처형장 — 전령 피에르 (포고문)</li><li>남동쪽: 시장 — 교역소 · 빵집 · 갑옷 장인</li></ul>
+      <p class="muted">${bounty(save) ? `당신 현상금: ◆ ${bounty(save)} — 성 안에서 경비대가 달려든다` : '당신은 수배지에 없다'}${held.length ? ' · 짐에 밀수품이 있다' : ''}</p><div class="actions"><button data-close>알겠다</button></div>`);
+    return;
+  }
+  if (id === 'cap_jailer') {
+    const fineEach = 25, fine = R.infamy * fineEach, canRaid = P.faction === 'noctaris' && P.rank >= 2, raidCool = Date.now() - (save.capital?.raidT || 0) < 30 * 60e3;
+    showModal(`<h2>간수장 그롬</h2><p>"갇힌 놈은 지금 ${3 + Math.floor((Date.now() / 36e5) % 4)}명. 반란군 둘, 밀수꾼 하나… 면회? 그런 건 없소. 벌금이라면 받지."</p>
+      <p class="muted">당신 악명 ${R.infamy}${bounty(save) ? ` · 현상금 ◆ ${bounty(save)}` : ''} · 악명 1마다 벌금 ◆ ${fineEach}</p>${portGoldRow()}
+      <div class="actions">${R.infamy ? `<button id="jFine" ${save.gold >= fine ? '' : 'disabled'}>벌금을 내고 악명을 지운다 (◆ ${fine})</button><button id="jHalf" ${save.gold >= Math.ceil(fine / 2) ? '' : 'disabled'}>절반만 낸다 (◆ ${Math.ceil(fine / 2)} · 악명 절반)</button>` : ''}
+      ${canRaid ? `<button id="jRaid" ${raidCool ? 'disabled' : ''}>감옥을 습격한다 (경비 다섯 · 투쟁 +35)${raidCool ? ' — 아직 경비가 삼엄하다' : ''}</button>` : ''}<button data-close class="ghost">됐다</button></div>`);
+    document.getElementById('jFine')?.addEventListener('click', () => { save.gold -= fine; R.infamy = 0; done(); sfx('coin', { vol: 0.5 }); renderer.banner = { text: '벌금을 냈다', sub: '악명이 지워졌다 · 수배지에서 이름이 내려갔다', t: 3, color: '#9fe8b0' }; });
+    document.getElementById('jHalf')?.addEventListener('click', () => { save.gold -= Math.ceil(fine / 2); R.infamy = Math.floor(R.infamy / 2); done(); sfx('coin', { vol: 0.5 }); renderer.banner = { text: '벌금 절반을 냈다', sub: `악명 ${R.infamy}`, t: 3, color: '#ffd27a' }; });
+    document.getElementById('jRaid')?.addEventListener('click', () => { done(); world.skirmish = { id: 'capRaid', foes: capGuards(5, '감옥 경비병', { x: 350 * TILE, y: 236 * TILE }) }; renderer.banner = { text: '감옥 습격!', sub: '경비병 다섯을 쓰러뜨려라', t: 3, color: '#c8a0ff' }; });
+    return;
+  }
+  if (id === 'cap_herald' || id === 'cap_exec' || id === 'cap_prisoner') {
+    const wanted = Object.keys(OFFICIALS).filter((k) => OFFICIALS[k].side === 'noctaris' && officialNow(save, k)).map((k) => { const O = OFFICIALS[k], n = officialNow(save, k); return `<li>${esc(O.title)} ${esc(n.name)} — 현상금 ◆ ${O.lv * 40}</li>`; }).join('');
+    const ex = capExec.active ? `<h4>오늘의 처형</h4><p>"죄수 <b>${esc(capExec.name)}</b>, 왕국에 맞선 죄로 형을 집행한다!" <small class="muted">(${Math.max(1, Math.ceil((capExec.end - Date.now()) / 60e3))}분 뒤)</small></p>` : `<p class="muted">지금은 처형이 없다. 다음 처형까지 약 ${Math.max(1, Math.ceil((capExec.next - Date.now()) / 60e3))}분.</p>`;
+    showModal(`<h2>전령 피에르 · 포고문</h2><p>"에드릭 국왕 폐하의 이름으로 알린다!"</p><h4>현상 수배</h4><ul>${wanted || '<li>지금은 수배된 녹타리스 간부가 없다</li>'}${bounty(save) ? `<li><b>${esc(heroName())}</b> — 현상금 ◆ ${bounty(save)}</li>` : ''}</ul>${ex}
+      <div class="actions">${capExec.active ? `<button id="eWatch">지켜본다</button><button id="ePlea" ${save.gold >= 300 ? '' : 'disabled'}>사면을 청한다 (◆ 300)</button><button id="eFree" class="ghost">죄수를 빼낸다 (경비 넷과 싸움)</button>` : ''}<button data-close class="ghost">돌아선다</button></div>`);
+    document.getElementById('eWatch')?.addEventListener('click', () => { capExec.active = false; capExec.next = Date.now() + 6 * 60e3; capStageSync(); if (P.faction === 'aurelion') polGain({ merit: 2 }); addChronicle(`왕도 처형대에서 ${capExec.name}이(가) 처형됐다`); done(); renderer.banner = { text: '형이 집행됐다', sub: P.faction === 'aurelion' ? '공훈 +2' : '군중이 흩어진다', t: 2.8, color: '#a8b0c0' }; });
+    document.getElementById('ePlea')?.addEventListener('click', () => { save.gold -= 300; capExec.active = false; capExec.next = Date.now() + 6 * 60e3; capStageSync(); polGain({ fame: 5 }); addChronicle(`${heroName()}이(가) 돈을 내고 ${capExec.name}의 사면을 받아 냈다`); done(); sfx('coin', { vol: 0.5 }); renderer.banner = { text: `${capExec.name}이(가) 사면됐다`, sub: '명성 +5', t: 3, color: '#9fe8b0' }; });
+    document.getElementById('eFree')?.addEventListener('click', () => { done(); const C = capMap(); const foes = capGuards(4, '처형장 경비병', { x: C.stage.x, y: C.stage.sortY + 40 }); foes.forEach((e) => (e.capRescue = true)); world.skirmish = { id: 'capRescue', foes }; renderer.banner = { text: '죄수를 빼내라!', sub: '처형장 경비병 넷', t: 3, color: '#c8a0ff' }; });
+    return;
+  }
+  const lines = CAP_LINES[id];
+  const lbl = world.objects.find((o) => o.id === id)?.label?.replace(/[와과] 이야기.*/, '') || '왕도 사람';
+  showModal(`<h2>${esc(lbl)}</h2><p>${lines ? lines[Math.floor(Math.random() * lines.length)] : '"…"'}</p><div class="actions"><button data-close>고맙다</button></div>`);
 }
 function updateHappenPanel() {
   let el = document.getElementById('happenPanel');
@@ -3005,6 +3116,7 @@ function chronicleTalk() {
     <div class="actions"><button data-close>돌아선다</button></div>`);
 }
 function arcTalk(id) {
+  if (id.startsWith('cap_')) { capitalTalk(id); return true; }
   if (id === 'pol_recruiter') { recruiterTalk(); return true; }
   if (id === 'chronicle') { chronicleTalk(); return true; }
   if (id.startsWith('official_')) { officialTalk(id.slice(9)); return true; }
@@ -3057,7 +3169,7 @@ function tick(ts) {
 }
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-window.__game = { get world() { return world; }, renderer, hub, dbg: { spawnHappening: () => spawnHappening(), enterIsland: (id) => enterIsland(id), save: () => save, talk: (id) => sanctTalk(id) } }; // 디버그용
+window.__game = { get world() { return world; }, renderer, hub, dbg: { spawnHappening: () => spawnHappening(), enterIsland: (id) => enterIsland(id), save: () => save, talk: (id) => sanctTalk(id), talkId: (id) => arcTalk(id) || portTalk(id), capExec } }; // 디버그용
 
 // 로그인·저장 상태 표시
 const chip = document.createElement('div');
