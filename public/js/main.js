@@ -2805,7 +2805,17 @@ function polOf() {
   return save.pol;
 }
 const heroName = () => cloud?.name || `${RACES[save.race]?.name || ''} 여행자`;
-function addChronicle(text) { (save.chronicle ||= []).unshift({ t: Date.now(), text }); save.chronicle.length = Math.min(save.chronicle.length, 60); }
+function addChronicle(text) { (save.chronicle ||= []).unshift({ t: Date.now(), text }); save.chronicle.length = Math.min(save.chronicle.length, 120); if (net.up) netSend({ t: 'chron', text }); } // 온라인이면 모두의 연대기에
+// 서버와 이어지면 섬의 역사(고위 관계자의 생사 · 연대기)를 함께 쓴다
+onNet('up', () => netSend({ t: 'worldGet' }));
+onNet('worldState', (m) => {
+  if (!save) return;
+  const S = (save.officials ||= {});
+  for (const [id, v] of Object.entries(m.officials || {})) { const L = S[id]; if (!L || v.gen > L.gen || (v.gen === L.gen && v.deadAt > (L.deadAt || 0))) S[id] = { gen: v.gen, deadAt: v.deadAt }; }
+  if (m.chronicle) save.chronicle = m.chronicle.slice(0, 120);
+  writeSave(save);
+});
+onNet('chron', (m) => { if (!save || !m.entry) return; (save.chronicle ||= []).unshift(m.entry); save.chronicle.length = Math.min(save.chronicle.length, 120); });
 // 점수 · 평판을 더하고 계급 · 지위 변화를 알린다
 // ───── NPC에게 한 일: 때리면 싸움 · 돈을 주면 받는 사람에 따라 뇌물 · 기부 · 후원 ─────
 let talkNpc = null;
@@ -2938,6 +2948,7 @@ function officialDown(s) {
     if (c === 'kill') {
       e.finish = true; e.begging = false; world.killEnemy(e);
       (save.officials[s.id] ||= { gen: 1 }).deadAt = Date.now();
+      if (net.up) netSend({ t: 'officialKill', id: s.id, gen: now.gen }); // 모두에게 자리가 비어 보인다
       P.kills[now.cond] = true; if (now.cond === 'aurCore') P.kills.aurOfficer = true;
       const big = now.king ? 1000 : now.cond === 'aurCore' || now.cond === 'nocOfficer' ? 300 : 120;
       polGain(now.side === 'aurelion' ? { struggle: big, infamy: now.king ? 40 : 15, gold: big } : { merit: big, fame: now.king ? 20 : 5, infamy: 5, gold: big });

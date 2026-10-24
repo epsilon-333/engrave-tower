@@ -95,6 +95,12 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { try { fs.mkdirS
 const RANKS = ['leader', 'officer', 'member'];
 
 // ───── 랭킹: 돈 · 각인의 탑 최고 층 · 레이드 최단 처치 시간 (저장마다 하나 · 파일에 남는다) ─────
+// 함께 쓰는 섬의 역사: 고위 관계자의 생사(직책은 남고 사람은 바뀐다) · 연대기
+const WORLD_FILE = path.join(DATA_DIR, 'world.json');
+let shared = { officials: {}, chronicle: [] };
+try { shared = { officials: {}, chronicle: [], ...JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8')) }; } catch { /* 처음 */ }
+let sharedDirty = false;
+setInterval(() => { if (!sharedDirty) return; sharedDirty = false; fs.mkdir(DATA_DIR, { recursive: true }, () => fs.writeFile(WORLD_FILE, JSON.stringify(shared), () => {})); }, 5000);
 const RANK_FILE = path.join(DATA_DIR, 'ranking.json');
 let ranking = {};
 try { ranking = JSON.parse(fs.readFileSync(RANK_FILE, 'utf8')) || {}; } catch { ranking = {}; }
@@ -251,6 +257,22 @@ function handle(c, m) {
       break;
     }
     case 'rankGet': send(c, rankBoard()); break;
+    // ── 함께 쓰는 섬의 역사 ──
+    case 'worldGet': send(c, { t: 'worldState', officials: shared.officials, chronicle: shared.chronicle }); break;
+    case 'officialKill': { // 누군가 고위 관계자를 쓰러뜨렸다 → 모두에게 자리가 비어 보인다
+      const id = clean(m.id, 24), gen = Math.max(1, Math.min(9999, +m.gen || 1));
+      if (!id) break;
+      const cur = shared.officials[id];
+      if (!cur || gen >= cur.gen) { shared.officials[id] = { gen, deadAt: Date.now() }; sharedDirty = true; }
+      for (const o of clients.values()) send(o, { t: 'worldState', officials: shared.officials });
+      break;
+    }
+    case 'chron': { // 연대기 한 줄
+      const text = clean(m.text, 160); if (!text) break;
+      const entry = { t: Date.now(), text }; shared.chronicle.unshift(entry); shared.chronicle.length = Math.min(shared.chronicle.length, 120); sharedDirty = true;
+      for (const o of clients.values()) if (o !== c) send(o, { t: 'chron', entry });
+      break;
+    }
     // ── 운영자 ──
     case 'adminList': {
       if (!c.admin) break;
