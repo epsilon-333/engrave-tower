@@ -37,6 +37,7 @@ import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
 import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText, STONE_PRICE_CALLER, CALLER_RATES, spiritLevel, SPIRIT_LV_XP } from './data/spirits.js';
 import { spiritIconURL } from './render/spirits.js';
 import { getAutoAim, setAutoAim, getNpcAttack, setNpcAttack } from './settings.js';
+import { witness, opinionText } from './sim/npclife.js';
 import { ENGRAVINGS } from './data/engravings.js';
 import { RACE_ART } from './data/art.js';
 import { buildPlaza } from './data/plaza.js';
@@ -941,7 +942,7 @@ const buildNow = () => computeBuild(toLoadout(save));
 // 생활 데이터: 저장의 같은 객체를 세계에 넘긴다 (캐고 · 베고 · 낚고 · 키운 것이 곧바로 저장에 남는다)
 const lifeOf = () => ({ get knack() { return (save.knack ||= newKnack()); }, bag: save.bag, tools: save.tools, nodes: save.nodes, chopped: save.chopped, farm: save.farm, fishLog: save.fishLog, artifacts: save.artifacts, farmOpts: save.farmOpts, chest: save.chest, get cap() { return save.bagCap || 30; }, get quickFood() { return save.quickFood; } });
 // 세계마다 함께 넘기는 저장 객체: 생활 · 하루의 시간 · 오래가는 효과(음식 · 잠)
-const shared = () => ({ life: lifeOf(), clock: save.time, persist: save.effects, minions: (save.minions ||= []) });
+const shared = () => ({ life: lifeOf(), clock: save.time, persist: save.effects, minions: (save.minions ||= []), npcMem: (save.npcMem ||= {}) });
 
 function enterPlaza(first) {
   { const el = document.getElementById('practicePanel'); if (el) el.hidden = true; }
@@ -1706,7 +1707,7 @@ function closePanel() {
 function showModal(html, onClose) {
   touch?.reset();
   const giver = talkNpc && !html.includes('data-give') ? talkNpc : null;
-  overlay.innerHTML = `<div class="modal">${html}${giver ? `<div class="give-row"><span class="muted">돈을 건넨다 — ${esc(giveHint(giver))}</span><span>${[10, 50, 200].map((n) => `<button class="sm ghost" data-give="${n}">◆ ${n}</button>`).join('')}</span></div>` : ''}</div>`;
+  overlay.innerHTML = `<div class="modal">${html}${giver ? `<div class="give-row">${giver.mem ? `<span class="muted">${esc(giver.label0 || giver.label || '').split(' ')[0]}은(는) ${opinionText(giver.mem.op)}${Object.keys(giver.mem.knows).length ? ` · 들은 소문: ${Object.keys(giver.mem.knows).slice(0, 3).map((d) => ({ assault: '사람을 때림', beatDown: '사람을 때려눕힘', raid: '상단 습격', rob: '세금 마차 약탈', escort: '상단 호위', guard: '마차 호위', donate: '기부', bribe: '뇌물', stop: '싸움 말림', official: '관리 살해', gift: '선물' })[d] || d).join(' · ')}` : ''}</span>` : ''}<span class="muted">돈을 건넨다 — ${esc(giveHint(giver))}</span><span>${[10, 50, 200].map((n) => `<button class="sm ghost" data-give="${n}">◆ ${n}</button>`).join('')}</span></div>` : ''}</div>`;
   overlay.hidden = false; paused = true;
   modal = onClose || (() => { overlay.hidden = true; paused = false; modal = null; talkNpc = null; sfx('close', { vol: 0.4 }); });
   if (giver) overlay.querySelectorAll('[data-give]').forEach((b) => (b.onclick = () => giveMoney(giver, +b.dataset.give)));
@@ -2840,6 +2841,8 @@ function giveMoney(o, n) {
   else if (k === 'cult') { if (n >= 50) { P.cult = (P.cult || 0) + 1; text = '교단이 당신을 기억한다 · 교단의 신뢰 +1'; } else text = '교단 신도가 동전을 집어넣는다'; }
   else if (k === 'tip') { const g = n >= 50 ? 1 : 0; R.fame += g; text = `수고비를 받았다${g ? ' · 명성 +1' : ''}`; }
   else { const g = Math.max(1, Math.round(n / 40)); R.fame += g; text = `기부했다 · 명성 +${g}`; }
+  witness(world, o.x, o.y, k === 'bribe' ? 'bribe' : k === 'donate' ? 'donate' : 'gift', k === 'bribe' ? 10 : -8, o); // 본 사람들이 기억한다
+  if (o.mem && k !== 'bribe') o.mem.op = Math.min(100, o.mem.op + Math.min(25, n / 8)); // 받은 사람은 더 좋아한다
   writeSave(save); sfx('coin', { vol: 0.6 });
   world.emit({ t: 'text', x: o.x, y: (o._top ?? o.y - 24) - 6, text: k === 'bribe' ? '…못 본 걸로 하지' : k === 'donate' ? '고맙습니다!' : k === 'rebel' ? '밤의 사람들이 기억할 거요' : '고맙소', color: '#ffe8a8' });
   renderer.banner = { text: `◆ ${n}을(를) 건넸다`, sub: text, t: 2.4, color: '#ffd27a' };
@@ -2847,12 +2850,13 @@ function giveMoney(o, n) {
 function npcStruck(s) {
   const zone = world.zone?.id || '', inNokt = zone.includes('nokt'), royal = !inNokt && (s.role === 'guard' || zone.includes('capital'));
   if (s.t === 'npcHostile') {
-    if (s.why === 'ally') return; // 함께 덤빈 경비는 따로 세지 않는다
-    polGain(inNokt ? { infamy: 2, struggle: -8 } : royal ? { infamy: 3, merit: -10 } : { infamy: 2 });
-    renderer.banner = { text: '사람을 공격했다', sub: inNokt ? '녹트 하벤이 적대한다 · 악명 +2 · 투쟁 -8' : royal ? '경비가 덤빈다 · 악명 +3 · 공훈 -10' : '악명 +2 · 근처 사람들이 달아난다', t: 2.4, color: '#ff8a6a' };
+    if (s.why === 'ally' || s.why === 'law') return; // 함께 덤빈 경비 · 나를 잡으러 온 경비는 따로 세지 않는다
+    const k = Math.min(1, (s.seen || 0) / 2); // 본 사람이 많을수록 소문이 난다 (때린 사람 혼자만 봤으면 반만)
+    polGain(inNokt ? { infamy: Math.round(2 * k), struggle: -8 } : royal ? { infamy: Math.round(3 * k), merit: -10 } : { infamy: Math.round(2 * k) });
+    renderer.banner = { text: '사람을 공격했다', sub: `본 사람 ${s.seen || 0}명${s.fled ? ' · 겁먹고 달아났다' : ''}${royal ? ' · 경비가 덤빈다' : ''}`, t: 2.4, color: '#ff8a6a' };
   } else {
-    polGain({ infamy: 4 });
-    renderer.banner = { text: '쓰러뜨렸다', sub: '악명 +4 · 4분 뒤 깨어난다', t: 2.2, color: '#ff8a6a' };
+    const inf = Math.round(4 * Math.min(1, (s.seen || 0) / 2)); polGain({ infamy: inf });
+    renderer.banner = { text: '쓰러뜨렸다', sub: `${s.seen ? `본 사람 ${s.seen}명 · 악명 +${inf}` : '아무도 못 봤다'} · 4분 뒤 깨어난다`, t: 2.2, color: '#ff8a6a' };
   }
 }
 function polGain(r = {}, aligned = false) {
@@ -3047,6 +3051,7 @@ function happeningDone(h, c, aligned) {
   if (r.item) bagAdd(lifeOf(), r.item, 1);
   if (r.lore) { const t = CULT_LORE[Math.floor(Math.random() * CULT_LORE.length)]; save.codex.lore ||= []; if (!save.codex.lore.includes(t)) save.codex.lore.push(t); renderer.banner = { text: '교단의 기록을 엿들었다', sub: t.slice(0, 60) + '…', t: 4.5, color: '#b98aff' }; }
   if (!P.tested && P.faction !== 'noctaris' && ALIGN.aurelion[h.type] === c.id) P.tested = true;
+  witness(world, h.o.x, h.o.y, c.id, { raid: 25, rob: 20, escort: -20, guard: -15, stop: -10 }[c.id] || 0);
   polGain(r, aligned);
   if (c.id === 'raid' || c.id === 'rob') addChronicle(`${h.where}에서 ${h.type === 'taxWagon' ? '세금 마차' : '상단'}이(가) 털렸다 — ${heroName()}`);
   if (!r.lore) renderer.banner = { text: c.label + (aligned ? ' · 세력 의뢰 완료' : ''), sub: rewardText(c.reward), t: 3.2, color: '#ffe8a8' };

@@ -53,7 +53,8 @@ function overworldMap(zone) {
 
 export class World {
   // mode: 'field' | 'plaza'
-  constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null, souls = null, raid = null, minions = null }) {
+  constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null, souls = null, raid = null, minions = null, npcMem = null }) {
+    this.npcMem = npcMem || {}; // NPC가 나를 기억하는 것 (호감 · 들은 소문) — 저장과 같은 객체
     this.minions = minions || []; // 사령술사: 쓰러질 때까지 남는 부하 (저장과 같은 배열 · 다른 곳에도 따라온다)
     this.raid = raid; // 보스 레이드: { id }
     this.depth = depth;

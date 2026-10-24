@@ -33,6 +33,7 @@ export function initNpcLife(w) {
     const near = npcs.filter((q) => Math.hypot(q.x - o.x, q.y - o.y) < 14 * TILE);
     o.gather = { x: near.reduce((a, q) => a + q.x, 0) / near.length, y: near.reduce((a, q) => a + q.y, 0) / near.length };
     o.friends = near.filter((q) => q !== o).sort((a, b) => rnd(seed ^ b.x, 13) - rnd(seed ^ a.x, 13)).slice(0, 3);
+    o.mem = (w.npcMem[o.id] ||= { op: 0, knows: {} }); // 나에 대한 생각 (-100 ~ 100) · 알고 있는 내 행동
   });
   // 역마차: 바깥 세계에서 마을 ↔ 왕도 남문 (길을 따라 · 나무를 피해서)
   if (m.onPath && m.capital?.gates?.s && m.start && w.zone?.id === 'world') {
@@ -119,7 +120,7 @@ function satisfy(o, DT) {
   if (o.asleep) N.energy = Math.max(0, N.energy - k / 380);
   if (a === 'doze') N.energy = Math.max(0, N.energy - k / 700); // 선 채로 꾸벅꾸벅은 덜 개운하다
   if (a === 'eat' || a === 'eatIn') { N.hunger = Math.max(0, N.hunger - k / 12); if (o.doT < DT * 2) o.coins = Math.max(0, o.coins - 3); }
-  if (a === 'talk') { N.social = Math.max(0, N.social - k / 15); if (o.talkTo) o.talkTo.need.social = Math.max(0, o.talkTo.need.social - k / 15); }
+  if (a === 'talk') { N.social = Math.max(0, N.social - k / 15); if (o.talkTo) { o.talkTo.need.social = Math.max(0, o.talkTo.need.social - k / 15); if (Math.random() < DT * 0.08) gossip(o, o.talkTo); } }
   if (a === 'play' || a === 'spar') N.fun = Math.max(0, N.fun - k / 20);
   if (a === 'work' || a === 'watch') o.coins += k * (0.3 + o.trait.diligent * 0.3);
 }
@@ -143,6 +144,7 @@ export function updateNpcLife(w, DT) {
     if (o.asleep) { if (o.need.energy < 0.05 || (o.role === 'guard' && onShift(o, min) && o.need.energy < 0.3)) wakeUp(o); continue; } // 집 안에서 잔다
     if (o.fleeT > 0) { o.fleeT -= DT; const a = Math.atan2(o.y - p.y, o.x - p.x); step(w, o, o.x + Math.cos(a) * 30, o.y + Math.sin(a) * 30, 60, DT); o.act = 'run'; continue; }
     if (!o.doing || doneWith(o)) { if (o.sparWith && o.sparWith.sparWith === o) o.sparWith.sparWith = null; o.sparWith = null; o.talkTo = null; start(w, o, choose(w, o, min), min); }
+    if (o.role === 'guard' && o.mem && o.mem.op <= -60 && w.npcAttack && Math.hypot(p.x - o.x, p.y - o.y) < 90) { w.emit({ t: 'text', x: o.x, y: o.y - 26, text: '저놈이다! 잡아라!', color: '#ff5a4a' }); provokeNpc(w, o, 'law'); continue; } // 나를 증오하는 경비는 보이면 덤빈다
     const talkNear = Math.hypot(p.x - o.x, p.y - o.y) < 26; // 말 걸 수 있게 가까이 오면 멈춰 선다
     if (talkNear && o.act !== 'doze') { if (o.act === 'walk') o.act = 'idle'; o.face = p.x < o.x ? -1 : 1; continue; }
     if (o.goal) {
@@ -217,9 +219,9 @@ export function provokeNpc(w, o, why = 'hit') {
   o.hostile = e; o.label0 ||= o.label; o.reusable = false; o.goal = null; o.riding = null;
   w.enemies.push(e); w.aggro?.(e);
   // 겁 많은 사람은 맞으면 달아나고, 용감한 사람 · 경비는 맞선다
-  if (o.role !== 'guard' && o.trait && o.trait.brave < 0.35 && why !== 'ally') { e.dead = true; w.enemies = w.enemies.filter((q) => q !== e); o.hostile = null; o.reusable = true; o.fleeT = 8; w.emit({ t: 'text', x: o.x, y: o.y - 26, text: '살려 줘!', color: '#ffd0a0' }); w.signals.push({ t: 'npcHostile', id: o.id, role: o.role, why, fled: true }); alarm(w, o); return; }
+  if (o.role !== 'guard' && o.trait && o.trait.brave < 0.35 && why !== 'ally') { e.dead = true; w.enemies = w.enemies.filter((q) => q !== e); o.hostile = null; o.reusable = true; o.fleeT = 8; w.emit({ t: 'text', x: o.x, y: o.y - 26, text: '살려 줘!', color: '#ffd0a0' }); w.signals.push({ t: 'npcHostile', id: o.id, role: o.role, why, fled: true, seen: witness(w, o.x, o.y, 'assault', 30, o) }); alarm(w, o); return; }
   w.emit({ t: 'text', x: o.x, y: o.y - 26, text: o.role === 'guard' ? '감히!' : '무슨 짓이야!', color: '#ff7a5a' });
-  w.signals.push({ t: 'npcHostile', id: o.id, role: o.role, why });
+  w.signals.push({ t: 'npcHostile', id: o.id, role: o.role, why, seen: why === 'ally' ? 0 : witness(w, o.x, o.y, 'assault', 30, o) });
   alarm(w, o);
 }
 // 같은 동네 경비는 함께 덤비고, 겁 많은 사람들은 달아난다
@@ -236,8 +238,35 @@ export function npcDown(w, e) {
   const o = e.npcRef; if (!o) return;
   o.hostile = null; o.knockedUntil = w.t + 240; o.away = true; o.reusable = false; // 4분 뒤 돌아온다 (기절)
   w.emit({ t: 'text', x: e.x, y: e.y - 20, text: '쓰러졌다', color: '#c8b8a0' });
-  w.signals.push({ t: 'npcDown', id: o.id, role: o.role });
+  w.signals.push({ t: 'npcDown', id: o.id, role: o.role, seen: witness(w, e.x, e.y, 'beatDown', 45, o) });
 }
+// ───────── 기억 · 소문 ─────────
+const DEED_TEXT = { assault: '사람을 때렸다', beatDown: '사람을 때려눕혔다', raid: '상단을 털었다', rob: '세금 마차를 털었다', escort: '상단을 지켜 줬다', guard: '세금 마차를 지켜 줬다', donate: '어려운 사람을 도왔다', bribe: '경비에게 뇌물을 줬다', stop: '싸움을 말렸다', official: '고위 관리를 죽였다' };
+export const deedText = (k) => DEED_TEXT[k] || k;
+// 내 행동을 본 사람들 (깨어 있고, 10칸 안) — 본 사람 수를 돌려준다. weight > 0 이면 나쁜 일, < 0 이면 좋은 일
+export function witness(w, x, y, deed, weight, victim = null) {
+  let n = 0;
+  for (const o of w.objects) {
+    if (o.kind !== 'npc' || !o.mem || o.away || o.asleep || o.knockedUntil) continue;
+    if (o !== victim && Math.hypot(o.x - x, o.y - y) > 10 * TILE) continue;
+    n++; learn(o, deed, weight, 1);
+  }
+  return n;
+}
+// 알게 됨: 정직한 사람은 나쁜 일에 더 실망하고, 탐욕스러운 사람은 뇌물 이야기에 덜 실망한다 · 경비는 범죄를 기억하면 덤빈다
+function learn(o, deed, weight, k) {
+  if (o.mem.knows[deed] && k < 1) return;
+  o.mem.knows[deed] = (o.mem.knows[deed] || 0) + 1;
+  let d = weight * k * (weight > 0 ? 0.6 + (o.trait?.honest || 0.5) * 0.8 : 1);
+  if (deed === 'bribe') d *= 1.2 - (o.trait?.greedy || 0.5);
+  if ((deed === 'raid' || deed === 'rob') && o.trait && o.trait.loyal < 0.3) d *= -0.5; // 왕실이 싫은 사람은 세금 마차 털이를 반긴다
+  o.mem.op = Math.max(-100, Math.min(100, o.mem.op - d));
+}
+function gossip(a, b) { // 서로 아는 내 이야기를 나눈다 (들은 이야기는 반쯤만 믿는다)
+  for (const [x, y] of [[a, b], [b, a]]) for (const deed of Object.keys(x.mem?.knows || {})) if (y.mem && !y.mem.knows[deed]) learn(y, deed, DEED_W[deed] || 10, 0.5);
+}
+const DEED_W = { assault: 30, beatDown: 45, raid: 25, rob: 20, escort: -20, guard: -15, donate: -15, bribe: 10, stop: -10, official: 40 };
+export const opinionText = (op) => (op >= 50 ? '당신을 아주 좋아한다' : op >= 15 ? '당신에게 호의적이다' : op > -15 ? '당신을 잘 모른다' : op > -50 ? '당신을 경계한다' : '당신을 증오한다');
 // 내 공격이 닿은 곳 근처의 NPC · 벌어지는 일
 export function pokeNpcs(w, x, y, r) {
   if (!w.npcAttack) return;
