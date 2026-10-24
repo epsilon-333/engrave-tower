@@ -36,7 +36,7 @@ import { STAT_INFO } from './data/stats.js';
 import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
 import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText, STONE_PRICE_CALLER, CALLER_RATES, spiritLevel, SPIRIT_LV_XP } from './data/spirits.js';
 import { spiritIconURL } from './render/spirits.js';
-import { getAutoAim, setAutoAim } from './settings.js';
+import { getAutoAim, setAutoAim, getNpcAttack, setNpcAttack } from './settings.js';
 import { ENGRAVINGS } from './data/engravings.js';
 import { RACE_ART } from './data/art.js';
 import { buildPlaza } from './data/plaza.js';
@@ -1705,9 +1705,11 @@ function closePanel() {
 
 function showModal(html, onClose) {
   touch?.reset();
-  overlay.innerHTML = `<div class="modal">${html}</div>`;
+  const giver = talkNpc && !html.includes('data-give') ? talkNpc : null;
+  overlay.innerHTML = `<div class="modal">${html}${giver ? `<div class="give-row"><span class="muted">돈을 건넨다 — ${esc(giveHint(giver))}</span><span>${[10, 50, 200].map((n) => `<button class="sm ghost" data-give="${n}">◆ ${n}</button>`).join('')}</span></div>` : ''}</div>`;
   overlay.hidden = false; paused = true;
-  modal = onClose || (() => { overlay.hidden = true; paused = false; modal = null; sfx('close', { vol: 0.4 }); });
+  modal = onClose || (() => { overlay.hidden = true; paused = false; modal = null; talkNpc = null; sfx('close', { vol: 0.4 }); });
+  if (giver) overlay.querySelectorAll('[data-give]').forEach((b) => (b.onclick = () => giveMoney(giver, +b.dataset.give)));
   overlay.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => modal?.()));
 }
 
@@ -1767,7 +1769,7 @@ function showPause() {
     ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button><button id="rankBtn" class="ghost">랭킹 · N</button>' : ''}
     ${net.admin ? '<button id="adminBtn" class="ghost">운영자 · 접속한 사람</button>' : cloud.name === '운영자' && net.up ? '<p class="muted">운영자 열쇠 (서버의 ADMIN_KEY) <input id="adminKeyIn" type="password" style="width:9em"> <button id="adminKeyGo" class="sm ghost">확인</button></p>' : ''}
     ${isTouch() ? `<div class="actions col"><button id="tChar" class="ghost">캐릭터 · 스킬 · 스탯</button><button id="tMap" class="ghost">지도</button><button id="tQuest" class="ghost">퀘스트</button><button id="tGear" class="ghost">장비 · 어디서 얻나</button>${net.up ? '<button id="tChat" class="ghost">채팅</button>' : ''}</div>` : ''}
-    ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
+    ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> NPC 공격 (끄면 사람에게 맞지 않는다)</label><label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
     ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">결투에서는 잃는 것이 없다. 포기하면 상대의 승리가 된다.</p>' : field && !world.practice ? '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
     ${volumeHtml()}
     ${isClaudePage() ? '' : cloud.mode === 'account' ? `<p class="muted">${esc(cloud.name)} 계정으로 로그인 중</p><button id="logoutBtn" class="ghost">로그아웃</button>` : '<button id="loginBtn" class="ghost">로그인 / 회원가입</button>'}`);
@@ -1776,6 +1778,7 @@ function showPause() {
   if (lo) lo.onclick = async () => { await logout(); clearSave(); save = null; world = null; overlay.hidden = true; paused = false; modal = null; showLogin(afterLogin); };
   if (li) li.onclick = () => { overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
   document.getElementById('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
+  document.getElementById('npcAtkCk').onchange = (e) => { setNpcAttack(e.target.checked); if (world) world.npcAttack = e.target.checked; };
   const sb = document.getElementById('socialBtn'); if (sb) sb.onclick = () => showSocial();
   const rb = document.getElementById('rankBtn'); if (rb) rb.onclick = () => showRank();
   const ab = document.getElementById('adminBtn'); if (ab) ab.onclick = () => showAdmin();
@@ -2049,7 +2052,10 @@ function handleSignals() {
       sfx('lore');
       showModal(`<h2>${j.title}</h2><p class="muted">${j.where}</p><div class="journal">${esc(j.text).replace(/\n/g, '<br>')}</div><button data-close>덮는다</button>`);
       return;
+    } else if (s.t === 'npcHostile' || s.t === 'npcDown') {
+      npcStruck(s);
     } else if (s.t === 'npc') {
+      talkNpc = world.near?.kind === 'npc' && world.near.home ? world.near : null; // 말 거는 사람 (돈을 건넬 수 있다)
       if (arcTalk(s.id) || portTalk(s.id) || noktTalk(s.id)) return;
       talkTo(s.id);
       return;
@@ -2792,6 +2798,44 @@ function polOf() {
 const heroName = () => cloud?.name || `${RACES[save.race]?.name || ''} 여행자`;
 function addChronicle(text) { (save.chronicle ||= []).unshift({ t: Date.now(), text }); save.chronicle.length = Math.min(save.chronicle.length, 60); }
 // 점수 · 평판을 더하고 계급 · 지위 변화를 알린다
+// ───── NPC에게 한 일: 때리면 싸움 · 돈을 주면 받는 사람에 따라 뇌물 · 기부 · 후원 ─────
+let talkNpc = null;
+const ROYAL = /guard|king|taxChief|treasurer|knightCommander|royalMage|recruiter|exec|cap_/i, REBEL = /rebel|broker|kaila|quartermaster|spymaster|fence|forger|nokt/i, CULT = /cult/i;
+function giveKind(o) {
+  const a = `${o.art || ''} ${o.id || ''}`;
+  if (CULT.test(a)) return 'cult';
+  if (REBEL.test(a)) return 'rebel';
+  if (ROYAL.test(a) || o.role === 'guard') return bounty(save) > 0 ? 'bribe' : 'gift';
+  if (o.role === 'post') return 'tip';
+  return 'donate';
+}
+const giveHint = (o) => ({ bribe: '경비에게 건네면 뇌물: 악명이 줄어든다', gift: '왕국 사람에게 건네면 선물: 공훈이 조금 오른다', rebel: '녹타리스에게 건네면 후원: 투쟁이 오른다', cult: '교단에 바치면 교단의 신뢰', tip: '일하는 사람에게 건네면 수고비: 명성 조금', donate: '어려운 사람에게 건네면 기부: 명성이 오른다' })[giveKind(o)];
+function giveMoney(o, n) {
+  if (save.gold < n) { renderer.banner = { text: '돈이 모자란다', t: 1.6, color: '#c8b8a0' }; return; }
+  save.gold -= n;
+  const k = giveKind(o), R = repOf(), P = polOf();
+  let text = '';
+  if (k === 'bribe') { const cut = Math.max(1, Math.round(n / 25)); R.infamy = Math.max(0, R.infamy - cut); text = `뇌물을 받았다 · 악명 -${cut}`; }
+  else if (k === 'gift') { const g = Math.max(1, Math.round(n / 40)); P.merit += g; text = `선물을 받았다 · 공훈 +${g}`; }
+  else if (k === 'rebel') { const g = Math.max(1, Math.round(n / 30)); P.struggle += g; text = `후원을 받았다 · 투쟁 +${g}`; }
+  else if (k === 'cult') { if (n >= 50) { P.cult = (P.cult || 0) + 1; text = '교단이 당신을 기억한다 · 교단의 신뢰 +1'; } else text = '교단 신도가 동전을 집어넣는다'; }
+  else if (k === 'tip') { const g = n >= 50 ? 1 : 0; R.fame += g; text = `수고비를 받았다${g ? ' · 명성 +1' : ''}`; }
+  else { const g = Math.max(1, Math.round(n / 40)); R.fame += g; text = `기부했다 · 명성 +${g}`; }
+  writeSave(save); sfx('coin', { vol: 0.6 });
+  world.emit({ t: 'text', x: o.x, y: (o._top ?? o.y - 24) - 6, text: k === 'bribe' ? '…못 본 걸로 하지' : k === 'donate' ? '고맙습니다!' : k === 'rebel' ? '밤의 사람들이 기억할 거요' : '고맙소', color: '#ffe8a8' });
+  renderer.banner = { text: `◆ ${n}을(를) 건넸다`, sub: text, t: 2.4, color: '#ffd27a' };
+}
+function npcStruck(s) {
+  const zone = world.zone?.id || '', inNokt = zone.includes('nokt'), royal = !inNokt && (s.role === 'guard' || zone.includes('capital'));
+  if (s.t === 'npcHostile') {
+    if (s.why === 'ally') return; // 함께 덤빈 경비는 따로 세지 않는다
+    polGain(inNokt ? { infamy: 2, struggle: -8 } : royal ? { infamy: 3, merit: -10 } : { infamy: 2 });
+    renderer.banner = { text: '사람을 공격했다', sub: inNokt ? '녹트 하벤이 적대한다 · 악명 +2 · 투쟁 -8' : royal ? '경비가 덤빈다 · 악명 +3 · 공훈 -10' : '악명 +2 · 근처 사람들이 달아난다', t: 2.4, color: '#ff8a6a' };
+  } else {
+    polGain({ infamy: 4 });
+    renderer.banner = { text: '쓰러뜨렸다', sub: '악명 +4 · 4분 뒤 깨어난다', t: 2.2, color: '#ff8a6a' };
+  }
+}
 function polGain(r = {}, aligned = false) {
   const P = polOf(), R = repOf(), mul = aligned ? 1.5 : 1;
   if (r.merit) P.merit = Math.max(0, P.merit + Math.round(r.merit * (r.merit > 0 ? mul : 1)));
@@ -3134,6 +3178,7 @@ function tick(ts) {
   const dt = Math.min(0.1, (ts - last) / 1000 || 0);
   last = ts;
   if (world && !gameEl.hidden) {
+    world.npcAttack = getNpcAttack();
     if (renderer.hitstop > 0) renderer.hitstop -= dt;
     else if ((!paused || coRun) && world.state === 'play') { // 파티 탑: 창을 열어도 세계는 돈다 (동료가 기다리지 않게)
       acc += dt;

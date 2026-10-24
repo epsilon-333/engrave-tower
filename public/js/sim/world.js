@@ -6,6 +6,7 @@ import { WEAPON_SKILLS } from '../data/items.js';
 import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
 import { towerMul, isBossFloor } from '../data/tower.js';
 import { RAID_BOSS } from '../data/raid.js';
+import { initNpcLife, updateNpcLife, pokeNpcs, npcDown } from './npclife.js';
 import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO, SKILL_BAL, CLASS_BAL } from '../data/skills.js';
 import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower, spiritBuff, buffMods } from '../data/spirits.js';
 const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
@@ -162,6 +163,7 @@ export class World {
       for (const wp of m.waypoints || []) { const on = !!wp.start || wp === homeWp || !!this.story?.flags[`wp:${wp.id}`]; this.objects.push({ kind: 'waypoint', ...wp, active: on, label: on ? '이동 포탈 · 다른 포탈로 가기' : '잠든 포탈 깨우기', reusable: true }); }
       // 성지 마을: 우두머리 · 주민 · 수련 안내판 (역시 기억 뒤에), 맡고 있는 '찾기' 의뢰의 물건
       for (const [race, v] of Object.entries(m.villages || {})) this.addVillage(race, v);
+      if (!this.coop && !this.pvp && !this.tower && !this.raid) initNpcLife(this); // NPC 하루 일과
       this.syncQuestThings();
       initLife(this, practice ? null : life); // 캐기 · 나무 · 땅 파기 · 낚시 · 밭
       for (const dk of m.docks || []) this.objects.push({ kind: 'boat', x: dk.bx * TILE + 8, y: dk.by * TILE + 8, label: '배 타기', reusable: true });
@@ -518,6 +520,7 @@ export class World {
     if (this.voyage) this.updateVoyage();
     if (this.skirmish && !this.skirmish.done && this.skirmish.foes.every((e) => e.dead)) { this.skirmish.done = true; this.signals.push({ t: 'skirmishWon', id: this.skirmish.id }); }
     if (this.happenT === undefined || (this.happenT -= DT) <= 0) { this.happenT = 0.25; this.updateHappenings(); }
+    updateNpcLife(this, DT);
     if (this.pit?.e?.dead) { this.signals.push({ t: 'pitWon', bet: this.pit.bet, tier: this.pit.tier }); this.pit = null; }
     this.updateZones();
     this.updateFlow();
@@ -717,7 +720,7 @@ export class World {
     let bd = 1e9;
     for (const o of this.objects) {
       if (o.opened && !o.reusable) continue;
-      if (o.noPrompt || o.riding) continue;
+      if (o.noPrompt || o.riding || o.away || o.hostile) continue; // 기절 · 마차 안 · 화난 NPC에게는 말을 걸 수 없다
       const dd = Math.hypot(o.x - p.x, o.y - p.y);
       if (o.hidden && !o.found) { if (dd < (this.d.senseR || 30)) { o.found = true; this.emit({ t: 'text', x: o.x, y: o.y - 18, text: '숨겨진 상자를 찾았다!', color: '#ffe8a0' }); this.emit({ t: 'ring', x: o.x, y: o.y, r: 22, color: '#ffe8a0' }); } else continue; }
       if (dd < (o.reach || 26) && dd < bd) { bd = dd; this.near = o; } // 계산대 너머의 주인처럼 멀리서도 닿는 것은 reach
@@ -1201,7 +1204,14 @@ export class World {
     return false;
   }
 
-  attack(angOff) {
+  attack(angOff) { // 내 공격: 닿은 곳의 NPC는 화가 난다 (설정에서 NPC 공격을 켰을 때)
+    this.pHit = true;
+    try { return this.attack0(angOff); } finally {
+      this.pHit = false;
+      const p = this.player, rg = this.b.weapon?.range || 26; pokeNpcs(this, p.x + p.aimX * rg * 0.6, p.y + p.aimY * rg * 0.6, rg * 0.55);
+    }
+  }
+  attack0(angOff) {
     const p = this.player, d = this.d, w = this.b.weapon;
     let type = w.dmg;
     if (type === 'phys' && this.f.has('physToMag')) type = 'mag';
@@ -1490,7 +1500,8 @@ export class World {
   }
   dismount() { const p = this.player; if (!p.riding) return; p.riding = null; this.emit({ t: 'mountOff', x: p.x, y: p.y }); }
 
-  castSkillId(id, slot) {
+  castSkillId(id, slot) { this.pHit = true; try { return this.castSkillId0(id, slot); } finally { this.pHit = false; } }
+  castSkillId0(id, slot) {
     const p = this.player;
     if (p.riding) this.dismount();
     // 비상 중에 다시 누르면 바로 내리꽂는다
@@ -3936,6 +3947,7 @@ export class World {
 
   killEnemy(e, selfDestruct = false) {
     if (e.dead) return;
+    if (e.npcRef) { e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: '#c8a888', defId: e.defId, dir: e.dir }); npcDown(this, e); this.loot.gold += 5 + Math.floor(Math.random() * 20); return; } // 공격한 NPC는 기절했다 돌아온다
     if (e.official && !e.finish) {
       e.hp = 1; e.begging = true; e.st = { stun: 9999 }; e.windT = 0; e.state = 'idle';
       if (!e.beggedSent) { e.beggedSent = true; this.signals.push({ t: 'officialDown', id: e.official, eid: e.id }); this.emit({ t: 'text', x: e.x, y: e.y - 24, text: '살려 주시오!', color: '#ffe8a8' }); }
@@ -4420,6 +4432,7 @@ export class World {
   }
 
   enemiesNear(x, y, r) {
+    if (this.pHit && this.npcAttack) pokeNpcs(this, x, y, r);
     return this.enemies.filter((o) => !o.dead && !o.hidden && Math.hypot(o.x - x, o.y - y) <= r + o.r);
   }
 
@@ -4471,6 +4484,7 @@ export class World {
       }
       if (pr.life <= 0) continue;
       if (pr.owner === 'p' && !pr.ghost) {
+        if (this.npcAttack) for (const o of this.objects) if (o.kind === 'npc' && o.home && !o.hostile && !o.away && !o.knockedUntil && Math.hypot(o.x - pr.x, o.y - pr.y) < 9) { pokeNpcs(this, o.x, o.y, 1); if (!pr.pierce) pr.life = 0; break; }
         for (const e of this.enemies) {
           if (e.dead || e.hidden || pr.hit.has(e.id)) continue;
           if (Math.hypot(e.x - pr.x, e.y - 4 - pr.y) > e.r + 5) continue; // 몸 가운데 (발밑보다 조금 위) 기준

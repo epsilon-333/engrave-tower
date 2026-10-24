@@ -116,6 +116,9 @@ Object.assign(MONSTERS, {
   mimic: { name: '미믹', shape: 'quad', pal: { a: '#a8743e' }, hp: 300, atk: 26, type: 'phys', speed: 70, ai: 'chase', moves: ['combo', 'leap'], mimic: true, r: 7, xp: 40, gold: 60, pres: 40, mres: 40, echo: {'id': 'rust', 'rate': 1} },
 });
 
+// ── 공격당한 주민 (NPC가 화나서 싸울 때의 몸) ──
+Object.assign(MONSTERS, { townsfolk: { name: '화난 주민', shape: 'humanoid', pal: { a: '#c8a888' }, hp: 160, atk: 10, type: 'phys', speed: 70, ai: 'chase', r: 6, xp: 0, gold: 0, pres: 10, mres: 10 } });
+
 // ── 레이드 보스: 체력이 셋으로 나뉘어 단계마다 기술이 바뀐다 (phaseMoves) ──
 Object.assign(MONSTERS, {
   raidGolem: { name: '고대 골렘', shape: 'golem', scale: 2.4, elite: true, raid: true, pal: { a: '#8a7a5a' }, hp: 14000, atk: 34, type: 'phys', speed: 34, ai: 'boss', proj: { speed: 160, color: '#c8a86a', spread: 3 }, shield: 0.2, r: 16, xp: 600, gold: 400, pres: 80, mres: 30, echo: { id: 'core', rate: 1 },

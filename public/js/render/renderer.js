@@ -1143,6 +1143,7 @@ export class Renderer {
 
   drawEnemy(w, e, dt) {
     const g = this.g, def = e.def;
+    if (e.npcRef) { e._top = null; return; } // 화난 NPC는 NPC 그림으로 그린다
     if (e.remote) { this.drawRemote(w, { ...e.rp, x: e.x, y: e.y, dir: e.dir, moving: e.moving, flash: e.hitFlash }); e._top = e.y - 18; return; }
     if (def.ai === 'dummy') return this.drawDummy(w, e);
     if (def.ai === 'target') return drawTrainTarget(this, w, e);
@@ -3243,7 +3244,9 @@ export class Renderer {
     if (o.kind === 'node') { drawNode(g, o, t); o._top = o.y - (o.depleted ? 6 : 22); return; }
     if (o.kind === 'dig') { drawDig(g, o, t); o._top = o.y - 8; return; }
     if (o.kind === 'sanctum') { this.drawNpc(w, o); return; }
+    if (o.kind === 'coach') { this.drawHappening(w, { ...o, etype: 'caravan', dest: o.moving, engaged: !o.moving }); o._top = o.y - 30; return; } // 역마차
     if (o.kind === 'npc') {
+      if (o.away) { o._top = null; return; }
       if (o.leaving != null) { o.leaving -= dt * 0.6; if (o.leaving <= 0) { w.objects.splice(w.objects.indexOf(o), 1); return; } g.globalAlpha = o.leaving; }
       this.drawNpc(w, o);
       g.globalAlpha = 1;
@@ -3435,11 +3438,22 @@ export class Renderer {
   drawNpc(w, o) {
     const g = this.g;
     const art = NPC_ART[o.art || o.station || o.kind] || { base: 'p_' + (o.art || o.station || 'farmer') }; // 그 밖의 사람은 people.py 그림 이름 그대로
-    const name = this.animFrame(art.base, 'idle', w.t + o.x * 0.01, 5);
-    const img = sprite(name, art.tint || '', false, w.player.x < o.x);
+    const act = o.act || 'idle', kind = act === 'walk' || act === 'run' || act === 'fight' ? 'run' : act === 'work' || act === 'spar' ? 'work' : 'idle';
+    const name = this.animFrame(art.base, kind, w.t + o.x * 0.01, kind === 'run' ? 9 : kind === 'work' ? 7 : 5);
+    const face = o.face != null ? o.face < 0 : w.player.x < o.x;
+    const img = sprite(name, art.tint || '', o.hostile?.hitFlash > 0 ? true : false, face);
     this.shadow(o.x, o.y + 4, 6);
-    if (img) g.drawImage(img, Math.round(o.x - img.width / 2), Math.round(o.y + 5 - img.height));
+    if (img && act === 'sleep') { // 누워서 잔다 · Zz
+      g.save(); g.translate(Math.round(o.x), Math.round(o.y + 3)); g.rotate(-Math.PI / 2); g.drawImage(img, Math.round(-img.height + 4), Math.round(-img.width / 2)); g.restore();
+      if (Math.floor(w.t * 2 + o.x) % 6 === 0 && Math.random() < 0.05) this.texts.push({ x: o.x + 6, y: o.y - 10, text: 'z', color: '#c8d8ff', t: 1.4, vy: -10, vx: 4 });
+      o._top = o.y - 8; return;
+    }
+    const bob = act === 'play' ? Math.abs(Math.sin(w.t * 5 + o.x)) * 2 : 0, lunge = act === 'spar' ? Math.sin(w.t * 9 + o.x) * 2 * (face ? -1 : 1) : 0;
+    if (img) g.drawImage(img, Math.round(o.x - img.width / 2 + lunge), Math.round(o.y + 5 - img.height - bob));
     o._top = o.y + 5 - (img ? img.height : 24);
+    if (act === 'play' && Math.random() < 0.004) this.texts.push({ x: o.x, y: o._top - 2, text: ['♪', '하하', '…', '오!', '♫'][Math.floor(Math.random() * 5)], color: '#ffe8a8', t: 1.4, vy: -8, vx: 0 });
+    if (act === 'spar' && Math.random() < 0.05) { this.parts.push({ x: o.x + (face ? -7 : 7), y: o.y - 10, vx: (Math.random() - 0.5) * 60, vy: -30, t: 0.25, max: 0.25, color: '#fff0b0', g: 120, glow: true }); if (Math.random() < 0.2) sfx('hit', { vol: 0.12, rate: 1.4 }); }
+    if (o.hostile && o.hostile.hp < o.hostile.maxHp) { const bw = 16, by = Math.round(o._top - 5); g.fillStyle = '#0d0b10'; g.fillRect(o.x - bw / 2 - 1, by - 1, bw + 2, 4); g.fillStyle = '#e8484a'; g.fillRect(o.x - bw / 2, by, Math.max(0, bw * o.hostile.hp / o.hostile.maxHp), 2); }
     if (o.station === 'board' && w.questReady) this.bang(o.x, o._top - 12 + Math.sin(w.t * 5) * 1.5, '#ffd040');
   }
 
