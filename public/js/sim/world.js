@@ -1208,10 +1208,11 @@ export class World {
   }
 
   attack(angOff) { // 내 공격: 닿은 곳의 NPC는 화가 난다 (설정에서 NPC 공격을 켰을 때)
-    this.pHit = true;
+    this.pHit = true; const tok = this.curTok = (this.tokN = (this.tokN || 0) + 1), n0 = this.projs.length;
     try { return this.attack0(angOff); } finally {
-      this.pHit = false;
-      const p = this.player, rg = this.b.weapon?.range || 26; pokeNpcs(this, p.x + p.aimX * rg * 0.6, p.y + p.aimY * rg * 0.6, rg * 0.55);
+      for (let i = n0; i < this.projs.length; i++) if (this.projs[i].owner === 'p') this.projs[i].tok = tok; // 이 공격에서 나간 탄
+      const p = this.player, rg = this.b.weapon?.range || 26; if (this.b.weapon?.kind !== 'proj') pokeNpcs(this, p.x + p.aimX * rg * 0.6, p.y + p.aimY * rg * 0.6, rg * 0.55, tok);
+      this.pHit = false; this.curTok = null;
     }
   }
   attack0(angOff) {
@@ -1503,7 +1504,7 @@ export class World {
   }
   dismount() { const p = this.player; if (!p.riding) return; p.riding = null; this.emit({ t: 'mountOff', x: p.x, y: p.y }); }
 
-  castSkillId(id, slot) { this.pHit = true; try { return this.castSkillId0(id, slot); } finally { this.pHit = false; } }
+  castSkillId(id, slot) { this.pHit = true; const tok = this.curTok = (this.tokN = (this.tokN || 0) + 1), n0 = this.projs.length; try { return this.castSkillId0(id, slot); } finally { for (let i = n0; i < this.projs.length; i++) if (this.projs[i].owner === 'p') this.projs[i].tok = tok; this.pHit = false; this.curTok = null; } } // 조준해서 쓴 스킬 한 번 = 표 하나
   castSkillId0(id, slot) {
     const p = this.player;
     if (p.riding) this.dismount();
@@ -4435,7 +4436,7 @@ export class World {
   }
 
   enemiesNear(x, y, r) {
-    if (this.pHit && this.npcAttack) pokeNpcs(this, x, y, r);
+    if (this.pHit && this.npcAttack) pokeNpcs(this, x, y, r, this.curTok);
     return this.enemies.filter((o) => !o.dead && !o.hidden && Math.hypot(o.x - x, o.y - y) <= r + o.r);
   }
 
@@ -4487,7 +4488,7 @@ export class World {
       }
       if (pr.life <= 0) continue;
       if (pr.owner === 'p' && !pr.ghost) {
-        if (this.npcAttack) for (const o of this.objects) if ((isPerson(o) && o.home && !o.hostile && !o.away && !o.knockedUntil && Math.hypot(o.x - pr.x, o.y - pr.y) < 9) || (o.kind === 'happening' && !o.gone && !o.engaged && Math.hypot(o.x - pr.x, o.y - pr.y) < 18)) { pokeNpcs(this, o.x, o.y, 1); if (!pr.pierce) pr.life = 0; break; }
+        if (this.npcAttack) for (const o of this.objects) if ((isPerson(o) && o.home && !o.hostile && !o.away && !o.knockedUntil && Math.hypot(o.x - pr.x, o.y - pr.y) < 9) || (o.kind === 'happening' && !o.gone && !o.engaged && Math.hypot(o.x - pr.x, o.y - pr.y) < 18)) { if (pr.tok == null || this.tokUsed?.has(pr.tok)) continue; pokeNpcs(this, o.x, o.y, 1, pr.tok); if (o.hostile || o.engaged) { if (!pr.pierce) pr.life = 0; break; } }
         for (const e of this.enemies) {
           if (e.dead || e.hidden || pr.hit.has(e.id)) continue;
           if (Math.hypot(e.x - pr.x, e.y - 4 - pr.y) > e.r + 5) continue; // 몸 가운데 (발밑보다 조금 위) 기준

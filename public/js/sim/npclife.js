@@ -18,15 +18,18 @@ const BARRACKS = /wallTower|castle|house_manor|house_guild|house_dojo/;
 
 export function initNpcLife(w) {
   w.npcInit = true;
-  const m = w.map, npcs = w.objects.filter((o) => o.kind === 'npc' && !o.static);
-  for (const o of w.objects) if (isPerson(o) && (o.kind !== 'npc' || o.static) && !o.home) { o.home = { x: o.x, y: o.y }; o.fixed = true; o.role = o.kind === 'npc' ? roleOf(o) : 'post'; o.seed = hashStr(`${o.kind}|${o.id || o.station || o.art}|${o.x}`); o.trait = { diligent: 0.6, brave: rnd(o.seed, 2), greedy: rnd(o.seed, 3), social: 0.5, honest: rnd(o.seed, 5), loyal: rnd(o.seed, 6) }; o.need = { hunger: 0, energy: 0, social: 0, fun: 0 }; o.coins = 80; o.friends = []; o.mem = (w.npcMem[o.id || o.station || o.kind] ||= { op: 0, knows: {} }); } // 제자리 사람: 움직이지 않지만 맞으면 싸우고 기억한다
+  const m = w.map, npcs = w.objects.filter((o) => isPerson(o) && o.leaving == null && !o.home);
+  // 모든 사람(돌아다니던 NPC · 가게 · 시설 주인 · 성지 수호자 · 자라)이 두뇌를 가진다
   // 집 = 건물 소품의 문 앞 (아래 가운데)
   const free = (x, y) => { for (let r = 0; r <= 4; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const xx = x + dx * TILE, yy = y + dy * TILE; if (!w.blocked(xx, yy, 5)) return { x: xx, y: yy }; } return null; }; // 문 앞의 걸을 수 있는 자리
   const houses = (m.props || []).filter((p) => HOUSE.test(p.kind)).map((p) => { const d = free((p.x + p.w / 2) * TILE, (p.y + p.h) * TILE + 8); return d && { kind: p.kind, ...d }; }).filter(Boolean);
   const nearest = (o, test, max) => { let best = null, bd = max * TILE; for (const h of houses) { if (test && !test.test(h.kind)) continue; const d = Math.hypot(h.x - o.x, h.y - o.y); if (d < bd) { bd = d; best = h; } } return best; };
   npcs.forEach((o, i) => {
-    const seed = hashStr(`${o.id}|${o.art}|${i}`);
-    o.home = { x: o.x, y: o.y }; o.role = roleOf(o); o.seed = seed; o.act = 'idle';
+    const seed = hashStr(`${o.kind}|${o.id || o.station || o.art}|${i}`);
+    o.home = { x: o.x, y: o.y }; o.role = o.kind === 'npc' ? roleOf(o) : o.kind === 'turtle' ? 'folk' : 'post'; o.seed = seed; o.act = 'idle';
+    o.homebody = o.kind === 'turtle' || o.kind === 'sanctum'; // 멀리 안 가는 사람 (바닷가 자라 · 성지 수호자)
+    // 밤에 장사하는 사람: 장물아비 · 위조꾼 · 정보상 · 떠돌이 상인 · 여관 · 술집, 그리고 상인 몇몇
+    o.nightWork = o.role === 'post' && (/fence|forger|infoMerchant|rumor|broker|inn|tavern|bar|night/i.test(`${o.art || ''} ${o.id || ''} ${o.station || ''}`) || o.kind === 'merchant' || rnd(seed, 14) < 0.15);
     // 성향 (0~1): 성실 · 용감 · 탐욕 · 사교 · 정직 · 왕실 충성
     o.trait = { diligent: rnd(seed, 1), brave: rnd(seed, 2), greedy: rnd(seed, 3), social: rnd(seed, 4), honest: rnd(seed, 5), loyal: rnd(seed, 6) };
     if (o.role === 'guard') { o.trait.brave = 0.4 + o.trait.brave * 0.6; o.trait.loyal = 0.3 + o.trait.loyal * 0.7; }
@@ -38,7 +41,7 @@ export function initNpcLife(w) {
     const near = npcs.filter((q) => Math.hypot(q.x - o.x, q.y - o.y) < 14 * TILE);
     o.gather = { x: near.reduce((a, q) => a + q.x, 0) / near.length, y: near.reduce((a, q) => a + q.y, 0) / near.length };
     o.friends = near.filter((q) => q !== o).sort((a, b) => rnd(seed ^ b.x, 13) - rnd(seed ^ a.x, 13)).slice(0, 3);
-    o.mem = (w.npcMem[o.id] ||= { op: 0, knows: {} }); // 나에 대한 생각 (-100 ~ 100) · 알고 있는 내 행동
+    o.mem = (w.npcMem[o.id || o.station || `${o.kind}${Math.round(o.x)}`] ||= { op: 0, knows: {} }); // 나에 대한 생각 (-100 ~ 100) · 알고 있는 내 행동
     if (o.mem.left) { o.away = true; o.reusable = false; o.gone = true; } // 녹타리스로 떠난 사람은 돌아오지 않는다
   });
   // 역마차: 바깥 세계에서 마을 ↔ 왕도 남문 (길을 따라 · 나무를 피해서)
@@ -81,18 +84,20 @@ function roadPath(w, a, b) {
 const isDay = (min) => min >= 360 && min < 1080;
 function onShift(o, min) {
   if (o.role === 'guard') return o.night ? !isDay(min) : isDay(min);
-  const start = 420 + (1 - o.trait.diligent) * 120, end = 1020 + o.trait.greedy * 150; // 성실하면 일찍 열고, 욕심 많으면 늦게까지
+  if (o.nightWork) return min >= 1080 || min < 240; // 밤 장사: 저녁 6시 ~ 새벽 4시
+  const start = 420 + (1 - o.trait.diligent) * 90, end = 1050 + o.trait.greedy * 120; // 성실하면 일찍 열고, 욕심 많으면 늦게까지
   return min >= start && min < end;
 }
 function choose(w, o, min) {
-  const N = o.need, T = o.trait, sleepy = o.role === 'guard' && o.night ? isDay(min) : !isDay(min);
+  const N = o.need, T = o.trait, nightOwl = (o.role === 'guard' && o.night) || o.nightWork, sleepy = nightOwl ? isDay(min) && min > 420 : !isDay(min), shift = onShift(o, min), post = o.role === 'post';
   const sc = {
-    sleep: N.energy * N.energy * 1.6 + (sleepy ? 0.45 : -0.3),
+    sleep: N.energy * N.energy * 1.6 + (sleepy ? 0.45 : -0.3) - (post && shift ? 0.3 : 0),
     eat: N.hunger * N.hunger * 1.5,
-    work: onShift(o, min) ? 0.35 + T.diligent * 0.5 + (o.coins < 30 ? 0.3 : 0) : 0.05,
-    social: N.social * (0.3 + T.social * 0.7) * (o.friends.length ? 1 : 0.2),
-    fun: N.fun * 0.7,
-    wander: 0.12 + rnd(o.seed, Math.floor(w.t)) * 0.1,
+    // 가게 · 시설 사람은 근무 시간에 거의 자리를 지킨다 (밥 · 잠깐 쉬기만 끼어든다)
+    work: shift ? (post ? 0.95 + T.diligent * 0.4 : 0.35 + T.diligent * 0.5 + (o.coins < 30 ? 0.3 : 0)) : 0.05,
+    social: N.social * (0.3 + T.social * 0.7) * (o.friends.length ? 1 : 0.2) * (post && shift ? 0.4 : 1),
+    fun: N.fun * 0.7 * (post && shift ? 0.3 : 1),
+    wander: post ? 0.04 : 0.12 + rnd(o.seed, Math.floor(w.t)) * 0.1,
   };
   if (o.traveler && w.coach && min >= 450 && min < 480 && !o.atCapital && rnd(o.seed, (w.clock?.day || 1) * 7) < 0.5) sc.travel = 2; // 어떤 날은 왕도에 다녀온다
   if (o.atCapital && min >= 930) sc.travel = 2;
@@ -132,7 +137,7 @@ function start(w, o, act, min) {
     const a = rnd(o.seed, 77) * Math.PI * 2; o.goal = { x: o.x + Math.cos(a) * 20 * TILE, y: o.y + Math.sin(a) * 20 * TILE, then: 'gone' }; return;
   }
   if (act === 'travel' && w.coach) { const c = w.coach, S = o.atCapital ? c.path[c.path.length - 1] : c.path[0]; o.goal = { x: S.x, y: S.y, then: 'idle', board: true }; return; }
-  o.goal = { ...wanderTo(o.role === 'post' ? 2 : 4), then: 'idle' };
+  o.goal = { ...wanderTo(o.homebody ? 1.5 : o.role === 'post' ? 2 : 4), then: 'idle' };
 }
 // 하는 일을 하는 동안 욕구가 채워진다
 function satisfy(o, DT) {
@@ -156,7 +161,7 @@ const doneWith = (o) => { const N = o.need, a = o.act;
   if (o.doing === 'eat') return N.hunger < 0.05;
   if (o.doing === 'social') return N.social < 0.08 || o.doT > 40;
   if (o.doing === 'fun') return N.fun < 0.08 || o.doT > 60;
-  if (o.doing === 'work') return o.doT > 25 + o.trait.diligent * 40;
+  if (o.doing === 'work') return o.role === 'post' ? o.doT > 90 + o.trait.diligent * 90 : o.doT > 25 + o.trait.diligent * 40; // 가게 사람은 오래 일하고 잠깐 쉰다
   return o.doT > 6 && !o.goal && a !== 'walk'; };
 
 export function updateNpcLife(w, DT) {
@@ -170,9 +175,8 @@ export function updateNpcLife(w, DT) {
     if (o.knockedUntil) { if (w.t < o.knockedUntil) continue; o.knockedUntil = 0; o.away = false; o.x = o.home.x; o.y = o.home.y; o.label = o.label0 || o.label; o.reusable = true; } // 기절했다 돌아온다
     if (o.hostile) { const e = o.hostile; if (e.dead) { o.hostile = null; continue; } o.x = e.x; o.y = e.y; o.act = 'fight'; o.face = e.dir; if (Math.hypot(e.x - p.x, e.y - p.y) > 420) calmDown(w, o); continue; }
     if (o.riding) { o.x = o.riding.x; o.y = o.riding.y; continue; }
-    if (o.fixed) { o.x = o.home.x; o.y = o.home.y; continue; } // 제자리 사람은 자리를 지킨다
     satisfy(o, DT); o.doT += DT;
-    if (o.asleep) { if (o.need.energy < 0.05 || (o.role === 'guard' && onShift(o, min) && o.need.energy < 0.3)) wakeUp(o); continue; } // 집 안에서 잔다
+    if (o.asleep) { if (o.need.energy < 0.05 || ((o.role === 'guard' || o.role === 'post') && onShift(o, min) && o.need.energy < 0.45)) wakeUp(o); continue; } // 집 안에서 잔다
     if (o.fleeT > 0) { o.fleeT -= DT; const a = Math.atan2(o.y - p.y, o.x - p.x); step(w, o, o.x + Math.cos(a) * 30, o.y + Math.sin(a) * 30, 60, DT); o.act = 'run'; continue; }
     if (!o.doing || doneWith(o)) { if (o.sparWith && o.sparWith.sparWith === o) o.sparWith.sparWith = null; o.sparWith = null; o.talkTo = null; start(w, o, choose(w, o, min), min); }
     if (o.role === 'guard' && o.mem && o.mem.op <= -60 && w.npcAttack && Math.hypot(p.x - o.x, p.y - o.y) < 90) { w.emit({ t: 'text', x: o.x, y: o.y - 26, text: '저놈이다! 잡아라!', color: '#ff5a4a' }); provokeNpc(w, o, 'law'); continue; } // 나를 증오하는 경비는 보이면 덤빈다
@@ -262,7 +266,7 @@ function alarm(w, o) {
     if (q === o || !isPerson(q) || !q.home || q.hostile || q.knockedUntil || q.away) continue;
     const d = Math.hypot(q.x - o.x, q.y - o.y);
     if (q.role === 'guard' && d < 12 * TILE) provokeNpc(w, q, 'ally');
-    else if (d < 9 * TILE && !q.fixed) q.fleeT = 6;
+    else if (d < 9 * TILE) q.fleeT = 6;
   }
 }
 function calmDown(w, o) { const e = o.hostile; if (e) { e.dead = true; e.gone = true; w.enemies = w.enemies.filter((q) => q !== e); } o.hostile = null; o.reusable = true; o.label = o.label0 || o.label; o.x = o.home.x; o.y = o.home.y; o.act = 'idle'; o.doing = null; }
@@ -300,8 +304,19 @@ function gossip(a, b) { // 서로 아는 내 이야기를 나눈다 (들은 이�
 const DEED_W = { assault: 30, beatDown: 45, raid: 25, rob: 20, escort: -20, guard: -15, donate: -15, bribe: 10, stop: -10, official: 40 };
 export const opinionText = (op) => (op >= 50 ? '당신을 아주 좋아한다' : op >= 15 ? '당신에게 호의적이다' : op > -15 ? '당신을 잘 모른다' : op > -50 ? '당신을 경계한다' : '당신을 증오한다');
 // 내 공격이 닿은 곳 근처의 NPC · 벌어지는 일
-export function pokeNpcs(w, x, y, r) {
-  if (!w.npcAttack) return;
-  for (const o of w.objects) if (o.kind === 'happening' && !o.gone && !o.engaged && Math.hypot(o.x - x, o.y - y) <= r + 22) { o.engaged = true; w.signals.push({ t: 'happeningHit', id: o.hid }); }
-  for (const o of w.objects) if (isPerson(o) && o.home && !o.hostile && !o.knockedUntil && !o.away && Math.hypot(o.x - x, o.y - y) <= r + 6) provokeNpc(w, o);
+// 지금 싸우는 중인가 (나를 쫓는 적 · 화난 사람 · 붙은 싸움이 가까이 있으면)
+export function inCombat(w) {
+  const p = w.player;
+  return w.enemies.some((e) => !e.dead && (e.state === 'chase' || e.npcRef) && Math.hypot(e.x - p.x, e.y - p.y) < 340) || !!w.skirmish?.foes?.some((e) => !e.dead);
+}
+// 내 공격(tok: 조준해서 쓴 공격 한 번의 표) — 싸움 중이 아닐 때, 그 공격에 처음 맞은 사람 한 명만 화가 난다.
+// 대시 수리검 · 폭발 · 연쇄 · 장판 · 소환수 같은 자동 효과는 tok이 없어서 사람에게 맞지 않는다.
+export function pokeNpcs(w, x, y, r, tok) {
+  if (!w.npcAttack || tok == null) return;
+  w.tokUsed ||= new Set(); if (w.tokUsed.has(tok)) return;
+  if (inCombat(w)) return;
+  let best = null, bd = 1e9;
+  for (const o of w.objects) if (isPerson(o) && o.home && !o.hostile && !o.knockedUntil && !o.away) { const d = Math.hypot(o.x - x, o.y - y); if (d <= r + 6 && d < bd) { bd = d; best = o; } }
+  if (best) { w.tokUsed.add(tok); if (w.tokUsed.size > 200) w.tokUsed = new Set([tok]); provokeNpc(w, best); return; }
+  for (const o of w.objects) if (o.kind === 'happening' && !o.gone && !o.engaged && Math.hypot(o.x - x, o.y - y) <= r + 22) { o.engaged = true; w.tokUsed.add(tok); w.signals.push({ t: 'happeningHit', id: o.hid }); return; }
 }
