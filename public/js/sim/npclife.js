@@ -52,8 +52,10 @@ export function initNpcLife(w) {
 function roadPath(w, a, b) {
   const tw = w.tw, th = w.th, on = w.map.onPath, ax = Math.floor(a.x), ay = Math.floor(a.y), bx = Math.floor(b.x), by = Math.floor(b.y);
   const x0 = Math.max(1, Math.min(ax, bx) - 40), x1 = Math.min(tw - 2, Math.max(ax, bx) + 40), y0 = Math.max(1, Math.min(ay, by) - 40), y1 = Math.min(th - 2, Math.max(ay, by) + 40);
-  const clear = (x, y) => !w.blocked(x * TILE + 8, y * TILE + 8, 11);
-  const cost = (n) => { const x = n % tw, y = (n / tw) | 0; if (x < x0 || x > x1 || y < y0 || y > y1) return 0; if (on[n] && !w.blocked(x * TILE + 8, y * TILE + 8, 5)) return 1; return clear(x, y) ? 6 : 0; };
+  const busy = new Uint8Array(tw * th); // 모닥불 · 우물 · 표지판 같은 것 둘레 2칸은 피한다 (겹쳐 보이지 않게)
+  for (const o of w.objects) { if (o.kind === 'npc' || o.kind === 'coach' || o.kind === 'happening') continue; const ox = Math.floor(o.x / TILE), oy = Math.floor(o.y / TILE); for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const xx = ox + dx, yy = oy + dy; if (xx >= 0 && yy >= 0 && xx < tw && yy < th) busy[yy * tw + xx] = 1; } }
+  const clear = (x, y) => !busy[y * tw + x] && !w.blocked(x * TILE + 8, y * TILE + 8, 11);
+  const cost = (n) => { const x = n % tw, y = (n / tw) | 0; if (x < x0 || x > x1 || y < y0 || y > y1) return 0; if (on[n] && !busy[n] && !w.blocked(x * TILE + 8, y * TILE + 8, 9)) return 1; return clear(x, y) ? 6 : 0; };
   const s = ay * tw + ax, e = by * tw + bx;
   const dist = new Float32Array(tw * th).fill(1e9), prev = new Int32Array(tw * th).fill(-1);
   const buckets = [[s]]; dist[s] = 0;
