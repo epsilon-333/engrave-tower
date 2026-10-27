@@ -36,6 +36,8 @@ export function computeBuild(lo) {
     const id = lo.engravings?.[s];
     if (id && ENGRAVINGS[id]) { const elv = lo.engLv?.[id] || 0; sources.push({ kind: 'engraving', id, def: ENGRAVINGS[id], mul: 1 + ENG_STEP * elv, elv }); } // 용의 둥지에서 강화한 각인: 단계마다 +12%
   }
+  // 탑 등반에서 새긴 각인: 부하를 차지하지 않는다 · 연마 단계마다 +12% (몸에 새긴 각인과 같은 것이면 겹친다)
+  for (const re of lo.runEng || []) if (ENGRAVINGS[re.id]) sources.push({ kind: 'engraving', run: true, id: re.id, def: ENGRAVINGS[re.id], mul: 1 + ENG_STEP * (re.lv || 0), elv: re.lv || 0 });
   const twoHand = weaponHands(ITEMS[lo.gear?.weapon]) >= 2; // 양손 무기면 왼손은 쉰다
   const offRaw = lo.gear?.off ? ITEMS[lo.gear.off] : null;
   const offIsWeapon = !!(offRaw && offRaw.slot === 'weapon' && weaponHands(offRaw) < 2 && lo.gear.off !== lo.gear.weapon); // 왼손에 한손 무기
@@ -94,6 +96,7 @@ export function computeBuild(lo) {
   }
 
   effects.push(...sanct.effects); // 3단계 은총
+  if (lo.extraEffects) effects.push(...lo.extraEffects); // 탑 등반의 축복 · 탑의 축복 · 제단의 대가
   // 강화한 무기: 단계마다 모든 피해 +6%
   const rf = lo.reinforce?.[lo.gear?.weapon] || 0;
   if (rf) effects.push({ type: 'mul', key: 'dmgMul', v: 1 + 0.06 * rf });
@@ -160,7 +163,7 @@ export function computeBuild(lo) {
     dmgMul: 1, dmgTakenMul: 1, burnMul: 1, bleedMul: 1, chillMul: 1, reactionMul: 1, statusDmgMul: 1, reflectMul: 1,
     poisonCap: 10, freezeReduce: 0, cloudSize: 0, dashCd: 1.2, goldMul: 1, projMul: lo.race === 'elf' ? 1.3 : 1,
     resGain: 1, hurtRes: 0, lowHunt: 0, skillCdMul: 1, aimSlow: lo.race === 'elf' ? 0.82 : 0.65,
-    freezeTime: 1.6, castMul: 1, costMul: 1,
+    freezeTime: 1.6, castMul: 1, costMul: 1, healMul: 1,
   };
   // 종족 고유 수치
   if (lo.race === 'wizard') { d.reactionMul *= 1.5; d.skillCdMul *= 0.75; }
@@ -183,7 +186,7 @@ export function computeBuild(lo) {
 
   // 9) 각인 부하
   let load = 0;
-  for (const src of active) if (src.kind === 'engraving') load += src.def.load;
+  for (const src of active) if (src.kind === 'engraving' && !src.run) load += src.def.load;
   const overload = load > d.loadCap;
   if (overload) {
     d.atkSpeed *= 0.7; d.dmgTakenMul *= 1.3; d.moveSpeed *= 0.85;

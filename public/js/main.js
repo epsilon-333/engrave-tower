@@ -24,7 +24,6 @@ import { GOODS, SELL_BONUS } from './data/goods.js';
 import { KNACKS, knackTick, hasKnack, newKnack } from './data/knacks.js';
 import { net, onNet, netSend, netConnect, netMap, netPos, netLerp } from './net.js';
 import { RAIDS, raidWeek, buildRaidArena } from './data/raid.js';
-import { TOWER_TOP, towerZoneId, towerSize, isBossFloor, towerGrade, towerReward, GRADE_COLOR, betterGrade, towerStarts, parTime } from './data/tower.js';
 import { SANCTUMS, SANCTUM_MAX, TIER_COST, PERK_TIER, TREASURE_TIER, SHARDS_PER_RELIC, sanctumBonusText, SANCT_LIFE, sanctState, affLevel, AFF_LV, AFF_NAME, AFF_REWARD, trainCap, trainSpec, OWN_TRAIN_CAP, OWN_TRAIN_EASE, GIFT_AFF, GIFTS_PER_DAY, TRAIN_AFF, TRAINS_PER_DAY, sanctQuestDef, FIND_NAME, RACE_SHOP } from './data/sanctums.js';
 import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, cloud, isClaudePage, login, register, logout, errorText } from './cloud.js';
 import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
@@ -51,6 +50,9 @@ import { FACTIONS, RANKS, LOYALTY, newPol, titleOf, bounty, OFFICIALS, officialN
 import { SHIPS, cargoCap, GUILD_RANKS, guildRank } from './data/trade.js';
 import { econOf, econTick, planCaravan, deliver, caravanLost, taxArrived, taxLost, marketGossip, TOWNS } from './data/econ.js';
 import { ENG_STEP, ENG_MAX } from './sim/build.js';
+import { createClimb } from './ui/climb.js';
+import { JOURNEY, journeyNow, rewardText as journeyReward } from './data/journey.js';
+import { oathScore, newClimbSave } from './data/climb.js';
 
 let save = loadSave();
 const titleEl = document.getElementById('title');
@@ -89,7 +91,7 @@ chatIn.addEventListener('keydown', (e) => {
 // ───── 랭킹 · 운영자 ─────
 const RANK_RAID = { golem: '고대 골렘', queen: '서리 여왕', dragon: '화룡왕' };
 const fmtTime = (s) => `${Math.floor(s / 60)}분 ${String(Math.round(s % 60)).padStart(2, '0')}초`;
-function rankSend() { if (!net.up || !save) return; netSend({ t: 'rankSet', gold: save.gold | 0, tower: save.tower?.max || 0, raid: save.raid?.best || {} }); }
+function rankSend() { if (!net.up || !save) return; netSend({ t: 'rankSet', gold: save.gold | 0, tower: Math.max(save.climb?.best || 0, 0), raid: save.raid?.best || {} }); }
 onNet('up', () => setTimeout(rankSend, 800));
 setInterval(rankSend, 60000);
 let rankTab = 'gold';
@@ -518,28 +520,35 @@ function raidClear(s) {
   sfx('levelup', { vol: 0.8 });
   const p = world.player; world.objects.push({ kind: 'portal', x: p.x, y: p.y - 30, label: '귀환 포탈', color: r.color });
 }
-function startCoTower(f) {
+// 파티 등반: 파티장이 시작하면 동료에게 묻고, 같은 씨앗으로 같은 층에 선다 (보상은 각자 고른다 · 문은 파티장이 고른다)
+function startCoClimb(f) {
   const seed = (Math.random() * 1e9) >>> 0;
-  enterTower(f, null, { role: 'host', seed });
-  netSend({ t: 'co', k: 'start', f, seed });
-  renderer.banner = { text: `각인의 탑 ${f}층 · 파티`, sub: '동료가 받아들이면 같은 층에 나타난다', t: 3, color: '#9fe6ff' };
+  climbUi.startClimb(f, { role: 'host', seed });
+  netSend({ t: 'co', k: 'cstart', f, seed });
+  renderer.banner = { text: `각인의 탑 ${f}층 · 파티 등반`, sub: '동료가 받아들이면 같은 층에 나타난다 · 문은 파티장이 고른다', t: 3, color: '#9fe6ff' };
 }
 onNet('co', (m) => {
   if (!world) return;
   const fromName = net.party?.members.find((x) => x.id === m.from)?.name || '동료';
   switch (m.k) {
-    case 'start': { // 파티장이 탑에 오른다 → 함께 갈지 묻는다
+    case 'cstart': { // 파티장이 탑 등반을 시작한다 → 함께 갈지 묻는다
       if (net.party?.leader !== m.from) break;
-      const busy = coRun || world.pvp || duel || world.zone?.id !== 'world' || world.state !== 'play';
-      if (busy) { netSend({ t: 'co', to: m.from, k: 'no', why: world.zone?.id !== 'world' ? '바깥 세계에 없다' : '다른 일을 하는 중' }); break; }
-      inviteCard(`<b>파티 탑</b><p>${esc(josa(fromName, "이", "가"))} 각인의 탑 <b>${m.f}층</b>에 오른다</p>`, () => {
-        if (world.zone?.id !== 'world' || world.state !== 'play' || coRun) return;
+      const busy = coRun || world.pvp || duel || world.zone?.id !== 'world' || world.state !== 'play' || save.run;
+      if (busy) { netSend({ t: 'co', to: m.from, k: 'no', why: save.run ? '혼자 오르던 등반이 있다' : world.zone?.id !== 'world' ? '바깥 세계에 없다' : '다른 일을 하는 중' }); break; }
+      inviteCard(`<b>파티 등반</b><p>${esc(josa(fromName, '이', '가'))} 각인의 탑 <b>${m.f}층</b>부터 오른다</p>`, () => {
+        if (world.zone?.id !== 'world' || world.state !== 'play' || coRun || save.run) return;
         if (modal) { overlay.hidden = true; paused = false; modal = null; }
         if (!panelEl.hidden) closePanel();
-        enterTower(m.f, null, { role: 'member', seed: m.seed, host: m.from });
+        climbUi.startClimb(m.f, { role: 'member', seed: m.seed, host: m.from });
       }, () => netSend({ t: 'co', to: m.from, k: 'no', why: '거절했다' }), 25);
       break;
     }
+    case 'cclear': // 파티장의 층이 열렸다 → 내 층도 (보상은 각자)
+      if (coRun?.role === 'member' && m.from === coRun.host && world.climb?.f === m.f && world.climb.phase === 'fight') world.climbCleared();
+      break;
+    case 'cfloor': // 파티장이 문을 골랐다 → 함께 다음 층으로 (못 받은 보상은 다음 층에서 고른다)
+      if (coRun?.role === 'member' && m.from === coRun.host && world.climb) climbUi.follow(m.door);
+      break;
     case 'zstart': { // 파티장이 던전에 들어간다
       if (net.party?.leader !== m.from || !ENTRANCES[m.id]) break;
       const busy = coRun || world.pvp || duel || world.zone?.id !== 'world' || world.state !== 'play';
@@ -583,20 +592,6 @@ onNet('co', (m) => {
     case 'pj': if (coRun && coF() === m.f && world.coop) world.addGhostProjs(m.l); break;
     case 'own': if (coRun?.role === 'member' && m.from === coRun.host && coF() === m.f && world.coop) { world.coSetOwners(m.l || [], net.id); coRun.lastSnap = performance.now(); } break; // 내가 맡을 몬스터
     case 'sync': if (world.coop) world.coop.known.clear(); break; // 늦게 온 동료: 적의 종류부터 다시
-    case 'next': if (coRun?.role === 'host') document.getElementById('twNext')?.click(); break; // 동료가 다음 층으로 가자고 했다
-    case 'stairs': // 동료가 계단에 닿았다 (파티장이 쓰러져 있어도 층을 깰 수 있게)
-      if (coRun?.role === 'host' && world.state === 'play' && world.tower && (!world.tower.boss || world.tower.boss.dead)) {
-        renderer.banner = { text: `${josa(fromName, '이', '가')} 계단에 닿았다`, t: 2, color: '#9fe6ff' };
-        world.signals.push({ t: 'towerClear', f: world.tower.f, time: world.tower.t, hurt: world.tower.hurt, maxHp: world.d.maxHp }); handleSignals();
-      }
-      break;
-    case 'clear': if (coRun?.role === 'member' && m.from === coRun.host && world.tower?.f === m.f) { world.coRevive(1); world.signals.push({ t: 'towerClear', f: world.tower.f, time: world.tower.t, hurt: world.tower.hurt, maxHp: world.d.maxHp }); handleSignals(); } break;
-    case 'floor': // 파티장이 다음 층으로 → 함께
-      if (coRun?.role === 'member' && m.from === coRun.host) {
-        if (modal) { overlay.hidden = true; paused = false; modal = null; }
-        enterTower(m.f, { loot: world.loot, discovered: world.discovered, hp: Math.max(world.player.hp, world.d.maxHp * 0.3), codexStart: world.codexStart }, { role: 'member', seed: m.seed, host: m.from });
-      }
-      break;
     case 'end': if (coRun?.role === 'member' && m.from === coRun.host) { coRun = null; if (modal) { overlay.hidden = true; paused = false; modal = null; } world.state = 'play'; renderer.banner = { text: '파티장이 탑을 나갔다', t: 2.4, color: '#c8b8a0' }; endRun('clear'); } break;
     case 'wipe': if (coRun && m.from === coRun.host) coWipe(); break;
     case 'bye': if (coRun?.role === 'host') { world.coop?.mates.delete(m.from); renderer.banner = { text: `${josa(fromName, "이", "가")} 탑을 나갔다`, t: 2, color: '#c8b8a0' }; } break;
@@ -685,62 +680,12 @@ function finishTutorial(done) {
   const d = tutorialTick.rt?.dummy; if (d) { d.dead = true; world.enemies = world.enemies.filter((e) => e !== d); }
   tutorialTick.rt = null;
   if (tutEl) tutEl.hidden = true;
-  if (done) renderer.banner = { text: '튜토리얼 끝!', sub: '북쪽 각인의 탑 · 섬 곳곳의 종족 성지 · 마을 의뢰 게시판에서 모험을 시작하세요', t: 4.5, color: '#ffe8a8' };
+  if (done) renderer.banner = { text: '튜토리얼 끝!', sub: '이제 왼쪽 위 여정과 화살표를 따라 각인의 탑으로!', t: 4.5, color: '#ffe8a8' };
   writeSave(save);
 }
 
 // ───── 각인의 탑 50층 ─────
-const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
-function showTower() {
-  const T = (save.tower ||= { best: {}, max: 0 }), next = Math.min(TOWER_TOP, T.max + 1), starts = [...new Set([next, ...towerStarts(T.max)])].sort((a, b) => b - a); // 이어서: 깬 층 다음 층부터
-  const floors = Array.from({ length: Math.min(TOWER_TOP, T.max + 1) }, (_, i) => i + 1).map((f) => `<span class="tw-f ${isBossFloor(f) ? 'boss' : ''}" style="--c:${GRADE_COLOR[T.best[f]] || '#5a5068'}">${f}<b>${T.best[f] || '·'}</b></span>`).join('');
-  showModal(`<h2>각인의 탑</h2>
-    <p class="muted">층마다 짧은 던전이다. 계단에 닿으면 클리어 — 걸린 시간과 받은 피해로 등급(S · A · B · C)과 보상을 받는다. 5층마다 층 수호자를 쓰러뜨려야 계단이 열린다. 오를수록 몬스터가 크게 강해진다. 쓰러지면 탑 밖으로 밀려난다.</p>
-    <p>최고 기록 <b>${T.max}층</b> / ${TOWER_TOP}층</p><div class="tw-floors">${floors}</div>
-    <div class="actions">${starts.map((f) => `<button data-tw="${f}" class="${f === next ? '' : 'ghost'}">${f === next && T.max ? `이어서 · ${f}층부터` : `${f}층부터 오르기`}</button>`).join('')}<button data-close class="ghost">돌아간다</button></div>
-    ${isPartyLeader() && net.party.members.length > 1 ? `<h4>파티와 함께 <small>${net.party.members.length}명 · 동료에게 함께 갈지 묻는다 (바깥 세계에 있는 동료만)</small></h4><div class="actions">${starts.map((f) => `<button data-twp="${f}">${f}층부터 파티와 오르기</button>`).join('')}</div>` : net.party && !isPartyLeader() ? '<p class="muted">파티에 있다 — 파티장이 파티와 함께 오르기를 고르면 함께 오른다.</p>' : ''}`);
-  overlay.querySelectorAll('[data-tw]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; enterTower(+b.dataset.tw); }));
-  overlay.querySelectorAll('[data-twp]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; startCoTower(+b.dataset.twp); }));
-}
-function enterTower(f, carry = null, co = null) {
-  if (world?.zone?.id === 'world') { returnTo = 'tower'; save.zoneMemory.world = world.exportMemory(); }
-  const zid = towerZoneId(f), z = ZONES.find((x) => x.id === zid), seed = co?.seed ?? ((Math.random() * 1e9) >>> 0); // 파티 탑: 파티장이 정한 씨앗 → 모두 같은 층
-  world = new World({ build: buildNow(), mode: 'field', zoneId: zid, seed, map: generateField(z, seed, Math.floor(f / 6), towerSize(f)), tower: { f }, coop: co ? { role: co.role } : null, story: save.story, codex: save.codex, ...shared() });
-  if (co?.role === 'member') { world.enemies = []; world.camps = []; world.tower.boss = null; world.tower.bosses = []; } // 몬스터는 파티장이 알려 준다
-  coRun = co ? { role: co.role, host: co.role === 'host' ? net.id : co.host, party: net.party?.id || 0, snapT: 0, flushT: 0, meT: 0, lastSnap: performance.now() } : null;
-  world.codexStart = carry?.codexStart ?? codexPoints(save);
-  if (carry) { world.loot = carry.loot; world.discovered = carry.discovered; world.player.hp = Math.min(carry.hp, world.d.maxHp); }
-  world.goalNeeds = [];
-  renderer.setWorld(world);
-  renderer.banner = { text: `각인의 탑 ${f}층`, sub: isBossFloor(f) ? '층 수호자가 계단을 지킨다' : `기준 시간 ${mmss(parTime(f))} · 계단을 찾아라`, t: 3, color: isBossFloor(f) ? '#ff9a7a' : '#e8d8a8' };
-  startMusic(zid); sfx('open'); startLoop();
-}
-function towerClear(s) {
-  const T = (save.tower ||= { best: {}, max: 0 }), f = s.f, grade = towerGrade(s), first = !T.best[f], rw = towerReward(f, grade, first);
-  T.best[f] = first ? grade : betterGrade(grade, T.best[f]); T.max = Math.max(T.max, f);
-  save.gold += rw.gold;
-  const extra = [];
-  if (rw.stones && bagAdd(lifeOf(), 'spiritStone', rw.stones)) extra.push(`정령석 ×${rw.stones}`);
-  if (rw.potion && bagAdd(lifeOf(), rw.potion, 1)) extra.push(GOODS[rw.potion].name);
-  writeSave(save); cloudSaveNow(save); checkCcMissions();
-  world.state = 'over';
-  sfx(grade === 'S' ? 'levelup' : 'open', { vol: 0.7 });
-  const top = f >= TOWER_TOP, coHost = coRun?.role === 'host', coMember = coRun?.role === 'member';
-  if (coHost) { world.coRevive(1); netSend({ t: 'co', k: 'clear', f }); } // 동료도 각자 등급 · 보상을 받는다
-  showModal(`<h2>${top ? '탑의 꼭대기에 닿았다' : `${f}층 클리어`}</h2>
-    <div class="tw-grade" style="--c:${GRADE_COLOR[grade]}">${grade}</div>
-    <p>걸린 시간 <b>${mmss(s.time)}</b> <span class="muted">(기준 ${mmss(parTime(f))})</span> · 받은 피해 <b>${Math.round((s.hurt / Math.max(1, s.maxHp)) * 100)}%</b> <span class="muted">(최대 체력 대비)</span></p>
-    <p class="lvup">◆ ${rw.gold} 골드${first ? ' (처음 깬 층 ×2)' : ''}${extra.length ? ' · ' + extra.join(' · ') : ''}</p>
-    <div class="actions">${top ? '' : coMember ? `<button id="twNextCo">${f + 1}층으로 오르자 (파티 모두)</button>` : `<button id="twNext">${f + 1}층으로 오른다${coHost ? ' (파티와 함께)' : ''}</button>`}<button id="twOut" class="ghost">탑에서 나간다</button></div>`, () => {});
-  const carry = () => ({ loot: world.loot, discovered: world.discovered, hp: Math.max(world.player.hp, world.d.maxHp * 0.3), codexStart: world.codexStart });
-  const nx = document.getElementById('twNext'); if (nx) nx.onclick = () => {
-    overlay.hidden = true; paused = false; modal = null;
-    if (coHost) { const seed = (Math.random() * 1e9) >>> 0; enterTower(f + 1, carry(), { role: 'host', seed }); netSend({ t: 'co', k: 'floor', f: f + 1, seed }); }
-    else enterTower(f + 1, carry());
-  };
-  const nc = document.getElementById('twNextCo'); if (nc) nc.onclick = () => { netSend({ t: 'co', to: coRun?.host, k: 'next' }); nc.disabled = true; nc.textContent = '다 같이 오른다…'; }; // 동료도 다음 층을 고를 수 있다
-  document.getElementById('twOut').onclick = () => { overlay.hidden = true; paused = false; modal = null; world.state = 'play'; endRun('clear'); };
-}
+function showTower() { climbUi.showTowerMenu(); }
 
 // 숙련: 깨달은 순간 (전투 · 생활은 세계가, 요리 · 팔기는 창에서 알린다)
 function onKnackLearned(id) {
@@ -755,6 +700,67 @@ hub.onKnack = (act, n = 1) => { for (const id of knackTick((save.knack ||= newKn
 hub.onCodex = () => { const ups = syncLevel(save); if (ups && world) { world.setBuild(buildNow()); renderer.levelUp(world, save.level, ups); } };
 
 let world = null, paused = false, endTimer = 0, last = 0, acc = 0, modal = null;
+// 여정(목표 안내): 등반에서 생긴 일을 기록해 두면 여정이 저장만 보고 판단한다
+function journeyEvent(k, d) {
+  const c = (save.climb ||= newClimbSave());
+  if (k === 'eng') { c.maxEng = Math.max(c.maxEng || 0, d.n); c.maxLv = Math.max(c.maxLv || 0, ...(save.run?.eng || []).map((e) => e.lv)); }
+  if (k === 'floor' && d.f === (save.run?.startF || 1) && oathScore(save.run?.oath) > 0) c.oathRuns = (c.oathRuns || 0) + 1;
+  journeyT = 0;
+}
+let journeyT = 0;
+function journeyTick(dt) {
+  if (!save || !world) { renderer.journey = null; return; }
+  if ((journeyT -= dt) > 0) return;
+  journeyT = 0.5;
+  if (world.zone?.id === 'world' && world.near?.kind === 'towerDoor' && !save.flags?.towerSeen) (save.flags ||= {}).towerSeen = 1;
+  let J = journeyNow(save);
+  if (!J) { renderer.journey = null; return; }
+  if (J.done && !paused && world.state === 'play') { // 끝냈다: 보상 · 다음 목표 (한꺼번에 여럿을 끝냈으면 한 번에 알린다)
+    const titles = [], sum = { gold: 0, shards: 0 };
+    while (J && J.done) {
+      const r = J.step.reward || {};
+      (save.journey ||= {})[J.step.id] = Date.now();
+      if (r.gold) { save.gold += r.gold; sum.gold += r.gold; }
+      if (r.shards) { save.climb ||= newClimbSave(); save.climb.shards = (save.climb.shards || 0) + r.shards; sum.shards += r.shards; }
+      if (r.potion) { bagAdd(lifeOf(), r.potion, 1); sum.potion = r.potion; }
+      titles.push(J.step.title);
+      J = journeyNow(save);
+    }
+    writeSave(save);
+    renderer.banner = { text: titles.length > 1 ? `여정 완료 ×${titles.length}` : `여정 완료 · ${titles[0]}`, sub: `${journeyReward(sum)}${J ? ` · 다음: ${J.step.title}` : ' · 모든 여정을 마쳤다!'}`, t: 4, color: '#ffcf5a' };
+    sfx('levelup', { vol: 0.6 });
+    if (!J) { renderer.journey = null; return; }
+  }
+  let target = null;
+  const to = J.step.to;
+  if (to && world.zone?.id === 'world') {
+    const o = world.objects.find((x) => x.kind === to.kind && (!to.house || x.house === to.house) && (!to.mine || x.race === save.race));
+    if (o) target = { x: o.x, y: o.y, label: to.kind === 'towerDoor' ? '탑' : to.kind === 'sanctum' ? '성지' : to.kind === 'raidAltar' ? '레이드' : to.house === 'forge' ? '대장간' : '' };
+  }
+  renderer.journey = { n: J.i + 1, total: JOURNEY.length, title: J.step.title, hint: J.step.hint, done: J.done, reward: journeyReward(J.step.reward), target };
+}
+// 탑 등반 (본편): 화면과 흐름은 ui/climb.js
+const climbUi = createClimb({
+  save: () => save, world: () => world,
+  setWorld: (w, co) => {
+    world = w; renderer.setWorld(w);
+    coRun = co ? { role: co.role, host: co.role === 'host' ? net.id : co.host, party: net.party?.id || 0, snapT: 0, flushT: 0, meT: 0, lastSnap: performance.now() } : null; // 파티 등반: 파티장의 세계가 몬스터를 움직인다
+  },
+  coSpec: () => (coRun && world?.climb ? { role: coRun.role, host: coRun.host } : null),
+  startCoClimb: (f) => startCoClimb(f),
+  onDoor: (door) => { if (coRun?.role === 'host') netSend({ t: 'co', k: 'cfloor', door, f: (save.run?.f || 0) + 1 }); },
+  showModal: (html, onClose) => showModal(html, onClose), closeModal: () => { overlay.hidden = true; paused = false; modal = null; },
+  modalOpen: () => !!modal || !panelEl.hidden,
+  banner: (b) => { renderer.banner = b; },
+  floatText: (text, color) => { if (world) world.emit({ t: 'text', x: world.player.x, y: world.player.y - 28, text, color, big: true }); },
+  sfx: (n, o) => sfx(n, o), music: (z) => startMusic(z), startLoop: () => startLoop(),
+  save0: (now) => { writeSave(save); if (now) cloudSaveNow(save); },
+  shared: () => shared(), codexNow: () => codexPoints(save),
+  leave: () => { returnTo = null; enterWorld('tower'); },
+  beforeClimb: () => { if (world?.zone?.id === 'world') { save.zoneMemory ||= {}; save.zoneMemory.world = world.exportMemory(); } },
+  partyLeader: () => isPartyLeader() && net.party.members.length > 1,
+  onEvent: (k, d) => { journeyEvent(k, d); if (k === 'cleared' && coRun?.role === 'host') netSend({ t: 'co', k: 'cclear', f: d.f }); if (k === 'cleared') { if (world?.player?.down) world.coRevive?.(0.3); checkCcMissions(); } },
+});
 
 function resetGame() { clearSave(); cloudDelete(); save = null; world = null; showRaceSelect(); }
 
@@ -866,7 +872,10 @@ function showQuestLog() {
     return `<div class="qrow ${have >= d.n ? 'done' : ''}"><b style="color:${SANCTUMS[race].color}">${d.title}</b> <small class="muted">${SANCTUMS[race].name}</small>
       <p class="muted">${d.text}</p><small>${what}</small><div class="qmeta">${bar(have, d.n)}${have >= d.n ? '<small><em class="up">다 했다 · 성지에 돌아가 알리기</em></small>' : ''}</div></div>`;
   }).join('') || '<p class="muted">받은 성지 의뢰가 없다. 종족 성지의 주민에게 말을 걸어 보자.</p>';
-  showModal(`<h2>퀘스트</h2><div class="qlog"><h3>의뢰 게시판</h3>${board}<h3>성지 의뢰</h3>${sanct}</div><div class="actions"><button data-close>닫기 (J)</button></div>`);
+  const JN = journeyNow(save), jg = save.journey || {};
+  const jrows = JOURNEY.map((st, i) => { const done = !!jg[st.id], cur = JN && JN.i === i; if (!done && !cur && i > (JN?.i ?? 0) + 2) return ''; return `<div class="qrow jn ${done ? 'done' : cur ? 'cur' : 'next'}"><b>${done ? '✓' : cur ? '▶' : '·'} ${i + 1}. ${st.title}</b> <small class="muted">${journeyReward(st.reward)}</small>${cur ? `<p class="muted">${st.hint}</p>` : ''}</div>`; }).join('');
+  const jdone = JOURNEY.filter((st) => jg[st.id]).length;
+  showModal(`<h2>퀘스트</h2><div class="qlog"><h3>여정 <small class="muted">${jdone} / ${JOURNEY.length} · 지금 할 일이 맨 위에 보인다</small></h3><div class="jlist">${jrows}</div><h3>의뢰 게시판</h3>${board}<h3>성지 의뢰</h3>${sanct}</div><div class="actions"><button data-close>닫기 (J)</button></div>`);
 }
 
 // 소개 영상: 화면 전체를 덮고, 끝나거나 건너뛰면 then()
@@ -894,6 +903,9 @@ let reGolem = false;
 // 예전 저장 데이터를 새 구조로 옮긴다 (인간·드워프 → 기사, 없어진 슬롯·무기 정리)
 function migrateSave(sv) {
   if (!sv) return sv;
+  if (sv.tower?.max && !sv.climb?.fromOld) { // 예전 탑(시간 등급)에서 오른 층만큼 별빛으로 바꿔 준다
+    sv.climb ||= newClimbSave(); sv.climb.fromOld = 1; sv.climb.shards = (sv.climb.shards || 0) + sv.tower.max * 3;
+  }
   registerCrafted(ITEMS, sv.crafted);
   registerAllDishes(sv.bag, sv.chest);
   if (RACE_MIGRATE[sv.race]) sv.race = RACE_MIGRATE[sv.race];
@@ -939,7 +951,7 @@ function migrateSave(sv) {
   return sv;
 }
 
-const buildNow = () => computeBuild(toLoadout(save));
+const buildNow = () => (world?.climb && save?.run ? climbUi.buildFor(save.run) : computeBuild(toLoadout(save))); // 등반 중이면 이번 등반의 각인 · 축복까지
 // 생활 데이터: 저장의 같은 객체를 세계에 넘긴다 (캐고 · 베고 · 낚고 · 키운 것이 곧바로 저장에 남는다)
 const lifeOf = () => ({ get knack() { return (save.knack ||= newKnack()); }, bag: save.bag, tools: save.tools, nodes: save.nodes, chopped: save.chopped, farm: save.farm, fishLog: save.fishLog, artifacts: save.artifacts, farmOpts: save.farmOpts, chest: save.chest, get cap() { return save.bagCap || 30; }, get quickFood() { return save.quickFood; } });
 // 세계마다 함께 넘기는 저장 객체: 생활 · 하루의 시간 · 오래가는 효과(음식 · 잠)
@@ -1041,15 +1053,21 @@ function exitHouse() {
 }
 function showWorldIntro() {
   save.owTutorial = 1; writeSave(save);
-  showModal(`<h2>바람결의 섬</h2>
-    <div class="tut">
-      <p>탑의 층을 오르내리는 대신, 이제 <b>하나로 이어진 넓은 땅</b>을 걸어 다닙니다.</p>
+  showModal(`<h2>각인의 탑</h2>
+    <div class="tut intro-short">
+      <p class="big">섬 한가운데, <b>각인의 탑</b> 꼭대기의 빛이 꺼져 간다.</p>
+      <p>탑을 오르며 <b>각인</b>을 새기고, 매번 다른 조합으로 꼭대기를 노려라.<br>쓰러져도 <b class="cl-star">✦ 별빛</b>은 남는다 — 별빛으로 영구히 강해진다.</p>
+      <p>무엇을 할지 모르겠다면 <b>왼쪽 위의 여정</b>과 화면 가장자리의 <b>화살표</b>를 따라가자. (J: 여정 전체)</p>
+      <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · 우클릭 무기 기술 · Q·E·R·F 스킬 · Space 구르기(무적) · G 상호작용 · C 캐릭터 · M 지도 · Esc 메뉴</p>
+      <details><summary class="muted">섬에서 할 수 있는 것 더 보기</summary>
+      <p>섬은 <b>하나로 이어진 넓은 땅</b>이다. 레벨은 도감(처음 보는 몬스터 · 장소 · 기록 · 사람)으로 오르고, 탑의 권장 레벨에 맞춰 섬을 돌아다니면 된다.</p>
       <p><b>바람결 마을</b>에 각인사 · 대장장이 · 사서 · 교관 · 의뢰 게시판이 있어요. <b>마을 모닥불</b>에서 쉬면 모은 잔향과 골드가 저장됩니다.</p>
       <p>숲 · 늪 · 폐허 도시 · 묘지 · 설원 · 바위산 · 화산 · 황야 · 원시림… 어디로든 가 보세요. 동굴 · 구멍 · 던전 · 미궁, 그리고 바다 밑 <b>용궁</b>도 있어요.</p>
       <p>섬 곳곳에 <b>종족 성지</b>가 8곳 있어요. 그 땅에서 성물(조각 5개 = 성물 1개)을 모아 바치면 축복이 쌓여요. 어느 성지든 받을 수 있고, 내 종족의 성지는 1.5배예요. 한 곳에 집중할수록 강해집니다. <b>M</b>으로 지도를 볼 수 있어요.</p>
       <p><b>불</b> 스킬은 키 큰 풀을 태우고, <b>얼음</b> 스킬은 물을 얼려 길을 만듭니다. 호수 가운데 섬에는 어떻게 갈까요?</p>
       <p><b>마을의 집</b>에 들어가 각인사 · 대장장이 · 사서 · 교관 · 의뢰인 · 잡화점 주인을 만나요. 바위를 캐고, 나무를 베고, 반짝이는 흙을 파고, 물가에서 <b>낚시</b>하고, 마을 동쪽 <b>텃밭</b>에서 농사를 지을 수 있어요. 캔 것은 잡화점에서 팔고, 대장간에서 도구와 장비를 만들어요.</p>
-      <p class="keys">WASD 이동 · 좌클릭 공격 · Q·E·R·F 스킬 · Space 대시 · G 상호작용(누르고 있으면 계속 캐기) · I 장비 · B 가방 · J 퀘스트 · X 씨앗 바꾸기 · C 캐릭터 · M 지도 · O 파티 · 길드 · Enter 채팅 · Esc 메뉴</p>
+      </details>
+      <p class="keys" hidden>WASD 이동 · 좌클릭 공격 · Q·E·R·F 스킬 · Space 대시 · G 상호작용(누르고 있으면 계속 캐기) · I 장비 · B 가방 · J 퀘스트 · X 씨앗 바꾸기 · C 캐릭터 · M 지도 · O 파티 · 길드 · Enter 채팅 · Esc 메뉴</p>
     </div>
     <button data-close>모험 시작</button>`);
   save.lifeIntro = 1;
@@ -1108,6 +1126,7 @@ const SANCT_TABS = [['bless', '축복'], ['quest', '의뢰'], ['aff', '친밀도
 const today = () => save.time?.day || 1;
 const bagTake = (id, n) => { save.bag[id] = (save.bag[id] || 0) - n; if (save.bag[id] <= 0) delete save.bag[id]; };
 function showSanctum(race, tab = 'bless') {
+  (save.flags ||= {})['sanct:' + race] = 1;
   const S = SANCTUMS[race], L = SANCT_LIFE[race], st = sanctState(save.story, race);
   const lv = affLevel(st.aff), q = st.cur, def = q && sanctQuestDef(race, q.id);
   const dot = (k) => (k === 'quest' && (q?.done || (!q && st.step < L.quests.length)) ? ' <b class="dot">!</b>' : '');
@@ -1181,7 +1200,7 @@ function ccBooksHtml() {
     return `<div class="skc"><div class="c-head"><b>${sk.name}</b><span class="role">${c.buy ? '기술서' : '미션'}</span></div><div class="c-sum">${esc(sk.desc)} · 재사용 ${sk.cd}초</div><div class="c-act">${act}</div></div>`;
   }).join('');
 }
-const ccMissionProgress = (c) => c.mission === 'quests' ? save.questsDone || 0 : c.mission === 'tower' ? save.tower?.max || 0 : c.mission === 'duel' ? save.pvp?.win || 0 : 0;
+const ccMissionProgress = (c) => c.mission === 'quests' ? save.questsDone || 0 : c.mission === 'tower' ? save.climb?.best || 0 : c.mission === 'duel' ? save.pvp?.win || 0 : 0;
 function checkCcMissions() {
   if (!save) return;
   for (const [id, c] of Object.entries(CC_EXTRA)) if (c.mission && !(save.learned || []).includes(id) && ccMissionProgress(c) >= c.need) learnSkill(id, `미션 달성 — ${c.how}`);
@@ -1717,6 +1736,7 @@ function showModal(html, onClose) {
 
 function endRun(kind) {
   if (world.practice) { exitPractice(); return; }
+  if (world.climb) { if (coRun) { netSend(coRun.role === 'host' ? { t: 'co', k: 'end' } : { t: 'co', to: coRun.host, k: 'bye' }); coRun = null; } if (climbUi.end(kind)) return; } // 탑 등반: 결산 화면 (파티 등반이면 먼저 알린다)
   if (coRun) { netSend(coRun.role === 'host' ? { t: 'co', k: 'end' } : { t: 'co', to: coRun.host, k: 'bye' }); coRun = null; } // 파티 탑에서 나간다
   if (world.pvp) { netSend({ t: 'dend', reason: 'left' }); duelOver(false, 'left'); return; } // 결투 중 나가기
   const keep = kind === 'clear' ? 1 : kind === 'retreat' ? 0.7 : 0.5;
@@ -1772,7 +1792,7 @@ function showPause() {
     ${net.admin ? '<button id="adminBtn" class="ghost">운영자 · 접속한 사람</button>' : cloud.name === '운영자' && net.up ? '<p class="muted">운영자 열쇠 (서버의 ADMIN_KEY) <input id="adminKeyIn" type="password" style="width:9em"> <button id="adminKeyGo" class="sm ghost">확인</button></p>' : ''}
     ${isTouch() ? `<div class="actions col"><button id="tChar" class="ghost">캐릭터 · 스킬 · 스탯</button><button id="tMap" class="ghost">지도</button><button id="tQuest" class="ghost">퀘스트</button><button id="tGear" class="ghost">장비 · 어디서 얻나</button>${net.up ? '<button id="tChat" class="ghost">채팅</button>' : ''}</div>` : ''}
     ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> NPC 공격 (끄면 사람에게 맞지 않는다)</label><label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
-    ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">결투에서는 잃는 것이 없다. 포기하면 상대의 승리가 된다.</p>' : field && !world.practice ? '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
+    ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">결투에서는 잃는 것이 없다. 포기하면 상대의 승리가 된다.</p>' : field && !world.practice ? world.climb ? '<button id="retreat" class="ghost">등반 포기 (별빛은 모두 남는다)</button>' : '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
     ${volumeHtml()}
     ${isClaudePage() ? '' : cloud.mode === 'account' ? `<p class="muted">${esc(cloud.name)} 계정으로 로그인 중</p><button id="logoutBtn" class="ghost">로그아웃</button>` : '<button id="loginBtn" class="ghost">로그인 / 회원가입</button>'}`);
   bindVolume();
@@ -1812,6 +1832,7 @@ addEventListener('keydown', (e) => {
   if (!world || gameEl.hidden) return;
   if (e.code === 'Escape') { e.preventDefault(); return escAction(); }
   if (!panelEl.hidden && (e.code === 'KeyG' || e.code === 'KeyC' || e.code === 'KeyI' || e.code === 'KeyB' || e.code === 'KeyK')) return closePanel();
+  if (modal && climbUi.key(e)) { e.preventDefault(); return; } // 보상 고르기: 숫자 키 · 실수로 닫지 않게
   if (modal && (e.code === 'KeyG' || e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyJ')) { e.preventDefault(); return modal(); }
   if (paused) return;
   keys.add(e.code);
@@ -1858,6 +1879,7 @@ function touchInteract() {
 }
 function readInput() {
   input.autoAim = getAutoAim();
+  if (window.__bot) { window.__bot(input, world); return; } // 디버그: 자동 플레이
   if (touch) { touch.apply(); return; }
   input.moveX = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
   input.moveY = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0);
@@ -1956,13 +1978,13 @@ function talkTo(id) {
 function handleSignals() {
   // 먼저 비워 둔다: 창을 띄우고 중간에 돌아가도 같은 신호가 다시 처리되지 않게
   for (const s of world.signals.splice(0)) {
+    if (world.climb && climbUi.signal(s)) { if (s.t === 'climbCleared') continue; return; } // 탑 등반
     if (s.t === 'openPanel') openPanel(s.panel, true);
     if (s.t === 'tower') { showTower(); return; }
     if (s.t === 'raid') { showRaid(); return; }
     if (s.t === 'raidClear') { raidClear(s); return; }
     if (s.t === 'coStairs') { if (coRun) netSend({ t: 'co', to: coRun.host, k: 'stairs' }); continue; }
     if (s.t === 'coDown') { renderer.banner = { text: '쓰러졌다', sub: '동료가 이 층을 깨면 다시 일어난다 · 모두 쓰러지면 탑 밖으로', t: 3.5, color: '#ff8a7a' }; sfx('error', { vol: 0.5 }); continue; }
-    if (s.t === 'towerClear') { towerClear(s); return; }
     else if (s.t === 'dive') { enterSeabed(s.x, s.y); return; }
     else if (s.t === 'surface') { exitSeabed(s.x, s.y, s.forced); return; }
     else if (s.t === 'enterHouse') { enterHouse(s.house, { x: s.x, y: s.y }); return; }
@@ -3174,7 +3196,7 @@ function politicsTick(dt) {
   const w = world;
   if (save.time) econTick(save, absMin(save.time)); // 마을마다 만들고 쓴다
   if (w.map.outdoor || w.objects.some((q) => q.kind === 'npc')) barkTick(dt);
-  if (!save.flags?.deedTip && w.state === 'play' && w.zone?.id === 'world') { (save.flags ||= {}).deedTip = true; renderer.banner = { text: '고르는 창은 없다 — 직접 하면 된다', sub: '때리면 싸움 · 돈을 건네면 뇌물 · 기부 · 후원 · 곁에 머물면 호위 (설정에서 NPC 공격 끄기)', t: 7, color: '#ffe8a8' }; }
+  if (!save.flags?.deedTip && w.state === 'play' && w.zone?.id === 'world' && save.tutorial?.done && save.journey?.f1) { (save.flags ||= {}).deedTip = true; renderer.banner = { text: '고르는 창은 없다 — 직접 하면 된다', sub: '때리면 싸움 · 돈을 건네면 뇌물 · 기부 · 후원 · 곁에 머물면 호위 (설정에서 NPC 공격 끄기)', t: 7, color: '#ffe8a8' }; }
   if (w.map.outdoor && !w.voyage && w.state === 'play') {
     happenClock -= dt;
     HAPPEN_LIST = HAPPEN_LIST.filter((h) => w.objects.includes(h.o) && !h.o.gone);
@@ -3314,10 +3336,11 @@ function capitalTalk(id) {
 }
 function updateHappenPanel() {
   let el = document.getElementById('happenPanel');
-  const w = world, show = w?.map?.outdoor && !w.voyage && HAPPEN_LIST.length;
+  const w = world, show = w?.map?.outdoor && !w.voyage && HAPPEN_LIST.length && !modal && panelEl.hidden && (save?.tutorial?.done || !save?.tutorial); // 창이 열리면 숨긴다 · 튜토리얼 중에는 안 보인다
   if (!show) { if (el) el.hidden = true; return; }
   if (!el) { el = document.createElement('div'); el.id = 'happenPanel'; gameEl.appendChild(el); el.onclick = (e) => { const id = e.target.closest('[data-tr]')?.dataset.tr; if (!id) return; if (id === 'off') { world.track = null; return; } const h = HAPPEN_LIST.find((q) => q.id === id); if (h) world.track = { x: h.o.x, y: h.o.y, name: HAPPENINGS[h.type].name, hid: id }; }; }
   el.hidden = false;
+  if (renderer.hudRightBottom) { const cr = canvas.getBoundingClientRect(); el.style.top = `${Math.round(cr.top + (renderer.hudRightBottom * cr.height) / canvas.height) + 8}px`; } // 작은 지도 아래 글과 겹치지 않게
   const p = w.player;
   if (w.track?.hid) { const h = HAPPEN_LIST.find((q) => q.id === w.track.hid); if (h) { w.track.x = h.o.x; w.track.y = h.o.y; } else w.track = null; }
   el.innerHTML = `<b>근처에서 벌어지는 일</b>${HAPPEN_LIST.slice(0, 3).map((h) => { const d = Math.round(Math.hypot(h.o.x - p.x, h.o.y - p.y) / TILE), left = Math.max(0, Math.ceil((h.o.endT - w.t) / 60)); return `<div class="hp-row ${w.track?.hid === h.id ? 'on' : ''}" data-tr="${h.id}">${esc(HAPPENINGS[h.type].name)}<small>${esc(h.where)} · ${d}칸 · ${left}분</small><small class="deed">${esc(DEED_SHORT[h.type] || '')}</small></div>`; }).join('')}${w.track ? '<div class="hp-row off" data-tr="off">안내 끄기</div>' : ''}`;
@@ -3374,6 +3397,7 @@ function tick(ts) {
       else frame.refillT = 0;
     }
     tutorialTick();
+    journeyTick(dt);
     onlineTick(dt);
     if (world.state === 'dead' || world.state === 'done') {
       endTimer += dt;
@@ -3385,7 +3409,7 @@ function tick(ts) {
 }
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-window.__game = { get world() { return world; }, renderer, hub, dbg: { spawnHappening: () => spawnHappening(), enterIsland: (id) => enterIsland(id), save: () => save, talk: (id) => sanctTalk(id), talkId: (id) => arcTalk(id) || portTalk(id), capExec } }; // 디버그용
+window.__game = { get world() { return world; }, get paused() { return paused; }, get coRun() { return coRun; }, get modal() { return !!modal; }, renderer, hub, dbg: { climb: climbUi, spawnHappening: () => spawnHappening(), enterIsland: (id) => enterIsland(id), save: () => save, talk: (id) => sanctTalk(id), talkId: (id) => arcTalk(id) || portTalk(id), capExec } }; // 디버그용
 
 // 로그인·저장 상태 표시
 const chip = document.createElement('div');

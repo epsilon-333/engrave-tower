@@ -517,6 +517,116 @@ export const ENGRAVINGS = {
     ],
     recipe: { soul: 4, spore: 4, mirror: 2 },
   },
+
+  // ════════ 탑의 문양 (탑을 오르며 자주 만나는 각인 · 제단에서도 새길 수 있다) ════════
+  emberSpark: {
+    name: '불티', slot: 'arm', grade: 1, load: 2, tags: ['fire'],
+    stats: { fireAff: 3, mag: 2 },
+    effects: [{ type: 'on', event: 'hit', chance: 0.2, action: { status: 'burn', stacks: 1 }, text: '공격 시 20% 화상' }],
+    recipe: { ember: 3 },
+  },
+  frostBite: {
+    name: '동상', slot: 'arm', grade: 1, load: 2, tags: ['ice'],
+    stats: { iceAff: 3, agi: 2 },
+    effects: [{ type: 'on', event: 'hit', chance: 0.2, action: { status: 'chill', stacks: 1 }, text: '공격 시 20% 냉기' }],
+    recipe: { frost: 3 },
+  },
+  ironHide: {
+    name: '무쇠 가죽', slot: 'leg', grade: 1, load: 2, tags: ['giant'],
+    stats: { pres: 8, vit: 4 },
+    effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.97, text: '받는 피해 -3%' }],
+    recipe: { rust: 4 },
+  },
+  quickHands: {
+    name: '빠른 손놀림', slot: 'arm', grade: 1, load: 2, tags: ['wind'],
+    stats: { agi: 3 },
+    effects: [{ type: 'mul', key: 'atkSpeed', v: 1.06, text: '공격 속도 +6%' }],
+    recipe: { wing: 4 },
+  },
+  hungryBlade: {
+    name: '굶주린 칼날', slot: 'arm', grade: 2, load: 3, tags: ['drain', 'bleed'],
+    stats: { lifesteal: 4, str: 3 },
+    effects: [{ type: 'on', event: 'kill', chance: 1, action: { heal: 0.03 }, text: '처치 시 체력 3% 회복' }],
+    recipe: { blood: 4, rust: 2 },
+  },
+  windStep: {
+    name: '바람 발걸음', slot: 'leg', grade: 2, load: 3, tags: ['wind'],
+    stats: { agi: 4 },
+    effects: [{ type: 'on', event: 'dash', chance: 1, action: { shards: { n: 4, mul: 0.5, type: 'phys', dash: true } }, text: '대시하면 가는 쪽으로 칼날 4개 (공격력 50%)' }],
+    recipe: { wing: 5, frost: 2 },
+  },
+  mirrorWard: {
+    name: '거울 결계', slot: 'back', grade: 2, load: 3, tags: ['reflect'],
+    stats: { reflect: 8, mres: 4 },
+    effects: [{ type: 'on', event: 'hurtMag', chance: 1, action: { shield: 0.05 }, text: '마법 피해를 받으면 최대 체력 5% 보호막' }],
+    recipe: { mirror: 4 },
+  },
+  curseBrand: {
+    name: '저주 낙인', slot: 'head', grade: 2, load: 3, tags: ['curse'],
+    stats: { mag: 4, spi: 2 },
+    effects: [{ type: 'on', event: 'hit', chance: 0.3, action: { status: 'curse', stacks: 1 }, text: '공격 시 30% 저주' }],
+    recipe: { soul: 4 },
+  },
+  chainEmber: {
+    name: '화염 연쇄', slot: 'heart', grade: 3, load: 5, tags: ['fire', 'wind'],
+    stats: { mag: 5, fireAff: 4 },
+    effects: [{ type: 'on', event: 'kill', chance: 1, action: { aoe: { r: 50, mul: 0.8, type: 'mag', status: 'burn' } }, text: '처치 시 둘레 50에 화염 폭발 (마법 공격력 80%)' }],
+    recipe: { ember: 6, cinder: 3 },
+  },
+  frostNova: {
+    name: '서리 파동', slot: 'back', grade: 3, load: 5, tags: ['ice'],
+    stats: { mres: 6, iceAff: 4 },
+    effects: [{ type: 'on', event: 'hurt', chance: 0.35, action: { aoe: { r: 60, mul: 0.6, type: 'mag', status: 'chill' } }, text: '맞으면 35% 확률로 둘레 60에 서리 파동 (마법 공격력 60%)' }],
+    recipe: { frost: 5, icecore: 2 },
+  },
+  venomCloak: {
+    name: '독 망토', slot: 'back', grade: 3, load: 5, tags: ['poison', 'shadow'],
+    stats: { toxicity: 4, agi: 3 },
+    effects: [{ type: 'on', event: 'dodge', chance: 1, action: { cloud: { r: 36, dur: 3 } }, text: '공격을 피하면 그 자리에 독 구름' }, { type: 'on', event: 'dash', chance: 0.5, action: { cloud: { r: 28, dur: 2 } }, text: '대시하면 50% 독 구름' }],
+    recipe: { venom: 5, spore: 3 },
+  },
+  giantGrip: {
+    name: '거인의 손아귀', slot: 'arm', grade: 3, load: 5, tags: ['giant', 'brawl'],
+    stats: { str: 6, vit: 3 },
+    effects: [{ type: 'mul', key: 'physAtk', v: 1.12, text: '물리 공격력 +12%' }, { type: 'add', key: 'knockback', v: 60, text: '밀쳐내기 +60' }],
+    recipe: { magma: 4, rust: 4 },
+  },
+  shadowStrike: {
+    name: '그림자 일격', slot: 'arm', grade: 3, load: 5, tags: ['shadow'],
+    stats: { sen: 5 },
+    effects: [{ type: 'add', key: 'crit', v: 0.08, text: '치명타 확률 +8%' }, { type: 'on', event: 'crit', chance: 0.5, action: { aoe: { r: 28, mul: 0.6, type: 'phys' } }, text: '치명타면 50% 확률로 둘레 28에 그림자 베기 (60%)' }],
+    recipe: { soul: 4, wing: 4 },
+  },
+  bloodRitual: {
+    name: '피의 의식', slot: 'heart', grade: 4, load: 7, tags: ['bleed', 'drain'],
+    stats: { str: 6, lifesteal: 4 },
+    effects: [{ type: 'on', event: 'crit', chance: 1, action: { status: 'bleed', stacks: 2, heal: 0.015 }, text: '치명타면 출혈 2중첩 · 체력 1.5% 회복' }, { type: 'mul', key: 'bleedMul', v: 1.3, text: '출혈 피해 +30%' }],
+    recipe: { blood: 8, chief: 1 },
+  },
+  slimeRebirth: {
+    name: '점액의 부활', slot: 'heart', grade: 4, load: 7, tags: ['slime', 'undying'],
+    stats: { vit: 8, pres: 4 },
+    effects: [{ type: 'flag', flag: 'undying', text: '쓰러지면 한 번 체력 30%로 되살아난다' }, { type: 'add', key: 'regen', v: 0.002, text: '초당 체력 0.2% 회복' }],
+    recipe: { goo: 10, queen: 1 },
+  },
+  stormHeart: {
+    name: '폭풍의 심장', slot: 'heart', grade: 5, load: 10, tags: ['wind', 'fire'],
+    stats: { agi: 8, mag: 6 },
+    effects: [{ type: 'mul', key: 'atkSpeed', v: 1.18, text: '공격 속도 +18%' }, { type: 'on', event: 'dash', chance: 1, action: { aoe: { r: 60, mul: 1.2, type: 'mag', status: 'burn' } }, text: '대시하면 둘레 60에 불꽃 폭풍 (마법 공격력 120%)' }],
+    recipe: { cinder: 8, wing: 8, core: 1 },
+  },
+  glacierCore: {
+    name: '빙하의 심장', slot: 'heart', grade: 5, load: 10, tags: ['ice', 'giant'],
+    stats: { vit: 10, mres: 8, iceAff: 6 },
+    effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.85, text: '받는 피해 -15%' }, { type: 'flag', flag: 'frozenVuln', text: '얼어붙은 적에게 주는 피해 +50%' }, { type: 'on', event: 'hurt', chance: 1, action: { status: 'chill', stacks: 2 }, text: '나를 때린 적에게 냉기 2중첩' }],
+    recipe: { icecore: 6, witch: 1 },
+  },
+  plagueKing: {
+    name: '역병의 군주', slot: 'head', grade: 5, load: 10, tags: ['poison', 'curse'],
+    stats: { toxicity: 10, mag: 6 },
+    effects: [{ type: 'flag', flag: 'poisonSpread', text: '중독된 적이 죽으면 주변으로 독이 번진다' }, { type: 'flag', flag: 'poisonBurst', text: '중독된 적이 죽으면 독 구름' }, { type: 'on', event: 'hit', chance: 0.3, action: { status: 'poison', stacks: 2 }, text: '공격 시 30% 중독 2중첩' }],
+    recipe: { venom: 8, spore: 6, grave: 1 },
+  },
 };
 
 // 태그 시너지: 장착한 각인 + 장비의 태그 개수
