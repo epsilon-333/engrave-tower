@@ -233,7 +233,7 @@ export const SKILLS = {
     desc: '쓰러질 때까지 싸우는 거대 시체를 부른다 (하나만). 느리지만 체력이 많고, 내려쳐 둘레 적에게 피해와 저주. 다른 곳에 가도 따라온다.',
     do: [{ op: 'summon', kind: 'lich', n: 1, dur: 15, mul: 1.6, perm: true, max: 1 }] },
   graspWraith: { name: '붙잡는 망령', role: '소환', cd: 14, cost: 20, scale: 'mag', fx: 'summon', aim: 'none',
-    desc: '나와 일정 거리를 두고 떠 있는 망령을 부른다 (하나만 · 쓰러질 때까지). 5초 동안 기를 모은 뒤 팔을 길게 뻗어, 나와 가장 가까운 적(200 안)을 자기 쪽으로 끌어온다 (정예는 반쯤). 영혼 20.',
+    desc: '내 뒤쪽 멀리(약 125) 떠 있는 망령을 부른다 (하나만 · 쓰러질 때까지). 5초 동안 기를 모은 뒤 팔을 길게 뻗어, 나와 가장 가까운 적(200 안)을 망령 앞까지 끝까지 끌고 간다 — 나에게서 떼어 놓는다. 영혼 20.',
     do: [{ op: 'summon', kind: 'grasper', n: 1, dur: 15, mul: 0.4, perm: true, max: 1 }] },
   lichLord: { name: '리치 소환', role: '궁극', cd: 40, costAll: { min: 60 }, scale: 'mag', fx: 'summon', ult: true,
     desc: '쓰러질 때까지 싸우는 해골 마법사 리치를 부른다 (하나만). 떨어져서 어둠 탄을 쏘고, 8초마다 해골 병사를 하나 일으킨다 (리치의 해골은 15초 · 최대 3). 영혼이 많을수록 강하다. 다른 곳에 가도 따라온다.',
@@ -453,7 +453,7 @@ Object.assign(SKILLS, {
   silenceSeal: { name: '침묵의 인장', role: '제어', cd: 16, cost: 20, scale: 'best', fx: 'rune', aim: 'none', mo: 'cast',
     desc: '둘레 90 안의 적이 3초 동안 공격 · 기술을 쓰지 못한다.', do: [{ op: 'silence', r: 90, dur: 3 }] },
   chainHook: { name: '쇠사슬 낚기', role: '제어', cd: 8, cost: 12, scale: 'best', fx: 'throw', aim: 'tank', mo: 'throw',
-    desc: '쇠사슬로 적 하나를 내 앞까지 끌어오고 0.5초 기절 (공격력 90% 피해).', do: [{ op: 'proj', n: 1, speed: 360, range: 230, mul: 0.9, pull: true, stun: 0.5, kind: 'harpoon' }] },
+    desc: '쇠사슬로 적 하나를 내 바로 앞까지 끌어오고 0.5초 기절 (공격력 90% 피해 · 정예도 거의 끝까지).', do: [{ op: 'proj', n: 1, speed: 360, range: 280, mul: 0.9, pull: true, stun: 0.5, kind: 'harpoon' }] },
 });
 
 // CC기(역할 「제어」)는 피해가 거의 없다: 공격력 15% (기절 · 속박 · 공포 · 침묵 · 끌어오기가 본업) · 설명의 피해 숫자도 맞춘다

@@ -76,7 +76,50 @@ export function renderMap(world) {
   // 물·용암은 색조 없이 원래 색으로
   for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) if (at(x, y) === T_LIQUID) liquid(og, x * TILE, y * TILE, x, y, z, at);
   if (world.map.palace) palaceStatic(og, world.map.palace);
+  if (world.map.ship) shipStatic(og, world, at);
+  if (world.map.bridges) for (const b of world.map.bridges) { // 수로 위 돌다리
+    const px = b.x * TILE, py = b.y * TILE, has = (dx) => world.map.bridges.some((q) => q.x === b.x + dx && q.y === b.y);
+    og.fillStyle = '#6e645a'; og.fillRect(px, py, TILE, TILE); og.fillStyle = '#7e7468'; og.fillRect(px + 1, py + 1, 6, 6); og.fillRect(px + 9, py + 9, 6, 6);
+    og.fillStyle = 'rgba(0,0,0,0.25)'; og.fillRect(px, py + 7, TILE, 1); og.fillRect(px + 8, py, 1, TILE);
+    if (!has(-1)) { og.fillStyle = '#2a221c'; og.fillRect(px, py, 3, TILE); og.fillStyle = '#9a8e80'; og.fillRect(px, py, 2, TILE); }
+    if (!has(1)) { og.fillStyle = '#2a221c'; og.fillRect(px + TILE - 3, py, 3, TILE); og.fillStyle = '#9a8e80'; og.fillRect(px + TILE - 2, py, 2, TILE); }
+  }
   return out;
+}
+
+// 배 갑판: 길게 이어진 널빤지 · 못 · 나무 난간, 아래쪽 바다로 드러난 뱃전(선체)과 물 높이 선
+function shipStatic(g, world, at) {
+  const { tw, th } = world;
+  const plank = ['#9a7046', '#8c6440', '#a47a4c', '#86603c'];
+  for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+    const t = at(x, y), px = x * TILE, py = y * TILE;
+    if (t === T_FLOOR || t === T_BUILD) {
+      for (let k = 0; k < 4; k++) {
+        const row = y * 4 + k, col = plank[(row * 7 + ((x + row * 3) >> 2)) % 4];
+        g.fillStyle = col; g.fillRect(px, py + k * 4, TILE, 4);
+        g.fillStyle = 'rgba(40,22,10,0.55)'; g.fillRect(px, py + k * 4 + 3, TILE, 1); // 널빤지 사이 틈
+        if ((x + row * 5) % 6 === 0) { g.fillStyle = 'rgba(40,22,10,0.6)'; g.fillRect(px + ((row * 3) % 12), py + k * 4, 1, 3); g.fillStyle = '#5a4a3a'; g.fillRect(px + ((row * 3) % 12) + 2, py + k * 4 + 1, 1, 1); }
+      }
+      if (at(x, y - 1) === T_WALL) { g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(px, py, TILE, 3); }
+    } else if (t === T_WALL) {
+      // 난간: 굵은 나무 테 + 기둥
+      g.fillStyle = '#24160c'; g.fillRect(px, py, TILE, TILE);
+      g.fillStyle = '#6a4226'; g.fillRect(px + 1, py + 1, TILE - 2, TILE - 2);
+      g.fillStyle = '#8a5a32'; g.fillRect(px + 1, py + 1, TILE - 2, 4);
+      g.fillStyle = '#c89a3a'; g.fillRect(px + 1, py + 6, TILE - 2, 1);
+      if (x % 3 === 0) { g.fillStyle = '#4a2a16'; g.fillRect(px + 6, py + 7, 4, 8); }
+    }
+  }
+  // 아래쪽 뱃전: 난간 바로 아래 바다 칸에 선체 옆면을 그린다
+  for (let y = 0; y < th - 1; y++) for (let x = 0; x < tw; x++) {
+    if (at(x, y) !== T_WALL || at(x, y + 1) !== T_LIQUID) continue;
+    const px = x * TILE, py = (y + 1) * TILE;
+    g.fillStyle = '#24160c'; g.fillRect(px, py, TILE, 14);
+    g.fillStyle = '#5a3620'; g.fillRect(px, py, TILE, 12);
+    g.fillStyle = '#4a2a16'; g.fillRect(px, py + 4, TILE, 1); g.fillRect(px, py + 8, TILE, 1);
+    if (x % 4 === 1) { g.fillStyle = '#1a2a3a'; g.fillRect(px + 5, py + 3, 5, 4); g.fillStyle = '#c89a3a'; g.fillRect(px + 4, py + 2, 7, 1); }
+    g.fillStyle = 'rgba(230,246,255,0.5)'; g.fillRect(px, py + 13, TILE, 1);
+  }
 }
 
 // 용궁: 붉은 비단길(금빛 테 · 구름무늬)과 용왕의 옥좌

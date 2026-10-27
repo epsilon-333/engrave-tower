@@ -80,6 +80,7 @@ export const MONSTERS = {
   raptor: { name: '랩터', shape: 'quad', pal: { a: '#5aa040' }, hp: 160, atk: 17, type: 'phys', speed: 104, ai: 'chase', status: 'bleed', r: 6, xp: 22, gold: 11, pres: 15, mres: 10, echo: { id: 'blood', rate: 0.45 } },
   jungleWasp: { name: '독침 말벌', shape: 'flyer', pal: { a: '#e8c83a' }, hp: 90, atk: 13, type: 'phys', speed: 100, ai: 'erratic', status: 'poison', r: 5, xp: 16, gold: 8, pres: 0, mres: 10, echo: { id: 'venom', rate: 0.4 } },
   bigBeetle: { name: '거대 딱정벌레', shape: 'golem', scale: 1.2, pal: { a: '#3a6a5a' }, hp: 340, atk: 21, type: 'phys', speed: 30, ai: 'chase', shield: 0.5, r: 8, xp: 28, gold: 15, pres: 80, mres: 20, echo: { id: 'spore', rate: 0.45 } },
+  royalGuard: { name: '왕국 병사', shape: 'humanoid', pal: { a: '#c8b060' }, hp: 170, atk: 17, type: 'phys', speed: 70, ai: 'chase', r: 6, xp: 22, gold: 16, pres: 35, mres: 15, echo: { id: 'blood', rate: 0.3 } },
   bandit: { name: '도적', shape: 'humanoid', pal: { a: '#5a5a6a' }, hp: 150, atk: 17, type: 'phys', speed: 74, ai: 'chase', status: 'bleed', r: 6, xp: 20, gold: 18, pres: 20, mres: 15, echo: { id: 'blood', rate: 0.4 } },
   coralCrab: { name: '산호 게', shape: 'quad', pal: { a: '#ff7a5a' }, hp: 260, atk: 22, type: 'phys', speed: 44, ai: 'chase', shield: 0.5, r: 7, xp: 30, gold: 16, pres: 70, mres: 30, echo: { id: 'mirror', rate: 0.4 } },
   jellyfish: { name: '해파리', shape: 'flyer', ghost: true, pal: { a: '#ff9ad8' }, hp: 160, atk: 20, type: 'mag', speed: 50, ai: 'erratic', status: 'chill', r: 6, xp: 26, gold: 14, pres: 30, mres: 60, echo: { id: 'frost', rate: 0.4 } },
@@ -114,6 +115,12 @@ Object.assign(MONSTERS, {
   shadowPanther: { name: '그림자 표범', shape: 'quad', pal: { a: '#2a2434' }, hp: 200, atk: 22, type: 'phys', speed: 120, ai: 'chase', status: 'bleed', moves: ['leap', 'leap', 'blink'], r: 7, xp: 36, gold: 19, pres: 20, mres: 20, echo: {'id': 'blood', 'rate': 0.4} },
   mimic: { name: '미믹', shape: 'quad', pal: { a: '#a8743e' }, hp: 300, atk: 26, type: 'phys', speed: 70, ai: 'chase', moves: ['combo', 'leap'], mimic: true, r: 7, xp: 40, gold: 60, pres: 40, mres: 40, echo: {'id': 'rust', 'rate': 1} },
 });
+
+// ── 공격당한 주민 (NPC가 화나서 싸울 때의 몸) ──
+Object.assign(MONSTERS, { townsfolk: { name: '화난 주민', shape: 'humanoid', pal: { a: '#c8a888' }, hp: 160, atk: 10, type: 'phys', speed: 70, ai: 'chase', r: 6, xp: 0, gold: 0, pres: 10, mres: 10 } });
+
+// 왕국 경비 · 근위병은 어디서든 플레이어처럼 기술을 쓴다
+if (MONSTERS.royalGuard) Object.assign(MONSTERS.royalGuard, { moves: ['combo', 'leap', 'shove', 'whirl'], skillNames: { combo: '연속 베기', leap: '돌진 찌르기', shove: '방패 밀치기', whirl: '회전 베기' } });
 
 // ── 레이드 보스: 체력이 셋으로 나뉘어 단계마다 기술이 바뀐다 (phaseMoves) ──
 Object.assign(MONSTERS, {

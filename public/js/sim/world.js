@@ -6,6 +6,7 @@ import { WEAPON_SKILLS } from '../data/items.js';
 import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
 import { towerMul, isBossFloor } from '../data/tower.js';
 import { RAID_BOSS } from '../data/raid.js';
+import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
 import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO, SKILL_BAL, CLASS_BAL } from '../data/skills.js';
 import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower, spiritBuff, buffMods } from '../data/spirits.js';
 const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
@@ -52,7 +53,8 @@ function overworldMap(zone) {
 
 export class World {
   // mode: 'field' | 'plaza'
-  constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null, souls = null, raid = null, minions = null }) {
+  constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null, souls = null, raid = null, minions = null, npcMem = null }) {
+    this.npcMem = npcMem || {}; // NPC가 나를 기억하는 것 (호감 · 들은 소문) — 저장과 같은 객체
     this.minions = minions || []; // 사령술사: 쓰러질 때까지 남는 부하 (저장과 같은 배열 · 다른 곳에도 따라온다)
     this.raid = raid; // 보스 레이드: { id }
     this.depth = depth;
@@ -68,6 +70,7 @@ export class World {
     this.mode = mode;
     this.setBuild(build);
     this.zone = zone || (zoneId === 'world' ? WORLD_ZONE : zoneId ? ZONES.find((z) => z.id === zoneId) : null);
+    this.zoneId = zoneId || this.zone?.id || null; // 지금 있는 곳 (바깥 세계 · 섬 · 지하 도시 · 배)
     this.rng = createRng(seed);
     this.map = map || (this.zone?.id === 'world' ? overworldMap(this.zone) : this.zone?.id === 'cave' && !depth && !practice ? buildCave1(this.zone) : generateField(this.zone, seed, depth));
     const m = this.map;
@@ -133,7 +136,7 @@ export class World {
         e.home = { x: e.x, y: e.y };
         this.enemies.push(e);
       }
-      if (!m.outdoor) this.objects.push({ kind: 'portal', x: sx, y: sy - 14, label: '귀환 포탈 (잔향 전부 보존)', color: this.zone.portal });
+      if (!m.outdoor && !m.ship && !m.nokt) this.objects.push({ kind: 'portal', x: sx, y: sy - 14, label: '귀환 포탈 (잔향 전부 보존)', color: this.zone.portal });
       for (const o of m.objects || []) this.objects.push({ ...o });
       for (const c of m.chests) this.objects.push({ kind: 'chest', x: c.x * TILE + 8, y: c.y * TILE + 8, rich: c.rich, trap: c.trap, hidden: !!(c.rich && m.outdoor), label: c.rich ? '숨겨진 보물 상자' : '보물 상자' });
       for (const c of m.camp || []) this.objects.push({ kind: 'camp', x: c.x * TILE + 8, y: c.y * TILE + 8, label: '야영지 · 잔향 맡기고 쉬기', reusable: true });
@@ -141,7 +144,7 @@ export class World {
       for (const c of m.shrines || []) this.objects.push({ kind: 'shrine', x: c.x * TILE + 8, y: c.y * TILE + 8, label: '낡은 제단 · 축복 받기' });
       if (m.stairs && this.tower) { const dp = this.towerDoorSpot(m); m.stairs = dp; } // 탑: 문은 걸어서 닿는 넓은 바닥 가운데에
       if (m.stairs) this.objects.push({ kind: 'stairs', door: !!this.tower, reach: this.tower ? 30 : undefined, x: m.stairs.x * TILE + 8, y: m.stairs.y * TILE + 8, label: this.tower ? `계단 · ${this.tower.f}층 클리어` : `아래층으로 (지하 ${depth + 2}층)`, reusable: true });
-      for (const l of m.lores) this.objects.push({ kind: 'lore', x: l.x * TILE + 8, y: l.y * TILE + 8, label: '고대 석판 읽기' });
+      for (const l of m.lores) this.objects.push({ kind: 'lore', x: l.x * TILE + 8, y: l.y * TILE + 8, label: l.text ? '찢어진 기록 읽기' : '고대 석판 읽기', text: l.text });
       for (const b of m.barriers || []) {
         const def = BARRIERS[b.id], o = { kind: 'barrier', id: b.id, look: def.look, axis: b.axis, from: b.from, tiles: b.tiles, x: b.x * TILE + 8, y: b.y * TILE + 8, label: def.name, reusable: true };
         this.objects.push(o);
@@ -161,6 +164,7 @@ export class World {
       for (const wp of m.waypoints || []) { const on = !!wp.start || wp === homeWp || !!this.story?.flags[`wp:${wp.id}`]; this.objects.push({ kind: 'waypoint', ...wp, active: on, label: on ? '이동 포탈 · 다른 포탈로 가기' : '잠든 포탈 깨우기', reusable: true }); }
       // 성지 마을: 우두머리 · 주민 · 수련 안내판 (역시 기억 뒤에), 맡고 있는 '찾기' 의뢰의 물건
       for (const [race, v] of Object.entries(m.villages || {})) this.addVillage(race, v);
+      if (!this.coop && !this.pvp && !this.tower && !this.raid) initNpcLife(this); // NPC 하루 일과
       this.syncQuestThings();
       initLife(this, practice ? null : life); // 캐기 · 나무 · 땅 파기 · 낚시 · 밭
       for (const dk of m.docks || []) this.objects.push({ kind: 'boat', x: dk.bx * TILE + 8, y: dk.by * TILE + 8, label: '배 타기', reusable: true });
@@ -242,7 +246,17 @@ export class World {
     return h;
   }
   applyMemory(m) {
-    if (!m || m.tw !== this.tw || m.th !== this.th) return;
+    if (!m) return;
+    if (m.tw !== this.tw || m.th !== this.th) {
+      // 섬이 넓어진 예전 기록: 칸 위치를 옮겨 탐험한 곳만 살린다 (예전 자리는 그대로이므로)
+      if (!(m.tw <= this.tw && m.th <= this.th)) return;
+      try {
+        const bin = atob(m.explored || '');
+        for (let y = 0; y < m.th; y++) for (let x = 0; x < m.tw; x++) { const i = y * m.tw + x; if (bin.charCodeAt(i >> 3) & (1 << (i & 7))) this.explored[y * this.tw + x] = 1; }
+      } catch { /* 손상된 기록은 무시 */ }
+      this.regionSeen = new Set(m.regions || []); this.milestones = new Set(m.milestones || []);
+      return;
+    }
     try {
       const bin = atob(m.explored || '');
       for (let i = 0; i < this.explored.length; i++) if (bin.charCodeAt(i >> 3) & (1 << (i & 7))) this.explored[i] = 1;
@@ -504,6 +518,11 @@ export class World {
     updateLife(this, input);
     this.updateDelayed();
     this.updateAllies();
+    if (this.voyage) this.updateVoyage();
+    if (this.skirmish && !this.skirmish.done && this.skirmish.foes.every((e) => e.dead)) { this.skirmish.done = true; this.signals.push({ t: 'skirmishWon', id: this.skirmish.id }); }
+    if (this.happenT === undefined || (this.happenT -= DT) <= 0) { this.happenT = 0.25; this.updateHappenings(); }
+    updateNpcLife(this, DT);
+    if (this.pit?.e?.dead) { this.signals.push({ t: 'pitWon', bet: this.pit.bet, tier: this.pit.tier }); this.pit = null; }
     this.updateZones();
     this.updateFlow();
     this.updateEnemies();
@@ -542,7 +561,7 @@ export class World {
       }
     }
     this.mileT -= DT;
-    if (this.mileT <= 0 && !this.practice) {
+    if (this.mileT <= 0 && !this.practice && !this.voyage) {
       this.mileT = 1;
       const pct = this.exploredPct();
       for (const ms of [50, 80, 100]) {
@@ -648,11 +667,13 @@ export class World {
       const water = p.boat ? 150 / Math.max(1, d.moveSpeed) : p.swim ? (this.b.abilities?.waterBlessing ? 0.8 : 0.55) * (this.hasKnack('swimmer') ? 1.3 : 1) : this.map.underwater ? 0.8 : 1;
       const spd = p.castT > 0 ? 0 : d.moveSpeed * this.mod('moveSpeed') * (p.boat ? 1 : 1 - slow) * (aiming ? d.aimSlow : 1) * (p.channel ? 0.5 : 1) * (p.charging ? 0.4 : 1) * this.predatorSpeed(mx, my, ml) * water;
       this.move(p, mx * spd * DT, my * spd * DT);
+      if (inp.mount) this.toggleMount();
       if (inp.dash && p.boat && this.canSwim) { p.boat.riding = false; p.boat = null; this.emit({ t: 'splash', x: p.x, y: p.y }); } // 배에서 물로 뛰어든다
       else if (inp.dash && (p.boat || p.swim)) { /* 물 위에서는 대시가 없다 */ }
       else if (inp.dash && p.dashCharges > 0 && p.dashCd <= 0) {
         const dx = ml > 0 ? mx : p.aimX, dy = ml > 0 ? my : p.aimY;
-        p.dashT = 0.16; p.dvx = dx * 400; p.dvy = dy * 400; p.invuln = Math.max(p.invuln, 0.22);
+        p.dashT = 0.16; p.dvx = dx * 400 * (p.riding ? 1.5 : 1); p.dvy = dy * 400 * (p.riding ? 1.5 : 1); p.invuln = Math.max(p.invuln, 0.22);
+        if (p.riding) this.emit({ t: 'raptorLeap', x: p.x, y: p.y });
         p.dashCharges--; if (p.dashRecharge <= 0) p.dashRecharge = d.dashCd * (1 - d.cdr);
         this.knack('dash');
         if (p.castT > 0) { p.castT = 0; p.castSkill = null; this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '시전 취소', color: '#a8b0c0' }); }
@@ -673,6 +694,7 @@ export class World {
     }
     p.attackHeld = !!inp.attack;
     if (p.pendingDouble >= 0) { p.pendingDouble -= DT; if (p.pendingDouble < 0) this.attack(0.12); }
+    if (inp.attack && p.riding) { this.dismount(); p.atkCd = Math.max(p.atkCd, 0.25); }
     if (inp.attack && p.atkCd <= 0 && p.castT <= 0 && !p.channel && !p.charging && !p.rush && !p.leap && !(p.windupT > 0) && !p.swim && !p.combo && !p.fallInto && !p.drop && !p.hop) {
       const mom = this.mod('atkSpeed');
       p.atkCd = 1 / (this.b.weapon.speed * d.atkSpeed * mom);
@@ -699,7 +721,7 @@ export class World {
     let bd = 1e9;
     for (const o of this.objects) {
       if (o.opened && !o.reusable) continue;
-      if (o.noPrompt || o.riding) continue;
+      if (o.noPrompt || o.riding || o.away || o.hostile) continue; // 기절 · 마차 안 · 화난 NPC에게는 말을 걸 수 없다
       const dd = Math.hypot(o.x - p.x, o.y - p.y);
       if (o.hidden && !o.found) { if (dd < (this.d.senseR || 30)) { o.found = true; this.emit({ t: 'text', x: o.x, y: o.y - 18, text: '숨겨진 상자를 찾았다!', color: '#ffe8a0' }); this.emit({ t: 'ring', x: o.x, y: o.y, r: 22, color: '#ffe8a0' }); } else continue; }
       if (dd < (o.reach || 26) && dd < bd) { bd = dd; this.near = o; } // 계산대 너머의 주인처럼 멀리서도 닿는 것은 reach
@@ -938,6 +960,72 @@ export class World {
     this.signals.push({ t: 'trainingDone', race: tr.race, ok, why, got: tr.got, n: tr.n, dealt: Math.round(tr.dealt), need: tr.need });
   }
 
+  // ═══════ 항해: 시간이 흘러 목적지에 닿는다. 싸우는 동안은 배가 멈춘다(항해가 길어진다) ═══════
+  updateVoyage() {
+    const v = this.voyage;
+    if (v.fighting) {
+      if (!this.enemies.some((e) => !e.dead)) { const kind = v.fighting; v.fighting = null; v.extra += this.t - v.fightT0; this.signals.push({ t: 'voyageWon', kind }); }
+      return;
+    }
+    if (v.waiting) return; // 선택지 창이 떠 있다
+    v.t += DT;
+    if (!v.rolled && v.t >= v.eventAt) {
+      v.rolled = true;
+      const r = this.rng.next();
+      let acc = 0;
+      for (const [id, ev] of Object.entries(v.events)) { acc += ev.chance; if (r < acc) { v.approach = { id, t: 0, dur: 14 }; this.emit({ t: 'seaSight', id }); break; } } // 수평선에 보이고 다가온다
+    }
+    if (v.approach) { v.approach.t += DT; if (v.approach.t >= v.approach.dur) { const id = v.approach.id; v.approach = null; v.event = id; v.waiting = true; this.signals.push({ t: 'seaEvent', id }); } }
+    if (v.t >= v.dur) { v.done = true; this.signals.push({ t: 'voyageEnd' }); }
+  }
+  // 무리를 불러 세운다 (벌어지는 일 · 경비병 · 고위 관계자의 호위): list = [[몬스터, 수, 이름표]]
+  spawnGroup(list, x, y, lv, opt = {}) {
+    const out = [];
+    let k = 0;
+    for (const [id, n, tag] of list) for (let i = 0; i < n; i++, k++) {
+      const a = (k / Math.max(1, list.reduce((s, q) => s + q[1], 0))) * Math.PI * 2 + 0.4;
+      let ex = x + Math.cos(a) * (opt.r || 40), ey = y + Math.sin(a) * (opt.r || 40) * 0.8;
+      if (this.blocked(ex, ey, 6)) { ex = x + Math.cos(a) * 16; ey = y + Math.sin(a) * 12; }
+      if (this.blocked(ex, ey, 6)) { ex = x; ey = y; }
+      const e = this.makeEnemy(id, ex, ey, { noAffix: true });
+      this.applyLevel(e, lv); if (tag) { e.tag = tag; if (e.def.elite) e.champion = tag; }
+      e.state = opt.idle ? 'idle' : 'chase'; e.home = { x: ex, y: ey };
+      this.enemies.push(e); out.push(e);
+      this.emit({ t: 'summon', x: ex, y: ey, color: '#c8c0b0' });
+    }
+    return out;
+  }
+  // 벌어지는 일: 길을 따라 느릿느릿 움직이고, 시간이 다 되면 끝난다 (싸우는 중이면 기다린다)
+  updateHappenings() {
+    for (const o of this.objects) {
+      if (o.kind !== 'happening' || o.gone) continue;
+      if (o.engaged) continue;
+      if (this.t > o.endT) { o.gone = true; o.reusable = false; this.signals.push({ t: 'happeningGone', id: o.hid }); continue; }
+      if (o.dest) { const dx = o.dest.x - o.x, dy = o.dest.y - o.y, l = Math.hypot(dx, dy); if (l > 4) { const nx = o.x + dx / l * 3, ny = o.y + dy / l * 3; if (!this.blocked(nx, ny, 6)) { o.x = nx; o.y = ny; o.dir = dx > 0 ? 1 : -1; } } }
+    }
+    this.objects = this.objects.filter((o) => !(o.kind === 'happening' && o.gone && this.t > o.endT + 1));
+  }
+
+  // 해적 · 바다뱀이 갑판에 올라탄다
+  spawnBoarders(kind, level) {
+    const v = this.voyage, spots = this.map.board || [];
+    const lv = Math.max(1, level);
+    const list = kind === 'serpent' ? [['seaSerpent', 1, 2.4]] : kind === 'merchant' ? [['royalGuard', 3, 1], ['bandit', 1, 1.8]] : [['bandit', 3 + Math.min(3, Math.floor(lv / 12)), 1], ['darkArcher', 2, 1], ['bandit', 1, 2.2]];
+    let k = 0;
+    for (const [id, n, big] of list) for (let i = 0; i < n; i++, k++) {
+      const s = spots[(k * 3 + 1) % spots.length] || { x: this.player.x + 60, y: this.player.y };
+      const e = this.makeEnemy(id, s.x, s.y, { noAffix: true });
+      const m = 0.7 + lv * 0.06;
+      e.maxHp = e.hp = Math.round(e.maxHp * m * big); e.atk = Math.round(e.atk * (0.6 + lv * 0.03) * (big > 1 ? 1.3 : 1));
+      if (big > 1) e.champion = kind === 'serpent' ? '거대 바다뱀' : kind === 'merchant' ? '상선 호위대장' : '해적 두목'; else e.tag = kind === 'merchant' ? '상선 호위병' : id === 'bandit' ? '해적' : '해적 궁수';
+      e.state = 'chase'; e.home = { x: s.x, y: s.y };
+      this.enemies.push(e);
+      this.emit({ t: 'summon', x: s.x, y: s.y, color: kind === 'serpent' ? '#3ab8b0' : '#c8c0b0' });
+    }
+    v.fighting = kind; v.fightT0 = this.t; v.waiting = false;
+    this.emit({ t: 'shake', v: 6 });
+  }
+
   // 이동 포탈로 건너간다: 도착한 포탈 바로 앞(남쪽)에 선다. 부하 · 소환수도 함께 온다
   teleportTo(id) {
     const o = this.objects.find((q) => q.kind === 'waypoint' && q.id === id && q.active), p = this.player;
@@ -975,7 +1063,9 @@ export class World {
       return;
     }
     if (o.kind === 'merchant') { this.signals.push({ t: 'merchant', zone: this.zone.id, depth: this.depth }); return; }
-    if (o.kind === 'npc') { this.signals.push({ t: 'npc', id: o.id }); return; }
+    if (o.kind === 'happening') { this.signals.push({ t: 'happening', id: o.hid }); return; }
+    if (o.kind === 'coach') { this.signals.push({ t: 'coach' }); return; } // 역마차 타기
+    if (o.kind === 'npc' || o.kind === 'priceBoard' || o.kind === 'ladderUp' || o.kind === 'hiddenWay' || o.kind === 'chronicle') { this.signals.push({ t: 'npc', id: o.id }); return; }
     if (o.kind === 'entrance') {
       if (ENTRANCES[o.id]?.prop === 'hole') { const p = this.player; p.fallInto = { t: 0, dur: 0.75, x0: p.x, y0: p.y, tx: o.x, ty: o.y - 14, id: o.id, ox: o.x, oy: o.y }; this.motion('leap', 0.4); this.emit({ t: 'hopStart', x: p.x, y: p.y }); return; }
       this.signals.push({ t: 'enterZone', entrance: o.id, x: o.x, y: o.y }); return;
@@ -1083,7 +1173,7 @@ export class World {
     }
     if (o.kind === 'lore') {
       o.opened = true;
-      const text = LORES[this.rng.int(0, LORES.length - 1)];
+      const text = o.text || LORES[this.rng.int(0, LORES.length - 1)];
       this.loot.lores.push(text);
       if (this.codex && !(this.codex.lore || []).includes(text)) { (this.codex.lore ||= []).push(text); this.signals.push({ t: 'codex' }); this.emit({ t: 'text', x: o.x, y: o.y - 16, text: '새 기록 · 도감 +1', color: '#8fd0ff' }); }
       this.signals.push({ t: 'lore', text });
@@ -1117,7 +1207,15 @@ export class World {
     return false;
   }
 
-  attack(angOff) {
+  attack(angOff) { // 내 공격: 닿은 곳의 NPC는 화가 난다 (설정에서 NPC 공격을 켰을 때)
+    this.pHit = true; const tok = this.curTok = (this.tokN = (this.tokN || 0) + 1), n0 = this.projs.length;
+    try { return this.attack0(angOff); } finally {
+      for (let i = n0; i < this.projs.length; i++) if (this.projs[i].owner === 'p') this.projs[i].tok = tok; // 이 공격에서 나간 탄
+      const p = this.player, rg = this.b.weapon?.range || 26; if (this.b.weapon?.kind !== 'proj') pokeNpcs(this, p.x + p.aimX * rg * 0.6, p.y + p.aimY * rg * 0.6, rg * 0.55, tok);
+      this.pHit = false; this.curTok = null;
+    }
+  }
+  attack0(angOff) {
     const p = this.player, d = this.d, w = this.b.weapon;
     let type = w.dmg;
     if (type === 'phys' && this.f.has('physToMag')) type = 'mag';
@@ -1380,6 +1478,7 @@ export class World {
     let m = 1;
     for (const bf of Object.values(p.buffs)) if (bf.mods[key] && key !== 'lifesteal' && key !== 'reflect' && key !== 'pres') m *= bf.mods[key];
     if (this.b.race === 'dino' && p.res >= 50 && (key === 'atkSpeed' || key === 'moveSpeed')) m *= 1.1;
+    if (key === 'moveSpeed' && p.riding) m *= 1.75;
     return m;
   }
   modAdd(key) {
@@ -1395,8 +1494,20 @@ export class World {
   }
 
   // ═══════ 스킬 사용 ═══════
-  castSkillId(id, slot) {
+  // 탈것 (공룡 수인 거대 둥지에서 길들인 랩터): 바깥 세계 · 섬에서만, 물 · 배 위는 안 된다
+  toggleMount() {
     const p = this.player;
+    if (p.riding) { this.dismount(); return; }
+    if (!this.mountKind) { this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '탈것이 없다 (거대 둥지에서 길들인다)', color: '#a8b0c0' }); return; }
+    if (!this.map.outdoor || this.map.underwater || p.swim || p.boat || p.castT > 0 || p.channel) { this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '여기서는 탈 수 없다', color: '#a8b0c0' }); return; }
+    p.riding = this.mountKind; this.emit({ t: 'mountOn', x: p.x, y: p.y });
+  }
+  dismount() { const p = this.player; if (!p.riding) return; p.riding = null; this.emit({ t: 'mountOff', x: p.x, y: p.y }); }
+
+  castSkillId(id, slot) { this.pHit = true; const tok = this.curTok = (this.tokN = (this.tokN || 0) + 1), n0 = this.projs.length; try { return this.castSkillId0(id, slot); } finally { for (let i = n0; i < this.projs.length; i++) if (this.projs[i].owner === 'p') this.projs[i].tok = tok; this.pHit = false; this.curTok = null; } } // 조준해서 쓴 스킬 한 번 = 표 하나
+  castSkillId0(id, slot) {
+    const p = this.player;
+    if (p.riding) this.dismount();
     // 비상 중에 다시 누르면 바로 내리꽂는다
     if (id === 'soar' && p.airT > 0) { this.landSoar(); return; }
     if (p.castT > 0 || p.channel || p.charging || p.rush || p.leap || p.windupT > 0 || p.combo || p.fallInto || p.drop || p.hop) return;
@@ -1580,7 +1691,7 @@ export class World {
       e.kbx += (dx / l) * op.knock * 2; e.kby += (dy / l) * op.knock * 2;
       if (this.b.cls === 'behemoth') { e.kbHot = op.launch ? 0.7 : 0.45; e.kbAtk = ctx.atk; }
     }
-    if (op.pull) { e.reelT = e.def.elite ? 0.18 : 0.45; e.reelK = e.def.elite ? 0.45 : 1; e.reelX0 = e.x; e.reelY0 = e.y; e.kbx = 0; e.kby = 0; this.aggro(e); this.emit({ t: 'reel', id: e.id }); }
+    if (op.pull) { e.reelT = 0.6; e.reelK = e.def.elite ? 0.85 : 1; /* 쇠사슬 · 작살: 내 바로 앞까지 */ e.reelX0 = e.x; e.reelY0 = e.y; e.kbx = 0; e.kby = 0; this.aggro(e); this.emit({ t: 'reel', id: e.id }); }
     return false;
   }
 
@@ -2931,7 +3042,7 @@ export class World {
   }
 
   damageEnemy(e, amount, type, opt = {}) {
-    if (e.dead || e.hidden) return 0;
+    if (e.dead || e.hidden || e.begging) return 0;
     if (e.invulnT > 0) { if (!opt.fromDot) this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '무적', color: '#c8a8ff' }); return 0; } // 망령: 순간이동 뒤 잠깐 무적
     if (e.dormant) { e.dormant = false; e.state = 'chase'; this.aggro(e); this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '미믹!', color: '#ff5a3a' }); }
     const d = this.d, p = this.player;
@@ -3162,6 +3273,7 @@ export class World {
     if (this.coTgt) { this.coHurtMate(this.coTgt, amount, type, attacker, opt); return; } // 파티 탑 (방장): 이 적이 노린 건 동료
     if (this.state !== 'play' || this.mode === 'plaza' || this.practice || p.down) return;
     if ((p.airT > 0 || p.leap) && !opt.direct) return;
+    if (p.riding && amount > this.d.maxHp * 0.08 && !opt.direct) { this.dismount(); this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '랩터에서 떨어졌다!', color: '#ffb0a0' }); }
     // 수호기사: 정면 공격은 25% 덜 받고 오러를 얻는다. 철벽 중에는 완전히 막는다
     let front = false;
     const fx = opt.fromX ?? attacker?.x, fy = opt.fromY ?? attacker?.y;
@@ -3279,6 +3391,21 @@ export class World {
       this.emit({ t: 'text', x: p.x, y: p.y - 18, text: '불굴!', color: '#ffd060' });
       return;
     }
+    if (this.pit?.e && !this.pit.e.dead) {
+      p.hp = Math.max(1, Math.round(this.d.maxHp * 0.2)); p.invuln = 2;
+      const e = this.pit.e; e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: '#3a3a4a' });
+      this.signals.push({ t: 'pitLost', bet: this.pit.bet }); this.pit = null;
+      return;
+    }
+    if (this.voyage) {
+      p.hp = Math.max(1, Math.round(this.d.maxHp * 0.15)); p.invuln = 2;
+      const foes = this.enemies.filter((e) => !e.dead);
+      for (const e of foes) { e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: '#3a3a4a' }); }
+      if (this.voyage.fighting) this.voyage.extra += this.t - this.voyage.fightT0;
+      this.voyage.fighting = null;
+      this.signals.push({ t: 'voyageLost', kind: this.voyage.event });
+      return;
+    }
     p.hp = 0;
     if (this.coop) { // 파티 탑: 쓰러져도 세계는 돈다 (층을 깨면 다시 일어난다 · 모두 쓰러지면 끝)
       p.down = true; p.st = {}; p.buffs = {};
@@ -3320,7 +3447,7 @@ export class World {
 
   // 바깥 세계의 지역 레벨: 권장 레벨 안에서 시작 마을에서 멀수록 높다 · 레벨만큼 체력 · 공격력 · 보상이 커진다
   regionLevel(r, tx, ty) {
-    const info = this.map.regionInfo?.[r]; if (!info?.lv || this.zone?.id !== 'world') return 0;
+    const info = this.map.regionInfo?.[r]; if (!info?.lv || (this.zone?.id !== 'world' && this.zone?.id !== 'nokt' && !this.zone?.island)) return 0;
     const [lo, hi] = info.lv, st = this.map.start || { x: tx, y: ty }, f = Math.min(1, Math.hypot(tx - st.x, ty - st.y) / 260);
     return Math.round(lo + (hi - lo) * f);
   }
@@ -3336,14 +3463,15 @@ export class World {
     const foes = this.enemies.filter((e) => !e.dead && !e.hidden && !(e.def.ai === 'dummy' && this.mode !== 'plaza'));
     let tx, ty;
     if (al.kind === 'grasper') { // 내 뒤쪽 비스듬히 50만큼 떨어져 떠 있다
-      const a = Math.atan2(-0.6, -p.dir); tx = p.x + Math.cos(a) * 50; ty = p.y + Math.sin(a) * 34;
+      al.side ||= -(p.dir || 1); // 처음 불렀을 때 내 뒤쪽 · 그 뒤로는 그쪽을 지킨다 (끌고 간 적이 다시 내 앞으로 오지 않게)
+      const a = Math.atan2(-0.35, al.side); tx = p.x + Math.cos(a) * 125; ty = p.y + Math.sin(a) * 70; // 나와 멀리 떨어져 떠 있다
       al.chg = (al.chg || 0) + DT;
       if (al.chg >= 5) {
         let best = null, bd = 200;
         for (const e of foes) { const d = Math.hypot(e.x - p.x, e.y - p.y); if (d < bd) { bd = d; best = e; } }
         if (best) {
           al.chg = 0; al.dir = best.x > al.x ? 1 : -1;
-          best.graspT = 0.5; best.graspTo = al; best.graspK = best.def.elite || best.champion ? 0.5 : 1; best.graspX0 = best.x; best.graspY0 = best.y; best.kbx = 0; best.kby = 0; this.aggro(best);
+          best.graspT = 1.2; best.graspTo = al; best.graspK = 1; /* 정예까지 망령 앞까지 끝까지 끌려간다 */ best.graspX0 = best.x; best.graspY0 = best.y; best.kbx = 0; best.kby = 0; this.aggro(best);
           this.emit({ t: 'graspArm', x1: al.x, y1: al.y - 8, x2: best.x, y2: best.y - 6 });
         } else al.chg = 5;
       }
@@ -3561,12 +3689,12 @@ export class World {
         const G = e.graspTo, gap = (G.r || 5) + e.r + 6, ang = Math.atan2(e.graspY0 - G.y, e.graspX0 - G.x);
         const tx = e.graspX0 + (G.x + Math.cos(ang) * gap - e.graspX0) * e.graspK, ty = e.graspY0 + (G.y + Math.sin(ang) * gap - e.graspY0) * e.graspK;
         const rx = tx - e.x, ry = ty - e.y, rl = Math.hypot(rx, ry);
-        if (rl > 3) { const sp = Math.min(rl, 560 * DT); this.move(e, (rx / rl) * sp, (ry / rl) * sp); } else e.graspT = 0;
+        if (rl > 3 && e.graspT > 0) { const sp = Math.min(rl, 560 * DT); this.move(e, (rx / rl) * sp, (ry / rl) * sp); } else { e.graspT = 0; e.st.stun = Math.max(e.st.stun || 0, 0.6); } // 다 끌려가면 0.6초 붙잡혀 있다
         continue;
       }
       if (e.reelT > 0) { // 작살에 끌려온다: 내 앞 (정예는 반쯤까지)
         e.reelT -= DT;
-        const gap = P.r + e.r + 6, tx = P.x + (e.reelX0 - P.x) * (1 - e.reelK) + P.aimX * gap * e.reelK, ty = P.y + (e.reelY0 - P.y) * (1 - e.reelK) + P.aimY * gap * e.reelK;
+        const gap = P.r + e.r + 2, tx = P.x + (e.reelX0 - P.x) * (1 - e.reelK) + P.aimX * gap * e.reelK, ty = P.y + (e.reelY0 - P.y) * (1 - e.reelK) + P.aimY * gap * e.reelK;
         const rx = tx - e.x, ry = ty - e.y, rl = Math.hypot(rx, ry);
         if (rl > 3) { const sp = Math.min(rl, 640 * DT); this.move(e, (rx / rl) * sp, (ry / rl) * sp); } else e.reelT = 0;
         continue;
@@ -3823,6 +3951,12 @@ export class World {
 
   killEnemy(e, selfDestruct = false) {
     if (e.dead) return;
+    if (e.npcRef) { e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: '#c8a888', defId: e.defId, dir: e.dir }); npcDown(this, e); this.loot.gold += 5 + Math.floor(Math.random() * 20); return; } // 공격한 NPC는 기절했다 돌아온다
+    if (e.official && !e.finish) {
+      e.hp = 1; e.begging = true; e.st = { stun: 9999 }; e.windT = 0; e.state = 'idle';
+      if (!e.beggedSent) { e.beggedSent = true; this.signals.push({ t: 'officialDown', id: e.official, eid: e.id }); this.emit({ t: 'text', x: e.x, y: e.y - 24, text: '살려 주시오!', color: '#ffe8a8' }); }
+      return;
+    }
     e.dead = true;
     if (this.coop) this.coop.deadIds.push(e.id);
     if (e.training) { // 수련 상대: 전리품 · 도감 · 의뢰 없이 수련만 센다
@@ -3934,10 +4068,11 @@ export class World {
       if (def.phaseMoves && phase !== (e.raidPhase ?? 0)) { e.raidPhase = phase; this.emit({ t: 'banner', text: `${def.name} · ${phase + 1}단계`, color: '#ff8a5a' }); this.emit({ t: 'shake', v: 4 }); }
       Object.assign(can, { beam: dist < 230, spiral: dist < 200, split: dist < 220, whirl: dist < melee + 22, shove: dist < melee + 10, quake: dist < 70,
         rain: dist < 260, adds: this.enemies.filter((o) => o.summoner === e.id && !o.dead).length < 3, charge: dist > 50 && dist < 260, mark: true, nova: dist < 120 });
-      const list = (def.phaseMoves ? def.phaseMoves[phase] : def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]);
+      const list = (def.phaseMoves ? def.phaseMoves[phase] : e.moves || def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]);
       if (!list.length) { e.mvCd = 0.3; return false; } // 지금 쓸 수 있는 기술이 없으면 조금 뒤 다시
       const pick = list[this.rng.int(0, list.length - 1)];
-      e.mvCd = (def.elite || e.champion ? 2.4 : 3.5) / (e.enraged ? 1.4 : 1) + this.rng.range(0, 1.5);
+      e.mvCd = (def.elite || e.champion ? 2.4 : 3.5) / (e.enraged ? 1.4 : 1) / (e.moves ? 1.5 : 1) + this.rng.range(0, 1.5); // 사람(경비 · 관리)은 기술을 더 자주
+      const sn = (e.skillNames || def.skillNames)?.[pick]; if (sn) this.emit({ t: 'text', x: e.x, y: e.y - 30, text: sn, color: '#ffd0a0' }); // 플레이어 스킬처럼 이름이 뜬다
       if (pick === 'combo' && dist < melee + 16) { e.mv = { k: 'combo', t: 0.35, n: 3 }; e.windT = 0.35; e.windMax = 0.35; this.emit({ t: 'windup', id: e.id }); return true; }
       if (pick === 'leap' && dist > 40 && dist < 170) { e.mv = { k: 'leap', t: 0.75, max: 0.75, x0: e.x, y0: e.y, x: tx, y: ty }; this.emit({ t: 'telegraphCircle', x: tx, y: ty, r: 30, dur: 0.75 }); return true; }
       if (pick === 'fan' && dist < 190) { e.mv = { k: 'fan', t: 0.45, ang: Math.atan2(ty - e.y, tx - e.x) }; e.windT = 0.45; e.windMax = 0.45; this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(e.mv.ang) * 120, y2: e.y + Math.sin(e.mv.ang) * 120, dur: 0.45, color: '#ff5a5a' }); return true; }
@@ -4302,6 +4437,7 @@ export class World {
   }
 
   enemiesNear(x, y, r) {
+    if (this.pHit && this.npcAttack) pokeNpcs(this, x, y, r, this.curTok);
     return this.enemies.filter((o) => !o.dead && !o.hidden && Math.hypot(o.x - x, o.y - y) <= r + o.r);
   }
 
@@ -4353,6 +4489,7 @@ export class World {
       }
       if (pr.life <= 0) continue;
       if (pr.owner === 'p' && !pr.ghost) {
+        if (this.npcAttack) for (const o of this.objects) if ((isPerson(o) && o.home && !o.hostile && !o.away && !o.knockedUntil && Math.hypot(o.x - pr.x, o.y - pr.y) < 9) || (o.kind === 'happening' && !o.gone && !o.engaged && Math.hypot(o.x - pr.x, o.y - pr.y) < 18)) { if (pr.tok == null || this.tokUsed?.has(pr.tok)) continue; pokeNpcs(this, o.x, o.y, 1, pr.tok); if (o.hostile || o.engaged) { if (!pr.pierce) pr.life = 0; break; } }
         for (const e of this.enemies) {
           if (e.dead || e.hidden || pr.hit.has(e.id)) continue;
           if (Math.hypot(e.x - pr.x, e.y - 4 - pr.y) > e.r + 5) continue; // 몸 가운데 (발밑보다 조금 위) 기준

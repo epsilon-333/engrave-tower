@@ -7,6 +7,7 @@ import { SB } from '../data/maps/seabed.js';
 import { hash, drawDeco } from './tiles.js';
 import { drawLandmark } from './landmarks.js';
 import { drawVillageProp } from './villageprops.js';
+import { drawCapitalProp } from './capitalprops.js';
 import { drawStump } from './lifefx.js';
 
 const OL = '#1a1410';
@@ -431,7 +432,86 @@ export function drawOutdoorProp(g, pr, t, night, burntTrees) {
   const x = pr.x * TILE, y = pr.y * TILE, W = pr.w * TILE, H = pr.h * TILE, cx = x + W / 2, by = y + H;
   if (pr.big && drawLandmark(g, pr, t, night)) return; // 성지 마을의 커다란 상징물
   if (drawVillageProp(g, pr, t, night)) return;      // 성지 마을의 작은 것들
+  if (drawCapitalProp(g, pr, t, night)) return;      // 왕도: 성벽 · 망루 · 성문 · 분수 · 처형대 · 좌판
   switch (pr.kind) {
+    case 'brokenWell': { // 폐허 도시의 무너진 우물: 반쯤 허물어진 돌 테두리 · 검은 구멍 · 늘어진 밧줄
+      shadowEllipse(g, cx, by - 4, 20, 6, 0.28);
+      g.fillStyle = OL; g.beginPath(); g.ellipse(cx, by - 9, 19, 9, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#8a8478'; g.beginPath(); g.ellipse(cx, by - 9, 18, 8, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#05040a'; g.beginPath(); g.ellipse(cx, by - 10, 12, 5, 0, 0, Math.PI * 2); g.fill();
+      for (let k = 0; k < 7; k++) { const a = Math.PI * (0.05 + k * 0.13); R(g, k % 2 ? '#a8a294' : '#6e685c', cx + Math.cos(a) * 16 - 3, by - 9 + Math.sin(a) * 7 - 2, 6, 4); }
+      R(g, OL, cx - 18, by - 18, 6, 7); R(g, '#9c968a', cx - 17, by - 17, 4, 5); R(g, '#7a7468', cx + 10, by - 14, 6, 3);
+      R(g, '#5a4a32', cx + 13, by - 30, 2, 18); R(g, '#c8b080', cx + 2, by - 29, 12, 1); R(g, '#c8b080', cx + 2, by - 29, 1, 16);
+      return;
+    }
+    case 'sewerGrate': { // 왕도 하수구: 돌 둔덕 속 녹슨 쇠창살, 이끼 · 물방울
+      shadowEllipse(g, cx, by - 2, 22, 5, 0.25);
+      g.fillStyle = OL; g.beginPath(); g.moveTo(x - 4, by); g.lineTo(x + 2, by - 22); g.lineTo(x + W - 2, by - 22); g.lineTo(x + W + 4, by); g.closePath(); g.fill();
+      g.fillStyle = '#7a7468'; g.beginPath(); g.moveTo(x - 3, by - 1); g.lineTo(x + 3, by - 21); g.lineTo(x + W - 3, by - 21); g.lineTo(x + W + 3, by - 1); g.closePath(); g.fill();
+      R(g, OL, cx - 11, by - 17, 22, 16); R(g, '#0a0a10', cx - 10, by - 16, 20, 15);
+      for (let k = 0; k < 5; k++) R(g, '#7a4a2a', cx - 9 + k * 4, by - 16, 2, 15);
+      R(g, '#8a5a32', cx - 10, by - 11, 20, 2);
+      R(g, '#4a7a3a', x + 1, by - 6, 6, 3); R(g, '#4a7a3a', x + W - 7, by - 9, 5, 2);
+      if (Math.floor(t * 2) % 3 === 0) R(g, '#7ad8ff', cx + 3, by - 2 + (Math.floor(t * 6) % 3), 1, 2);
+      return;
+    }
+    case 'oldMine': { // 황야의 옛 광산: 바위에 박힌 나무 틀 입구, 녹슨 레일, 깨진 표지
+      shadowEllipse(g, cx, by - 2, 24, 6, 0.28);
+      g.fillStyle = OL; g.beginPath(); g.ellipse(cx, by - 12, 24, 16, 0, Math.PI, 0); g.fill();
+      g.fillStyle = '#9a6a42'; g.beginPath(); g.ellipse(cx, by - 12, 23, 15, 0, Math.PI, 0); g.fill();
+      R(g, '#9a6a42', x - 4, by - 12, W + 8, 12);
+      R(g, '#05040a', cx - 10, by - 22, 20, 22);
+      for (const sx of [-12, 10]) { R(g, OL, cx + sx - 1, by - 25, 5, 25); R(g, '#6a4a2a', cx + sx, by - 24, 3, 24); }
+      R(g, OL, cx - 14, by - 27, 28, 5); R(g, '#7a5232', cx - 13, by - 26, 26, 3);
+      for (let k = 0; k < 4; k++) R(g, '#5a3a22', cx - 7, by - 4 - k * 4, 14, 1);
+      R(g, '#8a8a92', cx - 6, by - 18, 1, 18); R(g, '#8a8a92', cx + 5, by - 18, 1, 18);
+      R(g, OL, cx + 16, by - 18, 12, 8); R(g, '#c8a070', cx + 17, by - 17, 10, 6); R(g, '#a0302a', cx + 19, by - 15, 6, 1);
+      return;
+    }
+    case 'ship': {
+      const bob = Math.round(Math.sin(t * 1.6 + pr.x) * 1);
+      const hy = by - 6 + bob, hx0 = x - 4, hx1 = x + W + 8; // 선체 아래쪽 선(물 높이)
+      // 물결과 그림자
+      R(g, 'rgba(10,30,50,0.35)', x - 6, by - 6, W + 18, 8);
+      // 선체: 고물(왼쪽)은 높고 네모, 이물(오른쪽)은 뾰족하게 위로
+      g.fillStyle = OL; g.beginPath(); g.moveTo(hx0 - 1, hy - 23); g.lineTo(hx0 + 6, hy + 1); g.lineTo(hx1 - 14, hy + 1); g.lineTo(hx1 + 1, hy - 19); g.lineTo(hx1 - 4, hy - 19); g.lineTo(hx1 - 16, hy - 15); g.lineTo(hx0 + 14, hy - 15); g.lineTo(hx0 + 13, hy - 23); g.closePath(); g.fill();
+      g.fillStyle = '#6a4226'; g.beginPath(); g.moveTo(hx0, hy - 22); g.lineTo(hx0 + 7, hy); g.lineTo(hx1 - 14, hy); g.lineTo(hx1, hy - 18); g.lineTo(hx1 - 4, hy - 18); g.lineTo(hx1 - 16, hy - 14); g.lineTo(hx0 + 14, hy - 14); g.lineTo(hx0 + 12, hy - 22); g.closePath(); g.fill();
+      R(g, '#8a5a32', hx0 + 4, hy - 13, W - 6, 3); R(g, '#4a2a16', hx0 + 6, hy - 6, W - 10, 2); R(g, '#c89a3a', hx0 + 5, hy - 10, W - 8, 1); // 띠 · 금빛 줄
+      for (let k = 0; k < 5; k++) { R(g, OL, hx0 + 16 + k * 16, hy - 9, 5, 5); R(g, '#1a2a3a', hx0 + 17 + k * 16, hy - 8, 3, 3); } // 현창
+      R(g, '#5a3a22', hx0 + 1, hy - 30, 12, 8); R(g, OL, hx0 + 1, hy - 31, 12, 1); R(g, '#ffd27a', hx0 + 4, hy - 28, 3, 3); // 고물 선실
+      // 돛대 둘과 돛
+      for (const [mx, mh, sw] of [[cx - 16, 78, 30], [cx + 22, 64, 24]]) {
+        R(g, OL, mx - 2, hy - 14 - mh, 4, mh); R(g, '#7a5232', mx - 1, hy - 14 - mh, 2, mh);
+        R(g, OL, mx - sw / 2 - 1, hy - 14 - mh + 6, sw + 2, 3);
+        const top = hy - 14 - mh + 8, sh = mh * 0.62, swell = Math.round(Math.sin(t * 2 + mx) * 1.5);
+        g.fillStyle = OL; g.beginPath(); g.moveTo(mx - sw / 2 - 1, top - 1); g.lineTo(mx + sw / 2 + 1, top - 1); g.lineTo(mx + sw / 2 + 3 + swell, top + sh + 1); g.lineTo(mx - sw / 2 + 1 + swell, top + sh + 1); g.closePath(); g.fill();
+        g.fillStyle = '#f0e8d4'; g.beginPath(); g.moveTo(mx - sw / 2, top); g.lineTo(mx + sw / 2, top); g.lineTo(mx + sw / 2 + 2 + swell, top + sh); g.lineTo(mx - sw / 2 + 2 + swell, top + sh); g.closePath(); g.fill();
+        R(g, pr.flag || '#3a6a9a', mx - sw / 2 + 2, top + sh * 0.4, sw, 4); R(g, 'rgba(0,0,0,0.08)', mx - sw / 2, top, 3, sh);
+        const fw = Math.round(6 + Math.sin(t * 5 + mx) * 2); R(g, OL, mx, hy - 14 - mh - 6, fw + 1, 6); R(g, pr.flag || '#3a6a9a', mx + 1, hy - 14 - mh - 5, fw, 4); // 깃발
+      }
+      // 이물 쪽 밧줄
+      g.fillStyle = OL; for (let k = 0; k < 10; k++) R(g, OL, cx + 22 + k * 3.2, hy - 76 + k * 6, 1, 2);
+      // 뱃전에 부딪히는 물결
+      const wv = Math.floor(t * 4) % 3;
+      for (let k = 0; k < W + 8; k += 6) R(g, 'rgba(230,246,255,0.55)', hx0 + 6 + k + wv * 2, by - 4 + (k % 12 ? 0 : 1), 4, 1);
+      return;
+    }
+    case 'wreck': { // 뭍에 얹힌 난파선: 기울어진 선체 · 부러진 돛대 · 찢긴 돛 · 뚫린 구멍
+      const hx0 = x - 6, hx1 = x + W + 8, hy = by - 2, tilt = 9;
+      R(g, 'rgba(20,14,8,0.3)', x - 4, by - 5, W + 12, 7);
+      g.fillStyle = OL; g.beginPath(); g.moveTo(hx0 - 1, hy - 30); g.lineTo(hx0 + 8, hy + 1); g.lineTo(hx1 - 14, hy + 1 - tilt); g.lineTo(hx1 + 1, hy - 28 - tilt); g.lineTo(hx1 - 16, hy - 20 - tilt); g.lineTo(hx0 + 14, hy - 20); g.lineTo(hx0 + 13, hy - 30); g.closePath(); g.fill();
+      g.fillStyle = '#5a3a24'; g.beginPath(); g.moveTo(hx0, hy - 29); g.lineTo(hx0 + 9, hy); g.lineTo(hx1 - 14, hy - tilt); g.lineTo(hx1, hy - 27 - tilt); g.lineTo(hx1 - 16, hy - 19 - tilt); g.lineTo(hx0 + 14, hy - 19); g.lineTo(hx0 + 12, hy - 29); g.closePath(); g.fill();
+      g.fillStyle = '#7a5232'; g.beginPath(); g.moveTo(hx0 + 13, hy - 19); g.lineTo(hx1 - 16, hy - 19 - tilt); g.lineTo(hx1 - 17, hy - 16 - tilt); g.lineTo(hx0 + 13, hy - 16); g.closePath(); g.fill(); // 갑판 가장자리
+      for (let row = 0; row < 3; row++) for (let k = 0; k < 7; k++) { const px = hx0 + 12 + k * 14 + row * 5, py = hy - 6 - row * 5 - tilt * (px - hx0) / (hx1 - hx0); R(g, '#3e2616', px, py, 12, 1); } // 판자 이음
+      R(g, '#4a2e1a', hx0 + 1, hy - 38, 12, 9); R(g, OL, hx0 + 1, hy - 39, 12, 1); R(g, '#1a100a', hx0 + 4, hy - 36, 3, 3); // 무너진 고물 선실
+      for (const [hx, hw] of [[0.3, 10], [0.62, 7]]) { const px = hx0 + (hx1 - hx0) * hx, py = hy - 13 - tilt * hx; R(g, OL, px, py, hw, 6); R(g, '#1a100a', px + 1, py + 1, hw - 2, 4); R(g, '#7a5232', px - 1, py + 2, 2, 1); } // 뚫린 구멍
+      const mx = x + W * 0.42, mt = hy - 19 - tilt * 0.42;
+      g.save(); g.translate(mx, mt); g.rotate(0.28); R(g, OL, -2, -38, 4, 38); R(g, '#6a4628', -1, -38, 2, 38); R(g, OL, -12, -32, 24, 3); // 기울어진 돛대
+      g.fillStyle = OL; g.beginPath(); g.moveTo(-11, -30); g.lineTo(10, -30); g.lineTo(6, -14); g.lineTo(1, -20); g.lineTo(-4, -11); g.lineTo(-10, -18); g.closePath(); g.fill();
+      g.fillStyle = '#c8bca0'; g.beginPath(); g.moveTo(-10, -29); g.lineTo(9, -29); g.lineTo(5, -15); g.lineTo(1, -21); g.lineTo(-4, -12); g.lineTo(-9, -19); g.closePath(); g.fill(); R(g, '#1a1a1a', -9, -25, 18, 2); g.restore(); // 찢긴 검은 줄 돛
+      R(g, OL, x + W * 0.78 - 2, mt - 14 + 3, 4, 14); R(g, '#6a4628', x + W * 0.78 - 1, mt - 14 + 3, 2, 14); R(g, '#e8dcc0', x + W * 0.78 - 2, mt - 15 + 3, 4, 2); // 부러진 뒷돛대
+      return;
+    }
     case 'tree': {
       const burnt = burntTrees?.has(`${pr.x},${pr.y}`);
       if (pr.chopped) { drawStump(g, pr, burnt || pr.tree === 'charred'); return; }
@@ -549,7 +629,7 @@ export function drawOutdoorProp(g, pr, t, night, burntTrees) {
       glowAt(g, cx, topY + 2, 30, 'rgba(160,255,230,A)', 0.7 * pulse);
       return;
     }
-    case 'house_altar': case 'house_library': case 'house_guild': case 'house_forge': case 'house_shop': case 'house_dojo': case 'house_home': case 'house_res':
+    case 'house_altar': case 'house_library': case 'house_guild': case 'house_forge': case 'house_shop': case 'house_dojo': case 'house_home': case 'house_res': case 'house_manor': case 'house_town': case 'house_prison':
       drawBuilding(g, pr, t, night); return;
     case 'lampPost': { // 가로등: 쇠기둥 + 유리 등 (밤에 켜진다)
       shadowEllipse(g, cx, by - 2, 5, 2);
@@ -697,9 +777,16 @@ const BLD = {
   res_assassin: { wall: '#4e4a58', wall2: '#423e4c', planks: true, timber: '#1e1a24', roof: '#2e2a36', roof2: '#24202c', door: '#16121c', sign: 'dagger' },
   res_dino: { wall: '#b08850', wall2: '#a07a44', planks: true, timber: '#5a3e1e', roof: '#c8a050', roof2: '#a8843a', door: '#4a3018', sign: 'egg' },
   res_dragon: { wall: '#4e4244', wall2: '#423638', stone: true, timber: '#2a2022', roof: '#a8321e', roof2: '#8a2614', door: '#2a1410', sign: 'flame', chimney: true },
+  // 왕도: 귀족 저택 (지붕 색은 저택마다) · 서민 집 셋 · 감옥
+  manor: { wall: '#ece4d0', wall2: '#ddd3bc', stone: true, timber: '#5a5048', roof: '#2e4a82', roof2: '#243a68', door: '#5a2a1a', sign: 'crown', dormer: true, chimney: true, columns: true, wide: true },
+  town1: { wall: '#ecd9b4', wall2: '#e0caa0', timber: '#6a4024', roof: '#b4603e', roof2: '#9a4e30', door: '#7a4a2a', sign: 'home' },
+  town2: { wall: '#c8b08a', wall2: '#b89e78', planks: true, timber: '#4a3020', roof: '#4a6a8a', roof2: '#3a5470', door: '#4a3020', sign: 'home', chimney: true },
+  town3: { wall: '#d8d0c0', wall2: '#c8c0ae', stone: true, timber: '#5a5048', roof: '#7a5a4a', roof2: '#62483a', door: '#5a3a22', sign: 'home' },
+  prison: { wall: '#6e6a74', wall2: '#5e5a64', stone: true, timber: '#2a2830', roof: '#3a3a46', roof2: '#2c2c36', door: '#26262e', sign: 'key', bars: true, wide: true },
 };
+const darker2 = (hex) => { const n = parseInt(hex.slice(1), 16), f = (v) => Math.max(0, Math.round(v * 0.78)); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
 function drawBuilding(g, pr, t, night) {
-  const st = BLD[pr.house], x = pr.x * TILE, y = pr.y * TILE, W = pr.w * TILE, H = pr.h * TILE, by = y + H;
+  const st = pr.roof ? { ...BLD[pr.house], roof: pr.roof, roof2: darker2(pr.roof) } : BLD[pr.house], x = pr.x * TILE, y = pr.y * TILE, W = pr.w * TILE, H = pr.h * TILE, by = y + H;
   const dx = pr.doorX ?? x + W / 2, wallH = 44, eave = by - wallH, roofTop = y - 26;
   // 그림자
   g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.moveTo(x + 4, by); g.lineTo(x + W + 10, by); g.lineTo(x + W + 4, by - 8); g.lineTo(x + 4, by - 8); g.fill();
@@ -717,6 +804,11 @@ function drawBuilding(g, pr, t, night) {
   R(g, '#6a6660', x - 1, by - 5, W + 2, 5); R(g, '#8a8680', x - 1, by - 5, W + 2, 1); // 주춧돌
   // 창문 (문 양옆)
   const win = (wx, wy, ww, wh) => {
+    if (st.bars) { // 감옥: 작고 어두운 창 · 쇠창살
+      R(g, OL, wx - 1, wy + 1, ww + 2, wh - 2); R(g, night ? '#5a4a2a' : '#141018', wx, wy + 2, ww, wh - 4);
+      for (let k = 2; k < ww; k += 3) R(g, '#6a6a76', wx + k, wy + 2, 1, wh - 4);
+      R(g, '#4a4a56', wx - 1, wy + 1, ww + 2, 1); return;
+    }
     R(g, OL, wx - 2, wy - 2, ww + 4, wh + 4); R(g, st.timber, wx - 1, wy - 1, ww + 2, wh + 2);
     R(g, night ? '#ffd27a' : '#7ab8e0', wx, wy, ww, wh); R(g, night ? '#fff0b0' : '#b8e0f8', wx, wy, ww, 3);
     R(g, st.timber, wx + ww / 2 - 1, wy, 2, wh); R(g, st.timber, wx, wy + wh / 2 - 1, ww, 2);
@@ -734,7 +826,7 @@ function drawBuilding(g, pr, t, night) {
     win(x + W - 26, eave + 10, 14, 13);
   } else if (st.shoji) { // 수련장: 창호지 미닫이
     for (const wx of [x + 8, x + W - 30]) { R(g, OL, wx - 1, eave + 8, 24, 26); R(g, night ? '#ffe2a8' : '#f4ecd8', wx, eave + 9, 22, 24); for (let k = 0; k < 22; k += 7) R(g, '#5a3a22', wx + k, eave + 9, 1, 24); for (let k = 0; k < 24; k += 8) R(g, '#5a3a22', wx, eave + 9 + k, 22, 1); }
-  } else { win(x + 9, eave + 10, 14, 13); win(x + W - 23, eave + 10, 14, 13); }
+  } else { win(x + 9, eave + 10, 14, 13); win(x + W - 23, eave + 10, 14, 13); if (st.wide) { win(x + 27, eave + 10, 14, 13); win(x + W - 41, eave + 10, 14, 13); } }
   // 문
   if (st.shoji) { R(g, OL, dx - 10, by - 30, 20, 30); R(g, '#f4ecd8', dx - 9, by - 29, 18, 29); R(g, '#5a3a22', dx - 1, by - 29, 2, 29); for (let k = 0; k < 29; k += 7) R(g, '#5a3a22', dx - 9, by - 29 + k, 18, 1); }
   else {
@@ -745,6 +837,12 @@ function drawBuilding(g, pr, t, night) {
     R(g, OL, dx - 13, by - 35, 26, 4); R(g, st.roof2, dx - 12, by - 34, 24, 2); // 문 위 처마
   }
   R(g, '#9a8a72', dx - 11, by - 1, 22, 3); R(g, '#b8a888', dx - 11, by - 1, 22, 1); // 문턱 돌
+  if (st.columns) { // 저택: 문 양옆 흰 기둥 · 문 위 작은 발코니와 가문 깃발
+    for (const px of [dx - 16, dx + 12]) { R(g, OL, px - 1, by - 38, 6, 38); R(g, '#f4f0e6', px, by - 37, 4, 36); R(g, '#d8d2c4', px + 3, by - 37, 1, 36); R(g, OL, px - 2, by - 40, 8, 3); R(g, '#f4f0e6', px - 1, by - 39, 6, 1); }
+    R(g, OL, dx - 18, by - 42, 36, 4); R(g, '#e8e0d0', dx - 17, by - 41, 34, 2);
+    for (let k = -15; k <= 15; k += 5) R(g, OL, dx + k, by - 48, 1, 6); R(g, OL, dx - 17, by - 49, 34, 2);
+    R(g, OL, dx - 4, by - 66, 9, 16); R(g, st.roof, dx - 3, by - 65, 7, 13); R(g, '#ffd76a', dx - 1, by - 61, 3, 3);
+  }
   // 지붕
   const rl = x - 7, rr = x + W + 7, inset = 5;
   g.fillStyle = OL; g.beginPath(); g.moveTo(rl - 1, eave + 3); g.lineTo(rl + inset - 1, roofTop - 1); g.lineTo(rr - inset + 1, roofTop - 1); g.lineTo(rr + 1, eave + 3); g.closePath(); g.fill();
@@ -803,6 +901,8 @@ function drawSignIcon(g, kind, x, y) {
   else if (kind === 'dagger') { R(g, '#d0d8e4', x, y - 5, 1, 7); R(g, OL, x - 2, y + 2, 5, 1); R(g, '#6a4a8a', x, y + 3, 1, 2); }
   else if (kind === 'egg') { R(g, '#e8e0c8', x - 2, y - 3, 5, 7); R(g, '#e8e0c8', x - 3, y - 1, 7, 4); R(g, '#9aa880', x - 1, y - 1, 1, 1); R(g, '#9aa880', x + 1, y + 1, 1, 1); }
   else if (kind === 'flame') { R(g, '#ff7a1a', x - 2, y - 2, 5, 5); R(g, '#ff7a1a', x - 1, y - 4, 3, 2); R(g, '#ffd040', x - 1, y - 1, 3, 3); }
+  else if (kind === 'crown') { R(g, '#ffd76a', x - 4, y, 9, 3); R(g, '#ffd76a', x - 4, y - 3, 2, 3); R(g, '#ffd76a', x - 1, y - 4, 3, 4); R(g, '#ffd76a', x + 3, y - 3, 2, 3); R(g, '#e83a3a', x, y + 1, 1, 1); }
+  else if (kind === 'key') { R(g, OL, x - 4, y - 3, 5, 5); R(g, '#c8a040', x - 3, y - 2, 3, 3); R(g, '#c8a040', x, y - 1, 5, 1); R(g, '#c8a040', x + 3, y, 1, 2); R(g, '#c8a040', x + 1, y, 1, 2); }
   else if (kind === 'home') { R(g, '#b4603e', x - 4, y - 1, 9, 2); R(g, '#b4603e', x - 3, y - 2, 7, 1); R(g, '#b4603e', x - 1, y - 3, 3, 1); R(g, '#ecd9b4', x - 3, y + 1, 7, 4); R(g, '#7a4a2a', x - 1, y + 2, 2, 3); }
 }
 

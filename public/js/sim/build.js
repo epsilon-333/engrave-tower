@@ -12,6 +12,14 @@ export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back'];
 export const AGI_DODGE_FROM = 25;
 export const GEAR_SLOTS = ['weapon', 'off', 'armor', 'acc1', 'acc2'];
 
+// 각인 강화 (용의 둥지): 단계마다 스탯 · 효과 수치 +12%
+export const ENG_STEP = 0.12, ENG_MAX = 5;
+function scaleEffect(e, m) {
+  if (typeof e.v !== 'number') return e;
+  if (e.type === 'mul') return { ...e, v: 1 + (e.v - 1) * m };
+  if (e.type === 'add' || e.type === 'stat') return { ...e, v: e.type === 'stat' ? Math.round(e.v * m) : e.v * m };
+  return e;
+}
 // loadout: { race, level, alloc:{str..}, engravings:{slot:id}, gear:{slot:id} }
 export function computeBuild(lo) {
   if (RACE_MIGRATE[lo.race]) lo = { ...lo, race: RACE_MIGRATE[lo.race] };
@@ -26,7 +34,7 @@ export function computeBuild(lo) {
   const sources = [];
   for (const s of SLOTS) {
     const id = lo.engravings?.[s];
-    if (id && ENGRAVINGS[id]) sources.push({ kind: 'engraving', id, def: ENGRAVINGS[id] });
+    if (id && ENGRAVINGS[id]) { const elv = lo.engLv?.[id] || 0; sources.push({ kind: 'engraving', id, def: ENGRAVINGS[id], mul: 1 + ENG_STEP * elv, elv }); } // 용의 둥지에서 강화한 각인: 단계마다 +12%
   }
   const twoHand = weaponHands(ITEMS[lo.gear?.weapon]) >= 2; // 양손 무기면 왼손은 쉰다
   const offRaw = lo.gear?.off ? ITEMS[lo.gear.off] : null;
@@ -81,7 +89,7 @@ export function computeBuild(lo) {
     for (const e of src.def.effects || []) {
       const ok = evalCond(e.when, ctx);
       if (e.when) notes.push({ kind: ok ? 'on' : 'off', text: `${src.def.name}: ${condText(e.when)} → ${e.text}` });
-      if (ok) effects.push(e);
+      if (ok) effects.push(src.elv ? scaleEffect(e, src.mul) : e);
     }
   }
 
@@ -260,10 +268,10 @@ export function offWeaponPower(it) {
 
 // 빌드 코드 (온라인 공유/고스트 대전용)
 export function encodeLoadout(lo) {
-  const json = JSON.stringify({ r: lo.race, l: lo.level, a: lo.alloc, e: lo.engravings, g: lo.gear, k: lo.skills, c: lo.cls });
+  const json = JSON.stringify({ r: lo.race, l: lo.level, a: lo.alloc, e: lo.engravings, g: lo.gear, k: lo.skills, c: lo.cls, n: lo.engLv });
   return btoa(unescape(encodeURIComponent(json)));
 }
 export function decodeLoadout(code) {
   const o = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
-  return { race: o.r, level: o.l, alloc: o.a || {}, engravings: o.e || {}, gear: o.g || {}, skills: o.k, cls: o.c };
+  return { race: o.r, level: o.l, alloc: o.a || {}, engravings: o.e || {}, gear: o.g || {}, skills: o.k, cls: o.c, engLv: o.n || {} };
 }
