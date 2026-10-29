@@ -175,7 +175,7 @@ export function createClimb(ctx) {
     if (s.reward === 'hone') return pickHone('연마', done);
     if (s.reward === 'bless') return pickBless('축복', done);
     if (s.reward === 'gold') { const g = goldGain(goldReward(r.f), r, meta()); r.gold += g; ctx.floatText(`탑 금화 +${g}`, '#ffd84a'); ctx.sfx('coin'); return done(); }
-    if (s.reward === 'heal') { const before = w.player.hp; w.heal(w.d.maxHp * 0.4, 'spring'); ctx.floatText(`체력 +${Math.round(w.player.hp - before)}`, '#7be38a'); ctx.sfx('levelup', { vol: 0.5 }); return done(); }
+    if (s.reward === 'heal') { const before = w.player.hp; w.heal(w.d.maxHp * 0.25, 'spring'); ctx.floatText(`체력 +${Math.round(w.player.hp - before)}`, '#7be38a'); ctx.sfx('levelup', { vol: 0.5 }); return done(); }
     if (s.reward === 'shard') { const g = shardGain(shardReward(r.f), r, meta()); r.shards += g; ctx.floatText(`✦ 별빛 +${g}`, '#b8a8ff'); ctx.sfx('levelup', { vol: 0.5 }); return done(); }
     done();
   }
@@ -313,11 +313,11 @@ export function createClimb(ctx) {
     const use = (i) => {
       if (o) { o.used = true; o.label = '사그라든 모닥불'; }
       keyPick = null; close();
-      if (i === 0) { const before = w.player.hp; w.heal(w.d.maxHp * 0.5, 'spring'); ctx.floatText(`체력 +${Math.round(w.player.hp - before)}`, '#7be38a'); ctx.save0(); }
+      if (i === 0) { const before = w.player.hp; w.heal(w.d.maxHp * 0.35, 'spring'); ctx.floatText(`체력 +${Math.round(w.player.hp - before)}`, '#7be38a'); ctx.save0(); }
       else pickHone('쉼터 · 연마', () => ctx.save0());
     };
     ctx.showModal(`<h2>쉼터</h2><p class="muted">다음 층에는 강한 것이 기다린다. 모닥불 곁에서 무엇을 할까?</p>
-      <div class="cl-cards"><button class="cl-card" data-rest="0" style="--g:#7be38a"><span class="cl-key">1</span><b>쉰다</b><span class="cl-big">체력 50% 회복</span><small>지금 ${Math.round(w.player.hp)} / ${w.d.maxHp}</small></button>
+      <div class="cl-cards"><button class="cl-card" data-rest="0" style="--g:#7be38a"><span class="cl-key">1</span><b>쉰다</b><span class="cl-big">체력 35% 회복</span><small>지금 ${Math.round(w.player.hp)} / ${w.d.maxHp}</small></button>
       <button class="cl-card" data-rest="1" style="--g:#7ad8ff" ${r.eng.length ? '' : 'disabled'}><span class="cl-key">2</span><b>각인을 다듬는다</b><span class="cl-big">각인 하나 연마</span></button></div>
       <div class="actions"><button data-close class="ghost">나중에</button></div>`);
     document.querySelectorAll('[data-rest]').forEach((b) => (b.onclick = () => use(+b.dataset.rest)));

@@ -3211,8 +3211,8 @@ export class Renderer {
     } else if (dr.kind === 'good') { // 캐고 · 벤 물건: 작은 아이콘이 통통 튄다
       const ic = iconCanvas(dr.id), x = Math.round(dr.x), y = Math.round(dr.y - 6 + bob);
       g.drawImage(ic, x - 6, y - 6, 12, 12);
-    } else if (dr.kind === 'weapon') { // 탑의 무기: 등급 색 빛기둥 + 바닥 빛 + 비스듬히 꽂힌 칼날
-      const r = dr.id.loot.r, col = ['#c8c0d0', '#5ab0ff', '#c070ff', '#ffb030', '#ff4a6a'][r], x = Math.round(dr.x), y = Math.round(dr.y + bob * 0.5);
+    } else if (dr.kind === 'weapon' || dr.kind === 'tweapon') { // 탑의 무기: 등급 색 빛기둥 + 바닥 빛 + 비스듬히 꽂힌 칼날
+      const r = dr.kind === 'tweapon' ? ITEMS[dr.id]?.rarity ?? 0 : dr.id.loot.r, col = ['#c8c0d0', '#5ab0ff', '#c070ff', '#ffb030', '#ff4a6a'][r], x = Math.round(dr.x), y = Math.round(dr.y + bob * 0.5);
       const pulse = 0.5 + 0.5 * Math.sin(w.t * 4 + dr.x);
       if (r >= 1) { const H = 18 + r * 12; const gr = g.createLinearGradient(0, y - H, 0, y); gr.addColorStop(0, hexA(col, 0)); gr.addColorStop(1, hexA(col, 0.25 + 0.12 * r * pulse / 4)); g.fillStyle = gr; g.fillRect(x - 2 - r, y - H, 4 + r * 2, H); }
       g.fillStyle = hexA(col, 0.18 + 0.1 * pulse); ellipse(g, x, y + 2, 7 + r, 3 + r * 0.4);

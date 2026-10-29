@@ -21,7 +21,7 @@ export const JOURNEY = [
   { id: 'lv10', title: '레벨 10 되기', hint: '꽃바람 들판 · 이끼 숲 · 독늪 — 권장 레벨이 지역 이름 아래에 보인다', check: (s) => (s.level || 1) >= 10, reward: { gold: 300 } },
   { id: 'f15', title: '15층 수호자 쓰러뜨리기', hint: '독늪의 수호자는 독을 뿌린다. 같은 태그의 각인을 모으면 시너지가 켜진다', to: { kind: 'towerDoor' }, check: (s) => (C(s).best || 0) >= 15, reward: { shards: 12 } },
   { id: 'hone5', title: '한 각인을 5단계까지 연마하기', hint: '연마 문 · 쉼터 · 상인의 숫돌. 같은 각인이 다시 나와도 연마된다', to: { kind: 'towerDoor' }, check: (s) => (C(s).maxLv || 0) >= 5, reward: { shards: 12 } },
-  { id: 'lord2', title: '20층 · 독늪의 주인 쓰러뜨리기', hint: '이제 11층부터 바로 시작할 수 있다 (출발 각인을 먼저 고른다)', to: { kind: 'towerDoor' }, check: (s) => lords(s, 2), reward: { shards: 25, gold: 600 } },
+  { id: 'lord2', title: '20층 · 독늪의 주인 쓰러뜨리기', hint: '쓰러지면 언제나 1층부터. 레벨을 올리고 좋은 무기를 얻어 다시 오른다', to: { kind: 'towerDoor' }, check: (s) => lords(s, 2), reward: { shards: 25, gold: 600 } },
   { id: 'meta10', title: '탑의 축복 모두 합쳐 10단계', hint: '「두 번째 숨」은 쓰러질 때 한 번 일으켜 준다', to: { kind: 'towerDoor' }, check: (s) => metaSum(s) >= 10, reward: { gold: 500 } },
   { id: 'lv16', title: '레벨 16 되기', hint: '폐허 도시 · 원시림 · 바위산 · 황야. 의뢰 게시판의 의뢰도 도감을 채운다', check: (s) => (s.level || 1) >= 16, reward: { gold: 600 } },
   { id: 'lord3', title: '30층 · 화산 균열의 주인 쓰러뜨리기', hint: '용암 웅덩이에 들어가면 화상. 광선은 예고선 옆으로 피한다', to: { kind: 'towerDoor' }, check: (s) => lords(s, 3), reward: { shards: 40, gold: 1000 } },

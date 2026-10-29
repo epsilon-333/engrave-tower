@@ -31,8 +31,8 @@ export function levelGap(f, level) {
 }
 
 // 몬스터 세기: 구역마다 몬스터 종류의 기본 체력이 다르므로 구역 평균으로 나눠 맞춘 뒤 층마다 오른다.
-// 체력 ×1.068 · 공격 ×1.044 (층마다) → 50층: 체력 약 25배 · 공격 약 8.2배 (1층 대비). 51층부터는 층마다 3.5% · 2%씩만 더 (100층: 50층의 약 3.4배 · 2.6배)
-const HP_GROW = 1.068, ATK_GROW = 1.044;
+// 층마다 복리로 강해진다 (100층까지 끝없이): 레벨 · 무기 · 각인이 받쳐 줘야 오른다
+const HP_GROW = 1.06, ATK_GROW = 1.042;
 // 탑의 몬스터는 바깥보다 단단하다 (보통 몹도 서너 번은 때려야 쓰러진다) · 수호자 · 주인은 그보다 더
 const CLIMB_HP = 2.3, CLIMB_ATK = 1.15; // 3.2 → 2.3: 맞으면 잘 쓰러지게 (보통 몹은 두세 번)
 export const BOSS_HP = { guardian: 2.2, lord: 2.5 }; export const BOSS_ATK = { guardian: 1.4, lord: 1.3 }; // 수호자 · 주인은 레벨이 모자라면 벽이 된다 (권장 레벨에서 두 레벨 이상 낮으면 공격 배율을 다 받는다)
@@ -46,9 +46,9 @@ const BASE_REF = { hp: 48, atk: 8.5 }; // 1층(이끼 굴) 몬스터 평균에 �
 // 구역이 바뀔 때마다 한 계단 더 (뒤 구역일수록 각인이 쌓여 강해지므로)
 const ACT_HP = [1, 1.3, 1.75, 2.4, 3.3], ACT_ATK = [1, 1.18, 1.4, 1.68, 2.0]; // 51층부터는 마지막 계단 그대로 (층마다 조금씩 오르는 몫만)
 export function climbMul(f, zoneId, oath = {}) {
-  const ref = ZONE_REF[zoneId] || BASE_REF, ai = Math.max(0, Math.min(4, Math.floor((f - 1) / 10))), f50 = Math.min(f, 50), over = Math.max(0, f - 50);
-  const hp = CLIMB_HP * ACT_HP[ai] * Math.pow(HP_GROW, f50 - 1) * (1 + 0.035 * over) * (BASE_REF.hp / ref.hp) * (1 + 0.15 * (oath.hide || 0));
-  const atk = CLIMB_ATK * ACT_ATK[ai] * Math.pow(ATK_GROW, f50 - 1) * (1 + 0.02 * over) * (BASE_REF.atk / ref.atk) * (1 + 0.15 * (oath.fangs || 0));
+  const ref = ZONE_REF[zoneId] || BASE_REF, ai = Math.max(0, Math.min(4, Math.floor((f - 1) / 10)));
+  const hp = CLIMB_HP * ACT_HP[ai] * Math.pow(HP_GROW, f - 1) * (BASE_REF.hp / ref.hp) * (1 + 0.15 * (oath.hide || 0));
+  const atk = CLIMB_ATK * ACT_ATK[ai] * Math.pow(ATK_GROW, f - 1) * (BASE_REF.atk / ref.atk) * (1 + 0.15 * (oath.fangs || 0));
   return { hp, atk };
 }
 // 층의 특성: 4층부터 싸움터의 1/4 정도에 붙는다 (같은 층이 되풀이되는 느낌을 줄인다)
@@ -73,12 +73,12 @@ export const REWARDS = {
   hone: { name: '연마', icon: 'hone', color: '#7ad8ff', desc: '가진 각인 하나를 한 단계 연마 (+12%)' },
   bless: { name: '축복', icon: 'bless', color: '#ff9ad8', desc: '수치 축복 3개 중 하나' },
   gold: { name: '금화', icon: 'gold', color: '#ffd84a', desc: '탑 금화 (상인에게 쓴다)' },
-  heal: { name: '샘', icon: 'heal', color: '#7be38a', desc: '체력 40% 회복' },
+  heal: { name: '샘', icon: 'heal', color: '#7be38a', desc: '체력 25% 회복' },
   shard: { name: '별빛', icon: 'shard', color: '#b8a8ff', desc: '별빛 파편 (영구 성장)' },
   trial: { name: '시련', icon: 'trial', color: '#ff6a5a', desc: '강화된 적 · 희귀 이상 각인 + 별빛 3' },
   shop: { name: '상인', icon: 'shop', color: '#e8c070', desc: '싸움 없는 상인의 방', room: true },
   altar: { name: '제단', icon: 'altar', color: '#c45cff', desc: '위험과 보상을 바꾸는 선택', room: true },
-  rest: { name: '쉼터', icon: 'rest', color: '#8ad8ff', desc: '체력 50% 회복 또는 연마', room: true },
+  rest: { name: '쉼터', icon: 'rest', color: '#8ad8ff', desc: '체력 35% 회복 또는 연마', room: true },
   guardian: { name: '수호자', icon: 'boss', color: '#ff8a5a', desc: '5층의 수호자 · 영웅 이상 각인' },
   lord: { name: '구역의 주인', icon: 'boss', color: '#ff4a3a', desc: '구역의 주인 · 전설 각인 + 별빛' },
 };
@@ -308,7 +308,7 @@ export const OATHS = {
 export const oathScore = (o = {}) => Object.entries(o).reduce((a, [k, v]) => a + (OATHS[k] ? v : 0), 0);
 
 // 시작할 수 있는 층: 1층, 그리고 쓰러뜨린 구역의 주인 다음 구역 첫 층
-export const climbStarts = (best = 0) => ACTS.filter((a) => a.from === 1 || best >= a.from - 1).map((a) => a.from);
+export const climbStarts = () => [1]; // 한 번 쓰러지면 언제나 1층부터 (레벨 · 무기가 쌓여야 더 높이 오른다)
 // 중간 구역부터 시작하면: 구역마다 각인 2개 · 축복 1개를 먼저 고른다
 export const startBonus = (startF) => ({ eng: Math.floor((startF - 1) / 10) * 2, bless: Math.floor((startF - 1) / 10) });
 

@@ -29,7 +29,8 @@ import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, c
 import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
 import { RACES, RACE_MIGRATE } from './data/races.js';
 import { RACE_STORY, relation, allies, ALLY_AFF, REL_NAME, REL_COLOR } from './data/lore.js';
-import { ITEMS, STYLES } from './data/items.js';
+import { ITEMS, STYLES, WEAPON_SKILLS } from './data/items.js';
+import './data/weapons.js'; // 탑의 무기 100종을 장비 목록에 올린다
 import { CC_EXTRA, CLASSES, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc } from './data/skills.js';
 import { STAT_INFO } from './data/stats.js';
 import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
@@ -2029,6 +2030,12 @@ function handleSignals() {
     else if (s.t === 'waypoint') { showWaypoints(s.id); return; }
     else if (s.t === 'relic') { gainRelic(s.race, s.rid); }
     else if (s.t === 'shard') { gainShard(s.race); }
+    else if (s.t === 'towerWeapon') { // 탑의 무기 100종: 처음이면 가방으로, 이미 있으면 금화로 바꿔 준다
+      const it = ITEMS[s.id];
+      if (!save.items.includes(s.id)) { save.items.push(s.id); renderer.banner = { text: it.name, sub: `${it.lines[0]} · 우클릭 「${WEAPON_SKILLS[it.weapon.skill]?.name}」 · 장비에서 바꿔 들 수 있다`, t: 3.5, color: it.rarityColor }; }
+      else { const g = 200 * it.tier * (it.rarity + 1); save.gold = (save.gold || 0) + g; renderer.banner = { text: `이미 가진 ${it.name}`, sub: `금화 ${g}로 바꿨다`, t: 2.5, color: it.rarityColor }; }
+      writeSave(save);
+    }
     else if (s.t === 'lootWeapon') { // 탑에서 주운 무기: 만든 무기처럼 장비 목록에 들어간다
       save.crafted ||= {}; save.craftSeq = (save.craftSeq || 0) + 1;
       const wid = `cw${save.craftSeq}`; save.crafted[wid] = s.rec; ITEMS[wid] = craftItem(s.rec); save.items.push(wid);

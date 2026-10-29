@@ -6,6 +6,7 @@ import { WEAPON_SKILLS } from '../data/items.js';
 import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
 import { towerMul, isBossFloor, bossKit, CLIMB_SIGS } from '../data/tower.js';
 import { rollLoot, LOOT_RARITY } from '../data/crafting.js';
+import { rollTowerWeapon, TOWER_WEAPONS, W_RARITY } from '../data/weapons.js';
 import { climbMul, setZoneRef, floorFoes, rollDoors, clearReward, actOf, REWARDS, floorGold, goldGain, BOSS_HP, BOSS_ATK, levelGap, FLOOR_MODS, rollFloorMod } from '../data/climb.js';
 import { RAID_BOSS } from '../data/raid.js';
 import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
@@ -740,6 +741,7 @@ export class World {
       }
     }
     const fighting = this.t - (p.lastFight ?? -99) < 5, rgMul = fighting ? 0.4 : 1; // 싸우는 중에는 자연 회복이 느리다
+    p.healBank = Math.min(d.maxHp * 0.08, (p.healBank ?? 0) + d.maxHp * 0.05 * DT);
     if (d.regen) this.heal(d.maxHp * d.regen * rgMul * DT, 'regen');
     { const rg = this.modAdd('regen'); if (rg && p.hp < d.maxHp) this.heal(d.maxHp * rg * rgMul * DT, 'regen'); } // 음식: 초당 최대 체력의 몇 %
     // 종족 자원: 시간 회복, 전투 밖 감소
@@ -814,7 +816,7 @@ export class World {
         if (f.has('dashCrit')) p.dashCritReady = true;
         this.emit({ t: 'dash', x: p.x, y: p.y, dx, dy });
         if (f.has('dashAfterimage')) this.afterimage(p.x, p.y, p.x + dx * 64, p.y + dy * 64);
-        for (const tr of this.b.triggers.dash) if (this.rng.chance(tr.chance)) this.doAction(tr.action, null, { x: p.x, y: p.y, dir: Math.atan2(dy, dx) }); // 대시 방향을 함께 넘긴다
+        for (const tr of this.b.triggers.dash) if (this.trig(tr)) this.doAction(tr.action, null, { x: p.x, y: p.y, dir: Math.atan2(dy, dx) }); // 대시 방향을 함께 넘긴다
       }
     }
 
@@ -1465,6 +1467,13 @@ export class World {
   // 무기 스킬 (Q / 우클릭). 적중 시 각인 트리거가 그대로 발동한다
   useSkill() {
     const p = this.player, d = this.d, w = this.b.weapon;
+    const wdef = SKILLS[w.skill];
+    if (wdef?.weaponSkill) { // 이름 붙은 무기의 고유 기술: 스킬과 같은 방식으로 쓰고, 무기 위력만큼 세다
+      if (wdef.mana && !this.payMana(wdef.mana)) { this.emit({ t: 'noMana', x: p.x, y: p.y }); p.skillCd = 0.3; return; }
+      p.skillMax = wdef.cd * d.skillCdMul * (1 - d.cdr); p.skillCd = p.skillMax;
+      this.execSkill(wdef, 0, w.skill, { weapon: true });
+      return;
+    }
     const sk = WEAPON_SKILLS[w.skill] || WEAPON_SKILLS.spin;
     if (sk.mana && !this.payMana(sk.mana)) { this.emit({ t: 'noMana', x: p.x, y: p.y }); p.skillCd = 0.3; return; }
     p.skillMax = sk.cd * d.skillCdMul * (1 - d.cdr); p.skillCd = p.skillMax;
@@ -1707,7 +1716,7 @@ export class World {
     if (p.elemBonusT > 0 && elem && elem !== 'phys') { bonus = 1.3; p.elemBonusT = 0; }
     // 힘 모으기: 다음 스킬 한 번이 강해진다
     if (p.buffs.charged && id !== 'chargeUp') { bonus *= p.buffs.charged.power || 2.5; p.buffs.charged.t = Math.min(p.buffs.charged.t, 0.05); }
-    const boost = this.weaponBoost(id), hf = handFit(def, this.b), fit = hf.fit, cross = crossMul(def, this.b); // 다른 종족 스킬: 능력치가 모자라면 85%
+    const boost = opt.weapon ? this.b.weapon.mul : this.weaponBoost(id), hf = opt.weapon ? { fit: 1, hand: 'main' } : handFit(def, this.b), fit = hf.fit, cross = opt.weapon ? 1 : crossMul(def, this.b); // 다른 종족 스킬: 능력치가 모자라면 85%
     const ctx = { def, id, spent, elem, bonus: bonus * boost * fit * cross * (SKILL_BAL[id] ?? 1), // SKILL_BAL: 종족 스킬 밸런스 보정
       fit, hand: hf.hand, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot };
     if (fit < 0.95 && fit > 0) this.emit({ t: 'text', x: p.x, y: p.y - 26, text: `무기가 맞지 않다 · 피해 ${Math.round(fit * 100)}%`, color: '#c8b8a0' });
@@ -3023,11 +3032,11 @@ export class World {
     if (this.raceRes?.hit) this.addRes(this.raceRes.hit);
     if (p.buffs.fusion) for (const al of this.allies) if (al.kind === 'spirit' && !e.dead) this.applyStatus(e, ELEM[al.elem].status, 1);
     if (p.buffs.dragonForm && !e.dead) this.applyStatus(e, 'burn', 1);
-    for (const tr of this.b.triggers.hit) if (this.rng.chance(tr.chance)) this.doAction(tr.action, e, e);
+    for (const tr of this.b.triggers.hit) if (this.trig(tr)) this.doAction(tr.action, e, e);
     if (crit) {
       if (f.has('markOnCrit') && !e.dead) e.st.mark = 3;
       if (f.has('critBleed')) this.applyStatus(e, 'bleed', 2);
-      for (const tr of this.b.triggers.crit) if (this.rng.chance(tr.chance)) this.doAction(tr.action, e, e);
+      for (const tr of this.b.triggers.crit) if (this.trig(tr)) this.doAction(tr.action, e, e);
     }
   }
 
@@ -3371,8 +3380,22 @@ export class World {
     this.emit({ t: 'hitstop', v: 0.05 });
   }
 
+  trig(tr) { // 각인 · 무기 효과가 일어날지: every면 N번째마다 꼭, 아니면 확률
+    if (tr.every) { tr.n = (tr.n || 0) + 1; return tr.n % tr.every === 0; }
+    return this.rng.chance(tr.chance ?? 1);
+  }
   doAction(a, target, pos) {
     const d = this.d, s = this.s;
+    if (a.buff) { // 잠깐 강해진다 (무기 · 각인 효과)
+      const p = this.player, B = a.buff, prev = p.buffs[B.id];
+      p.buffs[B.id] = { t: B.dur, max: B.dur, mods: B.stack && prev ? Object.fromEntries(Object.entries(B.mods).map(([k, v]) => [k, Math.min(B.cap?.[k] ?? 9, (prev.mods[k] || 1) * v)])) : B.mods, color: B.color, name: B.name };
+      if (B.name && !prev) this.emit({ t: 'text', x: p.x, y: p.y - 26, text: B.name, color: B.color || '#ffd27a' });
+    }
+    if (a.strike && pos) { // 내리치는 일격: 그 자리에 속성 폭발 (번개 · 불기둥 · 얼음 가시 …)
+      const S = a.strike, base = (S.type === 'mag' ? d.magAtk : Math.max(d.physAtk, d.dexAtk || 0)) * S.mul;
+      this.emit({ t: 'skillAoe', x: pos.x, y: pos.y, r: S.r, elem: S.elem, fx: S.fx || 'burst' });
+      for (const o of this.enemiesNear(pos.x, pos.y, S.r)) { this.damageEnemy(o, base, S.type || 'phys', { src: 'aoe', color: S.elem ? ELEM[S.elem]?.color : null }); if (S.status) this.applyStatus(o, S.status, S.stacks || 1); }
+    }
     if (a.status && target) this.applyStatus(target, a.status, a.stacks || 1);
     if (a.heal) this.heal(d.maxHp * a.heal, 'skill');
     if (a.res) this.addRes(a.res);
@@ -3401,6 +3424,12 @@ export class World {
     if (this.pvp) amount *= PVP.heal; // 대전: 회복 절반
     if (this.b.race === 'undead' && kind !== 'drain' && !(kind === 'steal' && this.f.has('undeadLifesteal'))) amount *= 0.5;
     amount *= d.healMul ?? 1; // 서약 「메마른 샘」
+    // 회복 너프: 흡혈 · 재생 · 스킬 회복은 크게 줄이고, 물약 · 샘 말고는 1초에 최대 체력 5%까지만 (쌓아 둘 수 있는 몫은 8%)
+    if (!this.pvp && kind !== 'potion' && kind !== 'spring' && kind !== 'room') {
+      amount *= kind === 'steal' ? 0.45 : kind === 'regen' ? 0.5 : 0.55;
+      const bank = (p.healBank ??= d.maxHp * 0.08);
+      amount = Math.min(amount, bank); p.healBank = bank - amount;
+    }
     const room = d.maxHp - p.hp;
     if (amount <= room) p.hp += amount;
     else {
@@ -3450,7 +3479,7 @@ export class World {
         this.emit({ t: 'dodgeFx', x: p.x, y: p.y, fx: fx ?? attacker?.x ?? p.x - p.dir }); // 회피: 크게 보이게 (글씨 · 비켜서는 잔영)
         p.invuln = 0.15;
         if (attacker) this.knack('dodge');
-        for (const tr of this.b.triggers.dodge) if (this.rng.chance(tr.chance)) this.doAction(tr.action, attacker, p);
+        for (const tr of this.b.triggers.dodge) if (this.trig(tr)) this.doAction(tr.action, attacker, p);
         return;
       }
       if ((type === 'phys' && f.has('blockPhys')) || (type === 'mag' && f.has('blockMag'))) {
@@ -3496,9 +3525,9 @@ export class World {
         for (const o of targets) this.damageEnemy(o, o === attacker ? rv : rv * 0.5, 'phys', { src: 'reflect', color: '#e6f3ff' });
       }
       if (f.has('slimeSlow')) this.applyStatus(attacker, 'chill', 1);
-      for (const tr of this.b.triggers.hurt) if (this.rng.chance(tr.chance)) this.doAction(tr.action, attacker, attacker);
+      for (const tr of this.b.triggers.hurt) if (this.trig(tr)) this.doAction(tr.action, attacker, attacker);
     }
-    if (type === 'mag' && !opt.direct) for (const tr of this.b.triggers.hurtMag) if (this.rng.chance(tr.chance)) this.doAction(tr.action, attacker, p);
+    if (type === 'mag' && !opt.direct) for (const tr of this.b.triggers.hurtMag) if (this.trig(tr)) this.doAction(tr.action, attacker, p);
     if (opt.status) this.applyPlayerStatus(opt.status, amount);
     this.checkDeath();
   }
@@ -4172,10 +4201,10 @@ export class World {
     const echoTries = e.champion ? 3 : def.treasure ? 3 : e.affix ? 2 : 1;
     for (let i = 0; i < echoTries; i++) if (this.rng.chance(Math.min(1, def.echo.rate * (1 + 0.25 * this.depth)))) this.spawnDrop(e.x, e.y, 'echo', e.champion || def.treasure ? this.rng.pick(this.zone.pool.map((m) => MONSTERS[m].echo.id)) : def.echo.id);
     if (e.champion && this.rng.chance(0.3)) this.spawnDrop(e.x, e.y, 'echo', MONSTERS[this.zone.elite].echo.id);
-    if (this.tower && !e.summoned) { // 탑: 무기가 떨어진다 (수호자는 꼭 하나 · 가끔 둘)
+    if (this.tower && !e.summoned) { // 탑: 이름 붙은 무기가 아주 드물게 떨어진다 (보통 0.6% · 정예 5% · 수호자 25% · 주인 50%)
       const boss = e === this.tower.boss, rnd = () => this.rng.range(0, 1);
-      const n = boss ? (this.rng.chance(0.35) ? 2 : 1) : this.rng.chance(def.elite ? 0.3 : 0.05) ? 1 : 0;
-      for (let i = 0; i < n; i++) this.spawnDrop(e.x, e.y, 'weapon', rollLoot(this.tower.f, rnd, boss));
+      const ch = boss ? (this.climb?.kind === 'lord' ? 0.5 : 0.25) : def.elite || e.champion ? 0.05 : 0.006;
+      if (this.rng.chance(ch)) this.spawnDrop(e.x, e.y, 'tweapon', rollTowerWeapon(this.tower.f, rnd));
     }
     if (def.condEcho && def.condEcho.when === 'burning' && st.burn && this.rng.chance(def.condEcho.rate)) this.spawnDrop(e.x, e.y, 'echo', def.condEcho.id);
     if (def.onDeath?.cloud) { const c = def.onDeath.cloud; this.addCloud(e.x, e.y, c.r, c.dps, c.dur, 'e'); }
@@ -4190,7 +4219,7 @@ export class World {
       if (def.elite || e.champion || this.rng.chance((green ? 0.05 : 0.018) * luck * extra)) this.spawnDrop(e.x, e.y, 'good', 'spiritStone', 1);
     }
 
-    for (const tr of this.b.triggers.kill) if (this.rng.chance(tr.chance)) this.doAction(tr.action, null, e);
+    for (const tr of this.b.triggers.kill) if (this.trig(tr)) this.doAction(tr.action, null, e);
     if (st.poison && this.f.has('poisonSpread')) for (const o of this.enemiesNear(e.x, e.y, 60)) this.applyStatus(o, 'poison', Math.ceil(st.poison.n / 2));
     if (st.burn && this.f.has('burnSpread')) for (const o of this.enemiesNear(e.x, e.y, 60)) this.applyStatus(o, 'burn', 2);
     if (st.poison && this.f.has('poisonBurst')) this.addCloud(e.x, e.y, 34 * (1 + d.cloudSize), 4 + (this.s.toxicity || 0) * 0.8, 3, 'p');
@@ -4717,6 +4746,9 @@ export class World {
         if (dr.kind === 'gold') { if (this.climb) this.climb.run.gold += dr.amount; else this.loot.gold += dr.amount; this.emit({ t: 'pickup', kind: 'gold', x: p.x, y: p.y }); }
         else if (dr.kind === 'good') {
           if (this.life && bagAdd(this.life, dr.id, dr.amount)) this.emit({ t: 'goodGet', id: dr.id, n: dr.amount, x: p.x, y: p.y });
+        } else if (dr.kind === 'tweapon') {
+          const R = W_RARITY[TOWER_WEAPONS[dr.id].r]; this.signals.push({ t: 'towerWeapon', id: dr.id });
+          this.emit({ t: 'text', x: p.x, y: p.y - 28, text: `${R.name} 무기 · ${TOWER_WEAPONS[dr.id].name}!`, color: R.color }); this.emit({ t: 'shake', v: 4 }); this.emit({ t: 'ring', x: p.x, y: p.y, r: 46, color: R.color });
         } else if (dr.kind === 'weapon') {
           const L = LOOT_RARITY[dr.id.loot.r]; this.signals.push({ t: 'lootWeapon', rec: dr.id });
           this.emit({ t: 'text', x: p.x, y: p.y - 28, text: `${L.name} 무기!`, color: L.color }); if (dr.id.loot.r >= 3) { this.emit({ t: 'shake', v: 3 }); this.emit({ t: 'ring', x: p.x, y: p.y, r: 40, color: L.color }); }
