@@ -601,3 +601,113 @@ export const ZONE_ELEM = {
   frost: { weak: 'fire', resist: 'ice' },
   grave: { weak: 'lightning', resist: 'dark' },
 };
+
+// ══════ 더 배우는 기술: 클래스마다 둘 (15레벨 · 30레벨). 사령술사는 그대로 ══════
+const MORE_SKILLS = {
+  predator: {
+    frenzyClaws: { name: '광란의 발톱', role: '연타', cd: 7, gain: 12, scale: 'phys', fx: 'claws', mo: 'claw', unlock: 15,
+      desc: '앞을 네 번 연달아 할퀸다. 한 번마다 출혈 1중첩. 본능 +12.', do: [0, 0.12, 0.24, 0.36].map((d, i) => ({ op: 'cone', range: i === 3 ? 52 : 46, angle: 2.0, mul: i === 3 ? 1.1 : 0.7, status: 'bleed', stacks: 1, fx: 'claws', delay: d })) },
+    huntersLeap: { name: '사냥꾼의 도약', role: '마무리', cd: 12, cost: 25, scale: 'phys', fx: 'smash', mo: 'leap', unlock: 30, aim: 'cluster',
+      desc: '조준한 곳으로 뛰어 내리찍는다. 범위 피해 · 0.8초 기절. 본능 25.', do: [{ op: 'leap', dist: 130, air: 0.4, r: 58, mul: 2.4, stun: 0.8 }] },
+  },
+  behemoth: {
+    boulderToss: { name: '바위 던지기', role: '공격', cd: 6, gain: 12, scale: 'phys', fx: 'throw', mo: 'headbutt', unlock: 15,
+      desc: '땅을 뜯어 바위를 던진다. 맞은 자리에서 부서져 둘레에도 피해. 본능 +12.', do: [{ op: 'proj', n: 1, speed: 230, range: 220, mul: 1.8, splash: 40, kind: 'rock' }] },
+    stampede: { name: '대폭주', role: '마무리', cd: 14, cost: 30, scale: 'phys', fx: 'quake', mo: 'charge', unlock: 30,
+      desc: '땅을 울리며 멀리 들이받고, 멈춘 자리에서 땅을 구른다. 본능 30.', do: [{ op: 'dash', dist: 150, mul: 1.6, stun: 0.6 }, { op: 'aoe', at: 'self', r: 70, mul: 2.0, knock: 180, fx: 'quake', delay: 0.25 }] },
+  },
+  elementalist: {
+    iceComet: { name: '얼음 혜성', role: '제어', cd: 9, cost: 26, cast: 0.5, elem: 'ice', scale: 'mag', fx: 'ice', mo: 'castBig', unlock: 15, aim: 'cluster',
+      desc: '조준한 자리에 얼음 덩이가 떨어져 범위 피해 · 냉기 3중첩 · 1초 빙결. 마력 26.', do: [{ op: 'aoe', at: 'aim', r: 52, mul: 2.2, stacks: 3, stun: 1.0, delay: 0.35, fx: 'shatter' }] },
+    thunderStorm: { name: '천둥 폭풍', role: '마무리', cd: 15, cost: 40, cast: 0.6, elem: 'lightning', scale: 'mag', fx: 'bolt', mo: 'castBig', unlock: 30, aim: 'cluster',
+      desc: '넓은 범위에 벼락이 세 번 연달아 떨어진다. 마력 40.', do: [0, 0.3, 0.6].map((d, i) => ({ op: 'aoe', at: 'aim', r: i === 2 ? 80 : 70, mul: i === 2 ? 1.9 : 1.3, stacks: i === 2 ? 2 : 1, fx: 'burst', delay: d })) },
+  },
+  chronomancer: {
+    timeBlades: { name: '시간의 칼날', role: '공격', cd: 5, cost: 16, cast: 0.25, elem: 'arcane', scale: 'mag', fx: 'rune', mo: 'cast', unlock: 15,
+      desc: '비전 칼날 다섯 개를 부채꼴로 날린다. 마력 16.', do: [{ op: 'proj', n: 5, spread: 0.22, speed: 300, range: 200, mul: 0.75, kind: 'arcane' }] },
+    singularity: { name: '특이점', role: '마무리', cd: 16, cost: 40, cast: 0.6, elem: 'arcane', scale: 'mag', fx: 'rune', mo: 'castBig', unlock: 30, aim: 'cluster',
+      desc: '조준한 곳의 적을 짓누른 뒤 터뜨린다. 마력 40.', do: [{ op: 'aoe', at: 'aim', r: 90, mul: 0.6, stun: 0.6, fx: 'implode' }, { op: 'aoe', at: 'aim', r: 64, mul: 3.0, fx: 'arcane', delay: 0.6 }] },
+  },
+  guardian: {
+    holyStrike: { name: '성스러운 일격', role: '공격', cd: 6, gain: 12, scale: 'phys', fx: 'smash', mo: 'bash', unlock: 15,
+      desc: '방패로 앞을 크게 후려친다. 투지 +12.', do: [{ op: 'cone', range: 56, angle: 1.6, mul: 1.8, knock: 120, fx: 'sweep' }] },
+    judgement: { name: '심판', role: '마무리', cd: 14, cost: 30, scale: 'phys', fx: 'pillar', mo: 'power', unlock: 30, aim: 'cluster',
+      desc: '빛기둥을 내려 범위 피해 · 1초 기절. 투지 30.', do: [{ op: 'aoe', at: 'aim', r: 56, mul: 3.0, stun: 1.0, delay: 0.3, fx: 'holy' }] },
+  },
+  greatsword: {
+    crossCut: { name: '십자 베기', role: '연타', cd: 6, gain: 12, scale: 'phys', fx: 'sweep', mo: 'overhead', unlock: 15,
+      desc: '가로로 한 번 크게 벤 뒤 앞으로 길게 내리벤다. 두 번째가 더 세다. 오러 +12.', do: [{ op: 'cone', range: 60, angle: 2.4, mul: 1.1, fx: 'sweep' }, { op: 'line', len: 100, w: 30, mul: 1.6, delay: 0.18, fx: 'skyfall' }] },
+    bladeStorm: { name: '칼날 폭풍', role: '마무리', cd: 14, cost: 35, scale: 'phys', fx: 'spin', mo: 'spin', unlock: 30,
+      desc: '대검을 휘돌리며 앞으로 나아가 다섯 번 벤다. 마지막 회전이 가장 세다. 오러 35.', do: [{ op: 'comboSpin', n: 5, every: 0.18, step: 18, r: 60, mul: 0.8, last: 2.2, knock: 90 }] },
+  },
+  berserker: {
+    bloodSpin: { name: '피의 회전', role: '공격', cd: 6, gain: 14, scale: 'phys', fx: 'spin', mo: 'chop', unlock: 15,
+      desc: '도끼를 크게 돌려 둘레를 벤다. 출혈 2중첩. 분노 +14.', do: [{ op: 'aoe', at: 'self', r: 58, mul: 1.6, status: 'bleed', stacks: 2, fx: 'spin' }] },
+    earthSplitter: { name: '대지 쪼개기', role: '마무리', cd: 13, cost: 30, scale: 'phys', fx: 'skyfall', mo: 'overhead', unlock: 30,
+      desc: '땅을 쪼개는 일격이 앞으로 길게 뻗는다. 0.8초 기절. 분노 30.', do: [{ op: 'line', len: 200, w: 34, mul: 3.4, stun: 0.8, delay: 0.15, fx: 'skyfall' }] },
+  },
+  thrower: {
+    tomahawkRain: { name: '도끼 비', role: '공격', cd: 8, cost: 20, scale: 'phys', fx: 'throw', mo: 'throwBig', unlock: 15, aim: 'cluster',
+      desc: '하늘로 던진 도끼들이 조준한 곳에 세 번 쏟아진다. 투지 20.', do: [0.3, 0.5, 0.7].map((d, i) => ({ op: 'aoe', at: 'aim', r: i === 2 ? 56 : 50, mul: i === 2 ? 1.3 : 0.9, fx: 'rocks', delay: d })) },
+    whirlingAxe: { name: '회전 도끼', role: '마무리', cd: 12, cost: 30, scale: 'phys', fx: 'throw', mo: 'throw', unlock: 30,
+      desc: '거대한 도끼가 돌며 일직선의 적을 모두 베고 지나간다. 투지 30.', do: [{ op: 'proj', n: 1, speed: 220, range: 280, mul: 3.0, pierce: 99, kind: 'axe' }] },
+  },
+  hexer: {
+    soulRend: { name: '영혼 찢기', role: '공격', cd: 5, cost: 16, cast: 0.3, elem: 'dark', scale: 'mag', fx: 'rune', mo: 'cast', unlock: 15,
+      desc: '조준한 적 하나의 영혼을 찢어 큰 피해. 마력 16.', do: [{ op: 'single', range: 180, mul: 2.6, fx: 'rune' }] },
+    plagueNova: { name: '역병 파동', role: '마무리', cd: 14, cost: 35, cast: 0.5, elem: 'dark', scale: 'mag', fx: 'fog', mo: 'castBig', unlock: 30,
+      desc: '내 둘레로 역병이 퍼져 큰 피해 · 독 3중첩. 마력 35.', do: [{ op: 'aoe', at: 'self', r: 100, mul: 2.4, status: 'poison', stacks: 3, fx: 'doom' }] },
+  },
+  shadowblade: {
+    shurikenFan: { name: '수리검 부채', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'dart', mo: 'stab', unlock: 15,
+      desc: '수리검 일곱 개를 부채꼴로 던진다. 기세 +12.', do: [{ op: 'proj', n: 7, spread: 0.16, speed: 360, range: 200, mul: 0.6, kind: 'shuriken' }] },
+    thousandCuts: { name: '천 갈래 베기', role: '마무리', cd: 14, cost: 35, scale: 'phys', fx: 'blink', mo: 'stab', unlock: 30,
+      desc: '적 사이를 번개처럼 오가며 여섯 번 벤다. 기세 35.', do: [{ op: 'chain', jumps: 6, range: 110, mul: 1.5 }] },
+  },
+  venomHunter: {
+    toxicArrow: { name: '맹독 화살', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'dart', mo: 'shoot', unlock: 15,
+      desc: '적 셋까지 꿰뚫는 독화살. 독 3중첩. 집중 +12.', do: [{ op: 'proj', n: 1, speed: 380, range: 260, mul: 1.5, pierce: 3, status: 'poison', stacks: 3, kind: 'arrow' }] },
+    acidRain: { name: '산성비', role: '마무리', cd: 14, cost: 30, scale: 'phys', fx: 'fog', mo: 'power', unlock: 30, aim: 'cluster',
+      desc: '조준한 곳에 산성비가 내려 큰 피해 · 독 4중첩, 6초 동안 독안개. 집중 30.', do: [{ op: 'aoe', at: 'aim', r: 64, mul: 2.0, status: 'poison', stacks: 4, fx: 'fog' }, { op: 'zone', kind: 'fog', r: 64, dur: 6, at: 'aim' }] },
+  },
+  spiritcaller: {
+    spiritBurst: { name: '정령 폭발', role: '공격', cd: 7, cost: 18, scale: 'mag', fx: 'burst', mo: 'castBig', unlock: 15, aim: 'cluster',
+      desc: '정령의 힘을 한곳에 모아 터뜨린다. 정령력 18.', do: [{ op: 'aoe', at: 'aim', r: 56, mul: 2.2, fx: 'arcane', delay: 0.2 }] },
+    natureWrath: { name: '자연의 분노', role: '마무리', cd: 15, cost: 35, scale: 'mag', fx: 'vines', mo: 'castBig', unlock: 30, aim: 'cluster',
+      desc: '땅에서 가시덩굴이 솟아 범위 피해 · 1.5초 속박. 정령력 35.', do: [{ op: 'aoe', at: 'aim', r: 80, mul: 2.6, stun: 1.5, fx: 'spikes', delay: 0.25 }] },
+  },
+  ranger: {
+    arrowRain: { name: '화살비', role: '공격', cd: 8, cost: 18, scale: 'phys', fx: 'arrow', mo: 'aim', unlock: 15, aim: 'cluster',
+      desc: '하늘로 쏜 화살이 조준한 곳에 세 번 쏟아진다. 정령력 18.', do: [0.3, 0.5, 0.7].map((d) => ({ op: 'aoe', at: 'aim', r: 54, mul: 0.9, fx: 'rain', delay: d })) },
+    galeShot: { name: '질풍 사격', role: '마무리', cd: 12, cost: 30, scale: 'phys', fx: 'arrow', mo: 'shoot', unlock: 30,
+      desc: '모두 꿰뚫는 화살 다섯 발을 부채꼴로 쏜다. 정령력 30.', do: [{ op: 'proj', n: 5, spread: 0.08, speed: 440, range: 280, mul: 1.0, pierce: 99, kind: 'arrow' }] },
+  },
+  rockguard: {
+    stoneFist: { name: '바위 주먹', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'smash', unlock: 15,
+      desc: '바위 주먹으로 앞을 내리친다. 0.5초 기절. 단단함 +12.', do: [{ op: 'cone', range: 52, angle: 1.6, mul: 1.9, stun: 0.5, fx: 'sweep' }] },
+    meteorFall: { name: '운석 낙하', role: '마무리', cd: 15, cost: 35, scale: 'phys', fx: 'meteor', unlock: 30, aim: 'cluster',
+      desc: '하늘에서 바위가 떨어져 넓은 범위에 큰 피해 · 0.8초 기절. 단단함 35.', do: [{ op: 'aoe', at: 'aim', r: 70, mul: 3.2, stun: 0.8, delay: 0.5, fx: 'quake' }] },
+  },
+  frostGolem: {
+    iceShards: { name: '얼음 파편', role: '공격', cd: 5, gain: 12, elem: 'ice', scale: 'phys', fx: 'ice', unlock: 15,
+      desc: '얼음 파편 다섯 개를 부채꼴로 쏜다. 냉기 1중첩. 냉기 +12.', do: [{ op: 'proj', n: 5, spread: 0.2, speed: 300, range: 190, mul: 0.7, stacks: 1, kind: 'ice' }] },
+    blizzard: { name: '눈보라', role: '마무리', cd: 15, cost: 35, elem: 'ice', scale: 'phys', fx: 'zero', unlock: 30,
+      desc: '내 둘레에 눈보라가 몰아쳐 큰 피해 · 냉기 4중첩 · 1.2초 빙결. 냉기 35.', do: [{ op: 'aoe', at: 'self', r: 100, mul: 2.4, stacks: 4, stun: 1.2, fx: 'zero' }] },
+  },
+  dragoon: {
+    flameLance: { name: '화염 창', role: '공격', cd: 6, gain: 12, elem: 'fire', scale: 'phys', fx: 'dash', mo: 'claw', unlock: 15,
+      desc: '불꽃을 두르고 앞으로 찌르며 돌진한다. 화상 2중첩. 용혈 +12.', do: [{ op: 'dash', dist: 100, mul: 1.7, stacks: 2 }] },
+    infernoDive: { name: '지옥불 강하', role: '마무리', cd: 14, cost: 35, elem: 'fire', scale: 'phys', fx: 'meteor', mo: 'leap', unlock: 30, aim: 'cluster',
+      desc: '높이 뛰어올라 불덩이처럼 내리꽂힌다. 화상 4중첩 · 0.6초 기절. 용혈 35.', do: [{ op: 'leap', dist: 140, air: 0.45, r: 66, mul: 2.8, stacks: 4, stun: 0.6 }] },
+  },
+  dragonSage: {
+    wordThunder: { name: '용언: 벼락', role: '공격', cd: 6, cost: 16, elem: 'lightning', scale: 'mag', fx: 'bolt', mo: 'cast', unlock: 15,
+      desc: '벼락이 적 사이를 다섯 번 튄다. 용언력 16.', do: [{ op: 'chain', jumps: 5, range: 95, mul: 1.4, stacks: 1 }] },
+    wordCataclysm: { name: '용언: 대재앙', role: '마무리', cd: 16, cost: 40, elem: 'fire', scale: 'mag', fx: 'meteor', mo: 'castBig', unlock: 30, aim: 'cluster',
+      desc: '불기둥이 세 번 연달아 한 자리에 떨어진다. 마지막이 가장 세다. 용언력 40.', do: [0.2, 0.45, 0.7].map((d, i) => ({ op: 'aoe', at: 'aim', r: i === 2 ? 70 : 60, mul: i === 2 ? 1.8 : 1.4, stacks: 2, fx: 'burst', delay: d })) },
+  },
+};
+for (const [cls, list] of Object.entries(MORE_SKILLS)) {
+  Object.assign(SKILLS, list);
+  for (const id of Object.keys(list)) if (!CLASSES[cls].skills.includes(id)) CLASSES[cls].skills.push(id);
+}
