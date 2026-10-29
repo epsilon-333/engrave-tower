@@ -115,7 +115,7 @@ export class World {
       if (!this.tower || isBossFloor(this.tower.f)) { // 탑: 보스 층에만 층 수호자 (짧게)
         const elite = this.makeEnemy(this.zone.elite, m.lair.x * TILE + 8, m.lair.y * TILE + 8);
         elite.home = { x: elite.x, y: elite.y }; elite.lair = true;
-        if (this.tower) { elite.hp = elite.maxHp = elite.maxHp * 2; elite.champion = `${this.tower.f}층 수호자`; elite.scale = 1.4; this.tower.boss = elite; }
+        if (this.tower) { elite.hp = elite.maxHp = elite.maxHp * 4; elite.champion = `${this.tower.f}층 수호자`; elite.scale = 1.4; this.tower.boss = elite; }
         this.enemies.push(elite);
       }
       // 구역 우두머리: 구역 몬스터의 강화판, 다시 생기지 않음
@@ -1100,7 +1100,7 @@ export class World {
     if (o.kind === 'rest') { this.player.hp = this.d.maxHp; this.emit({ t: 'camp', x: o.x, y: o.y }); this.signals.push({ t: 'rest' }); return; }
     if (o.kind === 'caveDoor') { this.signals.push({ t: 'enterZone', zone: o.zone, from: 'cave' }); return; }
     if (o.kind === 'towerDoor') { this.signals.push({ t: 'tower' }); return; }
-    if (o.kind === 'raidAltar') { this.signals.push({ t: 'raid' }); return; } // 레이드 제단 // 각인의 탑 50층 (예전 층 고르기는 보류)
+    if (o.kind === 'raidAltar') { this.signals.push({ t: 'raid' }); return; } // 레이드 제단 // 각인의 탑 100층 (예전 층 고르기는 보류)
     if (o.kind === 'journal') {
       if (this.codex && !this.codex.journals?.[o.id]) { (this.codex.journals ||= {})[o.id] = true; this.signals.push({ t: 'codex' }); this.emit({ t: 'text', x: o.x, y: o.y - 18, text: '기록 도감에 남겼다', color: '#e8d8a8' }); }
       o.read = true;

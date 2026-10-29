@@ -689,7 +689,7 @@ function finishTutorial(done) {
   writeSave(save);
 }
 
-// ───── 각인의 탑 50층 ─────
+// ───── 각인의 탑 100층 ─────
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 function showTower() {
   const T = (save.tower ||= { best: {}, max: 0 }), next = Math.min(TOWER_TOP, T.max + 1), starts = [...new Set([next, ...towerStarts(T.max)])].sort((a, b) => b - a); // 이어서: 깬 층 다음 층부터

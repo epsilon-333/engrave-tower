@@ -1,12 +1,11 @@
-// 각인의 탑 50층: 층마다 짧은 던전 하나. 계단에 닿으면 클리어 → 시간 · 받은 피해로 등급(S·A·B·C)과 보상.
+// 각인의 탑 100층: 층마다 짧은 던전 하나. 계단에 닿으면 클리어 → 시간 · 받은 피해로 등급(S·A·B·C)과 보상.
 // 5층마다 층 수호자(보스)를 쓰러뜨려야 계단이 열린다. 몬스터는 층마다 복리로 강해져서 마지막 층은 거의 깨지 못한다.
 // (예전의 층(이끼 동굴 · 독늪 · …)은 지우지 않고 보류 — 탑 문에서는 더 이상 들어가지 않는다)
-export const TOWER_TOP = 50;
+export const TOWER_TOP = 100;
 // 10층마다 풍경이 바뀐다: 옛 층의 땅 · 몬스터를 빌려 쓴다
 export const TOWER_THEME = ['cave', 'swamp', 'rift', 'frost', 'grave'];
-export const towerZoneId = (f) => TOWER_THEME[Math.min(TOWER_THEME.length - 1, Math.floor((f - 1) / 10))];
-// 몬스터 배율: 체력 ×1.13, 공격 ×1.095 (층마다 복리) — 10층 3.0배 · 2.3배, 30층 34배 · 14배, 50층 400배 · 85배
-export const towerMul = (f) => ({ hp: Math.pow(1.13, f - 1), atk: Math.pow(1.095, f - 1) });
+export const towerZoneId = (f) => TOWER_THEME[Math.floor((f - 1) / 10) % TOWER_THEME.length]; // 100층: 다섯 풍경을 두 번 돈다
+export const towerMul = (f) => ({ hp: 1 + 0.05 * (f - 1), atk: 1 + 0.06 * (f - 1) }); // 100층: 체력 약 6배 · 공격 약 7배 (나머지는 층에 맞춰 떨어지는 무기로 따라간다)
 export const isBossFloor = (f) => f % 5 === 0;
 // 짧은 층: 작은 동굴 (층이 오를수록 조금씩 넓어진다)
 export const towerSize = (f) => ({ tw: 60 + Math.min(18, Math.floor(f / 2)), th: 40 + Math.min(12, Math.floor(f / 4)) });
