@@ -1950,6 +1950,7 @@ export class World {
         };
         if (op.delay) {
           this.emit({ t: 'telegraphCircle', x: c.x, y: c.y, r: op.r, dur: op.delay, follow });
+          this.emit({ t: 'skillFall', x: c.x, y: c.y, r: op.r, dur: op.delay, fx: op.fx || ctx.def.fx, elem: ctx.elem });
           if (op.fall) this.emit({ t: 'fall', x: c.x, y: c.y, r: op.r, dur: op.delay, kind: op.fall });
           this.delayed.push({ t: op.delay, run });
         } else run();
@@ -4515,8 +4516,8 @@ export class World {
     e.mv = null; return false;
   }
   rainAt(e, spots, dur) { // 떨어질 자리 예고 뒤 터진다 (기술 진행과 따로 돈다)
-    for (const q of spots) this.emit({ t: 'telegraphCircle', x: q.x, y: q.y, r: 30, dur });
-    (this.delayed ||= []).push({ t: dur, run: () => { for (const q of spots) { this.enemyArea(e, q.x, q.y, 30, e.atk * 0.9, e.def.type, e.def.status); this.emit({ t: 'ring', x: q.x, y: q.y, r: 30, color: '#ff8a3a' }); } } });
+    for (const q of spots) { this.emit({ t: 'telegraphCircle', x: q.x, y: q.y, r: 30, dur }); this.emit({ t: 'skillFall', x: q.x, y: q.y, r: 30, dur, fx: 'meteor', elem: 'fire' }); }
+    (this.delayed ||= []).push({ t: dur, run: () => { for (const q of spots) { this.enemyArea(e, q.x, q.y, 30, e.atk * 0.9, e.def.type, e.def.status); this.emit({ t: 'skillAoe', x: q.x, y: q.y, r: 30, elem: 'fire', fx: 'meteor' }); } } });
   }
   enemyArea(e, x, y, r, dmg, type, status) {
     const prev = this.coTgt;

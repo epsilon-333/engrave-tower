@@ -23,6 +23,7 @@ import { SKILLS, ELEM, ROLE_COLOR } from '../data/skills.js';
 import { RACES } from '../data/races.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, WEAPON_ART, weaponArt } from '../data/art.js';
 import { BOSS_PASSIVES } from '../data/tower.js';
+import { SkillAnims } from './skillanim.js';
 const PASSIVE_NAME = Object.fromEntries(Object.entries(BOSS_PASSIVES).map(([k, v]) => [k, v.name]));
 import { STORY_ITEMS, storyObjective, pinoTalk } from '../data/story.js';
 import { sfx, tone } from '../audio.js';
@@ -162,6 +163,7 @@ export class Renderer {
     this.alerts = new Map(); this.squash = new Map(); this.chestOpen = new Map(); this.lunge = new Map();
     this.shake = 0; this.banner = null; this.hitstop = 0; this.fade = 1; this.hurtFlash = 0; this.flash = null; this.ultName = null;
     this.cam = { x: 0, y: 0 };
+    this.anims = new SkillAnims(this); // 스킬 애니메이션 (render/skillanim.js)
     this.world = null; this.lastStep = 0;
     this.resize(document.documentElement.clientWidth || innerWidth, document.documentElement.clientHeight || innerHeight, devicePixelRatio || 1);
   }
@@ -452,7 +454,8 @@ export class Renderer {
         case 'lockOn': sfx('open', { vol: 0.25, rate: 1.8 }); break; // 자동 조준 표적은 그리지 않는다 (네 모서리 꺾쇠가 바닥의 노란 화살표처럼 보였다)
         case 'fall': this.fx.push({ k: 'fall', x: ev.x, y: ev.y, r: ev.r, kind: ev.kind, t: ev.dur, max: ev.dur }); break;
         case 'lineTele': this.fx.push({ k: 'lineTele', ...ev, t: ev.dur, max: ev.dur }); break;
-        case 'skillLine': {
+        case 'skillFall': this.anims.onFall(ev); break;
+        case 'skillLine': { this.anims.onLine(ev);
           const col = ev.fx === 'spikes' ? '#c8f0ff' : ev.fx === 'skyfall' ? '#fff0b0' : ev.fx === 'arrowBeam' ? '#e8ffd0' : ELEM[ev.elem]?.color || '#ffffff';
           this.fx.push({ k: 'line', ...ev, color: col, t: ev.ult ? 0.6 : 0.45, max: ev.ult ? 0.6 : 0.45 });
           const n = Math.floor(Math.hypot(ev.x2 - ev.x1, ev.y2 - ev.y1) / 14);
@@ -498,7 +501,7 @@ export class Renderer {
           break;
         }
         case 'skillAoe': this.aoeFx(ev); break;
-        case 'skillCone': if (ev.fx === 'spellBlade') { // 근접 무기로 쓴 마법: 그 속성 빛의 초승달이 앞을 휩쓴다
+        case 'skillCone': this.anims.onCone(ev); if (ev.fx === 'spellBlade') { // 근접 무기로 쓴 마법: 그 속성 빛의 초승달이 앞을 휩쓴다
             const col = ELEM[ev.elem]?.color || '#c9a8ff';
             this.fx.push({ k: 'spellBlade', x: ev.x, y: ev.y, ang: ev.ang, r: ev.range, angle: ev.angle, col, t: 0.26, max: 0.26 });
             for (let i = 0; i < 6; i++) { const a = ev.ang + (Math.random() - 0.5) * ev.angle, d = ev.range * (0.45 + Math.random() * 0.55); this.parts.push({ x: ev.x + Math.cos(a) * d, y: ev.y - 6 + Math.sin(a) * d * 0.62, vx: Math.cos(a) * 30, vy: Math.sin(a) * 16 - 8, t: 0.3, max: 0.3, color: col, g: -20, glow: true, size: 1 }); }
@@ -632,6 +635,7 @@ export class Renderer {
     const col = ELEM[ev.elem]?.color || '#ffe8a0';
     const fx = ev.fx;
     this.juice(ev.x, ev.y, col, ev.ult ? 'ult' : ev.fromProj ? 'pop' : 'skill', ev.r || 30);
+    this.anims.onAoe(ev);
     if (ev.ult) { this.flash = { color: '255,240,210', t: 0.22, max: 0.22 }; this.shake = Math.max(this.shake, 12); this.hitstop = Math.max(this.hitstop, 0.12); }
     if (fx === 'arcane' || fx === 'implode' || fx === 'holy' || fx === 'corpse' || fx === 'doom' || fx === 'shatter' || fx === 'zero' || fx === 'timestop') {
       const c2 = fx === 'holy' ? '#fff0a0' : fx === 'corpse' || fx === 'doom' ? '#c45cff' : fx === 'shatter' || fx === 'zero' ? '#c8f0ff' : '#b98aff';
@@ -739,7 +743,7 @@ export class Renderer {
   juice(x, y, col, tier, r = 30) {
     const T = { pop: 0.55, cast: 0.6, skill: 1, ultCast: 1.6, ult: 2.4 }[tier] || 1, big = tier === 'ult' || tier === 'ultCast';
     const R = Math.max(18, Math.min(120, r)) * (big ? 1.25 : 1);
-    this.fx.push({ k: 'bloom', x, y: y - 4, r: R * (big ? 1.6 : 1.1), color: col, t: big ? 0.5 : 0.28, max: big ? 0.5 : 0.28 });
+    this.fx.push({ k: 'bloom', x, y: y - 4, r: R * (big ? 1.25 : 1.0), color: col, t: big ? 0.32 : 0.22, max: big ? 0.32 : 0.22 });
     if (tier !== 'pop') this.fx.push({ k: 'starburst', x, y: y - 6, r: R * (big ? 1.5 : 1), n: big ? 16 : tier === 'cast' ? 6 : 10, color: col, rot: Math.random() * 6.28, t: big ? 0.42 : 0.24, max: big ? 0.42 : 0.24 });
     const ns = Math.round((tier === 'cast' ? 10 : 18) * T);
     for (let i = 0; i < ns; i++) { // 꼬리를 끄는 불똥: 빠르게 튀었다가 금방 식는다
@@ -757,7 +761,7 @@ export class Renderer {
     this.shockwave(x, y, R, col, 40); this.shockwave(x, y, R * 0.6, '#ffffff', 20);
     for (let i = 0; i < 22; i++) { const a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 140; this.parts.push({ x, y, vx: Math.cos(a) * sp, vy: -80 - Math.random() * 160, t: 0.7 + Math.random() * 0.5, max: 1.2, color: i % 2 ? '#5a4a3a' : '#8a7a66', g: 520, chunk: true, floor: y + (Math.random() - 0.3) * 18 }); }
     this.fx.push({ k: 'after', x, y, r: R, color: col, t: 0.34, max: 0.34 });
-    if (tier === 'ult') this.flash = { color: '255,248,225', t: 0.22, max: 0.22 };
+    if (tier === 'ult') this.flash = { color: '255,248,225', t: 0.12, max: 0.12 };
   }
   hitPop(x, y, col, lv) { // 한 대 맞을 때: 평타 0 · 스킬 1 · 치명타 2
     const n = [3, 6, 10][lv];
@@ -947,6 +951,7 @@ export class Renderer {
     this.drawDayNight(w, cx, cy, dt);
     for (const pr of w.projs) this.drawProj(pr);
     this.drawFx(w, dt);
+    this.anims.draw(this.g, dt);
 
     for (const q of this.parts) {
       q.t -= dt; q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.9; q.vy *= 0.9;
