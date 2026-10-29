@@ -421,7 +421,7 @@ export class Renderer {
         case 'skill': sfx('skill', { vol: 0.55 }); break;
         case 'slam': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: '#ffe8a0', t: 0.45, max: 0.45, w: 5 }); this.burst(ev.x, ev.y, '#c8b898', 40, 150); this.shake = 7; sfx('hitHeavy', { vol: 1, rate: 0.6 }); break;
         case 'meteor': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: '#c9a8ff', t: 0.6, max: 0.6, w: 6 }); this.burst(ev.x, ev.y, '#c9a8ff', 60, 200); this.burst(ev.x, ev.y, '#ffffff', 20, 120); sfx('reaction', { vol: 1, rate: 0.7 }); break;
-        case 'telegraphCircle': this.fx.push({ k: 'tcircle', x: ev.x, y: ev.y, r: ev.r, t: ev.dur, max: ev.dur, follow: ev.follow }); break;
+        case 'telegraphCircle': this.fx.push({ k: ev.inner ? 'tdonut' : 'tcircle', x: ev.x, y: ev.y, r: ev.r, inner: ev.inner, t: ev.dur, max: ev.dur, follow: ev.follow }); break;
         case 'noMana':
           if ((this.noManaT || 0) < w.t) { this.noManaT = w.t + 1; this.texts.push({ x: ev.x, y: ev.y - 22, text: '마력 부족', color: '#7aa8ff', t: 0.9, vy: -14, vx: 0, label: true }); sfx('error', { vol: 0.3 }); }
           break;
@@ -1178,6 +1178,11 @@ export class Renderer {
     if (def.ai === 'target') return drawTrainTarget(this, w, e);
     if (e.bones > 0) return drawBonePile(this, w, e); // 수련: 쓰러진 해골이 뼈 무더기로 (곧 다시 일어선다)
     const art = MONSTER_ART[e.defId] || { base: 'goblin' };
+    if (e.soaring) { // 하늘의 포식자: 날아올라 화면 위로 — 땅에는 커지는 그림자만
+      const k = Math.max(0, Math.min(1, (e.mv?.t ?? 0) / 2.6)), sz = e.r * (1.6 - k * 0.6);
+      g.fillStyle = `rgba(0,0,0,${0.18 + 0.2 * (1 - k)})`; ellipse(g, e.x, e.y + 3, sz, sz * 0.4);
+      e._top = null; return;
+    }
     if (e.hidden) {
       // 땅속 잠복: 흙더미만 보인다
       const bump = Math.sin(w.t * 3 + e.phase) * 0.6;
@@ -2982,6 +2987,13 @@ export class Renderer {
       } else if (f.k === 'chargeGlow') {
         const p2 = this.world.player;
         for (let i = 0; i < 2; i++) { const a = Math.random() * Math.PI * 2; this.parts.push({ x: p2.x + Math.cos(a) * 26, y: p2.y - 8 + Math.sin(a) * 26, vx: -Math.cos(a) * 70, vy: -Math.sin(a) * 70, t: 0.35, max: 0.35, color: '#ffe080', g: 0 }); }
+      } else if (f.k === 'tdonut') { // 고리 폭발: 바깥 고리가 위험 · 안쪽 원은 안전 (초록)
+        const ry = 0.62, a = 0.12 + 0.3 * (1 - k);
+        g.save(); g.beginPath(); g.ellipse(f.x, f.y, f.r, f.r * ry, 0, 0, Math.PI * 2); g.ellipse(f.x, f.y, f.inner, f.inner * ry, 0, 0, Math.PI * 2);
+        g.fillStyle = `rgba(150,215,255,${a})`; g.fill('evenodd'); g.restore();
+        this.dline(f.x, f.y, f.r, f.r * ry, 'rgba(225,245,255,0.95)', this.world.t * 6, 3, 2);
+        this.dline(f.x, f.y, f.inner + (f.r - f.inner) * (1 - k), (f.inner + (f.r - f.inner) * (1 - k)) * ry, 'rgba(255,255,255,0.9)', -this.world.t * 9, 2, 1);
+        this.dline(f.x, f.y, f.inner, f.inner * ry, 'rgba(140,255,170,0.95)', -this.world.t * 5, 3, 2);
       } else if (f.k === 'tcircle') {
         if (f.follow) { f.x = this.world.player.x; f.y = this.world.player.y; }
         this.dfill(f.x, f.y, f.r, f.r * 0.62, '#c896ff', 0.1 + 0.22 * (1 - k)); // 떨어질 자리: 점묘가 점점 짙어진다

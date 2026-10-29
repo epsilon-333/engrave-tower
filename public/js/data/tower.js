@@ -33,3 +33,38 @@ export function towerReward(f, grade, first) {
 }
 // 다시 시작할 수 있는 층: 1층, 그리고 지금까지 오른 층까지의 5층 단위 다음 층 (6 · 11 · 16 …)
 export const towerStarts = (maxCleared = 0) => [1, ...Array.from({ length: Math.floor(maxCleared / 5) }, (_, i) => (i + 1) * 5 + 1)].filter((f) => f <= TOWER_TOP);
+// 층 수호자: 5층마다 다른 수호자. 수호자마다 대처법이 분명한 대표 기술이 있다 (55층부터는 같은 수호자가 각성해서 더 자주 · 더 많이 쓴다)
+// phases: 체력 100~66% · 66~33% · 33% 아래에서 고르는 기술. names: 기술을 쓸 때 머리 위에 뜨는 이름
+export const BOSS_KITS = [
+  { title: '돌진의 수호자', hint: '돌진을 벽으로 유도하면 부딪혀 기절한다', wallStun: true,
+    phases: [['charge', 'combo'], ['charge', 'combo', 'adds'], ['charge', 'charge', 'adds', 'quake']],
+    names: { charge: '들이받기', combo: '난도질', adds: '부하 호출', quake: '땅 구르기' } },
+  { title: '늪의 마녀', hint: '회복 의식은 세게 때려서 끊을 수 있다',
+    phases: [['pool', 'spiral', 'channel'], ['pool', 'rain', 'channel'], ['rain', 'spiral', 'channel', 'pool']],
+    names: { pool: '독 웅덩이', spiral: '독 소용돌이', channel: '늪의 회복 의식', rain: '독비' } },
+  { title: '불꽃 거인', hint: '기술을 몇 번 쓰면 과열되어 핵이 드러난다 (피해 2배)', vent: 3,
+    phases: [['fan', 'quake'], ['fan', 'quake', 'nova'], ['fan', 'nova', 'quake', 'charge']],
+    names: { fan: '화염 숨', quake: '용암 내려치기', nova: '열 폭발', charge: '불꽃 돌진' } },
+  { title: '서리 여왕', hint: '얼음 고리는 바깥이 위험하다 — 여왕 가까이 붙어라',
+    phases: [['donut', 'spiral'], ['donut', 'mark', 'spiral'], ['donut', 'mark', 'split', 'donut']],
+    names: { donut: '서리 고리', spiral: '눈보라', mark: '얼음 표식', split: '빙창' } },
+  { title: '망령 기사', hint: '분신은 금방 부서진다 — 맞았을 때 버티는 쪽이 진짜', blinkInv: 0,
+    phases: [['combo', 'leap', 'clones'], ['combo', 'clones', 'blink'], ['clones', 'leap', 'combo', 'blink']],
+    names: { combo: '망령 베기', leap: '그림자 도약', clones: '분신', blink: '그림자 걸음' } },
+  { title: '균열 감시자', hint: '회전 광선은 도는 방향으로 같이 돌아라',
+    phases: [['beam', 'split'], ['sweep', 'beam', 'blink'], ['sweep', 'split', 'beam', 'sweep']],
+    names: { beam: '감시 광선', split: '균열 탄', sweep: '회전 광선', blink: '차원 이동' } },
+  { title: '하늘의 포식자', hint: '날아오르면 맞지 않는다 — 떨어지는 자리를 피해라',
+    phases: [['fan', 'charge'], ['fan', 'soar', 'charge'], ['soar', 'fan', 'rain', 'charge']],
+    names: { fan: '불꽃 숨결', charge: '활강 돌격', soar: '비상', rain: '불비' } },
+  { title: '미궁의 군주', hint: '반사 방패가 빛나는 동안 때리면 내가 다친다',
+    phases: [['whirl', 'shove', 'mirror'], ['whirl', 'leap', 'mirror'], ['mirror', 'whirl', 'leap', 'quake']],
+    names: { whirl: '회전 베기', shove: '방패 밀치기', mirror: '반사 방패', leap: '내려찍기', quake: '미궁 흔들기' } },
+  { title: '죽음의 사제', hint: '의식이 끝나기 전에 제물을 모두 쓰러뜨려라',
+    phases: [['spiral', 'nova', 'ritual'], ['spiral', 'ritual', 'blink'], ['ritual', 'nova', 'spiral', 'blink']],
+    names: { spiral: '영혼 소용돌이', nova: '죽음의 파동', ritual: '제물 의식', blink: '망자의 걸음' } },
+  { title: '탑의 주인', hint: '지금까지의 수호자가 쓰던 기술을 모두 쓴다', wallStun: true, vent: 5,
+    phases: [['charge', 'donut', 'beam', 'channel'], ['sweep', 'clones', 'mirror', 'donut'], ['ritual', 'soar', 'sweep', 'donut', 'charge']],
+    names: { charge: '주인의 돌진', donut: '심판의 고리', beam: '탑의 시선', channel: '탑의 숨결', sweep: '천벌 광선', clones: '거울 그림자', mirror: '반사의 율법', ritual: '마지막 의식', soar: '승천' } },
+];
+export const bossKit = (f) => ({ ...BOSS_KITS[(Math.floor(f / 5) - 1) % BOSS_KITS.length], awake: f > 50, final: f === TOWER_TOP });
