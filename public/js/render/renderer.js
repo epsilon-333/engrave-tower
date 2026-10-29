@@ -22,6 +22,8 @@ import { WEAPON_SKILLS, ITEMS, OFF_LOOK } from '../data/items.js';
 import { SKILLS, ELEM, ROLE_COLOR } from '../data/skills.js';
 import { RACES } from '../data/races.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, WEAPON_ART, weaponArt } from '../data/art.js';
+import { BOSS_PASSIVES } from '../data/tower.js';
+const PASSIVE_NAME = Object.fromEntries(Object.entries(BOSS_PASSIVES).map(([k, v]) => [k, v.name]));
 import { STORY_ITEMS, storyObjective, pinoTalk } from '../data/story.js';
 import { sfx, tone } from '../audio.js';
 import { drawClimbObject, rewardIcon, drawClimbHud } from './climbfx.js';
@@ -1228,6 +1230,11 @@ export class Renderer {
     if (def.ai === 'target') return drawTrainTarget(this, w, e);
     if (e.bones > 0) return drawBonePile(this, w, e); // 수련: 쓰러진 해골이 뼈 무더기로 (곧 다시 일어선다)
     const art = MONSTER_ART[e.defId] || { base: 'goblin' };
+    if (e.passives && dt > 0) { // 보스 기운: 몸 둘레에서 피어오르는 독 방울 · 서리 알갱이 · 불티 (고리는 그리지 않는다)
+      const au = e.passives.includes('burnAura') ? '#ff8a3a' : e.passives.includes('frostAura') ? '#cfefff' : e.passives.includes('poisonAura') ? '#9be15d' : null;
+      if (au && Math.random() < 0.5) { const a = Math.random() * Math.PI * 2, rr = e.r + 10 + Math.random() * 50; this.parts.push({ x: e.x + Math.cos(a) * rr, y: e.y + Math.sin(a) * rr * 0.6, vx: 0, vy: -14 - Math.random() * 18, t: 0.9, max: 0.9, color: au, g: -4, glow: true, size: 1.5 }); }
+      if (e.evolved && Math.random() < 0.35) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y - Math.random() * e.r * 2, vx: 0, vy: -30, t: 0.6, max: 0.6, color: '#ff5a3a', g: -10, flame: true, size: 1.4 });
+    }
     if (e.soaring) { // 하늘의 포식자: 날아올라 화면 위로 — 땅에는 커지는 그림자만
       const k = Math.max(0, Math.min(1, (e.mv?.t ?? 0) / 2.6)), sz = e.r * (1.6 - k * 0.6);
       g.fillStyle = `rgba(0,0,0,${0.18 + 0.2 * (1 - k)})`; ellipse(g, e.x, e.y + 3, sz, sz * 0.4);
@@ -4353,6 +4360,12 @@ export class Renderer {
       this.panel(bx2, by2, bw2, 8 * u);
       g.fillStyle = '#3a1016'; g.fillRect(bx2 + u, by2 + u, bw2 - 2 * u, 6 * u);
       g.fillStyle = '#e8483a'; g.fillRect(bx2 + u, by2 + u, (bw2 - 2 * u) * boss.hp / boss.maxHp, 6 * u);
+      if (boss.bshield > 0) { g.fillStyle = 'rgba(200,236,255,0.85)'; g.fillRect(bx2 + u, by2 + u, (bw2 - 2 * u) * Math.min(1, boss.bshield / boss.maxHp), 3 * u); } // 보호막: 체력바 위쪽 반에 흰빛
+      // 패시브 · 변신까지 남은 시간
+      const tags = (boss.passives || []).map((k) => PASSIVE_NAME[k]).filter(Boolean);
+      if (boss.evolve && !boss.evolved) tags.push(`변신까지 ${Math.max(0, Math.ceil(boss.evolve.at - (w.t - boss.bornT)))}초`);
+      else if (boss.evolved) tags.push('변신함');
+      if (tags.length) this.text(tags.join(' · '), W / 2, by2 + 12 * u, u, boss.evolved ? '#ff7a5a' : '#e8c8b0', 'center');
     }
 
     if (this.notes?.length) this.drawNotes(dt);

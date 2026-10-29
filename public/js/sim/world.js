@@ -4,7 +4,7 @@ import { MONSTERS, ZONES, DUMMIES, ECHOES, LORES, AFFIXES } from '../data/monste
 import { REACTIONS } from '../data/engravings.js';
 import { WEAPON_SKILLS } from '../data/items.js';
 import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
-import { towerMul, isBossFloor, bossKit, CLIMB_SIGS } from '../data/tower.js';
+import { towerMul, isBossFloor, bossKit, CLIMB_SIGS, BOSS_PASSIVES } from '../data/tower.js';
 import { rollLoot, LOOT_RARITY } from '../data/crafting.js';
 import { rollTowerWeapon, TOWER_WEAPONS, W_RARITY } from '../data/weapons.js';
 import { climbMul, setZoneRef, floorFoes, rollDoors, clearReward, actOf, REWARDS, floorGold, goldGain, BOSS_HP, BOSS_ATK, levelGap, FLOOR_MODS, rollFloorMod } from '../data/climb.js';
@@ -742,6 +742,7 @@ export class World {
     }
     const fighting = this.t - (p.lastFight ?? -99) < 5, rgMul = fighting ? 0.4 : 1; // 싸우는 중에는 자연 회복이 느리다
     p.healBank = Math.min(d.maxHp * 0.08, (p.healBank ?? 0) + d.maxHp * 0.05 * DT);
+    if (p.markT > 0) p.markT -= DT;
     if (d.regen) this.heal(d.maxHp * d.regen * rgMul * DT, 'regen');
     { const rg = this.modAdd('regen'); if (rg && p.hp < d.maxHp) this.heal(d.maxHp * rg * rgMul * DT, 'regen'); } // 음식: 초당 최대 체력의 몇 %
     // 종족 자원: 시간 회복, 전투 밖 감소
@@ -3208,6 +3209,8 @@ export class World {
       if (!opt.fromDot && this.t - (e.mirrorHitT ?? -9) > 0.25) { e.mirrorHitT = this.t; this.hurtPlayer(Math.min(amount * 0.5, this.d.maxHp * 0.12), 'mag', e, { fromX: e.x, fromY: e.y }); this.emit({ t: 'text', x: e.x, y: e.y - 22, text: '반사!', color: '#9fe8ff' }); this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 14, color: '#9fe8ff' }); }
       return 0;
     }
+    e.lastHitT = this.t;
+    if (e.passives?.includes('thorns') && !opt.fromDot && Math.hypot(p.x - e.x, p.y - e.y) < e.r + 44 && this.t - (e.thornT ?? -9) > 0.3) { e.thornT = this.t; this.hurtPlayer(Math.min(amount * 0.15, d.maxHp * 0.05), 'phys', e, { fromX: e.x, fromY: e.y }); this.emit({ t: 'text', x: p.x, y: p.y - 22, text: '가시!', color: '#ffb07a' }); }
     let mult = d.dmgMul * ((e.remote ? CLASS_BAL : CLASS_BAL_PVE)[this.b.cls] ?? 1) * (this.balMul ?? 1); // 클래스 밸런스 보정 (결투는 따로)
     if (e.exposedT > 0) mult *= e.exposeMul || 2; // 수호자의 빈틈: 기절 · 과열 · 의식 실패
     if (e.def.frontGuard && !opt.fromDot) mult *= (p.x - e.x) * (e.dir || 1) > 0 ? 0.4 : 1.3; // 철갑 딱정벌레: 정면은 단단하고 뒤가 약점
@@ -3250,7 +3253,7 @@ export class World {
     if (this.b.race === 'assassin' && opt.src === 'attack' && Math.sign(p.x - e.x) !== e.dir) mult *= 1.3;
     if (this.b.race === 'undead' && type === 'mag') mult *= 1.12;
     if (this.b.race === 'elf' && opt.proj) mult *= 1 + 0.3 * Math.max(0, Math.min(1, ((opt.dist ?? 80) - 40) / 120));
-    const dmg = amount * mult;
+    let dmg = amount * mult;
     if (e.remote) { // 결투 상대: 피해는 상대 쪽에서 상대의 방어로 다시 셈한다 (여기서는 숫자만 보인다)
       if (dmg > 0) this.pvp?.out.push({ t: 'dhit', dmg: Math.round(dmg * 10) / 10, type: type === 'mag' ? 'mag' : 'phys' });
       e.hitFlash = 0.1;
@@ -3262,6 +3265,7 @@ export class World {
       e.hitFlash = 0.1;
       if (dmg >= 0.5 && opt.src !== 'dot') this.emit({ t: 'dmg', x: e.x, y: e.y - e.r - 10, v: dmg, crit: opt.crit, heavy: opt.heavy, src: opt.src, id: e.id, color: opt.color || (type === 'mag' ? '#c9a8ff' : '#ffffff') });
     } else {
+    if (e.bshield > 0) { const ab = Math.min(e.bshield, dmg); e.bshield -= ab; dmg -= ab; if (e.bshield <= 0) { this.emit({ t: 'text', x: e.x, y: e.y - 34, text: '보호막이 깨졌다!', color: '#bfe8ff' }); this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 40, elem: 'ice', fx: 'shatter' }); } }
     e.hp -= dmg;
     if (this.practice) (this.dmgLog ||= []).push([this.t, dmg]); // 연습: 초당 피해 재기
     if (e.training && this.training) this.trainDamage(e, dmg); // 수련: 허수아비에 넣은 피해 · 화로에 붙인 불
@@ -3445,6 +3449,7 @@ export class World {
     if (this.coTgt) { this.coHurtMate(this.coTgt, amount, type, attacker, opt); return; } // 파티 탑 (방장): 이 적이 노린 건 동료
     if (this.state !== 'play' || this.mode === 'plaza' || this.practice || p.down) return;
     if ((p.airT > 0 || p.leap) && !opt.direct) return;
+    if (p.markT > 0 && !this.coTgt) amount *= 1.3; // 보스의 저주의 표식
     if (p.riding && amount > this.d.maxHp * 0.08 && !opt.direct) { this.dismount(); this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '랩터에서 떨어졌다!', color: '#ffb0a0' }); }
     // 수호기사: 정면 공격은 25% 덜 받고 오러를 얻는다. 철벽 중에는 완전히 막는다
     let front = false;
@@ -3848,6 +3853,7 @@ export class World {
       for (const k of ['frozen', 'mark', 'septic', 'slowZ']) if (st[k] > 0) st[k] -= DT;
       if (e.guardT > 0) e.guardT -= DT;
       if (e.exposedT > 0) e.exposedT -= DT;
+      if (e.passives && !e.dead) this.bossPassiveTick(e);
       if (e.mirrorT > 0) { e.mirrorT -= DT; if ((e.mirrorFx = (e.mirrorFx || 0) - DT) <= 0) { e.mirrorFx = 0.45; this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 12, color: '#9fe8ff' }); } }
       if (e.rooted > 0) e.rooted -= DT;
       const dot = burn + poison + bleed + curse;
@@ -4133,6 +4139,11 @@ export class World {
   killEnemy(e, selfDestruct = false) {
     if (e.dead) return;
     if (e.decoyOf) this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '가짜!', color: '#c8a8ff' });
+    if (e.passives?.includes('deathRattle')) { // 최후의 발악
+      const x = e.x, y = e.y, atk = e.atk;
+      this.emit({ t: 'telegraphCircle', x, y, r: 110, dur: 1.4 }); this.emit({ t: 'text', x, y: y - 40, text: '최후의 발악!', color: '#ff5a3a' });
+      this.delayed.push({ t: 1.4, run: () => { this.enemyArea(e, x, y, 110, atk * 3, 'mag'); this.emit({ t: 'skillAoe', x, y, r: 110, elem: 'dark', fx: 'doom', ult: true }); } });
+    }
     if (e.kit) for (const o of this.enemies) if ((o.decoyOf === e.id || o.ritualOf === e.id) && !o.dead) { o.dead = true; this.emit({ t: 'death', x: o.x, y: o.y, color: o.def.pal.a, defId: o.defId, dir: o.dir }); } // 수호자가 쓰러지면 분신 · 제물도 사라진다
     if (e.npcRef) { e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: '#c8a888', defId: e.defId, dir: e.dir }); npcDown(this, e); this.loot.gold += 5 + Math.floor(Math.random() * 20); return; } // 공격한 NPC는 기절했다 돌아온다
     if (e.official && !e.finish) {
@@ -4249,6 +4260,36 @@ export class World {
     e.phaseMoves = base.map((l, i) => [...l, ...sig.add[i], ...(awake ? sig.add[Math.min(2, i + 1)].slice(0, 1) : [])]);
     e.skillNames = { ...(e.def.skillNames || {}), ...(sig.names || {}) };
     if (awake) e.champion = `각성한 ${e.def.name}`;
+    e.passives = [...(sig.passives || [])]; e.pv = {}; e.bornT = this.t;
+    if (sig.evolve) e.evolve = { ...sig.evolve, at: sig.evolve.at * (awake ? 0.75 : 1) };
+    if (e.passives.length) this.emit({ t: 'text', x: e.x, y: e.y - 46, text: '패시브 · ' + e.passives.map((k) => BOSS_PASSIVES[k].name).join(' · '), color: '#ffb07a' });
+  }
+  // 보스 패시브 · 시간이 지나면 변신
+  bossPassiveTick(e) {
+    const p = this.player, pv = e.pv, near = Math.hypot(p.x - e.x, p.y - e.y) < e.r + 60;
+    const tick = (k, every) => { pv[k] = (pv[k] ?? every) - DT; if (pv[k] <= 0) { pv[k] = every; return true; } return false; };
+    for (const k of e.passives) {
+      if (k === 'frenzy' && tick(k, 15) && (pv.fr || 0) < 6) { pv.fr = (pv.fr || 0) + 1; e.atkRate *= 1.1; e.speedMul *= 1.03; this.emit({ t: 'text', x: e.x, y: e.y - 32, text: `광분 ${pv.fr}`, color: '#ff5a3a' }); }
+      if (k === 'regrow' && this.t - (e.lastHitT ?? -9) > 3 && e.hp < e.maxHp) { e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.01 * DT); if (tick('regrowFx', 1)) this.emit({ t: 'text', x: e.x, y: e.y - 28, text: '재생', color: '#7be38a' }); }
+      if (k === 'summonTimer' && tick(k, 18)) {
+        for (let i = 0; i < 2; i++) { const a = this.rng.range(0, Math.PI * 2); let x = e.x + Math.cos(a) * 44, y = e.y + Math.sin(a) * 44; if (this.blocked(x, y, 6)) { x = e.x; y = e.y; } const m = this.makeEnemy(e.def.adds || this.zone.pool?.[0] || 'goblin', x, y, { summoned: true }); m.summoner = e.id; m.state = 'chase'; m.home = { ...e.home }; m.noLoot = true; this.enemies.push(m); this.emit({ t: 'summon', x, y }); }
+        this.emit({ t: 'text', x: e.x, y: e.y - 36, text: '무리를 부른다', color: '#ffb07a' });
+      }
+      if (k === 'curseMark' && tick(k, 12)) { p.markT = 4; this.emit({ t: 'text', x: p.x, y: p.y - 30, text: '저주의 표식 · 받는 피해 +30%', color: '#c45cff' }); }
+      if ((k === 'poisonAura' || k === 'frostAura' || k === 'burnAura') && tick(k, 1) && near) {
+        const st = k === 'poisonAura' ? 'poison' : k === 'frostAura' ? 'chill' : 'burn';
+        this.hurtPlayer(e.atk * 0.12, 'mag', e, { status: st, fromX: e.x, fromY: e.y });
+      }
+      if (k === 'shieldPulse' && tick(k, 20)) { e.bshield = e.maxHp * 0.12; this.emit({ t: 'text', x: e.x, y: e.y - 34, text: `보호막 ${Math.round(e.bshield)}`, color: '#bfe8ff' }); }
+    }
+    if (e.evolve && !e.evolved && this.t - e.bornT >= e.evolve.at) { // 오래 끌면 변신
+      const v = e.evolve; e.evolved = true;
+      e.atk *= v.atk || 1; e.speedMul *= v.speed || 1; e.atkRate *= v.speed || 1;
+      if (v.passives) for (const k of v.passives) if (!e.passives.includes(k)) e.passives.push(k);
+      if (v.add && e.phaseMoves) e.phaseMoves = e.phaseMoves.map((l) => [...l, ...v.add]);
+      this.emit({ t: 'banner', text: v.text, sub: `${Math.round(v.at)}초가 지났다 · 공격 +${Math.round(((v.atk || 1) - 1) * 100)}%${v.passives ? ' · ' + v.passives.map((k) => BOSS_PASSIVES[k].name).join(' · ') : ''}`, color: '#ff5a3a' });
+      this.emit({ t: 'shake', v: 8 }); this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 80, elem: 'fire', fx: 'burst', ult: true });
+    }
   }
   exposeBoss(e, t, mul, text) { // 빈틈: 잠깐 멈추고 더 아프게 맞는다
     e.st.stun = Math.max(e.st.stun || 0, t); e.exposedT = t; e.exposeMul = mul; e.mv = null; e.windT = 0;
@@ -4289,6 +4330,31 @@ export class World {
         }
         this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: spots[2].x, y2: spots[2].y }); e.x = spots[2].x; e.y = spots[2].y; return false;
       }
+      case 'meteorRain': // 운석 비: 내 자리에 세 번 떨어진다 (계속 움직여야 산다)
+        say(nm || '운석 비'); e.mv = { k: 'meteorRain', boss: true, t: 2.2, n: 0 }; return false;
+      case 'crossBeam': { // 십자 광선: + 모양 → 비스듬한 × 모양 (사이의 틈으로 피한다)
+        say(nm || '십자 광선'); const a0 = this.rng.range(0, Math.PI / 2);
+        e.mv = { k: 'crossBeam', boss: true, t: 2.3, a0, stage: 0 }; e.windT = 2.3; e.windMax = 2.3;
+        for (let i = 0; i < 4; i++) { const a = a0 + (i * Math.PI) / 2; this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 260, y2: e.y + Math.sin(a) * 260, dur: 0.9, color: '#ff3a3a', w: 14 }); }
+        return true;
+      }
+      case 'cleave': { // 정면 대베기: 앞쪽 거의 반원 — 등 뒤로 돌아가야 산다
+        say(nm || '대베기'); e.mv = { k: 'cleave', boss: true, t: 1.2, ang: aim }; e.windT = 1.2; e.windMax = 1.2;
+        for (let i = -4; i <= 4; i++) { const a = aim + i * 0.4; this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 130, y2: e.y + Math.sin(a) * 130, dur: 1.2, color: '#ff5a3a', w: 4 }); }
+        this.emit({ t: 'text', x: e.x, y: e.y - 44, text: '뒤로 돌아가라!', color: '#ffe066' }); return true;
+      }
+      case 'grab': // 끌어당기기: 사슬 예고선 — 맞으면 보스 앞으로 끌려가고 곧 내려찍힌다
+        say(nm || '끌어당기기'); e.mv = { k: 'grab', boss: true, t: 0.8, ang: aim }; e.windT = 0.8; e.windMax = 0.8;
+        this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(aim) * 200, y2: e.y + Math.sin(aim) * 200, dur: 0.8, color: '#ffb03a', w: 12 }); return true;
+      case 'spikeTrail': { // 가시 길: 보스에서 나를 향해 가시가 차례로 솟는다
+        say(nm || '가시 길');
+        for (let i = 1; i <= 7; i++) { const x = e.x + Math.cos(aim) * i * 30, y = e.y + Math.sin(aim) * i * 30, dl = 0.45 + i * 0.1; this.emit({ t: 'telegraphCircle', x, y, r: 22, dur: dl }); this.delayed.push({ t: dl, run: () => { if (e.dead) return; this.enemyArea(e, x, y, 22, e.atk * 1.2, 'phys', 'bleed'); this.emit({ t: 'skillAoe', x, y, r: 22, fx: 'spikes' }); } }); }
+        return false;
+      }
+      case 'ripple': // 파문: 안 → 밖으로 고리 셋이 차례로 터진다 (터진 고리 안으로 들어가면 산다)
+        say(nm || '파문'); e.mv = { k: 'ripple', boss: true, t: 2.6, n: 0 }; e.windT = 2.6; e.windMax = 2.6; return true;
+      case 'jumps3': // 세 번 뛰기: 내 자리로 세 번 연달아 뛰어내린다
+        say(nm || '세 번 뛰기'); e.mv = { k: 'jumps3', boss: true, t: 0.7, n: 0 }; this.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: 40, dur: 0.7 }); e.mv.tx = p.x; e.mv.ty = p.y; return true;
       case 'ritual': { // 제물 셋: 7초 안에 다 쓰러뜨리면 수호자가 무너진다, 아니면 큰 폭발
         this.emit({ t: 'banner', text: `${nm || '제물 의식'} — 제물을 쓰러뜨려라`, color: '#c8a8ff' });
         const ids = [];
@@ -4302,9 +4368,59 @@ export class World {
     }
     return false;
   }
+  bossLineHit(e, ang, len, w, dmg, status) {
+    const x2 = e.x + Math.cos(ang) * len, y2 = e.y + Math.sin(ang) * len, prev = this.coTgt;
+    for (const q of this.coTargets()) { const vx = x2 - e.x, vy = y2 - e.y, l2 = vx * vx + vy * vy, k = Math.max(0, Math.min(1, ((q.x - e.x) * vx + (q.y - e.y) * vy) / l2)); if (Math.hypot(q.x - e.x - vx * k, q.y - e.y - vy * k) < w + (q.r || 5)) { this.coTgt = q === this.player ? null : q; this.hurtPlayer(dmg, 'mag', e, { status, fromX: e.x, fromY: e.y }); } }
+    this.coTgt = prev; this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2 });
+  }
   bossMoveTick(e, p, mv) {
     const def = e.def;
     switch (mv.k) {
+      case 'meteorRain': {
+        if (mv.n < 3 && mv.t < 2.2 - mv.n * 0.6) { mv.n++; this.rainAt(e, [{ x: p.x, y: p.y }], 0.85); }
+        if (mv.t > 0) return false;
+        e.mv = null; return false;
+      }
+      case 'crossBeam': {
+        if (mv.stage === 0 && mv.t <= 1.4) { mv.stage = 1; for (let i = 0; i < 4; i++) this.bossLineHit(e, mv.a0 + (i * Math.PI) / 2, 260, 14, e.atk * 1.8); this.emit({ t: 'shake', v: 5 });
+          for (let i = 0; i < 4; i++) { const a = mv.a0 + Math.PI / 4 + (i * Math.PI) / 2; this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 260, y2: e.y + Math.sin(a) * 260, dur: 0.8, color: '#ff3a3a', w: 14 }); } }
+        if (mv.stage === 1 && mv.t <= 0.6) { mv.stage = 2; for (let i = 0; i < 4; i++) this.bossLineHit(e, mv.a0 + Math.PI / 4 + (i * Math.PI) / 2, 260, 14, e.atk * 1.8); this.emit({ t: 'shake', v: 5 }); }
+        if (mv.t > 0) return true;
+        e.mv = null; return true;
+      }
+      case 'cleave': {
+        if (mv.t > 0) return true;
+        const prev = this.coTgt;
+        for (const q of this.coTargets()) { const dx = q.x - e.x, dy = q.y - e.y, d = Math.hypot(dx, dy); let da = Math.atan2(dy, dx) - mv.ang; da = Math.atan2(Math.sin(da), Math.cos(da)); if (d < 130 + (q.r || 5) && Math.abs(da) < 1.7) { this.coTgt = q === this.player ? null : q; this.hurtPlayer(e.atk * 2.6, def.type, e, { fromX: e.x, fromY: e.y }); } }
+        this.coTgt = prev; this.emit({ t: 'skillCone', x: e.x, y: e.y, ang: mv.ang, range: 130, angle: 3.4, fx: 'sweep' }); this.emit({ t: 'shake', v: 7 });
+        e.mv = null; return true;
+      }
+      case 'grab': {
+        if (mv.t > 0) return true;
+        const x2 = e.x + Math.cos(mv.ang) * 200, y2 = e.y + Math.sin(mv.ang) * 200;
+        if (distToSeg(p.x, p.y, e.x, e.y, x2, y2) < 12 + (p.r || 5) && !(p.invuln > 0)) {
+          const nx = e.x + Math.cos(mv.ang) * (e.r + 14), ny = e.y + Math.sin(mv.ang) * (e.r + 14);
+          if (!this.blocked(nx, ny, p.r || 5)) { this.emit({ t: 'afterimage', x1: p.x, y1: p.y, x2: nx, y2: ny }); p.x = nx; p.y = ny; }
+          this.hurtPlayer(e.atk * 0.8, def.type, e, { fromX: e.x, fromY: e.y }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '끌려갔다! 구르면 피한다', color: '#ffb03a' });
+          const sx = e.x, sy = e.y; this.emit({ t: 'telegraphCircle', x: sx, y: sy, r: e.r + 40, dur: 0.7 });
+          this.delayed.push({ t: 0.7, run: () => { if (e.dead) return; this.enemyArea(e, sx, sy, e.r + 40, e.atk * 2.2, def.type, def.status); this.emit({ t: 'skillAoe', x: sx, y: sy, r: e.r + 40, fx: 'quake' }); } });
+        }
+        e.mv = null; return true;
+      }
+      case 'ripple': {
+        const R = [[0, 60], [60, 115], [115, 170]];
+        if (mv.n < 3 && mv.t <= 2.6 - mv.n * 0.55) { const [r1, r2] = R[mv.n]; this.emit(r1 ? { t: 'telegraphCircle', x: e.x, y: e.y, r: r2, inner: r1, dur: 0.9 } : { t: 'telegraphCircle', x: e.x, y: e.y, r: r2, dur: 0.9 }); const ex = e.x, ey = e.y, n = mv.n; mv.n++;
+          this.delayed.push({ t: 0.9, run: () => { if (e.dead) return; const prev = this.coTgt; for (const q of this.coTargets()) { const d = Math.hypot(q.x - ex, q.y - ey); if (d >= R[n][0] && d < R[n][1] + (q.r || 5)) { this.coTgt = q === this.player ? null : q; this.hurtPlayer(e.atk * 1.6, 'mag', e, { status: def.status, fromX: ex, fromY: ey }); } } this.coTgt = prev; this.emit({ t: 'skillAoe', x: ex, y: ey, r: R[n][1], fx: n === 2 ? 'zero' : 'arcane' }); } }); }
+        if (mv.t > 0) return true;
+        e.mv = null; return true;
+      }
+      case 'jumps3': {
+        if (mv.t > 0) return true;
+        if (!this.blocked(mv.tx, mv.ty, e.r)) { this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: mv.tx, y2: mv.ty }); e.x = mv.tx; e.y = mv.ty; }
+        this.enemyArea(e, e.x, e.y, 40, e.atk * 1.7, def.type, def.status); this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 40, fx: 'quake' });
+        if (++mv.n >= 3) { e.mv = null; return true; }
+        mv.t = 0.55; mv.tx = p.x; mv.ty = p.y; this.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: 40, dur: 0.55 }); return true;
+      }
       case 'donut': {
         if (mv.t > 0) return true;
         const prev = this.coTgt;
@@ -4388,7 +4504,8 @@ export class World {
       Object.assign(can, { beam: dist < 230, spiral: dist < 200, split: dist < 220, whirl: dist < melee + 22, shove: dist < melee + 10, quake: dist < 70,
         rain: dist < 260, adds: this.enemies.filter((o) => o.summoner === e.id && !o.dead).length < 3, charge: dist > 50 && dist < 260, mark: true, nova: dist < 120,
         donut: dist < 200, sweep: dist < 230, channel: true, soar: true, mirror: !(e.mirrorT > 0), clones: !this.enemies.some((o) => o.decoyOf === e.id && !o.dead),
-        ritual: !this.enemies.some((o) => o.ritualOf === e.id && !o.dead) });
+        ritual: !this.enemies.some((o) => o.ritualOf === e.id && !o.dead),
+        meteorRain: true, crossBeam: dist < 240, cleave: dist < 130, grab: dist > 50 && dist < 200, spikeTrail: dist < 230, ripple: dist < 170, jumps3: dist < 230 });
       const list = (phm ? phm[phase] : e.moves || def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]);
       if (!list.length) { e.mvCd = 0.3; return false; } // 지금 쓸 수 있는 기술이 없으면 조금 뒤 다시
       let pick = list[this.rng.int(0, list.length - 1)];
