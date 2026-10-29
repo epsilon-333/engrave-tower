@@ -10,18 +10,31 @@ const { ZONES } = await import(root + '/data/monsters.js');
 const { CLASSES } = await import(root + '/data/skills.js');
 const { ITEMS } = await import(root + '/data/items.js');
 const C = await import(root + '/data/climb.js');
+const { TOWER_WEAPONS } = await import(root + '/data/weapons.js');
+// WT=auto: 그 층보다 한 단계 아래 탑 무기를 든다 · WT=숫자: 그 단계 무기 고정 (클래스 시작 무기와 같은 계열 중 가장 좋은 것)
+const WT = process.env.WT;
 
 const args = process.argv.slice(2);
 const clsArg = args[0] || 'greatsword', lvArg = args[1] && args[1] !== 'auto' ? +args[1] : null, RUNS = +(args[2] || 3), TOP = +(args[3] || 100), META_LV = +(args[4] || 0);
 const QUIET = process.env.QUIET;
 
-function loadout(cid, level) {
+function towerWeaponFor(cid, f) {
+  if (!WT) return null;
+  const tier = WT === 'auto' ? Math.max(1, Math.ceil(f / 10) - 1) : +WT;
+  const base = ITEMS[CLASSES[cid].weapons[1] || CLASSES[cid].weapons[0]];
+  const cat = base.weapon.cat || base.cat, kind = base.weapon.kind, dmg = base.weapon.dmg;
+  const list = Object.keys(TOWER_WEAPONS).filter((id) => TOWER_WEAPONS[id].t === tier).map((id) => ITEMS[id]);
+  const pick = list.filter((it) => it.cat === cat).sort((a, b) => b.rarity - a.rarity)[0] || list.filter((it) => it.weapon.kind === kind && it.weapon.dmg === dmg).sort((a, b) => b.rarity - a.rarity)[0];
+  return pick ? Object.keys(ITEMS).find((k) => ITEMS[k] === pick) : null;
+}
+function loadout(cid, level, f = 1) {
   const c = CLASSES[cid], R = c.race;
+  const tw = towerWeaponFor(cid, f);
   // 주력 스탯 둘에 반씩 (무기 계열에 맞춰)
-  const wpn = ITEMS[c.weapons[1] || c.weapons[0]];
+  const wpn = ITEMS[tw || c.weapons[1] || c.weapons[0]];
   const main = wpn.weapon.dmg === 'mag' ? 'mag' : wpn.weapon.scale === 'agi' ? 'agi' : 'str';
   const pts = level - 1;
-  return { race: R, cls: cid, level, allSkills: false, alloc: { [main]: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings: {}, gear: { weapon: c.weapons[1] || c.weapons[0] }, skills: null };
+  return { race: R, cls: cid, level, allSkills: false, alloc: { [main]: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings: {}, gear: { weapon: tw || c.weapons[1] || c.weapons[0] }, skills: null };
 }
 
 function makeWorld(run, door, lo, meta, prev) {
@@ -90,7 +103,7 @@ function simRun(cid, seed) {
   while (run.f < TOP) {
     run.f++;
     const lv = lvArg || C.recLevel(run.f);
-    const lo = loadout(cid, lv);
+    const lo = loadout(cid, lv, run.f);
     w = makeWorld(run, door, lo, meta);
     const st = { danger: [], skillT: 0, si: 0, skill: 0.7 };
     let frames = 0, hurt0 = 0, next = null;
