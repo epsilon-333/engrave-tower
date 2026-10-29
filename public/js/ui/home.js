@@ -98,7 +98,7 @@ export function craftTab(s, ui) {
   const w = it.weapon, sk = WEAPON_SKILLS[w.skill];
   const matsHtml = Object.entries(cost.mats).map(([id, n]) => { const h = s.bag?.[id] || 0; return `<span class="mat ${h >= n ? 'ok' : 'no'}" title="${esc(GOODS[id]?.name || id)}">${ico(id)}<em>${esc(GOODS[id]?.name || id)}</em> ${h}/${n}</span>`; }).join('') + `<span class="mat ${s.gold >= cost.gold ? 'ok' : 'no'}">◆ ${cost.gold}</span>`;
   const crafted = s.items.filter((id) => ITEMS[id]?.crafted);
-  const own = crafted.map((id) => { const c = ITEMS[id], eq = s.gear?.weapon === id; return `<div class="trow r3"><span><b>${c.name}</b><small>${WCAT_NAME[c.cat]} · 피해 ×${c.weapon.mul} · 속도 ${c.weapon.speed}${c.lines.length ? ' · ' + c.lines.join(' · ') : ''}</small></span>
+  const own = crafted.map((id) => { const c = ITEMS[id], eq = s.gear?.weapon === id; return `<div class="trow r3"><span><b${c.rarityColor ? ` style="color:${c.rarityColor}"` : ''}>${c.name}</b><small>${WCAT_NAME[c.cat]} · 피해 ×${c.weapon.mul} · 속도 ${c.weapon.speed}${c.lines.length ? ' · ' + c.lines.join(' · ') : ''}</small></span>
     <button class="sm" data-act="equipG" data-id="${id}" data-slot="weapon" ${eq ? 'disabled' : ''}>${eq ? '장착 중' : '장착'}</button><button class="sm ghost" data-act="scrap" data-id="${id}" ${eq ? 'disabled' : ''}>버리기</button></div>`; }).join('');
   return `<section class="panel"><h3>${forge ? '대장간 · 무기 만들기' : '작업대 · 무기 만들기'} <small>${forge ? '모든 재료를 다룬다' : '나무 · 돌 · 뼈 · 단단한 나무만 (광석 · 수정은 대장간에서)'}</small></h3>
       <h4>종류</h4><div class="chips">${types}</div><p class="muted">${T.desc} · 스킬 갈래: <b>${WCAT_NAME[T.cat]}</b></p>

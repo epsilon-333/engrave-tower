@@ -5,7 +5,7 @@ export const TOWER_TOP = 100;
 // 10층마다 풍경이 바뀐다: 옛 층의 땅 · 몬스터를 빌려 쓴다
 export const TOWER_THEME = ['cave', 'swamp', 'rift', 'frost', 'grave'];
 export const towerZoneId = (f) => TOWER_THEME[Math.floor((f - 1) / 10) % TOWER_THEME.length]; // 100층: 다섯 풍경을 두 번 돈다
-export const towerMul = (f) => ({ hp: 1 + 0.05 * (f - 1), atk: 1 + 0.06 * (f - 1) }); // 100층: 체력 약 6배 · 공격 약 7배 (나머지는 층에 맞춰 떨어지는 무기로 따라간다)
+export const towerMul = (f) => ({ hp: 1 + 0.07 * (f - 1), atk: 1 + 0.06 * (f - 1) }); // 100층: 체력 약 8배 · 공격 약 7배 (나머지는 층에 맞춰 떨어지는 무기로 따라간다)
 export const isBossFloor = (f) => f % 5 === 0;
 // 짧은 층: 작은 동굴 (층이 오를수록 조금씩 넓어진다)
 export const towerSize = (f) => ({ tw: 60 + Math.min(18, Math.floor(f / 2)), th: 40 + Math.min(12, Math.floor(f / 4)) });

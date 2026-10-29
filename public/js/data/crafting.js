@@ -192,13 +192,49 @@ export function craftItem(rec) {
     syn = SYNERGY.find((s) => (A.has(s.need[0]) && B.has(s.need[1])) || (A.has(s.need[1]) && B.has(s.need[0])));
     if (syn) { w.special.synergy = syn.id; lines.push(`★ ${syn.name}: ${syn.text}`); if (syn.react) effects.push({ type: 'mul', key: 'reactionMul', v: 1.4 }); }
   }
-  const adj = parts.length ? (syn ? syn.name : PART_FX[parts[0]].adj) : '';
-  const name = rec.name || `${adj ? adj + ' ' : ''}${M.name} ${T.name}`;
+  let adj = parts.length ? (syn ? syn.name : PART_FX[parts[0]].adj) : '';
+  const L = rec.loot && LOOT_RARITY[rec.loot.r]; // 탑에서 떨어진 무기: 층이 높을수록 · 등급이 높을수록 세다
+  if (L) {
+    w.mul = Math.round(w.mul * lootPower(rec.loot.f) * L.mul * 100) / 100;
+    if (L.bonus) for (const [k, v] of Object.entries(L.bonus)) { effects.push({ type: k === 'crit' ? 'add' : 'mul', key: k, v }); lines.push(LOOT_BONUS_TEXT[k](v)); }
+    if (rec.loot.epithet) adj = rec.loot.epithet;
+  }
+  const name = rec.name || `${L ? L.name + ' · ' : ''}${adj ? adj + ' ' : ''}${M.name} ${T.name}`;
   return {
     name, slot: 'weapon', price: 0, crafted: true, cat: T.cat, hands: CRAFT_HANDS[rec.type] || 1, weapon: w, stats, tags: [], effects: effects.map((e) => ({ ...e, text: '' })),
-    lines, art: { ...T.art, tint: M.tint }, rec, desc: T.desc,
+    lines: L ? [`${rec.loot.f}층에서 얻음 · 위력 ×${(lootPower(rec.loot.f) * L.mul).toFixed(2)}`, ...lines] : lines, art: { ...T.art, tint: M.tint, glow: L?.glow }, rec, desc: T.desc, rarity: L ? rec.loot.r : null, rarityColor: L?.color,
   };
 }
 // 저장에 남은 만든 무기를 장비 목록에 올린다
 export function registerCrafted(ITEMS, crafted) { for (const [id, rec] of Object.entries(crafted || {})) { const it = craftItem(rec); if (it) ITEMS[id] = it; } }
 export const partName = (id) => GOODS[id]?.name || id;
+
+// ── 탑에서 떨어지는 무기 ──
+// 등급: 위력 배율 · 부산물 개수 · 추가 능력. 높은 등급일수록 그림이 빛난다
+export const LOOT_RARITY = [
+  { name: '일반', color: '#c8c0d0', mul: 1, parts: 0 },
+  { name: '희귀', color: '#5ab0ff', mul: 1.12, parts: 1, glow: 1 },
+  { name: '영웅', color: '#c070ff', mul: 1.25, parts: 2, glow: 2, bonus: { crit: 0.04 } },
+  { name: '전설', color: '#ffb030', mul: 1.4, parts: 2, glow: 3, bonus: { crit: 0.06, skillCdMul: 0.9 } },
+  { name: '신화', color: '#ff4a6a', mul: 1.6, parts: 2, glow: 4, bonus: { crit: 0.08, skillCdMul: 0.85, dmgMul: 1.1 } },
+];
+const LOOT_BONUS_TEXT = { crit: (v) => `치명타 +${Math.round(v * 100)}%`, skillCdMul: (v) => `스킬 재사용 -${Math.round((1 - v) * 100)}%`, dmgMul: (v) => `주는 피해 +${Math.round((v - 1) * 100)}%` };
+// 층에 맞춘 위력: 몬스터 체력이 오르는 만큼 따라간다
+export const lootPower = (f) => 1 + 0.03 * (f - 1);
+const LOOT_EPITHET = ['탑지기의', '수호자의', '잊힌 층의', '별빛', '심연의', '여명의', '폭풍의', '왕의'];
+// 등급 굴리기: 보통 몬스터는 낮게, 수호자는 영웅 이상이 잘 나온다. 층이 높을수록 조금씩 좋아진다
+export function rollLoot(f, rnd, boss = false) {
+  const luck = Math.min(0.5, f / 200) + (boss ? 0.55 : 0);
+  const u = rnd() * (1 - luck * 0.6) ;
+  const r = boss ? (u < 0.04 ? 4 : u < 0.2 ? 3 : 2) : (u < 0.004 ? 4 : u < 0.025 ? 3 : u < 0.1 ? 2 : u < 0.35 ? 1 : 0);
+  const types = Object.keys(WTYPES), type = types[Math.floor(rnd() * types.length)];
+  const tier = Math.min(5, 1 + Math.floor(f / 20)), mats = WTYPES[type].mats.filter((m) => WMATS[m]);
+  const best = Math.max(...mats.map((m) => (WMATS[m].tier <= tier ? WMATS[m].tier : 0)));
+  const pool = mats.filter((m) => WMATS[m].tier === best);
+  const mat = pool.length ? pool[Math.floor(rnd() * pool.length)] : mats[0];
+  const keys = Object.keys(PART_FX), parts = [];
+  for (let i = 0; i < LOOT_RARITY[r].parts; i++) parts.push(keys[Math.floor(rnd() * keys.length)]);
+  const loot = { f, r };
+  if (r >= 3) loot.epithet = LOOT_EPITHET[Math.floor(rnd() * LOOT_EPITHET.length)];
+  return { type, mat, parts, loot };
+}

@@ -16,7 +16,7 @@ import { LABY_ZONE, PALACE_ZONE, buildLabyrinth, buildPalace } from './data/maps
 import { HOUSES, buildHouse } from './data/maps/houses.js';
 import { cycleSeed, growPlot } from './sim/life.js';
 import { newClock, canSleep, sleepUntilMorning, absMin, clockText } from './sim/time.js';
-import { registerCrafted } from './data/crafting.js';
+import { registerCrafted, craftItem, LOOT_RARITY } from './data/crafting.js';
 import { registerAllDishes, registerDish } from './data/cooking.js';
 import { LEARN, ABILITIES } from './data/learn.js';
 import { CROPS } from './data/goods.js';
@@ -1997,6 +1997,13 @@ function handleSignals() {
     else if (s.t === 'waypoint') { showWaypoints(s.id); return; }
     else if (s.t === 'relic') { gainRelic(s.race, s.rid); }
     else if (s.t === 'shard') { gainShard(s.race); }
+    else if (s.t === 'lootWeapon') { // 탑에서 주운 무기: 만든 무기처럼 장비 목록에 들어간다
+      save.crafted ||= {}; save.craftSeq = (save.craftSeq || 0) + 1;
+      const wid = `cw${save.craftSeq}`; save.crafted[wid] = s.rec; ITEMS[wid] = craftItem(s.rec); save.items.push(wid);
+      const L = LOOT_RARITY[s.rec.loot.r];
+      if (s.rec.loot.r >= 2) renderer.banner = { text: ITEMS[wid].name, sub: `${L.name} 무기를 얻었다 · ${ITEMS[wid].lines[0]} · 장비에서 바꿔 들 수 있다`, t: 3, color: L.color };
+      writeSave(save);
+    }
     else if (s.t === 'sign') { showModal(`<h2>표지판</h2><p class="lore">${esc(s.text)}</p><button data-close>닫기</button>`); return; }
     else if (s.t === 'turtle') {
       showModal(`<div class="talk"><div class="who">바닷가의 자라</div><p>허허, 뭍의 손님이로군. 저 바다 밑에 용왕님의 궁전, 용궁이 있다오.</p><p>내 등에 타시겠소? 깊은 곳이라 만만치 않을 게요.</p></div>

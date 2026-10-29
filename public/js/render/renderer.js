@@ -3128,6 +3128,16 @@ export class Renderer {
     } else if (dr.kind === 'good') { // 캐고 · 벤 물건: 작은 아이콘이 통통 튄다
       const ic = iconCanvas(dr.id), x = Math.round(dr.x), y = Math.round(dr.y - 6 + bob);
       g.drawImage(ic, x - 6, y - 6, 12, 12);
+    } else if (dr.kind === 'weapon') { // 탑의 무기: 등급 색 빛기둥 + 바닥 빛 + 비스듬히 꽂힌 칼날
+      const r = dr.id.loot.r, col = ['#c8c0d0', '#5ab0ff', '#c070ff', '#ffb030', '#ff4a6a'][r], x = Math.round(dr.x), y = Math.round(dr.y + bob * 0.5);
+      const pulse = 0.5 + 0.5 * Math.sin(w.t * 4 + dr.x);
+      if (r >= 1) { const H = 18 + r * 12; const gr = g.createLinearGradient(0, y - H, 0, y); gr.addColorStop(0, hexA(col, 0)); gr.addColorStop(1, hexA(col, 0.25 + 0.12 * r * pulse / 4)); g.fillStyle = gr; g.fillRect(x - 2 - r, y - H, 4 + r * 2, H); }
+      g.fillStyle = hexA(col, 0.18 + 0.1 * pulse); ellipse(g, x, y + 2, 7 + r, 3 + r * 0.4);
+      g.save(); g.translate(x, y - 3); g.rotate(-0.7);
+      g.fillStyle = '#16121c'; g.fillRect(-1.5, -9, 3, 13); g.fillRect(-4, 3, 8, 2);
+      g.fillStyle = '#e8eef8'; g.fillRect(-0.5, -8, 1.5, 11); g.fillStyle = col; g.fillRect(-3, 3, 6, 1); g.fillRect(-0.5, 4, 1, 3);
+      g.restore();
+      if (r >= 2 && Math.random() < 0.08 * r) this.parts.push({ x: x + (Math.random() - 0.5) * 10, y: y - 2, vx: 0, vy: -16 - r * 4, t: 0.8, max: 0.8, color: col, g: -6, glow: true, size: 1 });
     } else if (dr.kind === 'shard') { // 성물 조각: 그 성지의 빛을 내는 작은 결정 조각
       const col = SANCTUMS[dr.id]?.color || '#ffffff', x = Math.round(dr.x), y = Math.round(dr.y - 4 + bob);
       g.fillStyle = hexA(col, 0.3 + 0.2 * Math.sin(w.t * 6)); disc(g, x, y, 6);

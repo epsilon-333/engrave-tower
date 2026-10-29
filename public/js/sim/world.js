@@ -5,6 +5,7 @@ import { REACTIONS } from '../data/engravings.js';
 import { WEAPON_SKILLS } from '../data/items.js';
 import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
 import { towerMul, isBossFloor, bossKit } from '../data/tower.js';
+import { rollLoot, LOOT_RARITY } from '../data/crafting.js';
 import { RAID_BOSS } from '../data/raid.js';
 import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
 import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO, SKILL_BAL, CLASS_BAL } from '../data/skills.js';
@@ -4028,6 +4029,11 @@ export class World {
     const echoTries = e.champion ? 3 : def.treasure ? 3 : e.affix ? 2 : 1;
     for (let i = 0; i < echoTries; i++) if (this.rng.chance(Math.min(1, def.echo.rate * (1 + 0.25 * this.depth)))) this.spawnDrop(e.x, e.y, 'echo', e.champion || def.treasure ? this.rng.pick(this.zone.pool.map((m) => MONSTERS[m].echo.id)) : def.echo.id);
     if (e.champion && this.rng.chance(0.3)) this.spawnDrop(e.x, e.y, 'echo', MONSTERS[this.zone.elite].echo.id);
+    if (this.tower && !e.summoned) { // 탑: 무기가 떨어진다 (수호자는 꼭 하나 · 가끔 둘)
+      const boss = e === this.tower.boss, rnd = () => this.rng.range(0, 1);
+      const n = boss ? (this.rng.chance(0.35) ? 2 : 1) : this.rng.chance(def.elite ? 0.3 : 0.05) ? 1 : 0;
+      for (let i = 0; i < n; i++) this.spawnDrop(e.x, e.y, 'weapon', rollLoot(this.tower.f, rnd, boss));
+    }
     if (def.condEcho && def.condEcho.when === 'burning' && st.burn && this.rng.chance(def.condEcho.rate)) this.spawnDrop(e.x, e.y, 'echo', def.condEcho.id);
     if (def.onDeath?.cloud) { const c = def.onDeath.cloud; this.addCloud(e.x, e.y, c.r, c.dps, c.dur, 'e'); }
     if (this.life && !this.practice) {
@@ -4559,6 +4565,9 @@ export class World {
         if (dr.kind === 'gold') { this.loot.gold += dr.amount; this.emit({ t: 'pickup', kind: 'gold', x: p.x, y: p.y }); }
         else if (dr.kind === 'good') {
           if (this.life && bagAdd(this.life, dr.id, dr.amount)) this.emit({ t: 'goodGet', id: dr.id, n: dr.amount, x: p.x, y: p.y });
+        } else if (dr.kind === 'weapon') {
+          const L = LOOT_RARITY[dr.id.loot.r]; this.signals.push({ t: 'lootWeapon', rec: dr.id });
+          this.emit({ t: 'text', x: p.x, y: p.y - 28, text: `${L.name} 무기!`, color: L.color }); if (dr.id.loot.r >= 3) { this.emit({ t: 'shake', v: 3 }); this.emit({ t: 'ring', x: p.x, y: p.y, r: 40, color: L.color }); }
         } else if (dr.kind === 'shard') { this.signals.push({ t: 'shard', race: dr.id }); this.emit({ t: 'shardGet', race: dr.id, x: p.x, y: p.y }); }
         else if (dr.kind === 'story') {
           const n = this.story.items[dr.id] = (this.story.items[dr.id] || 0) + 1;
