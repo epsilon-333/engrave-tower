@@ -9,33 +9,33 @@ export const CLIMB_TOP = 100;
 // 구역: 10층마다 풍경 · 몬스터가 바뀐다. 5층에 수호자, 10층에 구역의 주인
 export const ACTS = [
   { n: 1, from: 1, to: 10, zone: 'cave', name: '이끼 굴', guardian: 'climbChief', lord: 'mossLord', rec: 1, color: '#7ed957' },
-  { n: 2, from: 11, to: 20, zone: 'swamp', name: '독늪', guardian: 'bogHag', lord: 'climbQueen', rec: 8, color: '#9be15d' },
-  { n: 3, from: 21, to: 30, zone: 'rift', name: '화산 균열', guardian: 'demonCaptain', lord: 'climbRift', rec: 16, color: '#ff7a2a' },
-  { n: 4, from: 31, to: 40, zone: 'frost', name: '서리 회랑', guardian: 'frostOgre', lord: 'climbWitch', rec: 24, color: '#9fe3ff' },
-  { n: 5, from: 41, to: 50, zone: 'grave', name: '그림자 묘지', guardian: 'wraithLord', lord: 'engraveKing', rec: 32, color: '#c45cff' },
+  { n: 2, from: 11, to: 20, zone: 'swamp', name: '독늪', guardian: 'bogHag', lord: 'climbQueen', rec: 10, color: '#9be15d' },
+  { n: 3, from: 21, to: 30, zone: 'rift', name: '화산 균열', guardian: 'demonCaptain', lord: 'climbRift', rec: 19, color: '#ff7a2a' },
+  { n: 4, from: 31, to: 40, zone: 'frost', name: '서리 회랑', guardian: 'frostOgre', lord: 'climbWitch', rec: 28, color: '#9fe3ff' },
+  { n: 5, from: 41, to: 50, zone: 'grave', name: '그림자 묘지', guardian: 'wraithLord', lord: 'engraveKing', rec: 37, color: '#c45cff' },
   // 51~100층: 같은 풍경이 더 깊어지고, 수호자 · 주인이 각성해서 돌아온다
-  { n: 6, from: 51, to: 60, zone: 'cave', name: '잠식된 이끼 굴', guardian: 'climbChief', lord: 'mossLord', rec: 38, color: '#5fbf3a' },
-  { n: 7, from: 61, to: 70, zone: 'swamp', name: '썩어 가는 늪', guardian: 'bogHag', lord: 'climbQueen', rec: 43, color: '#7fc04a' },
-  { n: 8, from: 71, to: 80, zone: 'rift', name: '타오르는 심연', guardian: 'demonCaptain', lord: 'climbRift', rec: 48, color: '#ff5a1a' },
-  { n: 9, from: 81, to: 90, zone: 'frost', name: '영겁의 서리', guardian: 'frostOgre', lord: 'climbWitch', rec: 53, color: '#7fd0ff' },
-  { n: 10, from: 91, to: 100, zone: 'grave', name: '탑의 꼭대기', guardian: 'wraithLord', lord: 'engraveKing', rec: 58, color: '#e07aff' },
+  { n: 6, from: 51, to: 60, zone: 'cave', name: '잠식된 이끼 굴', guardian: 'climbChief', lord: 'mossLord', rec: 44, color: '#5fbf3a' },
+  { n: 7, from: 61, to: 70, zone: 'swamp', name: '썩어 가는 늪', guardian: 'bogHag', lord: 'climbQueen', rec: 49, color: '#7fc04a' },
+  { n: 8, from: 71, to: 80, zone: 'rift', name: '타오르는 심연', guardian: 'demonCaptain', lord: 'climbRift', rec: 54, color: '#ff5a1a' },
+  { n: 9, from: 81, to: 90, zone: 'frost', name: '영겁의 서리', guardian: 'frostOgre', lord: 'climbWitch', rec: 58, color: '#7fd0ff' },
+  { n: 10, from: 91, to: 100, zone: 'grave', name: '탑의 꼭대기', guardian: 'wraithLord', lord: 'engraveKing', rec: 62, color: '#e07aff' },
 ];
 export const actOf = (f) => ACTS[Math.max(0, Math.min(ACTS.length - 1, Math.floor((f - 1) / 10)))];
 export const floorKind = (f) => (f % 10 === 0 ? 'lord' : f % 5 === 0 ? 'guardian' : 'fight');
 // 권장 레벨: 구역 안에서도 조금씩 오른다 (화면에 보여 준다)
-export const recLevel = (f) => Math.max(1, Math.round(actOf(f).rec + ((f - 1) % 10) * 0.7));
-// 권장 레벨보다 낮으면: 레벨 하나마다 몬스터 공격력 +4% (최대 +60%) · 체력 +3% (최대 +45%) — 섬에서 레벨을 올릴 이유
+export const recLevel = (f) => Math.max(1, Math.round(actOf(f).rec + ((f - 1) % 10) * 1.0)); // 구역 안에서 층마다 권장 레벨 +1
+// 권장 레벨보다 낮으면: 레벨 하나마다 몬스터 공격력 +20% (최대 +300%) · 체력 +12% (최대 +200%) — 레벨을 올리고 스킬 조합을 바꿔 가며 오른다
 export function levelGap(f, level) {
   const gap = Math.max(0, recLevel(f) - (level || 1));
-  return { gap, atk: 1 + Math.min(0.6, 0.04 * gap), hp: 1 + Math.min(0.45, 0.03 * gap) };
+  return { gap, atk: 1 + Math.min(3, 0.2 * gap), hp: 1 + Math.min(2, 0.12 * gap) }; // 레벨이 모자라면 크게 세진다: 레벨 하나마다 공격 +20% · 체력 +12%
 }
 
 // 몬스터 세기: 구역마다 몬스터 종류의 기본 체력이 다르므로 구역 평균으로 나눠 맞춘 뒤 층마다 오른다.
 // 체력 ×1.068 · 공격 ×1.044 (층마다) → 50층: 체력 약 25배 · 공격 약 8.2배 (1층 대비). 51층부터는 층마다 3.5% · 2%씩만 더 (100층: 50층의 약 3.4배 · 2.6배)
 const HP_GROW = 1.068, ATK_GROW = 1.044;
 // 탑의 몬스터는 바깥보다 단단하다 (보통 몹도 서너 번은 때려야 쓰러진다) · 수호자 · 주인은 그보다 더
-const CLIMB_HP = 2.3, CLIMB_ATK = 0.85; // 3.2 → 2.3: 맞으면 잘 쓰러지게 (보통 몹은 두세 번)
-export const BOSS_HP = { guardian: 2.1, lord: 2.3 };
+const CLIMB_HP = 2.3, CLIMB_ATK = 1.15; // 3.2 → 2.3: 맞으면 잘 쓰러지게 (보통 몹은 두세 번)
+export const BOSS_HP = { guardian: 2.2, lord: 2.5 }; export const BOSS_ATK = { guardian: 1.4, lord: 1.3 }; // 수호자 · 주인은 레벨이 모자라면 벽이 된다 (권장 레벨에서 두 레벨 이상 낮으면 공격 배율을 다 받는다)
 const ZONE_REF = {}; // zone id → { hp, atk } 그 구역 몬스터의 평균
 export function setZoneRef(zoneId, pool) {
   const list = pool.map((id) => MONSTERS[id]).filter(Boolean);

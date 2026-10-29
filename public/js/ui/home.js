@@ -3,7 +3,7 @@ import { GOODS, GOOD_CATS, BAG_START, BAG_UPGRADES, bagUsed, bagFits } from '../
 import { FOOD, FOOD_EFFECTS, KIND_NAME, cookPreview, registerDish, parseDish, dishName, dishEffectText, eatInfo, rawEdible, RECIPES } from '../data/cooking.js';
 import { WTYPES, WMATS, PART_FX, SYNERGY, craftCost, craftItem } from '../data/crafting.js';
 import { ITEMS, WEAPON_SKILLS, WCAT_NAME, weaponCat } from '../data/items.js';
-import { SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, skillFit, handFit, crossMul, crossReq, fitText, plainDesc } from '../data/skills.js';
+import { SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, skillFit, handFit, crossMul, crossReq, fitText, plainDesc, skillLoad } from '../data/skills.js';
 import { STAT_INFO } from '../data/stats.js';
 import { SPIRITS, SPIRIT_GRADES, spiritBuffText } from '../data/spirits.js';
 import { spiritIconURL } from '../render/spirits.js';
@@ -142,13 +142,14 @@ export function skillPickHtml(s, b) {
     const note = [hf.hand === 'off' && fit > 0 ? `왼손 ${b.offItem.name}으로` : '', cr ? `다른 종족 기술 · ${STAT_INFO[cr.stat].name} ${cr.full} 이상이면 온전히 (지금 ${Math.round(cm * 100)}%)` : ''].filter(Boolean).join(' · ');
     const btn = locked ? `<span class="muted">${sk.unlock}레벨에 배움</span>` : on ? `<button class="sm ghost" data-act="skillOff" data-id="${id}">빼기</button>${i > 0 ? `<button class="sm ghost" data-act="skillUp" data-id="${id}">앞으로</button>` : ''}` : `<button class="sm" data-act="skillOn" data-id="${id}">장착</button>`;
     return `<div class="skc ${on ? 'on' : ''} ${locked ? 'locked' : ''} ${fit <= 0 ? 'cant' : ''}" style="--c:${ROLE_COLOR[sk.role]}"><div class="c-head"><b>${on ? `[${keys[i]}] ` : ''}${sk.name}</b><span class="role">${SKILL_KIND[sk.kind]}</span></div>
-      <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''} · <b class="${fit <= 0 ? 'warn' : fit < 0.99 ? 'dim' : ''}">${fitText(fit)}</b>${note ? ` · ${note}` : ''}</div><div class="c-sum">${esc(cr ? plainDesc(sk) : sk.desc)}</div><div class="c-act">${btn}</div></div>`;
+      <div class="muted"><b class="sk-load">부하 ${skillLoad(id)}</b> · 재사용 ${sk.cd}초${cost ? ' · ' + cost : ''} · <b class="${fit <= 0 ? 'warn' : fit < 0.99 ? 'dim' : ''}">${fitText(fit)}</b>${note ? ` · ${note}` : ''}</div><div class="c-sum">${esc(cr ? plainDesc(sk) : sk.desc)}</div><div class="c-act">${btn}</div></div>`;
   };
   const cls = (b.available || []).filter((id) => SKILLS[id] && SKILLS[id].cls === b.cls);
   const locked = Object.keys(SKILLS).filter((id) => SKILLS[id].cls === b.cls && !cls.includes(id));
   const learned = (b.available || []).filter((id) => SKILLS[id] && (SKILLS[id].cls !== b.cls) && !SKILLS[id].engraving);
   const eng = (b.available || []).filter((id) => SKILLS[id]?.engraving);
   return `<section class="panel"><h3>스킬 <small>최대 4개 · Q / E / R / F · 무기: ${ITEMS[b.weaponId].name} (${WCAT_NAME[b.wcat] || b.wcat})</small></h3>
+      <p class="sk-cap">스킬 부하 <b>${b.skillLoad} / ${b.skillCap}</b> <small>센 스킬일수록 무겁다 · 4레벨마다 한도 +1 · 센 스킬 하나와 가벼운 스킬 여럿 중에서 고른다</small></p>
       <p class="muted">무기에 맞지 않는 스킬은 약해지고(지팡이로 베기 → 30%), 아예 못 쓰는 것도 있다(활 없이 쏘기 · 방패 없이 방패 기술). <b>한손 무기</b>라면 왼손 도구(마법 부적 · 손쇠뇌 · 작은 방패 · 투척 주머니)를 함께 들어 모든 스킬을 쓸 수 있다 — 스킬은 두 손 중 더 맞는 쪽으로 나간다. 마법은 든 무기에 따라 모양이 바뀐다 (근접 무기: 앞을 휩쓰는 짧고 센 마법 · 활: 빠르고 멀리 가는 마법 화살).</p>
       <div class="skill-row">${cls.map((id) => card(id, false)).join('')}${locked.map((id) => card(id, true)).join('')}</div>
       <h4>배운 기술 <small>수련장 교관 · 서고 사서에게 배우거나, 섬의 옛 기술 석판을 읽는다</small></h4>

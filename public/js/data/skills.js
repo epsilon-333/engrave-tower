@@ -432,7 +432,7 @@ export const SKILL_BAL = {}; // 스킬 하나씩은 보정하지 않는다 (한 
 // ── 클래스 밸런스 보정 (tools/balance.mjs: 30초 실제 싸움 · 무리 / 단단한 적) ──
 export const CLASS_BAL = {"predator": 1, "behemoth": 0.92, "elementalist": 1.07, "chronomancer": 0.9, "guardian": 1.6, "greatsword": 1.6, "berserker": 0.8, "thrower": 1.08, "necromancer": 0.71, "hexer": 0.96, "shadowblade": 0.97, "venomHunter": 1.6, "spiritcaller": 1.5, "ranger": 1.04, "dragoon": 0.68, "dragonSage": 1.09}; // 결투(사람 대 사람)
 // 몬스터를 상대할 때의 클래스 보정 (tools/tests/climbsim.mjs 로 클래스마다 오른 층을 비교해 맞춤)
-export const CLASS_BAL_PVE = {"predator": 1.2, "behemoth": 1.03, "elementalist": 0.78, "chronomancer": 0.8, "guardian": 2.14, "greatsword": 1.72, "berserker": 0.8, "thrower": 1.13, "necromancer": 0.9, "hexer": 1.2, "shadowblade": 0.87, "venomHunter": 1.51, "spiritcaller": 1.6, "ranger": 1.28, "dragoon": 0.63, "dragonSage": 1.2};
+export const CLASS_BAL_PVE = {"predator": 1.2, "behemoth": 1.03, "elementalist": 1.0, "chronomancer": 0.95, "guardian": 2.14, "greatsword": 1.72, "berserker": 0.8, "thrower": 1.13, "necromancer": 0.9, "hexer": 1.2, "shadowblade": 0.87, "venomHunter": 1.51, "spiritcaller": 1.6, "ranger": 1.28, "dragoon": 0.63, "dragonSage": 1.2};
 
 // ── 돈 · 미션으로 얻는 CC기 (누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다) ──
 export const CC_EXTRA = {
@@ -604,8 +604,14 @@ export const ZONE_ELEM = {
   grave: { weak: 'lightning', resist: 'dark' },
 };
 
-// ══════ 더 배우는 기술: 클래스마다 둘 (15레벨 · 30레벨). 사령술사는 그대로 ══════
+// ══════ 더 배우는 기술: 클래스마다 둘 (15레벨 · 30레벨) ══════
 const MORE_SKILLS = {
+  necromancer: {
+    boneSpear: { name: '뼈 창', role: '공격', cd: 5, cost: 14, elem: 'dark', scale: 'mag', fx: 'bones', unlock: 15,
+      desc: '일직선의 적을 모두 꿰뚫는 뼈 창을 날린다. 맞히면 영혼 +6. 영혼 14.', do: [{ op: 'proj', n: 1, speed: 340, range: 260, mul: 2.0, pierce: 99, kind: 'soul', onHitGain: 6 }] },
+    deathNova: { name: '죽음의 파동', role: '마무리', cd: 15, cost: 35, elem: 'dark', scale: 'mag', fx: 'doom', unlock: 30,
+      desc: '내 둘레로 죽음의 기운이 터져 큰 피해 · 1초 기절. 영혼 35.', do: [{ op: 'aoe', at: 'self', r: 100, mul: 2.6, stun: 1.0, fx: 'doom' }] },
+  },
   predator: {
     frenzyClaws: { name: '광란의 발톱', role: '연타', cd: 7, gain: 12, scale: 'phys', fx: 'claws', mo: 'claw', unlock: 15,
       desc: '앞을 네 번 연달아 할퀸다. 한 번마다 출혈 1중첩. 본능 +12.', do: [0, 0.12, 0.24, 0.36].map((d, i) => ({ op: 'cone', range: i === 3 ? 52 : 46, angle: 2.0, mul: i === 3 ? 1.1 : 0.7, status: 'bleed', stacks: 1, fx: 'claws', delay: d })) },
@@ -711,5 +717,17 @@ const MORE_SKILLS = {
 };
 for (const [cls, list] of Object.entries(MORE_SKILLS)) {
   Object.assign(SKILLS, list);
-  for (const id of Object.keys(list)) if (!CLASSES[cls].skills.includes(id)) CLASSES[cls].skills.push(id);
+  for (const [id, sk] of Object.entries(list)) { sk.cls = cls; sk.race = CLASSES[cls].race; sk.kind ||= ['wizard', 'undead'].includes(sk.race) || ['spiritcaller', 'dragonSage'].includes(cls) ? 'spell' : 'body'; if (!CLASSES[cls].skills.includes(id)) CLASSES[cls].skills.push(id); }
 }
+
+// ── 스킬 부하: 센 스킬일수록 무겁다. 장착한 스킬 부하의 합은 레벨에 따른 한도를 넘을 수 없다 ──
+// 궁극기 5 · 재사용이 길수록 무겁고 마무리는 +1 (스킬에 load를 적으면 그 값). 무기 기술은 0
+export function skillLoad(id) {
+  const sk = SKILLS[id]; if (!sk || id === 'weapon') return 0;
+  if (sk.load != null) return sk.load;
+  if (sk.ult) return 5;
+  const base = sk.cd <= 3 ? 1 : sk.cd <= 6 ? 2 : sk.cd <= 10 ? 3 : 4;
+  return Math.min(5, base + (sk.role === '마무리' ? 1 : 0));
+}
+// 한도: 1레벨 5 → 4레벨마다 +1 (20레벨 10 · 40레벨 15 · 60레벨 20)
+export const skillCap = (level = 1) => 5 + Math.floor(level / 4);

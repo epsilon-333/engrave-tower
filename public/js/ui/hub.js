@@ -15,7 +15,7 @@ import { computeBuild, encodeLoadout, decodeLoadout, SLOTS, twoHandBonus, weapon
 import { condText, evalCond } from '../sim/conditions.js';
 import { toLoadout, writeSave, refreshQuests, claimQuest } from '../save.js';
 import { sfx } from '../audio.js';
-import { SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS } from '../data/skills.js';
+import { SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS, skillLoad, skillCap } from '../data/skills.js';
 import { getAutoAim, setAutoAim } from '../settings.js';
 import { bagTab, tradeTab, forgeTab, lifeClick, fishCodex, artifactCodex } from './life.js';
 import { whereTab } from './where.js';
@@ -204,7 +204,7 @@ export class Hub {
         : `<button class="sm" data-act="skillOn" data-id="${id}">장착</button>`;
       return `<div class="skc ${on ? 'on' : ''} ${locked ? 'locked' : ''}" style="--c:${ROLE_COLOR[sk.role]}">
         <div class="c-head"><b>${on ? `[${keys[i]}] ` : ''}${sk.name}</b><span class="role">${sk.role}</span></div>
-        <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''}${sk.cast ? ` · 시전 ${sk.cast}초` : ''}</div>
+        <div class="muted"><b class="sk-load">부하 ${skillLoad(id)}</b> · 재사용 ${sk.cd}초${cost ? ' · ' + cost : ''}${sk.cast ? ` · 시전 ${sk.cast}초` : ''}</div>
         <div class="c-sum">${esc(sk.desc)}</div>
         <div class="c-act">${btn}</div>
       </div>`;
@@ -227,6 +227,7 @@ export class Hub {
       <h3>클래스 <small>언제든 무료로 바꿀 수 있어요 · 바꾸면 그 클래스의 시작 무기를 받습니다</small></h3>
       <div class="cls-row">${clsRow}</div>
       <h3>스킬 <small>최대 4개 · Q / E / R / F (모바일은 화면 버튼) · 스킬마다 자원 소모가 달라요</small></h3>
+      <p class="sk-cap">스킬 부하 <b>${b.skillLoad} / ${b.skillCap}</b> <small>센 스킬일수록 무겁다 · 4레벨마다 한도 +1 · 센 스킬 하나와 가벼운 스킬 여럿 중에서 고른다</small></p>
       <div class="skill-tools">
         <label class="toggle"><input type="checkbox" data-act="autoAim" ${auto ? 'checked' : ''}> 자동 조준 <small>(T) 강한 스킬은 체력 높은 적, 범위 스킬은 적이 많은 곳, 마무리는 약한 적을 노립니다</small></label>
         <button class="sm" data-act="practice">연습 모드 · 모든 스킬 써 보기</button>
@@ -498,6 +499,8 @@ export class Hub {
         const cur = [...this.curSkills()];
         if (cur.includes(id)) break;
         if (cur.length >= 4) cur[3] = id; else cur.push(id);
+        const used = cur.reduce((a, k) => a + skillLoad(k), 0), cap = skillCap(s.level || 1);
+        if (used > cap) { this.toast(`스킬 부하가 넘친다 (${used} / ${cap}) · 다른 스킬을 빼거나 레벨을 올리자`); break; }
         s.skills = cur; break;
       }
       case 'setCls': {

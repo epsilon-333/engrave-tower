@@ -6,7 +6,7 @@ import { RACES, RACE_MIGRATE } from '../data/races.js';
 import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
 import { ITEMS, weaponCat, weaponHands } from '../data/items.js';
 import { evalCond, condText } from './conditions.js';
-import { SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES } from '../data/skills.js';
+import { SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, skillLoad, skillCap } from '../data/skills.js';
 
 export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back'];
 export const AGI_DODGE_FROM = 25;
@@ -214,6 +214,11 @@ export function computeBuild(lo) {
     for (const roles of [['준비', '강화', '전환', '방어'], ['공격', '이동', '연타', '제어', '소환'], ['마무리']]) { const id = pick(roles); if (id) skills.push(id); }
     for (const id of race) if (skills.length < 4 && !skills.includes(id)) skills.push(id);
   }
+  // 스킬 부하: 앞에서부터 한도 안에 드는 것만 장착된다 (기본 장착도 같은 규칙)
+  const sCap = lo.allSkills ? 99 : skillCap(lo.level || 1);
+  let sLoad = 0;
+  skills = skills.filter((id) => { const l = skillLoad(id); if (sLoad + l > sCap) return false; sLoad += l; return true; });
+  if (!lo.skills) for (const id of available) if (skills.length < 4 && !skills.includes(id) && sLoad + skillLoad(id) <= sCap) { skills.push(id); sLoad += skillLoad(id); }
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
   if (wpn.kind === 'melee') { d.dmgTakenMul *= 0.9; flags.add('stagger'); }
   else flags.add('aimSlow');
@@ -231,7 +236,7 @@ export function computeBuild(lo) {
   }
   const offA = active.find((s2) => s2.def.slot === 'off' || s2 === offSrc);
   const offItem = offA ? (offA === offSrc ? { ...offSrc.def, off: offWeaponPower(offSrc.def), odesc: '왼손에 든 무기' } : offA.def) : null;
-  return { race: lo.race, level: lo.level || 1, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
+  return { skillLoad: sLoad, skillCap: sCap, race: lo.race, level: lo.level || 1, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
 }
 
 // 무기 계열: 마법(마도서 · 완드 · 보주 · 인형) / 단검(민첩 칼) / 검 / 도끼 / 둔기 / 던지기 / 채찍
