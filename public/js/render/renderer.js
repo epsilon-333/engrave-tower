@@ -780,7 +780,8 @@ export class Renderer {
   draw(w, dt) {
     const main = this.mainG, S = this.S, VW = this.VW, VH = this.VH;
     const p = w.player;
-    const tx = p.x - VW / 2 + p.aimX * 16, ty = p.y - VH / 2 + p.aimY * 10;
+    const tx = p.x - VW / 2 + (p.aimX || 0) * 16, ty = p.y - VH / 2 + (p.aimY || 0) * 10;
+    if (!Number.isFinite(this.cam.x) || !Number.isFinite(this.cam.y)) { this.cam.x = tx; this.cam.y = ty; } // 카메라가 한 번 NaN이 되면 조준 → 카메라로 계속 번지므로 바로 되돌린다
     this.cam.x += (tx - this.cam.x) * Math.min(1, dt * 8);
     this.cam.y += (ty - this.cam.y) * Math.min(1, dt * 8);
     const mw = w.tw * TILE, mh = w.th * TILE;

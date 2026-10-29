@@ -776,7 +776,7 @@ export class World {
 
     this.autoAim = inp.autoAim !== false;
     const locked = (p.motion && p.motion.lock) || p.windupT > 0 || p.castT > 0 || p.channel;
-    if (!locked) {
+    if (!locked && Number.isFinite(inp.aimX) && Number.isFinite(inp.aimY)) {
       const ax = inp.aimX - p.x, ay = inp.aimY - p.y, al = Math.hypot(ax, ay) || 1;
       p.aimX = ax / al; p.aimY = ay / al;
       this.aimDist = al;
