@@ -310,6 +310,7 @@ export class Renderer {
           }
           this.texts.push({ x: ev.x + (Math.random() - 0.5) * 6, y: ev.y, text: fmt(ev.v), color: ev.color, t: 0.75, crit: ev.crit, heavy: ev.heavy, small: ev.small, vy: -34, vx: (Math.random() - 0.5) * 24, pop: ev.crit || ev.heavy ? 0.14 : 0.07 });
           if (ev.id != null) this.squash.set(ev.id, 0.14);
+          if (!ev.small && ev.src !== 'dot' && ev.src !== 'linked') this.hitPop(ev.x, ev.y + 6, ev.color === '#ffffff' ? '#fff2c0' : ev.color, ev.crit ? 2 : ev.heavy || ev.src === 'aoe' || ev.src === 'skill' ? 1 : 0);
           if (ev.src === 'attack') {
             this.sparkBurst(ev.x, ev.y + 8, ev.crit ? '#ffe060' : '#ffffff', ev.crit ? 10 : 5);
             this.fx.push({ k: 'glow', x: ev.x, y: ev.y + 4, r: ev.crit || ev.heavy ? 22 : 14, color: ev.crit ? '#ffe060' : '#fff4e0', t: 0.12, max: 0.12 });
@@ -600,6 +601,7 @@ export class Renderer {
 
   skillFx(ev) {
     const col = ELEM[ev.elem]?.color || '#ffffff';
+    this.juice(ev.x + Math.cos(ev.ang || 0) * 10, ev.y - 8 + Math.sin(ev.ang || 0) * 6, col === '#ffffff' ? '#ffe08a' : col, ev.ult ? 'ultCast' : 'cast', 26);
     if (ev.ult) {
       this.ultName = { text: ev.name, color: col === '#ffffff' ? '#ffd27a' : col, t: 1.4, max: 1.4 };
       this.flash = { color: '255,255,255', t: 0.18, max: 0.18 };
@@ -623,6 +625,7 @@ export class Renderer {
   aoeFx(ev) {
     const col = ELEM[ev.elem]?.color || '#ffe8a0';
     const fx = ev.fx;
+    this.juice(ev.x, ev.y, col, ev.ult ? 'ult' : ev.fromProj ? 'pop' : 'skill', ev.r || 30);
     if (ev.ult) { this.flash = { color: '255,240,210', t: 0.22, max: 0.22 }; this.shake = Math.max(this.shake, 12); this.hitstop = Math.max(this.hitstop, 0.12); }
     if (fx === 'arcane' || fx === 'implode' || fx === 'holy' || fx === 'corpse' || fx === 'doom' || fx === 'shatter' || fx === 'zero' || fx === 'timestop') {
       const c2 = fx === 'holy' ? '#fff0a0' : fx === 'corpse' || fx === 'doom' ? '#c45cff' : fx === 'shatter' || fx === 'zero' ? '#c8f0ff' : '#b98aff';
@@ -726,6 +729,36 @@ export class Renderer {
     this.fx.push({ k: 'glow', x: ox, y: oy, r: big ? 22 : 14, color: '#ffb040', t: 0.1, max: 0.1 });
   }
 
+  // ───── 손맛: 세기를 셋으로 나눈다 (평타 < 스킬 < 궁극기). 평타는 작게 두어야 스킬이 돋보인다 ─────
+  juice(x, y, col, tier, r = 30) {
+    const T = { pop: 0.55, cast: 0.6, skill: 1, ultCast: 1.6, ult: 2.4 }[tier] || 1, big = tier === 'ult' || tier === 'ultCast';
+    const R = Math.max(18, Math.min(120, r)) * (big ? 1.25 : 1);
+    this.fx.push({ k: 'bloom', x, y: y - 4, r: R * (big ? 1.6 : 1.1), color: col, t: big ? 0.5 : 0.28, max: big ? 0.5 : 0.28 });
+    if (tier !== 'pop') this.fx.push({ k: 'starburst', x, y: y - 6, r: R * (big ? 1.5 : 1), n: big ? 16 : tier === 'cast' ? 6 : 10, color: col, rot: Math.random() * 6.28, t: big ? 0.42 : 0.24, max: big ? 0.42 : 0.24 });
+    const ns = Math.round((tier === 'cast' ? 10 : 18) * T);
+    for (let i = 0; i < ns; i++) { // 꼬리를 끄는 불똥: 빠르게 튀었다가 금방 식는다
+      const a = Math.random() * Math.PI * 2, sp = (120 + Math.random() * 220) * (big ? 1.4 : 1);
+      this.parts.push({ x, y: y - 4, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.7 - 20, t: 0.18 + Math.random() * 0.22, max: 0.4, color: i % 3 ? col : '#ffffff', g: 120, streak: true, w: big ? 2 : 1.5 });
+    }
+    const ne = Math.round(8 * T);
+    for (let i = 0; i < ne; i++) this.parts.push({ x: x + (Math.random() - 0.5) * R, y: y - 2 + (Math.random() - 0.5) * R * 0.5, vx: (Math.random() - 0.5) * 30, vy: -20 - Math.random() * 50, t: 0.6 + Math.random() * 0.8, max: 1.4, color: col, g: -10, glow: true, size: big ? 2.5 : 1.5 });
+    if (tier === 'cast' || tier === 'pop') return;
+    this.fx.push({ k: 'scorch', x, y: y + 2, r: R * (big ? 0.9 : 0.6), color: col, t: big ? 2.6 : 1.6, max: big ? 2.6 : 1.6 });
+    this.shake = Math.max(this.shake, big ? 10 : 3); this.hitstop = Math.max(this.hitstop, big ? 0.1 : 0.035);
+    if (!big) return;
+    // 궁극기: 하늘에서 내리꽂는 빛기둥 · 두 겹 충격파 · 튀는 파편 · 잠깐 뒤 여진
+    this.fx.push({ k: 'pillar', x, y, r: R * 0.45, color: col, t: 0.7, max: 0.7 });
+    this.shockwave(x, y, R, col, 40); this.shockwave(x, y, R * 0.6, '#ffffff', 20);
+    for (let i = 0; i < 22; i++) { const a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 140; this.parts.push({ x, y, vx: Math.cos(a) * sp, vy: -80 - Math.random() * 160, t: 0.7 + Math.random() * 0.5, max: 1.2, color: i % 2 ? '#5a4a3a' : '#8a7a66', g: 520, chunk: true, floor: y + (Math.random() - 0.3) * 18 }); }
+    this.fx.push({ k: 'after', x, y, r: R, color: col, t: 0.34, max: 0.34 });
+    if (tier === 'ult') this.flash = { color: '255,248,225', t: 0.22, max: 0.22 };
+  }
+  hitPop(x, y, col, lv) { // 한 대 맞을 때: 평타 0 · 스킬 1 · 치명타 2
+    const n = [3, 6, 10][lv];
+    for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, sp = 90 + Math.random() * (60 + lv * 80); this.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.7, t: 0.1 + Math.random() * 0.12, max: 0.22, color: i % 2 ? col : '#ffffff', g: 0, streak: true, w: lv ? 1.5 : 1 }); }
+    if (lv) this.fx.push({ k: 'bloom', x, y, r: 10 + lv * 7, color: col, t: 0.12 + lv * 0.04, max: 0.12 + lv * 0.04 });
+    if (lv === 2) this.fx.push({ k: 'starburst', x, y, r: 26, n: 6, color: '#fff4c8', rot: Math.random() * 6.28, t: 0.16, max: 0.16 });
+  }
   burst(x, y, color, n, speed = 90) {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, s = speed * (0.3 + Math.random() * 0.8);
@@ -925,6 +958,17 @@ export class Renderer {
         g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, a) * 0.8;
         g.drawImage(img, Math.round(q.x - img.width / 2), Math.round(q.y - img.height / 2));
         g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      } else if (q.streak) { // 꼬리 불똥: 빛을 더하며 그린다 (가운데는 희게)
+        const L = 0.045, x2 = q.x - q.vx * L, y2 = q.y - q.vy * L;
+        g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+        g.strokeStyle = hexA(q.color, a * 0.8); g.lineWidth = q.w + 1; g.beginPath(); g.moveTo(q.x, q.y); g.lineTo(x2, y2); g.stroke();
+        g.strokeStyle = hexA('#ffffff', a * 0.9); g.lineWidth = Math.max(0.8, q.w - 0.7); g.beginPath(); g.moveTo(q.x, q.y); g.lineTo((q.x + x2) / 2, (q.y + y2) / 2); g.stroke();
+        g.globalCompositeOperation = 'source-over'; g.lineCap = 'butt';
+      } else if (q.chunk) { // 돌 파편: 떨어져 바닥에서 한 번 튄다
+        if (q.y > q.floor && q.vy > 0) { q.y = q.floor; q.vy *= -0.35; q.vx *= 0.6; }
+        q.vx /= 0.9; q.vy /= 0.9; q.vx *= 0.985; // 공기 저항은 약하게
+        g.fillStyle = hexA('#1a1410', a * 0.5); g.fillRect(Math.round(q.x), Math.round(q.floor + 1), 2, 1);
+        g.fillStyle = hexA(q.color, a); g.fillRect(Math.round(q.x - 1), Math.round(q.y - 1), 2, 2); g.fillStyle = hexA('#c8b8a0', a); g.fillRect(Math.round(q.x - 1), Math.round(q.y - 1), 1, 1);
       } else if (q.line) {
         g.strokeStyle = hexA(q.color, a); g.lineWidth = 1;
         g.beginPath(); g.moveTo(q.x, q.y); g.lineTo(q.x - q.vx * 0.03, q.y - q.vy * 0.03); g.stroke();
@@ -2987,6 +3031,39 @@ export class Renderer {
       } else if (f.k === 'chargeGlow') {
         const p2 = this.world.player;
         for (let i = 0; i < 2; i++) { const a = Math.random() * Math.PI * 2; this.parts.push({ x: p2.x + Math.cos(a) * 26, y: p2.y - 8 + Math.sin(a) * 26, vx: -Math.cos(a) * 70, vy: -Math.sin(a) * 70, t: 0.35, max: 0.35, color: '#ffe080', g: 0 }); }
+      } else if (f.k === 'bloom') { // 빛 번짐: 빠르게 커지며 사라진다
+        const rr = f.r * (0.55 + 0.45 * (1 - k * k)), gr = g.createRadialGradient(f.x, f.y, 0, f.x, f.y, rr);
+        gr.addColorStop(0, hexA('#ffffff', 0.75 * k)); gr.addColorStop(0.25, hexA(f.color, 0.55 * k)); gr.addColorStop(1, hexA(f.color, 0));
+        g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.translate(f.x, f.y); g.scale(1, 0.75); g.translate(-f.x, -f.y); g.beginPath(); g.arc(f.x, f.y, rr, 0, Math.PI * 2); g.fill(); g.restore();
+      } else if (f.k === 'starburst') { // 별빛살: 가늘고 날카로운 빛줄기가 뻗었다 줄어든다
+        g.save(); g.globalCompositeOperation = 'lighter'; g.translate(f.x, f.y);
+        const ext = f.r * (0.4 + 0.6 * Math.sqrt(1 - k));
+        for (let i = 0; i < f.n; i++) {
+          const a = f.rot + (i / f.n) * Math.PI * 2, L = ext * (i % 2 ? 0.6 : 1), wd = (i % 2 ? 1.2 : 2.2) * k + 0.4;
+          const ca = Math.cos(a), sa = Math.sin(a) * 0.7, nx = -sa, ny = ca;
+          g.fillStyle = hexA(i % 2 ? f.color : '#ffffff', 0.85 * k);
+          g.beginPath(); g.moveTo(nx * wd, ny * wd); g.lineTo(ca * L, sa * L); g.lineTo(-nx * wd, -ny * wd); g.closePath(); g.fill();
+        }
+        g.restore();
+      } else if (f.k === 'scorch') { // 그을린 자리: 땅에 남았다가 서서히 옅어진다 (가장자리는 속성 빛이 식어 간다)
+        const a = Math.min(1, k * 2.5);
+        g.save(); g.translate(f.x, f.y); g.scale(1, 0.5);
+        const gr = g.createRadialGradient(0, 0, 0, 0, 0, f.r);
+        gr.addColorStop(0, `rgba(20,14,12,${0.42 * a})`); gr.addColorStop(0.7, `rgba(30,20,16,${0.25 * a})`); gr.addColorStop(1, 'rgba(30,20,16,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(0, 0, f.r, 0, Math.PI * 2); g.fill();
+        if (k > 0.5) { g.globalCompositeOperation = 'lighter'; g.strokeStyle = hexA(f.color, (k - 0.5) * 0.9); g.lineWidth = 2; g.beginPath(); g.arc(0, 0, f.r * 0.82, 0, Math.PI * 2); g.stroke(); }
+        g.restore();
+      } else if (f.k === 'pillar') { // 빛기둥: 하늘에서 꽂혀 굵어졌다 가늘어진다
+        const prog = 1 - k, wd = f.r * (prog < 0.15 ? prog / 0.15 : 1 - (prog - 0.15) * 0.9), top = f.y - 260;
+        g.save(); g.globalCompositeOperation = 'lighter';
+        const gr = g.createLinearGradient(f.x - wd, 0, f.x + wd, 0);
+        gr.addColorStop(0, hexA(f.color, 0)); gr.addColorStop(0.5, hexA('#ffffff', 0.9 * k)); gr.addColorStop(1, hexA(f.color, 0));
+        g.fillStyle = gr; g.fillRect(f.x - wd, top, wd * 2, f.y - top);
+        const g2 = g.createLinearGradient(f.x - wd * 2.2, 0, f.x + wd * 2.2, 0); g2.addColorStop(0, hexA(f.color, 0)); g2.addColorStop(0.5, hexA(f.color, 0.35 * k)); g2.addColorStop(1, hexA(f.color, 0));
+        g.fillStyle = g2; g.fillRect(f.x - wd * 2.2, top, wd * 4.4, f.y - top);
+        g.restore();
+      } else if (f.k === 'after') { // 여진: 잠깐 뒤 한 번 더 울린다
+        if (!f.done && k < 0.05) { f.done = true; this.shockwave(f.x, f.y, f.r * 0.8, f.color, 24); this.shake = Math.max(this.shake, 5); this.fx.push({ k: 'bloom', x: f.x, y: f.y - 4, r: f.r * 1.2, color: f.color, t: 0.3, max: 0.3 }); }
       } else if (f.k === 'tdonut') { // 고리 폭발: 바깥 고리가 위험 · 안쪽 원은 안전 (초록)
         const ry = 0.62, a = 0.12 + 0.3 * (1 - k);
         g.save(); g.beginPath(); g.ellipse(f.x, f.y, f.r, f.r * ry, 0, 0, Math.PI * 2); g.ellipse(f.x, f.y, f.inner, f.inner * ry, 0, 0, Math.PI * 2);
