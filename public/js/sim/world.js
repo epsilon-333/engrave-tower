@@ -4302,10 +4302,27 @@ export class World {
     e.skillNames = { ...(e.def.skillNames || {}), ...(sig.names || {}) };
     if (awake) e.champion = `각성한 ${e.def.name}`;
     e.passives = [...(sig.passives || [])]; e.pv = {}; e.bornT = this.t;
-    if (sig.evolve) e.evolve = { ...sig.evolve, at: sig.evolve.at * (awake ? 0.75 : 1) };
+    e.bphase = 0; e.forms = [null, sig.phase2, sig.phase3]; e.looks = sig.looks || [];
     if (e.passives.length) this.emit({ t: 'text', x: e.x, y: e.y - 46, text: '패시브 · ' + e.passives.map((k) => BOSS_PASSIVES[k].name).join(' · '), color: '#ffb07a' });
   }
-  // 보스 패시브 · 시간이 지나면 변신
+  // 보스 변신: 더 세지고 · 새 패시브 · 새 기술 · 모습이 바뀐다. 변신하는 동안(0.9초) 잠깐 무적
+  bossTransform(e, n) {
+    const v = e.forms?.[n]; e.bphase = n; e.raidPhase = n;
+    if (!v) return;
+    e.atk *= v.atk || 1; e.speedMul *= v.speed || 1; e.atkRate *= v.speed || 1;
+    if (v.passives) for (const k of v.passives) if (!e.passives.includes(k)) e.passives.push(k);
+    if (v.add && e.phaseMoves) e.phaseMoves = e.phaseMoves.map((l, i) => (i >= n ? [...l, ...v.add] : l));
+    e.tintX = e.looks[n - 1] || e.tintX; e.scale = (e.scale || 1) * 1.1; e.morphT = 0.9;
+    e.invulnT = Math.max(e.invulnT || 0, 0.9); e.mv = null; e.windT = 0.9; e.windMax = 0.9; e.mvCd = Math.max(e.mvCd || 0, 1.2);
+    const added = v.passives ? ' · ' + v.passives.map((k) => BOSS_PASSIVES[k].name).join(' · ') : '';
+    this.emit({ t: 'banner', text: `${n + 1}단계 · ${v.text}`, sub: `체력 ${n === 1 ? 66 : 33}% · 공격 +${Math.round(((v.atk || 1) - 1) * 100)}%${added}`, color: n === 2 ? '#ff3a2a' : '#ff8a5a' });
+    this.emit({ t: 'shake', v: n === 2 ? 10 : 7 }); this.emit({ t: 'hitstop', v: 0.12 });
+    this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 70 + n * 20, elem: n === 2 ? 'dark' : 'fire', fx: 'burst', ult: true });
+    // 변신 충격파: 가까이 붙어 있으면 밀려난다
+    const p = this.player, dx = p.x - e.x, dy = p.y - e.y, l = Math.hypot(dx, dy) || 1;
+    if (l < e.r + 50) { p.dashT = 0.18; p.dvx = (dx / l) * 260; p.dvy = (dy / l) * 260; }
+  }
+  // 보스 패시브
   bossPassiveTick(e) {
     const p = this.player, pv = e.pv, near = Math.hypot(p.x - e.x, p.y - e.y) < e.r + 60;
     const tick = (k, every) => { pv[k] = (pv[k] ?? every) - DT; if (pv[k] <= 0) { pv[k] = every; return true; } return false; };
@@ -4323,14 +4340,8 @@ export class World {
       }
       if (k === 'shieldPulse' && tick(k, 20)) { e.bshield = e.maxHp * 0.12; this.emit({ t: 'text', x: e.x, y: e.y - 34, text: `보호막 ${Math.round(e.bshield)}`, color: '#bfe8ff' }); }
     }
-    if (e.evolve && !e.evolved && this.t - e.bornT >= e.evolve.at) { // 오래 끌면 변신
-      const v = e.evolve; e.evolved = true;
-      e.atk *= v.atk || 1; e.speedMul *= v.speed || 1; e.atkRate *= v.speed || 1;
-      if (v.passives) for (const k of v.passives) if (!e.passives.includes(k)) e.passives.push(k);
-      if (v.add && e.phaseMoves) e.phaseMoves = e.phaseMoves.map((l) => [...l, ...v.add]);
-      this.emit({ t: 'banner', text: v.text, sub: `${Math.round(v.at)}초가 지났다 · 공격 +${Math.round(((v.atk || 1) - 1) * 100)}%${v.passives ? ' · ' + v.passives.map((k) => BOSS_PASSIVES[k].name).join(' · ') : ''}`, color: '#ff5a3a' });
-      this.emit({ t: 'shake', v: 8 }); this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 80, elem: 'fire', fx: 'burst', ult: true });
-    }
+    // 체력 66% · 33% 아래로 내려가면 다음 단계로 변신한다 (한 번에 많이 깎여도 단계를 건너뛰지 않고 차례로)
+    if (e.forms) { const ph = e.hp > e.maxHp * 0.66 ? 0 : e.hp > e.maxHp * 0.33 ? 1 : 2; if ((e.bphase || 0) < ph) this.bossTransform(e, e.bphase + 1); }
   }
   exposeBoss(e, t, mul, text) { // 빈틈: 잠깐 멈추고 더 아프게 맞는다
     e.st.stun = Math.max(e.st.stun || 0, t); e.exposedT = t; e.exposeMul = mul; e.mv = null; e.windT = 0;
@@ -4541,7 +4552,7 @@ export class World {
         heal: this.enemies.some((o) => !o.dead && !o.remote && Math.hypot(o.x - e.x, o.y - e.y) < 100 && o.hp < o.maxHp * 0.7) };
       const phm = e.phaseMoves || def.phaseMoves;
       const phase = phm ? (e.hp > e.maxHp * 0.66 ? 0 : e.hp > e.maxHp * 0.33 ? 1 : 2) : 0;
-      if (phm && phase !== (e.raidPhase ?? 0)) { e.raidPhase = phase; this.emit({ t: 'banner', text: `${e.kit ? e.kit.title : def.name} · ${phase + 1}단계`, color: '#ff8a5a' }); this.emit({ t: 'shake', v: 4 }); }
+      if (phm && !e.forms && phase !== (e.raidPhase ?? 0)) { e.raidPhase = phase; this.emit({ t: 'banner', text: `${e.kit ? e.kit.title : def.name} · ${phase + 1}단계`, color: '#ff8a5a' }); this.emit({ t: 'shake', v: 4 }); }
       Object.assign(can, { beam: dist < 230, spiral: dist < 200, split: dist < 220, whirl: dist < melee + 22, shove: dist < melee + 10, quake: dist < 70,
         rain: dist < 260, adds: this.enemies.filter((o) => o.summoner === e.id && !o.dead).length < 3, charge: dist > 50 && dist < 260, mark: true, nova: dist < 120,
         donut: dist < 200, sweep: dist < 230, channel: true, soar: true, mirror: !(e.mirrorT > 0), clones: !this.enemies.some((o) => o.decoyOf === e.id && !o.dead),

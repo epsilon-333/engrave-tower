@@ -1238,7 +1238,8 @@ export class Renderer {
     if (e.passives && dt > 0) { // 보스 기운: 몸 둘레에서 피어오르는 독 방울 · 서리 알갱이 · 불티 (고리는 그리지 않는다)
       const au = e.passives.includes('burnAura') ? '#ff8a3a' : e.passives.includes('frostAura') ? '#cfefff' : e.passives.includes('poisonAura') ? '#9be15d' : null;
       if (au && Math.random() < 0.5) { const a = Math.random() * Math.PI * 2, rr = e.r + 10 + Math.random() * 50; this.parts.push({ x: e.x + Math.cos(a) * rr, y: e.y + Math.sin(a) * rr * 0.6, vx: 0, vy: -14 - Math.random() * 18, t: 0.9, max: 0.9, color: au, g: -4, glow: true, size: 1.5 }); }
-      if (e.evolved && Math.random() < 0.35) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y - Math.random() * e.r * 2, vx: 0, vy: -30, t: 0.6, max: 0.6, color: '#ff5a3a', g: -10, flame: true, size: 1.4 });
+      if (e.bphase >= 1 && Math.random() < (e.bphase >= 2 ? 0.6 : 0.3)) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y - Math.random() * e.r * 2, vx: 0, vy: -30, t: 0.6, max: 0.6, color: '#ff5a3a', g: -10, flame: true, size: e.bphase >= 2 ? 1.8 : 1.3 });
+      if (e.bphase >= 2 && Math.random() < 0.25) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 1.6, y: e.y - Math.random() * e.r, vx: (Math.random() - 0.5) * 10, vy: -16, t: 1.0, max: 1.0, color: '#1a1020', g: -4, puff: true, size: 3 });
     }
     if (e.soaring) { // 하늘의 포식자: 날아올라 화면 위로 — 땅에는 커지는 그림자만
       const k = Math.max(0, Math.min(1, (e.mv?.t ?? 0) / 2.6)), sz = e.r * (1.6 - k * 0.6);
@@ -1254,7 +1255,8 @@ export class Renderer {
       e._top = null;
       return;
     }
-    const sc = (art.scale || 1) * (e.scale || 1);
+    if (e.morphT > 0) e.morphT -= dt;
+    const sc = (art.scale || 1) * (e.scale || 1) * (e.morphT > 0 ? 1 + 0.18 * Math.sin((1 - e.morphT / 0.9) * Math.PI) : 1);
     const name = this.animFrame(art.base, e.moving ? 'run' : 'idle', w.t + e.phase, e.moving ? 10 : 6);
     const wind = e.windT > 0;
     const fuse = e.fuse > 0;
@@ -1263,7 +1265,7 @@ export class Renderer {
     const pose = wind ? 'wind' : e.moving ? 'walk' : 'idle', bf = Math.floor((w.t + e.phase) * (e.moving || art.fly ? 9 : 3)) % 4;
     const img = art.beast ? beastImg(art.beast, pose, bf, e.dir < 0, flash)
       : art.mimic ? sprite(e.dormant ? 'chest_full_open_anim_f0' : `chest_mimic_open_anim_f${e.moving || wind ? 1 + (Math.floor(w.t * 8) % 2) : 2}`, '', flash, e.dir < 0)
-      : sprite(name, art.tint || '', flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);
+      : sprite(name, e.tintX || art.tint || '', e.morphT > 0 && Math.floor(w.t * 24) % 2 ? '#ffffff' : flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);
     if (!img) return;
     let sq = this.squash.get(e.id) || 0;
     if (sq > 0) { sq -= dt; this.squash.set(e.id, sq); }
@@ -4368,9 +4370,11 @@ export class Renderer {
       if (boss.bshield > 0) { g.fillStyle = 'rgba(200,236,255,0.85)'; g.fillRect(bx2 + u, by2 + u, (bw2 - 2 * u) * Math.min(1, boss.bshield / boss.maxHp), 3 * u); } // 보호막: 체력바 위쪽 반에 흰빛
       // 패시브 · 변신까지 남은 시간
       const tags = (boss.passives || []).map((k) => PASSIVE_NAME[k]).filter(Boolean);
-      if (boss.evolve && !boss.evolved) tags.push(`변신까지 ${Math.max(0, Math.ceil(boss.evolve.at - (w.t - boss.bornT)))}초`);
-      else if (boss.evolved) tags.push('변신함');
-      if (tags.length) this.text(tags.join(' · '), W / 2, by2 + 12 * u, u, boss.evolved ? '#ff7a5a' : '#e8c8b0', 'center');
+      if (boss.forms) { // 단계 눈금 (66% · 33%): 여기까지 깎으면 변신한다
+        for (const f of [0.66, 0.33]) { const tx = Math.round(bx2 + u + (bw2 - 2 * u) * f); g.fillStyle = '#ffe8b0'; g.fillRect(tx, by2 - u, u, 10 * u); }
+        tags.unshift(`${(boss.bphase || 0) + 1}단계`);
+      }
+      if (tags.length) this.text(tags.join(' · '), W / 2, by2 + 12 * u, u, boss.bphase >= 2 ? '#ff5a3a' : boss.bphase >= 1 ? '#ff9a6a' : '#e8c8b0', 'center');
     }
 
     if (this.notes?.length) this.drawNotes(dt);
