@@ -669,8 +669,8 @@ const MORE_SKILLS = {
   shadowblade: {
     shurikenFan: { name: '수리검 부채', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'dart', mo: 'stab', unlock: 15,
       desc: '수리검 일곱 개를 부채꼴로 던진다. 기세 +12.', do: [{ op: 'proj', n: 7, spread: 0.16, speed: 360, range: 200, mul: 0.6, kind: 'shuriken' }] },
-    thousandCuts: { name: '천 갈래 베기', role: '마무리', cd: 14, cost: 35, scale: 'phys', fx: 'blink', mo: 'stab', unlock: 30,
-      desc: '적 사이를 번개처럼 오가며 여섯 번 벤다. 기세 35.', do: [{ op: 'chain', jumps: 6, range: 110, mul: 1.5 }] },
+    thousandCuts: { name: '천 갈래 베기', role: '마무리', cd: 14, cost: 35, scale: 'phys', fx: 'slashX', mo: 'stab', unlock: 30, aim: 'none',
+      desc: '1.2초 동안 무적으로 둘레의 적 사이를 달려 지나가며 여섯 번 벤다. 기세 35.', do: [{ op: 'channel', dur: 1.2, every: 0.2, invuln: true, sub: { op: 'danceStrike', r: 120, mul: 1.5 } }] },
   },
   venomHunter: {
     toxicArrow: { name: '맹독 화살', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'dart', mo: 'shoot', unlock: 15,
