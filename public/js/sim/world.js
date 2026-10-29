@@ -11,7 +11,7 @@ import { climbMul, setZoneRef, floorFoes, rollDoors, clearReward, actOf, REWARDS
 import { RAID_BOSS } from '../data/raid.js';
 import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
 import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO, SKILL_BAL, CLASS_BAL, CLASS_BAL_PVE } from '../data/skills.js';
-import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower, spiritBuff, buffMods } from '../data/spirits.js';
+import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower, spiritBuff, buffMods, SPIRIT_SPECIAL, spiritSpecialCd } from '../data/spirits.js';
 const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
 const SPIRIT_DMG_ELEM = { fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' };
 import { RACES } from '../data/races.js';
@@ -2425,8 +2425,48 @@ export class World {
       x.emp = f.emp; this.famShoot(x);
     }
     this.famShoot(f);
+    this.famSpecial(f);
   }
   // 정령의 공격: 내 둘레 150 안의 가장 가까운 적에게 속성 탄 (강화 중이면 2배 빠르게 · 피해 +60%)
+  famSpecial(f) { // 정령 고유 기술 (data/spirits.js SPIRIT_SPECIAL)
+    const p = this.player;
+    f.sp = (f.sp ?? 3) - DT * (f.emp > 0 ? 2 : 1);
+    if (f.sp > 0) return;
+    const near = this.enemies.filter((e) => !e.dead && !e.hidden && (e.def.ai !== 'dummy' || this.practice || this.mode === 'plaza') && Math.hypot(e.x - p.x, e.y - p.y) < 170).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
+    if (!near.length) { f.sp = 0.5; return; }
+    f.sp = spiritSpecialCd(f.grade);
+    const king = f.grade >= 3, X = SPIRIT_SPECIAL[f.elem], elem = SPIRIT_DMG_ELEM[f.elem], col = ELEM[elem]?.color || '#9bffb0';
+    const pow = this.skillAtk('best') * spiritPower(f.id, f.star, f.lv) * (f.emp > 0 ? 1.4 : 1);
+    const hit = (e, m, st, n = 1) => { this.damageEnemy(e, pow * m, 'mag', { src: 'spirit', elem, color: col }); if (st && !e.dead) this.applyStatus(e, st, n); };
+    const t0 = near[0];
+    this.emit({ t: 'text', x: f.x, y: f.y - 16, text: king ? X.king : X.name, color: col });
+    switch (f.elem) {
+      case 'fire': { const r = king ? 70 : 40; this.emit({ t: 'skillAoe', x: t0.x, y: t0.y, r, elem: 'fire', fx: 'burst', ult: king }); for (const e of this.enemiesNear(t0.x, t0.y, r)) hit(e, king ? 3.0 : 1.4, 'burn', king ? 4 : 2); break; }
+      case 'ice': {
+        if (king) { this.emit({ t: 'skillAoe', x: p.x, y: p.y, r: 90, elem: 'ice', fx: 'zero', ult: true }); for (const e of this.enemiesNear(p.x, p.y, 90)) { hit(e, 1.6, 'chill', 3); if (!e.dead) e.st.stun = Math.max(e.st.stun || 0, 1.2); } }
+        else { this.emit({ t: 'skillAoe', x: t0.x, y: t0.y, r: 22, elem: 'ice', fx: 'shatter' }); hit(t0, 1.2, 'chill', 3); if (!t0.dead) t0.st.stun = Math.max(t0.st.stun || 0, 1.0); }
+        break;
+      }
+      case 'lightning': { for (const e of near.slice(0, king ? 6 : 3)) { this.emit({ t: 'bolt', pts: [{ x: e.x + 6, y: e.y - 120 }, { x: e.x - 4, y: e.y - 60 }, { x: e.x, y: e.y - 6 }], color: col }); hit(e, king ? 1.8 : 1.1, 'shock', 1); } break; }
+      case 'wind': {
+        const r = king ? 90 : 60; this.emit({ t: 'skillAoe', x: p.x, y: p.y, r, elem: 'wind', fx: 'burst', ult: king });
+        for (const e of this.enemiesNear(p.x, p.y, r)) { hit(e, king ? 1.6 : 0.9); const dx = e.x - p.x, dy = e.y - p.y, l = Math.hypot(dx, dy) || 1, k = (king ? 260 : 180) * (e.def.elite || e.champion ? 0.3 : 1); e.kbx = (e.kbx || 0) + (dx / l) * k; e.kby = (e.kby || 0) + (dy / l) * k; }
+        if (king) p.buffs.spiritGale = { t: 4, max: 4, mods: { moveSpeed: 1.25 }, color: col, name: '폭풍의 눈' };
+        break;
+      }
+      case 'forest': {
+        const r = king ? 80 : 60; this.emit({ t: 'skillAoe', x: p.x, y: p.y, r, elem: 'forest', fx: 'spikes', ult: king });
+        for (const e of this.enemiesNear(p.x, p.y, r)) { hit(e, king ? 1.4 : 0.8, 'poison', 1); if (!e.dead) e.st.stun = Math.max(e.st.stun || 0, 1.2); }
+        if (king) p.shield = Math.min(this.d.maxHp * 0.4, (p.shield || 0) + this.d.maxHp * 0.08);
+        break;
+      }
+      case 'dark': {
+        if (king) { this.emit({ t: 'skillAoe', x: t0.x, y: t0.y, r: 80, elem: 'dark', fx: 'doom', ult: true }); for (const e of this.enemiesNear(t0.x, t0.y, 80)) hit(e, 2.6, 'curse', 3); }
+        else for (const e of near.slice(0, 3)) { this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 18, elem: 'dark', fx: 'doom' }); hit(e, 0.8, 'curse', 3); }
+        break;
+      }
+    }
+  }
   famShoot(f) {
     const p = this.player, E = SPIRIT_ELEMS[f.elem], col = ELEM[SPIRIT_DMG_ELEM[f.elem]]?.color || '#9bffb0';
     f.cd -= DT * (f.emp > 0 ? 2 : 1);

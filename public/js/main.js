@@ -34,7 +34,7 @@ import './data/weapons.js'; // 탑의 무기 100종을 장비 목록에 올린�
 import { CC_EXTRA, CLASSES, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc } from './data/skills.js';
 import { STAT_INFO } from './data/stats.js';
 import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
-import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText, STONE_PRICE_CALLER, CALLER_RATES, spiritLevel, SPIRIT_LV_XP } from './data/spirits.js';
+import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText, spiritSpecialText, STONE_PRICE_CALLER, CALLER_RATES, spiritLevel, SPIRIT_LV_XP } from './data/spirits.js';
 import { spiritIconURL } from './render/spirits.js';
 import { getAutoAim, setAutoAim, getNpcAttack, setNpcAttack } from './settings.js';
 import { witness, opinionText } from './sim/npclife.js';
@@ -1272,7 +1272,7 @@ function spiritCard(id, owned, main, badge = '') {
     <img src="${spiritIconURL(id)}" alt="">${badge ? `<i class="sp-badge">${badge}</i>` : ''}
     <b>${o ? esc(s.name) : '???'}</b><small style="color:${G.color}">${G.name} · ${SPIRIT_ELEMS[s.elem].name}${o ? ` · ${'★'.repeat(o.star)}${'☆'.repeat(SPIRIT_STAR_MAX - o.star)}` : ''}</small>
     ${o ? (() => { const lv = spiritLevel(o.xp), nx = SPIRIT_LV_XP[lv], pv = SPIRIT_LV_XP[lv - 1]; return `<small>Lv ${lv}${nx ? ` <span class="qbar"><i style="width:${Math.round(((o.xp || 0) - pv) / (nx - pv) * 100)}%"></i></span>` : ' (최고)'}</small>`; })() : ''}
-    ${o ? `<small>${esc(spiritBuffText(id, o.star, spiritLevel(o.xp)))}</small>${main === id ? '<em>함께하는 정령</em>' : `<button class="sm" data-spmain="${id}">함께하기</button>${save.cls === 'spiritcaller' ? ((save.spirits.extra || []).includes(id) ? `<button class="sm" data-spx="${id}">함께 · 빼기</button>` : `<button class="sm ghost" data-spx="${id}" ${(save.spirits.extra || []).length >= 2 ? 'disabled' : ''}>같이 데려가기</button>`) : ''}`}` : ''}</div>`;
+    ${o ? `<small>${esc(spiritBuffText(id, o.star, spiritLevel(o.xp)))}</small><small class="sp-sk">${esc(spiritSpecialText(id))}</small>${main === id ? '<em>함께하는 정령</em>' : `<button class="sm" data-spmain="${id}">함께하기</button>${save.cls === 'spiritcaller' ? ((save.spirits.extra || []).includes(id) ? `<button class="sm" data-spx="${id}">함께 · 빼기</button>` : `<button class="sm ghost" data-spx="${id}" ${(save.spirits.extra || []).length >= 2 ? 'disabled' : ''}>같이 데려가기</button>`) : ''}`}` : ''}</div>`;
 }
 function spiritHtml() {
   const sv = save.spirits || { owned: {}, main: null }, stones = save.bag?.spiritStone || 0, got = Object.keys(sv.owned || {}).length;

@@ -5,7 +5,7 @@ import { WTYPES, WMATS, PART_FX, SYNERGY, craftCost, craftItem } from '../data/c
 import { ITEMS, WEAPON_SKILLS, WCAT_NAME, weaponCat } from '../data/items.js';
 import { SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, skillFit, handFit, crossMul, crossReq, fitText, plainDesc, skillLoad } from '../data/skills.js';
 import { STAT_INFO } from '../data/stats.js';
-import { SPIRITS, SPIRIT_GRADES, spiritBuffText } from '../data/spirits.js';
+import { SPIRITS, SPIRIT_GRADES, spiritBuffText, spiritSpecialText } from '../data/spirits.js';
 import { spiritIconURL } from '../render/spirits.js';
 import { LEARN, WHERE_NAME, TABLET_BIOME_NAME } from '../data/learn.js';
 import { RACES } from '../data/races.js';
@@ -164,7 +164,7 @@ function spiritPickHtml(s) {
   own.sort((a, b) => SPIRITS[b[0]].grade - SPIRITS[a[0]].grade || b[1].star - a[1].star);
   return `<h4>함께하는 정령 <small>「정령 부르기」로 꺼낸다 · 계약은 세계수 성지의 「정령 계약」</small></h4><div class="sp-grid">${own.map(([id, o]) => {
     const sp = SPIRITS[id], G = SPIRIT_GRADES[sp.grade], on = s.spirits.main === id;
-    return `<div class="spc ${on ? 'main' : ''}" style="--c:${G.color}"><img src="${spiritIconURL(id)}" alt=""><b>${esc(sp.name)}</b><small style="color:${G.color}">${G.name} · ${'★'.repeat(o.star)}</small><small>${esc(spiritBuffText(id, o.star))}</small>${on ? '<em>함께하는 중</em>' : `<button class="sm" data-act="spiritMain" data-id="${id}">함께하기</button>`}</div>`;
+    return `<div class="spc ${on ? 'main' : ''}" style="--c:${G.color}"><img src="${spiritIconURL(id)}" alt=""><b>${esc(sp.name)}</b><small style="color:${G.color}">${G.name} · ${'★'.repeat(o.star)}</small><small>${esc(spiritBuffText(id, o.star))}</small><small class="sp-sk">${esc(spiritSpecialText(id))}</small>${on ? '<em>함께하는 중</em>' : `<button class="sm" data-act="spiritMain" data-id="${id}">함께하기</button>`}</div>`;
   }).join('')}</div>`;
 }
 

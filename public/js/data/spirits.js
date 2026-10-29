@@ -76,3 +76,15 @@ export function addSpirit(sv, id) {
   if (!sv.spirits.main) sv.spirits.main = id;
   return res;
 }
+
+// ── 정령 고유 기술: 함께하는 동안 저절로 쓴다. 등급이 높을수록 자주 · 정령왕은 훨씬 크게 ──
+export const SPIRIT_SPECIAL = {
+  fire: { name: '불꽃 폭발', king: '화염 기둥', text: '가까운 적 자리에 불꽃이 터진다 (화상 2중첩)', kingText: '거대한 화염 기둥이 솟는다 (화상 4중첩)' },
+  ice: { name: '서리 가시', king: '빙결 파동', text: '가까운 적 하나를 1초 얼린다 (냉기 3중첩)', kingText: '둘레의 적을 모두 1.2초 얼린다' },
+  lightning: { name: '낙뢰', king: '뇌우', text: '둘레의 적 셋에게 벼락 (감전)', kingText: '둘레의 적 여섯에게 벼락' },
+  wind: { name: '회오리', king: '폭풍의 눈', text: '내 둘레의 적을 밀쳐 낸다', kingText: '크게 밀쳐 내고 4초 동안 이동 속도 +25%' },
+  forest: { name: '덩굴 올가미', king: '세계수의 가호', text: '둘레의 적을 1.2초 묶는다', kingText: '둘레를 묶고 최대 체력 8% 보호막' },
+  dark: { name: '저주 전염', king: '어둠의 문', text: '가까운 적 셋에게 저주 3중첩', kingText: '어둠의 문이 열려 둘레를 크게 터뜨린다' },
+};
+export const spiritSpecialCd = (grade) => 9 - grade * 1.2; // 일반 9초 · 희귀 7.8 · 영웅 6.6 · 전설 5.4
+export const spiritSpecialText = (id) => { const s = SPIRITS[id], X = SPIRIT_SPECIAL[s.elem]; return s.grade >= 3 ? `${X.king}: ${X.kingText}` : `${X.name}: ${X.text}`; };
