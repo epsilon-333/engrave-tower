@@ -24,6 +24,9 @@ import { RACES } from '../data/races.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, WEAPON_ART, weaponArt } from '../data/art.js';
 import { STORY_ITEMS, storyObjective, pinoTalk } from '../data/story.js';
 import { sfx, tone } from '../audio.js';
+import { drawClimbObject, rewardIcon, drawClimbHud } from './climbfx.js';
+import { REWARDS as CLIMB_REWARDS, ACTS as CLIMB_ACTS, actOf as climbAct, recLevel as climbRec } from '../data/climb.js';
+import { ENGRAVINGS as ALL_ENG } from '../data/engravings.js';
 import { skyColor, darkness, clockText, partOfDay } from '../sim/time.js';
 
 const FONT = 'Galmuri11, "Malgun Gothic", sans-serif';
@@ -190,6 +193,7 @@ export class Renderer {
 
   setWorld(w) {
     this.world = w;
+    if (w.climb) this.fade = 0.5; // 탑의 층: 문을 지나면 어둠에서 밝아진다
     this.applyZoom(w);
     this.chunks = null; this.mapCanvas = null; this.bigMap = false;
     if (w.map.outdoor) {
@@ -1003,6 +1007,7 @@ export class Renderer {
     this.drawTexts(w, dt);
     drawBubbles(this, w);
     this.drawHud(w, dt);
+    if (this.fade > 0) { const g2 = this.g; g2.setTransform(1, 0, 0, 1, 0, 0); g2.fillStyle = `rgba(5,4,10,${Math.min(1, this.fade / 0.5)})`; g2.fillRect(0, 0, this.c.width, this.c.height); this.fade -= Math.min(dt, 0.05); }
     drawTrainHud(this, w);
 
     g.setTransform(1, 0, 0, 1, 0, 0);
@@ -3236,6 +3241,7 @@ export class Renderer {
 
   drawObject(w, o, dt) {
     const g = this.g, t = w.t;
+    if (o.kind === 'climbDoor' || o.kind === 'climbReward' || o.kind === 'climbRoom') return drawClimbObject(this, w, o, dt); // 탑 등반
     if (o.kind === 'gate') {
       const x = o.door * TILE, y = 1 * TILE;
       g.fillStyle = hexA(o.color, 0.55 + 0.2 * Math.sin(t * 3)); g.fillRect(x + 3, y + 3, 26, 29);
@@ -4018,6 +4024,9 @@ export class Renderer {
     for (const d of this.glowDeco) if (inView(d.x, d.y)) { const [r, c] = GLOW[d.kind]; hole(d.x, d.y - 3, r * (1 + Math.sin(w.t * 3 + d.x) * 0.08), 0.9); colored.push([d.x, d.y - 3, r * 0.8, c]); }
     for (const o of w.objects) if (inView(o.x, o.y)) {
       if (o.kind === 'portal') { hole(o.x, o.y, 70); colored.push([o.x, o.y, 50, o.color]); }
+      else if (o.kind === 'climbDoor') { hole(o.x, o.y - 16, 60); colored.push([o.x, o.y - 16, 46, CLIMB_REWARDS[o.next]?.color || '#ffffff']); }
+      else if (o.kind === 'climbReward') { if (!o.opened) { hole(o.x, o.y - 18, 80); colored.push([o.x, o.y - 18, 60, CLIMB_REWARDS[o.reward]?.color || '#ffffff']); } }
+      else if (o.kind === 'climbRoom') { hole(o.x, o.y - 8, 110); colored.push([o.x, o.y - 8, 70, o.room === 'altar' ? '#c45cff' : '#ffb050']); }
       else if (o.kind === 'camp') { hole(o.x + 11, o.y - 2, 80); colored.push([o.x + 11, o.y - 2, 60, '#ffa040']); }
       else if (o.kind === 'shrine' && !o.opened) { hole(o.x, o.y - 28, 40, 0.8); colored.push([o.x, o.y - 28, 30, '#c9a8ff']); }
       else if (o.kind === 'stairs' || o.kind === 'merchant' || o.kind === 'npc') { hole(o.x, o.y - 6, 40, 0.7); }
@@ -4155,7 +4164,7 @@ export class Renderer {
     if (left) body.push(left);
     g.font = `bold ${11 * u}px ${FONT}`;
     const wd = Math.min(maxW, Math.max(g.measureText(tp.title).width, ...body.map((l) => { g.font = `${11 * tu}px ${FONT}`; return g.measureText(l).width; }))) + 12 * u;
-    const ht = 16 * u + body.length * lh + 4 * u, x = Math.round(Math.min(this.c.width - wd - 4 * u, tp.x)), y = Math.round(tp.y + tp.h + 4 * u);
+    const ht = 16 * u + body.length * lh + 4 * u, x = Math.round(Math.min(this.c.width - wd - 4 * u, tp.x)), y = Math.round(tp.up ? tp.y - ht - 4 * u : tp.y + tp.h + 4 * u);
     this.panel(x, y, wd, ht);
     this.text(tp.title, x + 6 * u, y + 9 * u, u, tp.color, 'left', true, true);
     body.forEach((l, i) => this.text(l, x + 6 * u, y + 18 * u + i * lh + lh / 2, tu, i === body.length - 1 && left ? '#b8b0c8' : '#e8e0f0', 'left', false));
@@ -4230,6 +4239,7 @@ export class Renderer {
     for (const k of Object.keys(p.st)) { const nm = names[k] || [k, '#ffffff', '']; this.text(nm[0], sxx, ry + 5 * u, u, nm[1]); tips.push({ x: sxx, y: ry, w: 26 * u, h: 10 * u, title: nm[0], color: nm[1], lines: [nm[2]].filter(Boolean), left: p.st[k]?.t }); sxx += 30 * u; }
     this.drawSkillBar(w);
     this.drawClock(w);
+    if (this.journey && !w.climb && !w.pvp && !w.practice) this.drawJourney(w, bx, ry + 6 * u);
     this.drawTip();
 
     if (w.mode === 'field') this.drawMinimap(w);
@@ -4315,8 +4325,9 @@ export class Renderer {
       const v = Math.ceil(w.pvp.left);
       this.text(`결투 ${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`, W / 2, topY, u, v <= 30 ? '#ff8a7a' : '#e8d8a8', 'center', true, true);
     }
+    if (w.climb) drawClimbHud(this, w, topY); // 탑 등반
     // 각인의 탑: 이 층의 우두머리 목록 (쓰러뜨리면 빨간 줄)
-    if (w.tower?.bosses?.length) {
+    if (!w.climb && w.tower?.bosses?.length) {
       let y = topY + 46 * u;
       const x = W - 10 * u;
       this.text('우두머리', x, y, Math.max(1, u - 1), '#c8b8a0', 'right', true, true);
@@ -4328,7 +4339,7 @@ export class Renderer {
       }
     }
     // 각인의 탑: 층 · 걸린 시간 / 기준 시간 (넘기면 붉게)
-    if (w.tower) {
+    if (w.tower && !w.climb) {
       const par = 60 + w.tower.f * 2 + (w.tower.f % 5 === 0 ? 45 : 0), tt = w.tower.t, over = tt > par;
       const fmt = (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;
       this.text(`각인의 탑 ${w.tower.f}층 · ${fmt(tt)} / ${fmt(par)}`, W / 2, topY, u, over ? '#ff8a7a' : '#e8d8a8', 'center', true, true);
@@ -4350,11 +4361,55 @@ export class Renderer {
     if (this.banner) {
       this.banner.t -= dt;
       g.globalAlpha = Math.min(1, this.banner.t * 1.5);
-      this.text(this.banner.text, W / 2, H * 0.22, 3 * u, this.banner.color, 'center', true, true);
-      if (this.banner.sub) this.text(this.banner.sub, W / 2, H * 0.22 + 26 * u, u, '#d8d0e8', 'center');
+      const bY = Math.max(H * 0.22, boss ? topY + 64 * u : w.climb ? topY + 44 * u : 0); // 보스 체력바 · 등반 글 아래로
+      this.text(this.banner.text, W / 2, bY, 3 * u, this.banner.color, 'center', true, true);
+      if (this.banner.sub) this.text(this.banner.sub, W / 2, bY + 26 * u, u, '#d8d0e8', 'center');
       g.globalAlpha = 1;
       if (this.banner.t <= 0) this.banner = null;
     }
+  }
+
+  // 여정: 지금의 목표 하나 (왼쪽 위 · 체력 아래) + 장소가 있으면 화면 가장자리 화살표
+  drawJourney(w, x, y) {
+    const J = this.journey, u = this.u, tu = Math.max(1, u - 1), g = this.g;
+    g.font = `bold ${11 * u}px ${FONT}`;
+    const tw = Math.max(150 * u, g.measureText(J.title).width + 16 * u);
+    g.font = `${11 * tu}px ${FONT}`;
+    const hint = J.hint || '', lines = [];
+    let line = '';
+    for (const word of hint.split(' ')) { const t2 = line ? line + ' ' + word : word; if (g.measureText(t2).width > tw - 14 * u && line) { lines.push(line); line = word; } else line = t2; }
+    if (line) lines.push(line);
+    const show = lines.slice(0, 3), h = 30 * u + show.length * 12 * tu;
+    this.panel(x, y, tw, h);
+    g.fillStyle = J.done ? '#7be38a' : '#ffcf5a'; g.fillRect(x, y, 2 * u, h);
+    this.text(`여정 ${J.n} / ${J.total}${J.done ? ' · 완료!' : ''}`, x + 7 * u, y + 7 * u, tu, J.done ? '#7be38a' : '#c8b88a', 'left', false);
+    this.text(J.title, x + 7 * u, y + 19 * u, u, '#ffe8a8', 'left', true, true);
+    show.forEach((l, i) => this.text(l, x + 7 * u, y + 31 * u + i * 12 * tu, tu, '#c8c0d8', 'left', false));
+    this.tipRects.push({ x, y, w: tw, h, title: '여정 (J로 전체 보기)', color: '#ffcf5a', lines: ['하나를 마치면 보상을 받고 다음 목표가 보인다', J.reward ? `보상: ${J.reward}` : ''].filter(Boolean) });
+    if (J.target) this.edgeArrow(J.target.x, J.target.y, '#ffcf5a', J.target.label);
+  }
+  // 화면 밖의 목표를 가리키는 화살표 (화면 안이면 머리 위에 작은 표시)
+  edgeArrow(tx, ty, color, label, bounce = true) {
+    const g = this.g, u = this.u, W = this.c.width, H = this.c.height, sx = this.sx(tx), sy = this.sy(ty), m = 34 * u;
+    const mt = 78 * u, mb = 70 * u, ml = 30 * u, mr = 30 * u; // 위 · 아래는 HUD 가 있어 더 안쪽에
+    const p = this.world?.player;
+    const dist = p ? Math.round(Math.hypot(tx - p.x, ty - p.y) / TILE) : 0;
+    if (sx > m && sx < W - m && sy > m && sy < H - m) { // 보이는 곳: 위에서 통통 튀는 표시
+      if (!bounce) return;
+      const by = sy - 46 * u + Math.sin(performance.now() / 180) * 3 * u;
+      g.fillStyle = '#0d0b10'; g.beginPath(); g.moveTo(sx - 7 * u, by - 2 * u); g.lineTo(sx + 7 * u, by - 2 * u); g.lineTo(sx, by + 8 * u); g.closePath(); g.fill();
+      g.fillStyle = color; g.beginPath(); g.moveTo(sx - 5 * u, by - u); g.lineTo(sx + 5 * u, by - u); g.lineTo(sx, by + 6 * u); g.closePath(); g.fill();
+      return;
+    }
+    const cx = (ml + W - mr) / 2, cy = (mt + H - mb) / 2, ang = Math.atan2(sy - cy, sx - cx);
+    const k = Math.min((W - ml - mr) / 2 / Math.max(1e-3, Math.abs(Math.cos(ang))), (H - mt - mb) / 2 / Math.max(1e-3, Math.abs(Math.sin(ang))));
+    const ax = cx + Math.cos(ang) * k, ay = cy + Math.sin(ang) * k;
+    g.save(); g.translate(ax, ay); g.rotate(ang);
+    g.fillStyle = '#0d0b10'; g.beginPath(); g.moveTo(14 * u, 0); g.lineTo(-6 * u, -10 * u); g.lineTo(-2 * u, 0); g.lineTo(-6 * u, 10 * u); g.closePath(); g.fill();
+    g.fillStyle = color; g.beginPath(); g.moveTo(11 * u, 0); g.lineTo(-4 * u, -7 * u); g.lineTo(-1 * u, 0); g.lineTo(-4 * u, 7 * u); g.closePath(); g.fill();
+    g.restore();
+    const lx = ax - Math.cos(ang) * 22 * u, ly = ay - Math.sin(ang) * 18 * u;
+    this.text(`${label ? label + ' · ' : ''}${dist}칸`, Math.max(40 * u, Math.min(W - 40 * u, lx)), ly, Math.max(1, u - 1), color, 'center', true, true);
   }
 
   // 시계: 하늘빛 동그라미(해 · 달) + 날짜 · 시각
@@ -4416,7 +4471,7 @@ export class Renderer {
       if (id === 'weapon') {
         const k = p.skillCd > 0 ? 1 - p.skillCd / p.skillMax : 1;
         this.cooldownBox(x, y0, box, k, keys[i], '', null, p.skillCd);
-        this.text((WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기').slice(0, 4), x + box / 2, y0 + box + (7 + (i % 2) * 9) * v, Math.max(1, u - 1), '#d8d0e8', 'center');
+        this.text((WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기').slice(0, 5), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#d8d0e8', 'center');
         return;
       }
       const sk = SKILLS[id];
@@ -4426,7 +4481,7 @@ export class Renderer {
       const lack = need > p.res;
       this.cooldownBox(x, y0, box, k, keys[i], '', ROLE_COLOR[sk.role], cd);
       if (lack && k >= 1) { g.fillStyle = 'rgba(40,0,0,0.55)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); }
-      this.text(sk.name.slice(0, 4), x + box / 2, y0 + box + (7 + (i % 2) * 9) * v, u, lack ? '#ff8a80' : '#d8d0e8', 'center');
+      this.text(sk.name.slice(0, 5), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), lack ? '#ff8a80' : '#d8d0e8', 'center'); // 한 줄 · 작은 글씨 (이웃 칸과 겹치지 않게)
       if (need) this.text(String(need), x + box - 3 * v, y0 + 5 * v, Math.max(1, u - 1), lack ? '#ff8a80' : RACES[w.b.race].res.color, 'right');
     });
     // 시전바
@@ -4451,7 +4506,7 @@ export class Renderer {
       g.beginPath(); g.moveTo(x + s / 2, y + s / 2); g.arc(x + s / 2, y + s / 2, s, -Math.PI / 2 + k * Math.PI * 2, Math.PI * 1.5); g.closePath(); g.fill();
       g.restore();
       if (rem > 0.05) { // 남은 시간: 칸 가운데 크게, 키 이름은 왼쪽 위에 작게
-        this.text(rem >= 3 ? String(Math.ceil(rem)) : rem.toFixed(1), x + s / 2, y + s / 2 + u, u + 1, '#ffffff', 'center', true, true);
+        this.text(rem >= 3 ? String(Math.ceil(rem)) : rem.toFixed(1), x + s / 2, y + s / 2 + u, rem >= 3 && rem < 10 ? u + 1 : u, '#ffffff', 'center', true, true); // 소수 · 두 자리는 조금 작게 (이웃 칸과 겹치지 않게)
         this.text(key, x + 3 * u, y + 5 * u, Math.max(1, u - 1), '#a89cb8', 'left', true, true);
         return;
       }
@@ -4496,6 +4551,8 @@ export class Renderer {
     }
     for (const e of w.enemies) if ((e.def.elite || e.champion) && seen(e.x, e.y)) dot(e.x, e.y, '#ff4040', 2);
     if (Math.floor(w.t * 4) % 2 === 0) dot(w.player.x, w.player.y, '#ffffff', 1.5);
+    this.minimapBottom = my + mh;
+    if (w.climb) { for (const o of w.objects) if (o.kind === 'climbDoor') dot(o.x, o.y, CLIMB_REWARDS[o.next]?.color || '#fff', 2); else if (o.kind === 'climbReward' && !o.opened) dot(o.x, o.y, '#ffe8a8', 2.2); return; } // 탑 등반: 아래 글은 등반 HUD 가 그린다
     let y = my + mh + 12 * u;
     if (!this.pctT || this.pctT < w.t) { this.pctT = w.t + 0.5; this.pctV = Math.round(w.exploredPct() * 100); }
     this.text(`${w.zone.name}${w.depth ? ` 지하 ${w.depth + 1}층` : ''} · 탐험 ${this.pctV}%`, mx + mw, y, u, '#d8d0e8', 'right');
@@ -4520,7 +4577,7 @@ export class Renderer {
       y += 20 * u;
       this.text('✦ 이야기', mx + mw, y, u, '#f0e0b0', 'right');
       for (const line of obj) { y += 14 * u; this.text(line, mx + mw, y, Math.max(1, u - 1), '#e8dcc0', 'right'); }
-    }
+    }    this.hudRightBottom = y + 8 * u;
   }
 
   // 큰 지도: 가 본 곳만 보이고, 성지 · 입구 · 마을 · 탑 · 내 위치를 표시

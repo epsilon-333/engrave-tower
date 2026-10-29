@@ -90,6 +90,17 @@ export const MONSTER_ART = {
   sandWorm: { base: 'c_sandWorm', scale: 1.1 },
   venomSpitter: { base: 'c_venomSpitter' },
   fallenKnight: { base: 'p_m_fallenKnight', scale: 1.6 },
+  // 탑 등반: 수호자 · 구역의 주인
+  climbChief: { base: 'masked_orc', scale: 1.7 },
+  mossLord: { base: 'c_swampTroll', scale: 1.9, tint: 'hue-rotate(20deg) saturate(1.3) brightness(1.05)' },
+  bogHag: { base: 'p_m_bogWitch', scale: 1.7 },
+  climbQueen: { base: 'c_swampQueen', scale: 1.2 },
+  demonCaptain: { base: 'p_m_shieldDemon', scale: 1.7 },
+  climbRift: { base: 'big_demon', scale: 1.45 },
+  frostOgre: { base: 'c_yeti', scale: 1.5 },
+  climbWitch: { base: 'p_m_frostWitch', scale: 1.9 },
+  wraithLord: { base: 'p_m_wraithKnight', scale: 1.8, ghost: true },
+  engraveKing: { base: 'p_m_fallenKnight', scale: 2.1, tint: 'sepia(1) saturate(2.6) hue-rotate(-12deg) brightness(1.15)' },
 };
 
 export const NPC_ART = {

@@ -68,3 +68,17 @@ export const BOSS_KITS = [
     names: { charge: '주인의 돌진', donut: '심판의 고리', beam: '탑의 시선', channel: '탑의 숨결', sweep: '천벌 광선', clones: '거울 그림자', mirror: '반사의 율법', ritual: '마지막 의식', soar: '승천' } },
 ];
 export const bossKit = (f) => ({ ...BOSS_KITS[(Math.floor(f / 5) - 1) % BOSS_KITS.length], awake: f > 50, final: f === TOWER_TOP });
+// 등반의 수호자 · 주인: 원래 기술에 대표 기술 하나씩을 더한다 (단계마다 더할 기술). 55층부터는 같은 보스가 각성해서 돌아온다
+export const CLIMB_SIGS = {
+  climbChief: { wallStun: true, add: [['charge'], ['charge'], ['charge']], hint: '돌격을 벽으로 유도하면 부딪혀 기절한다' },
+  mossLord: { add: [['channel'], ['channel'], ['channel']], names: { channel: '뿌리 흡수' }, hint: '뿌리로 회복할 때 세게 때려 끊어라' },
+  bogHag: { add: [['clones'], ['clones'], ['clones']], names: { clones: '환영 분신' }, hint: '분신은 금방 부서진다 — 버티는 쪽이 진짜' },
+  climbQueen: { add: [[], ['ritual'], ['ritual']], names: { ritual: '늪의 제물' }, hint: '제물을 모두 쓰러뜨리면 거인이 무너진다' },
+  demonCaptain: { add: [['mirror'], ['mirror'], ['mirror']], names: { mirror: '반사 방패' }, hint: '방패가 빛나는 동안 때리면 내가 다친다' },
+  climbRift: { add: [['sweep'], ['sweep'], ['sweep']], names: { sweep: '회전 균열 광선' }, hint: '도는 광선은 같은 방향으로 돌며 피해라' },
+  frostOgre: { vent: 3, ventText: '숨이 찼다! 약점이 드러났다', add: [[], [], []], hint: '기술을 몇 번 쓰면 숨을 고른다 (피해 2배)' },
+  climbWitch: { add: [['donut'], ['donut'], ['donut']], names: { donut: '서리 고리' }, hint: '서리 고리는 바깥이 위험하다 — 마녀 곁으로' },
+  wraithLord: { add: [[], ['soar'], ['soar']], names: { soar: '혼령화' }, hint: '혼령이 되면 맞지 않는다 — 떨어지는 자리를 피해라' },
+  engraveKing: { wallStun: true, vent: 6, add: [['donut', 'channel'], ['sweep', 'clones', 'mirror'], ['ritual', 'soar', 'sweep', 'donut']],
+    names: { donut: '심판의 고리', channel: '각인 흡수', sweep: '천벌 광선', clones: '거울 그림자', mirror: '반사의 율법', ritual: '마지막 의식', soar: '승천' }, hint: '모든 수호자의 기술을 쓴다' },
+};

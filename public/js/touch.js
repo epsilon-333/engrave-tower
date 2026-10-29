@@ -3,7 +3,7 @@ import { SKILLS } from './data/skills.js';
 // 오른쪽 조이스틱을 쓰지 않을 때는 가까운 적을 자동으로 조준한다.
 export const isTouch = () => matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 
-export function setupTouch({ input, getWorld, onMenu, onBag }) {
+export function setupTouch({ input, getWorld, onMenu, onBag, onInteract }) {
   const root = document.createElement('div');
   root.id = 'touch';
   root.innerHTML = `
@@ -56,10 +56,11 @@ export function setupTouch({ input, getWorld, onMenu, onBag }) {
       b.classList.add('down');
       if (k === 'menu') return onMenu();
       if (k === 'bag') return onBag();
+      if (k === 'interact') { input.gHeld = true; if (onInteract?.() === false) return; }
       input[k] = true;
       if (/^s\d$/.test(k)) input['h' + k[1]] = true;
     });
-    const up = () => { b.classList.remove('down'); const k = b.dataset.btn; if (/^s\d$/.test(k)) input['h' + k[1]] = false; };
+    const up = () => { b.classList.remove('down'); const k = b.dataset.btn; if (/^s\d$/.test(k)) input['h' + k[1]] = false; if (k === 'interact') input.gHeld = false; };
     b.addEventListener('pointerup', up);
     b.addEventListener('pointercancel', up);
   }
@@ -94,9 +95,12 @@ export function setupTouch({ input, getWorld, onMenu, onBag }) {
         input.attack = aim.active;
       }
       // 상황에 따라 보이는 버튼
-      root.querySelector('[data-btn=interact]').hidden = !w.near;
+      // 상호작용 대상: 물건(near) · 나무·밭·물가(act) · 다른 사람(nearRemote — 결투·친구)
+      const ib = root.querySelector('[data-btn=interact]');
+      ib.hidden = !(w.near || w.act || w.nearRemote);
+      const it = w.near ? (w.near.kind === 'chest' ? '열기' : w.near.kind === 'gate' ? '입장' : '확인') : w.nearRemote ? '만나기' : 'G';
+      if (ib.textContent !== it) ib.textContent = it;
       { const mb = root.querySelector('[data-btn=mount]'); mb.hidden = !w.mountKind || !w.map.outdoor; mb.textContent = w.player.riding ? '내리기' : '탈것'; }
-      root.querySelector('[data-btn=interact]').textContent = w.near ? (w.near.kind === 'chest' ? '열기' : w.near.kind === 'gate' ? '입장' : '확인') : 'G';
       const sks = w.b.skills || [];
       for (let i = 0; i < 4; i++) {
         const el = root.querySelector(`[data-btn=s${i + 1}]`), id = sks[i];

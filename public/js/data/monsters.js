@@ -132,6 +132,41 @@ Object.assign(MONSTERS, {
     phaseMoves: [['charge', 'fan', 'combo'], ['charge', 'rain', 'mark', 'adds'], ['charge', 'nova', 'rain', 'mark', 'adds']], adds: 'lavaLizard' },
 });
 
+// ── 탑 등반: 5층 수호자 · 10층 구역의 주인 (체력이 셋으로 나뉘어 단계마다 기술이 바뀐다) ──
+// 체력 · 공격은 그 구역 보통 몬스터 평균의 몇 배로 정한다 (수호자 체력 약 14배 · 주인 약 26배)
+Object.assign(MONSTERS, {
+  climbChief: { name: '가면 족장', shape: 'humanoid', scale: 1.7, elite: true, boss: true, pal: { a: '#c0302a' }, hp: 520, atk: 12, type: 'phys', speed: 50, ai: 'boss', r: 10, xp: 60, gold: 40, pres: 20, mres: 5, echo: { id: 'chief', rate: 1 },
+    phaseMoves: [['combo', 'leap', 'shove'], ['leap', 'combo', 'adds', 'whirl'], ['charge', 'leap', 'adds', 'whirl', 'quake']], adds: 'goblin',
+    skillNames: { charge: '족장의 돌격', adds: '고블린을 부른다', quake: '땅 내려찍기' } },
+  mossLord: { name: '이끼 군주', shape: 'golem', scale: 2.1, elite: true, boss: true, pal: { a: '#4a8a3a' }, hp: 960, atk: 13, type: 'phys', speed: 34, ai: 'boss', status: 'poison', proj: { speed: 140, color: '#7ed957', status: 'poison', spread: 5 }, r: 15, xp: 120, gold: 80, pres: 40, mres: 20, echo: { id: 'queen', rate: 1 },
+    phaseMoves: [['quake', 'leap', 'pool'], ['quake', 'adds', 'rain', 'leap', 'fan'], ['nova', 'adds', 'rain', 'charge', 'mark']], adds: 'slime',
+    skillNames: { nova: '포자 폭발', rain: '이끼 비', mark: '뿌리의 표식' } },
+  bogHag: { name: '늪 마녀 수장', shape: 'humanoid', scale: 1.7, elite: true, boss: true, pal: { a: '#3a7a3a' }, hp: 1040, atk: 18, type: 'mag', speed: 44, ai: 'boss', status: 'poison', proj: { speed: 150, color: '#9be15d', status: 'poison', spread: 5 }, r: 10, xp: 140, gold: 90, pres: 15, mres: 40, echo: { id: 'venom', rate: 1 },
+    phaseMoves: [['fan', 'pool', 'blink'], ['pool', 'adds', 'spiral', 'blink'], ['rain', 'adds', 'spiral', 'mark', 'blink']], adds: 'leech',
+    skillNames: { mark: '저주의 표식', rain: '독비' } },
+  climbQueen: { name: '늪의 거인', shape: 'blob', scale: 2.4, elite: true, boss: true, pal: { a: '#2a9a5a' }, hp: 1920, atk: 19, type: 'mag', speed: 30, ai: 'boss', status: 'poison', proj: { speed: 120, color: '#5dff9e', status: 'poison', spread: 7 }, r: 15, xp: 240, gold: 160, pres: 25, mres: 30, echo: { id: 'queen', rate: 1 },
+    phaseMoves: [['pool', 'fan', 'leap'], ['rain', 'pool', 'adds', 'split'], ['nova', 'rain', 'adds', 'mark', 'spiral']], adds: 'gasBloat',
+    skillNames: { nova: '독 폭발', rain: '독비', mark: '늪의 표식' } },
+  demonCaptain: { name: '방패 악귀 대장', shape: 'humanoid', scale: 1.7, elite: true, boss: true, pal: { a: '#8a2a2a' }, hp: 2400, atk: 28, type: 'phys', speed: 46, ai: 'boss', shield: 0.4, status: 'burn', r: 11, xp: 300, gold: 180, pres: 60, mres: 30, echo: { id: 'magma', rate: 1 },
+    phaseMoves: [['combo', 'shove', 'charge'], ['charge', 'whirl', 'adds', 'shove'], ['charge', 'quake', 'adds', 'whirl', 'pool']], adds: 'imp',
+    skillNames: { charge: '방패 돌격', shove: '방패 밀치기', whirl: '불꽃 회전' } },
+  climbRift: { name: '균열 수호자', shape: 'golem', scale: 2.2, elite: true, boss: true, pal: { a: '#3a2a3a' }, hp: 4450, atk: 30, type: 'mag', speed: 32, ai: 'boss', status: 'burn', proj: { speed: 150, color: '#ffe14a', status: 'burn', spread: 7 }, r: 15, xp: 500, gold: 300, pres: 70, mres: 50, echo: { id: 'core', rate: 1 },
+    phaseMoves: [['fan', 'quake', 'pool'], ['beam', 'rain', 'adds', 'leap'], ['nova', 'beam', 'rain', 'adds', 'mark']], adds: 'pumpkinFiend',
+    skillNames: { beam: '균열 광선', nova: '마그마 분출', rain: '불비' } },
+  frostOgre: { name: '얼음 오우거 왕', shape: 'golem', scale: 2, elite: true, boss: true, pal: { a: '#7ac8f0' }, hp: 3000, atk: 33, type: 'phys', speed: 34, ai: 'boss', status: 'chill', r: 14, xp: 420, gold: 240, pres: 70, mres: 90, echo: { id: 'icecore', rate: 1 },
+    phaseMoves: [['quake', 'leap', 'combo'], ['leap', 'quake', 'adds', 'shove'], ['charge', 'nova', 'adds', 'leap']], adds: 'frostWolf',
+    skillNames: { quake: '빙판 내려찍기', nova: '서리 폭발', charge: '눈사태 돌진' } },
+  climbWitch: { name: '서리 마녀', shape: 'humanoid', scale: 1.9, elite: true, boss: true, pal: { a: '#4a6ad0' }, hp: 5600, atk: 35, type: 'mag', speed: 42, ai: 'boss', status: 'chill', proj: { speed: 160, color: '#9fe3ff', status: 'chill', spread: 9 }, r: 11, xp: 700, gold: 420, pres: 40, mres: 80, echo: { id: 'witch', rate: 1 },
+    phaseMoves: [['fan', 'blink', 'spiral'], ['mark', 'rain', 'fan', 'adds', 'blink'], ['mark', 'nova', 'rain', 'spiral', 'adds', 'blink']], adds: 'iceArcher',
+    skillNames: { mark: '얼음 표식', rain: '우박', nova: '절대 영도' } },
+  wraithLord: { name: '망령 기사단장', shape: 'humanoid', scale: 1.8, elite: true, boss: true, ghost: true, pal: { a: '#5a6a8a' }, hp: 4100, atk: 42, type: 'mag', speed: 54, ai: 'boss', status: 'chill', r: 11, xp: 600, gold: 360, pres: 120, mres: 40, echo: { id: 'soul', rate: 1 },
+    phaseMoves: [['combo', 'leap', 'blink'], ['charge', 'combo', 'adds', 'blink', 'whirl'], ['charge', 'mark', 'adds', 'whirl', 'nova']], adds: 'skeleton', blinkInv: 0.6,
+    skillNames: { charge: '망령 돌격', mark: '사형 선고', nova: '혼의 폭발' } },
+  engraveKing: { name: '각인의 왕', shape: 'humanoid', scale: 2.3, elite: true, boss: true, pal: { a: '#ffc84a' }, hp: 11500, atk: 48, type: 'mag', speed: 46, ai: 'boss', status: 'curse', proj: { speed: 170, color: '#ffc84a', status: 'curse', spread: 7 }, r: 13, xp: 1500, gold: 900, pres: 60, mres: 60, echo: { id: 'grave', rate: 1 },
+    phaseMoves: [['fan', 'combo', 'leap', 'beam'], ['mark', 'rain', 'charge', 'adds', 'spiral', 'blink'], ['nova', 'mark', 'rain', 'beam', 'charge', 'adds', 'split']], adds: 'necroAcolyte', blinkInv: 0.5,
+    skillNames: { beam: '문양의 빛', mark: '각인 새기기', nova: '꺼져 가는 빛', rain: '문양의 비', charge: '왕의 돌진', adds: '각인된 자들' } },
+});
+
 // ── 새 몬스터: 지역마다 하나둘 (기술은 moves — 연속 베기 · 뛰어들기 · 부채꼴 · 물러나며 쏘기 · 장판 · 회복 · 순간이동) ──
 Object.assign(MONSTERS, {
   boarRunner: { name: '멧돼지 돌격병', shape: 'quad', pal: { a: '#8a5a3a', b: '#5a3a22', c: '#c8a07a', e: '#ffdd44' }, hp: 46, atk: 7, type: 'phys', speed: 66, ai: 'chase', moves: ['leap', 'combo'], r: 7, xp: 5, gold: 3, pres: 8, mres: 0, echo: { id: 'goo', rate: 0.4 } },
