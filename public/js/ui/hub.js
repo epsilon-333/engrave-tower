@@ -17,6 +17,7 @@ import { toLoadout, writeSave, refreshQuests, claimQuest } from '../save.js';
 import { sfx } from '../audio.js';
 import { SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS, skillLoad, skillCap } from '../data/skills.js';
 import { getAutoAim, setAutoAim } from '../settings.js';
+import { skillScale, weaponStat, SKILL_PERKS, WEAPON_PERKS, CLASS_STATS, statMul } from '../data/statscale.js';
 import { bagTab, tradeTab, forgeTab, lifeClick, fishCodex, artifactCodex } from './life.js';
 import { whereTab } from './where.js';
 import { storageTab, cookTab, craftTab, learnTab, skillPickHtml, homeClick } from './home.js';
@@ -74,12 +75,17 @@ export class Hub {
   // ───── 캐릭터 ─────
   tab_char(s, b) {
     const race = RACES[s.race], d = b.derived;
+    // 이 클래스 · 무기에 좋은 스탯: 스킬과 평타가 따라가는 스탯
+    const rec = {}, cs = CLASS_STATS[b.cls] || [], ws = weaponStat(b.weaponItem);
+    if (cs[0]) rec[cs[0]] = '공격 스킬이 이 스탯에 비례해 세진다 (40: 피해 +15% · 70: 재사용 -20%)';
+    if (cs[1]) rec[cs[1]] = (rec[cs[1]] ? rec[cs[1]] + ' · ' : '') + '방어 · 준비 · 제어 스킬이 따라가는 스탯';
+    rec[ws] = (rec[ws] ? rec[ws] + ' · ' : '') + '지금 무기의 평타 · 무기 기술이 따라가는 스탯 (50: 피해 +15% · 80: 공격 속도 +10%)';
     const statRow = (k) => {
       const v = b.stats[k], alloc = s.alloc[k] || 0;
       const next = (b.awakenings.filter((a) => a.stat === k && !a.on)[0]);
       const tier = TIERS.findIndex(([cap]) => v <= cap);
       return `<div class="stat-row">
-        <span class="sn" title="${esc(STAT_INFO[k].desc)}">${STAT_INFO[k].name}</span>
+        <span class="sn" title="${esc(STAT_INFO[k].desc)}">${STAT_INFO[k].name}${rec[k] ? ` <b class="rec" title="${rec[k]}">추천</b>` : ''}</span>
         <span class="sv tier${tier}">${v}</span>
         <span class="bar"><i style="width:${Math.min(100, v)}%"></i>${[30, 50, 70, 90].map((t) => `<em style="left:${t}%"></em>`).join('')}</span>
         <span class="next">${next ? `${next.at}: ${next.name}` : '<b>모든 각성</b>'}</span>
@@ -196,6 +202,9 @@ export class Hub {
     const keys = ['Q', 'E', 'R', 'F'];
     const resName = RACES[s.race].res.name;
     const all = CLASSES[b.cls].skills.map((id) => [id, SKILLS[id]]);
+    const sn = (k) => STAT_INFO[k]?.name || k;
+    // 스탯 계수: 이 스킬이 따라가는 스탯 · 지금 배율 · 개방
+    const scaleLine = (id) => { const sc = skillScale(id, b); return `<div class="sk-scale">${sn(sc.stat)} 계수 <b>×${sc.dmg.toFixed(2)}</b> <small>(${sn(sc.stat)} ${Math.round(sc.v)} · 1마다 +0.6%)</small> ${SKILL_PERKS.map((pk) => `<span class="${sc.v >= pk.at ? 'on' : ''}">${sn(sc.stat)} ${pk.at}: ${pk.text}</span>`).join(' ')}</div>`; };
     const card = (id, sk, locked) => {
       const i = b.skills.indexOf(id), on = i >= 0;
       const cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
@@ -206,6 +215,7 @@ export class Hub {
         <div class="c-head"><b>${on ? `[${keys[i]}] ` : ''}${sk.name}</b><span class="role">${sk.role}</span></div>
         <div class="muted"><b class="sk-load">부하 ${skillLoad(id)}</b> · 재사용 ${sk.cd}초${cost ? ' · ' + cost : ''}${sk.cast ? ` · 시전 ${sk.cast}초` : ''}</div>
         <div class="c-sum">${esc(sk.desc)}</div>
+        ${scaleLine(id)}
         <div class="c-act">${btn}</div>
       </div>`;
     };
@@ -216,7 +226,8 @@ export class Hub {
     if (wsk) {
       const wi = b.skills.indexOf('weapon');
       const wbtn = '<span class="muted">우클릭(모바일은 「무기」 버튼)으로 언제나 사용</span>';
-      wcard = `<div class="skc on" style="--c:#aab0c0"><div class="c-head"><b>[우클릭] ${wsk.name}</b><span class="role">무기</span></div><div class="c-sum">${esc(wsk.desc || '')}</div><div class="c-act">${wbtn}</div></div>`;
+      const ws = b.wScale, wst = weaponStat(b.weaponItem);
+      wcard = `<div class="skc on" style="--c:#aab0c0"><div class="c-head"><b>[우클릭] ${wsk.name}</b><span class="role">무기</span></div><div class="c-sum">${esc(wsk.desc || '')}</div><div class="sk-scale">평타 · 무기 기술: ${sn(wst)} 계수 <b>×${(ws?.dmg || 1).toFixed(2)}</b> ${WEAPON_PERKS.map((pk) => `<span class="${(ws?.v || 0) >= pk.at ? 'on' : ''}">${sn(wst)} ${pk.at}: ${pk.text}</span>`).join(' ')}</div><div class="c-act">${wbtn}</div></div>`;
     }
     const clsRow = RACE_CLASSES(s.race).map((cid) => {
       const c = CLASSES[cid], on = cid === b.cls;

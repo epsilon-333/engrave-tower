@@ -26,7 +26,7 @@ export const RACES = {
     desc: '맞을수록 오러가 쌓이고, 오러를 실어 강타한다. 받는 피해 -10%.',
     strong: '체력 · 물리 저항', weak: '느림 · 마력 낮음',
     base: { str: 13, mag: 3, agi: 6, vit: 16, sen: 6, spi: 7, pres: 15, mres: 7 },
-    growth: { pres: 1 },
+    growth: { str: 1 },
     mult: { pres: 1.15, vit: 1.1, agi: 0.85, mag: 0.75 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '수호의 맹세',
     res: { key: 'grit', name: '오러', color: '#ffd84a', hit: 3, kill: 5, hurt: 120, decay: 1 },
@@ -46,7 +46,7 @@ export const RACES = {
     desc: '영혼을 거둬 저주를 터뜨린다. 독과 출혈에 면역, 마법 피해 +12%. 일반 회복은 절반이지만 처치마다 생명력 6% 흡수.',
     strong: '마력 · 물리 저항 · 독 면역', weak: '마법 저항 낮음 · 회복이 처치에 묶임 · 느림',
     base: { str: 6, mag: 15, agi: 6, vit: 11, sen: 6, spi: 10, pres: 15, mres: 6 },
-    growth: { mag: 1 },
+    growth: { pres: 1 },
     mult: { pres: 1.15, mag: 1.1, agi: 0.85, vit: 0.9 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '썩은 몸',
     res: { key: 'soul', name: '영혼', color: '#c45cff', hit: 5, kill: 25 }, // 맞힐 때마다 · 쓰러뜨리면 많이 오르고, 저절로 줄지 않는다
@@ -86,7 +86,7 @@ export const RACES = {
     desc: '불을 다루는 고대 혈통. 화상에 면역이고, 불타는 적에게 주는 피해 +15%. 불타는 적이 있을 때 용기가 차오른다.',
     strong: '근력 · 마력 · 마법 저항', weak: '냉기에 약함 (받는 냉기 피해·둔화 증가)',
     base: { str: 13, mag: 13, agi: 7, vit: 11, sen: 6, spi: 7, pres: 7, mres: 9 },
-    growth: { str: 1 },
+    growth: { mres: 1 },
     mult: { str: 1.05, mag: 1.05, mres: 1.1, agi: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '용의 피',
     res: { key: 'dragon', name: '용기', color: '#ff6a2a', hit: 3, kill: 6, burnTick: 1, decay: 1 },

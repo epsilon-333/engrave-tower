@@ -592,3 +592,10 @@ b.dim { color: #e8c890; }
 .sk-cap { margin: 2px 0 8px; color: #e8dcc8; }
 .sk-cap b { color: #ffcf6a; font-size: 1.1em; }
 .sp-sk { color: #ffd27a; }
+/* 스탯 계수 */
+.sk-scale { font-size: 12px; color: #b8b0c8; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.sk-scale b { color: #ffe8a8; }
+.sk-scale span { color: #6a6280; }
+.sk-scale span.on { color: #8af08a; }
+.sk-scale span.on::before { content: '✓ '; }
+.stat-row .rec { font-size: 10px; color: #0d0b10; background: #ffcf5a; padding: 0 4px; margin-left: 2px; }

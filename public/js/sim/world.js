@@ -15,6 +15,7 @@ import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower, spiritBuff, buffMods
 const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
 const SPIRIT_DMG_ELEM = { fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' };
 import { RACES } from '../data/races.js';
+import { skillScale } from '../data/statscale.js';
 import { createRng } from './rng.js';
 import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP, generateField } from './mapgen.js';
 import { buildOverworld, G, WORLD_ZONE, BIOME_LIST, ENTRANCES } from '../data/maps/overworld.js';
@@ -1373,7 +1374,7 @@ export class World {
       }
       return;
     }
-    const atk = type === 'phys' ? (w.scale === 'agi' ? d.dexAtk : d.physAtk) : d.magAtk;
+    const atk = (type === 'phys' ? (w.scale === 'agi' ? d.dexAtk : d.physAtk) : d.magAtk) * (this.b.wScale?.dmg ?? 1); // 무기 스탯 계수
     // 용화: 평타가 화염 브레스가 된다 (앞쪽 원뿔, 화상)
     if (p.buffs.dragonForm) {
       p.atkCount++; this.breakStealth();
@@ -1480,7 +1481,7 @@ export class World {
     p.skillMax = sk.cd * d.skillCdMul * (1 - d.cdr); p.skillCd = p.skillMax;
     let type = w.dmg;
     if (type === 'phys' && this.f.has('physToMag')) type = 'mag';
-    const atk = type === 'phys' ? (w.scale === 'agi' ? d.dexAtk : d.physAtk) : d.magAtk;
+    const atk = (type === 'phys' ? (w.scale === 'agi' ? d.dexAtk : d.physAtk) : d.magAtk) * (this.b.wScale?.dmg ?? 1); // 무기 스탯 계수
     const ang = Math.atan2(p.aimY, p.aimX);
     const aimX = p.x + p.aimX * Math.min(160, this.aimDist || 120), aimY = p.y + p.aimY * Math.min(160, this.aimDist || 120);
     const hitAll = (list, mul, dtype = type) => { for (const e of list) this.hitEnemy(e, atk * w.mul * mul, dtype, true, false, { weapon: true }); };
@@ -1673,7 +1674,7 @@ export class World {
       p.res = Math.max(0, p.res - cost); spent = cost;
     }
     if (def.gain) this.addRes(def.gain);
-    let cd = def.cd * this.d.skillCdMul * (1 - this.d.cdr);
+    let cd = def.cd * this.d.skillCdMul * (1 - this.d.cdr) * skillScale(id, this.b).cd; // 스탯 70: 재사용 -20%
     if (id === 'breath' && p.buffs.dragonForm) cd = 0.3;
     if (this.practice?.noCd) cd = Math.min(cd, 0.25);
     p.cds[id] = cd; p.cdMax ||= {}; p.cdMax[id] = cd;
@@ -1718,7 +1719,8 @@ export class World {
     // 힘 모으기: 다음 스킬 한 번이 강해진다
     if (p.buffs.charged && id !== 'chargeUp') { bonus *= p.buffs.charged.power || 2.5; p.buffs.charged.t = Math.min(p.buffs.charged.t, 0.05); }
     const boost = opt.weapon ? this.b.weapon.mul : this.weaponBoost(id), hf = opt.weapon ? { fit: 1, hand: 'main' } : handFit(def, this.b), fit = hf.fit, cross = opt.weapon ? 1 : crossMul(def, this.b); // 다른 종족 스킬: 능력치가 모자라면 85%
-    const ctx = { def, id, spent, elem, bonus: bonus * boost * fit * cross * (SKILL_BAL[id] ?? 1), // SKILL_BAL: 종족 스킬 밸런스 보정
+    const sc = opt.weapon ? this.b.wScale : skillScale(id, this.b); // 스탯 계수 (이 스킬 · 무기가 따라가는 스탯)
+    const ctx = { def, id, spent, elem, bonus: bonus * boost * fit * cross * (SKILL_BAL[id] ?? 1) * (sc?.dmg ?? 1), // SKILL_BAL: 종족 스킬 밸런스 보정
       fit, hand: hf.hand, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot };
     if (fit < 0.95 && fit > 0) this.emit({ t: 'text', x: p.x, y: p.y - 26, text: `무기가 맞지 않다 · 피해 ${Math.round(fit * 100)}%`, color: '#c8b8a0' });
     if (this.autoAim) {

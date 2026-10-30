@@ -52,6 +52,7 @@ import { SHIPS, cargoCap, GUILD_RANKS, guildRank } from './data/trade.js';
 import { econOf, econTick, planCaravan, deliver, caravanLost, taxArrived, taxLost, marketGossip, TOWNS } from './data/econ.js';
 import { ENG_STEP, ENG_MAX } from './sim/build.js';
 import { createClimb } from './ui/climb.js';
+import { CLASS_STATS } from './data/statscale.js';
 import { JOURNEY, journeyNow, rewardText as journeyReward } from './data/journey.js';
 import { oathScore, newClimbSave } from './data/climb.js';
 
@@ -799,6 +800,7 @@ function showStyleSelect(race) {
       return `<button class="style" data-style="${id}">
         <b>${c.name}</b>
         <p>${c.desc}</p>
+        <p class="lvup">주력 스탯: ${(CLASS_STATS[id] || []).map((k) => STAT_INFO[k]?.name).join(' · ')}</p>
         <p class="sk-list">${c.skills.map((sid, i) => `<span${i === 5 ? ' class="ult"' : ''}>${SKILLS[sid].name}</span>`).join(' · ')}</p>
         <small>시작 무기: ${ITEMS[c.weapons[0]].name}</small>
       </button>`;

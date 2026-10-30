@@ -6,6 +6,7 @@ import { RACES, RACE_MIGRATE } from '../data/races.js';
 import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
 import { ITEMS, weaponCat, weaponHands } from '../data/items.js';
 import { evalCond, condText } from './conditions.js';
+import { weaponScale, CLASS_STATS } from '../data/statscale.js';
 import { SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, skillLoad, skillCap } from '../data/skills.js';
 
 export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back'];
@@ -27,7 +28,7 @@ export function computeBuild(lo) {
   const stats = {};
   const sanct = allSanctums(lo); // 성지에서 받은 축복 (모든 성지, 내 종족의 성지는 1.5배)
   const train = trainStats(lo);  // 성지 수련 단계
-  for (const k of BASE_STATS) stats[k] = race.base[k] + (lo.alloc?.[k] || 0) + (race.growth[k] || 0) * (lo.level - 1) + (sanct.stats[k] || 0) + (train[k] || 0);
+  for (const k of BASE_STATS) stats[k] = race.base[k] + (lo.alloc?.[k] || 0) + ((race.growth[k] || 0) + (CLASS_STATS[lo.cls]?.[0] === k ? 1 : 0)) * (lo.level - 1) /* 종족 성장 + 클래스 주력 스탯 성장 */ + (sanct.stats[k] || 0) + (train[k] || 0);
   for (const k of Object.keys(SPECIAL_INFO)) stats[k] = 0;
 
   const notes = []; // UI에 보여줄 발동 내역
@@ -236,7 +237,10 @@ export function computeBuild(lo) {
   }
   const offA = active.find((s2) => s2.def.slot === 'off' || s2 === offSrc);
   const offItem = offA ? (offA === offSrc ? { ...offSrc.def, off: offWeaponPower(offSrc.def), odesc: '왼손에 든 무기' } : offA.def) : null;
-  return { skillLoad: sLoad, skillCap: sCap, race: lo.race, level: lo.level || 1, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
+  // 무기 계열의 스탯 계수 · 개방 (평타 · 무기 기술 피해, 80 이상 공격 속도)
+  const wScale = weaponScale({ weaponItem: ITEMS[weaponId], stats });
+  d.atkSpeed *= wScale.spd;
+  return { wScale, skillLoad: sLoad, skillCap: sCap, race: lo.race, level: lo.level || 1, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
 }
 
 // 무기 계열: 마법(마도서 · 완드 · 보주 · 인형) / 단검(민첩 칼) / 검 / 도끼 / 둔기 / 던지기 / 채찍
