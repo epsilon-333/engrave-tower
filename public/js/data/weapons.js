@@ -364,6 +364,39 @@ export const TOWER_WEAPONS = {
     sk: { name: '마지막 각인', cd: 14, desc: '1.6초 동안 무적으로 적 사이를 달려 지나가며 벤 뒤, 둘레에 거대한 각인이 터진다.', mo: 'stab', do: [{ op: 'channel', dur: 1.6, every: 0.2, invuln: true, sub: { op: 'danceStrike', r: 140, mul: 2.6 } }, { op: 'aoe', at: 'self', r: 120, mul: 4.0, delay: 1.7, fx: 'holy' }] } },
 };
 
+// ── 무기마다 어울리는 연출: 이름 · 색으로 계열을 정하고 터지는 모습을 그 계열로 맞춘다 ──
+// 심연 · 공허 · 망령 → 어둠의 문과 촉수, 빛 · 별 · 황금 → 빛기둥, 폭풍 · 번개 → 벼락, 서리 · 얼음 → 얼음 가시, 불 · 용 · 용암 → 폭발,
+// 숲 · 가시 · 이끼 → 덩굴, 늪 · 독 → 독구름, 균열 · 비전 → 비전 문양, 뼈 · 재 · 흑요석 → 땅이 갈라진다
+const NERF = 0.85; // 탑의 무기 너프 (위력 · 능력치)
+const THEMES = [
+  ['abyss', /심연|공허|망령|영혼|어둠|사신|일식|그림자/, ['void', 'wraith', 'soul', 'grave'], { fx: 'doom', elem: 'dark' }],
+  ['light', /빛|별|성스|태양|황금|각인|거울/, ['light', 'star', 'gold', 'mirror'], { fx: 'holy', elem: 'holy' }],
+  ['storm', /폭풍|번개|뇌|벼락|천둥/, ['storm'], { fx: 'burst', elem: 'lightning' }],
+  ['frost', /서리|얼음|겨울|빙|눈보라|오로라/, ['frost', 'glacier', 'aurora'], { fx: 'ice', elem: 'ice' }],
+  ['fire', /불|화염|용암|용의|지옥|불씨|마그마/, ['ember', 'magma', 'flame', 'infernal', 'dragon'], { fx: 'burst', elem: 'fire' }],
+  ['nature', /숲|가시|이끼|덩굴|수관|포자/, ['moss', 'thorn', 'spore', 'reed'], { fx: 'vines', elem: 'forest' }],
+  ['poison', /늪|독|두꺼비/, ['bog', 'venom', 'toad', 'queen'], { fx: 'fog', elem: 'poison' }],
+  ['arcane', /균열|비전|주술|세계|저주/, ['rift', 'hex', 'world'], { fx: 'arcane', elem: 'arcane' }],
+  ['earth', /뼈|재|흑요석|껍질|피의|바위|대지/, ['bone', 'ash', 'obsidian', 'shell', 'blood'], { fx: 'quake', elem: 'phys' }],
+];
+const TINT_KEY = Object.fromEntries(Object.entries(TINT).map(([k, v]) => [v, k]));
+function themeOf(x, T) {
+  const tk = TINT_KEY[x.tint];
+  for (const [id, re, tints, look] of THEMES) if (re.test(x.name)) return { id, ...look };
+  for (const [id, , tints, look] of THEMES) if (tints.includes(tk)) return { id, ...look };
+  return null; // 계열이 없으면 원래 연출 그대로
+}
+// 터지는 연출만 바꾼다 (피해 종류는 그대로 — 번개 · 불처럼 원소로 그려지는 것만 원소도 맞춘다)
+function retheme(list, th) {
+  if (!th || !list) return;
+  const fix = (o) => {
+    if (!o || typeof o !== 'object') return;
+    if (o.fx && o.fx !== 'sweep' && o.fx !== 'slashX' && o.fx !== 'claws') { o.fx = th.fx; if (th.id === 'storm' || th.id === 'fire') o.elem = th.elem; }
+    for (const v of Object.values(o)) if (v && typeof v === 'object') fix(v);
+  };
+  for (const a of list) fix(a);
+}
+
 // ── 장비 목록 · 스킬 목록에 올린다 ──
 const MO = { blade: 'overhead', great: 'overhead', axe: 'chop', blunt: 'overhead', polearm: 'stab', scythe: 'spin', whip: 'lash', fist: 'stab', shield: 'bash', bow: 'shoot', throw: 'throw', staff: 'castBig', tome: 'cast' };
 const round = (v) => Math.round(v * 100) / 100;
@@ -371,9 +404,10 @@ for (const [id, x] of Object.entries(TOWER_WEAPONS)) {
   const T = WTYPES[x.base], R = W_RARITY[x.r];
   const sid = 'wx_' + id;
   const weapon = { ...T.weapon, ...(x.w || {}), cat: T.cat, skill: sid };
-  weapon.mul = round((x.w?.mul ?? T.weapon.mul) * tierPower(x.t) * R.mul);
+  weapon.mul = round((x.w?.mul ?? T.weapon.mul) * tierPower(x.t) * R.mul * NERF);
   const stats = { ...(T.stats || {}) };
-  for (const [k, v] of Object.entries(x.st || {})) stats[k] = (stats[k] || 0) + (k === 'lifesteal' ? v : Math.round(v * statScale(x.t)));
+  for (const [k, v] of Object.entries(x.st || {})) stats[k] = (stats[k] || 0) + (k === 'lifesteal' ? v : Math.round(v * statScale(x.t) * NERF));
+  const theme = themeOf(x, T); retheme(x.fx, theme); retheme(x.sk?.do, theme);
   const fx = x.fx || [];
   ITEMS[id] = {
     name: x.name, slot: 'weapon', price: 0, towerWeapon: true, tier: x.t, rarity: x.r, rarityColor: R.color, cat: T.cat, weapon, stats, tags: x.tags || [],
@@ -391,6 +425,7 @@ const R_WEIGHT = [10, 6, 3, 1.4, 0.6];
 export function rollTowerWeapon(f, rnd) {
   const band = Math.max(1, Math.min(10, Math.ceil(f / 10)));
   const tier = band > 1 && rnd() < 0.3 ? band - 1 : band;
+  if (rnd() < 0.4) { const g = Object.keys(ITEMS).filter((id) => ITEMS[id].towerGear && ITEMS[id].tier === tier); if (g.length) return g[Math.floor(rnd() * g.length)]; } // 40%는 방어구 · 장신구 · 부적
   const pool = TOWER_WEAPON_IDS.filter((id) => TOWER_WEAPONS[id].t === tier);
   const total = pool.reduce((a, id) => a + R_WEIGHT[TOWER_WEAPONS[id].r], 0);
   let u = rnd() * total;

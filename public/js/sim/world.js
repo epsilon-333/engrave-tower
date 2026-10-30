@@ -6,7 +6,9 @@ import { WEAPON_SKILLS } from '../data/items.js';
 import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
 import { towerMul, isBossFloor, bossKit, CLIMB_SIGS, BOSS_PASSIVES } from '../data/tower.js';
 import { rollLoot, LOOT_RARITY } from '../data/crafting.js';
-import { rollTowerWeapon, TOWER_WEAPONS, W_RARITY } from '../data/weapons.js';
+import { rollTowerWeapon, W_RARITY } from '../data/weapons.js';
+import '../data/towergear.js'; // 탑의 방어구 · 장신구 · 부적도 떨어진다
+import { ITEMS } from '../data/items.js';
 import { climbMul, setZoneRef, floorFoes, rollDoors, clearReward, actOf, REWARDS, floorGold, goldGain, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, FLOOR_MODS, rollFloorMod } from '../data/climb.js';
 import { RAID_BOSS } from '../data/raid.js';
 import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
@@ -4257,9 +4259,9 @@ export class World {
     const echoTries = e.champion ? 3 : def.treasure ? 3 : e.affix ? 2 : 1;
     for (let i = 0; i < echoTries; i++) if (this.rng.chance(Math.min(1, def.echo.rate * (1 + 0.25 * this.depth)))) this.spawnDrop(e.x, e.y, 'echo', e.champion || def.treasure ? this.rng.pick(this.zone.pool.map((m) => MONSTERS[m].echo.id)) : def.echo.id);
     if (e.champion && this.rng.chance(0.3)) this.spawnDrop(e.x, e.y, 'echo', MONSTERS[this.zone.elite].echo.id);
-    if (this.tower && !e.summoned) { // 탑: 이름 붙은 무기가 아주 드물게 떨어진다 (보통 0.6% · 정예 5% · 수호자 25% · 주인 50%)
+    if (this.tower && !e.summoned) { // 탑: 이름 붙은 무기가 아주 드물게 떨어진다 (드물게)
       const boss = e === this.tower.boss, rnd = () => this.rng.range(0, 1);
-      const ch = boss ? (this.climb?.kind === 'lord' ? 0.5 : 0.25) : def.elite || e.champion ? 0.05 : 0.006;
+      const ch = boss ? (this.climb?.kind === 'lord' ? 0.25 : 0.12) : def.elite || e.champion ? 0.025 : 0.003; // 보통 0.3% · 정예 2.5% · 수호자 12% · 주인 25%
       if (this.rng.chance(ch)) this.spawnDrop(e.x, e.y, 'tweapon', rollTowerWeapon(this.tower.f, rnd));
     }
     if (def.condEcho && def.condEcho.when === 'burning' && st.burn && this.rng.chance(def.condEcho.rate)) this.spawnDrop(e.x, e.y, 'echo', def.condEcho.id);
@@ -4920,8 +4922,8 @@ export class World {
         else if (dr.kind === 'good') {
           if (this.life && bagAdd(this.life, dr.id, dr.amount)) this.emit({ t: 'goodGet', id: dr.id, n: dr.amount, x: p.x, y: p.y });
         } else if (dr.kind === 'tweapon') {
-          const R = W_RARITY[TOWER_WEAPONS[dr.id].r]; this.signals.push({ t: 'towerWeapon', id: dr.id });
-          this.emit({ t: 'text', x: p.x, y: p.y - 28, text: `${R.name} 무기 · ${TOWER_WEAPONS[dr.id].name}!`, color: R.color }); this.emit({ t: 'shake', v: 4 }); this.emit({ t: 'ring', x: p.x, y: p.y, r: 46, color: R.color });
+          const it = ITEMS[dr.id], R = W_RARITY[it.rarity]; this.signals.push({ t: 'towerWeapon', id: dr.id });
+          this.emit({ t: 'text', x: p.x, y: p.y - 28, text: `${R.name} ${it.towerGear ? '장비' : '무기'} · ${it.name}!`, color: R.color }); this.emit({ t: 'shake', v: 4 }); this.emit({ t: 'ring', x: p.x, y: p.y, r: 46, color: R.color });
         } else if (dr.kind === 'weapon') {
           const L = LOOT_RARITY[dr.id.loot.r]; this.signals.push({ t: 'lootWeapon', rec: dr.id });
           this.emit({ t: 'text', x: p.x, y: p.y - 28, text: `${L.name} 무기!`, color: L.color }); if (dr.id.loot.r >= 3) { this.emit({ t: 'shake', v: 3 }); this.emit({ t: 'ring', x: p.x, y: p.y, r: 40, color: L.color }); }

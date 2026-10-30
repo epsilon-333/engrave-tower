@@ -31,6 +31,7 @@ import { RACES, RACE_MIGRATE, pointsAt } from './data/races.js';
 import { RACE_STORY, relation, allies, ALLY_AFF, REL_NAME, REL_COLOR } from './data/lore.js';
 import { ITEMS, STYLES, WEAPON_SKILLS } from './data/items.js';
 import './data/weapons.js'; // 탑의 무기 100종을 장비 목록에 올린다
+import './data/towergear.js'; // 탑의 방어구 · 장신구 · 부적 30종
 import { CC_EXTRA, CLASSES, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc } from './data/skills.js';
 import { STAT_INFO } from './data/stats.js';
 import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
@@ -920,9 +921,9 @@ function migrateSave(sv) {
     if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
   }
   const admin = cloud.name === '운영자';
-  if (!sv.twFix2) { // 상점에서 0원에 사던 탑의 무기 회수: 운영자 말고는 모두 거둔다 (나눠 줄 것은 운영자가 교환으로 준다)
+  if (!sv.twFix2) { // 상점에서 0원에 사던 탑의 무기 회수: 운영자 말고는 영웅 · 전설 · 신화를 거두고 일반 · 희귀만 남긴다 (나눠 줄 것은 운영자가 교환으로 준다)
     sv.twFix2 = true;
-    const bad = admin ? [] : (sv.items || []).filter((id) => ITEMS[id]?.towerWeapon);
+    const bad = admin ? [] : (sv.items || []).filter((id) => ITEMS[id]?.towerWeapon && ITEMS[id].rarity >= 2);
     if (bad.length) {
       sv.items = sv.items.filter((id) => !bad.includes(id));
       for (const k of Object.keys(sv.gear || {})) if (bad.includes(sv.gear[k])) sv.gear[k] = k === 'weapon' ? (sv.items.find((id) => ITEMS[id]?.slot === 'weapon') || 'rustySword') : null;
@@ -930,9 +931,9 @@ function migrateSave(sv) {
       sv.twTaken = bad.length;
     }
   }
-  if (admin) { // 운영자: 탑의 무기 모두 · 100레벨
+  if (admin) { // 운영자: 탑의 무기 · 장비 모두 · 100레벨
     sv.items ||= [];
-    for (const id of Object.keys(ITEMS)) if (ITEMS[id].towerWeapon && !sv.items.includes(id)) sv.items.push(id);
+    for (const id of Object.keys(ITEMS)) if ((ITEMS[id].towerWeapon || ITEMS[id].towerGear) && !sv.items.includes(id)) sv.items.push(id);
     if ((sv.level || 1) < ADMIN_LEVEL) { sv.points = (sv.points || 0) + pointsAt(ADMIN_LEVEL) - pointsAt(sv.level || 1); sv.level = ADMIN_LEVEL; }
   }
   if (!sv.statFix3) { // 자동 성장 절반 → 레벨마다 1.75점
@@ -2057,8 +2058,8 @@ function handleSignals() {
     else if (s.t === 'towerWeapon') { // 탑의 무기 100종: 처음이면 가방으로, 이미 있으면 금화로 바꿔 준다
       const it = ITEMS[s.id];
       (save.towerGot ||= {})[s.id] = 1;
-      if (!save.items.includes(s.id)) { save.items.push(s.id); renderer.banner = { text: it.name, sub: `${it.lines[0]} · 우클릭 「${WEAPON_SKILLS[it.weapon.skill]?.name}」 · 장비에서 바꿔 들 수 있다`, t: 3.5, color: it.rarityColor }; }
-      else { const g = 200 * it.tier * (it.rarity + 1); save.gold = (save.gold || 0) + g; renderer.banner = { text: `이미 가진 ${it.name}`, sub: `금화 ${g}로 바꿨다`, t: 2.5, color: it.rarityColor }; }
+      if (!save.items.includes(s.id)) { save.items.push(s.id); renderer.banner = { text: it.name, sub: it.weapon ? `${it.lines[0]} · 우클릭 「${WEAPON_SKILLS[it.weapon.skill]?.name}」 · 장비에서 바꿔 들 수 있다` : `${it.lines.join(' · ')} · 장비에서 낄 수 있다`, t: 3.5, color: it.rarityColor }; }
+      else { const g = (it.towerGear ? 100 : 200) * it.tier * (it.rarity + 1); save.gold = (save.gold || 0) + g; renderer.banner = { text: `이미 가진 ${it.name}`, sub: `금화 ${g}로 바꿨다`, t: 2.5, color: it.rarityColor }; }
       writeSave(save);
     }
     else if (s.t === 'lootWeapon') { // 탑에서 주운 무기: 만든 무기처럼 장비 목록에 들어간다
