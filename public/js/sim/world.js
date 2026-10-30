@@ -7,7 +7,7 @@ import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
 import { towerMul, isBossFloor, bossKit, CLIMB_SIGS, BOSS_PASSIVES } from '../data/tower.js';
 import { rollLoot, LOOT_RARITY } from '../data/crafting.js';
 import { rollTowerWeapon, W_RARITY } from '../data/weapons.js';
-import '../data/towergear.js'; // 탑의 방어구 · 장신구 · 부적도 떨어진다
+import { rollTowerGear } from '../data/towergear.js'; // 탑의 방어구 · 장신구 · 왼손 장비도 떨어진다
 import { ITEMS } from '../data/items.js';
 import { climbMul, setZoneRef, floorFoes, rollDoors, clearReward, actOf, REWARDS, floorGold, goldGain, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, FLOOR_MODS, rollFloorMod } from '../data/climb.js';
 import { RAID_BOSS } from '../data/raid.js';
@@ -3442,7 +3442,7 @@ export class World {
     }
     if (a.strike && pos) { // 내리치는 일격: 그 자리에 속성 폭발 (번개 · 불기둥 · 얼음 가시 …)
       const S = a.strike, base = (S.type === 'mag' ? d.magAtk : Math.max(d.physAtk, d.dexAtk || 0)) * S.mul;
-      this.emit({ t: 'skillAoe', x: pos.x, y: pos.y, r: S.r, elem: S.elem, fx: S.fx || 'burst', rar: this.b.weaponItem?.towerWeapon ? this.b.weaponItem.rarity : undefined });
+      this.emit({ t: 'skillAoe', x: pos.x, y: pos.y, r: S.r, elem: S.elem, fx: S.fx || 'burst', rar: S.rar ?? (this.b.weaponItem?.towerWeapon ? this.b.weaponItem.rarity : undefined) });
       for (const o of this.enemiesNear(pos.x, pos.y, S.r)) { this.damageEnemy(o, base, S.type || 'phys', { src: 'aoe', color: S.elem ? ELEM[S.elem]?.color : null }); if (S.status) this.applyStatus(o, S.status, S.stacks || 1); }
     }
     if (a.status && target) this.applyStatus(target, a.status, a.stacks || 1);
@@ -4262,7 +4262,7 @@ export class World {
     if (this.tower && !e.summoned) { // 탑: 이름 붙은 무기가 아주 드물게 떨어진다 (드물게)
       const boss = e === this.tower.boss, rnd = () => this.rng.range(0, 1);
       const ch = boss ? (this.climb?.kind === 'lord' ? 0.25 : 0.12) : def.elite || e.champion ? 0.025 : 0.003; // 보통 0.3% · 정예 2.5% · 수호자 12% · 주인 25%
-      if (this.rng.chance(ch)) this.spawnDrop(e.x, e.y, 'tweapon', rollTowerWeapon(this.tower.f, rnd));
+      if (this.rng.chance(ch)) this.spawnDrop(e.x, e.y, 'tweapon', rnd() < 0.45 ? rollTowerGear(this.tower.f, rnd) : rollTowerWeapon(this.tower.f, rnd)); // 45%는 방어구 · 장신구 · 왼손
     }
     if (def.condEcho && def.condEcho.when === 'burning' && st.burn && this.rng.chance(def.condEcho.rate)) this.spawnDrop(e.x, e.y, 'echo', def.condEcho.id);
     if (def.onDeath?.cloud) { const c = def.onDeath.cloud; this.addCloud(e.x, e.y, c.r, c.dps, c.dur, 'e'); }

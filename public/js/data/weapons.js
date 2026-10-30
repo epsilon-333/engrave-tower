@@ -369,15 +369,20 @@ export const TOWER_WEAPONS = {
 // 숲 · 가시 · 이끼 → 덩굴, 늪 · 독 → 독구름, 균열 · 비전 → 비전 문양, 뼈 · 재 · 흑요석 → 땅이 갈라진다
 const NERF = 0.85; // 탑의 무기 너프 (위력 · 능력치)
 const THEMES = [
+  ['blood', /피의|피 |핏|선혈|흡혈/, ['blood'], { fx: 'thorns', elem: 'phys' }],
+  ['bone', /뼈|해골|송곳니/, ['bone'], { fx: 'bones', elem: 'phys' }],
+  ['star', /별|유성|혜성/, ['star'], { fx: 'starfall', elem: 'holy' }],
+  ['mirror', /거울|수정|유리/, ['mirror'], { fx: 'shards', elem: 'arcane' }],
+  ['wind', /바람|돌풍|회오리|태풍/, [], { fx: 'gale', elem: 'wind' }],
   ['abyss', /심연|공허|망령|영혼|어둠|사신|일식|그림자/, ['void', 'wraith', 'soul', 'grave'], { fx: 'doom', elem: 'dark' }],
-  ['light', /빛|별|성스|태양|황금|각인|거울/, ['light', 'star', 'gold', 'mirror'], { fx: 'holy', elem: 'holy' }],
+  ['light', /빛|성스|태양|황금|각인|신성/, ['light', 'gold'], { fx: 'holy', elem: 'holy' }],
   ['storm', /폭풍|번개|뇌|벼락|천둥/, ['storm'], { fx: 'burst', elem: 'lightning' }],
   ['frost', /서리|얼음|겨울|빙|눈보라|오로라/, ['frost', 'glacier', 'aurora'], { fx: 'ice', elem: 'ice' }],
   ['fire', /불|화염|용암|용의|지옥|불씨|마그마/, ['ember', 'magma', 'flame', 'infernal', 'dragon'], { fx: 'burst', elem: 'fire' }],
   ['nature', /숲|가시|이끼|덩굴|수관|포자/, ['moss', 'thorn', 'spore', 'reed'], { fx: 'vines', elem: 'forest' }],
-  ['poison', /늪|독|두꺼비/, ['bog', 'venom', 'toad', 'queen'], { fx: 'fog', elem: 'poison' }],
+  ['poison', /늪|독|두꺼비/, ['bog', 'venom', 'toad', 'queen'], { fx: 'miasma', elem: 'poison' }],
   ['arcane', /균열|비전|주술|세계|저주/, ['rift', 'hex', 'world'], { fx: 'arcane', elem: 'arcane' }],
-  ['earth', /뼈|재|흑요석|껍질|피의|바위|대지/, ['bone', 'ash', 'obsidian', 'shell', 'blood'], { fx: 'quake', elem: 'phys' }],
+  ['earth', /재|흑요석|껍질|바위|대지/, ['ash', 'obsidian', 'shell'], { fx: 'quake', elem: 'phys' }],
 ];
 const TINT_KEY = Object.fromEntries(Object.entries(TINT).map(([k, v]) => [v, k]));
 function themeOf(x, T) {
@@ -425,7 +430,6 @@ const R_WEIGHT = [10, 6, 3, 1.4, 0.6];
 export function rollTowerWeapon(f, rnd) {
   const band = Math.max(1, Math.min(10, Math.ceil(f / 10)));
   const tier = band > 1 && rnd() < 0.3 ? band - 1 : band;
-  if (rnd() < 0.4) { const g = Object.keys(ITEMS).filter((id) => ITEMS[id].towerGear && ITEMS[id].tier === tier); if (g.length) return g[Math.floor(rnd() * g.length)]; } // 40%는 방어구 · 장신구 · 부적
   const pool = TOWER_WEAPON_IDS.filter((id) => TOWER_WEAPONS[id].t === tier);
   const total = pool.reduce((a, id) => a + R_WEIGHT[TOWER_WEAPONS[id].r], 0);
   let u = rnd() * total;

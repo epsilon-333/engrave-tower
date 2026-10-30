@@ -921,6 +921,10 @@ function migrateSave(sv) {
     if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
   }
   const admin = cloud.name === '운영자';
+  { // 바뀐 탑 장비(예전 단계별 장비 tg1Armor …)처럼 이제 없는 장비는 치운다
+    sv.items = (sv.items || []).filter((id) => !/^tg\d/.test(id) || ITEMS[id]);
+    for (const k of Object.keys(sv.gear || {})) if (/^tg\d/.test(sv.gear[k] || '') && !ITEMS[sv.gear[k]]) sv.gear[k] = null;
+  }
   if (!sv.twFix2) { // 상점에서 0원에 사던 탑의 무기 회수: 운영자 말고는 영웅 · 전설 · 신화를 거두고 일반 · 희귀만 남긴다 (나눠 줄 것은 운영자가 교환으로 준다)
     sv.twFix2 = true;
     const bad = admin ? [] : (sv.items || []).filter((id) => ITEMS[id]?.towerWeapon && ITEMS[id].rarity >= 2);

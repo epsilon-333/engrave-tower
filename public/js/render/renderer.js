@@ -23,7 +23,7 @@ import { SKILLS, ELEM, ROLE_COLOR } from '../data/skills.js';
 import { RACES } from '../data/races.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, WEAPON_ART, weaponArt } from '../data/art.js';
 import { BOSS_PASSIVES } from '../data/tower.js';
-import { SkillAnims } from './skillanim.js';
+import { SkillAnims, drawMiasma, RARITY_ANIM } from './skillanim.js';
 const PASSIVE_NAME = Object.fromEntries(Object.entries(BOSS_PASSIVES).map(([k, v]) => [k, v.name]));
 import { STORY_ITEMS, storyObjective, pinoTalk } from '../data/story.js';
 import { sfx, tone } from '../audio.js';
@@ -632,22 +632,10 @@ export class Renderer {
 
   // 탑의 무기 등급 연출: 등급이 높을수록 화려하게 (희귀 반짝임 → 영웅 충격파 · 불티 → 전설 금빛 빛살 · 떠오르는 불씨 → 신화 두 겹 충격파 · 화면 번쩍 · 별빛 폭발)
   rarityFx(ev, col) {
-    const r = ev.rar, x = ev.x, y = ev.y, R = Math.max(24, ev.r || 30), rc = ['#c8c0d0', '#7ac4ff', '#d08aff', '#ffc040', '#ff5a7a'][r];
-    const n = 8 + r * 8;
-    for (let i = 0; i < n; i++) { // 등급 색 불티: 둘레로 튀었다가 천천히 떠오른다
-      const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * (40 + r * 30);
-      this.parts.push({ x: x + Math.cos(a) * R * 0.3, y: y - 4 + Math.sin(a) * R * 0.2, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6 - 20, t: 0.5 + r * 0.12, max: 0.5 + r * 0.12, color: i % 3 ? rc : col, g: -30, glow: true, size: r >= 3 && i % 4 === 0 ? 2 : 1 });
-    }
-    if (r >= 2) this.shockwave(x, y, R * (1 + 0.15 * r), rc, 18 + r * 4);
-    if (r >= 3) { // 금빛 빛살 + 떠오르는 불씨
-      for (let i = 0; i < 8 + r * 2; i++) { const a = (i / (8 + r * 2)) * Math.PI * 2; this.fx.push({ k: 'glow', x: x + Math.cos(a) * R * 0.7, y: y - 6 + Math.sin(a) * R * 0.45, r: 10 + r * 2, color: rc, t: 0.35, max: 0.35 }); }
-      for (let i = 0; i < 10; i++) this.parts.push({ x: x + (Math.random() - 0.5) * R, y: y, vx: (Math.random() - 0.5) * 10, vy: -40 - Math.random() * 50, t: 1.1, max: 1.1, color: rc, g: -10, glow: true, size: 1 });
-      this.shake = Math.max(this.shake, 2 + r);
-    }
-    if (r >= 4) { // 신화: 늦게 따라오는 두 번째 충격파 · 짧은 화면 번쩍
-      setTimeout(() => this.shockwave(x, y, R * 1.6, '#ffd0e0', 26), 120);
-      this.flash = { color: '255,120,160', t: 0.1, max: 0.1 };
-    }
+    const r = ev.rar, rc = ['#c8c0d0', '#7ac4ff', '#c890ff', '#ffc84a', '#ff5a7a'][r], R = Math.max(24, ev.r || 30);
+    for (let i = 1; i <= r; i++) this.anims.add(RARITY_ANIM[i], { x: ev.x, y: ev.y, r: R * (0.8 + 0.12 * i), col: i === r ? rc : ['#c8c0d0', '#9ad4ff', '#d8b0ff', '#ffe08a', '#ff8aa0'][i] }); // 아래 등급 표식이 겹쳐서 위로 갈수록 화려하다
+    if (r >= 3) this.shake = Math.max(this.shake, r);
+    if (r >= 4) this.hitstop = Math.max(this.hitstop, 0.05);
   }
 
   // 범위 스킬 연출 (맞는 쪽)
@@ -887,15 +875,9 @@ export class Renderer {
         if (z.kind === 'fire' && Math.random() < 0.5) this.parts.push({ x: z.x + (Math.random() - 0.5) * z.r, y: z.y, vx: 0, vy: -40, t: 0.4, max: 0.4, color: Math.random() < 0.5 ? '#ff7a2a' : '#ffd040', g: -30 });
       }
     }
-    for (const c of w.clouds) {
-      const a = Math.min(1, c.t / 0.5) * 0.3;
-      g.fillStyle = c.owner === 'p' ? `rgba(150,230,90,${a})` : `rgba(190,160,80,${a})`;
-      disc(g, c.x, c.y, c.r);
-      for (let i = 0; i < 6; i++) {
-        const an = w.t * 0.7 + i * 1.1;
-        g.fillStyle = c.owner === 'p' ? `rgba(210,255,150,${a * 1.4})` : `rgba(230,200,120,${a * 1.4})`;
-        disc(g, c.x + Math.cos(an) * c.r * 0.55, c.y + Math.sin(an * 1.3) * c.r * 0.45, 3 + (i % 3));
-      }
+    for (const c of w.clouds) { // 독구름: 고인 독 · 감겨 오르는 안개 · 터지는 거품 (적의 것은 누런 독)
+      const al = Math.min(1, c.t / 0.5, (c.max - c.t) / 0.3 + 0.2);
+      drawMiasma(g, c.x, c.y, c.r, w.t, al, (c.x * 13 + c.y * 7) % 97 | 0, c.owner === 'p' ? undefined : ['#4a3a10', '#a8902a', '#e8d070', '#fff4c0'], this);
     }
     for (const f of this.fx) if (f.k === 'tele') {
       const e = w.enemies.find((x) => x.id === f.id);
