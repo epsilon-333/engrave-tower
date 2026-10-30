@@ -742,7 +742,7 @@ export class World {
       }
     }
     const fighting = this.t - (p.lastFight ?? -99) < 5, rgMul = fighting ? 0.4 : 1; // 싸우는 중에는 자연 회복이 느리다
-    p.healBank = Math.min(d.maxHp * 0.08, (p.healBank ?? 0) + d.maxHp * 0.05 * DT);
+    p.healBank = Math.min(d.maxHp * 0.05, (p.healBank ?? 0) + d.maxHp * 0.03 * DT); // 1초에 최대 체력 3%까지 (쌓아 둘 수 있는 몫 5%)
     if (p.markT > 0) p.markT -= DT;
     if (d.regen) this.heal(d.maxHp * d.regen * rgMul * DT, 'regen');
     { const rg = this.modAdd('regen'); if (rg && p.hp < d.maxHp) this.heal(d.maxHp * rg * rgMul * DT, 'regen'); } // 음식: 초당 최대 체력의 몇 %
@@ -2298,7 +2298,7 @@ export class World {
         let tx = e.x + Math.cos(ang0) * over, ty = e.y + Math.sin(ang0) * over;
         if (this.blocked(tx, ty, 5)) { tx = e.x - Math.cos(ang0) * over; ty = e.y - Math.sin(ang0) * over; if (this.blocked(tx, ty, 5)) { tx = e.x; ty = e.y; } }
         this.emit({ t: 'danceDash', x1: p.x, y1: p.y, x2: tx, y2: ty });
-        p.dance = { x0: p.x, y0: p.y, x1: tx, y1: ty, t: 0, dur: 0.13, e, op, ctx, ang: ang0 };
+        p.dance = { x0: p.x, y0: p.y, x1: tx, y1: ty, t: 0, dur: 0.08, e, op, ctx, ang: ang0 }; // 그림자 춤: 한 번 스치는 데 0.08초
         this.faceTo(tx, ty);
         this.motion('stab', 0.3);
         break;
@@ -3446,7 +3446,7 @@ export class World {
     if (a.status && target) this.applyStatus(target, a.status, a.stacks || 1);
     if (a.heal) this.heal(d.maxHp * a.heal, 'skill');
     if (a.res) this.addRes(a.res);
-    if (a.shield) { const p = this.player; p.shield = Math.min(d.maxHp * 0.4, p.shield + d.maxHp * a.shield); }
+    if (a.shield) { const p = this.player, k = this.climb ? 0.5 : 1; p.shield = Math.min(d.maxHp * (this.climb ? 0.25 : 0.4), p.shield + d.maxHp * a.shield * k); } // 탑: 각인 보호막 절반 · 최대 25%
     if (a.aoe) {
       const base = (a.aoe.type === 'phys' ? d.physAtk : d.magAtk) * a.aoe.mul;
       this.emit({ t: 'ring', x: pos.x, y: pos.y, r: a.aoe.r, color: a.aoe.status ? STATUS_COLOR[a.aoe.status] : '#ffffff' });
@@ -3473,8 +3473,8 @@ export class World {
     amount *= d.healMul ?? 1; // 서약 「메마른 샘」
     // 회복 너프: 흡혈 · 재생 · 스킬 회복은 크게 줄이고, 물약 · 샘 말고는 1초에 최대 체력 5%까지만 (쌓아 둘 수 있는 몫은 8%)
     if (!this.pvp && kind !== 'potion' && kind !== 'spring' && kind !== 'room') {
-      amount *= kind === 'steal' ? 0.45 : kind === 'regen' ? 0.5 : 0.55;
-      const bank = (p.healBank ??= d.maxHp * 0.08);
+      amount *= kind === 'steal' ? 0.3 : kind === 'regen' ? 0.35 : 0.4;
+      const bank = (p.healBank ??= d.maxHp * 0.05);
       amount = Math.min(amount, bank); p.healBank = bank - amount;
     }
     const room = d.maxHp - p.hp;
@@ -3552,7 +3552,8 @@ export class World {
     if (p.buffs.steadfast) { p.stored += dmg; p.storedT = 6; }
     if (p.buffs.scales && attacker && !attacker.dead) this.applyStatus(attacker, 'burn', 2);
     if (p.buffs.iceArmor && attacker && !attacker.dead) this.applyStatus(attacker, 'chill', 3);
-    if (p.shield > 0) { const a = Math.min(p.shield, dmg); p.shield -= a; dmg -= a; }
+    let absorbed = 0;
+    if (p.shield > 0) { absorbed = Math.min(p.shield, dmg); p.shield -= absorbed; dmg -= absorbed; }
     p.hp -= dmg; p.hitFlash = 0.15;
     if (this.tower) this.tower.hurt += dmg;
     if (p.buffs.undying && p.hp < 1) { p.hp = 1; this.emit({ t: 'text', x: p.x, y: p.y - 22, text: '불굴', color: '#ffd84a' }); }
@@ -3561,7 +3562,8 @@ export class World {
     if (this.b.race === 'orc') this.addRage((dmg / d.maxHp) * 160 * (f.has('rageFast') ? 1.5 : 1));
     p.lastFight = this.t;
     if (!opt.direct) p.invuln = 0.3;
-    this.emit({ t: 'dmg', x: p.x, y: p.y - 16, v: dmg, color: '#ff5a5a', who: 'p' });
+    if (dmg >= 0.5) this.emit({ t: 'dmg', x: p.x, y: p.y - 16, v: dmg, color: '#ff5a5a', who: 'p' });
+    else if (absorbed > 0) this.emit({ t: 'text', x: p.x, y: p.y - 16, text: '보호막', color: '#a8d8ff' }); // 보호막이 다 막으면 0.0 대신
     this.emit({ t: 'shake', v: Math.min(5, 1.5 + dmg / 12) });
 
     if (attacker && !opt.direct) {

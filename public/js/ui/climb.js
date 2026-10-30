@@ -217,7 +217,7 @@ export function createClimb(ctx) {
     const offers = offerEngravings(r, rng, { n: 3, minGrade: o.minGrade || 1, legendary: o.legendary, luck: meta().luck || 0 });
     if (!offers.length) { then?.(); return; }
     const owned = r.eng.length;
-    pickModal(o.title || '각인', `한 등반에서 새긴 각인은 부하를 차지하지 않는다 · 지금 ${owned}개${Object.keys(runTags(r)).length ? ` · ${Object.entries(runTags(r)).map(([t, n]) => `${TAGS[t]?.name} ${n}`).join(' · ')}` : ''}`,
+    pickModal(o.title || '각인', `새긴 각인 ${owned} / 6 · 다 차면 가진 각인의 연마만 나온다${Object.keys(runTags(r)).length ? ` · ${Object.entries(runTags(r)).map(([t, n]) => `${TAGS[t]?.name} ${n}`).join(' · ')}` : ''}`,
       offers.map((x, i) => engCard(x.id, x.up, b, i)), (i) => {
         const x = offers[i]; addEngraving(r, x.id);
         ctx.sfx('levelup', { vol: 0.6 });

@@ -267,8 +267,8 @@ export const SKILLS = {
   shadowEvade: { name: '그림자 회피', role: '방어', cd: 9, gain: 25, scale: 'phys', fx: 'blink', aim: 'away', mo: 'dash',
     desc: '적이 없는 쪽으로 물러나며 0.8초 무적. 그림자 +25.', do: [{ op: 'dash', dist: 80, mul: 0, invuln: 0.8 }] },
   shadowDance: { name: '그림자 춤', role: '궁극', cd: 24, costAll: { min: 50 }, scale: 'phys', fx: 'slashX', ult: true, aim: 'none', mo: 'stab',
-    desc: '4초 동안 무적 상태로 주변 적 사이를 오가며 8번 벤다. 그림자가 많을수록 강하다.',
-    do: [{ op: 'channel', dur: 4, every: 0.5, invuln: true, sub: { op: 'danceStrike', r: 130, mul: 1.2, scaleRes: true } }] },
+    desc: '1.3초 동안 무적 상태로 주변 적 사이를 오가며 8번 벤다. 그림자가 많을수록 강하다.',
+    do: [{ op: 'channel', dur: 4 / 3, every: 1 / 6, invuln: true, sub: { op: 'danceStrike', r: 130, mul: 1.2, scaleRes: true } }] },
 
   // ══════ 암살자 · 독침 사냥꾼 ══════
   snare: { name: '덫 설치', role: '제어', cd: 4, cost: 10, scale: 'phys', fx: 'trap', aim: 'none', mo: 'crouch',

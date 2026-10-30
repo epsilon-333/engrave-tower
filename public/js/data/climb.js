@@ -5,6 +5,8 @@ import { ENGRAVINGS, TAGS } from './engravings.js';
 import { MONSTERS } from './monsters.js';
 
 export const CLIMB_TOP = 100;
+// 한 등반에서 새길 수 있는 각인은 6개까지 (다 차면 가진 각인의 연마만 나온다)
+export const MAX_ENG = 6;
 
 // 구역: 10층마다 풍경 · 몬스터가 바뀐다. 5층에 수호자, 10층에 구역의 주인
 export const ACTS = [
@@ -24,10 +26,10 @@ export const actOf = (f) => ACTS[Math.max(0, Math.min(ACTS.length - 1, Math.floo
 export const floorKind = (f) => (f % 10 === 0 ? 'lord' : f % 5 === 0 ? 'guardian' : 'fight');
 // 권장 레벨: 구역 안에서도 조금씩 오른다 (화면에 보여 준다)
 export const recLevel = (f) => Math.max(1, Math.round(actOf(f).rec + ((f - 1) % 10) * 1.0)); // 구역 안에서 층마다 권장 레벨 +1
-// 권장 레벨보다 낮으면: 레벨 하나마다 몬스터 공격력 +20% (최대 +300%) · 체력 +12% (최대 +200%) — 레벨을 올리고 스킬 조합을 바꿔 가며 오른다
+// 권장 레벨보다 낮으면: 레벨 하나마다 몬스터 공격력 +8% (최대 +120%) · 체력 +5% (최대 +80%) — 레벨을 올리고 스킬 조합을 바꿔 가며 오른다
 export function levelGap(f, level) {
   const gap = Math.max(0, recLevel(f) - (level || 1));
-  return { gap, atk: 1 + Math.min(3, 0.2 * gap), hp: 1 + Math.min(2, 0.12 * gap) }; // 레벨이 모자라면 크게 세진다: 레벨 하나마다 공격 +20% · 체력 +12%
+  return { gap, atk: 1 + Math.min(1.2, 0.08 * gap), hp: 1 + Math.min(0.8, 0.05 * gap) }; // 레벨 하나마다 공격 +8% · 체력 +5% (층마다 갑자기 뛰지 않게) // 레벨이 모자라면 크게 세진다: 레벨 하나마다 공격 +20% · 체력 +12%
 }
 
 // 몬스터 세기: 구역마다 몬스터 종류의 기본 체력이 다르므로 구역 평균으로 나눠 맞춘 뒤 층마다 오른다.
@@ -46,9 +48,14 @@ const BASE_REF = { hp: 48, atk: 8.5 }; // 1층(이끼 굴) 몬스터 평균에 �
 // 구역이 바뀔 때마다 한 계단 더 (뒤 구역일수록 각인이 쌓여 강해지므로)
 const ACT_HP = [1, 1.3, 1.75, 2.4, 3.3], ACT_ATK = [1, 1.18, 1.4, 1.68, 2.0]; // 51층부터는 마지막 계단 그대로 (층마다 조금씩 오르는 몫만)
 export function climbMul(f, zoneId, oath = {}) {
-  const ref = ZONE_REF[zoneId] || BASE_REF, ai = Math.max(0, Math.min(4, Math.floor((f - 1) / 10)));
-  const hp = CLIMB_HP * ACT_HP[ai] * Math.pow(HP_GROW, f - 1) * (BASE_REF.hp / ref.hp) * (1 + 0.15 * (oath.hide || 0));
-  const atk = CLIMB_ATK * ACT_ATK[ai] * Math.pow(ATK_GROW, f - 1) * (BASE_REF.atk / ref.atk) * (1 + 0.15 * (oath.fangs || 0));
+  const ref = ZONE_REF[zoneId] || BASE_REF;
+  // 구역 배율을 계단 대신 층마다 이어지게: 29층은 거의 31층만큼 (보스 층 앞뒤로 갑자기 뛰지 않는다)
+  const x = Math.min(4, Math.max(0, (f - 1) / 10)), ai = Math.min(3, Math.floor(x)), k = Math.min(1, x - ai);
+  const lerp = (A) => A[ai] + (A[ai + 1] - A[ai]) * k;
+  // 구역 안에서 보스 층에 가까울수록 조금 더 (구역의 1층 ×1 → 9층 ×1.24)
+  const near = 1 + 0.02 * ((f - 1) % 10);
+  const hp = CLIMB_HP * lerp(ACT_HP) * near * Math.pow(HP_GROW, f - 1) * (BASE_REF.hp / ref.hp) * (1 + 0.15 * (oath.hide || 0));
+  const atk = CLIMB_ATK * lerp(ACT_ATK) * (1 + 0.01 * ((f - 1) % 10)) * Math.pow(ATK_GROW, f - 1) * (BASE_REF.atk / ref.atk) * (1 + 0.15 * (oath.fangs || 0));
   return { hp, atk };
 }
 // 층의 특성: 4층부터 싸움터의 1/4 정도에 붙는다 (같은 층이 되풀이되는 느낌을 줄인다)
@@ -106,7 +113,7 @@ export function newRun({ startF = 1, seed = 1, meta = {}, oath = {} } = {}) {
 }
 
 // ───── 문 고르기 ─────
-const DOOR_W = { eng: 30, bless: 20, hone: 10, gold: 9, heal: 8, shard: 8, trial: 9, shop: 9, altar: 7 };
+const DOOR_W = { eng: 16, bless: 12, hone: 12, gold: 12, heal: 8, shard: 10, trial: 9, shop: 9, altar: 7 }; // 각인 · 축복 문은 덜 나온다
 export function rollDoors(run, rng, meta = {}) {
   const nf = run.f + 1;
   if (nf > CLIMB_TOP) return [];
@@ -155,6 +162,7 @@ export function offerEngravings(run, rng, { n = 3, minGrade = 1, legendary = fal
     if (e.grade < minGrade) continue;
     const lv = owned.get(id);
     if (lv != null && lv >= 5) continue;
+    if (lv == null && run.eng.length >= MAX_ENG) continue; // 칸이 다 차면 가진 각인의 연마만
     let w = band[e.grade - 1] || 0.5;
     if (minGrade > 1) w = Math.max(w, 6);
     if (e.grade >= 3) w *= 1 + luck * 0.25;
@@ -202,9 +210,9 @@ export const BLESSINGS = {
   fury: { name: '급소 찌르기', text: '치명타 피해 +25%', color: '#ffb07a', fx: [{ type: 'add', key: 'critDmg', v: 0.25 }] },
   focus: { name: '맑은 정신', text: '스킬 재사용 시간 -8%', color: '#7ad8ff', fx: [{ type: 'mul', key: 'skillCdMul', v: 0.92 }] },
   swift: { name: '바람걸음', text: '이동 속도 +7%', color: '#a8f0c8', fx: [{ type: 'mul', key: 'moveSpeed', v: 1.07 }] },
-  thirst: { name: '피의 갈증', text: '흡혈 +3%', color: '#e0445a', fx: [{ type: 'stat', stat: 'lifesteal', v: 3 }] },
+  thirst: { name: '피의 갈증', text: '흡혈 +2%', color: '#e0445a', fx: [{ type: 'stat', stat: 'lifesteal', v: 2 }] },
   guard: { name: '돌가죽', text: '받는 피해 -7%', color: '#c8b8a0', fx: [{ type: 'mul', key: 'dmgTakenMul', v: 0.93 }] },
-  regen: { name: '끝없는 숨', text: '초당 최대 체력 0.4% 회복', color: '#7be38a', fx: [{ type: 'add', key: 'regen', v: 0.004 }] },
+  regen: { name: '끝없는 숨', text: '초당 최대 체력 0.2% 회복', color: '#7be38a', fx: [{ type: 'add', key: 'regen', v: 0.002 }] },
   dash: { name: '그림자 발', text: '대시 재사용 시간 -15%', color: '#b8a8ff', fx: [{ type: 'mul', key: 'dashCd', v: 0.85 }] },
   status: { name: '독한 손길', text: '상태이상 피해 +15%', color: '#9be15d', fx: [{ type: 'mul', key: 'statusDmgMul', v: 1.15 }] },
   spirit: { name: '타오르는 혼', text: '종족 자원 얻는 양 +15%', color: '#c45cff', fx: [{ type: 'mul', key: 'resGain', v: 1.15 }] },
