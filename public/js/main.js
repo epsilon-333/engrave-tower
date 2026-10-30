@@ -904,6 +904,7 @@ function afterLogin(remote) {
 let reGolem = false;
 
 // 예전 저장 데이터를 새 구조로 옮긴다 (인간·드워프 → 기사, 없어진 슬롯·무기 정리)
+const ADMIN_LEVEL = 100;
 function migrateSave(sv) {
   if (!sv) return sv;
   if (sv.tower?.max && !sv.climb?.fromOld) { // 예전 탑(시간 등급)에서 오른 층만큼 별빛으로 바꿔 준다
@@ -918,18 +919,21 @@ function migrateSave(sv) {
     const total = Math.max(0, (sv.level || 1) - 1), spent = Object.values(sv.alloc || {}).reduce((a, v) => a + (v || 0), 0);
     if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
   }
-  if (!sv.twFix2) { // 상점에서 0원에 사던 탑의 무기 회수: 탑의 무기는 모두 거둔다 (yoric 공룡수인 계정만 낫 하나를 남긴다)
+  const admin = cloud.name === '운영자';
+  if (!sv.twFix2) { // 상점에서 0원에 사던 탑의 무기 회수: 운영자 말고는 모두 거둔다 (나눠 줄 것은 운영자가 교환으로 준다)
     sv.twFix2 = true;
-    const yoric = /yoric/i.test(`${cloud.name || ''} ${sv.name || ''}`) && sv.race === 'dino';
-    const scythes = ['reaperOfTower', 'canopyScythe', 'wraithScythe', 'winterScythe', 'bogReaper'];
-    const keep = yoric ? scythes.find((id) => (sv.items || []).includes(id)) : null;
-    const bad = (sv.items || []).filter((id) => ITEMS[id]?.towerWeapon && id !== keep);
+    const bad = admin ? [] : (sv.items || []).filter((id) => ITEMS[id]?.towerWeapon);
     if (bad.length) {
       sv.items = sv.items.filter((id) => !bad.includes(id));
       for (const k of Object.keys(sv.gear || {})) if (bad.includes(sv.gear[k])) sv.gear[k] = k === 'weapon' ? (sv.items.find((id) => ITEMS[id]?.slot === 'weapon') || 'rustySword') : null;
       if (!sv.items.includes(sv.gear.weapon)) sv.items.push(sv.gear.weapon);
       sv.twTaken = bad.length;
     }
+  }
+  if (admin) { // 운영자: 탑의 무기 모두 · 100레벨
+    sv.items ||= [];
+    for (const id of Object.keys(ITEMS)) if (ITEMS[id].towerWeapon && !sv.items.includes(id)) sv.items.push(id);
+    if ((sv.level || 1) < ADMIN_LEVEL) { sv.points = (sv.points || 0) + pointsAt(ADMIN_LEVEL) - pointsAt(sv.level || 1); sv.level = ADMIN_LEVEL; }
   }
   if (!sv.statFix3) { // 자동 성장 절반 → 레벨마다 1.75점
     sv.statFix3 = true;
