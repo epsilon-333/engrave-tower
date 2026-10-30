@@ -37,7 +37,13 @@ export function levelGap(f, level) {
 const HP_GROW = 1.06, ATK_GROW = 1.042;
 // 탑의 몬스터는 바깥보다 단단하다 (보통 몹도 서너 번은 때려야 쓰러진다) · 수호자 · 주인은 그보다 더
 const CLIMB_HP = 2.3, CLIMB_ATK = 1.15; // 3.2 → 2.3: 맞으면 잘 쓰러지게 (보통 몹은 두세 번)
-export const BOSS_HP = { guardian: 2.0, lord: 2.2 }; export const BOSS_ATK = { guardian: 1.4, lord: 1.3 }; // 수호자 · 주인은 레벨이 모자라면 벽이 된다 (권장 레벨에서 두 레벨 이상 낮으면 공격 배율을 다 받는다)
+export const BOSS_HP = { guardian: 1.4, lord: 1.6 }; // 보스 컨셉: 단단한 보스는 약하게 때리고, 세게 때리는 보스는 무르다 [체력, 공격]
+export const BOSS_STYLE = {
+  mossLord: [1.2, 0.8], climbQueen: [1.2, 0.8], demonCaptain: [1.25, 0.75], frostOgre: [1.2, 0.8], // 단단함
+  climbChief: [0.75, 1.25], bogHag: [0.75, 1.25], climbWitch: [0.75, 1.25], wraithLord: [0.7, 1.3], // 날카로움
+  climbRift: [1, 1], engraveKing: [1, 1], // 균형
+};
+export const BOSS_ATK = { guardian: 1.4, lord: 1.3 }; // 수호자 · 주인은 레벨이 모자라면 벽이 된다 (권장 레벨에서 두 레벨 이상 낮으면 공격 배율을 다 받는다)
 const ZONE_REF = {}; // zone id → { hp, atk } 그 구역 몬스터의 평균
 export function setZoneRef(zoneId, pool) {
   const list = pool.map((id) => MONSTERS[id]).filter(Boolean);

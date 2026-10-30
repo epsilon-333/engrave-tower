@@ -7,7 +7,7 @@ import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
 import { towerMul, isBossFloor, bossKit, CLIMB_SIGS, BOSS_PASSIVES } from '../data/tower.js';
 import { rollLoot, LOOT_RARITY } from '../data/crafting.js';
 import { rollTowerWeapon, TOWER_WEAPONS, W_RARITY } from '../data/weapons.js';
-import { climbMul, setZoneRef, floorFoes, rollDoors, clearReward, actOf, REWARDS, floorGold, goldGain, BOSS_HP, BOSS_ATK, levelGap, FLOOR_MODS, rollFloorMod } from '../data/climb.js';
+import { climbMul, setZoneRef, floorFoes, rollDoors, clearReward, actOf, REWARDS, floorGold, goldGain, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, FLOOR_MODS, rollFloorMod } from '../data/climb.js';
 import { RAID_BOSS } from '../data/raid.js';
 import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
 import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO, SKILL_BAL, CLASS_BAL, CLASS_BAL_PVE } from '../data/skills.js';
@@ -283,7 +283,7 @@ export class World {
       if (C.mod === 'bloodmoon') e.atk *= 1.15;
       if (sp.boss) {
         const wr = C.oath.wrath || 0;
-        e.hp = e.maxHp = e.maxHp * (BOSS_HP[C.kind] || 1) * (1 + 0.25 * wr); { const gp = Math.min(1, levelGap(C.f, this.b.level).gap / 2); e.atk *= 1 + ((BOSS_ATK[C.kind] || 1) - 1) * gp; e.hp = e.maxHp = e.maxHp * (1 + 0.3 * gp); } // 레벨이 모자랄수록 수호자가 벽이 된다
+        { const sty = BOSS_STYLE[e.defId] || [1, 1]; e.hp = e.maxHp = e.maxHp * (BOSS_HP[C.kind] || 1) * sty[0] * (1 + 0.25 * wr); e.atk *= sty[1]; } { const gp = Math.min(1, levelGap(C.f, this.b.level).gap / 2); e.atk *= 1 + ((BOSS_ATK[C.kind] || 1) - 1) * gp; e.hp = e.maxHp = e.maxHp * (1 + 0.15 * gp); } // 레벨이 모자랄수록 수호자가 벽이 된다
         if (wr >= 2) { e.enraged = true; e.speedMul *= 1.3; e.atkRate *= 1.35; }
         e.lair = true; this.tower.boss = e; C.boss = e; e.scale = C.kind === 'lord' ? 1.4 : 1.2; // 수호자 · 주인은 더 크게
         this.giveClimbSig(e, C.f);
