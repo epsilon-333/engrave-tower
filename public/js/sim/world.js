@@ -4261,7 +4261,7 @@ export class World {
     if (e.champion && this.rng.chance(0.3)) this.spawnDrop(e.x, e.y, 'echo', MONSTERS[this.zone.elite].echo.id);
     if (this.tower && !e.summoned) { // 탑: 이름 붙은 무기가 아주 드물게 떨어진다 (드물게)
       const boss = e === this.tower.boss, rnd = () => this.rng.range(0, 1);
-      const ch = boss ? (this.climb?.kind === 'lord' ? 0.25 : 0.12) : def.elite || e.champion ? 0.025 : 0.003; // 보통 0.3% · 정예 2.5% · 수호자 12% · 주인 25%
+      const ch = boss ? (this.climb?.kind === 'lord' ? 0.125 : 0.06) : def.elite || e.champion ? 0.0125 : 0.0015; // 보통 0.15% · 정예 1.25% · 수호자 6% · 주인 12.5%
       if (this.rng.chance(ch)) this.spawnDrop(e.x, e.y, 'tweapon', rnd() < 0.45 ? rollTowerGear(this.tower.f, rnd) : rollTowerWeapon(this.tower.f, rnd)); // 45%는 방어구 · 장신구 · 왼손
     }
     if (def.condEcho && def.condEcho.when === 'burning' && st.burn && this.rng.chance(def.condEcho.rate)) this.spawnDrop(e.x, e.y, 'echo', def.condEcho.id);
