@@ -6,6 +6,7 @@ import { RACES, RACE_MIGRATE } from '../data/races.js';
 import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
 import { ITEMS, weaponCat, weaponHands } from '../data/items.js';
 import { evalCond, condText } from './conditions.js';
+export const STAT_MAX = 300;
 import { weaponScale, CLASS_STATS } from '../data/statscale.js';
 import { SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, skillLoad, skillCap } from '../data/skills.js';
 
@@ -137,6 +138,8 @@ export function computeBuild(lo) {
   }
 
   // 6.5) 종족 비율 보정: 종족마다 잘 크는 능력치는 더, 못 크는 능력치는 덜
+
+  for (const k of BASE_STATS) stats[k] = Math.min(STAT_MAX, stats[k]); // 기본 스탯 최대 300
 
   // 7) 각성 (최종 스탯 기준)
   const awakenings = [];

@@ -92,7 +92,7 @@ export class Hub {
       return `<div class="stat-row">
         <span class="sn" title="${esc(STAT_INFO[k].desc)}">${STAT_INFO[k].name}${rec[k] ? ` <b class="rec" title="${rec[k]}">추천</b>` : ''}</span>
         <span class="sv tier${tier}" title="${esc(statTip(k, v))}">${v}</span>
-        <span class="bar"><i style="width:${Math.min(100, v)}%"></i>${[30, 50, 70, 90].map((t) => `<em style="left:${t}%"></em>`).join('')}</span>
+        <span class="bar"><i style="width:${Math.min(100, v / 3)}%"></i>${[30, 50, 70, 90].map((t) => `<em style="left:${t / 3}%"></em>`).join('')}</span>
         <span class="next">${next ? `${next.at}: ${next.name}` : '<b>모든 각성</b>'}</span>
         <button class="sm" data-act="unalloc" data-k="${k}" ${alloc ? '' : 'disabled'}>−</button>
         <button class="sm" data-act="alloc" data-k="${k}" ${s.points ? '' : 'disabled'}>+</button>
