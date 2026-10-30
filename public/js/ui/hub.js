@@ -351,7 +351,7 @@ export class Hub {
       return `<div class="card ${has ? 'owned' : ''}"><div class="c-head"><b>${it.name}</b>${it.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
         ${it.cls ? `<div class="c-meta" style="color:${it.cls === s.cls ? '#ffd27a' : '#9a90b0'}">${CLASSES[it.cls].name} 전용${it.bdesc ? ' · ' + it.bdesc : ''}${it.cls !== s.cls && it.bdesc ? ' (클래스가 다르면 효과 없음)' : ''}</div>` : ''}${w}${req}<div class="c-stats">${stats || '&nbsp;'}</div><ul class="c-eff">${effs}</ul>${prev}<div class="c-act">${btn}</div></div>`;
     };
-    const bySlot = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl && (!ownedOnly || s.items.includes(id)) && (!ITEMS[id].cls || CLASSES[ITEMS[id].cls].race === s.race) && (!ITEMS[id].starter && id !== 'rustySword' || s.items.includes(id)) && (!ITEMS[id].treasure && !ITEMS[id].forged || s.items.includes(id))).sort((a, b) => (ITEMS[b].cls === s.cls) - (ITEMS[a].cls === s.cls)).map(card).join('');
+    const bySlot = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl && (!ownedOnly || s.items.includes(id)) && (!ITEMS[id].cls || CLASSES[ITEMS[id].cls].race === s.race) && (!ITEMS[id].starter && id !== 'rustySword' || s.items.includes(id)) && (!ITEMS[id].treasure && !ITEMS[id].forged  && !ITEMS[id].towerWeapon && !ITEMS[id].crafted && !ITEMS[id].lootWeapon || s.items.includes(id))).sort((a, b) => (ITEMS[b].cls === s.cls) - (ITEMS[a].cls === s.cls)).map(card).join('');
     return `
       <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots">${gearRow}</div>
         ${b.notes.filter((n) => /^양손|둘:|^쌍/.test(n.text)).map((n) => `<p class="up">✦ ${esc(n.text)}</p>`).join('') || '<p class="muted">양손 무기는 한손 무기 둘을 합친 만큼의 능력치를 준다 · 한손 무기 둘을 같은 계열로 들면 살짝 강해진다</p>'}</section>
@@ -534,7 +534,7 @@ export class Hub {
       case 'skillUp': { const cur = [...this.curSkills()], i = cur.indexOf(id); if (i > 0) { [cur[i - 1], cur[i]] = [cur[i], cur[i - 1]]; s.skills = cur; } break; }
       case 'buy': {
         const it = ITEMS[id];
-        if (s.gold >= it.price) { s.gold -= it.price; s.items.push(id); this.toast(`${it.name} 구매`); }
+        if (it.price > 0 && s.gold >= it.price) { s.gold -= it.price; s.items.push(id); this.toast(`${it.name} 구매`); }
         break;
       }
       case 'equipG':

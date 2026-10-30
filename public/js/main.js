@@ -918,6 +918,17 @@ function migrateSave(sv) {
     const total = Math.max(0, (sv.level || 1) - 1), spent = Object.values(sv.alloc || {}).reduce((a, v) => a + (v || 0), 0);
     if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
   }
+  if (!sv.twFix) { // 상점에서 0원에 사던 탑의 무기 회수: 지금까지 오른 층에서 떨어질 수 없는 단계의 무기는 거둔다
+    sv.twFix = true;
+    const maxTier = Math.max(0, Math.ceil((sv.climb?.best || 0) / 10));
+    const bad = (sv.items || []).filter((id) => ITEMS[id]?.towerWeapon && ITEMS[id].tier > maxTier);
+    if (bad.length) {
+      sv.items = sv.items.filter((id) => !bad.includes(id));
+      for (const k of Object.keys(sv.gear || {})) if (bad.includes(sv.gear[k])) sv.gear[k] = k === 'weapon' ? (sv.items.find((id) => ITEMS[id]?.slot === 'weapon') || 'rustySword') : null;
+      if (!sv.items.includes(sv.gear.weapon)) sv.items.push(sv.gear.weapon);
+      sv.twTaken = bad.length;
+    }
+  }
   if (!sv.statFix3) { // 자동 성장 절반 → 레벨마다 1.75점
     sv.statFix3 = true;
     const total = pointsAt(sv.level || 1), spent = Object.values(sv.alloc || {}).reduce((a, v) => a + (v || 0), 0);
@@ -2039,6 +2050,7 @@ function handleSignals() {
     else if (s.t === 'shard') { gainShard(s.race); }
     else if (s.t === 'towerWeapon') { // 탑의 무기 100종: 처음이면 가방으로, 이미 있으면 금화로 바꿔 준다
       const it = ITEMS[s.id];
+      (save.towerGot ||= {})[s.id] = 1;
       if (!save.items.includes(s.id)) { save.items.push(s.id); renderer.banner = { text: it.name, sub: `${it.lines[0]} · 우클릭 「${WEAPON_SKILLS[it.weapon.skill]?.name}」 · 장비에서 바꿔 들 수 있다`, t: 3.5, color: it.rarityColor }; }
       else { const g = 200 * it.tier * (it.rarity + 1); save.gold = (save.gold || 0) + g; renderer.banner = { text: `이미 가진 ${it.name}`, sub: `금화 ${g}로 바꿨다`, t: 2.5, color: it.rarityColor }; }
       writeSave(save);
