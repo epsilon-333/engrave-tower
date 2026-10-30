@@ -1949,7 +1949,7 @@ export class World {
           let list = this.enemiesNear(c.x, c.y, op.r);
           if (op.spareNearest && list.length > 1) { const nn = list.reduce((a, b) => (Math.hypot(a.x - p.x, a.y - p.y) < Math.hypot(b.x - p.x, b.y - p.y) ? a : b)); list = list.filter((e) => e !== nn); this.emit({ t: 'lockOn', x: nn.x, y: nn.y, kind: 'low' }); }
           if (op.pullTo) for (const e of list) if (!e.def.elite || true) { const dx = c.x - e.x, dy = c.y - e.y, l = Math.hypot(dx, dy) || 1; const k = e.def.elite ? 0.5 : 1; e.kbx += (dx / l) * Math.min(320, l * 7) * k; e.kby += (dy / l) * Math.min(320, l * 7) * k; }
-          this.emit({ t: 'skillAoe', x: c.x, y: c.y, r: op.r, elem: ctx.elem, fx: op.fx || ctx.def.fx, ult: ctx.def.ult });
+          this.emit({ t: 'skillAoe', x: c.x, y: c.y, r: op.r, elem: ctx.elem, fx: op.fx || ctx.def.fx, ult: ctx.def.ult, rar: ctx.def.weaponSkill && this.b.weaponItem?.towerWeapon ? this.b.weaponItem.rarity : undefined });
           countHits(list, op.perHit ? 1 + op.perHit * Math.max(0, list.length - 1) : 1);
         };
         if (op.delay) {
@@ -3442,7 +3442,7 @@ export class World {
     }
     if (a.strike && pos) { // 내리치는 일격: 그 자리에 속성 폭발 (번개 · 불기둥 · 얼음 가시 …)
       const S = a.strike, base = (S.type === 'mag' ? d.magAtk : Math.max(d.physAtk, d.dexAtk || 0)) * S.mul;
-      this.emit({ t: 'skillAoe', x: pos.x, y: pos.y, r: S.r, elem: S.elem, fx: S.fx || 'burst' });
+      this.emit({ t: 'skillAoe', x: pos.x, y: pos.y, r: S.r, elem: S.elem, fx: S.fx || 'burst', rar: this.b.weaponItem?.towerWeapon ? this.b.weaponItem.rarity : undefined });
       for (const o of this.enemiesNear(pos.x, pos.y, S.r)) { this.damageEnemy(o, base, S.type || 'phys', { src: 'aoe', color: S.elem ? ELEM[S.elem]?.color : null }); if (S.status) this.applyStatus(o, S.status, S.stacks || 1); }
     }
     if (a.status && target) this.applyStatus(target, a.status, a.stacks || 1);

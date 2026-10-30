@@ -630,12 +630,33 @@ export class Renderer {
     this.texts.push({ x: ev.x, y: ev.y - 30, text: ev.name, color: col === '#ffffff' ? '#ffe8a8' : col, t: 0.9, vy: -10, vx: 0, label: true });
   }
 
+  // 탑의 무기 등급 연출: 등급이 높을수록 화려하게 (희귀 반짝임 → 영웅 충격파 · 불티 → 전설 금빛 빛살 · 떠오르는 불씨 → 신화 두 겹 충격파 · 화면 번쩍 · 별빛 폭발)
+  rarityFx(ev, col) {
+    const r = ev.rar, x = ev.x, y = ev.y, R = Math.max(24, ev.r || 30), rc = ['#c8c0d0', '#7ac4ff', '#d08aff', '#ffc040', '#ff5a7a'][r];
+    const n = 8 + r * 8;
+    for (let i = 0; i < n; i++) { // 등급 색 불티: 둘레로 튀었다가 천천히 떠오른다
+      const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * (40 + r * 30);
+      this.parts.push({ x: x + Math.cos(a) * R * 0.3, y: y - 4 + Math.sin(a) * R * 0.2, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6 - 20, t: 0.5 + r * 0.12, max: 0.5 + r * 0.12, color: i % 3 ? rc : col, g: -30, glow: true, size: r >= 3 && i % 4 === 0 ? 2 : 1 });
+    }
+    if (r >= 2) this.shockwave(x, y, R * (1 + 0.15 * r), rc, 18 + r * 4);
+    if (r >= 3) { // 금빛 빛살 + 떠오르는 불씨
+      for (let i = 0; i < 8 + r * 2; i++) { const a = (i / (8 + r * 2)) * Math.PI * 2; this.fx.push({ k: 'glow', x: x + Math.cos(a) * R * 0.7, y: y - 6 + Math.sin(a) * R * 0.45, r: 10 + r * 2, color: rc, t: 0.35, max: 0.35 }); }
+      for (let i = 0; i < 10; i++) this.parts.push({ x: x + (Math.random() - 0.5) * R, y: y, vx: (Math.random() - 0.5) * 10, vy: -40 - Math.random() * 50, t: 1.1, max: 1.1, color: rc, g: -10, glow: true, size: 1 });
+      this.shake = Math.max(this.shake, 2 + r);
+    }
+    if (r >= 4) { // 신화: 늦게 따라오는 두 번째 충격파 · 짧은 화면 번쩍
+      setTimeout(() => this.shockwave(x, y, R * 1.6, '#ffd0e0', 26), 120);
+      this.flash = { color: '255,120,160', t: 0.1, max: 0.1 };
+    }
+  }
+
   // 범위 스킬 연출 (맞는 쪽)
   aoeFx(ev) {
     const col = ELEM[ev.elem]?.color || '#ffe8a0';
     const fx = ev.fx;
     this.juice(ev.x, ev.y, col, ev.ult ? 'ult' : ev.fromProj ? 'pop' : 'skill', ev.r || 30);
     this.anims.onAoe(ev);
+    if (ev.rar >= 1) this.rarityFx(ev, col);
     if (ev.ult) { this.flash = { color: '255,240,210', t: 0.22, max: 0.22 }; this.shake = Math.max(this.shake, 12); this.hitstop = Math.max(this.hitstop, 0.12); }
     if (fx === 'arcane' || fx === 'implode' || fx === 'holy' || fx === 'corpse' || fx === 'doom' || fx === 'shatter' || fx === 'zero' || fx === 'timestop') {
       const c2 = fx === 'holy' ? '#fff0a0' : fx === 'corpse' || fx === 'doom' ? '#c45cff' : fx === 'shatter' || fx === 'zero' ? '#c8f0ff' : '#b98aff';
