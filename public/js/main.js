@@ -27,7 +27,7 @@ import { RAIDS, raidWeek, buildRaidArena } from './data/raid.js';
 import { SANCTUMS, SANCTUM_MAX, TIER_COST, PERK_TIER, TREASURE_TIER, SHARDS_PER_RELIC, sanctumBonusText, SANCT_LIFE, sanctState, affLevel, AFF_LV, AFF_NAME, AFF_REWARD, trainCap, trainSpec, OWN_TRAIN_CAP, OWN_TRAIN_EASE, GIFT_AFF, GIFTS_PER_DAY, TRAIN_AFF, TRAINS_PER_DAY, sanctQuestDef, FIND_NAME, RACE_SHOP } from './data/sanctums.js';
 import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, cloud, isClaudePage, login, register, logout, errorText } from './cloud.js';
 import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
-import { RACES, RACE_MIGRATE } from './data/races.js';
+import { RACES, RACE_MIGRATE, pointsAt } from './data/races.js';
 import { RACE_STORY, relation, allies, ALLY_AFF, REL_NAME, REL_COLOR } from './data/lore.js';
 import { ITEMS, STYLES, WEAPON_SKILLS } from './data/items.js';
 import './data/weapons.js'; // 탑의 무기 100종을 장비 목록에 올린다
@@ -916,6 +916,11 @@ function migrateSave(sv) {
   if (!sv.statFix2) { // 스탯을 새 규칙으로 다시 센다: 레벨마다 1점
     sv.statFix2 = true;
     const total = Math.max(0, (sv.level || 1) - 1), spent = Object.values(sv.alloc || {}).reduce((a, v) => a + (v || 0), 0);
+    if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
+  }
+  if (!sv.statFix3) { // 자동 성장 절반 → 레벨마다 1.75점
+    sv.statFix3 = true;
+    const total = pointsAt(sv.level || 1), spent = Object.values(sv.alloc || {}).reduce((a, v) => a + (v || 0), 0);
     if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
   }
   if (!sv.statFix3) { // 지금까지 여러 성지에서 쌓은 수련 단계는 모두 내 종족 성지의 수련으로 옮겨 남긴다

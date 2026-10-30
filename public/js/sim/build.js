@@ -7,6 +7,7 @@ import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
 import { ITEMS, weaponCat, weaponHands } from '../data/items.js';
 import { evalCond, condText } from './conditions.js';
 export const STAT_MAX = 300;
+import { GROWTH_MUL } from '../data/races.js';
 import { weaponScale, CLASS_STATS } from '../data/statscale.js';
 import { SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, skillLoad, skillCap } from '../data/skills.js';
 
@@ -32,7 +33,7 @@ export function computeBuild(lo) {
   // 종족 · 성장 · 찍은 포인트에만 종족 비율 보정을 곱한다 (장비 · 각인 보너스는 부풀리지 않는다)
   const statSrc = {};
   for (const k of BASE_STATS) {
-    const grow = Math.round(((race.growth[k] || 0) + (CLASS_STATS[lo.cls]?.[0] === k ? 0.5 : 0)) * (lo.level - 1)); // 종족 성장 +1 · 클래스 주력 스탯 +0.5 (레벨마다)
+    const grow = Math.round(((race.growth[k] || 0) + (CLASS_STATS[lo.cls]?.[0] === k ? 0.5 : 0)) * GROWTH_MUL * (lo.level - 1)); // 종족 성장 +0.5 · 클래스 주력 스탯 +0.25 (레벨마다) — 나머지는 자유 포인트로
     const m = race.mult?.[k] || 1, own = race.base[k] + (lo.alloc?.[k] || 0) + grow;
     const sanctTrain = (sanct.stats[k] || 0) + (train[k] || 0);
     stats[k] = Math.round(own * m) + sanctTrain;

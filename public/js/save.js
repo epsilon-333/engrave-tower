@@ -1,6 +1,6 @@
 // 저장 데이터 (지금은 브라우저 저장, 나중에 서버 계정으로 옮길 수 있게 순수 JSON)
 import { spiritLevel } from './data/spirits.js';
-import { POINTS_PER_LEVEL, RACES } from './data/races.js';
+import { pointsAt, RACES } from './data/races.js';
 import { codexPoints, levelFor } from './data/codex.js';
 import { newStory } from './data/story.js';
 import { ZONES, MONSTERS, ECHOES } from './data/monsters.js';
@@ -64,7 +64,7 @@ export function syncLevel(s) {
   s.codex ||= {}; s.story ||= newStory();
   const { level } = levelFor(codexPoints(s));
   let ups = 0;
-  while (s.level < level) { s.level++; s.points += POINTS_PER_LEVEL; ups++; }
+  while (s.level < level) { s.level++; s.points += pointsAt(s.level) - pointsAt(s.level - 1); ups++; }
   return ups;
 }
 

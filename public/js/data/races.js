@@ -97,4 +97,7 @@ export const RACES = {
 export const RACE_MIGRATE = { human: 'knight', dwarf: 'knight', beast: 'dino' };
 
 export const POINTS_PER_LEVEL = 1; // 레벨이 오르면 스탯 포인트 하나
+// 자동 성장을 절반으로 줄인 만큼(레벨마다 0.75)을 자유 포인트로 돌려준다 → 레벨마다 1.75점
+export const GROWTH_MUL = 0.5;
+export const pointsAt = (level) => Math.floor(1.75 * Math.max(0, level - 1));
 export function xpToNext(level) { return 20 + level * 18; }
