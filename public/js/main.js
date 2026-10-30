@@ -918,10 +918,12 @@ function migrateSave(sv) {
     const total = Math.max(0, (sv.level || 1) - 1), spent = Object.values(sv.alloc || {}).reduce((a, v) => a + (v || 0), 0);
     if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
   }
-  if (!sv.twFix) { // 상점에서 0원에 사던 탑의 무기 회수: 지금까지 오른 층에서 떨어질 수 없는 단계의 무기는 거둔다
-    sv.twFix = true;
-    const maxTier = Math.max(0, Math.ceil((sv.climb?.best || 0) / 10));
-    const bad = (sv.items || []).filter((id) => ITEMS[id]?.towerWeapon && ITEMS[id].tier > maxTier);
+  if (!sv.twFix2) { // 상점에서 0원에 사던 탑의 무기 회수: 탑의 무기는 모두 거둔다 (yoric 공룡수인 계정만 낫 하나를 남긴다)
+    sv.twFix2 = true;
+    const yoric = /yoric/i.test(`${cloud.name || ''} ${sv.name || ''}`) && sv.race === 'dino';
+    const scythes = ['reaperOfTower', 'canopyScythe', 'wraithScythe', 'winterScythe', 'bogReaper'];
+    const keep = yoric ? scythes.find((id) => (sv.items || []).includes(id)) : null;
+    const bad = (sv.items || []).filter((id) => ITEMS[id]?.towerWeapon && id !== keep);
     if (bad.length) {
       sv.items = sv.items.filter((id) => !bad.includes(id));
       for (const k of Object.keys(sv.gear || {})) if (bad.includes(sv.gear[k])) sv.gear[k] = k === 'weapon' ? (sv.items.find((id) => ITEMS[id]?.slot === 'weapon') || 'rustySword') : null;
