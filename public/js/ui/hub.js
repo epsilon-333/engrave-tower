@@ -80,13 +80,18 @@ export class Hub {
     if (cs[0]) rec[cs[0]] = '공격 스킬이 이 스탯에 비례해 세진다 (40: 피해 +15% · 70: 재사용 -20%)';
     if (cs[1]) rec[cs[1]] = (rec[cs[1]] ? rec[cs[1]] + ' · ' : '') + '방어 · 준비 · 제어 스킬이 따라가는 스탯';
     rec[ws] = (rec[ws] ? rec[ws] + ' · ' : '') + '지금 무기의 평타 · 무기 기술이 따라가는 스탯 (50: 피해 +15% · 80: 공격 속도 +10%)';
+    const statTip = (k, v) => {
+      const o = b.statSrc?.[k]; if (!o) return '';
+      const other = v - o.base - o.grow - o.alloc - o.race - o.sanct;
+      return [`기본 ${o.base}`, o.grow && `레벨 성장 +${o.grow}`, o.alloc && `찍은 포인트 +${o.alloc}`, o.race && `종족 보정 ×${o.mult} (${o.race > 0 ? '+' : ''}${o.race})`, o.sanct && `성지 +${o.sanct}`, other && `장비 · 각인 · 기타 ${other > 0 ? '+' : ''}${other}`].filter(Boolean).join('\n');
+    };
     const statRow = (k) => {
       const v = b.stats[k], alloc = s.alloc[k] || 0;
       const next = (b.awakenings.filter((a) => a.stat === k && !a.on)[0]);
       const tier = TIERS.findIndex(([cap]) => v <= cap);
       return `<div class="stat-row">
         <span class="sn" title="${esc(STAT_INFO[k].desc)}">${STAT_INFO[k].name}${rec[k] ? ` <b class="rec" title="${rec[k]}">추천</b>` : ''}</span>
-        <span class="sv tier${tier}">${v}</span>
+        <span class="sv tier${tier}" title="${esc(statTip(k, v))}">${v}</span>
         <span class="bar"><i style="width:${Math.min(100, v)}%"></i>${[30, 50, 70, 90].map((t) => `<em style="left:${t}%"></em>`).join('')}</span>
         <span class="next">${next ? `${next.at}: ${next.name}` : '<b>모든 각성</b>'}</span>
         <button class="sm" data-act="unalloc" data-k="${k}" ${alloc ? '' : 'disabled'}>−</button>

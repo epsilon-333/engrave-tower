@@ -28,7 +28,15 @@ export function computeBuild(lo) {
   const stats = {};
   const sanct = allSanctums(lo); // 성지에서 받은 축복 (모든 성지, 내 종족의 성지는 1.5배)
   const train = trainStats(lo);  // 성지 수련 단계
-  for (const k of BASE_STATS) stats[k] = race.base[k] + (lo.alloc?.[k] || 0) + ((race.growth[k] || 0) + (CLASS_STATS[lo.cls]?.[0] === k ? 1 : 0)) * (lo.level - 1) /* 종족 성장 + 클래스 주력 스탯 성장 */ + (sanct.stats[k] || 0) + (train[k] || 0);
+  // 종족 · 성장 · 찍은 포인트에만 종족 비율 보정을 곱한다 (장비 · 각인 보너스는 부풀리지 않는다)
+  const statSrc = {};
+  for (const k of BASE_STATS) {
+    const grow = Math.round(((race.growth[k] || 0) + (CLASS_STATS[lo.cls]?.[0] === k ? 0.5 : 0)) * (lo.level - 1)); // 종족 성장 +1 · 클래스 주력 스탯 +0.5 (레벨마다)
+    const m = race.mult?.[k] || 1, own = race.base[k] + (lo.alloc?.[k] || 0) + grow;
+    const sanctTrain = (sanct.stats[k] || 0) + (train[k] || 0);
+    stats[k] = Math.round(own * m) + sanctTrain;
+    statSrc[k] = { base: race.base[k], grow, alloc: lo.alloc?.[k] || 0, mult: m, race: Math.round(own * m) - own, sanct: sanctTrain };
+  }
   for (const k of Object.keys(SPECIAL_INFO)) stats[k] = 0;
 
   const notes = []; // UI에 보여줄 발동 내역
@@ -129,7 +137,6 @@ export function computeBuild(lo) {
   }
 
   // 6.5) 종족 비율 보정: 종족마다 잘 크는 능력치는 더, 못 크는 능력치는 덜
-  for (const [k, m] of Object.entries(race.mult || {})) if (stats[k] > 0) stats[k] = Math.round(stats[k] * m);
 
   // 7) 각성 (최종 스탯 기준)
   const awakenings = [];
@@ -240,7 +247,7 @@ export function computeBuild(lo) {
   // 무기 계열의 스탯 계수 · 개방 (평타 · 무기 기술 피해, 80 이상 공격 속도)
   const wScale = weaponScale({ weaponItem: ITEMS[weaponId], stats });
   d.atkSpeed *= wScale.spd;
-  return { wScale, skillLoad: sLoad, skillCap: sCap, race: lo.race, level: lo.level || 1, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
+  return { statSrc, wScale, skillLoad: sLoad, skillCap: sCap, race: lo.race, level: lo.level || 1, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
 }
 
 // 무기 계열: 마법(마도서 · 완드 · 보주 · 인형) / 단검(민첩 칼) / 검 / 도끼 / 둔기 / 던지기 / 채찍
