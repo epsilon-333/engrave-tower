@@ -213,14 +213,14 @@ export const partName = (id) => GOODS[id]?.name || id;
 // 등급: 위력 배율 · 부산물 개수 · 추가 능력. 높은 등급일수록 그림이 빛난다
 export const LOOT_RARITY = [
   { name: '일반', color: '#c8c0d0', mul: 1, parts: 0 },
-  { name: '희귀', color: '#5ab0ff', mul: 1.12, parts: 1, glow: 1 },
-  { name: '영웅', color: '#c070ff', mul: 1.25, parts: 2, glow: 2, bonus: { crit: 0.04 } },
-  { name: '전설', color: '#ffb030', mul: 1.4, parts: 2, glow: 3, bonus: { crit: 0.06, skillCdMul: 0.9 } },
-  { name: '신화', color: '#ff4a6a', mul: 1.6, parts: 2, glow: 4, bonus: { crit: 0.08, skillCdMul: 0.85, dmgMul: 1.1 } },
+  { name: '희귀', color: '#5ab0ff', mul: 1.05, parts: 1, glow: 1 },
+  { name: '영웅', color: '#c070ff', mul: 1.1, parts: 2, glow: 2, bonus: { crit: 0.04 } },
+  { name: '전설', color: '#ffb030', mul: 1.15, parts: 2, glow: 3, bonus: { crit: 0.06, skillCdMul: 0.9 } },
+  { name: '신화', color: '#ff4a6a', mul: 1.2, parts: 2, glow: 4, bonus: { crit: 0.08, skillCdMul: 0.85, dmgMul: 1.1 } },
 ];
 const LOOT_BONUS_TEXT = { crit: (v) => `치명타 +${Math.round(v * 100)}%`, skillCdMul: (v) => `스킬 재사용 -${Math.round((1 - v) * 100)}%`, dmgMul: (v) => `주는 피해 +${Math.round((v - 1) * 100)}%` };
 // 층에 맞춘 위력: 몬스터 체력이 오르는 만큼 따라간다
-export const lootPower = (f) => 1 + 0.03 * (f - 1);
+export const lootPower = (f) => 1 + 0.012 * (f - 1); // 100층 ≈ 2.2배 (탑의 무기와 같은 눈금)
 const LOOT_EPITHET = ['탑지기의', '수호자의', '잊힌 층의', '별빛', '심연의', '여명의', '폭풍의', '왕의'];
 // 등급 굴리기: 보통 몬스터는 낮게, 수호자는 영웅 이상이 잘 나온다. 층이 높을수록 조금씩 좋아진다
 export function rollLoot(f, rnd, boss = false) {

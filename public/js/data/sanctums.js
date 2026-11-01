@@ -4,33 +4,34 @@
 // 조각은 그 성지의 땅(바깥 지역의 몬스터 · 지하 던전의 몬스터와 우두머리)에서만 나온다.
 
 export const SANCTUMS = {
-  wizard: { name: '마탑', place: '서리 설원', biome: 'snow', dungeon: '얼음 동굴', keeper: '마탑지기 엘리아', relic: '마력 결정', color: '#b58aff', unit: { mag: 1, spi: 1 },
+  wizard: { name: '마탑', place: '서리 설원', biome: 'snow', dungeon: '얼음 동굴', keeper: '마탑지기 엘리아', relic: '마력 결정', color: '#b58aff', unit: { mag: 1 },
     perk: { text: '스킬 재사용 대기 -10%', effects: [{ type: 'mul', key: 'skillCdMul', v: 0.9 }] }, treasure: 'starOrb',
     lore: ['눈보라 너머 우뚝 선 이 탑에서, 마법사들은 별의 흐름을 읽어 왔다.', '마력 결정은 설원 곳곳에 흩어져 있다. 얼음 동굴 깊은 곳의 서리 마녀도 하나를 품고 있지.'] },
-  elf: { name: '세계수', place: '이끼 숲', biome: 'forest', dungeon: '이끼 동굴', keeper: '세계수의 무녀 루미', relic: '세계수의 씨앗', color: '#7be38a', unit: { mag: 1, agi: 1 },
+  elf: { name: '세계수', place: '이끼 숲', biome: 'forest', dungeon: '이끼 동굴', keeper: '세계수의 무녀 루미', relic: '세계수의 씨앗', color: '#7be38a', unit: { spi: 1 },
     perk: { text: '자연 회복 · 초당 최대 체력의 0.5%', effects: [{ type: 'add', key: 'regen', v: 0.005 }] }, treasure: 'worldLeaf',
     lore: ['이 나무는 섬보다 오래 살았다. 엘프는 모두 이 나무 아래에서 태어난다.', '세계수의 씨앗은 숲 곳곳으로 흩어졌다. 이끼 동굴의 가면 족장이 하나를 훔쳐 갔다고 들었다.'] },
-  knight: { name: '무너진 왕성', place: '꽃바람 들판', biome: 'meadow', dungeon: '왕성 지하 감옥', keeper: '마지막 근위병 하겐', relic: '왕가의 문장', color: '#ffd76a', unit: { vit: 1, pres: 1 },
+  knight: { name: '무너진 왕성', place: '꽃바람 들판', biome: 'meadow', dungeon: '왕성 지하 감옥', keeper: '마지막 근위병 하겐', relic: '왕가의 문장', color: '#ffd76a', unit: { pres: 1 },
     perk: { text: '받는 피해 -10%', effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.9 }] }, treasure: 'royalCrest',
     lore: ['왕은 떠났고 성은 무너졌지만, 맹세는 남았다.', '왕가의 문장이 들판에 흩어졌다. 성 지하 감옥의 타락한 기사가 마지막 하나를 지키고 있다.'] },
-  orc: { name: '황야의 투기장', place: '메마른 황야', biome: 'wasteland', dungeon: '황야의 구멍', keeper: '투기장 주인 그롬', relic: '투사의 이빨', color: '#ff7a5a', unit: { str: 1, vit: 1 },
+  orc: { name: '황야의 투기장', place: '메마른 황야', biome: 'wasteland', dungeon: '황야의 구멍', keeper: '투기장 주인 그롬', relic: '투사의 이빨', color: '#ff7a5a', unit: { str: 1 },
     perk: { text: '모든 피해 +10%', effects: [{ type: 'mul', key: 'dmgMul', v: 1.1 }] }, treasure: 'championHorn',
     lore: ['여기서는 강한 자가 말한다. 약한 자는 듣는다.', '황야의 투사들이 남긴 이빨을 찾아라. 황야의 구멍 아래 오크 족장도 하나를 목에 걸고 있다.'] },
-  undead: { name: '잿빛 영묘', place: '그림자 묘지', biome: 'graveyard', dungeon: '지하 묘지', keeper: '영묘지기 모르', relic: '봉인된 유골', color: '#c45cff', unit: { mag: 1, mres: 1 },
+  undead: { name: '잿빛 영묘', place: '그림자 묘지', biome: 'graveyard', dungeon: '지하 묘지', keeper: '영묘지기 모르', relic: '봉인된 유골', color: '#c45cff', unit: { mres: 1 },
     perk: { text: '흡혈 +5%', effects: [{ type: 'stat', stat: 'lifesteal', v: 5 }] }, treasure: 'lichCrown',
     lore: ['죽음은 끝이 아니다. 잠시 쉬는 것일 뿐.', '봉인된 유골은 묘지 곳곳에 묻혀 있다. 지하 묘지의 묘지기가 가장 오래된 것을 지킨다.'] },
-  assassin: { name: '그림자 길드', place: '폐허 도시', biome: 'ruins', dungeon: '잊힌 미궁', keeper: '길드장 녹턴', relic: '그림자 인장', color: '#8a6aff', unit: { agi: 1, sen: 1 },
+  assassin: { name: '그림자 길드', place: '폐허 도시', biome: 'ruins', dungeon: '잊힌 미궁', keeper: '길드장 녹턴', relic: '그림자 인장', color: '#8a6aff', unit: { sen: 1 },
     perk: { text: '치명타 확률 +8%', effects: [{ type: 'add', key: 'crit', v: 0.08 }] }, treasure: 'shadowSeal',
     lore: ['…들어왔다는 건, 길을 아는 자라는 뜻이군.', '그림자 인장이 폐허에 흩어져 있다. 잊힌 미궁의 군주가 하나를 삼켰다더군.'] },
-  dino: { name: '태고의 둥지', place: '원시림', biome: 'jungle', dungeon: '원시림의 구멍', keeper: '둥지 장로 크라', relic: '태고의 알 조각', color: '#9be15d', unit: { str: 1, agi: 1 },
+  dino: { name: '태고의 둥지', place: '원시림', biome: 'jungle', dungeon: '원시림의 구멍', keeper: '둥지 장로 크라', relic: '태고의 알 조각', color: '#9be15d', unit: { agi: 1 },
     perk: { text: '이동 속도 +10%', effects: [{ type: 'mul', key: 'moveSpeed', v: 1.1 }] }, treasure: 'primalFang',
     lore: ['우리 조상은 이 둥지에서 처음 눈을 떴다.', '태고의 알 조각을 찾아오너라. 원시림의 구멍 아래 우두머리 랩터가 하나를 품고 있다.'] },
-  dragon: { name: '홍염 분화구', place: '화산 지대', biome: 'volcano', dungeon: '균열 동굴', keeper: '용족 원로 이그니', relic: '용린', color: '#ff8a3a', unit: { str: 1, mag: 1 },
+  dragon: { name: '홍염 분화구', place: '화산 지대', biome: 'volcano', dungeon: '균열 동굴', keeper: '용족 원로 이그니', relic: '용린', color: '#ff8a3a', unit: { vit: 1 },
     perk: { text: '화상 피해 +30%', effects: [{ type: 'mul', key: 'burnMul', v: 1.3 }] }, treasure: 'dragonHeart',
     lore: ['불은 우리를 낳았고, 우리는 불을 지킨다.', '용린은 화산 곳곳에 떨어져 있다. 균열 동굴의 수호자가 가장 큰 것을 지닌다.'] },
 };
 export const SANCTUM_MAX = 5;
 export const TIER_COST = [1, 2, 3, 4, 5];        // n+1단계로 오를 때 바치는 성물 수 (인덱스 = 지금 단계)
+// 성지 여덟 곳이 기본 스탯 여덟 개를 하나씩 맡는다 (마탑 마력 · 세계수 정신 · 왕성 물리 저항 · 투기장 근력 · 영묘 마법 저항 · 그림자 길드 감각 · 태고의 둥지 민첩 · 홍염 분화구 체력)
 export const TIER_UNITS = [0, 1, 3, 6, 11, 18];  // 단계별 누적 축복 (한 단위 = 능력치 +1)
 export const PERK_TIER = 3, TREASURE_TIER = 5, OWN_MUL = 1.5, SHARDS_PER_RELIC = 5;
 // 바깥 지역(지역 id) → 그 땅의 성지

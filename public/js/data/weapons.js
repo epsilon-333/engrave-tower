@@ -7,13 +7,13 @@ import { WTYPES } from './crafting.js';
 
 export const W_RARITY = [
   { name: '일반', color: '#c8c0d0', mul: 1 },
-  { name: '희귀', color: '#5ab0ff', mul: 1.08, glow: 1 },
-  { name: '영웅', color: '#c070ff', mul: 1.16, glow: 2 },
-  { name: '전설', color: '#ffb030', mul: 1.26, glow: 3 },
-  { name: '신화', color: '#ff4a6a', mul: 1.38, glow: 4 },
+  { name: '희귀', color: '#5ab0ff', mul: 1.05, glow: 1 },
+  { name: '영웅', color: '#c070ff', mul: 1.1, glow: 2 },
+  { name: '전설', color: '#ffb030', mul: 1.15, glow: 3 },
+  { name: '신화', color: '#ff4a6a', mul: 1.2, glow: 4 },
 ];
-export const tierPower = (t) => Math.pow(1.34, t - 1); // 10단계 ≈ 14배
-const statScale = (t) => 1 + 0.3 * (t - 1);
+export const tierPower = (t) => 1 + 0.12 * (t - 1); // 10단계 ≈ 2.1배 (몬스터 곡선은 tools/curve.mjs 표로 맞춘다)
+const statScale = (t) => 1 + 0.1 * (t - 1); // 10단계 능력치 ≈ 1.9배
 
 // ── 효과 쓰기 도우미 ──
 const onHit = (status, chance, stacks = 1) => ({ status, chance, stacks });
@@ -367,7 +367,7 @@ export const TOWER_WEAPONS = {
 // ── 무기마다 어울리는 연출: 이름 · 색으로 계열을 정하고 터지는 모습을 그 계열로 맞춘다 ──
 // 심연 · 공허 · 망령 → 어둠의 문과 촉수, 빛 · 별 · 황금 → 빛기둥, 폭풍 · 번개 → 벼락, 서리 · 얼음 → 얼음 가시, 불 · 용 · 용암 → 폭발,
 // 숲 · 가시 · 이끼 → 덩굴, 늪 · 독 → 독구름, 균열 · 비전 → 비전 문양, 뼈 · 재 · 흑요석 → 땅이 갈라진다
-const NERF = 0.85; // 탑의 무기 너프 (위력 · 능력치)
+const NERF = 1; // (예전 너프 배율 — 이제 단계 곡선 자체가 완만하다)
 const THEMES = [
   ['blood', /피의|피 |핏|선혈|흡혈/, ['blood'], { fx: 'thorns', elem: 'phys' }],
   ['bone', /뼈|해골|송곳니/, ['bone'], { fx: 'bones', elem: 'phys' }],

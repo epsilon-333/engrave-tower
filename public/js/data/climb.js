@@ -1,3 +1,4 @@
+import { CURVE_HP, CURVE_ATK } from './curve.js';
 // 탑 등반 (본편 로그라이트): 층 · 보상 · 문 · 각인 제안 · 축복 · 탑의 축복(영구) · 서약
 // 한 번의 등반 = run. 층을 깨면 보상을 고르고, 문을 골라 다음 층으로. 쓰러져도 별빛은 남는다.
 // DOM을 쓰지 않는 순수 데이터 · 함수 (시뮬레이션 테스트에서 그대로 쓴다)
@@ -55,13 +56,10 @@ const BASE_REF = { hp: 48, atk: 8.5 }; // 1층(이끼 굴) 몬스터 평균에 �
 const ACT_HP = [1, 1.3, 1.75, 2.4, 3.3], ACT_ATK = [1, 1.18, 1.4, 1.68, 2.0]; // 51층부터는 마지막 계단 그대로 (층마다 조금씩 오르는 몫만)
 export function climbMul(f, zoneId, oath = {}) {
   const ref = ZONE_REF[zoneId] || BASE_REF;
-  // 구역 배율을 계단 대신 층마다 이어지게: 29층은 거의 31층만큼 (보스 층 앞뒤로 갑자기 뛰지 않는다)
-  const x = Math.min(4, Math.max(0, (f - 1) / 10)), ai = Math.min(3, Math.floor(x)), k = Math.min(1, x - ai);
-  const lerp = (A) => A[ai] + (A[ai + 1] - A[ai]) * k;
-  // 구역 안에서 보스 층에 가까울수록 조금 더 (구역의 1층 ×1 → 9층 ×1.24)
-  const near = 1 + 0.02 * ((f - 1) % 10);
-  const hp = CLIMB_HP * lerp(ACT_HP) * near * Math.pow(HP_GROW, f - 1) * (BASE_REF.hp / ref.hp) * (1 + 0.15 * (oath.hide || 0));
-  const atk = CLIMB_ATK * lerp(ACT_ATK) * (1 + 0.01 * ((f - 1) % 10)) * Math.pow(ATK_GROW, f - 1) * (BASE_REF.atk / ref.atk) * (1 + 0.15 * (oath.fangs || 0));
+  // 난이도 표 하나 (data/curve.js · tools/curve.mjs 로 만든다): 층 f 의 보통 몬스터 평균 체력 · 공격력. 구역마다 몬스터 기본값이 달라도 평균이 표에 맞게 나눠 준다
+  const i = Math.max(1, Math.min(100, f)), over = Math.pow(1.03, Math.max(0, f - 100)); // 100층 너머는 층마다 3%씩
+  const hp = CURVE_HP[i] * over / ref.hp * (1 + 0.15 * (oath.hide || 0));
+  const atk = CURVE_ATK[i] * over / ref.atk * (1 + 0.15 * (oath.fangs || 0));
   return { hp, atk };
 }
 // 층의 특성: 4층부터 싸움터의 1/4 정도에 붙는다 (같은 층이 되풀이되는 느낌을 줄인다)
