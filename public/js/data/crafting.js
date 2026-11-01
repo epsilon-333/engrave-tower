@@ -213,10 +213,10 @@ export const partName = (id) => GOODS[id]?.name || id;
 // 등급: 위력 배율 · 부산물 개수 · 추가 능력. 높은 등급일수록 그림이 빛난다
 export const LOOT_RARITY = [
   { name: '일반', color: '#c8c0d0', mul: 1, parts: 0 },
-  { name: '희귀', color: '#5ab0ff', mul: 1.05, parts: 1, glow: 1 },
-  { name: '영웅', color: '#c070ff', mul: 1.1, parts: 2, glow: 2, bonus: { crit: 0.04 } },
-  { name: '전설', color: '#ffb030', mul: 1.15, parts: 2, glow: 3, bonus: { crit: 0.06, skillCdMul: 0.9 } },
-  { name: '신화', color: '#ff4a6a', mul: 1.2, parts: 2, glow: 4, bonus: { crit: 0.08, skillCdMul: 0.85, dmgMul: 1.1 } },
+  { name: '희귀', color: '#5ab0ff', mul: 1.15, parts: 1, glow: 1 },
+  { name: '영웅', color: '#c070ff', mul: 1.35, parts: 2, glow: 2, bonus: { crit: 0.04 } },
+  { name: '전설', color: '#ffb030', mul: 1.7, parts: 2, glow: 3, bonus: { crit: 0.06, skillCdMul: 0.9 } },
+  { name: '신화', color: '#ff4a6a', mul: 2.4, parts: 2, glow: 4, bonus: { crit: 0.08, skillCdMul: 0.85, dmgMul: 1.1 } },
 ];
 const LOOT_BONUS_TEXT = { crit: (v) => `치명타 +${Math.round(v * 100)}%`, skillCdMul: (v) => `스킬 재사용 -${Math.round((1 - v) * 100)}%`, dmgMul: (v) => `주는 피해 +${Math.round((v - 1) * 100)}%` };
 // 층에 맞춘 위력: 몬스터 체력이 오르는 만큼 따라간다

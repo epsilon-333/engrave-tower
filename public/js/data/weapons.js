@@ -7,10 +7,10 @@ import { WTYPES } from './crafting.js';
 
 export const W_RARITY = [
   { name: '일반', color: '#c8c0d0', mul: 1 },
-  { name: '희귀', color: '#5ab0ff', mul: 1.05, glow: 1 },
-  { name: '영웅', color: '#c070ff', mul: 1.1, glow: 2 },
-  { name: '전설', color: '#ffb030', mul: 1.15, glow: 3 },
-  { name: '신화', color: '#ff4a6a', mul: 1.2, glow: 4 },
+  { name: '희귀', color: '#5ab0ff', mul: 1.15, glow: 1 },
+  { name: '영웅', color: '#c070ff', mul: 1.35, glow: 2 },
+  { name: '전설', color: '#ffb030', mul: 1.7, glow: 3 },
+  { name: '신화', color: '#ff4a6a', mul: 2.4, glow: 4 },
 ];
 export const tierPower = (t) => 1 + 0.12 * (t - 1); // 10단계 ≈ 2.1배 (몬스터 곡선은 tools/curve.mjs 표로 맞춘다)
 const statScale = (t) => 1 + 0.1 * (t - 1); // 10단계 능력치 ≈ 1.9배

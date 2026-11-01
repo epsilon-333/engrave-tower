@@ -1,5 +1,5 @@
 // 탑 난이도 표 만들기 · 보기.
-// 층마다 「기준 캐릭터」(권장 레벨 · 스탯 반반 · 한 단계 아래 영웅 이하 탑 무기 · 각인 없음)를 세우고,
+// 층마다 「기준 캐릭터」(권장 레벨 · 스탯 반반 · 한 단계 아래 희귀 이하 탑 무기 · 각인 없음)를 세우고,
 // 목표(보통 몬스터를 몇 대에 잡나 · 한 대에 체력 몇 %를 잃나)에서 거꾸로 몬스터 체력 · 공격력을 정한다.
 // 사용: node tools/curve.mjs        → 표 보기 (지금 public/js/data/curve.js 기준)
 //       node tools/curve.mjs gen    → public/js/data/curve.js 를 다시 만든다 (무기 · 스탯 · 목표를 바꾼 뒤)
@@ -24,7 +24,7 @@ function weaponFor(c, f) {
   const base = ITEMS[c.weapons[1] || c.weapons[0]];
   if (f <= 10) return c.weapons[1] || c.weapons[0];
   const tier = Math.max(1, Math.ceil(f / 10) - 1), cat = base.weapon.cat || base.cat;
-  const all = Object.keys(TOWER_WEAPONS).filter((id) => TOWER_WEAPONS[id].t === tier && ITEMS[id].weapon.dmg === base.weapon.dmg), low = all.filter((id) => TOWER_WEAPONS[id].r <= 2), list = low.length ? low : all;
+  const all = Object.keys(TOWER_WEAPONS).filter((id) => TOWER_WEAPONS[id].t === tier && ITEMS[id].weapon.dmg === base.weapon.dmg), low = all.filter((id) => TOWER_WEAPONS[id].r <= 1), list = low.length ? low : all;
   const by = (ids) => ids.sort((a, b) => ITEMS[b].weapon.mul - ITEMS[a].weapon.mul)[0];
   return by(list.filter((id) => ITEMS[id].cat === cat)) || by(list) || (c.weapons[1] || c.weapons[0]);
 }
