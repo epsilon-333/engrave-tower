@@ -18,6 +18,17 @@ const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
 const SPIRIT_DMG_ELEM = { fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' };
 import { RACES } from '../data/races.js';
 import { skillScale } from '../data/statscale.js';
+import { computeBuild } from './build.js';
+const TEMP_MAX = 60; // 잠깐 오르는 스탯: 한 스탯에 합쳐서 +60까지
+const STAT_SHORT = { str: '근력', mag: '마력', agi: '민첩', vit: '체력', sen: '감각', spi: '정신', pres: '물리 저항', mres: '마법 저항' };
+// 스킬을 쓰면 잠깐 오르는 스탯 [스탯, 양, 초]
+const SKILL_TSTAT = {
+  warCry: [['str', 20, 8]], eWarHorn: [['str', 15, 6]], berserkSkill: [['str', 20, 8], ['agi', 15, 8]], aimedShot: [['sen', 25, 6]], weakMark: [['sen', 10, 8]],
+  hardenShell: [['pres', 30, 6]], stoneSkin: [['pres', 30, 6]], ironWall: [['pres', 25, 4]], iceArmor: [['mres', 20, 8], ['vit', 10, 8]], scales: [['pres', 15, 6], ['mres', 15, 6]],
+  steadfast: [['vit', 20, 4]], braceForIt: [['vit', 15, 4]], elemMark: [['mag', 15, 8]], elemSurge: [['mag', 25, 6]], eBloodPact: [['str', 10, 8], ['mag', 10, 8]],
+  windStep: [['agi', 15, 4]], shadowEvade: [['agi', 15, 3]], stealth: [['sen', 20, 6]], apexPredator: [['agi', 30, 12], ['str', 20, 12]], dragonForm: [['str', 30, 10], ['vit', 20, 10]],
+  colossus: [['vit', 30, 12], ['pres', 30, 12]], extinction: [['vit', 30, 10], ['str', 20, 10]], wordScale: [['spi', 15, 6]], spiritEmpower: [['spi', 20, 8]],
+};
 import { createRng } from './rng.js';
 import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP, generateField } from './mapgen.js';
 import { buildOverworld, G, WORLD_ZONE, BIOME_LIST, ENTRANCES } from '../data/maps/overworld.js';
@@ -405,7 +416,10 @@ export class World {
   }
 
   setBuild(build) {
+    const hpFrac = this.player && this.d ? this.player.hp / Math.max(1, this.d.maxHp) : null;
     this.b = build; this.d = build.derived; this.f = build.flags; this.s = build.stats;
+    if (this.player?.tmp?.length && !build.lo?.tempStats) this.tmpDirty = true; // 밖에서 새로 만든 빌드: 잠깐 스탯을 다시 얹는다
+    if (hpFrac != null && this.player && this.tmpRebuild) this.player.hp = Math.max(1, Math.min(this.d.maxHp, hpFrac * this.d.maxHp)); // 최대 체력이 바뀌어도 비율 그대로
     if (this.player) this.player.hp = Math.min(this.player.hp, this.d.maxHp);
     if (this.player && this.mode === 'plaza') this.player.hp = this.d.maxHp;
   }
@@ -632,6 +646,7 @@ export class World {
 
   step(input) {
     if (this.tower && this.state === 'play') this.tower.t += DT;
+    this.tickTemp(); this.runChain();
     if (this.player.ccT > 0 || this.player.down) { // 기절 (결투에서 상대의 CC를 맞았다) · 파티 탑에서 쓰러졌다: 아무것도 못 한다
       if (this.player.ccT > 0) this.player.ccT -= DT;
       input = { ...input, moveX: 0, moveY: 0, attack: false, dash: false, interact: false, skill: false, s1: false, s2: false, s3: false, s4: false, wskill: false };
@@ -1711,6 +1726,7 @@ export class World {
   }
 
   execSkill(def, spent, id, opt = {}) {
+    if (!opt.weapon) { const ts = SKILL_TSTAT[id]; if (ts) for (const [k, v, dur] of ts) this.addTemp(k, v, dur, def.name); this.chainEvent('cast', null, this.player); }
     const p = this.player;
     const elem = def.elem === 'current' ? p.elem : def.elem;
     if (this.b.cls === 'elementalist' && ELEM_CYCLE.includes(elem)) p.elem = elem;
@@ -3429,6 +3445,55 @@ export class World {
     this.emit({ t: 'hitstop', v: 0.05 });
   }
 
+  // ───── 싸우는 중에 잠깐 오르는 스탯 ─────
+  // 스킬 · 각인이 잠깐 스탯을 올리면 빌드를 다시 계산한다 (0.2초에 한 번까지) → 각인 조건 · 각성 문턱이 그 자리에서 켜지고 꺼진다
+  addTemp(stat, v, dur, name) {
+    const p = this.player; p.tmp ||= [];
+    const cur = p.tmp.filter((x) => x.stat === stat).reduce((a, x) => a + x.v, 0), room = TEMP_MAX - cur;
+    if (room <= 0) { const old = p.tmp.find((x) => x.stat === stat); if (old) old.t = Math.max(old.t, dur); return; } // 한도: 시간만 늘린다
+    p.tmp.push({ stat, v: Math.min(v, room), t: dur }); this.tmpDirty = true;
+    this.emit({ t: 'text', x: p.x, y: p.y - 30, text: `${STAT_SHORT[stat] || stat} +${Math.min(v, room)}`, color: '#ffe08a' });
+  }
+  tickTemp() {
+    const p = this.player; if (!p?.tmp?.length && !this.tmpDirty) return;
+    if (p.tmp?.length) { for (const x of p.tmp) x.t -= DT; const n = p.tmp.length; p.tmp = p.tmp.filter((x) => x.t > 0); if (p.tmp.length !== n) this.tmpDirty = true; }
+    this.tmpCd = (this.tmpCd || 0) - DT;
+    if (!this.tmpDirty || this.tmpCd > 0 || !this.b?.lo) return;
+    this.tmpDirty = false; this.tmpCd = 0.2;
+    const tempStats = {}; for (const x of p.tmp || []) tempStats[x.stat] = (tempStats[x.stat] || 0) + x.v;
+    const before = new Set(this.b.awakenings.filter((a) => a.on).map((a) => a.stat + a.at));
+    this.tmpRebuild = true; this.setBuild(computeBuild({ ...this.b.lo, tempStats })); this.tmpRebuild = false;
+    for (const a of this.b.awakenings) if (a.on && !before.has(a.stat + a.at)) { // 문턱을 넘었다: 그 순간을 알리고, 「각성하면」 효과가 깨어난다
+      this.emit({ t: 'text', x: p.x, y: p.y - 42, text: `각성 · ${a.name}`, color: '#ffd060' });
+      this.chainEvent('awaken', null, p);
+    }
+  }
+  // ───── 연쇄: 효과가 만든 일이 다른 효과를 깨운다 (몇 단계든 이어진다) ─────
+  // 지금 일어난 일은 다음 순간(다음 프레임)에 처리한다 → 끝없는 고리도 멈추지 않고 계속 돈다. 같은 효과가 같은 대상에게는 0.15초에 한 번까지만 다시 깨어난다
+  chainEvent(ev, target, pos) { (this.chainNext ||= []).push({ ev, target, pos: pos && { x: pos.x, y: pos.y }, depth: (this.chainDepth || 0) + 1 }); }
+  runChain() {
+    const q = this.chainNext; if (!q?.length) return; this.chainNext = [];
+    const wait = new Set(); // 아직 다시 깨어날 수 없는 일: 사라지지 않고 기다렸다가 이어진다 (같은 일 · 같은 대상은 하나만)
+    for (const c of q) {
+      const list = this.b.triggers[c.ev]; if (!list?.length) continue;
+      if (c.target?.dead && c.ev === 'hit') continue;
+      this.chainDepth = c.depth; const blocked = [];
+      for (const tr of c.only || list) {
+        const icdM = (this.icd ||= new WeakMap()), who = c.target || this.player, icd = icdM.get(tr) || (icdM.set(tr, new WeakMap()), icdM.get(tr)); // 같은 효과 · 같은 대상은 0.15초에 한 번
+        if ((icd.get(who) || 0) > this.t) { blocked.push(tr); continue; }
+        if (c.ev === 'hit' && c.target?.dead) continue;
+        if (this.trig(tr)) { icd.set(who, this.t + 0.15); this.doAction(tr.action, c.target, c.target || c.pos || this.player); if (c.depth >= 2) this.chainShow(c.depth); }
+      }
+      this.chainDepth = 0;
+      const key = c.ev + ':' + (c.target?.id ?? 'p');
+      if (blocked.length && !wait.has(key)) { wait.add(key); this.chainNext.push({ ...c, only: blocked }); } // 막힌 효과만 기다렸다가 한 번 깨어난다
+    }
+  }
+  chainShow(depth) { // 「연쇄 ×N」: 이어질수록 크고 붉게
+    if ((this.chainShowT || 0) > this.t && depth <= (this.chainShown || 0)) return;
+    this.chainShown = depth; this.chainShowT = this.t + 0.4;
+    const p = this.player; this.emit({ t: 'text', x: p.x, y: p.y - 52, text: `연쇄 ×${depth}`, color: depth >= 8 ? '#ff5a5a' : depth >= 4 ? '#ffb040' : '#ffe08a' });
+  }
   trig(tr) { // 각인 · 무기 효과가 일어날지: every면 N번째마다 꼭, 아니면 확률
     if (tr.every) { tr.n = (tr.n || 0) + 1; return tr.n % tr.every === 0; }
     return this.rng.chance(tr.chance ?? 1);
@@ -3443,11 +3508,13 @@ export class World {
     if (a.strike && pos) { // 내리치는 일격: 그 자리에 속성 폭발 (번개 · 불기둥 · 얼음 가시 …)
       const S = a.strike, base = (S.type === 'mag' ? d.magAtk : Math.max(d.physAtk, d.dexAtk || 0)) * S.mul;
       this.emit({ t: 'skillAoe', x: pos.x, y: pos.y, r: S.r, elem: S.elem, fx: S.fx || 'burst', rar: S.rar ?? (this.b.weaponItem?.towerWeapon ? this.b.weaponItem.rarity : undefined) });
-      for (const o of this.enemiesNear(pos.x, pos.y, S.r)) { this.damageEnemy(o, base, S.type || 'phys', { src: 'aoe', color: S.elem ? ELEM[S.elem]?.color : null }); if (S.status) this.applyStatus(o, S.status, S.stacks || 1); if (S.stun && !o.dead) this.stunE(o, o.def.elite ? S.stun * 0.35 : S.stun); }
+      for (const o of this.enemiesNear(pos.x, pos.y, S.r)) { this.damageEnemy(o, base, S.type || 'phys', { src: 'aoe', color: S.elem ? ELEM[S.elem]?.color : null }); if (S.status) this.applyStatus(o, S.status, S.stacks || 1); if (S.stun && !o.dead) this.stunE(o, o.def.elite ? S.stun * 0.35 : S.stun); if (!o.dead) this.chainEvent('hit', o, o); } // 일격에 맞은 적: 맞힘 효과가 다음 순간 다시 깨어난다 (연쇄)
     }
     if (a.status && target) this.applyStatus(target, a.status, a.stacks || 1);
     if (a.heal) this.heal(d.maxHp * a.heal, 'skill');
     if (a.res) this.addRes(a.res);
+    if (a.tstat) this.addTemp(a.tstat.stat, a.tstat.v, a.tstat.dur || 8, a.tstat.name);
+    if (a.shield) this.chainEvent('shield', null, this.player);
     if (a.shield) { const p = this.player, k = this.climb ? 0.5 : 1; p.shield = Math.min(d.maxHp * (this.climb ? 0.25 : 0.4), p.shield + d.maxHp * a.shield * k); } // 탑: 각인 보호막 절반 · 최대 25%
     if (a.aoe) {
       const base = (a.aoe.type === 'phys' ? d.physAtk : d.magAtk) * a.aoe.mul;

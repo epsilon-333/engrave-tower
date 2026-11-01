@@ -63,6 +63,8 @@ export function computeBuild(lo) {
   for (const src of sources) {
     for (const [k, v] of Object.entries(src.def.stats || {})) stats[k] = (stats[k] || 0) + Math.round(v * (src.mul ?? 1));
   }
+  // 싸우는 중에 잠깐 오른 스탯 (스킬 · 각인이 준다) — 각인 조건 · 각성 문턱이 이 값으로 다시 판정된다
+  for (const [k, v] of Object.entries(lo.tempStats || {})) stats[k] = (stats[k] || 0) + v;
 
   // 2) 태그
   const tags = {};
@@ -137,6 +139,9 @@ export function computeBuild(lo) {
     if (e.type === 'stat') stats[e.stat] = (stats[e.stat] || 0) + e.v;
     if (e.type === 'statPct') stats[e.stat] = Math.round(stats[e.stat] * (1 + e.v));
   }
+  // 스탯 바꾸기: 한 스탯이 오르면 다른 스탯도 따라 오른다 (예: 체력 3마다 근력 +1)
+  const convBase = { ...stats };
+  for (const e of effects) if (e.type === 'conv') stats[e.to] = (stats[e.to] || 0) + Math.floor(Math.max(0, convBase[e.from] || 0) / e.per) * (e.v || 1);
 
   // 6.5) 종족 비율 보정: 종족마다 잘 크는 능력치는 더, 못 크는 능력치는 덜
 
@@ -183,7 +188,7 @@ export function computeBuild(lo) {
   if (lo.race === 'undead') d.moveSpeed *= 0.95;
   if (lo.race === 'golem') d.moveSpeed *= 0.85;
   const flags = new Set();
-  const triggers = { hit: [], kill: [], hurt: [], hurtMag: [], dodge: [], crit: [], dash: [] };
+  const triggers = { hit: [], kill: [], hurt: [], hurtMag: [], dodge: [], crit: [], dash: [], shield: [], awaken: [], cast: [] };
   for (const e of effects) {
     if (e.type === 'add') d[e.key] = (d[e.key] || 0) + e.v;
     else if (e.type === 'mul') d[e.key] = (d[e.key] ?? 1) * e.v;
@@ -251,7 +256,7 @@ export function computeBuild(lo) {
   // 무기 계열의 스탯 계수 · 개방 (평타 · 무기 기술 피해, 80 이상 공격 속도)
   const wScale = weaponScale({ weaponItem: ITEMS[weaponId], stats });
   d.atkSpeed *= wScale.spd;
-  return { statSrc, wScale, skillLoad: sLoad, skillCap: sCap, race: lo.race, level: lo.level || 1, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
+  return { lo, statSrc, wScale, skillLoad: sLoad, skillCap: sCap, race: lo.race, level: lo.level || 1, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
 }
 
 // 무기 계열: 마법(마도서 · 완드 · 보주 · 인형) / 단검(민첩 칼) / 검 / 도끼 / 둔기 / 던지기 / 채찍
