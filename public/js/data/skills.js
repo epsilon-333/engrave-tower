@@ -1,3 +1,4 @@
+import { registerPartSkills } from './monsterparts.js';
 // 클래스와 액티브 스킬. 종족마다 클래스 2개, 클래스마다 스킬 6개(1·1·3·6·10·15레벨에 배움). 최대 4개 장착(Q·E·R·F).
 // 콤보 역할: 준비(자원·약화) → 강화(버프) → 마무리(자원 소모 큰 한 방), 궁극(15레벨, 자원 전부)
 // cost: 자원 소모, costAll: 자원 전부 소모(min 이상 필요, 소모량만큼 강해짐), gain: 자원 획득
@@ -568,10 +569,25 @@ export const PVP = { dmg: 0.4, heal: 0.5, shield: 0.6, cc: 0.6 }; // 대전: 너
 export const CC_NAME = { stun: '기절', frozen: '빙결', root: '속박', fear: '공포', silence: '침묵', slow: '둔화' };
 
 // 각인 → 스킬
+// 모든 각인은 패시브 + 액티브 스킬 하나. 액티브는 이미 있는 스킬을 쓴다 (다른 클래스의 스킬도 각인으로 얻는다)
+// 전설(5등급) 각인은 궁극기. 클래스의 장치(소환 · 정령 · 분노 · 이미 걸린 독)가 먼저 있어야 하는 스킬은 쓰지 않는다
 export const ENGRAVING_SKILLS = {
-  emberHeart: 'eFirePillar', frostFang: 'eFrostNova', toadGland: 'ePoisonBurst', bloodOath: 'eBloodPact',
-  mirrorShell: 'eMirrorWall', wraithCloak: 'eShadowStep', echoAmplifier: 'eChainBolt', chiefRoar: 'eWarHorn', graveContract: 'eSoulHarvest',
+  slimeSkin: 'hardenShell', batWing: 'shadowEvade', goblinGreed: 'rakeRetreat', chiefWill: 'warCry', toadGland: 'ePoisonBurst', leechFang: 'devour', sporeSac: 'toxicArrow', queenCrown: 'deathFog',
+  emberHeart: 'eFirePillar', magmaHide: 'scales', impTrick: 'blinkBlast', frostFang: 'eFrostNova', mirrorShell: 'eMirrorWall', iceCore: 'iceArmor', meltCore: 'iceComet',
+  witchEye: 'frostChain', boneFrame: 'steadfast', wraithWhisper: 'curse', ghoulHunger: 'frenzyClaws', slimeArmor: 'braceForIt', wogolEye: 'weakMark', goblinThrow: 'shurikenFan',
+  rustChain: 'chainHook', chiefRoar: 'eWarHorn', mudShell: 'snare', stingTail: 'retreatShot', bloodOath: 'eBloodPact', rotSporeHeart: 'acidRain', leechLordMaw: 'maul',
+  cinderGlove: 'dragonClaw', demonHorn: 'wordFire', magmaCore: 'quake', impWings: 'soar', riftShard: 'flameLance', frostPlate: 'frostCharge', deadBreath: 'frostField',
+  mirrorPupil: 'reflectCrystal', ogreFist: 'glacialSpikes', freezeCrystal: 'iceShards', boneShield: 'ironWall', soulFlame: 'painLink', ghoulTeeth: 'dartFan', wraithCloak: 'eShadowStep',
+  necroHeart: 'boneSpear', auraSigil: 'holyStrike', manaSpring: 'arcaneBarrage', bloodMagic: 'retribution', rageFang: 'bloodSpin', steamEngine: 'elemMark', toxicFlask: 'enchantPoison',
+  bloodFrost: 'crossCut', septicClaw: 'pounce', balanceSigil: 'riposte', allroundSigil: 'timeBlades', extremeSigil: 'crushingBlows', berserkBlood: 'chargeSmash', hunterMark: 'aimedShot', echoAmplifier: 'eChainBolt',
+  emberSpark: 'enchantFire', frostBite: 'enchantIce', ironHide: 'stoneSkin', quickHands: 'comboSlash', hungryBlade: 'dashSlash', windStep: 'windStep', mirrorWard: 'rockTremor', curseBrand: 'soulRend',
+  chainEmber: 'breath', frostNova: 'iceChunk', venomCloak: 'smokeBomb', giantGrip: 'harpoon', shadowStrike: 'shadowStep', bloodRitual: 'huntersLeap', slimeRebirth: 'rewind',
+  // 전설: 궁극기
+  riftCore: 'grandFireball', graveContract: 'shadowDance', giantHeart: 'extinction', volcanoRage: 'dragonForm', witchCrown: 'absoluteZero', graveScythe: 'apexPredator',
+  stormHeart: 'skyfall', glacierCore: 'colossus', plagueKing: 'doomBrand',
 };
+
+registerPartSkills(ENGRAVING_SKILLS); // 몬스터 부산물 각인의 스킬
 
 // 자동 조준 규칙: 스킬에 적힌 aim이 없으면 동작을 보고 고른다
 export function aimRule(def) {

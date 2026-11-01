@@ -1,3 +1,4 @@
+import { registerParts } from './monsterparts.js';
 // 몬스터와 문양 잔향. 원하는 각인을 만들려면 그 잔향을 남기는 몬스터를 골라 사냥해야 한다.
 
 export const ECHOES = {
@@ -232,3 +233,6 @@ export const LORES = [
   '…죽지 않는 자 둘이 모이면, 한 번은 죽음을 거절한다.',
   '…중독과 출혈이 겹친 피는 썩어, 독이 두 배로 퍼진다.',
 ];
+
+// 몬스터 개체마다 고유한 부산물 (data/monsterparts.js)
+registerParts(ECHOES, MONSTERS);

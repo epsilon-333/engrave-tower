@@ -3443,7 +3443,7 @@ export class World {
     if (a.strike && pos) { // 내리치는 일격: 그 자리에 속성 폭발 (번개 · 불기둥 · 얼음 가시 …)
       const S = a.strike, base = (S.type === 'mag' ? d.magAtk : Math.max(d.physAtk, d.dexAtk || 0)) * S.mul;
       this.emit({ t: 'skillAoe', x: pos.x, y: pos.y, r: S.r, elem: S.elem, fx: S.fx || 'burst', rar: S.rar ?? (this.b.weaponItem?.towerWeapon ? this.b.weaponItem.rarity : undefined) });
-      for (const o of this.enemiesNear(pos.x, pos.y, S.r)) { this.damageEnemy(o, base, S.type || 'phys', { src: 'aoe', color: S.elem ? ELEM[S.elem]?.color : null }); if (S.status) this.applyStatus(o, S.status, S.stacks || 1); }
+      for (const o of this.enemiesNear(pos.x, pos.y, S.r)) { this.damageEnemy(o, base, S.type || 'phys', { src: 'aoe', color: S.elem ? ELEM[S.elem]?.color : null }); if (S.status) this.applyStatus(o, S.status, S.stacks || 1); if (S.stun && !o.dead) this.stunE(o, o.def.elite ? S.stun * 0.35 : S.stun); }
     }
     if (a.status && target) this.applyStatus(target, a.status, a.stacks || 1);
     if (a.heal) this.heal(d.maxHp * a.heal, 'skill');
@@ -4259,6 +4259,7 @@ export class World {
     const echoTries = e.champion ? 3 : def.treasure ? 3 : e.affix ? 2 : 1;
     for (let i = 0; i < echoTries; i++) if (this.rng.chance(Math.min(1, def.echo.rate * (1 + 0.25 * this.depth)))) this.spawnDrop(e.x, e.y, 'echo', e.champion || def.treasure ? this.rng.pick(this.zone.pool.map((m) => MONSTERS[m].echo.id)) : def.echo.id);
     if (e.champion && this.rng.chance(0.3)) this.spawnDrop(e.x, e.y, 'echo', MONSTERS[this.zone.elite].echo.id);
+    if (def.part && this.rng.chance(Math.min(1, def.echo.rate * 0.7 * (1 + 0.25 * this.depth) * (e.champion || def.elite ? 2 : 1)))) this.spawnDrop(e.x, e.y, 'echo', def.part); // 개체마다 다른 부산물
     if (this.tower && !e.summoned) { // 탑: 이름 붙은 무기가 아주 드물게 떨어진다 (드물게)
       const boss = e === this.tower.boss, rnd = () => this.rng.range(0, 1);
       const ch = boss ? (this.climb?.kind === 'lord' ? 0.125 : 0.06) : def.elite || e.champion ? 0.0125 : 0.0015; // 보통 0.15% · 정예 1.25% · 수호자 6% · 주인 12.5%

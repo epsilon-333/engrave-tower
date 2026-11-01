@@ -591,7 +591,7 @@ function codexGroups() {
 function zoneOfEcho(eid) {
   for (const z of ZONES) for (const m of [...z.pool, z.elite]) {
     const def = MONSTERS[m];
-    if (def.echo.id === eid || def.condEcho?.id === eid) return z.id;
+    if (def.echo.id === eid || def.condEcho?.id === eid || def.part === eid) return z.id;
   }
   return null;
 }

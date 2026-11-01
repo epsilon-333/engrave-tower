@@ -1,3 +1,5 @@
+import { registerPartEngravings } from './monsterparts.js';
+import { MONSTERS } from './monsters.js';
 // 각인: 신체 부위에 새기는 고대 문양. 잔향을 모아 공명 제단에서 새긴다.
 // grade 1~5, load = 각인 부하. 고등급은 부하가 크고 태그가 적다 → 많이 끼우면 과부하.
 // effects[].when = 발동 조건 (conditions.js 형식)
@@ -693,3 +695,6 @@ export const REACTIONS = {
   overload: { name: '과부하', recipe: '화상 + 감전', desc: '두 상태를 소모해 주변에 번개 폭발' },
   superconduct: { name: '순간 빙결', recipe: '냉기 + 감전', desc: '두 상태를 소모해 바로 얼리고 피해' },
 };
+
+// 몬스터 개체마다 하나씩: 그 몬스터의 부산물로 새기는 각인 (data/monsterparts.js)
+registerPartEngravings(ENGRAVINGS, MONSTERS);
