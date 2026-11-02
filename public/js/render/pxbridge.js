@@ -19,15 +19,16 @@ export class PxFx {
     const mod = mods[id] ?? load(id);
     if (!mod) return false; // 아직 못 불렀으면 이번에는 건너뛴다 (preload로 미리 불러 둔다)
     const [w, h] = mod.meta.size, [ox, oy] = mod.meta.origin;
-    const { scale = 1, speed = 1, max, floor = 46, ...opts } = o;
+    const { scale = 1, sy = 1, speed = 1, max, floor = 46, ...opts } = o;
     const fx = createFx(mod, { ...opts, x: ox, y: oy, seed: opts.seed ?? (seedN = (seedN * 1103515245 + 12345) >>> 0) % 100000 });
     const frame = createFrame(w, h), cv = document.createElement('canvas'); cv.width = w; cv.height = h;
     const ctx = cv.getContext('2d'), img = ctx.createImageData(w, h);
-    this.list.push({ fx, frame, cv, ctx, img, x, y, ox, oy, w, h, scale, speed, floor, t: 0, max: max ?? mod.meta.duration ?? 2 });
+    this.list.push({ fx, frame, cv, ctx, img, x, y, ox, oy, w, h, scale, sy, speed, floor, t: 0, max: max ?? mod.meta.duration ?? 2 });
     if (this.list.length > 40) this.list.shift();
     return true;
   }
-  draw(g, dt) {
+  // 매 프레임 한 번: 시간을 흘리고 그림을 만든다. 실제로 얹는 것은 drawOne (렌더러가 건물 · 사람과 함께 y 순서로 부른다)
+  update(dt) {
     for (const e of this.list) {
       e.t += dt * e.speed; e.fx.update(dt * e.speed);
       clearFrame(e.frame); e.fx.draw(e.frame);
@@ -37,9 +38,11 @@ export class PxFx {
         for (let y = y0; y < y1; y++) for (let x = 0; x < e.w; x++) if (x < xl || x > xr) D[(y * e.w + x) * 4 + 3] = 0;
       }
       e.ctx.putImageData(e.img, 0, 0);
-      const s = e.scale;
-      g.drawImage(e.cv, Math.round(e.x - e.ox * s), Math.round(e.y - e.oy * s), Math.round(e.w * s), Math.round(e.h * s));
     }
     this.list = this.list.filter((e) => e.t < e.max && !e.fx.done());
+  }
+  drawOne(g, e) { // sy: 세로 배율 (바닥에 깔리는 이펙트는 눌러서 눕힌다)
+    const s = e.scale, sy = s * e.sy;
+    g.drawImage(e.cv, Math.round(e.x - e.ox * s), Math.round(e.y - e.oy * sy), Math.round(e.w * s), Math.round(e.h * sy));
   }
 }

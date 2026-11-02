@@ -904,9 +904,11 @@ export class Renderer {
     if (w.map.props) for (const pr of w.map.props) { const px = (pr.x + pr.w / 2) * TILE, py = (pr.y + pr.h) * TILE, big = pr.kind !== 'tree' && pr.kind !== 'well' && pr.kind !== 'house'; if (pr.big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 240 && py > cy - 40 && py < cy + VH + 460 : big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 140 && py > cy - 40 && py < cy + VH + 260 : vis(px, py - 40)) list.push({ prop: pr, y: py - 2 }); }
     if (w.map.plaza) for (const d of w.map.wallDeco) list.push({ wd: d, y: -1e9 + 1 });
     if (w.farmRect && w.life) for (const [key, pl] of Object.entries(w.life.farm)) if (pl.crop) { const [fx, fy] = key.split(',').map(Number); if (vis(fx * TILE + 8, fy * TILE + 8)) list.push({ crop: { x: fx, y: fy, pl }, y: fy * TILE + 13 }); }
+    this.anims.px.update(dt); for (const pe of this.anims.px.list) list.push({ pxe: pe, y: pe.y + 2 }); // 스킬 이펙트(pixelfx)도 같은 줄에: 앞에 선 건물이 가린다
     list.sort((a, b) => a.y - b.y);
     for (const it of list) {
-      if (it.p) this.drawPlayer(w, p, dt);
+      if (it.pxe) this.anims.px.drawOne(g, it.pxe);
+      else if (it.p) this.drawPlayer(w, p, dt);
       else if (it.e) this.drawEnemy(w, it.e, dt);
       else if (it.o) this.drawObject(w, it.o, dt);
       else if (it.dr) this.drawDrop(w, it.dr);

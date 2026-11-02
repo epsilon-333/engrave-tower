@@ -4,6 +4,7 @@
 // 평타에는 쓰지 않는다 (스킬 · 무기 기술 · 보스 기술만)
 import { PxFx, preload } from './pxbridge.js';
 // pixelfx로 바꿀 수 있는 것은 pixelfx로 (도트 단위 색 단계 · 빛 · 연기가 게임 그림과 맞는다). 없는 것만 아래의 직접 그린 애니메이션
+const GROUND = 0.55; // 옆에서 본 둥근 폭발을 바닥에 눕힌다 (위에서 내려다보는 게임이라 세로로 눌러야 땅에 깔린 원으로 보인다)
 const PAL = {
   ice: ['#0b1f3a', '#1d4b7a', '#3f86c0', '#7fc8ee', '#c8f0ff', '#ffffff'],
   dark: ['#12061e', '#2e0f4a', '#5a1f86', '#8f45c8', '#c88aff', '#f0d8ff'],
@@ -12,8 +13,8 @@ const PAL = {
   forest: ['#0e1e0a', '#24461a', '#3f7a2a', '#6fb84a', '#b8f08a', '#f0ffe0'],
   wind: ['#0e2a22', '#1e5a48', '#3f9a7a', '#7fd8b0', '#c8ffe8', '#ffffff'],
 };
-export const PX_USED = ['explosions/small-explosion', 'explosions/implosion', 'lightning/lightning-strike', 'ice/frost-nova', 'ice/icicle-fall', 'shadow/shadow-tendrils', 'shadow/dark-explosion',
-  'holy/holy-pillar', 'nature/earth-spike', 'nature/poison-cloud', 'nature/quake', 'arcane/mana-burst', 'impacts/ground-slam', 'impacts/crit-hit', 'melee/sword-slash', 'melee/claw-swipe', 'melee/spin-slash', 'melee/heavy-cleave'];
+export const PX_USED = ['explosions/small-explosion', 'explosions/implosion', 'lightning/lightning-strike', 'ice/frost-nova', 'shadow/shadow-tendrils', 'shadow/dark-explosion',
+  'nature/earth-spike', 'nature/poison-cloud', 'nature/quake', 'arcane/mana-burst', 'impacts/ground-slam', 'impacts/crit-hit', 'melee/sword-slash', 'melee/claw-swipe', 'melee/spin-slash', 'melee/heavy-cleave'];
 preload(PX_USED);
 const hexA = (hex, a) => { const n = parseInt((hex || '#ffffff').slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a))})`; };
 const ease = { out: (k) => 1 - (1 - k) * (1 - k), in: (k) => k * k, outBack: (k) => 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2) };
@@ -91,18 +92,16 @@ export class SkillAnims {
     const pal = PAL[el];
     if (fx === 'meteor' || (fx === 'burst' && (el === 'fire' || !el))) return P.add('explosions/small-explosion', x, y, { max: big ? 3 : 2.2 });
     if (fx === 'burst' && el === 'lightning') return P.add('lightning/lightning-strike', x, y, { max: 1.6 });
-    if (fx === 'burst' && el === 'ice') return P.add('ice/frost-nova', x, y, { max: 1.8 });
+    if (fx === 'burst' && el === 'ice') return P.add('ice/frost-nova', x, y, { max: 1.8, sy: GROUND });
     if (fx === 'burst' && el === 'dark') return P.add(big ? 'shadow/dark-explosion' : 'shadow/shadow-tendrils', x, y, { max: 2.2 });
-    if (fx === 'burst') return P.add('arcane/mana-burst', x, y, { palette: pal || PAL.arcane });
-    if (fx === 'zero' || (big && (fx === 'ice' || fx === 'shatter'))) return P.add('ice/frost-nova', x, y, { max: 2 });
-    if (fx === 'ice' || fx === 'shatter' || fx === 'crystal') return P.add('ice/icicle-fall', x, y, { max: 1.8 });
-    if (fx === 'holy' || fx === 'pillar') return P.add('holy/holy-pillar', x, y, { max: 2.2 });
+    if (fx === 'burst') return P.add('arcane/mana-burst', x, y, { palette: pal || PAL.arcane, sy: GROUND });
+    if (fx === 'zero') return P.add('ice/frost-nova', x, y, { max: 2, sy: GROUND }); // 얼음 가시 · 빛기둥은 직접 그린 쪽이 낫다 (사용자 판단) → 아래의 예전 애니메이션
     if (fx === 'doom' || fx === 'corpse') return P.add(big ? 'shadow/dark-explosion' : 'shadow/shadow-tendrils', x, y, { max: 2.2 });
     if (fx === 'spikes' || fx === 'vines') return P.add('nature/earth-spike', x, y, { palette: el === 'phys' ? undefined : PAL.forest, max: 2.2 });
     if (fx === 'fog') return P.add('nature/poison-cloud', x, y, { palette: PAL.poison, max: 2.6 });
-    if (fx === 'implode' || fx === 'timestop') return P.add('explosions/implosion', x, y, { palette: pal || PAL.arcane });
-    if (fx === 'arcane') return P.add('arcane/mana-burst', x, y, { palette: pal || PAL.arcane });
-    if (fx === 'quake' || fx === 'smash' || fx === 'slam') return P.add('impacts/ground-slam', x, y, { max: 1.8 });
+    if (fx === 'implode' || fx === 'timestop') return P.add('explosions/implosion', x, y, { palette: pal || PAL.arcane, sy: GROUND });
+    if (fx === 'arcane') return P.add('arcane/mana-burst', x, y, { palette: pal || PAL.arcane, sy: GROUND });
+    if (fx === 'quake' || fx === 'smash' || fx === 'slam') return P.add('impacts/ground-slam', x, y, { max: 1.8, sy: GROUND });
     return false;
   }
   onLine(ev) {
@@ -115,8 +114,7 @@ export class SkillAnims {
     }
     if (ev.fx === 'sweep' || ev.fx === 'slashX' || ev.fx === 'claws') this.add('bladeArc', { x: ev.x, y: ev.y, ang: ev.ang, range: ev.range, angle: ev.angle, col: ELEM_COL[ev.elem] || '#f4f0ff', claws: ev.fx === 'claws' }); }
 
-  draw(g, dt) {
-    this.px.draw(g, dt);
+  draw(g, dt) { // pixelfx는 렌더러가 엔티티와 함께 y 순서로 그린다 (건물 뒤로 숨게)
     for (const a of this.list) { a.t += dt; const k = Math.min(1, a.t / a.max); const f = DRAW[a.type]; if (f) f(this.r, g, a, k, dt); }
     this.list = this.list.filter((a) => a.t < a.max);
   }
