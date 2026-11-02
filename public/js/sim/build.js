@@ -9,9 +9,10 @@ import { evalCond, condText } from './conditions.js';
 export const STAT_MAX = 300;
 import { GROWTH_MUL } from '../data/races.js';
 import { weaponScale, CLASS_STATS } from '../data/statscale.js';
-import { SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, skillLoad, skillCap } from '../data/skills.js';
+import { SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES } from '../data/skills.js';
 
-export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back'];
+export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back']; // 각인 칸 다섯: 앞 넷이 Q · E · R · F(스킬 + 패시브), 마지막은 패시브만 (부위 구분 없음 · 이름은 예전 저장 그대로)
+export const SKILL_SLOTS = SLOTS.slice(0, 4), SLOT_KEYS = ['Q', 'E', 'R', 'F', '패시브'];
 export const AGI_DODGE_FROM = 25;
 export const GEAR_SLOTS = ['weapon', 'off', 'armor', 'acc1', 'acc2'];
 
@@ -173,7 +174,7 @@ export function computeBuild(lo) {
     senseR: 30 + E.sen * 0.8,                            // 감각: 숨은 상자 · 함정을 알아채는 거리
     statusRes: E.spi / (E.spi + 90),
     cdr: E.spi / (E.spi + 160),
-    loadCap: 10 + Math.floor(stats.spi / 10), // 정신 10마다 1
+    loadCap: 20 + Math.floor(stats.spi / 10), // 기본 20 · 정신 10마다 1 (넘치게는 장착할 수 없다)
     physDR: Math.max(0, stats.pres) / (Math.max(0, stats.pres) + 160), // 방어 1점의 값을 낮췄다 (예전 +100)
     magDR: Math.max(0, stats.mres) / (Math.max(0, stats.mres) + 160),
     physPen: 0, magPen: 0, knockback: 30, regen: 0,
@@ -204,11 +205,8 @@ export function computeBuild(lo) {
   // 9) 각인 부하
   let load = 0;
   for (const src of active) if (src.kind === 'engraving' && !src.run) load += src.def.load;
-  const overload = load > d.loadCap;
-  if (overload) {
-    d.atkSpeed *= 0.7; d.dmgTakenMul *= 1.3; d.moveSpeed *= 0.85;
-    notes.push({ kind: 'warn', text: `과부하! 부하 ${load}/${d.loadCap}: 공격 속도 -30%, 받는 피해 +30%` });
-  }
+  const overload = load > d.loadCap; // 장착할 때 막는다 (정신이 줄어 넘치면 뒤 칸부터 빠진다: fitEngravings)
+  if (overload) notes.push({ kind: 'warn', text: `부하 ${load}/${d.loadCap}: 한도를 넘었다 · 각인 하나를 빼야 한다` });
 
   const wid = lo.gear?.weapon && ITEMS[lo.gear.weapon] ? lo.gear.weapon : 'rustySword';
   const weaponId = disabled.has(wid) ? 'rustySword' : wid;
@@ -218,24 +216,24 @@ export function computeBuild(lo) {
   if (flags.has('noAimSlow')) d.aimSlow = 1;
   if (lo.race === 'golem') d.dodge = 0;
 
-  // 액티브 스킬: 종족 스킬(레벨 해금) + 장착한 각인의 스킬 + 무기 기술 → 최대 4개 장착
+  // 액티브 스킬: 각인 칸 Q · E · R · F에 장착한 각인의 스킬 (빈 칸은 비워 둔다). 탑 등반에서 새긴 각인의 스킬은 빈 칸을 채운다
+  // allSkills(연습 · 시뮬레이션)일 때만 예전처럼 클래스 스킬에서 고른다
   const cls = lo.cls && CLASSES[lo.cls]?.race === lo.race ? lo.cls : RACE_CLASSES(lo.race)[0];
-  const available = CLASSES[cls].skills.filter((id) => (lo.allSkills || (SKILLS[id].unlock || 1) <= lo.level));
-  for (const src of active) if (src.kind === 'engraving' && ENGRAVING_SKILLS[src.id] && !available.includes(ENGRAVING_SKILLS[src.id])) available.push(ENGRAVING_SKILLS[src.id]);
-  for (const id of lo.learned || []) if (SKILLS[id] && !available.includes(id)) available.push(id); // 세상에서 배운 기술
-  let skills = (lo.skills || []).filter((id) => available.includes(id)).slice(0, 4);
-  if (!lo.skills) {
-    // 기본 장착: 준비/강화 → 공격 → 마무리 순으로 콤보가 되게
-    const race = available.filter((id) => SKILLS[id]);
-    const pick = (roles) => race.find((id) => roles.includes(SKILLS[id].role) && !skills.includes(id));
-    for (const roles of [['준비', '강화', '전환', '방어'], ['공격', '이동', '연타', '제어', '소환'], ['마무리']]) { const id = pick(roles); if (id) skills.push(id); }
-    for (const id of race) if (skills.length < 4 && !skills.includes(id)) skills.push(id);
+  let skills, available;
+  if (lo.allSkills) {
+    available = CLASSES[cls].skills.slice();
+    for (const src of active) if (src.kind === 'engraving' && ENGRAVING_SKILLS[src.id] && !available.includes(ENGRAVING_SKILLS[src.id])) available.push(ENGRAVING_SKILLS[src.id]);
+    skills = (lo.skills || []).filter((id) => available.includes(id)).slice(0, 4);
+    if (!lo.skills) {
+      const pick = (roles) => available.find((id) => roles.includes(SKILLS[id].role) && !skills.includes(id));
+      for (const roles of [['준비', '강화', '전환', '방어'], ['공격', '이동', '연타', '제어', '소환'], ['마무리']]) { const id = pick(roles); if (id) skills.push(id); }
+      for (const id of available) if (skills.length < 4 && !skills.includes(id)) skills.push(id);
+    }
+  } else {
+    skills = SKILL_SLOTS.map((sl) => { const id = lo.engravings?.[sl]; return id && ENGRAVINGS[id] && SKILLS[ENGRAVING_SKILLS[id]] ? ENGRAVING_SKILLS[id] : null; });
+    for (const re of lo.runEng || []) { const sk = ENGRAVING_SKILLS[re.id]; const i = skills.indexOf(null); if (sk && SKILLS[sk] && i >= 0 && !skills.includes(sk)) skills[i] = sk; }
+    available = skills.filter(Boolean);
   }
-  // 스킬 부하: 앞에서부터 한도 안에 드는 것만 장착된다 (기본 장착도 같은 규칙)
-  const sCap = lo.allSkills ? 99 : skillCap(lo.level || 1);
-  let sLoad = 0;
-  skills = skills.filter((id) => { const l = skillLoad(id); if (sLoad + l > sCap) return false; sLoad += l; return true; });
-  if (!lo.skills) for (const id of available) if (skills.length < 4 && !skills.includes(id) && sLoad + skillLoad(id) <= sCap) { skills.push(id); sLoad += skillLoad(id); }
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
   if (wpn.kind === 'melee') { d.dmgTakenMul *= 0.9; flags.add('stagger'); }
   else flags.add('aimSlow');
@@ -256,7 +254,7 @@ export function computeBuild(lo) {
   // 무기 계열의 스탯 계수 · 개방 (평타 · 무기 기술 피해, 80 이상 공격 속도)
   const wScale = weaponScale({ weaponItem: ITEMS[weaponId], stats });
   d.atkSpeed *= wScale.spd;
-  return { lo, statSrc, wScale, skillLoad: sLoad, skillCap: sCap, race: lo.race, level: lo.level || 1, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
+  return { lo, statSrc, wScale, race: lo.race, level: lo.level || 1, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
 }
 
 // 무기 계열: 마법(마도서 · 완드 · 보주 · 인형) / 단검(민첩 칼) / 검 / 도끼 / 둔기 / 던지기 / 채찍
@@ -302,4 +300,16 @@ export function encodeLoadout(lo) {
 export function decodeLoadout(code) {
   const o = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
   return { race: o.r, level: o.l, alloc: o.a || {}, engravings: o.e || {}, gear: o.g || {}, skills: o.k, cls: o.c, engLv: o.n || {} };
+}
+
+// 부하 한도를 넘으면(정신이 줄었을 때 · 예전 저장) 뒤 칸(패시브 → F → R …)부터 뺀다. 뺀 각인 이름들을 돌려준다
+export function fitEngravings(save, toLoadout) {
+  const out = [];
+  for (let i = SLOTS.length - 1; i >= 0; i--) {
+    const b = computeBuild(toLoadout(save));
+    if (b.load <= b.derived.loadCap) break;
+    const sl = SLOTS[i];
+    if (save.slots?.[sl]) { out.push(ENGRAVINGS[save.slots[sl]]?.name || save.slots[sl]); delete save.slots[sl]; }
+  }
+  return out;
 }

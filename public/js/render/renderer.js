@@ -4466,8 +4466,9 @@ export class Renderer {
     const g = this.g, p = w.player, d = w.d, u = this.u, v = Math.max(2, u), W = this.c.width, H = this.c.height;
     const touch = document.body.classList.contains('touch');
     const box = (touch ? 16 : 20) * v, gap = 12 * v;
-    const slots = [...(w.b.skills || []).filter((x) => x !== 'weapon'), 'weapon'];
-    const keys = [...['Q', 'E', 'R', 'F'].slice(0, slots.length - 1), touch ? '무기' : '우클릭'];
+    const sk4 = (w.b.skills || []).filter((x) => x !== 'weapon'); while (sk4.length < 4) sk4.push(null); // Q · E · R · F 자리는 늘 그대로 (빈 각인 칸은 빈 칸)
+    const slots = [...sk4.slice(0, 4), 'weapon'];
+    const keys = ['Q', 'E', 'R', 'F', touch ? '무기' : '우클릭'];
     const n = slots.length + 1;
     const total = n * box + (n - 1) * gap;
     const x0 = touch ? W - total - 8 * u : (W - total) / 2, y0 = touch ? Math.round(H * 0.2) : H - box - 12 * v; // 모바일: 오른쪽 작은 지도 아래 (체력 · 저장 안내와 겹치지 않게)
@@ -4500,6 +4501,7 @@ export class Renderer {
         this.text((WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기').slice(0, 5), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#d8d0e8', 'center');
         return;
       }
+      if (!id) { if (touch) return; this.cooldownBox(x, y0, box, 1, keys[i], '', null, 0); g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); this.text('빈 칸', x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#8a8098', 'center'); return; }
       const sk = SKILLS[id];
       const cd = p.cds[id] || 0, max = p.cdMax?.[id] || sk.cd;
       const k = cd > 0 ? 1 - cd / max : 1;

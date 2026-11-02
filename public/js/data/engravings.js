@@ -515,7 +515,7 @@ export const ENGRAVINGS = {
     stats: { spi: 6, mag: 4 },
     effects: [
       { when: { tag: 'curse', gte: 2 }, type: 'mul', key: 'statusDmgMul', v: 1.2, text: '상태이상 피해 +20%' },
-      { when: { stat: 'spi', gte: 40 }, type: 'add', key: 'loadCap', v: 4, text: '각인 부하 한도 +4' },
+      { when: { stat: 'spi', gte: 40 }, type: 'add', key: 'loadCap', v: 2, text: '각인 부하 한도 +2' },
     ],
     recipe: { soul: 4, spore: 4, mirror: 2 },
   },
