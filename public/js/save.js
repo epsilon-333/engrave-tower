@@ -29,9 +29,18 @@ export function loadSave() {
 }
 let saveHook = null;
 export function setSaveHook(f) { saveHook = f; }
+// 같은 브라우저의 창끼리: 누가 더 새 진행을 저장했는지 알린다 (옛 창이 서버를 덮어쓰지 않게)
+const TAB = Math.random().toString(36).slice(2);
+let chan = null; try { chan = new BroadcastChannel('et-save'); } catch { /* 지원 안 함 */ }
+let staleHook = null;
+let stale = false; // 다른 창이 더 새 진행을 저장했다: 이 창은 더 쓰지 않는다
+export function setStaleHook(f) { staleHook = f; if (chan) chan.onmessage = (m) => { if (m.data?.tab !== TAB && m.data?.t === 'saved' && !stale) { stale = true; staleHook?.(); } }; }
+export let localSaveError = null; // 브라우저 저장소가 꽉 찼는지 (조용히 실패하지 않게)
 export function writeSave(s) {
+  if (stale) return;
   s.updatedAt = Date.now();
-  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* 저장 불가 환경 */ }
+  try { localStorage.setItem(KEY, JSON.stringify(s)); localSaveError = null; } catch (e) { localSaveError = e?.name || 'error'; }
+  try { chan?.postMessage({ t: 'saved', tab: TAB }); } catch { /* 무시 */ }
   saveHook?.(s);
 }
 export function clearSave() {

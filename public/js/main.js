@@ -7,7 +7,7 @@ import { Renderer } from './render/renderer.js';
 import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
 import { createIntro } from './intro/intro.js';
-import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel } from './save.js';
+import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, setStaleHook } from './save.js';
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
 import { codexPoints, levelFor } from './data/codex.js';
 import { TILE, generateField } from './sim/mapgen.js';
@@ -25,7 +25,7 @@ import { KNACKS, knackTick, hasKnack, newKnack } from './data/knacks.js';
 import { net, onNet, netSend, netConnect, netMap, netPos, netLerp } from './net.js';
 import { RAIDS, raidWeek, buildRaidArena } from './data/raid.js';
 import { SANCTUMS, SANCTUM_MAX, TIER_COST, PERK_TIER, TREASURE_TIER, SHARDS_PER_RELIC, sanctumBonusText, SANCT_LIFE, sanctState, affLevel, AFF_LV, AFF_NAME, AFF_REWARD, trainCap, trainSpec, OWN_TRAIN_CAP, OWN_TRAIN_EASE, GIFT_AFF, GIFTS_PER_DAY, TRAIN_AFF, TRAINS_PER_DAY, sanctQuestDef, FIND_NAME, RACE_SHOP } from './data/sanctums.js';
-import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, cloud, isClaudePage, login, register, logout, errorText } from './cloud.js';
+import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, cloud, isClaudePage, login, register, logout, errorText, relogin, setReconnectHandler, markStale } from './cloud.js';
 import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
 import { RACES, RACE_MIGRATE, pointsAt } from './data/races.js';
 import { RACE_STORY, relation, allies, ALLY_AFF, REL_NAME, REL_COLOR } from './data/lore.js';
@@ -893,6 +893,43 @@ function playIntro(then) {
 function firstStart() {
   let seen = false; try { seen = !!localStorage.getItem('et-intro-seen'); } catch { /* 무시 */ }
   if (seen) showRaceSelect(); else playIntro(showRaceSelect);
+}
+
+// ───── 저장 지키기: 저장이 조용히 사라지지 않게 ─────
+// 1) 같은 브라우저의 다른 창이 더 새 진행을 저장하면 이 창은 멈춘다 (옛 진행으로 서버를 덮어쓰지 않게)
+// 2) 시작할 때 서버가 늦어 못 붙었으면 뒤에서 다시 붙는다 → 서버 쪽이 더 새 진행이면 고르게 한다
+// 3) 다른 기기 로그인 · 만료로 세션이 끊기면 저장을 버리지 않고 다시 로그인 창을 띄운다
+function setupSaveGuards(startStamp = 0) {
+  setStaleHook(() => {
+    if (cloud.mode === 'local' || cloud.state === 'stale') return;
+    markStale();
+    showModal(`<h2>다른 창에서 게임 중</h2><p>이 브라우저의 다른 창이 이 계정의 진행을 저장했어요. 이 창의 진행은 이제 저장되지 않아요 (옛 진행으로 덮어쓰지 않게).</p>
+      <div class="row"><button id="stReload">이 창에서 이어 하기 (새로고침)</button><button data-close class="ghost">닫기</button></div>`);
+    document.getElementById('stReload').onclick = () => location.reload();
+  });
+  const decide = (remote) => { // 서버 저장과 지금 진행 중 어느 쪽을 남길지
+    if (!save) { if (remote) { save = migrateSave(remote); writeSave(save); location.reload(); } return; }
+    // 서버 저장이 이 판이 시작한 저장과 같으면(이어서 한 것) 그대로 올린다. 다르면 덮어쓰기 전에 꼭 묻는다
+    if (!remote || (remote.updatedAt || 0) === startStamp || (remote.updatedAt || 0) === cloud.syncedAt) { cloudSaveNow(save); return; }
+    const when = (t) => new Date(t || 0).toLocaleString('ko-KR');
+    showModal(`<h2>서버에 다른 진행이 있어요</h2><p>서버: Lv ${remote.level || 1} · ${when(remote.updatedAt)}<br>이 기기: Lv ${save.level || 1} · ${when(save.updatedAt)}</p>
+      <div class="row"><button id="svRemote">서버 진행 불러오기</button><button id="svLocal" class="ghost">이 기기 진행으로 서버 덮기</button></div>`);
+    document.getElementById('svRemote').onclick = () => { try { localStorage.setItem('engrave-tower-save-v1', JSON.stringify(remote)); } catch { /* 무시 */ } location.reload(); };
+    document.getElementById('svLocal').onclick = () => { modal?.(); writeSave(save); cloudSaveNow(save); };
+  };
+  setReconnectHandler(decide);
+  let asked = false;
+  onCloud(() => {
+    if (cloud.state !== 'expired' || asked) return;
+    asked = true;
+    showModal(`<h2>로그인이 풀렸어요</h2><p>다른 기기에서 로그인했거나 로그인이 만료됐어요. 지금 진행은 들고 있으니 다시 로그인하면 바로 저장돼요.</p>
+      <form id="rlForm" class="login-box"><label>아이디</label><input id="rlId" value="${esc(cloud.name || '')}" maxlength="16" required><label>비밀번호</label><input id="rlPw" type="password" minlength="4" required><p id="rlErr" class="err"></p><button type="submit">다시 로그인</button></form>`);
+    document.getElementById('rlForm').onsubmit = async (e) => {
+      e.preventDefault();
+      try { const remote = await relogin(document.getElementById('rlId').value, document.getElementById('rlPw').value); asked = false; modal?.(); decide(remote); }
+      catch (err) { document.getElementById('rlErr').textContent = errorText(err); }
+    };
+  });
 }
 
 // 로그인 직후: 서버 저장이 있으면 그것, 없으면 지금 브라우저의 진행을 계정으로 올린다
@@ -3479,9 +3516,11 @@ if (isTouch()) {
   const [, , , remote] = await Promise.all([loadAssets(), document.fonts?.load('11px Galmuri11').catch(() => {}), document.fonts?.load('bold 11px Galmuri11').catch(() => {}), initCloud()]);
   // 서버 저장과 브라우저 저장 중 더 최근 것을 사용
   if (remote && (!save || (remote.updatedAt || 0) >= (save.updatedAt || 0))) save = remote;
+  const startStamp = save?.updatedAt || 0; // 이 판이 어느 저장에서 시작했는지 (나중에 서버에 붙을 때 견준다)
   save = migrateSave(save);
   setSaveHook(cloudSave);
   if (save && remote !== save) cloudSave(save);
+  setupSaveGuards(startStamp);
   let guest = false; try { guest = !!localStorage.getItem('et-guest'); } catch { /* 무시 */ }
   if (!isClaudePage() && cloud.mode === 'local' && !guest) { showLogin(afterLogin); requestAnimationFrame(frame); return; }
   if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else firstStart();

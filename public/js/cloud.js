@@ -8,7 +8,9 @@ const TOKEN_KEY = 'et-token';
 
 const listeners = new Set();
 export const cloud = { mode: 'local', state: 'local', name: '', avatar: '', id: null };
-// state: local | ready | saving | saved | error | readonly
+// state: local | connecting | ready | saving | saved | error | readonly | expired | stale
+// expired: 다른 기기 로그인 · 만료로 세션이 끊김 → 저장을 버리지 않고 들고 있다가 다시 로그인하면 올린다
+// stale: 같은 브라우저의 다른 창이 더 새 진행을 저장했다 → 이 창은 서버에 쓰지 않는다 (옛 진행으로 덮어쓰지 않게)
 let ref = null, token = null, pending = null, writing = false, timer = null;
 
 function emit() { for (const f of listeners) f(cloud); }
@@ -49,13 +51,37 @@ export async function initCloud() {
   if (!token) return null;
   try {
     const r = await within(rpc('game_session', { p_token: token }), 8000);
-    if (!r) return null;
+    if (!r) { reconnectLater(); return null; } // 서버가 늦다: 이 판을 저장 없이 두지 말고 뒤에서 다시 붙는다
     loggedIn(r.username);
     return r.save || null;
   } catch (e) {
     if (e.code === 'invalid_session') { token = null; ls.set(TOKEN_KEY, null); }
+    else reconnectLater();
     return null;
   }
+}
+// 시작할 때 서버에 못 붙었으면 10초마다 다시 해 본다. 붙으면 onReconnect(서버 저장)으로 알린다 (어느 쪽을 쓸지는 main이 정한다)
+let onReconnect = null;
+export function setReconnectHandler(f) { onReconnect = f; }
+function reconnectLater() {
+  cloud.mode = 'account'; cloud.state = 'connecting'; emit();
+  const tryOnce = async () => {
+    if (!token) return;
+    try {
+      const r = await within(rpc('game_session', { p_token: token }), 10000);
+      if (!r) { setTimeout(tryOnce, 10000); return; }
+      loggedIn(r.username); onReconnect?.(r.save || null);
+    } catch (e) {
+      if (e.code === 'invalid_session') { cloud.state = 'expired'; emit(); } else setTimeout(tryOnce, 10000);
+    }
+  };
+  setTimeout(tryOnce, 3000);
+}
+// 세션이 끊겼을 때 다시 로그인: 들고 있던 저장을 바로 올린다
+export async function relogin(username, password) {
+  const r = await rpc('game_login', { p_username: username.trim(), p_password: password });
+  token = r.token; ls.set(TOKEN_KEY, token); loggedIn(r.username);
+  return r.save || null;
 }
 
 function loggedIn(username) {
@@ -90,26 +116,32 @@ export async function logout() {
 
 // 저장 요청이 몰리면 마지막 상태만 1.5초 뒤 한 번에 쓴다
 export function cloudSave(save) {
-  if (cloud.mode === 'local' || cloud.state === 'readonly') return;
+  if (cloud.mode === 'local' || cloud.state === 'readonly' || cloud.state === 'stale') return;
   pending = JSON.parse(JSON.stringify(save));
+  if (cloud.state === 'expired' || cloud.state === 'connecting') return; // 다시 붙을 때까지 마지막 저장을 들고 있는다
   cloud.state = 'saving'; emit();
   clearTimeout(timer);
   timer = setTimeout(flush, 1500);
 }
+// 다시 붙은 뒤 들고 있던 저장을 바로 올린다
+export function cloudFlushNow() { if (cloud.state === 'ready' || cloud.state === 'saved' || cloud.state === 'error') { if (pending) { cloud.state = 'saving'; emit(); flush(); } } }
+// 같은 브라우저의 다른 창이 더 새 진행을 저장했다: 이 창은 더 쓰지 않는다
+export function markStale() { cloud.state = 'stale'; pending = null; clearTimeout(timer); emit(); }
 // 즉시 저장 (사냥 결과처럼 중요한 순간)
 export function cloudSaveNow(save) { cloudSave(save); clearTimeout(timer); flush(); }
 
 async function flush() {
-  if (writing || !pending) return;
+  if (writing || !pending || cloud.state === 'expired' || cloud.state === 'connecting' || cloud.state === 'stale') return;
   writing = true;
   const body = pending; pending = null;
   try {
     if (cloud.mode === 'claude') await ref.set({ save: body, updatedAt: Date.now() });
     else await rpc('game_store', { p_token: token, p_save: body });
-    cloud.state = pending ? 'saving' : 'saved';
+    cloud.state = pending ? 'saving' : 'saved'; cloud.err = null; cloud.syncedAt = body?.updatedAt || 0; // 서버에 마지막으로 올린 진행
   } catch (e) {
-    if (cloud.mode === 'claude' && (e?.code === 'invalid_argument' || e?.code === 'not_granted')) cloud.state = 'readonly';
-    else if (e?.code === 'invalid_session') { await logout(); }
+    cloud.err = e?.code || 'network';
+    if (cloud.mode === 'claude' && e?.code === 'not_granted') cloud.state = 'readonly';
+    else if (e?.code === 'invalid_session') { cloud.state = 'expired'; pending ||= body; token = null; ls.set(TOKEN_KEY, null); } // 로그아웃하지 않고 저장을 들고 있는다
     else { cloud.state = 'error'; pending ||= body; setTimeout(flush, 4000 + Math.random() * 2000); }
   }
   writing = false; emit();
@@ -126,7 +158,10 @@ export function cloudLabel() {
     case 'saving': return '저장 중…';
     case 'saved': return '서버에 저장됨';
     case 'ready': return '로그인됨';
-    case 'error': return '저장 실패 · 다시 시도 중';
+    case 'error': return `저장 실패 · 다시 시도 중${cloud.err && cloud.err !== 'network' ? ` (${cloud.err})` : ''}`;
+    case 'connecting': return '서버에 연결 중 · 진행은 들고 있어요';
+    case 'expired': return '로그인이 풀림 · 다시 로그인하면 저장돼요';
+    case 'stale': return '다른 창에서 진행 중 · 이 창은 저장 안 됨';
     case 'readonly': return '보기 권한이라 이 브라우저에만 저장';
     default: return '게스트 · 이 브라우저에만 저장';
   }
