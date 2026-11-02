@@ -68,6 +68,14 @@ function overworldMap(zone) {
   return { ...m, tiles: new Uint8Array(m.tiles), ground: new Uint8Array(m.ground), props: m.props.slice(), objects: m.objects.map((o) => ({ ...o })) };
 }
 
+// 저장된 탐험 지도 → 비트 문자열 (예전 base64 · 새 길이 목록 'r…' 둘 다 읽는다)
+function exploredBin(str) {
+  if (!str || str[0] !== 'r') return atob(str || '');
+  const bytes = []; let i = 0, cur = 0;
+  for (const t of str.slice(1).split('.')) { const n = parseInt(t, 36) || 0; if (cur) for (let k = i; k < i + n; k++) bytes[k >> 3] = (bytes[k >> 3] || 0) | (1 << (k & 7)); i += n; cur ^= 1; }
+  let bin = ''; const len = (i + 7) >> 3; for (let k = 0; k < len; k++) bin += String.fromCharCode(bytes[k] || 0);
+  return bin;
+}
 export class World {
   // mode: 'field' | 'plaza'
   constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null, souls = null, raid = null, minions = null, npcMem = null, climb = null }) {
@@ -374,12 +382,12 @@ export class World {
 
   // 층 기억: 탐험한 타일(비트), 열어 본 상자·석판(오브젝트 순번), 부순 균열 벽(타일 번호)
   exportMemory() {
-    const bits = new Uint8Array(Math.ceil(this.explored.length / 8));
-    for (let i = 0; i < this.explored.length; i++) if (this.explored[i]) bits[i >> 3] |= 1 << (i & 7);
-    let bin = '';
-    for (const b of bits) bin += String.fromCharCode(b);
+    // 탐험 지도는 길게 이어진 0/1 덩어리라 길이만 적는다 (저장 크기를 크게 줄임 · 서버 저장 한도 200KB)
+    const runs = []; let cur = 0, n = 0;
+    for (let i = 0; i < this.explored.length; i++) { const b = this.explored[i] ? 1 : 0; if (b === cur) n++; else { runs.push(n.toString(36)); cur = b; n = 1; } }
+    runs.push(n.toString(36));
     return {
-      v: 1, tw: this.tw, th: this.th, explored: btoa(bin), sig: this.objSig(),
+      v: 2, tw: this.tw, th: this.th, explored: 'r' + runs.join('.'), sig: this.objSig(),
       opened: this.objects.map((o, i) => (o.opened ? i : -1)).filter((i) => i >= 0),
       broken: [...(this.broken || [])],
       regions: [...this.regionSeen], milestones: [...this.milestones],
@@ -397,14 +405,14 @@ export class World {
       // 섬이 넓어진 예전 기록: 칸 위치를 옮겨 탐험한 곳만 살린다 (예전 자리는 그대로이므로)
       if (!(m.tw <= this.tw && m.th <= this.th)) return;
       try {
-        const bin = atob(m.explored || '');
+        const bin = exploredBin(m.explored);
         for (let y = 0; y < m.th; y++) for (let x = 0; x < m.tw; x++) { const i = y * m.tw + x; if (bin.charCodeAt(i >> 3) & (1 << (i & 7))) this.explored[y * this.tw + x] = 1; }
       } catch { /* 손상된 기록은 무시 */ }
       this.regionSeen = new Set(m.regions || []); this.milestones = new Set(m.milestones || []);
       return;
     }
     try {
-      const bin = atob(m.explored || '');
+      const bin = exploredBin(m.explored);
       for (let i = 0; i < this.explored.length; i++) if (bin.charCodeAt(i >> 3) & (1 << (i & 7))) this.explored[i] = 1;
     } catch { /* 손상된 기록은 무시 */ }
     // 오브젝트 배치가 바뀐 기억(예전 버전)이면 '열어 본 것'은 적용하지 않는다 (엉뚱한 것이 열린 채로 남지 않게)
