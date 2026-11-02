@@ -2180,7 +2180,7 @@ export class World {
           this.emit({ t: 'skillLine', x1, y1, x2, y2, w: op.w, elem: ctx.elem, fx: op.fx || ctx.def.fx, ult: ctx.def.ult });
           countHits(this.enemies.filter((e) => !e.dead && !e.hidden && distToSeg(e.x, e.y, x1, y1, x2, y2) < e.r + op.w / 2));
         };
-        if (op.delay) { this.emit({ t: 'lineTele', x1, y1, x2: x1 + ax * len, y2: y1 + ay * len, w: op.w, dur: op.delay }); this.delayed.push({ t: op.delay, run }); }
+        if (op.delay) this.delayed.push({ t: op.delay, run }); // 내 일직선 스킬은 예고선 없이 (땅이 갈라지는 것으로 보인다)
         else run();
         break;
       }
