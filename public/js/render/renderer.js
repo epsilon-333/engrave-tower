@@ -643,7 +643,11 @@ export class Renderer {
     const col = ELEM[ev.elem]?.color || '#ffe8a0';
     const fx = ev.fx;
     this.juice(ev.x, ev.y, col, ev.ult ? 'ult' : ev.fromProj ? 'pop' : 'skill', ev.r || 30);
-    this.anims.onAoe(ev);
+    if (this.anims.onAoe(ev)) { // pixelfx가 그렸다: 소리 · 흔들림만
+      const f2 = ev.fx; sfx(f2 === 'ice' || f2 === 'shatter' || f2 === 'zero' ? 'freeze' : f2 === 'quake' || f2 === 'smash' ? 'hitHeavy' : 'reaction', { vol: ev.ult ? 0.9 : 0.6, rate: ev.ult ? 0.7 : 1 });
+      if (ev.ult) this.shake = Math.max(this.shake, 10);
+      return;
+    }
     if (ev.rar >= 1) this.rarityFx(ev, col);
     if (ev.ult) { this.flash = { color: '255,240,210', t: 0.22, max: 0.22 }; this.shake = Math.max(this.shake, 12); this.hitstop = Math.max(this.hitstop, 0.12); }
     if (fx === 'arcane' || fx === 'implode' || fx === 'holy' || fx === 'corpse' || fx === 'doom' || fx === 'shatter' || fx === 'zero' || fx === 'timestop') {
@@ -749,34 +753,14 @@ export class Renderer {
   }
 
   // ───── 손맛: 세기를 셋으로 나눈다 (평타 < 스킬 < 궁극기). 평타는 작게 두어야 스킬이 돋보인다 ─────
-  juice(x, y, col, tier, r = 30) {
-    const T = { pop: 0.55, cast: 0.6, skill: 1, ultCast: 1.6, ult: 2.4 }[tier] || 1, big = tier === 'ult' || tier === 'ultCast';
-    const R = Math.max(18, Math.min(120, r)) * (big ? 1.25 : 1);
-    this.fx.push({ k: 'bloom', x, y: y - 4, r: R * (big ? 1.25 : 1.0), color: col, t: big ? 0.32 : 0.22, max: big ? 0.32 : 0.22 });
-    if (tier !== 'pop') this.fx.push({ k: 'starburst', x, y: y - 6, r: R * (big ? 1.5 : 1), n: big ? 16 : tier === 'cast' ? 6 : 10, color: col, rot: Math.random() * 6.28, t: big ? 0.42 : 0.24, max: big ? 0.42 : 0.24 });
-    const ns = Math.round((tier === 'cast' ? 10 : 18) * T);
-    for (let i = 0; i < ns; i++) { // 꼬리를 끄는 불똥: 빠르게 튀었다가 금방 식는다
-      const a = Math.random() * Math.PI * 2, sp = (120 + Math.random() * 220) * (big ? 1.4 : 1);
-      this.parts.push({ x, y: y - 4, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.7 - 20, t: 0.18 + Math.random() * 0.22, max: 0.4, color: i % 3 ? col : '#ffffff', g: 120, streak: true, w: big ? 2 : 1.5 });
-    }
-    const ne = Math.round(8 * T);
-    for (let i = 0; i < ne; i++) this.parts.push({ x: x + (Math.random() - 0.5) * R, y: y - 2 + (Math.random() - 0.5) * R * 0.5, vx: (Math.random() - 0.5) * 30, vy: -20 - Math.random() * 50, t: 0.6 + Math.random() * 0.8, max: 1.4, color: col, g: -10, glow: true, size: big ? 2.5 : 1.5 });
+  // 손맛: 흔들림 · 맞는 순간 멈춤만 (빛 번짐 · 반짝이는 없앴다 — 그림은 pixelfx 이펙트가 맡는다). 세기는 평타 < 스킬 < 궁극기
+  juice(x, y, col, tier) {
+    const big = tier === 'ult' || tier === 'ultCast';
     if (tier === 'cast' || tier === 'pop') return;
-    this.fx.push({ k: 'scorch', x, y: y + 2, r: R * (big ? 0.9 : 0.6), color: col, t: big ? 2.6 : 1.6, max: big ? 2.6 : 1.6 });
-    this.shake = Math.max(this.shake, big ? 10 : 3); this.hitstop = Math.max(this.hitstop, big ? 0.1 : 0.035);
-    if (!big) return;
-    // 궁극기: 하늘에서 내리꽂는 빛기둥 · 두 겹 충격파 · 튀는 파편 · 잠깐 뒤 여진
-    this.fx.push({ k: 'pillar', x, y, r: R * 0.45, color: col, t: 0.7, max: 0.7 });
-    this.shockwave(x, y, R, col, 40); this.shockwave(x, y, R * 0.6, '#ffffff', 20);
-    for (let i = 0; i < 22; i++) { const a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 140; this.parts.push({ x, y, vx: Math.cos(a) * sp, vy: -80 - Math.random() * 160, t: 0.7 + Math.random() * 0.5, max: 1.2, color: i % 2 ? '#5a4a3a' : '#8a7a66', g: 520, chunk: true, floor: y + (Math.random() - 0.3) * 18 }); }
-    this.fx.push({ k: 'after', x, y, r: R, color: col, t: 0.34, max: 0.34 });
-    if (tier === 'ult') this.flash = { color: '255,248,225', t: 0.12, max: 0.12 };
+    this.shake = Math.max(this.shake, big ? 9 : 3); this.hitstop = Math.max(this.hitstop, big ? 0.1 : 0.035);
   }
-  hitPop(x, y, col, lv) { // 한 대 맞을 때: 평타 0 · 스킬 1 · 치명타 2
-    const n = [3, 6, 10][lv];
-    for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, sp = 90 + Math.random() * (60 + lv * 80); this.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.7, t: 0.1 + Math.random() * 0.12, max: 0.22, color: i % 2 ? col : '#ffffff', g: 0, streak: true, w: lv ? 1.5 : 1 }); }
-    if (lv) this.fx.push({ k: 'bloom', x, y, r: 10 + lv * 7, color: col, t: 0.12 + lv * 0.04, max: 0.12 + lv * 0.04 });
-    if (lv === 2) this.fx.push({ k: 'starburst', x, y, r: 26, n: 6, color: '#fff4c8', rot: Math.random() * 6.28, t: 0.16, max: 0.16 });
+  hitPop(x, y, col, lv) { // 치명타만 pixelfx 타격 불꽃 (평타 · 보통 스킬 타격은 수수하게)
+    if (lv === 2) this.anims.px.add('impacts/crit-hit', x, y + 4, { max: 0.6 });
   }
   burst(x, y, color, n, speed = 90) {
     for (let i = 0; i < n; i++) {

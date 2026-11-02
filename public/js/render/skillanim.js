@@ -2,6 +2,19 @@
 // 떨어지는 운석 · 부풀었다 연기가 되는 폭발 · 땅에서 솟았다 부서지는 얼음 가시 · 하늘에서 내리꽂는 빛기둥 · 갈라지는 땅
 // 어둠의 문과 촉수 · 자라났다 시드는 덩굴 · 화살비 · 하늘에서 떨어지는 벼락 · 독구름 · 모여드는 비전 문양 · 칼날 초승달
 // 평타에는 쓰지 않는다 (스킬 · 무기 기술 · 보스 기술만)
+import { PxFx, preload } from './pxbridge.js';
+// pixelfx로 바꿀 수 있는 것은 pixelfx로 (도트 단위 색 단계 · 빛 · 연기가 게임 그림과 맞는다). 없는 것만 아래의 직접 그린 애니메이션
+const PAL = {
+  ice: ['#0b1f3a', '#1d4b7a', '#3f86c0', '#7fc8ee', '#c8f0ff', '#ffffff'],
+  dark: ['#12061e', '#2e0f4a', '#5a1f86', '#8f45c8', '#c88aff', '#f0d8ff'],
+  poison: ['#10200a', '#2a4a12', '#4f8a1e', '#86c83a', '#c8f08a', '#f0ffd0'],
+  arcane: ['#140a2e', '#33207a', '#5e45c0', '#9a80f0', '#d0c0ff', '#ffffff'],
+  forest: ['#0e1e0a', '#24461a', '#3f7a2a', '#6fb84a', '#b8f08a', '#f0ffe0'],
+  wind: ['#0e2a22', '#1e5a48', '#3f9a7a', '#7fd8b0', '#c8ffe8', '#ffffff'],
+};
+export const PX_USED = ['explosions/small-explosion', 'explosions/implosion', 'lightning/lightning-strike', 'ice/frost-nova', 'ice/icicle-fall', 'shadow/shadow-tendrils', 'shadow/dark-explosion',
+  'holy/holy-pillar', 'nature/earth-spike', 'nature/poison-cloud', 'nature/quake', 'arcane/mana-burst', 'impacts/ground-slam', 'impacts/crit-hit', 'melee/sword-slash', 'melee/claw-swipe', 'melee/spin-slash', 'melee/heavy-cleave'];
+preload(PX_USED);
 const hexA = (hex, a) => { const n = parseInt((hex || '#ffffff').slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a))})`; };
 const ease = { out: (k) => 1 - (1 - k) * (1 - k), in: (k) => k * k, outBack: (k) => 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2) };
 const rnd = (seed) => { let s = seed >>> 0 || 1; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
@@ -37,11 +50,12 @@ const FIRE = ['#ffffff', '#fff2a0', '#ffc040', '#ff7a2a', '#c8301a', '#3a2a28'];
 const ELEM_COL = { fire: '#ff7a2a', ice: '#9fe3ff', lightning: '#f8f070', poison: '#9be15d', dark: '#c45cff', arcane: '#b98aff', wind: '#bfffd0', forest: '#7be38a', holy: '#fff0a0', phys: '#e8dcc8' };
 
 export class SkillAnims {
-  constructor(r) { this.r = r; this.list = []; }
+  constructor(r) { this.r = r; this.list = []; this.px = new PxFx(); }
   add(type, o) { const max = o.max ?? DUR[type] ?? 0.8; this.list.push({ type, t: 0, max, seed: (Math.random() * 1e9) | 0, ...o, max }); if (this.list.length > 60) this.list.shift(); }
 
   // 사건 → 애니메이션 고르기 (범위 스킬이 터지는 자리)
   onAoe(ev) {
+    if (this.pxAoe(ev)) return true;
     const fx = ev.fx, el = ev.elem, r = Math.max(18, Math.min(130, ev.r || 30)), x = ev.x, y = ev.y, big = !!ev.ult;
     if (fx === 'meteor' || (fx === 'burst' && (el === 'fire' || !el) && r >= 30)) return this.add('explosion', { x, y, r, big, col: el ? ELEM_COL[el] : '#ffc040', fire: el === 'fire' || fx === 'meteor' });
     if (fx === 'burst' && el === 'lightning') return this.add('lightning', { x, y, r });
@@ -72,10 +86,37 @@ export class SkillAnims {
     else if (fx === 'shatter' || fx === 'ice' || fx === 'zero') this.add('meteorFall', { x: ev.x, y: ev.y, r: ev.r, max: ev.dur, col: '#9fe3ff', ice: true });
     else if (fx === 'holy') this.add('pillarCharge', { x: ev.x, y: ev.y, r: ev.r, max: ev.dur });
   }
-  onLine(ev) { this.add('fissure', { x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, w: ev.w || 24, col: ELEM_COL[ev.elem] || '#ffd890', big: ev.ult }); }
-  onCone(ev) { if (ev.fx === 'sweep' || ev.fx === 'slashX' || ev.fx === 'claws') this.add('bladeArc', { x: ev.x, y: ev.y, ang: ev.ang, range: ev.range, angle: ev.angle, col: ELEM_COL[ev.elem] || '#f4f0ff', claws: ev.fx === 'claws' }); }
+  pxAoe(ev) { // 범위 스킬 → pixelfx
+    const fx = ev.fx, el = ev.elem, x = ev.x, y = ev.y, big = !!ev.ult || (ev.r || 0) >= 70, P = this.px;
+    const pal = PAL[el];
+    if (fx === 'meteor' || (fx === 'burst' && (el === 'fire' || !el))) return P.add('explosions/small-explosion', x, y, { max: big ? 3 : 2.2 });
+    if (fx === 'burst' && el === 'lightning') return P.add('lightning/lightning-strike', x, y, { max: 1.6 });
+    if (fx === 'burst' && el === 'ice') return P.add('ice/frost-nova', x, y, { max: 1.8 });
+    if (fx === 'burst' && el === 'dark') return P.add(big ? 'shadow/dark-explosion' : 'shadow/shadow-tendrils', x, y, { max: 2.2 });
+    if (fx === 'burst') return P.add('arcane/mana-burst', x, y, { palette: pal || PAL.arcane });
+    if (fx === 'zero' || (big && (fx === 'ice' || fx === 'shatter'))) return P.add('ice/frost-nova', x, y, { max: 2 });
+    if (fx === 'ice' || fx === 'shatter' || fx === 'crystal') return P.add('ice/icicle-fall', x, y, { max: 1.8 });
+    if (fx === 'holy' || fx === 'pillar') return P.add('holy/holy-pillar', x, y, { max: 2.2 });
+    if (fx === 'doom' || fx === 'corpse') return P.add(big ? 'shadow/dark-explosion' : 'shadow/shadow-tendrils', x, y, { max: 2.2 });
+    if (fx === 'spikes' || fx === 'vines') return P.add('nature/earth-spike', x, y, { palette: el === 'phys' ? undefined : PAL.forest, max: 2.2 });
+    if (fx === 'fog') return P.add('nature/poison-cloud', x, y, { palette: PAL.poison, max: 2.6 });
+    if (fx === 'implode' || fx === 'timestop') return P.add('explosions/implosion', x, y, { palette: pal || PAL.arcane });
+    if (fx === 'arcane') return P.add('arcane/mana-burst', x, y, { palette: pal || PAL.arcane });
+    if (fx === 'quake' || fx === 'smash' || fx === 'slam') return P.add('impacts/ground-slam', x, y, { max: 1.8 });
+    return false;
+  }
+  onLine(ev) {
+    if (this.px.add('nature/quake', (ev.x1 + ev.x2) / 2, (ev.y1 + ev.y2) / 2, { angle: Math.atan2(ev.y2 - ev.y1, ev.x2 - ev.x1), max: 1.8, floor: 0 })) return; this.add('fissure', { x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, w: ev.w || 24, col: ELEM_COL[ev.elem] || '#ffd890', big: ev.ult }); }
+  onCone(ev) {
+    if (ev.fx === 'sweep' || ev.fx === 'slashX' || ev.fx === 'claws') { // 칼 · 발톱: pixelfx 베기 (오른쪽을 보고 그려진 것을 조준 방향으로 돌린다)
+      const id = ev.fx === 'claws' ? 'melee/claw-swipe' : (ev.angle || 0) > 3.5 ? 'melee/spin-slash' : (ev.range || 0) > 70 ? 'melee/heavy-cleave' : 'melee/sword-slash';
+      const left = Math.cos(ev.ang) < 0, ang = left ? Math.atan2(Math.sin(ev.ang), -Math.cos(ev.ang)) : ev.ang;
+      if (this.px.add(id, ev.x, ev.y, id === 'melee/spin-slash' ? { floor: 0 } : { flip: left, angle: left ? -ang : ang, floor: 0 })) return;
+    }
+    if (ev.fx === 'sweep' || ev.fx === 'slashX' || ev.fx === 'claws') this.add('bladeArc', { x: ev.x, y: ev.y, ang: ev.ang, range: ev.range, angle: ev.angle, col: ELEM_COL[ev.elem] || '#f4f0ff', claws: ev.fx === 'claws' }); }
 
   draw(g, dt) {
+    this.px.draw(g, dt);
     for (const a of this.list) { a.t += dt; const k = Math.min(1, a.t / a.max); const f = DRAW[a.type]; if (f) f(this.r, g, a, k, dt); }
     this.list = this.list.filter((a) => a.t < a.max);
   }
