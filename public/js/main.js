@@ -112,12 +112,54 @@ onNet('rank', (m) => {
 onNet('welcome', (m) => { net.admin = !!m.admin; renderer.admin = net.admin; });
 function showAdmin() { if (net.admin) netSend({ t: 'adminList' }); }
 onNet('adminList', (m) => {
-  const rows = m.list.map((o) => `<tr><td>${esc(o.name)}${o.admin ? ' ★' : ''}</td><td>${RACES[o.race]?.name || ''} Lv ${o.lv || 1}</td><td class="muted">${esc(o.map || '-')}${o.map ? ` (${Math.round((o.x || 0) / 16)}, ${Math.round((o.y || 0) / 16)})` : ''}</td><td class="muted">${esc(o.guild)}${o.partyN ? ` · 파티 ${o.partyN}` : ''}</td><td>${o.rank ? `◆${(o.rank.gold || 0).toLocaleString()} · 탑 ${o.rank.tower || 0}` : ''}</td><td><button class="sm ghost" data-ai="${o.id}">자세히</button></td></tr>`).join('');
+  const rows = m.list.map((o) => `<tr><td>${esc(o.name)}${o.admin ? ' ★' : ''}</td><td>${RACES[o.race]?.name || ''} Lv ${o.lv || 1}</td><td class="muted">${esc(o.map || '-')}${o.map ? ` (${Math.round((o.x || 0) / 16)}, ${Math.round((o.y || 0) / 16)})` : ''}</td><td class="muted">${esc(o.guild)}${o.partyN ? ` · 파티 ${o.partyN}` : ''}</td><td>${o.rank ? `◆${(o.rank.gold || 0).toLocaleString()} · 탑 ${o.rank.tower || 0}` : ''}</td><td><button class="sm ghost" data-ai="${o.id}">자세히</button> <button class="sm" data-ag="${o.id}" data-agn="${esc(o.name)}">무기 주기</button></td></tr>`).join('');
   showModal(`<h2>운영자 · 접속한 사람</h2><p class="muted">지금 ${m.online}명 · 길드 ${m.guilds} · 랭킹 기록 ${m.ranked}</p><table style="width:100%;font-size:0.9em">${rows}</table><div id="adminInfo"></div>
+    <p class="muted">접속하지 않은 사람에게도 줄 수 있다: <input id="agName" placeholder="계정 이름" maxlength="16" style="width:9em"> <button class="sm" id="agByName">무기 주기</button></p>
     <div class="actions"><button id="adRe" class="ghost">새로고침</button><button data-close class="ghost">닫기</button></div>`);
   document.getElementById('adRe').onclick = showAdmin;
   overlay.querySelectorAll('[data-ai]').forEach((b) => (b.onclick = () => netSend({ t: 'adminInfo', id: +b.dataset.ai })));
+  overlay.querySelectorAll('[data-ag]').forEach((b) => (b.onclick = () => showGrant({ to: +b.dataset.ag, label: b.dataset.agn })));
+  document.getElementById('agByName').onclick = () => { const n = document.getElementById('agName').value.trim(); if (n) showGrant({ name: n, label: n }); };
 });
+// ───── 운영자 보상: 탑의 무기 · 장비를 골라 준다 (교환이 아니다 · 받은 물건은 교환할 수 없다) ─────
+function showGrant(who) {
+  const ids = Object.keys(ITEMS).filter((id) => ITEMS[id].towerWeapon || ITEMS[id].towerGear).sort((a, b) => (ITEMS[a].tier || 0) - (ITEMS[b].tier || 0) || (ITEMS[b].rarity || 0) - (ITEMS[a].rarity || 0));
+  const opts = ids.map((id) => { const it = ITEMS[id]; return `<option value="${id}">${it.towerWeapon ? '무기' : '장비'} · ${it.tier || '-'}단계 · ${['일반', '희귀', '영웅', '전설', '신화'][it.rarity || 0]} · ${esc(it.name)}</option>`; }).join('');
+  showModal(`<h2>보상 주기 · ${esc(who.label)}</h2><p class="muted">교환이 아니라 운영자 보상이다. 받은 물건은 교환할 수 없다. 접속해 있지 않으면 다음 접속 때 받는다.</p>
+    <p><input id="agFind" placeholder="이름으로 찾기" style="width:100%"></p><p><select id="agItem" size="10" style="width:100%">${opts}</select></p>
+    <p><input id="agNote" placeholder="한마디 (예: 이벤트 1등 보상)" maxlength="80" style="width:100%"></p><p id="agRes" class="muted"></p>
+    <div class="actions"><button id="agSend">주기</button><button id="agBack" class="ghost">뒤로</button><button data-close class="ghost">닫기</button></div>`);
+  const sel = document.getElementById('agItem');
+  document.getElementById('agFind').oninput = (e) => { const q = e.target.value.trim(); for (const o of sel.options) o.hidden = !!q && !o.textContent.includes(q); };
+  document.getElementById('agBack').onclick = showAdmin;
+  document.getElementById('agSend').onclick = () => {
+    if (!sel.value) { document.getElementById('agRes').textContent = '줄 물건을 고르자'; return; }
+    netSend({ t: 'adminGrant', ...(who.to != null ? { to: who.to } : { name: who.name }), item: sel.value, note: document.getElementById('agNote').value.trim() });
+  };
+}
+onNet('adminGrantRes', (m) => {
+  const el = document.getElementById('agRes'), text = m.ok ? `${m.who}에게 「${ITEMS[m.item]?.name || m.item}」 · ${m.now ? '지금 받았다' : '다음 접속 때 받는다'}${m.kept ? '' : ' (저장 번호가 없어 지금 한 번만)'}` : m.why;
+  if (el) el.textContent = text; else renderer.banner = { text: '운영자 보상', sub: text, t: 2.5, color: '#ffd84a' };
+});
+// 받는 쪽: 가방에 넣고, 교환할 수 없게 묶는다. 같은 보상은 두 번 받지 않는다
+const grantWait = [];
+function takeGrant(m) {
+  if (!save) { grantWait.push(m); return; }
+  save.grantsGot ||= [];
+  if (!save.grantsGot.includes(m.gid)) {
+    const it = ITEMS[m.item];
+    if (!it) { netSend({ t: 'grantOk', gid: m.gid }); return; } // 없는 물건: 지운다
+    save.grantsGot.push(m.gid); if (save.grantsGot.length > 200) save.grantsGot.shift();
+    save.items ||= []; save.bound ||= {};
+    const had = save.items.includes(m.item);
+    if (!had) save.items.push(m.item);
+    save.bound[m.item] = true;
+    renderer.banner = { text: `운영자 보상 · ${it.name}`, sub: `${m.note ? m.note + ' · ' : ''}${had ? '이미 가지고 있다' : '가방에 들어왔다 · 장비에서 바꿔 들 수 있다'} · 교환할 수 없다`, t: 4, color: it.rarityColor || '#ffd84a' };
+    writeSave(save);
+  }
+  netSend({ t: 'grantOk', gid: m.gid });
+}
+onNet('grant', takeGrant);
 onNet('adminAsk', (m) => { // 운영자가 내 정보를 본다 (보여 주기만 한다)
   if (!save) return;
   netSend({ t: 'adminReply', to: m.from, info: { level: save.level, race: save.race, cls: save.cls, gold: save.gold, stats: world?.b?.stats || null, gear: Object.fromEntries(Object.entries(save.gear || {}).map(([k, v]) => [k, ITEMS[v]?.name || v])), skills: (world?.b?.skills || []).map((id) => SKILLS[id]?.name || id), tower: save.tower?.max || 0, raid: save.raid?.best || {}, zone: world?.zone?.name || '' } });
@@ -299,7 +341,7 @@ onNet('tradeOffer', (m) => { if (!trade) return; trade.theirs = m.offer; trade.m
 onNet('tradeConfirm', (m) => { if (!trade) return; trade.theirOk = true; tradeCheck(); });
 onNet('tradeCancel', () => { if (!trade) return; trade = null; if (modal) { overlay.hidden = true; paused = false; modal = null; } renderer.banner = { text: '교환이 취소됐다', t: 2, color: '#c8b8a0' }; });
 onNet('tradeDone', () => {});
-const tradeable = () => ({ goods: Object.entries(save.bag || {}).filter(([id, n]) => n > 0 && GOODS[id]), items: (save.items || []).filter((id) => ITEMS[id] && !Object.values(save.gear || {}).includes(id) && id !== 'rustySword' && !ITEMS[id].starter) });
+const tradeable = () => ({ goods: Object.entries(save.bag || {}).filter(([id, n]) => n > 0 && GOODS[id]), items: (save.items || []).filter((id) => ITEMS[id] && !Object.values(save.gear || {}).includes(id) && id !== 'rustySword' && !ITEMS[id].starter && !save.bound?.[id]) }); // 운영자 보상은 교환할 수 없다
 const offerText = (o) => [o.gold ? `◆ ${o.gold} 골드` : '', ...Object.entries(o.goods || {}).filter(([, n]) => n > 0).map(([id, n]) => `${GOODS[id]?.name || id} ×${n}`), ...(o.items || []).map((id) => ITEMS[id]?.name || id)].filter(Boolean);
 function sendOffer() { trade.myOk = false; trade.theirOk = false; netSend({ t: 'tradeOffer', offer: trade.mine }); showTrade(); }
 function showTrade() {
@@ -1039,6 +1081,7 @@ function enterPlaza(first) {
 let returnTo = null, curInterior = null; // curInterior: 지금 들어가 있는 입구 { id, x, y }
 let stash = null; // 집 안에 있는 동안 바깥 세계를 그대로 보관해 둔다 { world, door }
 function enterWorld(at = null, first = false) {
+  if (save) while (grantWait.length) takeGrant(grantWait.shift()); // 저장을 불러오기 전에 온 운영자 보상
   if (!at && save.atIsland && ISLAND_DEFS[save.atIsland]) { enterIsland(save.atIsland); return; }
   goOnline();
   { const el = document.getElementById('practicePanel'); if (el) el.hidden = true; }

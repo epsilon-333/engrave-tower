@@ -112,6 +112,14 @@ function rankBoard() {
   const raid = {}; for (const id of ['golem', 'queen', 'dragon']) raid[id] = top((r) => r.raid?.[id], false);
   return { t: 'rank', gold: top((r) => r.gold), tower: top((r) => r.tower), raid };
 }
+// 운영자 보상: 운영자가 준 물건을 받는 사람(uid 또는 계정 이름)마다 적어 두었다가, 접속해 있으면 바로 · 아니면 다음 접속 때 건넨다
+// 받는 쪽이 받았다고 알려 주면(grantOk) 지운다 — 교환이 아니라서 운영자의 가방에서 빠지지 않는다
+const GRANT_FILE = path.join(DATA_DIR, 'grants.json');
+let grants = {};
+try { grants = JSON.parse(fs.readFileSync(GRANT_FILE, 'utf8')) || {}; } catch { grants = {}; }
+const saveGrants = () => fs.mkdir(DATA_DIR, { recursive: true }, () => fs.writeFile(GRANT_FILE, JSON.stringify(grants), () => {}));
+const grantKeys = (c) => [c.uid, c.name && c.name !== '여행자' ? 'name:' + c.name.toLowerCase() : null].filter(Boolean);
+function grantDeliver(c) { for (const k of grantKeys(c)) for (const g of grants[k] || []) send(c, { t: 'grant', ...g }); }
 // 운영자: 서버 설정(ADMIN_KEY)의 열쇠를 아는 「운영자」만
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const guildByName = (name) => Object.values(guilds).find((g) => g.name.toLowerCase() === name.toLowerCase());
@@ -190,6 +198,7 @@ function handle(c, m) {
       const uid = clean(m.uid, 40);
       c.uid = uid.length >= 8 ? uid : null;
       send(c, { t: 'welcome', id: c.id, online: clients.size, admin: c.admin });
+      grantDeliver(c); // 못 받은 운영자 보상
       if (c.party) partySync(partyOf(c));
       const mg = m.guild && typeof m.guild === 'object' ? m.guild : null, gid = mg && clean(mg.id, 24);
       if (!c.uid || !gid) { c.guild = null; break; }
@@ -283,6 +292,24 @@ function handle(c, m) {
     case 'adminInfo': { // 한 사람의 자세한 정보 (그 사람의 화면에 물어본다)
       if (!c.admin) break;
       const o = clients.get(+m.id); if (o) send(o, { t: 'adminAsk', from: c.id });
+      break;
+    }
+    case 'adminGrant': { // 운영자 보상 주기: to(접속한 사람 번호) 또는 name(계정 이름 — 접속하지 않아도 된다)
+      if (!c.admin) break;
+      const item = clean(m.item, 40), note = clean(m.note, 80), o = m.to != null ? clients.get(+m.to) : null, name = clean(m.name, 16).trim();
+      if (!item || (!o && !name)) { send(c, { t: 'adminGrantRes', ok: false, why: '받을 사람이나 물건이 없다' }); break; }
+      const key = o ? o.uid || (o.name !== '여행자' ? 'name:' + o.name.toLowerCase() : null) : 'name:' + name.toLowerCase();
+      const g = { gid: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`, item, note, at: Date.now() };
+      if (key) { (grants[key] ||= []).push(g); saveGrants(); }
+      const live = o || [...clients.values()].find((x) => grantKeys(x).includes(key));
+      if (live) send(live, { t: 'grant', ...g });
+      send(c, { t: 'adminGrantRes', ok: true, who: o ? o.name : name, item, now: !!live, kept: !!key });
+      break;
+    }
+    case 'grantOk': { // 받았다: 목록에서 지운다
+      const gid = clean(m.gid, 24); let changed = false;
+      for (const k of grantKeys(c)) if (grants[k]) { const n = grants[k].length; grants[k] = grants[k].filter((g) => g.gid !== gid); if (grants[k].length !== n) changed = true; if (!grants[k].length) delete grants[k]; }
+      if (changed) saveGrants();
       break;
     }
     case 'adminReply': { const o = clients.get(+m.to); if (o?.admin) send(o, { t: 'adminInfo', id: c.id, info: m.info }); break; }
