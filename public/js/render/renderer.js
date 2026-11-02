@@ -370,11 +370,17 @@ export class Renderer {
         case 'nova': this.fx.push({ k: 'nova', ...ev, t: 0.4, max: 0.4 }); this.burst(ev.x, ev.y, '#c9a8ff', 30, 160); this.shake = 4; sfx('skill', { vol: 0.6 }); sfx('reaction', { vol: 0.4, rate: 1.4 }); break;
         case 'volley': sfx('skill', { vol: 0.5 }); sfx('shoot', { vol: 0.6 }); break;
         case 'afterimage': this.fx.push({ k: 'line', ...ev, t: 0.3, max: 0.3 }); break;
-        case 'dash': this.burst(ev.x, ev.y + 4, '#d8f0ff', 10, 60); this.fx.push({ k: 'ghost', x: ev.x, y: ev.y, t: 0.25, max: 0.25 }); sfx('dash', { vol: 0.6 }); break;
+        case 'dash': { // 구르기: 박차는 발밑에서 흙이 뒤로 차이고, 지나간 길에 미끄러진 자국이 남았다가 메워진다
+          const l = Math.hypot(ev.dx || 0, ev.dy || 0) || 1, ux = (ev.dx || 0) / l, uy = (ev.dy || 0) / l;
+          for (let i = 0; i < 6; i++) this.parts.push({ x: ev.x - ux * 3, y: ev.y + 4, vx: -ux * (30 + Math.random() * 40) + (Math.random() - 0.5) * 20, vy: -uy * 20 - 10 - Math.random() * 15, t: 0.5, max: 0.5, color: '#a89880', g: 60, puff: true, size: 2.5 });
+          for (let i = 0; i < 4; i++) this.parts.push({ x: ev.x, y: ev.y + 3, vx: -ux * (40 + Math.random() * 50), vy: -30 - Math.random() * 30, t: 0.4, max: 0.4, color: '#7a6448', g: 380, chunk: true, floor: ev.y + 4 });
+          this.anims.curSkid = { type: 'skid', pts: [{ x: ev.x, y: ev.y + 4 }], ux, uy, t: 0, max: 1.1 }; this.anims.ground.push(this.anims.curSkid);
+          sfx('dash', { vol: 0.6 }); break;
+        }
         case 'death': {
-          this.burst(ev.x, ev.y - 6, ev.color, ev.big ? 60 : 16, ev.big ? 170 : 100);
-          this.burst(ev.x, ev.y - 6, '#ffffff', 6, 60);
-          if (ev.defId) this.corpses.push({ defId: ev.defId, x: ev.x, y: ev.y, dir: ev.dir, t: 0.4, max: 0.4 });
+          // 쓰러진다: 몸이 옆으로 넘어가 땅에 엎어지고(먼지) · 잠깐 누워 있다가 · 흙 속으로 가라앉는다 (반투명으로 흐려지지 않는다)
+          if (ev.defId) { const mx = ev.big ? 2.4 : 1.8; this.corpses.push({ defId: ev.defId, x: ev.x, y: ev.y, dir: ev.dir || 1, big: !!ev.big, t: mx, max: mx, landed: false }); }
+          else this.burst(ev.x, ev.y - 6, ev.color, ev.big ? 30 : 10, ev.big ? 140 : 80);
           if (ev.big) this.shake = 8;
           sfx('death', { vol: ev.big ? 1 : 0.6, rate: ev.big ? 0.7 : 1 });
           break;
@@ -481,11 +487,13 @@ export class Renderer {
           this.shake = Math.max(this.shake, 2); sfx('dash', { vol: 0.7 }); sfx('swing', { vol: 0.5, rate: 0.8 });
           break;
         }
-        case 'blink':
-          for (const [x, y] of [[ev.x1, ev.y1], [ev.x2, ev.y2]]) for (let i = 0; i < 14; i++) { const a = Math.random() * Math.PI * 2, sp = 20 + Math.random() * 40; this.parts.push({ x: x + Math.cos(a) * 4, y: y - 8 + Math.sin(a) * 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6 - 8, t: 0.5, max: 0.5, color: Math.random() < 0.5 ? '#3a2e58' : '#6a5a9a', g: -6, steam: true }); }
-          this.fx.push({ k: 'ghost', x: ev.x1, y: ev.y1, t: 0.3, max: 0.3 });
+        case 'blink': { // 순간이동: 떠나는 자리에서 몸이 도트 조각으로 흩어져 오르고 · 도착하는 자리로 조각이 빨려 들어 다시 모인다 (잔상 · 반투명 없음)
+          for (let i = 0; i < 16; i++) { const a = Math.random() * Math.PI * 2, sp = 20 + Math.random() * 40; this.parts.push({ x: ev.x1 + (Math.random() - 0.5) * 8, y: ev.y1 - 4 - Math.random() * 14, vx: Math.cos(a) * sp, vy: -20 - Math.random() * 40, t: 0.35 + Math.random() * 0.2, max: 0.55, color: i % 3 ? '#2a2238' : '#c8a8ff', g: -20 }); }
+          for (let i = 0; i < 18; i++) { const a = Math.random() * Math.PI * 2, r = 12 + Math.random() * 10, T = 0.22 + Math.random() * 0.06; this.parts.push({ x: ev.x2 + Math.cos(a) * r, y: ev.y2 - 8 + Math.sin(a) * r * 0.7, vx: -Math.cos(a) * r / T, vy: -Math.sin(a) * r * 0.7 / T, t: T, max: T, color: i % 3 ? '#c8a8ff' : '#ffffff', g: 0, glow: true, size: 1 }); }
+          this.parts.push({ x: ev.x2, y: ev.y2 + 3, vx: 0, vy: -4, t: 0.4, max: 0.4, color: '#b0a0c0', g: 0, puff: true, size: 3 });
           sfx('dash', { vol: 0.6, rate: 1.4 });
           break;
+        }
         case 'danceDash': { // 그림자 춤: 적 사이를 달려 지나가며 벤다 (지나간 길에 잔상)
           const ddx = ev.x2 - ev.x1, ddy = ev.y2 - ev.y1, dl = Math.hypot(ddx, ddy) || 1, ux = ddx / dl, uy = ddy / dl;
           for (let i = 1; i <= 5; i++) { const u = i / 6; this.fx.push({ k: 'ghost', x: ev.x1 + ddx * u, y: ev.y1 + ddy * u, t: 0.16 + u * 0.18, max: 0.34, tint: 'brightness(0.35) sepia(1) hue-rotate(220deg) saturate(3)', dir: ev.x2 > ev.x1 ? 1 : -1 }); }
@@ -526,7 +534,7 @@ export class Renderer {
           break;
         }
         case 'bolt': this.fx.push({ k: 'bolt', pts: ev.pts, color: ev.color, t: 0.22, max: 0.22, seed: Math.random() * 1000 }); for (const pt of ev.pts.slice(1)) this.sparkBurst(pt.x, pt.y, ev.color, 5); sfx('cast', { vol: 0.5, rate: 2 }); break;
-        case 'cast': this.fx.push({ k: 'castCircle', color: ELEM[ev.elem]?.color || CLASS_MAGIC[w.b.cls] || '#9ab8ff', t: ev.dur, max: ev.dur }); sfx('cast', { vol: 0.4, rate: 0.8 }); break;
+        case 'cast': this.castGather = { color: ELEM[ev.elem]?.color || CLASS_MAGIC[w.b.cls] || '#9ab8ff', t: ev.dur, max: ev.dur }; sfx('cast', { vol: 0.4, rate: 0.8 }); break; // 시전: 발밑 고리 대신 손끝으로 원소가 모여든다
         case 'parryStance': this.fx.push({ k: 'parryStance', t: ev.dur, max: ev.dur }); sfx('open', { vol: 0.5 }); break;
         case 'parry': this.rimFlash = { color: '#fff6c0', t: 0.4, max: 0.4 }; this.shockwave(ev.x, ev.y, 40, '#fff6c0', 24); this.burst(ev.x, ev.y - 6, '#fff6c0', 30, 160); this.texts.push({ x: ev.x, y: ev.y - 26, text: '받아치기!', color: '#ffe080', t: 1, vy: -14, vx: 0, label: true, size: 2 }); this.shake = 5; sfx('hitArmor', { vol: 1 }); sfx('reaction', { vol: 0.5, rate: 1.5 }); break;
         case 'buff': this.rimFlash = { color: ev.color || '#ffffff', t: 0.35, max: 0.35 * 1.8 }; for (let i = 0; i < 7; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 14, y: ev.y, vx: 0, vy: -30 - Math.random() * 25, t: 0.55, max: 0.55, color: ev.color, g: -8 }); sfx('echo', { vol: 0.5 }); break;
@@ -1386,18 +1394,37 @@ export class Renderer {
   drawCorpse(c, dt) {
     const art = MONSTER_ART[c.defId]; if (!art) { c.t = 0; return; }
     c.t -= dt;
-    const k = 1 - c.t / c.max;
-    const img = sprite(frames(art.base, 'idle')[0], art.tint || '', k < 0.3, c.dir < 0);
+    const el = c.max - c.t, g = this.g, sc = (art.scale || 1) * (c.big ? 1.2 : 1);
+    const img = art.beast ? beastImg(art.beast, 'idle', 0, c.dir < 0, false) : sprite(frames(art.base, 'idle')[0], art.tint || '', el < 0.08, c.dir < 0);
     if (!img) return;
-    const g = this.g, sc = art.scale || 1;
-    g.globalAlpha = Math.max(0, 1 - k);
-    const w0 = img.width * sc * (1 + k * 0.3), h0 = img.height * sc * (1 - k * 0.7);
-    g.drawImage(img, Math.round(c.x - w0 / 2), Math.round(c.y + 4 - h0), Math.round(w0), Math.round(h0));
-    g.globalAlpha = 1;
+    const W = img.width * sc, H = img.height * sc, fallT = 0.28, sinkT = c.max - 0.75;
+    // 넘어지기: 발을 축으로 뒤쪽(맞은 반대편)으로 90도 · 끝에 살짝 튄다
+    const fk = Math.min(1, el / fallT), bounce = fk < 1 ? fk * fk : 1 + Math.sin(Math.min(1, (el - fallT) / 0.18) * Math.PI) * 0.06 * (1 - Math.min(1, (el - fallT) / 0.18));
+    const ang = -c.dir * (Math.PI / 2) * Math.min(1.04, bounce);
+    if (!c.landed && fk >= 1) { // 땅에 닿는 순간: 먼지 · 작은 흙
+      c.landed = true;
+      for (let i = 0; i < (c.big ? 14 : 7); i++) this.parts.push({ x: c.x - c.dir * H * 0.5 + (Math.random() - 0.5) * H, y: c.y + 3, vx: (Math.random() - 0.5) * 40, vy: -6 - Math.random() * 10, t: 0.6, max: 0.6, color: '#a89880', g: 0, puff: true, size: c.big ? 4 : 3 });
+      if (c.big) this.shake = Math.max(this.shake, 6);
+    }
+    // 가라앉기: 누운 몸이 땅선 아래로 내려가며 땅선 위로 보이는 부분만 그린다 (가장자리에 흙이 들썩인다)
+    const sink = el > sinkT ? Math.min(1, (el - sinkT) / 0.75) : 0, ground = Math.round(c.y + 4);
+    g.save();
+    if (sink > 0) { g.beginPath(); g.rect(c.x - H - W, ground - H - W, (H + W) * 2, H + W); g.clip(); }
+    g.translate(Math.round(c.x), ground + Math.round(sink * W * 0.9));
+    g.rotate(ang);
+    g.drawImage(img, Math.round(-W / 2), Math.round(-H), Math.round(W), Math.round(H));
+    g.restore();
+    if (sink > 0 && sink < 1 && Math.random() < 0.6) this.parts.push({ x: c.x - c.dir * H * 0.5 + (Math.random() - 0.5) * H, y: ground - 1, vx: (Math.random() - 0.5) * 20, vy: -20 - Math.random() * 20, t: 0.35, max: 0.35, color: Math.random() < 0.5 ? '#6a5640' : '#8a7458', g: 300, chunk: true, floor: ground });
   }
 
   drawPlayer(w, p, dt) {
     const g = this.g;
+    if (this.castGather && dt > 0) { // 시전 중: 둘레에서 손끝으로 빨려 드는 원소 알갱이 (끝으로 갈수록 빽빽하게)
+      const cg = this.castGather; cg.t -= dt;
+      if (cg.t <= 0 || !(p.castT > 0)) this.castGather = null;
+      else { const hx = p.x + p.dir * 7, hy = p.y - 12, k = 1 - cg.t / cg.max; for (let i = 0; i < 1 + Math.round(k * 3); i++) { const a = Math.random() * Math.PI * 2, r = 14 + Math.random() * 10; this.parts.push({ x: hx + Math.cos(a) * r, y: hy + Math.sin(a) * r * 0.7, vx: -Math.cos(a) * r / 0.28, vy: -Math.sin(a) * r * 0.7 / 0.28, t: 0.26, max: 0.26, color: Math.random() < 0.3 ? '#ffffff' : cg.color, g: 0, glow: true, size: 1 }); } }
+    }
+    if (p.dashT > 0 && dt > 0) { const sk = this.anims.curSkid; if (sk && sk.t < 0.4) { const L = sk.pts[sk.pts.length - 1]; if (Math.hypot(p.x - L.x, p.y + 4 - L.y) >= 2) sk.pts.push({ x: p.x, y: p.y + 4 }); if (Math.random() < 0.5) this.parts.push({ x: p.x, y: p.y + 4, vx: (Math.random() - 0.5) * 10, vy: -6, t: 0.4, max: 0.4, color: '#b0a088', g: 0, puff: true, size: 2 }); } } // 구르는 동안: 미끄러진 자국을 잇고 흙먼지
     const art = RACE_ART[w.b.race];
     const moving = p.moving && p.dashT <= 0;
     const soaring = art.base === 'dragonkin' && (p.airT > 0 || p.motion?.kind === 'soar');
@@ -3217,16 +3244,17 @@ export class Renderer {
     } else if (dr.kind === 'good') { // 캐고 · 벤 물건: 작은 아이콘이 통통 튄다
       const ic = iconCanvas(dr.id), x = Math.round(dr.x), y = Math.round(dr.y - 6 + bob);
       g.drawImage(ic, x - 6, y - 6, 12, 12);
-    } else if (dr.kind === 'weapon' || dr.kind === 'tweapon') { // 탑의 무기: 등급 색 빛기둥 + 바닥 빛 + 비스듬히 꽂힌 칼날
-      const r = dr.kind === 'tweapon' ? ITEMS[dr.id]?.rarity ?? 0 : dr.id.loot.r, col = ['#c8c0d0', '#5ab0ff', '#c070ff', '#ffb030', '#ff4a6a'][r], x = Math.round(dr.x), y = Math.round(dr.y + bob * 0.5);
-      const pulse = 0.5 + 0.5 * Math.sin(w.t * 4 + dr.x);
-      if (r >= 1) { const H = 18 + r * 12; const gr = g.createLinearGradient(0, y - H, 0, y); gr.addColorStop(0, hexA(col, 0)); gr.addColorStop(1, hexA(col, 0.25 + 0.12 * r * pulse / 4)); g.fillStyle = gr; g.fillRect(x - 2 - r, y - H, 4 + r * 2, H); }
-      g.fillStyle = hexA(col, 0.18 + 0.1 * pulse); ellipse(g, x, y + 2, 7 + r, 3 + r * 0.4);
-      g.save(); g.translate(x, y - 3); g.rotate(-0.7);
-      g.fillStyle = '#16121c'; g.fillRect(-1.5, -9, 3, 13); g.fillRect(-4, 3, 8, 2);
-      g.fillStyle = '#e8eef8'; g.fillRect(-0.5, -8, 1.5, 11); g.fillStyle = col; g.fillRect(-3, 3, 6, 1); g.fillRect(-0.5, 4, 1, 3);
+    } else if (dr.kind === 'weapon' || dr.kind === 'tweapon') { // 떨어진 무기: 날아와 땅에 비스듬히 꽂힌다 (흙이 튀고 · 작은 흙더미) — 등급 색은 손잡이 보석의 반짝임으로만
+      const r = dr.kind === 'tweapon' ? ITEMS[dr.id]?.rarity ?? 0 : dr.id.loot.r, col = ['#c8c0d0', '#5ab0ff', '#c070ff', '#ffb030', '#ff4a6a'][r];
+      const stuck = Math.hypot(dr.vx || 0, dr.vy || 0) < 8, x = Math.round(dr.x), y = Math.round(dr.y);
+      if (stuck && !dr.planted) { dr.planted = true; for (let i = 0; i < 5; i++) this.parts.push({ x, y, vx: (Math.random() - 0.5) * 50, vy: -30 - Math.random() * 30, t: 0.4, max: 0.4, color: '#7a6448', g: 380, chunk: true, floor: y + 1 }); this.parts.push({ x, y: y - 1, vx: 0, vy: -6, t: 0.5, max: 0.5, color: '#b0a088', g: 0, puff: true, size: 3 }); }
+      g.fillStyle = '#5a4634'; g.fillRect(x - 3, y, 6, 1); g.fillStyle = '#8a7356'; g.fillRect(x - 2, y - 1, 4, 1); // 흙더미
+      const wa = dr.kind === 'tweapon' ? weaponArt(dr.id, ITEMS) : null, img = wa && sprite(wa.s, wa.tint || '');
+      g.save(); g.translate(x, y - (stuck ? 0 : 4)); g.rotate(stuck ? -2.4 : (w.t * 12) % (Math.PI * 2)); // 날아오는 동안은 빙글빙글
+      if (img) g.drawImage(img, Math.round(-img.width / 2), Math.round(-img.height * 0.85));
+      else { g.fillStyle = '#16121c'; g.fillRect(-1.5, -12, 3, 13); g.fillStyle = '#e8eef8'; g.fillRect(-0.5, -11, 1.5, 11); g.fillStyle = '#6a5040'; g.fillRect(-3, 1, 6, 2); }
       g.restore();
-      if (r >= 2 && Math.random() < 0.08 * r) this.parts.push({ x: x + (Math.random() - 0.5) * 10, y: y - 2, vx: 0, vy: -16 - r * 4, t: 0.8, max: 0.8, color: col, g: -6, glow: true, size: 1 });
+      if (r >= 1 && stuck) { const tw = (Math.floor(w.t * 3 + dr.x) % (6 - Math.min(4, r))) === 0; g.fillStyle = tw ? '#ffffff' : col; g.fillRect(x + 4, y - 9, 1, 1); if (tw) { g.fillStyle = col; g.fillRect(x + 3, y - 9, 3, 1); g.fillRect(x + 4, y - 10, 1, 3); } } // 손잡이 보석: 등급이 높을수록 자주 반짝
     } else if (dr.kind === 'shard') { // 성물 조각: 그 성지의 빛을 내는 작은 결정 조각
       const col = SANCTUMS[dr.id]?.color || '#ffffff', x = Math.round(dr.x), y = Math.round(dr.y - 4 + bob);
       g.fillStyle = hexA(col, 0.3 + 0.2 * Math.sin(w.t * 6)); disc(g, x, y, 6);

@@ -421,6 +421,19 @@ const DRAW = {
 // ── 땅 갈라짐: 도트로 바닥에 직접 판다 (매끈한 그라데이션 없이 · 사라질 때는 도트를 듬성듬성 지워 간다) ──
 const SPLIT_GLOW = { fire: ['#ffe080', '#ff8a2a', '#c8401a'], ice: ['#ffffff', '#9fe3ff', '#3f86c0'], dark: ['#e8b8ff', '#9a4ad8', '#4a1a78'], arcane: ['#ffffff', '#b98aff', '#5e45c0'], lightning: ['#ffffff', '#f8f070', '#b8a020'] };
 const GROUND_DRAW = {
+  skid(R, g, a, k) { // 미끄러진 자국: 두 줄의 패인 흙 자국 → 시작점부터 끝 쪽으로 메워진다 (도트 · 반투명 없음)
+    const P = a.pts; if (P.length < 2) return;
+    const fill = k > 0.45 ? (k - 0.45) / 0.55 : 0, from = Math.floor(fill * (P.length - 1));
+    const nx = -a.uy, ny = a.ux;
+    for (let i = Math.max(0, from); i < P.length - 1; i++) {
+      const A = P[i], B = P[i + 1], n = Math.max(1, Math.ceil(Math.hypot(B.x - A.x, B.y - A.y)));
+      for (let j = 0; j < n; j++) {
+        const x = A.x + (B.x - A.x) * j / n, y = A.y + (B.y - A.y) * j / n;
+        for (const sd of [-2, 2]) { g.fillStyle = '#4a3828'; g.fillRect(Math.round(x + nx * sd), Math.round(y + ny * sd), 1, 1); g.fillStyle = '#b8a07a'; g.fillRect(Math.round(x + nx * sd), Math.round(y + ny * sd) - 1, 1, 1); }
+      }
+    }
+    if (fill > 0 && fill < 1 && Math.random() < 0.3) { const Q = P[Math.min(P.length - 1, from)]; R.parts.push({ x: Q.x, y: Q.y - 1, vx: 0, vy: -6, t: 0.3, max: 0.3, color: '#b0a088', g: 0, puff: true, size: 1.5 }); }
+  },
   split(R, g, a, k) {
     const rr = rnd(a.seed), dx = a.x2 - a.x1, dy = a.y2 - a.y1, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
     const open = Math.min(1, a.t / 0.2), settle = Math.max(0, Math.min(1, (a.t - 0.25) / 0.5)), close = k > 0.55 ? Math.min(1, (k - 0.55) / 0.35) : 0, fade = 0;
