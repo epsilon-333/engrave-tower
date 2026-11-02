@@ -1969,7 +1969,7 @@ export class World {
           countHits(list, op.perHit ? 1 + op.perHit * Math.max(0, list.length - 1) : 1);
         };
         if (op.delay) {
-          this.emit({ t: 'telegraphCircle', x: c.x, y: c.y, r: op.r, dur: op.delay, follow });
+          // 내 스킬은 빨간 예고 원 없이 (떨어지는 것 · 모여드는 것이 자리를 보여 준다)
           this.emit({ t: 'skillFall', x: c.x, y: c.y, r: op.r, dur: op.delay, fx: op.fx || ctx.def.fx, elem: ctx.elem });
           if (op.fall) this.emit({ t: 'fall', x: c.x, y: c.y, r: op.r, dur: op.delay, kind: op.fall });
           this.delayed.push({ t: op.delay, run });
@@ -3267,7 +3267,7 @@ export class World {
       return amount;
     }
     if (e.mirrorT > 0) { // 미궁의 군주: 반사 방패 — 피해 대신 나에게 되돌아온다
-      if (!opt.fromDot && this.t - (e.mirrorHitT ?? -9) > 0.25) { e.mirrorHitT = this.t; this.hurtPlayer(Math.min(amount * 0.5, this.d.maxHp * 0.12), 'mag', e, { fromX: e.x, fromY: e.y }); this.emit({ t: 'text', x: e.x, y: e.y - 22, text: '반사!', color: '#9fe8ff' }); this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 14, color: '#9fe8ff' }); }
+      if (!opt.fromDot && this.t - (e.mirrorHitT ?? -9) > 0.25) { e.mirrorHitT = this.t; this.hurtPlayer(Math.min(amount * 0.5, this.d.maxHp * 0.12), 'mag', e, { fromX: e.x, fromY: e.y }); this.emit({ t: 'text', x: e.x, y: e.y - 22, text: '반사!', color: '#9fe8ff' }); this.emit({ t: 'parryFx', x: e.x, y: e.y - e.r }); }
       return 0;
     }
     e.lastHitT = this.t;
@@ -3968,7 +3968,7 @@ export class World {
       if (e.guardT > 0) e.guardT -= DT;
       if (e.exposedT > 0) e.exposedT -= DT;
       if (e.passives && !e.dead) this.bossPassiveTick(e);
-      if (e.mirrorT > 0) { e.mirrorT -= DT; if ((e.mirrorFx = (e.mirrorFx || 0) - DT) <= 0) { e.mirrorFx = 0.45; this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 12, color: '#9fe8ff' }); } }
+      if (e.mirrorT > 0) e.mirrorT -= DT; // 반사 방패: 몸이 거울처럼 번쩍인다 (렌더러)
       if (e.rooted > 0) e.rooted -= DT;
       const dot = burn + poison + bleed + curse;
       if (dot > 0) this.damageEnemy(e, dot * DT, 'true', { src: 'dot' });
@@ -4441,7 +4441,7 @@ export class World {
         say(nm || '회복 의식', '#7be38a'); this.emit({ t: 'text', x: e.x, y: e.y - 44, text: '끊어라!', color: '#ffe066' });
         e.mv = { k: 'channel', boss: true, t: 3, taken: 0, fx: 0 }; return true;
       case 'soar': // 날아오른다: 무적 · 불비 두 번 · 내 자리로 떨어진다
-        say(nm || '비상'); e.mv = { k: 'soar', boss: true, t: 2.6, wave: 0 }; e.invulnT = 2.6; e.soaring = true; this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: e.x, y2: e.y - 30 }); return true;
+        say(nm || '비상'); e.mv = { k: 'soar', boss: true, t: 2.6, wave: 0 }; e.invulnT = 2.6; e.soaring = true; return true;
       case 'mirror':
         say(nm || '반사 방패', '#9fe8ff'); this.emit({ t: 'text', x: e.x, y: e.y - 44, text: '때리지 마라!', color: '#9fe8ff' });
         e.mirrorT = e.kit?.awake ? 3.2 : 2.6; e.mirrorFx = 0; return false;

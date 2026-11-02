@@ -23,7 +23,7 @@ import { SKILLS, ELEM, ROLE_COLOR } from '../data/skills.js';
 import { RACES } from '../data/races.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, WEAPON_ART, weaponArt } from '../data/art.js';
 import { BOSS_PASSIVES } from '../data/tower.js';
-import { SkillAnims, drawMiasma, RARITY_ANIM } from './skillanim.js';
+import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
 const PASSIVE_NAME = Object.fromEntries(Object.entries(BOSS_PASSIVES).map(([k, v]) => [k, v.name]));
 import { STORY_ITEMS, storyObjective, pinoTalk } from '../data/story.js';
 import { sfx, tone } from '../audio.js';
@@ -316,7 +316,11 @@ export class Renderer {
             this.hurtFlash = 0.35; sfx('hurt', { vol: 0.8 });
             break;
           }
-          this.texts.push({ x: ev.x + (Math.random() - 0.5) * 6, y: ev.y, text: fmt(ev.v), color: ev.color, t: 0.75, crit: ev.crit, heavy: ev.heavy, small: ev.small, vy: -34, vx: (Math.random() - 0.5) * 24, pop: ev.crit || ev.heavy ? 0.14 : 0.07 });
+          { // 같은 적에게 짧은 사이에 들어온 피해는 숫자 하나로 합친다 (숫자가 겹쳐 지저분하지 않게) · 치명타는 따로 크게
+            const same = !ev.crit && ev.id != null && this.texts.find((q) => q.tid === ev.id && !q.crit && q.t > 0.5);
+            if (same) { same.val += ev.v; same.text = fmt(same.val); same.t = 0.75; same.pop = 0.07; if (ev.heavy) same.heavy = true; }
+            else this.texts.push({ tid: ev.id, val: ev.v, x: ev.x + (Math.random() - 0.5) * 6, y: ev.y, text: fmt(ev.v), color: ev.color, t: 0.75, crit: ev.crit, heavy: ev.heavy, small: ev.small, vy: -34, vx: (Math.random() - 0.5) * 24, pop: ev.crit || ev.heavy ? 0.14 : 0.07 });
+          }
           if (ev.id != null) this.squash.set(ev.id, 0.14);
           if (!ev.small && ev.src !== 'dot' && ev.src !== 'linked') this.hitPop(ev.x, ev.y + 6, ev.color === '#ffffff' ? '#fff2c0' : ev.color, ev.crit ? 2 : ev.heavy || ev.src === 'aoe' || ev.src === 'skill' ? 1 : 0);
           if (ev.src === 'attack') {
@@ -442,7 +446,8 @@ export class Renderer {
           break;
         case 'fuse': this.alerts.set(ev.id, 0.55); sfx('windup', { vol: 0.6, rate: 1.6 }); break;
         case 'emerge': this.burst(ev.x, ev.y + 2, '#8a7a5a', 18, 90); sfx('crack', { vol: 0.5, rate: 1.3 }); break;
-        case 'summon': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 26, color: '#c45cff', t: 0.4, max: 0.4, w: 2 }); this.burst(ev.x, ev.y, '#c45cff', 12, 60); break;
+        case 'summon': if (!this.anims.px.add('spawn/summon-rise', ev.x, ev.y + 3, { scale: 0.8, max: 1.6 })) this.burst(ev.x, ev.y, '#c45cff', 12, 60); break; // 소환: 땅이 갈라지며 기어 나온다 (pixelfx)
+        case 'parryFx': this.anims.px.add('impacts/parry', ev.x, ev.y, { scale: 0.8, floor: 0, max: 0.6 }); sfx('hitHeavy', { vol: 0.5, rate: 1.6 }); break;
         case 'camp': this.burst(ev.x, ev.y - 4, '#ffd88a', 16, 60); sfx('levelup', { vol: 0.4 }); break;
         case 'skillFx': this.skillFx(ev); break;
         case 'soulGet': {
@@ -533,13 +538,13 @@ export class Renderer {
           sfx('hitHeavy', { vol: 1, rate: ev.big ? 0.6 : 0.85 });
           break;
         }
-        case 'bolt': this.fx.push({ k: 'bolt', pts: ev.pts, color: ev.color, t: 0.22, max: 0.22, seed: Math.random() * 1000 }); for (const pt of ev.pts.slice(1)) this.sparkBurst(pt.x, pt.y, ev.color, 5); sfx('cast', { vol: 0.5, rate: 2 }); break;
+        case 'bolt': this.fx.push({ k: 'bolt', pts: ev.pts, color: ev.color, t: 0.22, max: 0.22, seed: Math.random() * 1000 }); for (const pt of ev.pts.slice(1)) this.sparkBurst(pt.x, pt.y, ev.color, 5); sfx('cast', { vol: 0.5, rate: 2 }); break; for (const pt of ev.pts.slice(1)) this.anims.px.add('lightning/zap-hit', pt.x, pt.y, { scale: 0.6, floor: 0, max: 0.5 });
         case 'cast': this.castGather = { color: ELEM[ev.elem]?.color || CLASS_MAGIC[w.b.cls] || '#9ab8ff', t: ev.dur, max: ev.dur }; sfx('cast', { vol: 0.4, rate: 0.8 }); break; // 시전: 발밑 고리 대신 손끝으로 원소가 모여든다
         case 'parryStance': this.fx.push({ k: 'parryStance', t: ev.dur, max: ev.dur }); sfx('open', { vol: 0.5 }); break;
         case 'parry': this.rimFlash = { color: '#fff6c0', t: 0.4, max: 0.4 }; this.shockwave(ev.x, ev.y, 40, '#fff6c0', 24); this.burst(ev.x, ev.y - 6, '#fff6c0', 30, 160); this.texts.push({ x: ev.x, y: ev.y - 26, text: '받아치기!', color: '#ffe080', t: 1, vy: -14, vx: 0, label: true, size: 2 }); this.shake = 5; sfx('hitArmor', { vol: 1 }); sfx('reaction', { vol: 0.5, rate: 1.5 }); break;
         case 'buff': this.rimFlash = { color: ev.color || '#ffffff', t: 0.35, max: 0.35 * 1.8 }; for (let i = 0; i < 7; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 14, y: ev.y, vx: 0, vy: -30 - Math.random() * 25, t: 0.55, max: 0.55, color: ev.color, g: -8 }); sfx('echo', { vol: 0.5 }); break;
         case 'elemShift': this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 24, color: ELEM[ev.elem].color, t: 0.4, max: 0.4, w: 3 }); this.burst(ev.x, ev.y - 6, ELEM[ev.elem].color, 16, 80); this.texts.push({ x: ev.x, y: ev.y - 24, text: `${ELEM[ev.elem].name}${ev.weak ? ' · 약점!' : ''}`, color: ELEM[ev.elem].color, t: 1, vy: -12, vx: 0, label: true }); sfx('open', { vol: 0.5, rate: 1.2 }); break;
-        case 'beamFx': this.fx.push({ k: 'beam', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.3, max: 0.3 }); sfx('dash', { vol: 0.5, rate: 1.6 }); break;
+        case 'beamFx': { const len = Math.hypot(ev.x2 - ev.x1, ev.y2 - ev.y1); if (!this.anims.px.add('arcane/arcane-beam', ev.x1, ev.y1, { rot: Math.atan2(ev.y2 - ev.y1, ev.x2 - ev.x1), scale: Math.max(0.4, len / 238), palette: PAL.dark, floor: 0, max: 0.16 })) this.fx.push({ k: 'beam', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.3, max: 0.3 }); sfx('dash', { vol: 0.5, rate: 1.6 }); break; } // 광선: pixelfx 빔 (실이 꼬이며 맥박치는 빛줄기)
         case 'seaSight': this.banner = { text: ev.id === 'pirates' ? '수평선에 검은 돛이 보인다' : ev.id === 'serpent' ? '물결 사이로 커다란 등지느러미가…' : ev.id === 'castaway' ? '저 멀리 뗏목이 떠 있다' : '저 멀리 상선이 보인다', sub: '점점 다가온다', t: 3, color: ev.id === 'pirates' ? '#ff9a7a' : '#bfe8ff' }; break;
         case 'graspArm': this.fx.push({ k: 'arm', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.55, max: 0.55 }); sfx('dash', { vol: 0.5, rate: 0.6 }); break;
         case 'summonFx': { const col = ev.elem ? ELEM[ev.elem].color : ev.kind === 'clone' ? '#8a6aff' : ev.kind === 'skeleton' ? '#e8e0d0' : '#c45cff';
@@ -769,8 +774,9 @@ export class Renderer {
     if (tier === 'cast' || tier === 'pop') return;
     this.shake = Math.max(this.shake, big ? 9 : 3); this.hitstop = Math.max(this.hitstop, big ? 0.1 : 0.035);
   }
-  hitPop(x, y, col, lv) { // 치명타만 pixelfx 타격 불꽃 (평타 · 보통 스킬 타격은 수수하게)
-    if (lv === 2) this.anims.px.add('impacts/crit-hit', x, y + 4, { max: 0.6 });
+  hitPop(x, y, col, lv) { // 맞는 자리: 평타 · 보통 스킬은 작은 타격 불꽃(절반 크기), 치명타는 큰 불꽃
+    if (lv === 2) this.anims.px.add('impacts/crit-hit', x, y + 4, { max: 0.6, floor: 0 });
+    else if (this.anims.px.list.length < 40) this.anims.px.add('impacts/hit-spark', x, y + 4, { scale: lv ? 0.7 : 0.5, max: 0.45, floor: 0, rot: (Math.random() - 0.5) * 0.6 });
   }
   burst(x, y, color, n, speed = 90) {
     for (let i = 0; i < n; i++) {
@@ -1241,9 +1247,13 @@ export class Renderer {
       if (e.bphase >= 1 && Math.random() < (e.bphase >= 2 ? 0.6 : 0.3)) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y - Math.random() * e.r * 2, vx: 0, vy: -30, t: 0.6, max: 0.6, color: '#ff5a3a', g: -10, flame: true, size: e.bphase >= 2 ? 1.8 : 1.3 });
       if (e.bphase >= 2 && Math.random() < 0.25) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 1.6, y: e.y - Math.random() * e.r, vx: (Math.random() - 0.5) * 10, vy: -16, t: 1.0, max: 1.0, color: '#1a1020', g: -4, puff: true, size: 3 });
     }
-    if (e.soaring) { // 하늘의 포식자: 날아올라 화면 위로 — 땅에는 커지는 그림자만
-      const k = Math.max(0, Math.min(1, (e.mv?.t ?? 0) / 2.6)), sz = e.r * (1.6 - k * 0.6);
-      g.fillStyle = `rgba(0,0,0,${0.18 + 0.2 * (1 - k)})`; ellipse(g, e.x, e.y + 3, sz, sz * 0.4);
+    if (e.soaring) { // 날아오름: 몸이 웅크렸다 하늘로 솟구쳐 화면 밖으로 · 땅에는 작아졌다 커지는 그림자 (떨어질 때는 뛰어내리기 동작이 이어 받는다)
+      const up = 2.6 - (e.mv?.t ?? 0), k = Math.min(1, up / 0.4), sc = (art.scale || 1) * (e.scale || 1);
+      const fr = sprite(this.animFrame(art.base, 'idle', w.t, 6), e.tintX || art.tint || '', false, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', false, e.dir < 0);
+      const shK = Math.max(0.25, 1 - k * 0.75);
+      g.fillStyle = `rgba(0,0,0,${0.12 + 0.22 * shK})`; ellipse(g, e.x, e.y + 3, e.r * 1.2 * shK, e.r * 0.45 * shK);
+      if (fr && k < 1) { const off = k * k * 260, sq = up < 0.08 ? 0.8 : 1; g.drawImage(fr, Math.round(e.x - fr.width * sc / 2), Math.round(e.y + 4 - fr.height * sc * sq - off), Math.round(fr.width * sc), Math.round(fr.height * sc * sq)); }
+      if (up < 0.05 && dt > 0) for (let i = 0; i < 8; i++) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y + 3, vx: (Math.random() - 0.5) * 40, vy: -8, t: 0.6, max: 0.6, color: '#a89880', g: 0, puff: true, size: 4 }); // 박차는 순간 먼지
       e._top = null; return;
     }
     if (e.hidden) {
@@ -1265,7 +1275,7 @@ export class Renderer {
     const pose = wind ? 'wind' : e.moving ? 'walk' : 'idle', bf = Math.floor((w.t + e.phase) * (e.moving || art.fly ? 9 : 3)) % 4;
     const img = art.beast ? beastImg(art.beast, pose, bf, e.dir < 0, flash)
       : art.mimic ? sprite(e.dormant ? 'chest_full_open_anim_f0' : `chest_mimic_open_anim_f${e.moving || wind ? 1 + (Math.floor(w.t * 8) % 2) : 2}`, '', flash, e.dir < 0)
-      : sprite(name, e.tintX || art.tint || '', e.morphT > 0 && Math.floor(w.t * 24) % 2 ? '#ffffff' : flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);
+      : sprite(name, e.mirrorT > 0 ? 'grayscale(1) brightness(1.75) contrast(1.4)' : e.tintX || art.tint || '', e.morphT > 0 && Math.floor(w.t * 24) % 2 ? '#ffffff' : flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);
     if (!img) return;
     let sq = this.squash.get(e.id) || 0;
     if (sq > 0) { sq -= dt; this.squash.set(e.id, sq); }
@@ -2646,6 +2656,14 @@ export class Renderer {
 
   // 마법 투사체: 바깥 빛무리 → 꼬리 → 원소 모양 심 → 흰 중심. lighter 로 겹쳐 빛나게
   drawMagicProj(pr) {
+    { // pixelfx 탄: 불은 불덩이(꼬리를 끄는 불꽃), 나머지는 그 속성 색의 플라스마 덩이 — 평타 · 정령 탄은 작게
+      const el0 = pr.elem || (pr.skind === 'fireball' ? 'fire' : pr.skind === 'icerock' || pr.skind === 'ice' ? 'ice' : pr.skind === 'arcane' ? 'arcane' : null);
+      if (!pr.pxe) {
+        const fire = el0 === 'fire', small = pr.kind === 'orb' || pr.skind === 'spiritBolt' || pr.weaponHit;
+        pr.pxe = this.anims.px.add(fire ? 'fire/fireball' : 'projectiles/plasma-shot', pr.x, pr.y, { palette: fire ? undefined : PAL[el0] || (pr.skind === 'spiritBolt' ? PAL.forest : PAL.arcane), scale: small ? 0.45 : pr.big || pr.skind === 'fireball' ? 0.9 : 0.65, floor: 0, max: 99 }) || 'none';
+      }
+      if (pr.pxe !== 'none') { this.anims.px.hold(pr.pxe, pr.x, pr.y, Math.atan2(pr.vy, pr.vx)); return; }
+    }
     const g = this.g, t = this.world.t;
     const col = pr.color || '#c9a8ff';
     const sp = Math.hypot(pr.vx, pr.vy) || 1, ux = pr.vx / sp, uy = pr.vy / sp, a = Math.atan2(pr.vy, pr.vx);
@@ -2818,30 +2836,18 @@ export class Renderer {
         g.beginPath();
         for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2, rr = i % 2 ? r * 0.3 : r; g.lineTo(f.x + Math.cos(a) * rr, f.y - 8 + Math.sin(a) * rr); }
         g.closePath(); g.fill();
-      } else if (f.k === 'bolt') {
-        // 번개: 빛무리 + 지그재그 세 겹 + 가지
-        g.save(); g.globalCompositeOperation = 'lighter';
-        for (const pt of f.pts.slice(1)) this.glow(pt.x, pt.y, 18, f.color, k);
+      } else if (f.k === 'bolt') { // 번개: 도트 지그재그 (가운데 흰 줄 · 양옆 번개색 · 가지), 30분의 1초마다 모양이 바뀐다 — 맞은 자리는 pixelfx 감전 불꽃
+        const fr = Math.floor(this.world.t * 30), col = f.color;
+        const P = (x, y, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1); };
         for (let i = 1; i < f.pts.length; i++) {
-          const pv = f.pts[i - 1], pt = f.pts[i];
-          for (let b = 0; b < 2; b++) {
-            const s2 = (Math.sin(f.seed + i * 3.7 + b * 11) + 1) / 2, mx = pv.x + (pt.x - pv.x) * s2, my = pv.y + (pt.y - pv.y) * s2;
-            const ba = Math.atan2(pt.y - pv.y, pt.x - pv.x) + (b ? 0.9 : -0.9);
-            g.strokeStyle = hexA(f.color, 0.6 * k); g.lineWidth = 1; g.beginPath(); g.moveTo(mx, my); g.lineTo(mx + Math.cos(ba) * 9 + Math.sin(this.world.t * 50 + b) * 2, my + Math.sin(ba) * 9); g.stroke();
+          const A = f.pts[i - 1], B = f.pts[i], L = Math.hypot(B.x - A.x, B.y - A.y) || 1, nx = -(B.y - A.y) / L, ny = (B.x - A.x) / L, M = Math.max(3, Math.round(L / 8));
+          let px0 = A.x, py0 = A.y;
+          for (let j = 1; j <= M; j++) {
+            const u = j / M, jit = j === M ? 0 : (Math.sin(f.seed + fr * 7.1 + i * 13 + j * 3.3) * 5), x = A.x + (B.x - A.x) * u + nx * jit, y = A.y + (B.y - A.y) * u + ny * jit, n = Math.max(1, Math.ceil(Math.hypot(x - px0, y - py0)));
+            for (let q = 0; q <= n; q++) { const qx = px0 + (x - px0) * q / n, qy = py0 + (y - py0) * q / n; if (k > 0.25) { P(qx + nx, qy + ny, col); P(qx - nx, qy - ny, col); } P(qx, qy, k > 0.15 ? '#ffffff' : col); }
+            if (j === Math.floor(M / 2) && k > 0.3) { let bx = x, by = y; for (let q = 0; q < 6; q++) { bx += nx * 1.2 + (B.x - A.x) / L * 0.8; by += ny * 1.2 + (B.y - A.y) / L * 0.8; P(bx, by, col); } }
+            px0 = x; py0 = y;
           }
-        }
-        g.restore();
-        for (const [wd, col] of [[7, hexA(f.color, k * 0.25)], [4, hexA(f.color, k * 0.6)], [1.5, hexA('#ffffff', k)]]) {
-          g.strokeStyle = col; g.lineWidth = wd; g.beginPath();
-          f.pts.forEach((pt, i) => {
-            if (!i) { g.moveTo(pt.x, pt.y); return; }
-            const pv = f.pts[i - 1];
-            for (let j = 1; j <= 4; j++) {
-              const tt = j / 4, jx = (Math.sin(f.seed + i * 7 + j * 13 + this.world.t * 40) * 6) * (j < 4 ? 1 : 0);
-              g.lineTo(pv.x + (pt.x - pv.x) * tt + jx, pv.y + (pt.y - pv.y) * tt - jx * 0.6);
-            }
-          });
-          g.stroke();
         }
       } else if (f.k === 'cone') {
         g.fillStyle = hexA(f.color, 0.28 * k);
@@ -3000,9 +3006,12 @@ export class Renderer {
         for (let i = 6; i >= 1; i--) { g.fillStyle = hexA(i > 3 ? '#ff5a1a' : '#ffb040', 0.25); disc(g, x + i * 0.35 * 5, y - i * 5, (9 - i) * big); }
         g.fillStyle = '#ff7a2a'; disc(g, x, y, 11 * big); g.fillStyle = '#ffd040'; disc(g, x - 1, y - 1, 7 * big); g.fillStyle = '#fff6c0'; disc(g, x - 2, y - 2, 3.5 * big);
         if (Math.random() < 0.9) this.parts.push({ x: x + (Math.random() - 0.5) * 10 * big, y: y + (Math.random() - 0.5) * 10 * big, vx: 30, vy: -40, t: 0.5, max: 0.5, color: Math.random() < 0.5 ? '#ff7a2a' : '#ffd040', g: -20 });
-      } else if (f.k === 'lineTele') {
-        g.strokeStyle = `rgba(255,240,190,${0.3 + 0.5 * (1 - k)})`; g.lineWidth = f.w * (1 - k * 0.7);
-        g.beginPath(); g.moveTo(f.x1, f.y1); g.lineTo(f.x2, f.y2); g.stroke();
+      } else if (f.k === 'lineTele') { // 예고선: 땅 위 점묘 띠 · 가장자리 실선, 시작점부터 끝까지 진하게 차오르면 그때 맞는다
+        const L = Math.hypot(f.x2 - f.x1, f.y2 - f.y1) || 1, ux = (f.x2 - f.x1) / L, uy = (f.y2 - f.y1) / L, hw = Math.max(1, Math.round((f.w || 6) / 2)), fill = (1 - k) * L, col = f.color || '#ff5a3a';
+        for (let d = 0; d < L; d += 1) for (let h = -hw; h <= hw; h++) {
+          const x = Math.round(f.x1 + ux * d - uy * h), y = Math.round(f.y1 + uy * d + ux * h), edge = Math.abs(h) === hw;
+          if (edge) { g.fillStyle = col; g.fillRect(x, y, 1, 1); } else if (d < fill ? (x + y) % 2 === 0 : (x + y) % 4 === 0) { g.fillStyle = d < fill ? col : hexA(col, 0.6); g.fillRect(x, y, 1, 1); }
+        }
       } else if (f.k === 'line') {
         if (f.fx === 'spikes') {
           const n = Math.floor(Math.hypot(f.x2 - f.x1, f.y2 - f.y1) / 12);
@@ -3112,8 +3121,8 @@ export class Renderer {
         this.dline(f.x, f.y, f.inner, f.inner * ry, 'rgba(140,255,170,0.95)', -this.world.t * 5, 3, 2);
       } else if (f.k === 'tcircle') {
         if (f.follow) { f.x = this.world.player.x; f.y = this.world.player.y; }
-        this.dfill(f.x, f.y, f.r, f.r * 0.62, '#c896ff', 0.1 + 0.22 * (1 - k)); // 떨어질 자리: 점묘가 점점 짙어진다
-        this.dline(f.x, f.y, f.r, f.r * 0.62, 'rgba(240,220,255,0.9)', this.world.t * 8, 3, 2);
+        this.dfill(f.x, f.y, f.r, f.r * 0.62, '#ff5a3a', 0.1 + 0.22 * (1 - k)); // 떨어질 자리: 점묘가 점점 짙어진다
+        this.dline(f.x, f.y, f.r, f.r * 0.62, 'rgba(255,214,180,0.95)', this.world.t * 8, 3, 2);
         if (k < 0.97) this.dline(f.x, f.y, f.r * (1 - k), f.r * 0.62 * (1 - k), 'rgba(255,255,255,0.95)', -this.world.t * 10, 2, 1);
         g.fillStyle = 'rgba(255,240,255,0.9)'; for (const [dx, dy] of [[-3, 0], [3, 0], [0, -2], [0, 2]]) g.fillRect(Math.round(f.x + dx), Math.round(f.y + dy), 1, 1);
       } else if (f.k === 'spin') {
@@ -3939,6 +3948,7 @@ export class Renderer {
       r = r * (0.42 - dep * 0.18) + 20; gg = gg * (0.62 - dep * 0.2) + 34; b = b * (0.8 - dep * 0.18) + 46; dk = Math.max(0.55, dk);
     }
     if (indoor) { r = 255 - (255 - r) * 0.5; gg = 255 - (255 - gg) * 0.5; b = 255 - (255 - b) * 0.42; dk *= 0.7; } // 집 안은 덜 어둡다 (등불 · 화로)
+    if (!w.map.underwater) { r = 255 - (255 - r) * 0.72; gg = 255 - (255 - gg) * 0.72; b = 255 - (255 - b) * 0.62; } // 밤: 화면을 탁하게 덮지 않게 어둠을 덜고 푸른 쪽은 조금 남긴다
     this.nightK = dk;
     if (r > 252 && gg > 252 && b > 252) return;
     const lg = this.lg, VW = this.VW, VH = this.VH, p = w.player, t = w.t;

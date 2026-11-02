@@ -3,9 +3,10 @@
 // 어둠의 문과 촉수 · 자라났다 시드는 덩굴 · 화살비 · 하늘에서 떨어지는 벼락 · 독구름 · 모여드는 비전 문양 · 칼날 초승달
 // 평타에는 쓰지 않는다 (스킬 · 무기 기술 · 보스 기술만)
 import { PxFx, preload } from './pxbridge.js';
+import { sprite } from './assets.js';
 // pixelfx로 바꿀 수 있는 것은 pixelfx로 (도트 단위 색 단계 · 빛 · 연기가 게임 그림과 맞는다). 없는 것만 아래의 직접 그린 애니메이션
 const GROUND = 0.55; // 옆에서 본 둥근 폭발을 바닥에 눕힌다 (위에서 내려다보는 게임이라 세로로 눌러야 땅에 깔린 원으로 보인다)
-const PAL = {
+export const PAL = {
   ice: ['#0b1f3a', '#1d4b7a', '#3f86c0', '#7fc8ee', '#c8f0ff', '#ffffff'],
   dark: ['#12061e', '#2e0f4a', '#5a1f86', '#8f45c8', '#c88aff', '#f0d8ff'],
   poison: ['#10200a', '#2a4a12', '#4f8a1e', '#86c83a', '#c8f08a', '#f0ffd0'],
@@ -14,7 +15,7 @@ const PAL = {
   wind: ['#0e2a22', '#1e5a48', '#3f9a7a', '#7fd8b0', '#c8ffe8', '#ffffff'],
 };
 export const PX_USED = ['explosions/small-explosion', 'explosions/implosion', 'lightning/lightning-strike', 'ice/frost-nova', 'shadow/shadow-tendrils', 'shadow/dark-explosion',
-  'nature/earth-spike', 'nature/poison-cloud', 'nature/quake', 'arcane/mana-burst', 'impacts/ground-slam', 'impacts/crit-hit', 'melee/sword-slash', 'melee/claw-swipe', 'melee/spin-slash', 'melee/heavy-cleave'];
+  'nature/earth-spike', 'nature/poison-cloud', 'nature/quake', 'arcane/mana-burst', 'impacts/ground-slam', 'impacts/crit-hit', 'melee/sword-slash', 'melee/claw-swipe', 'melee/spin-slash', 'melee/heavy-cleave', 'fire/fireball', 'projectiles/plasma-shot', 'impacts/hit-spark', 'impacts/shield-block', 'impacts/parry', 'lightning/zap-hit', 'spawn/summon-rise', 'arcane/arcane-beam'];
 preload(PX_USED);
 const hexA = (hex, a) => { const n = parseInt((hex || '#ffffff').slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a))})`; };
 const ease = { out: (k) => 1 - (1 - k) * (1 - k), in: (k) => k * k, outBack: (k) => 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2) };
@@ -111,8 +112,7 @@ export class SkillAnims {
   onCone(ev) {
     if (ev.fx === 'sweep' || ev.fx === 'slashX' || ev.fx === 'claws') { // 칼 · 발톱: pixelfx 베기 (오른쪽을 보고 그려진 것을 조준 방향으로 돌린다)
       const id = ev.fx === 'claws' ? 'melee/claw-swipe' : (ev.angle || 0) > 3.5 ? 'melee/spin-slash' : (ev.range || 0) > 70 ? 'melee/heavy-cleave' : 'melee/sword-slash';
-      const left = Math.cos(ev.ang) < 0, ang = left ? Math.atan2(Math.sin(ev.ang), -Math.cos(ev.ang)) : ev.ang;
-      if (this.px.add(id, ev.x, ev.y, id === 'melee/spin-slash' ? { floor: 0 } : { flip: left, angle: left ? -ang : ang, floor: 0 })) return;
+      if (this.px.add(id, ev.x, ev.y, id === 'melee/spin-slash' ? { floor: 0 } : { rot: ev.ang, floor: 0 })) return;
     }
     if (ev.fx === 'sweep' || ev.fx === 'slashX' || ev.fx === 'claws') this.add('bladeArc', { x: ev.x, y: ev.y, ang: ev.ang, range: ev.range, angle: ev.angle, col: ELEM_COL[ev.elem] || '#f4f0ff', claws: ev.fx === 'claws' }); }
 
@@ -134,7 +134,14 @@ const DRAW = {
   // 떨어지는 운석 / 얼음덩이: 비스듬히 내려오며 꼬리를 끌고, 땅의 그림자가 커진다
   meteorFall(R, g, a, k) {
     const kk = ease.in(k), sx = a.x - 150, sy = a.y - 280, x = sx + (a.x - sx) * kk, y = sy + (a.y - sy) * kk, sz = Math.max(5, a.r * 0.28);
-    g.fillStyle = `rgba(0,0,0,${0.15 + 0.3 * k})`; g.beginPath(); g.ellipse(a.x, a.y + 2, sz * (0.6 + k), sz * 0.4 * (0.6 + k), 0, 0, Math.PI * 2); g.fill();
+    // 땅의 그림자: 점묘 (가까워질수록 크고 진하게)
+    const rx = Math.round(sz * (0.6 + k)), ry = Math.max(1, Math.round(rx * 0.4));
+    g.fillStyle = 'rgba(20,12,10,0.55)';
+    for (let yy = -ry; yy <= ry; yy++) for (let xx = -rx; xx <= rx; xx++) if ((xx * xx) / (rx * rx) + (yy * yy) / (ry * ry) <= 1 && ((xx + yy) & 1 || k > 0.7)) g.fillRect(Math.round(a.x + xx), Math.round(a.y + 2 + yy), 1, 1);
+    if (!a.ice) { // 불: pixelfx 불덩이 (꼬리를 끄는 불꽃)
+      a.pe ??= R.anims.px.add('fire/fireball', x, y, { scale: Math.max(0.6, Math.min(1.2, a.r / 40)), floor: 0, max: 99 }) || 'none';
+      if (a.pe !== 'none') { R.anims.px.hold(a.pe, x, y, Math.atan2(a.y - sy, a.x - sx)); return; }
+    }
     g.save(); g.globalCompositeOperation = 'lighter';
     for (let i = 6; i >= 1; i--) { const u = i * 0.05, tx = x - (a.x - sx) * u * 0.6, ty = y - (a.y - sy) * u * 0.6; g.fillStyle = hexA(a.ice ? ['#ffffff', '#e8f8ff', '#bfe8ff', '#8ad8ff', '#5aa8e0', '#3a7ab8'][i - 1] : FIRE[Math.min(5, i - 1)], 0.5 - i * 0.06); g.beginPath(); g.arc(tx, ty, sz * (1 - i * 0.08), 0, Math.PI * 2); g.fill(); }
     g.restore();
@@ -245,23 +252,24 @@ const DRAW = {
   },
   // 화살비: 하늘에서 비스듬히 쏟아져 땅에 꽂힌다
   arrowRain(R, g, a, k) {
-    const rr = rnd(a.seed), n = Math.round(8 + a.r / 5);
+    const rr = rnd(a.seed), n = Math.round(8 + a.r / 5), img = sprite('weapon_arrow');
     for (let i = 0; i < n; i++) {
-      const tx = a.x + (rr() - 0.5) * a.r * 1.8, ty = a.y + (rr() - 0.5) * a.r * 0.9, d = rr() * 0.35, kk = Math.min(1, Math.max(0, (k - d) / 0.18));
-      if (kk <= 0) continue;
-      const fall = kk < 1, x = tx - 60 * (1 - kk), y = ty - 160 * (1 - kk), al = k > 0.8 ? (1 - k) / 0.2 : 1;
-      g.strokeStyle = hexA('#3a2a1a', al); g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y); g.lineTo(x - (fall ? 9 : 5), y - (fall ? 24 : 12)); g.stroke();
-      g.fillStyle = hexA(a.col, al); g.fillRect(Math.round(x - (fall ? 9 : 5)) - 1, Math.round(y - (fall ? 24 : 12)) - 1, 3, 3);
-      if (!fall) { g.fillStyle = hexA('#000000', 0.25 * al); g.fillRect(Math.round(tx) - 2, Math.round(ty), 4, 1); }
+      const tx = a.x + (rr() - 0.5) * a.r * 1.8, ty = a.y + (rr() - 0.5) * a.r * 0.9, d = rr() * 0.35, out = 0.72 + rr() * 0.2, kk = Math.min(1, Math.max(0, (k - d) / 0.16));
+      if (kk <= 0 || k > out + 0.04) { if (k > out && !a['o' + i] && kk > 0) { a['o' + i] = true; R.parts.push({ x: tx, y: ty - 1, vx: 0, vy: -6, t: 0.35, max: 0.35, color: '#b0a088', g: 0, puff: true, size: 1.5 }); } continue; }
+      const fall = kk < 1, x = tx - 50 * (1 - kk), y = ty - 150 * (1 - kk), ang = Math.atan2(150, 50) + Math.PI / 2;
+      if (!fall && !a['h' + i]) { a['h' + i] = true; R.parts.push({ x: tx, y: ty, vx: (rr() - 0.5) * 30, vy: -20, t: 0.3, max: 0.3, color: '#7a6448', g: 300, chunk: true, floor: ty + 1 }); }
+      if (img) { g.save(); g.translate(Math.round(x), Math.round(y)); g.rotate(ang); g.drawImage(img, Math.round(-img.width / 2), Math.round(fall ? -img.height : -img.height * 0.7)); g.restore(); }
+      if (!fall) { g.fillStyle = '#4a3828'; g.fillRect(Math.round(tx) - 1, Math.round(ty), 3, 1); }
     }
   },
   // 돌 · 우박 비: 떨어져 튀고 부서진다
   rockRain(R, g, a, k) {
     const rr = rnd(a.seed), n = Math.round(5 + a.r / 10);
+    const rock = (cx, cy, rad, col) => { for (let yy = -rad; yy <= rad; yy++) for (let xx = -rad; xx <= rad; xx++) { const d = xx * xx + yy * yy; if (d > rad * rad) continue; g.fillStyle = d > (rad - 1) * (rad - 1) ? '#2a221c' : xx + yy < -rad * 0.5 ? '#e8e0d0' : col; g.fillRect(Math.round(cx + xx), Math.round(cy + yy), 1, 1); } };
     for (let i = 0; i < n; i++) {
-      const tx = a.x + (rr() - 0.5) * a.r * 1.6, ty = a.y + (rr() - 0.5) * a.r * 0.8, d = rr() * 0.3, kk = Math.min(1, Math.max(0, (k - d) / 0.22)), s = 3 + rr() * 4;
+      const tx = a.x + (rr() - 0.5) * a.r * 1.6, ty = a.y + (rr() - 0.5) * a.r * 0.8, d = rr() * 0.3, kk = Math.min(1, Math.max(0, (k - d) / 0.22)), s0 = 2 + Math.round(rr() * 2);
       if (kk <= 0) continue;
-      if (kk < 1) { const x = tx - 40 * (1 - kk), y = ty - 180 * (1 - ease.in(kk)); g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(tx, ty + 1, s * kk, s * 0.4 * kk, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = a.col; g.beginPath(); g.arc(x, y, s, 0, Math.PI * 2); g.fill(); g.fillStyle = 'rgba(255,255,255,0.4)'; g.beginPath(); g.arc(x - s * 0.3, y - s * 0.3, s * 0.4, 0, Math.PI * 2); g.fill(); }
+      if (kk < 1) { const x = tx - 40 * (1 - kk), y = ty - 180 * (1 - ease.in(kk)); g.fillStyle = '#1a120c'; g.fillRect(Math.round(tx - s0 * kk), Math.round(ty + 1), Math.max(1, Math.round(s0 * 2 * kk)), 1); rock(x, y, s0, a.col); }
       else if (!a['hit' + i]) { a['hit' + i] = true; for (let j = 0; j < 4; j++) R.parts.push({ x: tx, y: ty, vx: (Math.random() - 0.5) * 90, vy: -40 - Math.random() * 60, t: 0.5, max: 0.5, color: a.col, g: 380, chunk: true, floor: ty + 2 }); R.parts.push({ x: tx, y: ty, vx: 0, vy: -10, t: 0.5, max: 0.5, color: '#b8a890', g: 0, puff: true, size: 3 }); }
     }
   },
