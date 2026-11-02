@@ -3488,7 +3488,11 @@ function arcTalk(id) {
   return islandTalk(id);
 }
 
-let autosaveT = 0;
+let autosaveT = 0, lastMinionKey = null;
+// 창을 닫거나 다른 탭으로 갈 때도 저장 (45초 자동 저장 사이에 생긴 일을 잃지 않게)
+const saveOnLeave = () => { if (save && world && !world.practice) writeSave(save); };
+addEventListener('pagehide', saveOnLeave);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveOnLeave(); });
 function frame(ts) {
   try { tick(ts); updateVoyBar(); const pnow = performance.now(); politicsTick(Math.min(0.1, (pnow - (frame.pt || pnow)) / 1000)); frame.pt = pnow; } catch (err) { if (!frame.warned) { frame.warned = true; console.error(err); } } // 한 번의 오류로 게임이 멈추지 않게
   requestAnimationFrame(frame);
@@ -3510,6 +3514,7 @@ function tick(ts) {
       }
     }
     if (!paused && world.state === 'play' && !world.practice) { autosaveT += dt; if (autosaveT > 45) { autosaveT = 0; writeSave(save); } } // 시간 · 생활 기록을 가끔 저장
+    if (save && !world.practice) { const mk = (save.minions || []).map((m) => m.kind).join(); if (mk !== lastMinionKey) { if (lastMinionKey != null) writeSave(save); lastMinionKey = mk; } } // 부하가 늘거나 줄면 바로 저장
     if (world.practice && (frame.dpsT = (frame.dpsT || 0) + dt) > 0.4) { // 연습: 최근 5초 동안 준 피해
       frame.dpsT = 0;
       const el = document.getElementById('practiceDps'), log = world.dmgLog || [];
