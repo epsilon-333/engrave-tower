@@ -561,6 +561,15 @@ export class World {
     const s = (px, py) => this.solid(px, py, mode);
     return s(x - r, y - r) || s(x + r, y - r) || s(x - r, y + r) || s(x + r, y + r) || s(x, y - r) || s(x, y + r) || s(x - r, y) || s(x + r, y);
   }
+  // 벽에 끼지 않는 가장 가까운 자리 (없으면 null)
+  freeSpot(x, y, r) {
+    if (!this.blocked(x, y, r)) return { x, y };
+    for (let d = 4; d <= 64; d += 4) for (let k = 0; k < 16; k++) {
+      const a = k / 16 * Math.PI * 2, nx = x + Math.cos(a) * d, ny = y + Math.sin(a) * d;
+      if (!this.blocked(nx, ny, r)) return { x: nx, y: ny };
+    }
+    return null;
+  }
   move(ent, dx, dy) {
     const r = Math.max(3, ent.r - 1), p = this.player;
     const mode = ent === p && this.map.outdoor && !this.map.underwater ? (p.boat ? 'boat' : this.canSwim ? 'swim' : null) : null;
@@ -2910,7 +2919,7 @@ export class World {
           if (dd < 12 && dd > 0.01) { al.x += (dx / dd) * (12 - dd) * 0.25; al.y += (dy / dd) * (12 - dd) * 0.25; }
           else if (dd <= 0.01) al.x += (al.id % 2 ? 1 : -1);
         }
-        if (this.blocked(al.x, al.y, 3)) { al.x = p.x; al.y = p.y; }
+        { const mr = Math.max(3, (al.r || 5) - 1); if (this.blocked(al.x, al.y, mr)) { const f = this.freeSpot(al.x, al.y, mr) || { x: p.x, y: p.y }; al.x = f.x; al.y = f.y; } } // 몸 크기(리치는 크다)로 검사해 벽에 끼면 가까운 빈 자리로
         if (Math.abs(vx) > 1) al.dir = vx > 0 ? 1 : -1;
         if (tgt && l < tgt.r + 14 && al.cd <= 0) {
           al.cd = al.kind === 'lich' ? 0.9 : al.kind === 'clone' ? 0.45 : al.kind === 'skeleton' ? 0.6 : al.kind === 'soul' ? 0.8 : 0.7;
@@ -4779,6 +4788,7 @@ export class World {
   // 사령술사: 영혼을 되살린다 — 공격력은 그대로, 체력은 절반, 첫 한 대는 보호막. 쓰러질 때까지 남고 다른 곳에 가도 따라온다
   // 사령술사의 부하를 세운다 (기록 m은 저장에 남아 다른 곳에서도 다시 선다) · 첫 한 대는 보호막
   spawnMinion(m, x, y, i = 0) {
+    const f = this.freeSpot(x, y, Math.max(3, (m.r || 6) - 1)); if (f) { x = f.x; y = f.y; } else if (this.player) { x = this.player.x; y = this.player.y; } // 벽 속에서 태어나지 않게
     this.allies.push({ id: this.nextId++, kind: m.kind, perm: true, mref: m, defId: m.defId, hp: m.maxHp, maxHp: m.maxHp, x, y, t: 1e9, max: 1e9, shield1: true, atk: m.atk, cd: 0.3 + i * 0.15, phase: i, dir: 1, r: m.r || 6, scale: m.scale || 1 });
   }
   raiseSoul(sv, x, y, i = 0, bonus = 1) {
