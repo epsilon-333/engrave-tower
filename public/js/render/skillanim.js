@@ -423,18 +423,17 @@ const SPLIT_GLOW = { fire: ['#ffe080', '#ff8a2a', '#c8401a'], ice: ['#ffffff', '
 const GROUND_DRAW = {
   split(R, g, a, k) {
     const rr = rnd(a.seed), dx = a.x2 - a.x1, dy = a.y2 - a.y1, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
-    const open = Math.min(1, a.t / 0.2), settle = Math.max(0, Math.min(1, (a.t - 0.25) / 0.5)), fade = k > 0.6 ? (k - 0.6) / 0.4 : 0;
-    const keep = (x, y) => !fade || ((x * 7 + y * 13 + (a.seed & 63)) % 17) / 17 > fade; // 사라질 때: 자리마다 정해진 순서로 도트가 빠진다
-    const px = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (keep(x, y)) { g.fillStyle = c; g.fillRect(x, y, 1, 1); } };
+    const open = Math.min(1, a.t / 0.2), settle = Math.max(0, Math.min(1, (a.t - 0.25) / 0.5)), close = k > 0.55 ? Math.min(1, (k - 0.55) / 0.35) : 0, fade = 0;
+    const px = (x, y, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1); };
     // 금의 길: 들쭉날쭉한 점들 (이웃 점을 1도트 선으로 잇는다)
     const N = Math.max(8, Math.round(L / 6)), pts = [];
     let off = 0;
     for (let i = 0; i <= N; i++) { off = Math.max(-a.w * 0.22, Math.min(a.w * 0.22, off + (rr() - 0.5) * 5)); pts.push({ u: i / N, x: a.x1 + dx * (i / N) + nx * off, y: a.y1 + dy * (i / N) + ny * off, wd: (0.45 + rr() * 0.55) }); }
-    const reach = open * N;
+    const reach = open * N, front = N * (1 - close); // 닫힐 때: 끝에서부터 시전한 자리 쪽으로 다물린다 (front 뒤는 닫힘)
     const glow = SPLIT_GLOW[a.elem];
     // 1) 들려 올라간 땅 조각 (금 양옆): 솟았다가 가라앉는다 · 밑에 그림자 틈
     for (let i = 1; i < N; i += 2) {
-      if (i > reach) break;
+      if (i > reach || i > front) break;
       const P = pts[i], side = i % 4 === 1 ? 1 : -1, lift = Math.round((a.big ? 4 : 3) * (1 - settle) * (0.6 + rr() * 0.6)), sw = 3 + Math.round(rr() * 3), sh = 2 + Math.round(rr() * 2);
       const cx = P.x + nx * side * (a.w * 0.32 + rr() * 3), cy = P.y + ny * side * (a.w * 0.32 + rr() * 3);
       for (let x = -sw; x <= sw; x++) px(cx + x, cy + 1, '#2a1e16'); // 틈 그림자
@@ -444,8 +443,10 @@ const GROUND_DRAW = {
     // 2) 금: 안쪽은 깊은 어둠 · 위쪽 가장자리는 빛 · 아래쪽은 그늘 (원소면 속에서 빛이 샌다)
     for (let i = 0; i < N && i < reach; i++) {
       const A = pts[i], B = pts[i + 1], steps = Math.ceil(Math.hypot(B.x - A.x, B.y - A.y));
+      if (i >= front) { if (k < 0.97) for (let s2 = 0; s2 <= steps; s2 += 2) px(A.x + (B.x - A.x) * s2 / Math.max(1, steps), A.y + (B.y - A.y) * s2 / Math.max(1, steps), '#5a4634'); continue; } // 닫힌 자리: 가는 흉터 (끝에 사라진다)
+      const near = Math.max(0, Math.min(1, (front - i) / 3)); // 닫히는 자리 가까이는 벌어진 폭이 좁아진다
       for (let s2 = 0; s2 <= steps; s2++) {
-        const t = s2 / Math.max(1, steps), x = A.x + (B.x - A.x) * t, y = A.y + (B.y - A.y) * t, half = Math.max(0, Math.round((A.wd + (B.wd - A.wd) * t) * a.w * 0.11 * open));
+        const t = s2 / Math.max(1, steps), x = A.x + (B.x - A.x) * t, y = A.y + (B.y - A.y) * t, half = Math.max(0, Math.round((A.wd + (B.wd - A.wd) * t) * a.w * 0.11 * open * (close ? near : 1)));
         for (let h = -half; h <= half; h++) px(x + nx * h, y + ny * h, glow && Math.abs(h) < half ? glow[Math.abs(h) === 0 ? 0 : 1] : '#100a08');
         px(x + nx * (half + 1), y + ny * (half + 1) - 1, '#c8b28a'); // 빛 받는 가장자리
         px(x - nx * (half + 1), y - ny * (half + 1) + 1, '#3a2c20'); // 그늘 가장자리
@@ -453,7 +454,7 @@ const GROUND_DRAW = {
     }
     // 3) 곁가지 금
     for (let b = 0; b < Math.round(N / 3); b++) {
-      const i = 1 + Math.floor(rr() * (N - 2)); if (i > reach) continue;
+      const i = 1 + Math.floor(rr() * (N - 2)); if (i > reach || i >= front) continue;
       let x = pts[i].x, y = pts[i].y; const side = rr() < 0.5 ? -1 : 1, len = 3 + Math.floor(rr() * 6);
       for (let j = 0; j < len; j++) { x += nx * side * (0.8 + rr() * 0.6) + ux * (rr() - 0.5) * 1.6; y += ny * side * (0.8 + rr() * 0.6) + uy * (rr() - 0.5) * 1.6; px(x, y, '#140c0a'); }
     }
@@ -465,6 +466,11 @@ const GROUND_DRAW = {
         if (rr() < 0.5) R.parts.push({ x: P.x, y: P.y - 1, vx: (rr() - 0.5) * 20, vy: -8, t: 0.7, max: 0.7, color: '#b8a890', g: 0, puff: true, size: 3 });
       }
     }
-    if (glow && open >= 1 && fade < 0.5 && Math.random() < 0.5) { const P = pts[Math.floor(Math.random() * pts.length)]; R.parts.push({ x: P.x, y: P.y, vx: 0, vy: -18, t: 0.5, max: 0.5, color: glow[1], g: -6, glow: true, size: 1 }); }
+    if (close > 0 && close < 1 && Math.random() < 0.7) { // 닫히는 자리에서 흙먼지
+      const P = pts[Math.max(0, Math.min(N, Math.floor(front)))];
+      R.parts.push({ x: P.x + (Math.random() - 0.5) * 6, y: P.y - 1, vx: (Math.random() - 0.5) * 16, vy: -10 - Math.random() * 8, t: 0.6, max: 0.6, color: '#b8a890', g: 0, puff: true, size: 2.5 });
+      if (Math.random() < 0.4) R.parts.push({ x: P.x, y: P.y, vx: (Math.random() - 0.5) * 40, vy: -30 - Math.random() * 30, t: 0.4, max: 0.4, color: '#7a6448', g: 380, chunk: true, floor: P.y + 1 });
+    }
+    if (glow && open >= 1 && !close && Math.random() < 0.5) { const P = pts[Math.floor(Math.random() * pts.length)]; R.parts.push({ x: P.x, y: P.y, vx: 0, vy: -18, t: 0.5, max: 0.5, color: glow[1], g: -6, glow: true, size: 1 }); }
   },
 };
