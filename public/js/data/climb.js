@@ -26,10 +26,12 @@ export const actOf = (f) => ACTS[Math.max(0, Math.min(ACTS.length - 1, Math.floo
 export const floorKind = (f) => (f % 10 === 0 ? 'lord' : f % 5 === 0 ? 'guardian' : 'fight');
 // 권장 레벨: 구역 안에서도 조금씩 오른다 (화면에 보여 준다)
 export const recLevel = (f) => Math.max(1, Math.round(actOf(f).rec + ((f - 1) % 10) * 1.0)); // 구역 안에서 층마다 권장 레벨 +1
-// 권장 레벨보다 낮으면: 레벨 하나마다 몬스터 공격력 +8% (최대 +120%) · 체력 +5% (최대 +80%) — 레벨을 올리고 스킬 조합을 바꿔 가며 오른다
+// 권장 레벨보다 낮으면: 레벨 하나마다 몬스터 공격력 +4% (최대 +40%) · 체력 +3% (최대 +30%)
+// 탑 안 각인이 없어졌으니 벽을 낮췄다 (예전: +8% · 최대 +120%). 강해지는 길은 레벨보다 각인 · 장비 · 성지 수련
+export const GAP_ATK = 0.04, GAP_ATK_MAX = 0.4, GAP_HP = 0.03, GAP_HP_MAX = 0.3;
 export function levelGap(f, level) {
   const gap = Math.max(0, recLevel(f) - (level || 1));
-  return { gap, atk: 1 + Math.min(1.2, 0.08 * gap), hp: 1 + Math.min(0.8, 0.05 * gap) }; // 레벨 하나마다 공격 +8% · 체력 +5% (층마다 갑자기 뛰지 않게) // 레벨이 모자라면 크게 세진다: 레벨 하나마다 공격 +20% · 체력 +12%
+  return { gap, atk: 1 + Math.min(GAP_ATK_MAX, GAP_ATK * gap), hp: 1 + Math.min(GAP_HP_MAX, GAP_HP * gap) };
 }
 
 export const BOSS_HP = { guardian: 1.4, lord: 1.0 }; // 수호자 · 주인 체력 배율 (보통 몬스터 체력은 data/curve.js 표)

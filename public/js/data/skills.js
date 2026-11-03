@@ -123,7 +123,7 @@ export const SKILLS = {
     desc: '6초 동안 모든 속성 공격이 다음 속성(화염→냉기→번개)까지 함께 남긴다. 마력 30.',
     do: [{ op: 'buff', id: 'surge', dur: 6, mods: {}, color: '#e8a8ff' }] },
   grandFireball: { name: '거대 화염구', role: '궁극', cd: 22, cost: 60, cast: 1.3, elem: 'fire', scale: 'mag', fx: 'meteor', ult: true, aim: 'cluster', mo: 'castBig',
-    desc: '하늘에서 거대한 불덩이가 떨어진다. 넓은 범위에 엄청난 피해와 화상 5중첩, 표식 대상에게 효과가 크다. 마력 60.',
+    desc: '하늘에서 거대한 불덩이가 떨어진다. 반경 6칸에 마법 공격력의 520% 피해와 화상 5중첩, 원소 표식이 있는 적에게는 더 크다. 마력 60.',
     do: [{ op: 'aoe', at: 'aim', r: 96, mul: 5.2, stacks: 5, bonusIf: 'marked', delay: 0.7, fall: 'fireball', fx: 'meteor' }] },
 
   // ══════ 마법사 · 시공술사 ══════
@@ -178,7 +178,7 @@ export const SKILLS = {
     desc: '[차지] 대검을 내리찍는다. 방어 50% 무시, 갑옷 부수기 3중첩. 오러 40.',
     do: [{ op: 'aoe', at: 'front', dist: 34, r: 50, mul: 2.8, pen: 0.5, armorBreak: 3, fx: 'quake' }] },
   skyfall: { name: '천붕참', role: '궁극', cd: 30, costAll: { min: 60 }, cast: 0.5, scale: 'phys', fx: 'skyfall', ult: true, aim: 'cluster', mo: 'overhead',
-    desc: '하늘을 가르는 거대한 일격. 앞으로 길게 뻗는 참격이 일직선의 적 모두에게 엄청난 피해.',
+    desc: '하늘을 가르는 거대한 일격. 앞으로 16칸 뻗는 참격이 일직선의 적 모두에게 공격력의 500% 피해 · 0.8초 기절 (오러가 많을수록 강하다).',
     do: [{ op: 'line', len: 260, w: 40, mul: 5.0, scaleRes: true, stun: 0.8, delay: 0.15, fx: 'skyfall' }] },
 
   // ══════ 오크 · 광전사 (분노) ══════
@@ -252,7 +252,7 @@ export const SKILLS = {
   contagion: { name: '전염', role: '마무리', cd: 8, cost: 25, scale: 'mag', elem: 'dark', fx: 'burst', aim: 'none', mo: 'castBig',
     desc: '저주받은 모든 적의 저주가 주변 적에게 번진다. 번질 때 중첩이 2배가 된다. 영혼 25.', do: [{ op: 'spread', what: 'curse', r: 70, mul: 0.4 }] },
   doomBrand: { name: '파멸의 낙인', role: '궁극', cd: 28, costAll: { min: 50 }, scale: 'mag', elem: 'dark', fx: 'doom', ult: true, aim: 'tank', mo: 'castBig',
-    desc: '적 하나에 낙인. 큰 피해를 주고, 그 적이 죽으면 주변 모든 적에게 저주 6중첩과 폭발이 퍼진다.',
+    desc: '적 하나에 낙인. 마법 공격력의 300% 피해를 주고, 그 적이 죽으면 주변 모든 적에게 저주 6중첩과 폭발이 퍼진다.',
     do: [{ op: 'single', range: 220, mul: 3.0, scaleRes: true, doom: true, stacks: 5 }] },
 
   // ══════ 암살자 · 그림자 칼날 ══════
@@ -690,15 +690,15 @@ const MORE_SKILLS = {
   },
   hexer: {
     soulRend: { name: '영혼 찢기', role: '공격', cd: 5, cost: 16, cast: 0.3, elem: 'dark', scale: 'mag', fx: 'rune', mo: 'cast', unlock: 15,
-      desc: '조준한 적 하나의 영혼을 찢어 큰 피해. 마력 16.', do: [{ op: 'single', range: 180, mul: 2.6, fx: 'rune' }] },
+      desc: '조준한 적 하나의 영혼을 찢어 마법 공격력의 260% 피해. 마력 16.', do: [{ op: 'single', range: 180, mul: 2.6, fx: 'rune' }] },
     plagueNova: { name: '역병 파동', role: '마무리', cd: 14, cost: 35, cast: 0.5, elem: 'dark', scale: 'mag', fx: 'fog', mo: 'castBig', unlock: 30,
-      desc: '내 둘레로 역병이 퍼져 큰 피해 · 독 3중첩. 마력 35.', do: [{ op: 'aoe', at: 'self', r: 100, mul: 2.4, status: 'poison', stacks: 3, fx: 'doom' }] },
+      desc: '내 둘레 6칸에 역병이 퍼져 마법 공격력의 240% 피해 · 독 3중첩. 마력 35.', do: [{ op: 'aoe', at: 'self', r: 100, mul: 2.4, status: 'poison', stacks: 3, fx: 'doom' }] },
   },
   shadowblade: {
     shurikenFan: { name: '수리검 부채', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'dart', mo: 'stab', unlock: 15,
-      desc: '수리검 일곱 개를 부채꼴로 던진다. 기세 +12.', do: [{ op: 'proj', n: 7, spread: 0.16, speed: 360, range: 200, mul: 0.6, kind: 'shuriken' }] },
+      desc: '수리검 일곱 개(하나에 공격력의 60%)를 부채꼴로 던진다. 그림자 +12.', do: [{ op: 'proj', n: 7, spread: 0.16, speed: 360, range: 200, mul: 0.6, kind: 'shuriken' }] },
     thousandCuts: { name: '천 갈래 베기', role: '마무리', cd: 14, cost: 35, scale: 'phys', fx: 'slashX', mo: 'stab', unlock: 30, aim: 'none',
-      desc: '1.2초 동안 무적으로 둘레의 적 사이를 달려 지나가며 여섯 번 벤다. 기세 35.', do: [{ op: 'channel', dur: 1.2, every: 0.2, invuln: true, sub: { op: 'danceStrike', r: 120, mul: 1.5 } }] },
+      desc: '1.2초 동안 무적으로 둘레의 적 사이를 달려 지나가며 여섯 번 벤다 (한 번에 공격력의 150%). 그림자 35.', do: [{ op: 'channel', dur: 1.2, every: 0.2, invuln: true, sub: { op: 'danceStrike', r: 120, mul: 1.5 } }] },
   },
   venomHunter: {
     toxicArrow: { name: '맹독 화살', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'dart', mo: 'shoot', unlock: 15,
