@@ -14,8 +14,8 @@ const { TOWER_WEAPONS } = await import(root + '/data/weapons.js');
 
 // ── 목표 (여기만 바꾸면 곡선이 바뀐다) ──
 export const TARGET = {
-  hits: (f) => 2 + 2 * (f - 1) / 99,                          // 보통 몬스터를 평타 몇 대에: 1층 2대 → 100층 4대
-  dmg: (f) => 0.03 + 0.09 * Math.pow((f - 1) / 99, 1.2),     // 보통 몬스터 한 대에 최대 체력의: 1층 3% → 100층 12%
+  hits: (f) => 4 + 3 * (f - 1) / 99,                          // 보통 몬스터를 평타 몇 대에: 1층 4대 → 100층 7대
+  dmg: (f) => 0.02 + 0.06 * Math.pow((f - 1) / 99, 1.2),     // 보통 몬스터 한 대에 최대 체력의: 1층 2% → 100층 8%
 };
 const CLS = ['greatsword', 'berserker', 'elementalist', 'ranger', 'shadowblade', 'guardian', 'necromancer', 'dragoon'];
 // 권장 레벨: 구역이 바뀔 때 거꾸로 내려가지 않게 이어 붙인다

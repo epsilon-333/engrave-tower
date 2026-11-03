@@ -3733,7 +3733,9 @@ export class World {
     const def = ALL_MONSTERS[id];
     const tm = this.climb ? climbMul(this.climb.f, this.zone?.id, this.climb.oath) : this.tower ? towerMul(this.tower.f) : null; // 탑: 층마다 강해진다
     const soft = !tm && !def.elite && !def.raid && def.ai !== 'dummy' && def.ai !== 'target' ? 1.7 : 1; // 바깥 · 던전의 보통 몬스터: 한 대에 쓰러지지 않게 (두세 번은 때려야)
-    const dm = 0.8 * soft * (tm ? tm.hp : 1 + 0.4 * this.depth), am = 3.8 * (tm ? tm.atk : 1 + 0.25 * this.depth); // 몬스터는 체력은 낮게 · 더 아프게 때린다
+    // 등반: 난이도 표(data/curve.js)가 체력 · 공격력을 그대로 정한다 (예전엔 여기서 공격 ×3.8이 한 번 더 붙어 표보다 4배 아팠다)
+    // 바깥 · 던전 · 예전 탑: 공격은 낮추고 체력은 높여 서로 덜 죽게 (예전 체력 ×0.8 · 공격 ×3.8)
+    const dm = this.climb ? tm.hp : 1.4 * soft * (tm ? tm.hp : 1 + 0.4 * this.depth), am = this.climb ? tm.atk : 2.8 * (tm ? tm.atk : 1 + 0.25 * this.depth);
     const e = {
       id: this.nextId++, defId: id, def, x, y, r: def.r, hp: def.hp * dm, maxHp: def.hp * dm, atk: def.atk * am, pres: def.pres, mres: def.mres,
       st: {}, atkCd: 0.5 + this.rng.range(0, 1), shotCd: 1 + this.rng.next() * 1.5, kbx: 0, kby: 0, hitFlash: 0, dead: false,

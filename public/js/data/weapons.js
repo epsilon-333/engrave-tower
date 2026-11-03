@@ -368,6 +368,7 @@ export const TOWER_WEAPONS = {
 // 심연 · 공허 · 망령 → 어둠의 문과 촉수, 빛 · 별 · 황금 → 빛기둥, 폭풍 · 번개 → 벼락, 서리 · 얼음 → 얼음 가시, 불 · 용 · 용암 → 폭발,
 // 숲 · 가시 · 이끼 → 덩굴, 늪 · 독 → 독구름, 균열 · 비전 → 비전 문양, 뼈 · 재 · 흑요석 → 땅이 갈라진다
 const NERF = 1; // (예전 너프 배율 — 이제 단계 곡선 자체가 완만하다)
+const STAT_NERF = 0.5; // 탑 무기 능력치 절반: 근력 같은 스탯이 크게 붙어 각성 문턱이 줄줄이 열리며 공격이 폭발하던 것
 const THEMES = [
   ['blood', /피의|피 |핏|선혈|흡혈/, ['blood'], { fx: 'thorns', elem: 'phys' }],
   ['bone', /뼈|해골|송곳니/, ['bone'], { fx: 'bones', elem: 'phys' }],
@@ -411,7 +412,7 @@ for (const [id, x] of Object.entries(TOWER_WEAPONS)) {
   const weapon = { ...T.weapon, ...(x.w || {}), cat: T.cat, skill: sid };
   weapon.mul = round((x.w?.mul ?? T.weapon.mul) * tierPower(x.t) * R.mul * NERF);
   const stats = { ...(T.stats || {}) };
-  for (const [k, v] of Object.entries(x.st || {})) stats[k] = (stats[k] || 0) + (k === 'lifesteal' ? v : Math.round(v * statScale(x.t) * NERF));
+  for (const [k, v] of Object.entries(x.st || {})) stats[k] = (stats[k] || 0) + (k === 'lifesteal' ? v : Math.round(v * statScale(x.t) * NERF * STAT_NERF));
   const theme = themeOf(x, T); retheme(x.fx, theme); retheme(x.sk?.do, theme);
   const fx = x.fx || [];
   ITEMS[id] = {

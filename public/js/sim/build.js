@@ -56,8 +56,8 @@ export function computeBuild(lo) {
   for (const s of GEAR_SLOTS) {
     const id = lo.gear?.[s];
     if (s === 'off' && (twoHand || !(ITEMS[id]?.slot === 'off' || offIsWeapon))) continue;
-    // 능력치 배율: 양손 무기는 한손 둘을 합친 만큼(×1.8), 왼손에 든 무기는 절반
-    if (id && ITEMS[id]) sources.push({ kind: 'item', id, def: ITEMS[id], mul: s === 'weapon' && twoHand ? 1.8 : s === 'off' && offIsWeapon ? 0.5 : 1 });
+    // 능력치 배율: 양손 무기는 ×1.3, 왼손에 든 무기는 절반
+    if (id && ITEMS[id]) sources.push({ kind: 'item', id, def: ITEMS[id], mul: s === 'weapon' && twoHand ? 1.3 : s === 'off' && offIsWeapon ? 0.5 : 1 }); // 양손 무기 능력치 ×1.3 (예전 ×1.8 — 양손의 장점은 양손 보너스로)
   }
 
   // 1) 고정 스탯
@@ -161,7 +161,7 @@ export function computeBuild(lo) {
   // 8) 파생 수치
   const E = {}; for (const k of BASE_STATS) E[k] = eff(Math.max(0, stats[k]));
   const d = {
-    maxHp: 220 + E.vit * 18,                   // 기본 체력을 넉넉히 (몬스터 공격력과 함께 두 배)
+    maxHp: 260 + 14 * ((lo.level || 1) - 1) + E.vit * 24, // 체력: 레벨마다 +14, 체력 스탯이 더 많이 (공격이 체력보다 빨리 크던 것)
     physAtk: 4 + E.str * 1.1,                  // 기본 공격력은 조금 낮게 (예전 × 1.3)
     dexAtk: 4 + E.agi * 1.0 + E.str * 0.2,
     magAtk: 4 + E.mag * 1.1,
@@ -190,12 +190,16 @@ export function computeBuild(lo) {
   if (lo.race === 'golem') d.moveSpeed *= 0.85;
   const flags = new Set();
   const triggers = { hit: [], kill: [], hurt: [], hurtMag: [], dodge: [], crit: [], dash: [], shield: [], awaken: [], cast: [] };
+  // 공격 %는 곱하지 않고 더한다: 각성 · 각인 · 장비의 「공격력 +N%」 「모든 피해 +N%」가 서로 곱해져 높은 층에서 폭발하던 것 (+10%와 +15% = +25%)
+  const ADDITIVE = { physAtk: 0, dexAtk: 0, magAtk: 0, dmgMul: 0 };
   for (const e of effects) {
     if (e.type === 'add') d[e.key] = (d[e.key] || 0) + e.v;
+    else if (e.type === 'mul' && e.key in ADDITIVE) ADDITIVE[e.key] += e.v - 1;
     else if (e.type === 'mul') d[e.key] = (d[e.key] ?? 1) * e.v;
     else if (e.type === 'flag') flags.add(e.flag);
     else if (e.type === 'on') triggers[e.event].push(e);
   }
+  for (const [k, v] of Object.entries(ADDITIVE)) if (v) d[k] = (d[k] ?? 1) * Math.max(0.1, 1 + v);
   d.maxHp = Math.round(d.maxHp);
   d.physPen += d.sensePen; d.magPen += d.sensePen;
   d.dodge = Math.min(0.6, d.dodge);
