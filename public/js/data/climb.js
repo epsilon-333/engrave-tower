@@ -33,12 +33,8 @@ export function levelGap(f, level) {
   return { gap, atk: 1 + Math.min(1.2, 0.08 * gap), hp: 1 + Math.min(0.8, 0.05 * gap) }; // 레벨 하나마다 공격 +8% · 체력 +5% (층마다 갑자기 뛰지 않게) // 레벨이 모자라면 크게 세진다: 레벨 하나마다 공격 +20% · 체력 +12%
 }
 
-// 몬스터 세기: 구역마다 몬스터 종류의 기본 체력이 다르므로 구역 평균으로 나눠 맞춘 뒤 층마다 오른다.
-// 층마다 복리로 강해진다 (100층까지 끝없이): 레벨 · 무기 · 각인이 받쳐 줘야 오른다
-const HP_GROW = 1.06, ATK_GROW = 1.042;
-// 탑의 몬스터는 바깥보다 단단하다 (보통 몹도 서너 번은 때려야 쓰러진다) · 수호자 · 주인은 그보다 더
-const CLIMB_HP = 2.3, CLIMB_ATK = 1.15; // 3.2 → 2.3: 맞으면 잘 쓰러지게 (보통 몹은 두세 번)
-export const BOSS_HP = { guardian: 1.4, lord: 1.0 }; // 주인: 몬스터 체력이 늘어난 만큼 배율을 낮춤 // 보스 컨셉: 단단한 보스는 약하게 때리고, 세게 때리는 보스는 무르다 [체력, 공격]
+export const BOSS_HP = { guardian: 1.4, lord: 1.0 }; // 수호자 · 주인 체력 배율 (보통 몬스터 체력은 data/curve.js 표)
+// 보스 컨셉: 단단한 보스는 약하게 때리고, 세게 때리는 보스는 무르다 [체력, 공격]
 export const BOSS_STYLE = {
   mossLord: [1.2, 0.8], climbQueen: [1.2, 0.8], demonCaptain: [1.25, 0.75], frostOgre: [1.2, 0.8], // 단단함
   climbChief: [0.75, 1.25], bogHag: [0.75, 1.25], climbWitch: [0.75, 1.25], wraithLord: [0.7, 1.3], // 날카로움
@@ -52,8 +48,6 @@ export function setZoneRef(zoneId, pool) {
   ZONE_REF[zoneId] = { hp: list.reduce((a, m) => a + m.hp, 0) / list.length, atk: list.reduce((a, m) => a + m.atk, 0) / list.length };
 }
 const BASE_REF = { hp: 48, atk: 8.5 }; // 1층(이끼 굴) 몬스터 평균에 맞춘 기준
-// 구역이 바뀔 때마다 한 계단 더 (뒤 구역일수록 각인이 쌓여 강해지므로)
-const ACT_HP = [1, 1.3, 1.75, 2.4, 3.3], ACT_ATK = [1, 1.18, 1.4, 1.68, 2.0]; // 51층부터는 마지막 계단 그대로 (층마다 조금씩 오르는 몫만)
 export function climbMul(f, zoneId, oath = {}) {
   const ref = ZONE_REF[zoneId] || BASE_REF;
   // 난이도 표 하나 (data/curve.js · tools/curve.mjs 로 만든다): 층 f 의 보통 몬스터 평균 체력 · 공격력. 구역마다 몬스터 기본값이 달라도 평균이 표에 맞게 나눠 준다
@@ -327,4 +321,3 @@ export const startBonus = (startF) => ({ eng: Math.floor((startF - 1) / 10) * 2,
 export function newClimbSave() {
   return { best: 0, runs: 0, wins: 0, shards: 0, meta: {}, oath: {}, oathBest: 0, lords: {}, kills: 0, bestRun: null };
 }
-export const TAG_NAME = (t) => TAGS[t]?.name || t;

@@ -306,4 +306,3 @@ export function drawBubbles(r, w) {
     g.globalAlpha = 1;
   }
 }
-export const findName = (look) => FIND_NAME[look] || '';

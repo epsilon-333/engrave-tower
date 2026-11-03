@@ -13,7 +13,6 @@ import { engravingSkillFor, SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES } fr
 
 export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back']; // 각인 칸 다섯: 앞 넷이 Q · E · R · F(스킬 + 패시브), 마지막은 패시브만 (부위 구분 없음 · 이름은 예전 저장 그대로)
 export const SKILL_SLOTS = SLOTS.slice(0, 4), SLOT_KEYS = ['Q', 'E', 'R', 'F', '패시브'];
-export const AGI_DODGE_FROM = 25;
 export const GEAR_SLOTS = ['weapon', 'off', 'armor', 'acc1', 'acc2'];
 
 // 각인 강화 (용의 둥지): 단계마다 스탯 · 효과 수치 +12%

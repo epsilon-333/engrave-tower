@@ -16,7 +16,6 @@ export const CALLER_RATES = [0.45, 0.33, 0.17, 0.05];
 // 정령 레벨: 함께 싸운 시간(초)이 쌓이면 오른다. 레벨마다 힘 +6% (최대 10)
 export const SPIRIT_LV_XP = [0, 120, 300, 600, 1000, 1500, 2200, 3000, 4000, 5400], SPIRIT_LV_MUL = 0.06;
 export const spiritLevel = (xp = 0) => { let l = 1; for (let i = 0; i < SPIRIT_LV_XP.length; i++) if (xp >= SPIRIT_LV_XP[i]) l = i + 1; return l; };
-export const PULL10_GUARANTEE = 1; // 10회 계약은 희귀 이상 하나를 보장
 
 // 속성: 색 3가지(밝음 · 몸 · 그늘) · 버프(등급 1배 · 결속 1 기준) · 공격 모양
 export const SPIRIT_ELEMS = {

@@ -123,8 +123,6 @@ export function cloudSave(save) {
   clearTimeout(timer);
   timer = setTimeout(flush, 1500);
 }
-// 다시 붙은 뒤 들고 있던 저장을 바로 올린다
-export function cloudFlushNow() { if (cloud.state === 'ready' || cloud.state === 'saved' || cloud.state === 'error') { if (pending) { cloud.state = 'saving'; emit(); flush(); } } }
 // 같은 브라우저의 다른 창이 더 새 진행을 저장했다: 이 창은 더 쓰지 않는다
 export function markStale() { cloud.state = 'stale'; pending = null; clearTimeout(timer); emit(); }
 // 즉시 저장 (사냥 결과처럼 중요한 순간)

@@ -21,33 +21,18 @@ export async function loadAssets() {
     if (m && !atlas[`${m[1]}_f0`] && atlas[`${m[1]}_f1`]) atlas[`${m[1]}_f0`] = atlas[k];
   }
   registerCustomArt(atlas);
-  // 뼈대 도트 시트 (tools/dragon.py · kings.py · dragonkin.py 로 생성): 동작마다 한 줄, 프레임마다 한 칸
-  const load = (src) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
-  const json = (src) => fetch(src).then((r) => r.json()).catch(() => null);
-  const reg = (img, meta, prefix) => {
-    if (!img || !meta) return;
-    for (const [anim, { row, n }] of Object.entries(meta.anims)) for (let i = 0; i < n; i++) atlas[`${prefix}_${anim}_anim_f${i}`] = { x: i * meta.w, y: row * meta.h, w: meta.w, h: meta.h, src: img };
-  };
-  // 용인족: 뼈대 도트(tools/dragonkin.py) · 용과 정령왕: 사용자 스프라이트 시트에서 잘라낸 동작 프레임(tools/cut_sheet.py)
-  const [dkI, dkM, meta, drI, kF, kW, kG] = await Promise.all([
-    load('assets/custom/dragonkin.png'), json('assets/custom/dragonkin.json'), json('assets/custom/sheet_meta.json'),
-    load('assets/custom/dragon_fire.png'), load('assets/custom/king_fire.png'), load('assets/custom/king_wind.png'), load('assets/custom/king_forest.png'),
-  ]);
-  reg(dkI, dkM, 'dragonkin');
-  // 사람: 뼈대 도트(tools/people.py) — 마을 사람 · 성지 주민 · 우두머리 · 관리 · 상인 · 사람 모양 몬스터를 하나하나 그렸다
-  const [pI, pM] = await Promise.all([load('assets/custom/people.png'), json('assets/custom/people.json')]);
-  if (pI && pM) for (const [id, c] of Object.entries(pM.chars)) reg(pI, { w: pM.w, h: pM.h, anims: c.anims }, 'p_' + id);
-  // 랩터 (tools/raptor.py): 야생 · 우두머리 · 안장 얹은 탈것
-  const [rM, r1, r2, r3] = await Promise.all([json('assets/custom/raptors.json'), load('assets/custom/raptor.png'), load('assets/custom/raptor_alpha.png'), load('assets/custom/raptor_mount.png')]);
-  if (rM) { reg(r1, rM.raptor, 'raptor_beast'); reg(r2, rM.raptor_alpha, 'raptor_alpha'); reg(r3, rM.raptor_mount, 'raptor_mount'); }
-  // 짐승 · 괴물 (tools/creatures.py): 크기가 제각각이라 한 장에 세로로 쌓여 있다 (y0 = 그 몬스터 칸의 시작 줄)
-  const [cI, cM] = await Promise.all([load('assets/custom/creatures.png'), json('assets/custom/creatures.json')]);
-  if (cI && cM) for (const [id, c] of Object.entries(cM)) for (const [anim, { row, n }] of Object.entries(c.anims)) for (let i = 0; i < n; i++) atlas[`c_${id}_${anim}_anim_f${i}`] = { x: i * c.w, y: c.y0 + row * c.h, w: c.w, h: c.h, src: cI };
-  if (meta) {
-    reg(drI, meta.dragon_fire, 'true_dragon'); atlas.true_dragon_meta = meta.dragon_fire;
-    reg(kF, meta.king_fire, 'king_fire'); reg(kW, meta.king_wind, 'king_wind'); reg(kG, meta.king_forest, 'king_forest');
-    atlas.king_meta = { fire: meta.king_fire, wind: meta.king_wind, forest: meta.king_forest };
+  // 직접 그린 · 잘라 낸 도트 시트: 목록 하나(assets/custom/sprites.json, tools/sprites.py가 만든다)를 읽어 같은 방식으로 올린다
+  // 시트마다 { img, prefix, w, h, y0, anims: { 동작: { row, n } } } → 프레임 이름 {prefix}_{동작}_anim_f{i}, 자리 (i*w, y0 + row*h)
+  const man = await fetch('assets/custom/sprites.json').then((r) => r.json()).catch(() => null);
+  if (!man) return;
+  const imgs = {};
+  await Promise.all([...new Set(man.sheets.map((sh) => sh.img))].map((src) => new Promise((res) => { const i = new Image(); i.onload = () => { imgs[src] = i; res(); }; i.onerror = () => res(); i.src = 'assets/custom/' + src; })));
+  for (const sh of man.sheets) {
+    const img = imgs[sh.img]; if (!img) continue;
+    for (const [anim, { row, n }] of Object.entries(sh.anims)) for (let i = 0; i < n; i++) atlas[`${sh.prefix}_${anim}_anim_f${i}`] = { x: i * sh.w, y: (sh.y0 || 0) + row * sh.h, w: sh.w, h: sh.h, src: img };
   }
+  if (man.meta.true_dragon) atlas.true_dragon_meta = man.meta.true_dragon; // 용 · 정령왕: 크기 · 보폭 같은 그리기 정보
+  if (man.meta.king) atlas.king_meta = man.meta.king;
 }
 
 // 애니메이션 프레임 이름 목록: base_idle_anim_f0.. / base_run_anim_f0.. / base_anim_f0..
@@ -87,4 +72,3 @@ export function sprite(name, tint = '', flash = false, flip = false) {
   return c;
 }
 
-export function hasSprite(name) { return !!atlas[name]; }

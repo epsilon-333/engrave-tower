@@ -1,6 +1,7 @@
 # 사용자가 준 스프라이트 시트(용 · 정령왕)에서 동작 프레임을 잘라 게임용 시트로 만든다
 #   패널마다 배경과 다른 픽셀을 찾아 프레임을 나누고(겹치면 개수대로 균등 분할), 배경을 지우고,
 #   발끝을 바닥선에 맞춘 같은 크기의 칸에 넣는다. 사이가 끊기는 동작은 두 프레임을 섞은 중간 프레임을 넣는다.
+from sprites import meta_path, build_manifest
 from dragon_walk import walk_cycle
 import sys, json
 from collections import deque
@@ -235,5 +236,6 @@ for name, anims in models.items():
     if name == 'dragon': meta_all[fn]['stride'] = stride   # 발이 앞뒤로 가는 거리 (원본 픽셀)
     if PREV: sheet.save(f'{PREV}/{fn}_prev.png')
     print(fn, cw, ch, {k: v['n'] for k, v in meta.items()})
-json.dump(meta_all, open(f'{OUT}/sheet_meta.json', 'w'), ensure_ascii=False)
+json.dump(meta_all, open(meta_path('sheet_meta'), 'w'), ensure_ascii=False)
+build_manifest(OUT)
 print('done')

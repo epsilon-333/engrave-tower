@@ -232,4 +232,3 @@ export const STYLES = {
   mirror: { name: '거울 수호자', desc: '맞을수록 적이 죽는 반사 탱커', tags: ['reflect', 'giant', 'slime'], weapon: 'knightSword', stats: ['pres', 'mres'], races: { knight: 2, golem: 1 } },
 };
 
-export const STARTER_ITEMS = ['rustySword'];

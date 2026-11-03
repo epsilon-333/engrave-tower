@@ -65,7 +65,6 @@ const SHAPES = {
 
 const cache = new Map();
 
-export function frameCount(shape) { return SHAPES[shape].length; }
 
 export function getSprite(shape, pal, frame = 0, flash = false, flip = false) {
   const frames = SHAPES[shape];

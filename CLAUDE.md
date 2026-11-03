@@ -40,4 +40,6 @@
 ## 도구와 테스트
 - `tools/tests/*.mjs`: 2D 시뮬레이션 테스트. 예) `node tools/tests/simtest.mjs` → `ALL OK`, `node tools/tests/storytest.mjs`
 - `tools/cut_sheet.py art/source/sheet_dragon_kings.webp public/assets/custom`: 사용자가 준 시트에서 용·정령왕 프레임을 만든다(Pillow·numpy·opencv 필요).
+- 도트 그림 형식 (하나로 통일): 그림은 `public/assets/custom/*.png`, 칸 정보는 `tools/sprites/*.json`, 게임은 목록 하나 `public/assets/custom/sprites.json`만 읽는다. 그림 도구(people·creatures·raptor·dragonkin·cut_sheet)를 돌리면 목록이 다시 만들어진다. 손으로 고쳤으면 `python3 tools/sprites.py`.
+- `tools/curve.mjs`: 탑 난이도 표 · `tools/engdoc.mjs`: 각인 전체 목록 문서 · `tools/tests/engskill.mjs` · `chain.mjs`: 각인 스킬 · 연쇄 시험.
 - `art/source/`: 사용자가 준 원본 그림(레퍼런스·스프라이트 시트).

@@ -1,6 +1,5 @@
 // 새 몬스터 그림: 0x72 그림체에 맞춘 작은 픽셀 그림을 직접 찍는다 (짙은 테두리 · 위는 밝게 · 아래는 어둡게)
 // 프레임마다 다리 · 날개 · 꼬리 · 몸이 따로 움직인다. pose: 'walk' | 'idle' | 'wind'(공격 예고) · f: 0~3
-const OUT = '#141018';
 const cache = new Map();
 
 function makeP(W, H) {
@@ -37,7 +36,6 @@ function outline(P) {
   g.drawImage(t, 0, 0);
 }
 const sw = (f) => (f % 2 ? 1 : -1); // 다리 앞뒤
-const legs = (P, list, f, col, y1, lift = 1) => list.forEach((x, i) => { const up = (i + f) % 2 ? lift : 0; P.r(x, y1 - 3, 1, 3 - up, col); P.p(x + (i % 2 ? 1 : -1) * 0, y1 - up - 1, col); });
 
 const B = {
   // 독거미: 다리가 긴 보라 거미 · 배에 초록 무늬

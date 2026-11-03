@@ -9,12 +9,6 @@ const disc = (g, x, y, r, col) => { g.fillStyle = col; g.beginPath(); g.arc(x, y
 const shadowEllipse = (g, cx, cy, rx, ry, a = 0.25) => { g.fillStyle = `rgba(0,0,0,${a})`; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); g.fill(); };
 const glowAt = (g, x, y, r, col, a) => { const gr = g.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, col.replace('A', a)); gr.addColorStop(1, col.replace('A', 0)); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); };
 const poly = (g, col, pts) => { g.fillStyle = col; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill(); };
-function blobs(g, list, cols) { // 외곽선 · 어두운 면 · 밝은 면 · 반짝임 순서로 둥근 덩어리 묶음
-  for (const [x, y, r] of list) disc(g, x, y, r + 1, OL);
-  for (const [x, y, r] of list) disc(g, x, y, r, cols[3]);
-  for (const [x, y, r] of list) disc(g, x - 1, y - 1.5, r - 2, cols[0]);
-  for (const [x, y, r] of list) disc(g, x - r * 0.3, y - r * 0.32, r * 0.45, cols[1]);
-}
 // 울퉁불퉁한 잎 덩이: 가장자리가 잎처럼 들쭉날쭉 (동그라미가 아니게)
 function lump(g, x, y, r, s, col) {
   if (r <= 0) return;

@@ -41,7 +41,6 @@ import { getAutoAim, setAutoAim, getNpcAttack, setNpcAttack } from './settings.j
 import { witness, opinionText } from './sim/npclife.js';
 import { ENGRAVINGS } from './data/engravings.js';
 import { RACE_ART } from './data/art.js';
-import { buildPlaza } from './data/plaza.js';
 import { unlockAudio, sfx, startMusic, getVolume, setVolume } from './audio.js';
 import { setupTouch, isTouch } from './touch.js';
 import { PORTS, CARGO, CARGO_CAP, destName, buyPrice as portBuy, sellPrice as portSell, noteTrade, rememberPrices, cargoCount, SEA_EVENTS } from './data/trade.js';
@@ -64,7 +63,6 @@ const canvas = document.getElementById('canvas');
 const panelEl = document.getElementById('panel');
 const overlay = document.getElementById('overlay');
 const renderer = new Renderer(canvas);
-const plazaMap = buildPlaza();
 const hub = new Hub(panelEl, () => save, (zone) => { closePanel(); if (zone === '__practice') enterPractice(); else enterZone(zone); }, resetGame, closePanel);
 hub.getWorld = () => world;
 // ───── 온라인: 바깥 세계에서 다른 사람이 보이고, 채팅하고, 결투하고, 파티 · 길드를 맺는다 ─────
@@ -1067,16 +1065,6 @@ const lifeOf = () => ({ get knack() { return (save.knack ||= newKnack()); }, bag
 // 세계마다 함께 넘기는 저장 객체: 생활 · 하루의 시간 · 오래가는 효과(음식 · 잠)
 const shared = () => ({ life: lifeOf(), clock: save.time, persist: save.effects, minions: (save.minions ||= []), npcMem: (save.npcMem ||= {}) });
 
-function enterPlaza(first) {
-  { const el = document.getElementById('practicePanel'); if (el) el.hidden = true; }
-  world = new World({ build: buildNow(), mode: 'plaza', seed: 1, map: plazaMap, clock: save.time, persist: save.effects });
-  world.questReady = (save.quests || []).some((q) => q.done);
-  if (save.story?.flags.pinoDone) world.objects.push({ kind: 'npc', id: 'pinoPlaza', art: 'pino', x: 16 * TILE + 8, y: 13 * TILE + 8, label: '지도 제작자 피노와 이야기', reusable: true });
-  renderer.setWorld(world);
-  startMusic('plaza');
-  startLoop();
-  if (first || !save.tutorial) showTutorial();
-}
 
 // 바깥 세계 (2D 오픈월드): 마을에서 시작해 어디로든 간다. at: 'cave' · 'tower'면 그 입구 앞에서
 let returnTo = null, curInterior = null; // curInterior: 지금 들어가 있는 입구 { id, x, y }
@@ -3249,27 +3237,6 @@ function happeningTalk(hid) {
     if (k === 'patrolBribe') happeningAct(h, 'side');
     else if (k === 'cultGive') happeningAct(h, 'help');
     else { polGain({ fame: 3 }); world.emit({ t: 'text', x: h.o.x, y: h.o.y - 30, text: '고맙습니다…!', color: '#f6dfae' }); renderer.banner = { text: '농부에게 돈을 건넸다', sub: '기부 · 명성 +3', t: 2.4, color: '#9fe8b0' }; }
-  }));
-}
-function happeningTalkOld(hid) {
-  const h = HAPPEN_LIST.find((q) => q.id === hid); if (!h || h.o.engaged || h.o.gone) return;
-  const H = HAPPENINGS[h.type], P = polOf();
-  showModal(`<h2>${esc(H.name)}</h2><p>${esc(H.text)}</p><div class="soc-list">${H.choices.map((c) => `<div class="soc-row ${P.faction && ALIGN[P.faction][h.type] === c.id ? 'on' : ''}"><span class="nm"><b>${esc(c.label)}</b></span><span class="muted">${esc(c.hint)}${P.faction && ALIGN[P.faction][h.type] === c.id ? ` · ${FACTIONS[P.faction].name} 의뢰 (×1.5)` : ''}</span><span class="btns"><button class="sm" data-hc="${c.id}">고른다</button></span></div>`).join('')}</div>`);
-  overlay.querySelectorAll('[data-hc]').forEach((b) => (b.onclick = () => {
-    overlay.hidden = true; paused = false; modal = null;
-    const c = H.choices.find((q) => q.id === b.dataset.hc);
-    if (c.id === 'leave') return;
-    const aligned = !!(P.faction && ALIGN[P.faction][h.type] === c.id);
-    const finish = () => happeningDone(h, c, aligned);
-    if (c.sneak && Math.random() < c.sneak) { finish(); return; }
-    if (c.fight) {
-      h.o.engaged = true; h.choice = c; h.aligned = aligned;
-      const foes = world.spawnGroup(FOES[c.fight], h.o.x + 30, h.o.y, Math.max(5, Math.min(60, save.level + 1)), { r: 50 });
-      world.skirmish = { id: h.id, foes };
-      renderer.banner = { text: c.sneak ? '들켰다!' : c.label, sub: '모두 쓰러뜨리자', t: 2.4, color: '#ff9a7a' };
-      return;
-    }
-    finish();
   }));
 }
 function happeningDone(h, c, aligned) {

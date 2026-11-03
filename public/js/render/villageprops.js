@@ -17,7 +17,6 @@ export function drawVillageProp(g, pr, t, night) {
   f(g, Math.round(cx), Math.round(by), t, night, pr);
   return true;
 }
-export const VILLAGE_PROPS = new Set(['archTarget', 'runeCrystal', 'lectern', 'telescope', 'anvil', 'warDrum', 'grave', 'candles', 'knifeBoard', 'crates', 'eggClutch', 'brazier', 'flowerBed', 'bannerPole', 'hayBale', 'bonePile', 'fernBig', 'crystalShard', 'lamp', 'stake']);
 
 const VP = {
   archTarget(g, cx, by, t, night, pr) { // 짚 과녁: 다리 셋 · 둥근 표적 (맞으면 흔들린다)

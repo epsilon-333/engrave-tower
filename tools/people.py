@@ -1,6 +1,7 @@
 # 사람 도트 생성기: 0x72 캐릭터와 같은 크기 · 큰 머리 · 짙은 외곽선. pixelrig(뼈대 도트)로 부위를 그리고 동작마다 관절만 바꿔 새로 찍는다.
-# 한 사람 = 서기(4) · 달리기(4) · 일하기(4) 세 줄. 모두 people.png 한 장에 모으고 people.json 에 줄 번호를 적는다.
+# 한 사람 = 서기(4) · 달리기(4) · 일하기(4) 세 줄. 모두 people.png 한 장에 모으고 tools/sprites/people.json 에 줄 번호를 적는다.
 # 색만 바꾼 재활용 그림을 쓰지 않으려고, 마을 사람 · 성지 주민 · 우두머리 · 관리 · 상인 · 선원을 하나하나 다르게 설계한다.
+from sprites import meta_path, build_manifest
 import math, sys, json
 from PIL import Image
 from pixelrig import Model, Part, Shape
@@ -498,5 +499,6 @@ if __name__ == '__main__':
     for r, fr in enumerate(rows):
         for c, im in enumerate(fr): img.alpha_composite(im, (c * W, r * H))
     img.save(out + '/people.png')
-    json.dump(meta, open(out + '/people.json', 'w'), ensure_ascii=False)
+    json.dump(meta, open(meta_path('people'), 'w'), ensure_ascii=False)
+    build_manifest(out)
     print(len(ids), 'people', img.size)

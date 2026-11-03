@@ -1,4 +1,5 @@
 # 불 용인족: 0x72 캐릭터 크기의 작은 사람 모습. 붉은 삐죽 머리 · 작은 뿔 · 불꽃 꼬리 · 검붉은 옷. 동작: 서기 · 달리기 · 비상(날개)
+from sprites import meta_path, build_manifest
 import math, sys, json
 from pixelrig import Model, Part, Shape, sheet
 
@@ -62,5 +63,6 @@ if __name__ == '__main__':
     out = sys.argv[1]
     anims = [('idle', idle()), ('run', run()), ('soar', soar())]
     _, meta = sheet(model, anims, out + '/dragonkin.png')
-    json.dump({'w': W, 'h': H, 'anims': meta}, open(out + '/dragonkin.json', 'w'))
+    json.dump({'w': W, 'h': H, 'anims': meta}, open(meta_path('dragonkin'), 'w'))
+    build_manifest(out)
     print(meta)

@@ -166,5 +166,3 @@ export const SEA_EVENTS = {
     ],
   },
 };
-// 이길 확률: 레벨이 높을수록 (해적 Lv 10 기준)
-export const seaWinChance = (level) => Math.max(0.2, Math.min(0.92, 0.35 + (level - 10) * 0.025));

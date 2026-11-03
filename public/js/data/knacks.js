@@ -31,7 +31,6 @@ export const KNACKS = {
   slowField: { act: 'castSpell', min: 150, chance: 0.01, kind: 'skill', skill: 'slowField', hint: '주문을 외우고 또 외우다 보면' },
   shieldBash: { act: 'block', min: 30, chance: 0.04, kind: 'skill', skill: 'shieldBash', hint: '공격을 막고 받아치다 보면' },
 };
-export const CC_SKILLS = new Set(Object.values(KNACKS).filter((k) => k.kind === 'skill' && ['vineSnare', 'harpoon', 'snare', 'frostChain', 'pushArrow', 'slowField', 'shieldBash'].includes(k.skill)).map((k) => k.skill));
 const BY_ACT = {};
 for (const [id, k] of Object.entries(KNACKS)) (BY_ACT[k.act] ||= []).push(id);
 // 짐승 (사냥 숙련)

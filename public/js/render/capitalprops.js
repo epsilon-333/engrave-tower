@@ -7,7 +7,6 @@ const OL = '#1a1410';
 const R = (g, col, x, y, w, h) => { g.fillStyle = col; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
 const sh = (g, cx, cy, rx, ry, a = 0.25) => { g.fillStyle = `rgba(0,0,0,${a})`; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); g.fill(); };
 const disc = (g, cx, cy, r, col) => { g.fillStyle = col; g.beginPath(); g.arc(cx, cy, Math.max(0.5, r), 0, Math.PI * 2); g.fill(); };
-const glow = (g, x, y, r, col, a) => { const gr = g.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, col.replace('A', a)); gr.addColorStop(1, col.replace('A', 0)); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); };
 
 // 성벽 돌 색: 밝은 윗면 · 앞면 · 줄눈 · 그늘
 const ST = { top: '#d2ccbe', top2: '#bcb6a6', face: '#aaa496', face2: '#98927f', joint: '#7e7868', dark: '#5e594e', moss: '#6a8a4a' };

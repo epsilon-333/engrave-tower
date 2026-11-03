@@ -1,5 +1,6 @@
 # 랩터 도트: 두 발로 달리는 날렵한 공룡 (옆모습, 오른쪽을 본다). 야생 랩터 · 우두머리 · 안장을 얹은 탈것.
 # 동작: 서기(4) · 달리기(6) · 물기(4). pixelrig 뼈대 도트로 프레임마다 관절을 새로 찍는다.
+from sprites import meta_path, build_manifest
 import math, sys, json
 from pixelrig import Model, Part, Shape, sheet
 
@@ -67,5 +68,6 @@ if __name__ == '__main__':
         m = raptor(body, belly, stripe, saddle)
         _, mt = sheet(m, [('idle', idle()), ('run', run()), ('bite', bite())], f'{out}/{name}.png')
         meta[name] = {'w': W, 'h': H, 'anims': mt}
-    json.dump(meta, open(f'{out}/raptors.json', 'w'))
+    json.dump(meta, open(meta_path('raptors'), 'w'))
+    build_manifest(out)
     print(meta)

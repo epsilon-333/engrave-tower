@@ -347,8 +347,6 @@ export function npcDown(w, e) {
   w.signals.push({ t: 'npcDown', id: o.id, role: o.role, seen: witness(w, e.x, e.y, 'beatDown', 45, o) });
 }
 // ───────── 기억 · 소문 ─────────
-const DEED_TEXT = { assault: '사람을 때렸다', beatDown: '사람을 때려눕혔다', raid: '상단을 털었다', rob: '세금 마차를 털었다', escort: '상단을 지켜 줬다', guard: '세금 마차를 지켜 줬다', donate: '어려운 사람을 도왔다', bribe: '경비에게 뇌물을 줬다', stop: '싸움을 말렸다', official: '고위 관리를 죽였다' };
-export const deedText = (k) => DEED_TEXT[k] || k;
 // 내 행동을 본 사람들 (깨어 있고, 10칸 안) — 본 사람 수를 돌려준다. weight > 0 이면 나쁜 일, < 0 이면 좋은 일
 export function witness(w, x, y, deed, weight, victim = null) {
   let n = 0;

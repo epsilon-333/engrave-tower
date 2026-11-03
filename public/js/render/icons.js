@@ -370,7 +370,5 @@ export function iconURL(key) {
   if (!urls.has(key)) { const src = iconCanvas(key), big = document.createElement('canvas'); big.width = big.height = 32; const g = big.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(src, 0, 0, 32, 32); urls.set(key, big.toDataURL()); }
   return urls.get(key);
 }
-// 화면에 그리기 (가운데 기준)
-export function drawIcon(g, key, x, y, s = 1) { const cv = iconCanvas(key); g.drawImage(cv, Math.round(x - 8 * s), Math.round(y - 8 * s), 16 * s, 16 * s); }
 export const toolKey = (kind, tier) => `tool:${kind}:${tier}`;
 export const toolName = (kind, tier) => TOOLS[kind]?.tiers[Math.max(0, tier - 1)] || TOOLS[kind]?.name;

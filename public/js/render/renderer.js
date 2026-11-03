@@ -4788,13 +4788,4 @@ function smear(g, x, y, R, thick, a0, a1) {
   for (let i = inner.length - 1; i >= 0; i--) g.lineTo(inner[i][0], inner[i][1]);
   g.closePath(); g.fill();
 }
-function crescent(g, x, y, r1, r2, a0, a1, dir) {
-  if (Math.abs(a1 - a0) < 0.01) return;
-  const ccw = dir < 0;
-  g.beginPath();
-  g.arc(x, y, r2, a0, a1, ccw);
-  g.arc(x, y, r1, a1, a0, !ccw);
-  g.closePath(); g.fill();
-}
 
-function lerpAngle(a, b, t) { let d = b - a; d = Math.atan2(Math.sin(d), Math.cos(d)); return a + d * t; }

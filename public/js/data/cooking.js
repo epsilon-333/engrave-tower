@@ -35,7 +35,6 @@ const FISH_EFF = {
 };
 for (const [id, f] of Object.entries(FISH)) { const [e, p] = FISH_EFF[id] || []; FOOD[id] = F('fish', Math.round(Math.min(30, 4 + f.price / 11)), e || null, p || 0); }
 export const KIND_NAME = { fish: '물고기', meat: '고기', veg: '채소', fruit: '열매', grain: '곡식', mush: '버섯', herb: '약초', sea: '해초' };
-export const isFood = (id) => !!FOOD[id];
 export const rawEdible = (id) => FOOD[id] && !['fish', 'meat'].includes(FOOD[id].kind); // 날로 먹을 수 있는 것 (물고기 · 고기는 익혀야 한다)
 
 // 요리법: 넣은 재료의 종류를 보고 차례대로 맞는 것을 고른다 (마지막은 잡탕)

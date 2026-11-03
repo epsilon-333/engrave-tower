@@ -207,7 +207,6 @@ export function craftItem(rec) {
 }
 // 저장에 남은 만든 무기를 장비 목록에 올린다
 export function registerCrafted(ITEMS, crafted) { for (const [id, rec] of Object.entries(crafted || {})) { const it = craftItem(rec); if (it) ITEMS[id] = it; } }
-export const partName = (id) => GOODS[id]?.name || id;
 
 // ── 탑에서 떨어지는 무기 ──
 // 등급: 위력 배율 · 부산물 개수 · 추가 능력. 높은 등급일수록 그림이 빛난다

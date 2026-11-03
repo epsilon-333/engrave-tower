@@ -35,7 +35,6 @@ const ROOMS = [
   { id: 'cave2', name: '버려진 채굴장', kind: 'cave', x: 116, y: 74, rx: 12, ry: 9, lv: [22, 30] },
   { id: 'cult', name: '교단의 흔적', kind: 'cave', x: 130, y: 52, rx: 7, ry: 7, lv: [32, 40] },
 ];
-export const NOKT_PLACES = ROOMS.map((r) => r.name);
 const PATHS = [
   { p: [[14, 22], [20, 26], [24, 29]], r: 1.4 },            // 우물 - 중개인
   { p: [[30, 35], [30, 41], [33, 46]], r: 1.6 },            // 중개인 - 다리 - 광장

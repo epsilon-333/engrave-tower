@@ -1,6 +1,7 @@
 # 짐승 · 괴물 도트 생성기: 사람(people.py)과 같은 pixelrig 뼈대 도트 · 같은 외곽선 · 같은 4단 명암.
 # 예전에 다른 몬스터 그림에 색만 바꿔 쓰던 것들을 몸 구조부터 하나하나 새로 설계한다 (거머리는 거머리, 유리 거미는 거미).
-# 몬스터 하나 = 서기(4) · 달리기(4) 두 줄. 크기가 제각각이라 creatures.png 한 장에 세로로 쌓고 creatures.json 에 위치(y0)와 칸 크기를 적는다.
+# 몬스터 하나 = 서기(4) · 달리기(4) 두 줄. 크기가 제각각이라 creatures.png 한 장에 세로로 쌓고 tools/sprites/creatures.json 에 위치(y0)와 칸 크기를 적는다.
+from sprites import meta_path, build_manifest
 import math, sys, json
 from PIL import Image
 from pixelrig import Model, Part, Shape
@@ -671,5 +672,6 @@ if __name__ == '__main__':
     img = Image.new('RGBA', (max(b.width for b, _ in blocks), y), (0, 0, 0, 0))
     for b, yy in blocks: img.alpha_composite(b, (0, yy))
     img.save(out + '/creatures.png')
-    json.dump(meta, open(out + '/creatures.json', 'w'))
+    json.dump(meta, open(meta_path('creatures'), 'w'))
+    build_manifest(out)
     print(len(meta), 'creatures', img.size)
