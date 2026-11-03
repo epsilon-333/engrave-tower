@@ -187,7 +187,7 @@ export class Renderer {
   resize(cssW, cssH, dpr) {
     const W = Math.round(cssW * dpr), H = Math.round(cssH * dpr);
     this.c.width = W; this.c.height = H;
-    this.baseS = Math.max(2, Math.round(Math.max(W, H) / 480));
+    this.baseS = Math.max(2, Math.round(Math.min(W, H) / 270)); // 짧은 변 기준: 어느 화면비든 짧은 쪽으로 약 270칸이 보인다 (긴 변 기준이면 휴대폰 세로 · 21:9에서 시야가 좁아졌다)
     this.u = Math.max(1, Math.round(this.baseS / 2)); // 글씨 배율 (Galmuri11 × u)
     this.applyZoom(this.world);
   }

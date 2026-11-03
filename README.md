@@ -105,7 +105,7 @@ public/js/
 |---|---|---|
 | 그래픽 | [16x16 DungeonTileset II](https://0x72.itch.io/dungeontileset-ii) by 0x72 | CC0 |
 | 효과음 | [Kenney](https://kenney.nl) RPG Audio · Impact Sounds · Interface Sounds | CC0 |
-| 글꼴 | 갈무리(Galmuri), Noto Sans KR | SIL OFL |
+| 글꼴 | 갈무리(Galmuri) | SIL OFL |
 | 배경음 | 게임 안에서 WebAudio로 직접 합성 | - |
 
 ## 테스트
