@@ -4143,7 +4143,7 @@ export class Renderer {
     g.textAlign = align; g.textBaseline = 'middle';
     x = Math.round(x); y = Math.round(y);
     if (outline) {
-      g.fillStyle = '#0d0b10';
+      g.fillStyle = '#0c0a0b';
       const o = Math.max(1, Math.round(n));
       for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, o], [-o, o], [o, -o]]) g.fillText(s, x + dx, y + dy);
     }
@@ -4232,10 +4232,10 @@ export class Renderer {
 
   panel(x, y, w, h) {
     const g = this.g, b = this.u;
-    g.fillStyle = '#0d0b10'; g.fillRect(x - b, y - b, w + 2 * b, h + 2 * b);
-    g.fillStyle = 'rgba(24,20,34,0.92)'; g.fillRect(x, y, w, h);
-    g.fillStyle = '#5a4e72'; g.fillRect(x, y, w, b); g.fillRect(x, y, b, h);
-    g.fillStyle = '#120e1a'; g.fillRect(x, y + h - b, w, b); g.fillRect(x + w - b, y, b, h);
+    g.fillStyle = '#0c0a0b'; g.fillRect(x - b, y - b, w + 2 * b, h + 2 * b);
+    g.fillStyle = 'rgba(27,23,24,0.93)'; g.fillRect(x, y, w, h);
+    g.fillStyle = '#5e5253'; g.fillRect(x, y, w, b); g.fillRect(x, y, b, h);
+    g.fillStyle = '#141011'; g.fillRect(x, y + h - b, w, b); g.fillRect(x + w - b, y, b, h);
   }
 
   drawHud(w, dt) {
@@ -4268,7 +4268,7 @@ export class Renderer {
     let ry = m0 + bh + 3 * u;
     if (R) {
       this.panel(bx, ry, bw, gh);
-      g.fillStyle = '#0d0b18'; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u);
+      g.fillStyle = '#100d0e'; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u);
       const k = Math.max(0, Math.min(1, p.res / 100));
       g.fillStyle = R.color; g.fillRect(bx + u, ry + u, (bw - 2 * u) * k, gh - 2 * u);
       g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(bx + u, ry + u, (bw - 2 * u) * k, u);
@@ -4322,7 +4322,7 @@ export class Renderer {
       const tw2 = g.measureText(hint).width + 20 * u;
       const vv = Math.max(2, u), hy0 = H - 32 * vv - 26 * u; // 스킬바 위로
       g.fillStyle = 'rgba(13,11,16,0.7)'; g.fillRect((W - tw2) / 2, hy0 - 8 * u, tw2, 16 * u);
-      this.text(hint, W / 2, hy0, u, '#d8d0e8', 'center', false);
+      this.text(hint, W / 2, hy0, u, '#dcd2c6', 'center', false);
     }
 
     // 온라인: 다른 사람의 이름 · 말풍선
@@ -4330,7 +4330,7 @@ export class Renderer {
       const tx = this.sx(rp.x), ty = this.sy(rp._top ?? rp.y - 18) - 6 * u;
       if (tx < -40 || tx > W + 40 || ty < -40 || ty > H + 40) continue;
       const mate = w.myParty && rp.party === w.myParty;
-      this.text(`${rp.gname ? `[${rp.gname}] ` : ''}${rp.name}${rp.duel ? ' ⚔' : ''}`, tx, ty, Math.max(1, u - 1), mate ? '#a8f0a0' : '#bfe8ff', 'center', true, true);
+      this.text(`${rp.gname ? `[${rp.gname}] ` : ''}${rp.name}${rp.duel ? ' ⚔' : ''}`, tx, ty, Math.max(1, u - 1), mate ? '#a9d89a' : '#bfe8ff', 'center', true, true);
       if (rp.say && rp.say.until > performance.now()) {
         g.font = `${10 * Math.max(1, u - 1)}px ${FONT}`;
         const tw2 = Math.min(220 * u, g.measureText(rp.say.text).width + 12 * u), by = ty - 16 * u;
@@ -4348,7 +4348,7 @@ export class Renderer {
       g.font = `${11 * u}px ${FONT}`;
       const tw2 = g.measureText(label).width + 30 * u;
       this.panel(tx - tw2 / 2, ty - 8 * u, tw2, 16 * u);
-      g.fillStyle = '#ffcf5a'; g.fillRect(tx - tw2 / 2 + 3 * u, ty - 5 * u, 10 * u, 10 * u);
+      g.fillStyle = '#e9b85c'; g.fillRect(tx - tw2 / 2 + 3 * u, ty - 5 * u, 10 * u, 10 * u);
       this.text('G', tx - tw2 / 2 + 8 * u, ty, u, '#241a00', 'center', false, true);
       this.text(label, tx + 7 * u, ty, u, '#ffffff', 'center', false);
     }
@@ -4359,7 +4359,7 @@ export class Renderer {
       const tw2 = g.measureText(label).width + 30 * u;
       this.panel(tx - tw2 / 2, ty - 8 * u, tw2, 16 * u);
       const can = !/필요하다|없다|용암 낚시는|자라는 중/.test(label);
-      g.fillStyle = can ? '#ffcf5a' : '#8a8090'; g.fillRect(tx - tw2 / 2 + 3 * u, ty - 5 * u, 10 * u, 10 * u);
+      g.fillStyle = can ? '#e9b85c' : '#8a8090'; g.fillRect(tx - tw2 / 2 + 3 * u, ty - 5 * u, 10 * u, 10 * u);
       this.text('G', tx - tw2 / 2 + 8 * u, ty, u, '#241a00', 'center', false, true);
       this.text(label, tx + 7 * u, ty, u, can ? '#ffffff' : '#c8c0d0', 'center', false);
     }
@@ -4384,7 +4384,7 @@ export class Renderer {
     // 숨 (바닷속): 거품 열 개
     if (w.map.underwater && p.breathMax) {
       const n = 10, k = p.breath / p.breathMax, full = Math.ceil(k * n - 0.001), bx0 = bx, by0 = ry + 8 * u;
-      this.text(p.buffs.waterBreath ? '숨 · 수중 호흡 중' : `숨 ${Math.ceil(p.breath)}초`, bx0, by0, Math.max(1, u - 1), k < 0.3 ? '#ff9a8a' : '#bfe8ff');
+      this.text(p.buffs.waterBreath ? '숨 · 수중 호흡 중' : `숨 ${Math.ceil(p.breath)}초`, bx0, by0, Math.max(1, u - 1), k < 0.3 ? '#e8907c' : '#bfe8ff');
       for (let i = 0; i < n; i++) {
         const x = bx0 + 70 * u + i * 9 * u, y = by0, on = i < full, last = i === full - 1 && k * n % 1 < 0.35 && !p.buffs.waterBreath;
         g.strokeStyle = on ? '#e0f6ff' : 'rgba(224,246,255,0.25)'; g.lineWidth = u; g.beginPath(); g.arc(x, y, (last ? 2.4 : 3) * u, 0, Math.PI * 2); g.stroke();
@@ -4406,7 +4406,7 @@ export class Renderer {
       this.text('우두머리', x, y, Math.max(1, u - 1), '#c8b8a0', 'right', true, true);
       for (const b of w.tower.bosses) {
         y += 13 * u;
-        const name = b.champion || b.def.name, col = b.dead ? '#8a8090' : b === w.tower.boss ? '#ff9a7a' : '#ffd27a';
+        const name = b.champion || b.def.name, col = b.dead ? '#8a8090' : b === w.tower.boss ? '#ff9a7a' : '#f0c878';
         this.text(name, x, y, Math.max(1, u - 1), col, 'right', true, true);
         if (b.dead) { g.font = `${10 * Math.max(1, u - 1)}px ${FONT}`; const tw2 = g.measureText(name).width; g.fillStyle = '#ff3a3a'; g.fillRect(Math.round(x - tw2), Math.round(y), Math.round(tw2), Math.max(2, u)); }
       }
@@ -4421,7 +4421,7 @@ export class Renderer {
     const boss = w.enemies.find((e) => (e.def.elite || e.champion) && e.state === 'chase' && !e.dead);
     if (boss) {
       const bw2 = Math.min(W * 0.5, 260 * u), bx2 = (W - bw2) / 2, by2 = topY + 28 * u; // 화면 위쪽 (아래 스킬 칸 · 위쪽 저장 안내를 가리지 않게)
-      this.text(boss.champion || boss.def.name, W / 2, by2 - 9 * u, u, '#ff9a8a', 'center', true, true);
+      this.text(boss.champion || boss.def.name, W / 2, by2 - 9 * u, u, '#e8907c', 'center', true, true);
       this.panel(bx2, by2, bw2, 8 * u);
       g.fillStyle = '#3a1016'; g.fillRect(bx2 + u, by2 + u, bw2 - 2 * u, 6 * u);
       g.fillStyle = '#e8483a'; g.fillRect(bx2 + u, by2 + u, (bw2 - 2 * u) * boss.hp / boss.maxHp, 6 * u);
@@ -4444,7 +4444,7 @@ export class Renderer {
       g.globalAlpha = Math.min(1, this.banner.t * 1.5);
       const bY = Math.max(H * 0.22, boss ? topY + 64 * u : w.climb ? topY + 44 * u : 0); // 보스 체력바 · 등반 글 아래로
       this.text(this.banner.text, W / 2, bY, 3 * u, this.banner.color, 'center', true, true);
-      if (this.banner.sub) this.text(this.banner.sub, W / 2, bY + 26 * u, u, '#d8d0e8', 'center');
+      if (this.banner.sub) this.text(this.banner.sub, W / 2, bY + 26 * u, u, '#dcd2c6', 'center');
       g.globalAlpha = 1;
       if (this.banner.t <= 0) this.banner = null;
     }
@@ -4463,12 +4463,12 @@ export class Renderer {
     if (line) lines.push(line);
     const show = lines.slice(0, 3), h = 30 * u + show.length * 12 * tu;
     this.panel(x, y, tw, h);
-    g.fillStyle = J.done ? '#7be38a' : '#ffcf5a'; g.fillRect(x, y, 2 * u, h);
-    this.text(`여정 ${J.n} / ${J.total}${J.done ? ' · 완료!' : ''}`, x + 7 * u, y + 7 * u, tu, J.done ? '#7be38a' : '#c8b88a', 'left', false);
-    this.text(J.title, x + 7 * u, y + 19 * u, u, '#ffe8a8', 'left', true, true);
-    show.forEach((l, i) => this.text(l, x + 7 * u, y + 31 * u + i * 12 * tu, tu, '#c8c0d8', 'left', false));
-    this.tipRects.push({ x, y, w: tw, h, title: '여정 (J로 전체 보기)', color: '#ffcf5a', lines: ['하나를 마치면 보상을 받고 다음 목표가 보인다', J.reward ? `보상: ${J.reward}` : ''].filter(Boolean) });
-    if (J.target) this.edgeArrow(J.target.x, J.target.y, '#ffcf5a', J.target.label);
+    g.fillStyle = J.done ? '#8fcf7a' : '#e9b85c'; g.fillRect(x, y, 2 * u, h);
+    this.text(`여정 ${J.n} / ${J.total}${J.done ? ' · 완료!' : ''}`, x + 7 * u, y + 7 * u, tu, J.done ? '#8fcf7a' : '#c8b88a', 'left', false);
+    this.text(J.title, x + 7 * u, y + 19 * u, u, '#f6dfae', 'left', true, true);
+    show.forEach((l, i) => this.text(l, x + 7 * u, y + 31 * u + i * 12 * tu, tu, '#c9beb2', 'left', false));
+    this.tipRects.push({ x, y, w: tw, h, title: '여정 (J로 전체 보기)', color: '#e9b85c', lines: ['하나를 마치면 보상을 받고 다음 목표가 보인다', J.reward ? `보상: ${J.reward}` : ''].filter(Boolean) });
+    if (J.target) this.edgeArrow(J.target.x, J.target.y, '#e9b85c', J.target.label);
   }
   // 화면 밖의 목표를 가리키는 화살표 (화면 안이면 머리 위에 작은 표시)
   edgeArrow(tx, ty, color, label, bounce = true) {
@@ -4479,7 +4479,7 @@ export class Renderer {
     if (sx > m && sx < W - m && sy > m && sy < H - m) { // 보이는 곳: 위에서 통통 튀는 표시
       if (!bounce) return;
       const by = sy - 46 * u + Math.sin(performance.now() / 180) * 3 * u;
-      g.fillStyle = '#0d0b10'; g.beginPath(); g.moveTo(sx - 7 * u, by - 2 * u); g.lineTo(sx + 7 * u, by - 2 * u); g.lineTo(sx, by + 8 * u); g.closePath(); g.fill();
+      g.fillStyle = '#0c0a0b'; g.beginPath(); g.moveTo(sx - 7 * u, by - 2 * u); g.lineTo(sx + 7 * u, by - 2 * u); g.lineTo(sx, by + 8 * u); g.closePath(); g.fill();
       g.fillStyle = color; g.beginPath(); g.moveTo(sx - 5 * u, by - u); g.lineTo(sx + 5 * u, by - u); g.lineTo(sx, by + 6 * u); g.closePath(); g.fill();
       return;
     }
@@ -4487,7 +4487,7 @@ export class Renderer {
     const k = Math.min((W - ml - mr) / 2 / Math.max(1e-3, Math.abs(Math.cos(ang))), (H - mt - mb) / 2 / Math.max(1e-3, Math.abs(Math.sin(ang))));
     const ax = cx + Math.cos(ang) * k, ay = cy + Math.sin(ang) * k;
     g.save(); g.translate(ax, ay); g.rotate(ang);
-    g.fillStyle = '#0d0b10'; g.beginPath(); g.moveTo(14 * u, 0); g.lineTo(-6 * u, -10 * u); g.lineTo(-2 * u, 0); g.lineTo(-6 * u, 10 * u); g.closePath(); g.fill();
+    g.fillStyle = '#0c0a0b'; g.beginPath(); g.moveTo(14 * u, 0); g.lineTo(-6 * u, -10 * u); g.lineTo(-2 * u, 0); g.lineTo(-6 * u, 10 * u); g.closePath(); g.fill();
     g.fillStyle = color; g.beginPath(); g.moveTo(11 * u, 0); g.lineTo(-4 * u, -7 * u); g.lineTo(-1 * u, 0); g.lineTo(-4 * u, 7 * u); g.closePath(); g.fill();
     g.restore();
     const lx = ax - Math.cos(ang) * 22 * u, ly = ay - Math.sin(ang) * 18 * u;
@@ -4513,8 +4513,8 @@ export class Renderer {
     else { g.fillStyle = '#f0f0ff'; g.beginPath(); g.arc(bx, byy, 2 * u, 0, Math.PI * 2); g.fill(); g.fillStyle = `rgb(${Math.min(255, r * 0.55 + 40) | 0},${Math.min(255, gg * 0.62 + 50) | 0},${Math.min(255, b * 0.8 + 50) | 0})`; g.beginPath(); g.arc(bx + u, byy - 0.6 * u, 1.7 * u, 0, Math.PI * 2); g.fill(); if (dk > 0.6) { g.fillStyle = '#ffffff'; g.fillRect(ox - 3 * u, oy - 3 * u, u, u); g.fillRect(ox + 2 * u, oy - 4 * u, u, u); } }
     g.fillStyle = '#3a5a2a'; g.fillRect(ox - R, oy + 2 * u, R * 2, R); // 땅
     g.restore();
-    g.strokeStyle = '#0d0b10'; g.lineWidth = u; g.beginPath(); g.arc(ox, oy, R, 0, Math.PI * 2); g.stroke();
-    this.text(`${c.day}일 · ${clockText(c)}`, x + 8 * u + R * 2 + 36 * u, oy, u, dk > 0.6 ? '#c8d0ff' : '#ffe8a8', 'center');
+    g.strokeStyle = '#0c0a0b'; g.lineWidth = u; g.beginPath(); g.arc(ox, oy, R, 0, Math.PI * 2); g.stroke();
+    this.text(`${c.day}일 · ${clockText(c)}`, x + 8 * u + R * 2 + 36 * u, oy, u, dk > 0.6 ? '#c8d0ff' : '#f6dfae', 'center');
   }
 
   // 스킬바: 대시 + 장착 스킬 4칸 (화면 아래 가운데)
@@ -4538,7 +4538,7 @@ export class Renderer {
       this.panel(qx, y0, box, box);
       if (n > 0) { g.imageSmoothingEnabled = false; const ic = iconCanvas(qf), s2 = Math.floor((box - 4 * u) / 16); g.drawImage(ic, Math.round(qx + (box - 16 * s2) / 2), Math.round(y0 + (box - 16 * s2) / 2), 16 * s2, 16 * s2); this.text(String(n), qx + box - 3 * v, y0 + box - 5 * v, Math.max(1, u - 1), '#ffffff', 'right'); }
       else { g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(qx + u, y0 + u, box - 2 * u, box - 2 * u); }
-      this.text('H', qx + 4 * v, y0 + 5 * v, Math.max(1, u - 1), '#ffe8a8', 'left', true, true);
+      this.text('H', qx + 4 * v, y0 + 5 * v, Math.max(1, u - 1), '#f6dfae', 'left', true, true);
     }
     // 물약 (Z): 가진 물약 수 · 다시 마실 때까지
     const pots = ['potion1', 'potion2', 'potion3'].filter((id) => w.life?.bag?.[id] > 0);
@@ -4547,17 +4547,17 @@ export class Renderer {
       this.cooldownBox(px2, y0, box, p.potionCd > 0 ? 1 - p.potionCd / 8 : 1, 'Z', '', null, p.potionCd);
       g.imageSmoothingEnabled = false; const ic = iconCanvas(pots[0]), s2 = Math.max(1, Math.floor((box - 8 * u) / 16)); g.drawImage(ic, Math.round(px2 + (box - 16 * s2) / 2), Math.round(y0 + (box - 16 * s2) / 2 + 2 * u), 16 * s2, 16 * s2);
       this.text(String(cnt), px2 + box - 3 * v, y0 + box - 5 * v, Math.max(1, u - 1), '#ffffff', 'right');
-      this.text('물약', px2 + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#d8d0e8', 'center');
+      this.text('물약', px2 + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#dcd2c6', 'center');
     }
     slots.forEach((id, i) => {
       const x = x0 + (i + 1) * (box + gap);
       if (id === 'weapon') {
         const k = p.skillCd > 0 ? 1 - p.skillCd / p.skillMax : 1;
         this.cooldownBox(x, y0, box, k, keys[i], '', null, p.skillCd);
-        this.text((WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기').slice(0, 5), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#d8d0e8', 'center');
+        this.text((WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기').slice(0, 5), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#dcd2c6', 'center');
         return;
       }
-      if (!id) { if (touch) return; this.cooldownBox(x, y0, box, 1, keys[i], '', null, 0); g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); this.text('빈 칸', x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#8a8098', 'center'); return; }
+      if (!id) { if (touch) return; this.cooldownBox(x, y0, box, 1, keys[i], '', null, 0); g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); this.text('빈 칸', x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#8c8079', 'center'); return; }
       const sk = SKILLS[id];
       const cd = p.cds[id] || 0, max = p.cdMax?.[id] || sk.cd;
       const k = cd > 0 ? 1 - cd / max : 1;
@@ -4565,8 +4565,8 @@ export class Renderer {
       const lack = need > p.res;
       this.cooldownBox(x, y0, box, k, keys[i], '', ROLE_COLOR[sk.role], cd, sk);
       if (lack && k >= 1) { g.fillStyle = 'rgba(40,0,0,0.55)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); }
-      this.text(sk.name.slice(0, 5), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), lack ? '#ff8a80' : '#d8d0e8', 'center'); // 한 줄 · 작은 글씨 (이웃 칸과 겹치지 않게)
-      if (need) this.text(String(need), x + box - 3 * v, y0 + 5 * v, Math.max(1, u - 1), lack ? '#ff8a80' : RACES[w.b.race].res.color, 'right');
+      this.text(sk.name.slice(0, 5), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), lack ? '#e88a78' : '#dcd2c6', 'center'); // 한 줄 · 작은 글씨 (이웃 칸과 겹치지 않게)
+      if (need) this.text(String(need), x + box - 3 * v, y0 + 5 * v, Math.max(1, u - 1), lack ? '#e88a78' : RACES[w.b.race].res.color, 'right');
     });
     // 시전바
     if (p.castT > 0) {
@@ -4580,8 +4580,8 @@ export class Renderer {
   // 스킬 칸 그림: 역할마다 7×7 도트 그림 (Dead Cells처럼 칸만 봐도 무슨 기술인지), 색은 원소 · 역할 색
   skillGlyph(x, y, s, sk) {
     const G = ROLE_GLYPH[sk.role] || ROLE_GLYPH['공격'], g = this.g, px = Math.max(1, Math.floor(s / 11)), ox = Math.round(x + (s - 7 * px) / 2), oy = Math.round(y + (s - 7 * px) / 2) - px;
-    const col = ELEM[sk.elem]?.color || ROLE_COLOR[sk.role] || '#e8e0f4';
-    for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) if (G[r][c] !== '.') { g.fillStyle = '#0d0b10'; g.fillRect(ox + c * px + px, oy + r * px + px, px, px); }
+    const col = ELEM[sk.elem]?.color || ROLE_COLOR[sk.role] || '#ede4d8';
+    for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) if (G[r][c] !== '.') { g.fillStyle = '#0c0a0b'; g.fillRect(ox + c * px + px, oy + r * px + px, px, px); }
     for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) { const ch = G[r][c]; if (ch === '.') continue; g.fillStyle = ch === '#' ? col : '#ffffff'; g.fillRect(ox + c * px, oy + r * px, px, px); }
   }
   // 스킬 칸: 기다리는 동안은 어둡게 덮고 남은 초를 크게, 다 차면 금빛 테두리
@@ -4599,15 +4599,15 @@ export class Renderer {
       g.restore();
       if (rem > 0.05) { // 남은 시간: 칸 가운데 크게, 키 이름은 왼쪽 위에 작게
         this.text(rem >= 3 ? String(Math.ceil(rem)) : rem.toFixed(1), x + s / 2, y + s / 2 + u, rem >= 3 && rem < 10 ? u + 1 : u, '#ffffff', 'center', true, true); // 소수 · 두 자리는 조금 작게 (이웃 칸과 겹치지 않게)
-        this.text(key, x + 3 * u, y + 5 * u, Math.max(1, u - 1), '#a89cb8', 'left', true, true);
+        this.text(key, x + 3 * u, y + 5 * u, Math.max(1, u - 1), '#a89a8f', 'left', true, true);
         return;
       }
     } else {
       g.fillStyle = 'rgba(255,207,90,0.16)'; g.fillRect(x + u, y + u, s - 2 * u, s - 2 * u);
-      g.strokeStyle = '#ffcf5a'; g.lineWidth = u; g.strokeRect(x + 1.5 * u, y + 1.5 * u, s - 3 * u, s - 3 * u);
+      g.strokeStyle = '#e9b85c'; g.lineWidth = u; g.strokeRect(x + 1.5 * u, y + 1.5 * u, s - 3 * u, s - 3 * u);
     }
-    if (sk) this.text(key, x + 3 * u, y + 5 * u, Math.max(1, u - 1), k >= 1 ? '#ffe8a8' : '#8a8098', 'left', true, true); // 그림이 있으면 키는 왼쪽 위에 작게
-    else this.text(key, x + s / 2, y + s / 2, key.length > 1 ? Math.max(1, u - 1) || 1 : u, k >= 1 ? '#ffe8a8' : '#8a8098', 'center', true, true);
+    if (sk) this.text(key, x + 3 * u, y + 5 * u, Math.max(1, u - 1), k >= 1 ? '#f6dfae' : '#8c8079', 'left', true, true); // 그림이 있으면 키는 왼쪽 위에 작게
+    else this.text(key, x + s / 2, y + s / 2, key.length > 1 ? Math.max(1, u - 1) || 1 : u, k >= 1 ? '#f6dfae' : '#8c8079', 'center', true, true);
   }
 
   drawMinimap(w) {
@@ -4628,14 +4628,14 @@ export class Renderer {
       if (o.kind === 'questThing') { if (Math.floor(w.t * 3) % 2 === 0) dot(o.x, o.y, '#ffe040', 2.2); continue; }
       if (!seen(o.x, o.y)) continue;
       if (o.kind === 'portal') dot(o.x, o.y, o.color, 2);
-      else if (o.kind === 'chest' && !o.opened && o.spotted) dot(o.x, o.y, o.rich ? '#d8a8ff' : '#ffcf5a'); // 상자는 내 눈으로 본 것만 지도에
+      else if (o.kind === 'chest' && !o.opened && o.spotted) dot(o.x, o.y, o.rich ? '#d8a8ff' : '#e9b85c'); // 상자는 내 눈으로 본 것만 지도에
       else if (o.kind === 'lore' && !o.opened) dot(o.x, o.y, '#8ad8ff');
       else if (o.kind === 'camp') dot(o.x, o.y, '#ffa040', 2);
-      else if (o.kind === 'merchant') dot(o.x, o.y, '#7be38a', 2);
+      else if (o.kind === 'merchant') dot(o.x, o.y, '#8fcf7a', 2);
       else if (o.kind === 'shrine' && !o.opened) dot(o.x, o.y, '#c9a8ff');
       else if (o.kind === 'stairs') dot(o.x, o.y, '#ff6040', 2);
       else if (o.kind === 'journal' && !o.read) dot(o.x, o.y, '#f0e0b0', 2);
-      else if (o.kind === 'npc') dot(o.x, o.y, '#7be38a', 2);
+      else if (o.kind === 'npc') dot(o.x, o.y, '#8fcf7a', 2);
       else if (o.kind === 'barrier' && !o.opened) dot(o.x, o.y, '#d07a4a', 1.5);
       else if (o.kind === 'sanctum') dot(o.x, o.y, SANCTUMS[o.race]?.color || '#fff', 2.2);
       else if (o.kind === 'waypoint') dot(o.x, o.y, o.active ? '#8ad8ff' : '#6a6478', o.active ? 2 : 1.4);
@@ -4645,15 +4645,15 @@ export class Renderer {
     for (const e of w.enemies) if ((e.def.elite || e.champion) && seen(e.x, e.y)) dot(e.x, e.y, '#ff4040', 2);
     if (Math.floor(w.t * 4) % 2 === 0) dot(w.player.x, w.player.y, '#ffffff', 1.5);
     this.minimapBottom = my + mh;
-    if (w.climb) { this.hudRightBottom = my + mh + 8 * this.u; for (const o of w.objects) if (o.kind === 'climbDoor') dot(o.x, o.y, CLIMB_REWARDS[o.next]?.color || '#fff', 2); else if (o.kind === 'climbReward' && !o.opened) dot(o.x, o.y, '#ffe8a8', 2.2); return; } // 탑 등반: 아래 글은 등반 HUD 가 그린다
+    if (w.climb) { this.hudRightBottom = my + mh + 8 * this.u; for (const o of w.objects) if (o.kind === 'climbDoor') dot(o.x, o.y, CLIMB_REWARDS[o.next]?.color || '#fff', 2); else if (o.kind === 'climbReward' && !o.opened) dot(o.x, o.y, '#f6dfae', 2.2); return; } // 탑 등반: 아래 글은 등반 HUD 가 그린다
     if (!this.pctT || this.pctT < w.t) { this.pctT = w.t + 0.5; this.pctV = Math.round(w.exploredPct() * 100); }
     // 정보띠: 미니맵 바로 아래 한 상자에 시계 · 골드 / 지역 · 탐험 (따로 떠 있던 글자를 모은다)
     const sw = mw + 4 * u, sx0 = mx - 2 * u, sy0 = my + mh + 4 * u, tu2 = Math.max(1, u - 1), stripH = 24 * u;
     this.panel(sx0, sy0, sw, stripH);
     const c = w.clock;
-    if (c) { const dk = darkness(c.min); this.text(`${c.day}일 · ${clockText(c)}`, sx0 + 5 * u, sy0 + 7 * u, tu2, dk > 0.6 ? '#c8d0ff' : '#ffe8a8', 'left', false); }
-    this.text(`◆ ${w.loot.gold}`, sx0 + sw - 5 * u, sy0 + 7 * u, tu2, '#ffcf5a', 'right', false, true);
-    this.text(`${w.zone.name}${w.depth ? ` 지하 ${w.depth + 1}층` : ''} · 탐험 ${this.pctV}%`, sx0 + 5 * u, sy0 + 17 * u, tu2, '#c8c0d8', 'left', false);
+    if (c) { const dk = darkness(c.min); this.text(`${c.day}일 · ${clockText(c)}`, sx0 + 5 * u, sy0 + 7 * u, tu2, dk > 0.6 ? '#c8d0ff' : '#f6dfae', 'left', false); }
+    this.text(`◆ ${w.loot.gold}`, sx0 + sw - 5 * u, sy0 + 7 * u, tu2, '#e9b85c', 'right', false, true);
+    this.text(`${w.zone.name}${w.depth ? ` 지하 ${w.depth + 1}층` : ''} · 탐험 ${this.pctV}%`, sx0 + 5 * u, sy0 + 17 * u, tu2, '#c9beb2', 'left', false);
     let y = sy0 + stripH + 10 * u;
     if (w.loot.banked) { this.text('야영지에 잔향을 맡김', mx + mw, y, tu2, '#ffd88a', 'right'); y += 12 * u; }
     for (const [id, n] of Object.entries(w.loot.echoes)) {
@@ -4662,11 +4662,11 @@ export class Renderer {
     }
     if (w.goalNeeds?.length) {
       y += 20 * u;
-      this.text('★ 목표 잔향', mx + mw, y, u, '#ffcf5a', 'right');
+      this.text('★ 목표 잔향', mx + mw, y, u, '#e9b85c', 'right');
       for (const gn of w.goalNeeds) {
         y += 14 * u;
         const got = Math.min(gn.need, gn.have + (w.loot.echoes[gn.id] || 0));
-        this.text(`${ECHOES[gn.id].name} ${got}/${gn.need}`, mx + mw, y, Math.max(1, u - 1), got >= gn.need ? '#8af08a' : ECHOES[gn.id].color, 'right');
+        this.text(`${ECHOES[gn.id].name} ${got}/${gn.need}`, mx + mw, y, Math.max(1, u - 1), got >= gn.need ? '#93d47f' : ECHOES[gn.id].color, 'right');
       }
     }
     const obj = w.zone.id === 'cave' && !w.depth ? storyObjective(w.story) : null;

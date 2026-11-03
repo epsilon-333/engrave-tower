@@ -175,7 +175,7 @@ export function createClimb(ctx) {
     if (s.reward === 'hone') return pickHone('연마', done);
     if (s.reward === 'bless') return pickBless('축복', done);
     if (s.reward === 'gold') { const g = goldGain(goldReward(r.f), r, meta()); r.gold += g; ctx.floatText(`탑 금화 +${g}`, '#ffd84a'); ctx.sfx('coin'); return done(); }
-    if (s.reward === 'heal') { const before = w.player.hp; w.heal(w.d.maxHp * 0.25, 'spring'); ctx.floatText(`체력 +${Math.round(w.player.hp - before)}`, '#7be38a'); ctx.sfx('levelup', { vol: 0.5 }); return done(); }
+    if (s.reward === 'heal') { const before = w.player.hp; w.heal(w.d.maxHp * 0.25, 'spring'); ctx.floatText(`체력 +${Math.round(w.player.hp - before)}`, '#8fcf7a'); ctx.sfx('levelup', { vol: 0.5 }); return done(); }
     if (s.reward === 'shard') { const g = shardGain(shardReward(r.f), r, meta()); r.shards += g; ctx.floatText(`✦ 별빛 +${g}`, '#b8a8ff'); ctx.sfx('levelup', { vol: 0.5 }); return done(); }
     done();
   }
@@ -259,9 +259,9 @@ export function createClimb(ctx) {
       let name = '', desc = '';
       if (it.kind === 'eng') { const e = ENGRAVINGS[it.id]; name = `<b style="color:${GRADE_COLOR[e.grade]}">${esc(e.name)}</b> <small>${GRADE_NAME[e.grade]}${it.up ? ' · 연마' : ''}</small>`; desc = (e.effects || []).map((x) => x.text).join(' · '); }
       else if (it.kind === 'bless') { const B = BLESSINGS[it.id]; name = `<b style="color:${B.color}">축복 · ${B.name}</b>`; desc = B.text; }
-      else if (it.kind === 'heal') { name = '<b style="color:#7be38a">회복 물약</b>'; desc = '체력 35% 회복'; }
+      else if (it.kind === 'heal') { name = '<b style="color:#8fcf7a">회복 물약</b>'; desc = '체력 35% 회복'; }
       else if (it.kind === 'hone') { name = '<b style="color:#7ad8ff">숫돌</b>'; desc = '가진 각인 하나 연마'; }
-      else if (it.kind === 'reroll') { name = '<b style="color:#ffe8a8">다시 보는 눈</b>'; desc = '보상 다시 고르기 +1'; }
+      else if (it.kind === 'reroll') { name = '<b style="color:#f6dfae">다시 보는 눈</b>'; desc = '보상 다시 고르기 +1'; }
       return `<div class="cl-shop-row"><div>${name}<p class="muted">${esc(desc)}</p></div><button data-buy="${i}" ${can ? '' : 'disabled'}>◆ ${it.price}</button></div>`;
     };
     ctx.showModal(`<h2>탑의 상인</h2><p class="muted">"오르는 자여, 금화는 위에서 쓸모가 없지."</p><p>탑 금화 <b class="cl-gold">◆ ${r.gold}</b></p>
@@ -291,7 +291,7 @@ export function createClimb(ctx) {
       if (id === 'bloodPact') { r.curse.maxHp = (r.curse.maxHp || 1) * 0.85; after(); pickEng({ minGrade: 4, title: '피의 계약' }, after); }
       else if (id === 'gamble') { const bet = Math.floor(r.gold / 2); if (rng.chance(0.5)) { r.gold += bet; ctx.floatText(`이겼다! 탑 금화 +${bet}`, '#ffd84a'); } else { r.gold -= bet; ctx.floatText(`잃었다… 탑 금화 -${bet}`, '#ff8a7a'); } after(); }
       else if (id === 'cursedPower') { r.curse.dmg = (r.curse.dmg || 1) * 1.2; r.curse.hurt = (r.curse.hurt || 1) * 1.2; ctx.floatText('저주받은 힘이 스며든다', '#ff6a5a'); after(); }
-      else if (id === 'quietSpring') { w.heal(w.d.maxHp, 'spring'); r.forceTrial = true; ctx.floatText('체력을 모두 되찾았다 · 다음 층은 시련', '#7be38a'); after(); }
+      else if (id === 'quietSpring') { w.heal(w.d.maxHp, 'spring'); r.forceTrial = true; ctx.floatText('체력을 모두 되찾았다 · 다음 층은 시련', '#8fcf7a'); after(); }
       else if (id === 'reforge') reforge();
       else if (id === 'starAltar') pickModal('별의 제단', '', [`<button class="cl-card" data-pick="0" style="--g:#b8a8ff"><span class="cl-key">1</span><b>별빛</b><span class="cl-big">✦ +${shardGain(6, r, meta())}</span></button>`, `<button class="cl-card" data-pick="1" style="--g:#ffd84a"><span class="cl-key">2</span><b>탑 금화</b><span class="cl-big">◆ +80</span></button>`], (k) => { if (k === 0) r.shards += shardGain(6, r, meta()); else r.gold += 80; close(); after(); });
     };
@@ -313,11 +313,11 @@ export function createClimb(ctx) {
     const use = (i) => {
       if (o) { o.used = true; o.label = '사그라든 모닥불'; }
       keyPick = null; close();
-      if (i === 0) { const before = w.player.hp; w.heal(w.d.maxHp * 0.35, 'spring'); ctx.floatText(`체력 +${Math.round(w.player.hp - before)}`, '#7be38a'); ctx.save0(); }
+      if (i === 0) { const before = w.player.hp; w.heal(w.d.maxHp * 0.35, 'spring'); ctx.floatText(`체력 +${Math.round(w.player.hp - before)}`, '#8fcf7a'); ctx.save0(); }
       else pickHone('쉼터 · 연마', () => ctx.save0());
     };
     ctx.showModal(`<h2>쉼터</h2><p class="muted">다음 층에는 강한 것이 기다린다. 모닥불 곁에서 무엇을 할까?</p>
-      <div class="cl-cards"><button class="cl-card" data-rest="0" style="--g:#7be38a"><span class="cl-key">1</span><b>쉰다</b><span class="cl-big">체력 35% 회복</span><small>지금 ${Math.round(w.player.hp)} / ${w.d.maxHp}</small></button>
+      <div class="cl-cards"><button class="cl-card" data-rest="0" style="--g:#8fcf7a"><span class="cl-key">1</span><b>쉰다</b><span class="cl-big">체력 35% 회복</span><small>지금 ${Math.round(w.player.hp)} / ${w.d.maxHp}</small></button>
       <button class="cl-card" data-rest="1" style="--g:#7ad8ff" ${r.eng.length ? '' : 'disabled'}><span class="cl-key">2</span><b>각인을 다듬는다</b><span class="cl-big">각인 하나 연마</span></button></div>
       <div class="actions"><button data-close class="ghost">나중에</button></div>`);
     document.querySelectorAll('[data-rest]').forEach((b) => (b.onclick = () => use(+b.dataset.rest)));

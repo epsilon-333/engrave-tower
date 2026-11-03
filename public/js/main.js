@@ -302,7 +302,7 @@ onNet('partyInvite', (m) => inviteCard(`<b>파티 초대</b><p>${esc(m.name)} <s
 onNet('guildInvite', (m) => inviteCard(`<b>길드 초대</b><p>${esc(m.name)} — 길드 「${esc(m.guild)}」</p>`, () => netSend({ t: 'guildAnswer', to: m.from, ok: true }), () => netSend({ t: 'guildAnswer', to: m.from, ok: false })));
 onNet('partyNo', (m) => { renderer.banner = { text: '파티', sub: m.reason, t: 2.2, color: '#c8b8a0' }; });
 onNet('guildNo', (m) => { renderer.banner = { text: '길드', sub: m.reason, t: 2.2, color: '#c8b8a0' }; });
-onNet('guildMade', (m) => { save.gold = Math.max(0, save.gold - GUILD_COST); writeSave(save); renderer.banner = { text: `길드 「${m.name}」`, sub: '길드를 세웠다 · O 창에서 근처 사람을 초대한다', t: 3, color: '#ffd27a' }; sfx('levelup', { vol: 0.5 }); });
+onNet('guildMade', (m) => { save.gold = Math.max(0, save.gold - GUILD_COST); writeSave(save); renderer.banner = { text: `길드 「${m.name}」`, sub: '길드를 세웠다 · O 창에서 근처 사람을 초대한다', t: 3, color: '#f0c878' }; sfx('levelup', { vol: 0.5 }); });
 onNet('party', (m) => {
   if (!m.id && m.why) renderer.banner = { text: '파티', sub: m.why, t: 2.2, color: '#c8b8a0' };
   if (coRun?.role === 'member' && (!net.party || net.party.leader !== coRun.host)) coSolo('파티장이 파티를 떠났다 — 혼자 이어 오른다');
@@ -326,9 +326,9 @@ function openMeet(rp) {
     <div class="actions col"><button id="mDuel">결투 신청</button><button id="mTrade">교환 신청</button>${canParty ? '<button id="mParty">파티 초대</button>' : ''}${canGuild ? '<button id="mGuild">길드 초대</button>' : ''}<button data-close class="ghost">닫기</button></div>`);
   const close = () => { overlay.hidden = true; paused = false; modal = null; };
   document.getElementById('mDuel').onclick = () => { close(); inviteDuel(rp); };
-  document.getElementById('mTrade').onclick = () => { close(); netSend({ t: 'tradeInvite', to: rp.id }); renderer.banner = { text: `${rp.name}에게 교환을 신청했다`, t: 2, color: '#ffd27a' }; };
+  document.getElementById('mTrade').onclick = () => { close(); netSend({ t: 'tradeInvite', to: rp.id }); renderer.banner = { text: `${rp.name}에게 교환을 신청했다`, t: 2, color: '#f0c878' }; };
   const bp = document.getElementById('mParty'); if (bp) bp.onclick = () => { close(); netSend({ t: 'partyInvite', to: rp.id }); renderer.banner = { text: `${rp.name}에게 파티 초대를 보냈다`, t: 2, color: '#9fe6a0' }; };
-  const bg = document.getElementById('mGuild'); if (bg) bg.onclick = () => { close(); netSend({ t: 'guildInvite', to: rp.id }); renderer.banner = { text: `${rp.name}에게 길드 초대를 보냈다`, t: 2, color: '#ffd27a' }; };
+  const bg = document.getElementById('mGuild'); if (bg) bg.onclick = () => { close(); netSend({ t: 'guildInvite', to: rp.id }); renderer.banner = { text: `${rp.name}에게 길드 초대를 보냈다`, t: 2, color: '#f0c878' }; };
 }
 
 // ───── 교환: 서로 내놓을 것(골드 · 가방의 물건 · 장비)을 정하고, 둘 다 확정하면 주고받는다 ─────
@@ -384,7 +384,7 @@ function tradeCheck() {
   writeSave(save); cloudSaveNow(save);
   netSend({ t: 'tradeDone' }); trade = null;
   overlay.hidden = true; paused = false; modal = null;
-  renderer.banner = { text: `${josa(name, '과', '와')} 교환했다`, sub: offerText(theirs).join(' · ') || '받은 것 없음', t: 3, color: '#ffd27a' }; sfx('coin', { vol: 0.7 });
+  renderer.banner = { text: `${josa(name, '과', '와')} 교환했다`, sub: offerText(theirs).join(' · ') || '받은 것 없음', t: 3, color: '#f0c878' }; sfx('coin', { vol: 0.7 });
 }
 
 // ───── 사령술사: 거둔 영혼 (30개까지 모아 두고, 소환 목록에 넣은 것부터 한 번에 10개까지 되살린다) ─────
@@ -490,7 +490,7 @@ function bindSocial() {
     } else if (d.gact === 'leave') netSend({ t: 'guildLeave' });
     else if (d.gact === 'kick') netSend({ t: 'guildKick', uid: d.uid });
     else if (d.gact === 'officer' || d.gact === 'member' || d.gact === 'leader') netSend({ t: 'guildRank', uid: d.uid, rank: d.gact });
-    else if (d.gact === 'notice') { netSend({ t: 'guildNotice', text: document.getElementById('gnotice')?.value || '' }); renderer.banner = { text: '길드 공지를 바꿨다', t: 1.4, color: '#ffd27a' }; }
+    else if (d.gact === 'notice') { netSend({ t: 'guildNotice', text: document.getElementById('gnotice')?.value || '' }); renderer.banner = { text: '길드 공지를 바꿨다', t: 1.4, color: '#f0c878' }; }
   };
 }
 
@@ -725,7 +725,7 @@ function finishTutorial(done) {
   const d = tutorialTick.rt?.dummy; if (d) { d.dead = true; world.enemies = world.enemies.filter((e) => e !== d); }
   tutorialTick.rt = null;
   if (tutEl) tutEl.hidden = true;
-  if (done) renderer.banner = { text: '튜토리얼 끝!', sub: '이제 왼쪽 위 여정과 화살표를 따라 각인의 탑으로!', t: 4.5, color: '#ffe8a8' };
+  if (done) renderer.banner = { text: '튜토리얼 끝!', sub: '이제 왼쪽 위 여정과 화살표를 따라 각인의 탑으로!', t: 4.5, color: '#f6dfae' };
   writeSave(save);
 }
 
@@ -772,7 +772,7 @@ function journeyTick(dt) {
       J = journeyNow(save);
     }
     writeSave(save);
-    renderer.banner = { text: titles.length > 1 ? `여정 완료 ×${titles.length}` : `여정 완료 · ${titles[0]}`, sub: `${journeyReward(sum)}${J ? ` · 다음: ${J.step.title}` : ' · 모든 여정을 마쳤다!'}`, t: 4, color: '#ffcf5a' };
+    renderer.banner = { text: titles.length > 1 ? `여정 완료 ×${titles.length}` : `여정 완료 · ${titles[0]}`, sub: `${journeyReward(sum)}${J ? ` · 다음: ${J.step.title}` : ' · 모든 여정을 마쳤다!'}`, t: 4, color: '#e9b85c' };
     sfx('levelup', { vol: 0.6 });
     if (!J) { renderer.journey = null; return; }
   }
@@ -1109,7 +1109,7 @@ function enterHouse(id, door) {
   world = new World({ build: buildNow(), mode: 'plaza', seed: 1, map: buildHouse(id), ...shared() });
   world.questReady = (save.quests || []).some((q) => q.done);
   renderer.setWorld(world);
-  renderer.banner = { text: HOUSES[id].name, sub: `${HOUSES[id].owner}의 집 · 아래쪽 문으로 나간다`, t: 2.2, color: '#ffe8a8' };
+  renderer.banner = { text: HOUSES[id].name, sub: `${HOUSES[id].owner}의 집 · 아래쪽 문으로 나간다`, t: 2.2, color: '#f6dfae' };
   sfx('open', { vol: 0.5 });
   startLoop();
 }
@@ -1142,7 +1142,7 @@ function exitSeabed(x, y, forced) {
   world.signals.length = 0; world.events.length = 0;
   world.setBuild(buildNow()); world.applyPersist();
   renderer.setWorld(world);
-  renderer.banner = forced ? { text: '숨이 차서 물 위로 올라왔다', sub: '거품 구멍 가까이에 있으면 숨이 다시 찬다', t: 3, color: '#9fd8ff' } : null;
+  renderer.banner = forced ? { text: '숨이 차서 물 위로 올라왔다', sub: '거품 구멍 가까이에 있으면 숨이 다시 찬다', t: 3, color: '#8ccfc9' } : null;
   startMusic('plaza');
   sfx('drop', { vol: 0.6, rate: 1.3 });
   startLoop();
@@ -1225,7 +1225,7 @@ function enterInterior(id, depth = 0, carry = null, co = null) { // co: 파티 �
   world.rootMemory = carry?.rootMemory;
   world.goalNeeds = [];
   renderer.setWorld(world);
-  renderer.banner = { text: depth ? `${def.name} · 지하 ${depth + 1}층` : def.name, sub: def.relic && !depth ? `가장 깊은 곳의 우두머리가 ${josa(SANCTUMS[def.relic].relic, '을', '를')} 지니고 있다` : depth ? '더 강한 적, 더 많은 보상' : '시작 지점의 포탈로 언제든 밖에 나갈 수 있다', t: 3.4, color: '#ffe8a8' };
+  renderer.banner = { text: depth ? `${def.name} · 지하 ${depth + 1}층` : def.name, sub: def.relic && !depth ? `가장 깊은 곳의 우두머리가 ${josa(SANCTUMS[def.relic].relic, '을', '를')} 지니고 있다` : depth ? '더 강한 적, 더 많은 보상' : '시작 지점의 포탈로 언제든 밖에 나갈 수 있다', t: 3.4, color: '#f6dfae' };
   startMusic(base.id);
   sfx('open');
   startLoop();
@@ -1644,7 +1644,7 @@ function useScroll(kind, id) {
   if (kind === 'return') {
     if (world.mode === 'plaza') { renderer.banner = { text: '이미 마을이다', t: 1.6, color: '#c8b8a0' }; return; }
     spend();
-    if (outdoor) { if (world.teleportTo('wp_village')) renderer.banner = { text: '바람결 마을', sub: '귀환 주문서를 읽었다', t: 2, color: '#ffe8a8' }; return; }
+    if (outdoor) { if (world.teleportTo('wp_village')) renderer.banner = { text: '바람결 마을', sub: '귀환 주문서를 읽었다', t: 2, color: '#f6dfae' }; return; }
     endRun('clear'); // 던전 · 궁전: 얻은 것을 모두 지키고 밖으로
     return;
   }
@@ -1673,13 +1673,13 @@ function doSleep() {
   for (const pl of Object.values(save.farm || {})) if (pl.crop && pl.wateredAt && CROPS[pl.crop]) { pl.wateredAt = Date.now() - CROPS[pl.crop].stageSec * 1000 - 1; growPlot(pl); }
   const now = absMin(save.time), eff = save.effects;
   for (let i = eff.length - 1; i >= 0; i--) if (eff[i].until <= now || eff[i].id === 'rested') eff.splice(i, 1);
-  eff.push({ id: 'rested', name: '개운함', mods: { moveSpeed: 1.08, dmgTakenMul: 0.95 }, color: '#ffe8a8', until: now + 12 * 60, dur: 12 * 60, src: 'sleep' });
+  eff.push({ id: 'rested', name: '개운함', mods: { moveSpeed: 1.08, dmgTakenMul: 0.95 }, color: '#f6dfae', until: now + 12 * 60, dur: 12 * 60, src: 'sleep' });
   world.player.hp = world.d.maxHp;
   world.applyPersist();
   if (stash?.world) { stash.world.player.hp = stash.world.d.maxHp; bankWorld(stash.world); }
   writeSave(save); cloudSaveNow(save);
   renderer.fade = 2.6;
-  renderer.banner = { text: `${save.time.day}일째 아침`, sub: '푹 잤다 · 체력 회복 · 개운함 (저녁 6시까지 이동 +8% · 받는 피해 -5%)', t: 4, color: '#ffe8a8' };
+  renderer.banner = { text: `${save.time.day}일째 아침`, sub: '푹 잤다 · 체력 회복 · 개운함 (저녁 6시까지 이동 +8% · 받는 피해 -5%)', t: 4, color: '#f6dfae' };
   sfx('levelup', { vol: 0.4 });
 }
 // 빠른 칸 음식 (H)
@@ -1780,7 +1780,7 @@ function showPracticePanel() {
   };
   el.onclick = (e) => {
     const k = e.target.dataset.pr;
-    if (k === 'respawn') { spawnArena(practice.arena); renderer.banner = { text: '상대를 다시 불렀다', t: 1.2, color: '#ffcf5a' }; }
+    if (k === 'respawn') { spawnArena(practice.arena); renderer.banner = { text: '상대를 다시 불렀다', t: 1.2, color: '#e9b85c' }; }
     if (k === 'exit') exitPractice();
   };
 }
@@ -2342,7 +2342,7 @@ function portShowTrade(pid) {
       while (n-- > 0 && (save.bag[id] || 0) > 0) { const p = portSell(save, pid, id); save.bag[id]--; save.gold += p; earn += p; noteTrade(save, pid, id, 'sell', 1); }
       (save.trade ||= { revenue: 0, joined: false }).revenue += earn;
       if (!save.bag[id]) delete save.bag[id];
-      if (earn) { sfx('coin', { vol: 0.6 }); renderer.banner = { text: `◆ ${earn} 받았다`, t: 1.2, color: '#ffd27a' }; }
+      if (earn) { sfx('coin', { vol: 0.6 }); renderer.banner = { text: `◆ ${earn} 받았다`, t: 1.2, color: '#f0c878' }; }
       writeSave(save); draw();
     }));
   };
@@ -2377,7 +2377,7 @@ function startVoyage(from, to, route) {
   world.voyage = { from, to, t: 0, dur: (route.time || 12) * 5 * (route.own ? SHIPS[save.ship.tier].speed : 1), eventAt: 10 + Math.random() * 20, events: evs, rolled: false, extra: 0, own: !!route.own };
   worldExtras(world);
   renderer.setWorld(world);
-  renderer.banner = { text: `${destName(to)}(으)로`, sub: '배 위를 걸어 다닐 수 있다 · 선장 · 선원 · 상인 정보원과 이야기해 보자', t: 3.4, color: '#9fd8ff' };
+  renderer.banner = { text: `${destName(to)}(으)로`, sub: '배 위를 걸어 다닐 수 있다 · 선장 · 선원 · 상인 정보원과 이야기해 보자', t: 3.4, color: '#8ccfc9' };
   startMusic('palace');
   sfx('open', { vol: 0.6, rate: 0.7 });
   writeSave(save);
@@ -2405,7 +2405,7 @@ function shipTalk(role) {
 function showSeaEvent(id) {
   const ev = SEA_EVENTS[id], v = world.voyage;
   showModal(`<h2>${esc(ev.title)}</h2><p>${esc(ev.text)}</p><div class="soc-list">${ev.choices.map((c) => `<div class="soc-row"><span class="nm"><b>${esc(c.label)}</b></span><span class="muted">${esc(c.hint)}</span><span class="btns"><button class="sm" data-ch="${c.id}">고른다</button></span></div>`).join('')}</div>`, () => {});
-  const done = (msg, color = '#ffe8a8') => { overlay.hidden = true; paused = false; modal = null; v.waiting = false; if (msg) renderer.banner = { text: msg.text, sub: msg.sub, t: 3.4, color }; writeSave(save); };
+  const done = (msg, color = '#f6dfae') => { overlay.hidden = true; paused = false; modal = null; v.waiting = false; if (msg) renderer.banner = { text: msg.text, sub: msg.sub, t: 3.4, color }; writeSave(save); };
   overlay.querySelectorAll('[data-ch]').forEach((b) => (b.onclick = () => {
     const c = b.dataset.ch, lv = save.level || 1;
     if (c === 'fight') { done({ text: id === 'serpent' ? '바다뱀이 갑판으로 기어오른다!' : '해적이 갑판에 올라탔다!', sub: '모두 쓰러뜨려야 배가 다시 나아간다' }, '#ff9a7a'); world.spawnBoarders(id === 'serpent' ? 'serpent' : 'pirates', lv); return; }
@@ -2443,7 +2443,7 @@ function voyageResult(s) {
 function arriveVoyage() {
   const ship = world, st = voyStash, P = overworldBase().ports?.[st?.to];
   voyStash = null;
-  if (st && PORTS[st.to]?.island) { const took = Math.round(ship.voyage.t + ship.voyage.extra); enterIsland(st.to, { hp: ship.player.hp, res: ship.player.res, loot: ship.loot }); rememberPrices(save, st.to); renderer.banner = { text: `${PORTS[st.to].name}에 닿았다`, sub: `뱃길 ${took}초`, t: 3.4, color: '#9fd8ff' }; return; }
+  if (st && PORTS[st.to]?.island) { const took = Math.round(ship.voyage.t + ship.voyage.extra); enterIsland(st.to, { hp: ship.player.hp, res: ship.player.res, loot: ship.loot }); rememberPrices(save, st.to); renderer.banner = { text: `${PORTS[st.to].name}에 닿았다`, sub: `뱃길 ${took}초`, t: 3.4, color: '#8ccfc9' }; return; }
   if (!st || !P) { enterWorld(); return; }
   const took = Math.round(ship.voyage.t + ship.voyage.extra);
   if (PORTS[st.to]?.island) { enterIsland(st.to, { hp: ship.player.hp, res: ship.player.res, loot: ship.loot }); rememberPrices(save, st.to); return; }
@@ -2460,7 +2460,7 @@ function arriveVoyage() {
   world.player.hp = Math.min(world.d.maxHp, ship.player.hp); world.player.res = ship.player.res;
   world.reveal(true);
   rememberPrices(save, st.to);
-  renderer.banner = { text: `${PORTS[st.to].name}에 닿았다`, sub: `뱃길 ${took}초 · 교역소에서 짐을 팔아 보자`, t: 3.6, color: '#9fd8ff' };
+  renderer.banner = { text: `${PORTS[st.to].name}에 닿았다`, sub: `뱃길 ${took}초 · 교역소에서 짐을 팔아 보자`, t: 3.6, color: '#8ccfc9' };
   sfx('open', { vol: 0.6 });
   writeSave(save);
 }
@@ -2576,7 +2576,7 @@ function showPit() {
 }
 function pitResult(s) {
   if (s.tier === 'duel' && duelCb) { const cb = duelCb; duelCb = null; cb(s.t === 'pitWon'); writeSave(save); return; }
-  if (s.t === 'pitWon') { save.gold += s.bet * 2; repOf().fame += 1; renderer.banner = { text: `이겼다! ◆ ${s.bet * 2}`, sub: '구경꾼들이 발을 구른다 · 명성 +1', t: 3, color: '#ffd27a' }; sfx('levelup', { vol: 0.6 }); }
+  if (s.t === 'pitWon') { save.gold += s.bet * 2; repOf().fame += 1; renderer.banner = { text: `이겼다! ◆ ${s.bet * 2}`, sub: '구경꾼들이 발을 구른다 · 명성 +1', t: 3, color: '#f0c878' }; sfx('levelup', { vol: 0.6 }); }
   else renderer.banner = { text: '모래판에 쓰러졌다', sub: `건 돈 ◆ ${s.bet}을 잃었다`, t: 3, color: '#ffb0a0' };
   writeSave(save);
 }
@@ -2617,7 +2617,7 @@ function exitNokt(way) {
   }
   world.player.hp = Math.min(world.d.maxHp, city.player.hp); world.player.res = city.player.res;
   world.reveal(true);
-  renderer.banner = { text: NOKT_WAYS[way].name, sub: '땅 위로 나왔다', t: 2.6, color: '#ffe8a8' };
+  renderer.banner = { text: NOKT_WAYS[way].name, sub: '땅 위로 나왔다', t: 2.6, color: '#f6dfae' };
   writeSave(save);
 }
 
@@ -2643,7 +2643,7 @@ function enterIsland(id, carry = null) {
   worldExtras(world);
   renderer.setWorld(world);
   const D = ISLAND_DEFS[id];
-  renderer.banner = { text: D.name, sub: `${D.nation} · ${D.mood} · 권장 Lv ${D.lv[0]}~${D.lv[1]}`, t: 4, color: '#9fd8ff' };
+  renderer.banner = { text: D.name, sub: `${D.nation} · ${D.mood} · 권장 Lv ${D.lv[0]}~${D.lv[1]}`, t: 4, color: '#8ccfc9' };
   startMusic(id === 'frost' ? 'frost' : id === 'sand' ? 'rift' : id === 'mist' ? 'cave' : 'plaza'); startLoop();
   writeSave(save);
 }
@@ -2733,7 +2733,7 @@ function killQuest(key, def) { // def: { types, n, title, reward:{gold, fame, in
 }
 const takeQuest = (key, def) => { (save.kq ||= {})[key] = { ...def, base: killsOf(def.types) }; writeSave(save); };
 const questBtn = (key, def) => `<button id="kq_${key}">받는다: ${esc(def.title)} (${def.n}마리 · ◆ ${def.reward.gold})</button>`;
-function bindQuest(key, def, after) { const b = document.getElementById('kq_' + key); if (b) b.onclick = () => { takeQuest(key, def); renderer.banner = { text: '의뢰를 받았다', sub: def.title, t: 2.4, color: '#ffe8a8' }; after?.(); }; }
+function bindQuest(key, def, after) { const b = document.getElementById('kq_' + key); if (b) b.onclick = () => { takeQuest(key, def); renderer.banner = { text: '의뢰를 받았다', sub: def.title, t: 2.4, color: '#f6dfae' }; after?.(); }; }
 
 // ── 성지 고유 콘텐츠 ──
 const UNIQ = {
@@ -2745,7 +2745,7 @@ const UNIQ = {
 function sanctTalk(id) {
   const [, kind, race] = id.split('_');
   const own = save.race === race, S = SANCTUMS[race];
-  const done = (msg) => { renderer.banner = { text: msg, t: 2.6, color: '#ffe8a8' }; writeSave(save); };
+  const done = (msg) => { renderer.banner = { text: msg, t: 2.6, color: '#f6dfae' }; writeSave(save); };
   if (kind === 'inn') {
     const cost = own ? 0 : 20;
     showModal(`<h2>${esc(S.name)} 숙소</h2><p>"쉬어 가시오. 여기서 묵으면 쓰러져도 이 숙소에서 깨어나게 해 드리지."</p><p class="muted">${own ? '같은 종족은 공짜' : `하룻밤 ◆ ${cost}`}${save.respawnAt === race ? ' · 지금 이곳이 부활 지점' : ''}</p>${portGoldRow()}<div class="actions"><button id="innRest" ${save.gold >= cost ? '' : 'disabled'}>묵는다</button><button data-close class="ghost">됐다</button></div>`);
@@ -2865,7 +2865,7 @@ function guildTalk() {
   const nb = document.getElementById('cnew');
   if (nb) nb.onclick = () => { const goods = ['iceCrystal', 'redSpice', 'pirateRum', 'windWheat', 'mistSalt', 'woolBale'], g = goods[Math.floor(Math.random() * goods.length)], n = 8 + Math.floor(Math.random() * 10); T.contract = { good: g, n, until: Date.now() + 48 * 3600e3, pay: Math.round(CARGO[g].price * n * 1.7) }; writeSave(save); guildTalk(); };
   const db = document.getElementById('cdeliver');
-  if (db) db.onclick = () => { save.bag[C.good] -= C.n; if (!save.bag[C.good]) delete save.bag[C.good]; save.gold += C.pay; T.revenue += C.pay; T.contract = null; writeSave(save); sfx('coin', { vol: 0.7 }); renderer.banner = { text: `납품 완료 · ◆ ${C.pay}`, t: 2.4, color: '#ffd27a' }; guildTalk(); };
+  if (db) db.onclick = () => { save.bag[C.good] -= C.n; if (!save.bag[C.good]) delete save.bag[C.good]; save.gold += C.pay; T.revenue += C.pay; T.contract = null; writeSave(save); sfx('coin', { vol: 0.7 }); renderer.banner = { text: `납품 완료 · ◆ ${C.pay}`, t: 2.4, color: '#f0c878' }; guildTalk(); };
 }
 const AUCTION_POOL = ['ruby', 'sapphire', 'emerald', 'pearl', 'serpentScale', 'spiritStone', 'truffle', 'obsidian', 'manaCrystal'];
 function auctionState() {
@@ -2937,7 +2937,7 @@ function islandTalk(id) {
   if (id === 'sand_arena') {
     const A = (save.sultan ||= { wins: 0 });
     showModal(`<h2>술탄의 투기장 · 진행자 말리크</h2><p>"모래바람 술탄께서 보고 계신다! 세 판을 내리 이기면 술탄의 금잔을 주지!"</p><p class="muted">연승 ${A.wins} / 3</p><div class="actions"><button id="sfight">모래판에 선다 (Lv ${30 + A.wins * 5})</button><button data-close class="ghost">됐다</button></div>`);
-    document.getElementById('sfight').onclick = () => { overlay.hidden = true; paused = false; modal = null; const lv = 30 + A.wins * 5; startDuel({ foe: ['sandScorpion', 'lizardWarrior', 'orcRaider'][A.wins % 3], lv, hp: 3.5, name: `${A.wins + 1}번째 상대`, onEnd: (win) => { if (win) { A.wins++; save.gold += 100 + lv * 3; if (A.wins >= 3) { A.wins = 0; save.gold += 800; repOf().fame += 8; addChronicle(`${heroName()}이(가) 술탄의 투기장에서 세 판을 내리 이겨 금잔을 받았다`); renderer.banner = { text: '술탄의 금잔!', sub: '◆ 800 · 명성 +8', t: 3.5, color: '#ffd27a' }; } else renderer.banner = { text: `이겼다 (${A.wins}연승)`, t: 2.4, color: '#ffd27a' }; } else { A.wins = 0; renderer.banner = { text: '졌다 · 연승이 끊겼다', t: 2.4, color: '#ffb0a0' }; } writeSave(save); } }); };
+    document.getElementById('sfight').onclick = () => { overlay.hidden = true; paused = false; modal = null; const lv = 30 + A.wins * 5; startDuel({ foe: ['sandScorpion', 'lizardWarrior', 'orcRaider'][A.wins % 3], lv, hp: 3.5, name: `${A.wins + 1}번째 상대`, onEnd: (win) => { if (win) { A.wins++; save.gold += 100 + lv * 3; if (A.wins >= 3) { A.wins = 0; save.gold += 800; repOf().fame += 8; addChronicle(`${heroName()}이(가) 술탄의 투기장에서 세 판을 내리 이겨 금잔을 받았다`); renderer.banner = { text: '술탄의 금잔!', sub: '◆ 800 · 명성 +8', t: 3.5, color: '#f0c878' }; } else renderer.banner = { text: `이겼다 (${A.wins}연승)`, t: 2.4, color: '#f0c878' }; } else { A.wins = 0; renderer.banner = { text: '졌다 · 연승이 끊겼다', t: 2.4, color: '#ffb0a0' }; } writeSave(save); } }); };
     return true;
   }
   if (id === 'sand_caravan') {
@@ -3012,8 +3012,8 @@ function giveMoney(o, n) {
   witness(world, o.x, o.y, k === 'bribe' ? 'bribe' : k === 'donate' ? 'donate' : 'gift', k === 'bribe' ? 10 : -8, o); // 본 사람들이 기억한다
   if (o.mem && k !== 'bribe') o.mem.op = Math.min(100, o.mem.op + Math.min(25, n / 8)); // 받은 사람은 더 좋아한다
   writeSave(save); sfx('coin', { vol: 0.6 });
-  world.emit({ t: 'text', x: o.x, y: (o._top ?? o.y - 24) - 6, text: k === 'bribe' ? '…못 본 걸로 하지' : k === 'donate' ? '고맙습니다!' : k === 'rebel' ? '밤의 사람들이 기억할 거요' : '고맙소', color: '#ffe8a8' });
-  renderer.banner = { text: `◆ ${n}을(를) 건넸다`, sub: text, t: 2.4, color: '#ffd27a' };
+  world.emit({ t: 'text', x: o.x, y: (o._top ?? o.y - 24) - 6, text: k === 'bribe' ? '…못 본 걸로 하지' : k === 'donate' ? '고맙습니다!' : k === 'rebel' ? '밤의 사람들이 기억할 거요' : '고맙소', color: '#f6dfae' });
+  renderer.banner = { text: `◆ ${n}을(를) 건넸다`, sub: text, t: 2.4, color: '#f0c878' };
 }
 function npcStruck(s) {
   const zone = world.zone?.id || '', inNokt = zone.includes('nokt'), royal = !inNokt && (s.role === 'guard' || zone.includes('capital'));
@@ -3093,7 +3093,7 @@ function officialTalk(oid) {
   showModal(`<h2>${esc(label)}</h2><p>${line}</p><p class="muted">호위 ${now.guards.reduce((s, g) => s + g[1], 0)}명 · Lv ${now.lv}${now.king ? ' · 여럿이 힘을 모아야 닿는 상대' : ''}</p>
     <div class="actions">${!mine ? `<button id="bribe" ${save.gold >= 100 ? '' : 'disabled'}>뇌물을 바친다 (◆ 100)</button>` : '<button id="salute">예를 갖춘다</button>'}<button id="attackO" class="warn">${mine ? '배신하고 공격한다' : '공격한다'}</button><button data-close class="ghost">물러난다</button></div>`);
   const close = () => { overlay.hidden = true; paused = false; modal = null; };
-  const bb = document.getElementById('bribe'); if (bb) bb.onclick = () => { save.gold -= 100; polGain(now.side === 'aurelion' ? { merit: 15, infamy: 1 } : { struggle: 15, infamy: 1 }); close(); renderer.banner = { text: '뇌물을 받았다', sub: `${label}이(가) 당신 이름을 기억한다`, t: 2.6, color: '#ffe8a8' }; };
+  const bb = document.getElementById('bribe'); if (bb) bb.onclick = () => { save.gold -= 100; polGain(now.side === 'aurelion' ? { merit: 15, infamy: 1 } : { struggle: 15, infamy: 1 }); close(); renderer.banner = { text: '뇌물을 받았다', sub: `${label}이(가) 당신 이름을 기억한다`, t: 2.6, color: '#f6dfae' }; };
   const sb = document.getElementById('salute'); if (sb) sb.onclick = close;
   document.getElementById('attackO').onclick = () => {
     close();
@@ -3150,7 +3150,7 @@ function officialDown(s) {
       e.finish = true; e.dead = true; world.emit({ t: 'death', x: e.x, y: e.y, color: '#8a8478' });
       for (const q of world.enemies) if (!q.dead && (q.tag === '왕국 근위병' || q.tag === '녹타리스 호위')) { q.dead = true; world.emit({ t: 'death', x: q.x, y: q.y, color: '#8a8478' }); }
       if (c === 'spare') { polGain({ fame: 6 }); addChronicle(`${heroName()}이(가) 쓰러진 ${now.title} ${now.name}의 목숨을 살려 주었다`); renderer.banner = { text: `${label}을(를) 살려 주었다`, sub: '명성 +6 · 그는 달아났다', t: 3, color: '#9fe8b0' }; }
-      else { bagAdd(lifeOf(), 'officialSeal', 1); polGain(now.side === 'aurelion' ? { struggle: 40, infamy: 4 } : { merit: 40 }); addChronicle(`${now.title} ${now.name}의 인장을 누군가 빼앗았다`); renderer.banner = { text: '관리의 인장을 빼앗았다', sub: '녹타리스 가입 증거로 쓸 수 있다', t: 3, color: '#ffe8a8' }; }
+      else { bagAdd(lifeOf(), 'officialSeal', 1); polGain(now.side === 'aurelion' ? { struggle: 40, infamy: 4 } : { merit: 40 }); addChronicle(`${now.title} ${now.name}의 인장을 누군가 빼앗았다`); renderer.banner = { text: '관리의 인장을 빼앗았다', sub: '녹타리스 가입 증거로 쓸 수 있다', t: 3, color: '#f6dfae' }; }
     }
     writeSave(save);
   }));
@@ -3175,7 +3175,7 @@ function spawnHappening() {
   w.objects.push(o);
   HAPPEN_LIST.push({ id: hid, type, o, where, cv });
   if (cv) o.label = `상단 (${TOWNS[cv.from].name} → ${TOWNS[cv.to].name} · ${CARGO[cv.good].name} ${cv.n}) · G 살펴보기 (${DEED_SHORT.caravan})`;
-  w.emit({ t: 'text', x: p.x, y: p.y - 30, text: `근처에서 ${H.name}`, color: '#ffe8a8' });
+  w.emit({ t: 'text', x: p.x, y: p.y - 30, text: `근처에서 ${H.name}`, color: '#f6dfae' });
 }
 const ALIGN = { aurelion: { caravan: 'escort', taxWagon: 'guard', cult: 'stop', patrol: 'side' }, noctaris: { caravan: 'raid', taxWagon: 'rob', patrol: 'stop', cult: 'stop' } };
 // 벌어지는 일은 고르는 창이 없다: 공격하면 싸움 · 곁에 머물면 호위/엿듣기 · 돈을 건네면 뇌물 · 기부 · 헌금
@@ -3248,7 +3248,7 @@ function happeningTalk(hid) {
     save.gold -= cost; overlay.hidden = true; paused = false; modal = null; sfx('coin', { vol: 0.6 });
     if (k === 'patrolBribe') happeningAct(h, 'side');
     else if (k === 'cultGive') happeningAct(h, 'help');
-    else { polGain({ fame: 3 }); world.emit({ t: 'text', x: h.o.x, y: h.o.y - 30, text: '고맙습니다…!', color: '#ffe8a8' }); renderer.banner = { text: '농부에게 돈을 건넸다', sub: '기부 · 명성 +3', t: 2.4, color: '#9fe8b0' }; }
+    else { polGain({ fame: 3 }); world.emit({ t: 'text', x: h.o.x, y: h.o.y - 30, text: '고맙습니다…!', color: '#f6dfae' }); renderer.banner = { text: '농부에게 돈을 건넸다', sub: '기부 · 명성 +3', t: 2.4, color: '#9fe8b0' }; }
   }));
 }
 function happeningTalkOld(hid) {
@@ -3283,7 +3283,7 @@ function happeningDone(h, c, aligned) {
   witness(world, h.o.x, h.o.y, c.id, { raid: 25, rob: 20, escort: -20, guard: -15, stop: -10 }[c.id] || 0);
   polGain(r, aligned);
   if (c.id === 'raid' || c.id === 'rob') addChronicle(`${h.where}에서 ${h.type === 'taxWagon' ? '세금 마차' : '상단'}이(가) 털렸다 — ${heroName()}`);
-  if (!r.lore) renderer.banner = { text: c.label + (aligned ? ' · 세력 의뢰 완료' : ''), sub: rewardText(c.reward), t: 3.2, color: '#ffe8a8' };
+  if (!r.lore) renderer.banner = { text: c.label + (aligned ? ' · 세력 의뢰 완료' : ''), sub: rewardText(c.reward), t: 3.2, color: '#f6dfae' };
   h.o.gone = true; h.o.reusable = false; h.o.endT = world.t;
   HAPPEN_LIST = HAPPEN_LIST.filter((q) => q !== h);
   writeSave(save);
@@ -3322,7 +3322,7 @@ function politicsTick(dt) {
   const w = world;
   if (save.time) econTick(save, absMin(save.time)); // 마을마다 만들고 쓴다
   if (w.map.outdoor || w.objects.some((q) => q.kind === 'npc')) barkTick(dt);
-  if (!save.flags?.deedTip && w.state === 'play' && w.zone?.id === 'world' && save.tutorial?.done && save.journey?.f1) { (save.flags ||= {}).deedTip = true; renderer.banner = { text: '고르는 창은 없다 — 직접 하면 된다', sub: '때리면 싸움 · 돈을 건네면 뇌물 · 기부 · 후원 · 곁에 머물면 호위 (설정에서 NPC 공격 끄기)', t: 7, color: '#ffe8a8' }; }
+  if (!save.flags?.deedTip && w.state === 'play' && w.zone?.id === 'world' && save.tutorial?.done && save.journey?.f1) { (save.flags ||= {}).deedTip = true; renderer.banner = { text: '고르는 창은 없다 — 직접 하면 된다', sub: '때리면 싸움 · 돈을 건네면 뇌물 · 기부 · 후원 · 곁에 머물면 호위 (설정에서 NPC 공격 끄기)', t: 7, color: '#f6dfae' }; }
   if (w.map.outdoor && !w.voyage && w.state === 'play') {
     happenClock -= dt;
     HAPPEN_LIST = HAPPEN_LIST.filter((h) => w.objects.includes(h.o) && !h.o.gone);
@@ -3405,7 +3405,7 @@ function capContraband(held) {
     <div class="actions"><button id="cbGive">내준다 (빼앗긴다)</button><button id="cbBribe" ${save.gold >= bribe ? '' : 'disabled'}>뒷돈을 찔러 준다 (◆ ${bribe})</button><button id="cbRun" class="ghost">밀치고 들어간다 (싸움 · 악명 +5)</button></div>`);
   const close = () => { overlay.hidden = true; paused = false; modal = null; writeSave(save); };
   document.getElementById('cbGive').onclick = () => { for (const k of held) delete save.bag[k]; close(); renderer.banner = { text: '밀수품을 빼앗겼다', t: 2.4, color: '#ffb0a0' }; };
-  document.getElementById('cbBribe').onclick = () => { save.gold -= bribe; polGain({ infamy: 1 }); close(); sfx('coin', { vol: 0.5 }); renderer.banner = { text: '못 본 척해 준다', sub: '악명 +1', t: 2.4, color: '#ffd27a' }; };
+  document.getElementById('cbBribe').onclick = () => { save.gold -= bribe; polGain({ infamy: 1 }); close(); sfx('coin', { vol: 0.5 }); renderer.banner = { text: '못 본 척해 준다', sub: '악명 +1', t: 2.4, color: '#f0c878' }; };
   document.getElementById('cbRun').onclick = () => { polGain({ infamy: 5 }); close(); world.skirmish = { id: 'capGuard', foes: capGuards(3, '성문 경비병') }; renderer.banner = { text: '검문을 뚫었다!', sub: '악명 +5 · 경비병이 쫓아온다', t: 2.6, color: '#ff7a5a' }; };
 }
 const CAP_LINES = {
@@ -3442,7 +3442,7 @@ function capitalTalk(id) {
       <div class="actions">${R.infamy ? `<button id="jFine" ${save.gold >= fine ? '' : 'disabled'}>벌금을 내고 악명을 지운다 (◆ ${fine})</button><button id="jHalf" ${save.gold >= Math.ceil(fine / 2) ? '' : 'disabled'}>절반만 낸다 (◆ ${Math.ceil(fine / 2)} · 악명 절반)</button>` : ''}
       ${canRaid ? `<button id="jRaid" ${raidCool ? 'disabled' : ''}>감옥을 습격한다 (경비 다섯 · 투쟁 +35)${raidCool ? ' — 아직 경비가 삼엄하다' : ''}</button>` : ''}<button data-close class="ghost">됐다</button></div>`);
     document.getElementById('jFine')?.addEventListener('click', () => { save.gold -= fine; R.infamy = 0; done(); sfx('coin', { vol: 0.5 }); renderer.banner = { text: '벌금을 냈다', sub: '악명이 지워졌다 · 수배지에서 이름이 내려갔다', t: 3, color: '#9fe8b0' }; });
-    document.getElementById('jHalf')?.addEventListener('click', () => { save.gold -= Math.ceil(fine / 2); R.infamy = Math.floor(R.infamy / 2); done(); sfx('coin', { vol: 0.5 }); renderer.banner = { text: '벌금 절반을 냈다', sub: `악명 ${R.infamy}`, t: 3, color: '#ffd27a' }; });
+    document.getElementById('jHalf')?.addEventListener('click', () => { save.gold -= Math.ceil(fine / 2); R.infamy = Math.floor(R.infamy / 2); done(); sfx('coin', { vol: 0.5 }); renderer.banner = { text: '벌금 절반을 냈다', sub: `악명 ${R.infamy}`, t: 3, color: '#f0c878' }; });
     document.getElementById('jRaid')?.addEventListener('click', () => { done(); world.skirmish = { id: 'capRaid', foes: capGuards(5, '감옥 경비병', { x: 350 * TILE, y: 236 * TILE }) }; renderer.banner = { text: '감옥 습격!', sub: '경비병 다섯을 쓰러뜨려라', t: 3, color: '#c8a0ff' }; });
     return;
   }

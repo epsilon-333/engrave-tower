@@ -379,7 +379,7 @@ export class Hub {
     const summary = e.effects.map((x) => x.text).join(' · ');
     const wlist = engravingWeapons(id), weaponLine = ENGRAVING_SKILLS[id] ? `<div class="c-meta">맞는 무기: ${wlist.length >= 14 ? '모든 무기' : wlist.map((c) => WCAT_NAME[c] || c).join(' · ') || '없음'}</div>` : '';
     const skId = engravingSkillFor(id, s.race), SK = SKILLS[skId], orig = ENGRAVING_SKILLS[id];
-    const skillBox = SK ? `<div class="c-skill" style="--c:${ROLE_COLOR[SK.role] || '#ffd27a'}">
+    const skillBox = SK ? `<div class="c-skill" style="--c:${ROLE_COLOR[SK.role] || '#f0c878'}">
       <div class="cs-head"><b>${SK.ult ? '궁극 · ' : ''}${esc(SK.name)}</b><span>${SK.role}</span></div>
       <div class="cs-meta">재사용 ${SK.cd}초${SK.cost ? ` · 자원 ${SK.cost}` : SK.costAll ? ` · 자원 전부(${SK.costAll.min} 이상)` : SK.mana ? ` · 마나 ${SK.mana}` : ''} · ${KIND_NAME[SK.kind || 'body'] || '몸'}으로 쓴다 · 부하 ${skillLoad(skId)}</div>
       <div class="cs-desc">${termify(esc(SK.desc || ''))}</div>
@@ -387,7 +387,7 @@ export class Hub {
     const fromLine = e.from && MONSTERS[e.from] ? `<div class="c-meta">${s.codex.kills?.[e.from] ? MONSTERS[e.from].name : '???'}의 부산물로 새긴다</div>` : '';
     return `<div class="card ${goal ? 'goal' : ''}" data-q="${esc(this.engSearchText(id, s))}" style="--g:${GRADES[e.grade].color}">
       <div class="c-head"><b>${e.name}</b><span><button class="star ${goal ? 'on' : ''}" data-act="goal" data-id="${id}" title="목표로 찜">★</button> <span class="grade">${GRADES[e.grade].name}</span></span></div>
-      <div class="c-meta">${(() => { const sk = engravingSkillFor(id, s.race), orig = ENGRAVING_SKILLS[id]; return sk ? `<b style="color:#ffd27a">스킬: ${SKILLS[sk].name}</b>${sk !== orig ? ` <small class="muted">(궁극기 「${SKILLS[orig].name}」는 그 종족만)</small>` : ''} · ` : ''; })()}부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
+      <div class="c-meta">${(() => { const sk = engravingSkillFor(id, s.race), orig = ENGRAVING_SKILLS[id]; return sk ? `<b style="color:#f0c878">스킬: ${SKILLS[sk].name}</b>${sk !== orig ? ` <small class="muted">(궁극기 「${SKILLS[orig].name}」는 그 종족만)</small>` : ''} · ` : ''; })()}부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
       ${fromLine}
       ${weaponLine}
       ${skillBox}
@@ -426,7 +426,7 @@ export class Hub {
           : `<button class="sm" data-act="equipG" data-id="${id}" data-slot="${it.slot}" ${gear[it.slot] === id ? 'disabled' : ''}>${gear[it.slot] === id ? '장착 중' : it.slot === 'weapon' ? '오른손' : '장착'}</button>${it.slot === 'weapon' && weaponHands(it) < 2 ? `<button class="sm" data-act="equipG" data-id="${id}" data-slot="off" ${gear.off === id || gear.weapon === id || twoHand ? 'disabled' : ''} title="${twoHand ? '양손 무기를 들고 있다' : '왼손에 든 무기는 능력치 절반 · 같은 계열 둘이면 보너스'}">${gear.off === id ? '왼손 중' : '왼손'}</button>` : ''}`;
       const prev = equipped ? '' : this.preview(s, (lo) => { lo.gear = { ...lo.gear, [it.slot === 'acc' ? (gear.acc1 ? 'acc2' : 'acc1') : it.slot]: id }; });
       return `<div class="card ${has ? 'owned' : ''}"><div class="c-head"><b>${it.name}</b>${it.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
-        ${it.cls ? `<div class="c-meta" style="color:${it.cls === s.cls ? '#ffd27a' : '#9a90b0'}">${CLASSES[it.cls].name} 전용${it.bdesc ? ' · ' + it.bdesc : ''}${it.cls !== s.cls && it.bdesc ? ' (클래스가 다르면 효과 없음)' : ''}</div>` : ''}${w}${req}<div class="c-stats">${stats || '&nbsp;'}</div><ul class="c-eff">${effs}</ul>${prev}<div class="c-act">${btn}</div></div>`;
+        ${it.cls ? `<div class="c-meta" style="color:${it.cls === s.cls ? '#f0c878' : '#9a8e84'}">${CLASSES[it.cls].name} 전용${it.bdesc ? ' · ' + it.bdesc : ''}${it.cls !== s.cls && it.bdesc ? ' (클래스가 다르면 효과 없음)' : ''}</div>` : ''}${w}${req}<div class="c-stats">${stats || '&nbsp;'}</div><ul class="c-eff">${effs}</ul>${prev}<div class="c-act">${btn}</div></div>`;
     };
     const idsOf = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl && (!ownedOnly || s.items.includes(id)) && (!ITEMS[id].cls || CLASSES[ITEMS[id].cls].race === s.race) && (!ITEMS[id].starter && id !== 'rustySword' || s.items.includes(id)) && (!ITEMS[id].treasure && !ITEMS[id].forged  && !ITEMS[id].towerWeapon && !ITEMS[id].towerGear && !ITEMS[id].crafted && !ITEMS[id].lootWeapon || s.items.includes(id))).sort((a, b) => (ITEMS[b].cls === s.cls) - (ITEMS[a].cls === s.cls));
     // 두 단: 왼쪽 한 줄 목록(가진 것 · 장착 중 표시, 부위 · 무기 종류 · 등급 거르기), 오른쪽 고른 장비의 카드와 비교
@@ -438,7 +438,7 @@ export class Hub {
     const sel = all.includes(this.gearSel) ? this.gearSel : all[0];
     const gearRowItem = (id) => { const it = ITEMS[id], rc = it.rarityColor || RC[it.rarity] || '#c8c0d0';
       return `<button class="eng-row gear-row ${sel === id ? 'on' : ''}" data-act="gsel" data-id="${id}" style="--g:${rc}"><span class="er-name">${esc(it.name)}</span>
-        <span class="er-tags">${it.weapon ? `<i style="--c:#c8c0d8">${WCAT_NAME[weaponCat(it)] || ''}</i><i style="--c:#ffd27a">위력 ×${it.weapon.mul}</i>` : Object.entries(it.stats || {}).slice(0, 3).map(([k, v]) => `<i style="--c:#c8c0d8">${(STAT_INFO[k] || SPECIAL_INFO[k])?.name || k} +${v}</i>`).join('')}</span>
+        <span class="er-tags">${it.weapon ? `<i style="--c:#c9beb2">${WCAT_NAME[weaponCat(it)] || ''}</i><i style="--c:#f0c878">위력 ×${it.weapon.mul}</i>` : Object.entries(it.stats || {}).slice(0, 3).map(([k, v]) => `<i style="--c:#c9beb2">${(STAT_INFO[k] || SPECIAL_INFO[k])?.name || k} +${v}</i>`).join('')}</span>
         <span class="er-skill">${it.rarity != null ? ['일반', '희귀', '영웅', '전설', '신화'][it.rarity] : ''}</span><span class="er-state">${equippedIds.has(id) ? '<b class="ok">장착 중</b>' : s.items.includes(id) ? '보유' : it.price ? `◆ ${it.price}` : ''}</span></button>`; };
     const cats = [...new Set(idsOf('weapon').map((id) => weaponCat(ITEMS[id])))];
     const chip = (act, val, cur, label) => `<button class="sm ${cur === val ? 'on' : 'ghost'}" data-act="${act}" data-id="${val}">${label}</button>`;
@@ -499,7 +499,7 @@ export class Hub {
           const info = [`HP ${m.hp} · ${m.type === 'mag' ? '마법' : '물리'} 공격 ${m.atk}`];
           if (st >= 2) info.push(`물리 저항 ${m.pres} / 마법 저항 ${m.mres}${m.status ? ` · ${({ burn: '화상', poison: '중독', bleed: '출혈', chill: '냉기' })[m.status]}을 건다` : ''}`, `떨어뜨림: ${[m.echo && ECHOES[m.echo.id]?.name, ...dropsOf(id)].filter(Boolean).join(', ')}`);
           else info.push('<span class="muted">5마리를 잡으면 약점과 떨어뜨리는 것이 기록된다</span>');
-          info.push(`사는 곳: ${whereText(id, 5)}${towerOnly(id) ? ' <b style="color:#ffd27a">(탑 전용)</b>' : ''}`);
+          info.push(`사는 곳: ${whereText(id, 5)}${towerOnly(id) ? ' <b style="color:#f0c878">(탑 전용)</b>' : ''}`);
           if (m.part) { const engs = Object.keys(ENGRAVINGS).filter((eid) => ENGRAVINGS[eid].recipe[m.part]); info.push(`부산물: ${ECHOES[m.part].name}${engs.length ? ` → 각인 ${engs.map((eid) => `「${ENGRAVINGS[eid].name}」`).join(' ')}` : ''}`); }
           return `<div class="li ${st >= STAGE_MAX ? 'on' : ''}"><b>${m.name}</b> <span class="stars">${stars}</span> <small>처치 ${n}${next}</small><br><small>${info.join('<br>')}</small></div>`;
         }).join('')}</div>`;
@@ -522,7 +522,7 @@ export class Hub {
         const E = ECHOES[eid], srcs = echoSources(eid), known = s.codex.echoes?.[eid] || srcs.some(seenM);
         const uses = Object.keys(ENGRAVINGS).filter((k) => ENGRAVINGS[k].recipe[eid]);
         if (!known) return `<div class="li off">??? <small>아직 모르는 재료 · 각인 ${uses.length}개에 쓰인다</small></div>`;
-        const where = srcs.map((id) => seenM(id) ? `<b>${MONSTERS[id].name}</b> — ${whereText(id, 4)}${towerOnly(id) ? ' <b style="color:#ffd27a">(탑 전용)</b>' : ''}` : `??? <small class="muted">(${whereText(id, 2)})</small>`);
+        const where = srcs.map((id) => seenM(id) ? `<b>${MONSTERS[id].name}</b> — ${whereText(id, 4)}${towerOnly(id) ? ' <b style="color:#f0c878">(탑 전용)</b>' : ''}` : `??? <small class="muted">(${whereText(id, 2)})</small>`);
         return `<div class="li ${s.echoes?.[eid] ? 'on' : ''}"><b style="color:${E.color}">◆ ${E.name}</b> <small>가진 것 ${s.echoes?.[eid] || 0}</small><br><small>${where.join('<br>')}</small><br><small class="muted">쓰는 각인: ${uses.slice(0, 8).map((k) => ENGRAVINGS[k].name).join(' · ')}${uses.length > 8 ? ` 외 ${uses.length - 8}개` : ''}</small></div>`;
       };
       const fams = Object.keys(ECHOES).filter((k) => !ECHOES[k].part), parts = Object.keys(ECHOES).filter((k) => ECHOES[k].part);
