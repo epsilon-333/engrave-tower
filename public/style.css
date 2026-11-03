@@ -684,3 +684,10 @@ body.touch #cloudChip { right: auto; bottom: auto; }
 /* 종족 선택: 스탯 이름(물저 · 마저)이 두 줄로 쪼개지지 않게 */
 .mini-stats i { width: 30px; white-space: nowrap; }
 .mini-stats span { white-space: nowrap; }
+/* 거르기 접기 */
+.more-filters { margin: 4px 0 8px; } .more-filters > summary { cursor: pointer; padding: 6px 2px; color: var(--text); font-weight: 600; list-style: none; }
+.more-filters > summary::before { content: '▸ '; color: var(--accent); } .more-filters[open] > summary::before { content: '▾ '; }
+.more-filters .filters { margin-left: 14px; }
+/* 장비 비교 (Diablo IV처럼 ▲ 초록 / ▼ 빨강) */
+.pv.up::before { content: '▲ '; font-size: 10px; } .pv.down::before { content: '▼ '; font-size: 10px; }
+.pv.big { font-weight: 700; padding: 2px 8px; }

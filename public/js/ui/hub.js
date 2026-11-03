@@ -35,6 +35,7 @@ export class Hub {
     this.toastT = null;
     root.addEventListener('click', (e) => this.onClick(e));
     root.addEventListener('input', (e) => { if (e.target.id === 'engSearch') { this.altarQ = e.target.value; this.applyEngSearch(); } }); // 각인 찾기
+    root.addEventListener('toggle', (e) => { if (e.target.classList?.contains('more-filters')) this.altarMore = e.target.open; }, true);
     root.addEventListener('change', (e) => { if (e.target.dataset?.act === 'autoAim') { setAutoAim(e.target.checked); this.toast(e.target.checked ? '자동 조준 켜짐' : '자동 조준 꺼짐'); } }); // autoAimChange
   }
 
@@ -227,9 +228,11 @@ export class Hub {
       <section class="panel">
         <h3>각인 목록 <small>처음에는 내 클래스에 맞는 각인만 보입니다 · ★로 찜하면 필요한 잔향과 사냥터를 알려 줘요</small></h3>
         ${filterBar}
-        <div class="filters eng-search"><input id="engSearch" type="search" placeholder="찾기: 이름 · 몬스터 · 효과 · 스킬 · 무기 (예: 처치 근력, 대시 보호막, 늪 마녀)" value="${esc(this.altarQ || '')}" style="flex:1;min-width:14em;background:#1a1626;color:#ece4f6;border:1px solid #5a4a78;border-radius:4px;padding:5px 8px;font:inherit"> <span id="engCount" class="muted"></span></div>
+        <div class="filters eng-search"><input id="engSearch" type="search" placeholder="찾기: 이름 · 몬스터 · 효과 · 스킬 · 무기 (예: 처치 근력, 대시 보호막, 늪 마녀)" value="${esc(this.altarQ || '')}" style="flex:1;min-width:14em"> <span id="engCount" class="muted"></span></div>
+        <details class="more-filters" ${this.altarMore ? 'open' : ''}><summary>거르기 · 정리 <small>${[this.altarQ && '검색', grade && '등급', (this.altarWeapon || 'all') !== 'all' && '무기', view === 'tag' && '태그별'].filter(Boolean).join(' · ') || '전체 보기'}</small></summary>
         <div class="filters"><span class="muted">원하는 효과 </span>${['치명타', '처치', '맞으면', '대시', '회피', '스킬을 쓰면', '보호막', '각성하면', '동안', '마다', '화상', '냉기', '중독', '출혈', '저주', '흡혈', '반사', '회복', '궁극'].map((w) => `<button class="sm ${(this.altarQ || '').split(/\s+/).includes(w) ? 'on' : 'ghost'}" data-act="aquery" data-id="${w}">${w === '동안' ? '잠깐 스탯' : w === '마다' ? '스탯 바꾸기' : w}</button>`).join('')}${this.altarQ ? '<button class="sm" data-act="aquery" data-id="">지우기</button>' : ''}</div>
         ${viewBar}
+        </details>
         ${goalHtml}
         <div class="eng-split"><div id="engList">${groups || '<p class="muted">조건에 맞는 각인이 없습니다.</p>'}</div>
         <aside class="eng-detail">${this.altarSel && ENGRAVINGS[this.altarSel] ? this.engravingCard(this.altarSel, s, b) : '<p class="muted">왼쪽 목록에서 각인을 고르면 여기에 자세히 보여요.</p>'}</aside></div>
@@ -534,6 +537,8 @@ export class Hub {
       if (Math.abs(dv) < (digits ? 0.005 : 0.5)) return;
       chips.push(`<span class="pv ${dv > 0 ? 'up' : 'down'}">${label} ${dv > 0 ? '+' : ''}${digits ? dv.toFixed(digits) : Math.round(dv)}</span>`);
     };
+    const hit = (B) => { const w = B.weaponItem.weapon, d0 = B.derived; return (w.dmg === 'mag' ? d0.magAtk : Math.max(d0.physAtk, d0.dexAtk || 0)) * w.mul * (B.wScale?.dmg || 1) * (d0.dmgMul || 1); };
+    { const dv = hit(nb) - hit(base); if (Math.abs(dv) >= 0.5) chips.push(`<span class="pv big ${dv > 0 ? 'up' : 'down'}">평타 한 방 ${dv > 0 ? '+' : ''}${Math.round(dv)} (${Math.round(hit(nb))})</span>`); } // 가장 먼저 보이는 것: 실제 한 방이 얼마나 바뀌나
     num('HP', 'maxHp'); num('물공', 'physAtk'); num('마공', 'magAtk'); num('공속', 'atkSpeed', 2);
     num('치명%', 'crit', 0, 100); num('물감%', 'physDR', 0, 100); num('마감%', 'magDR', 0, 100); num('피해×', 'dmgMul', 2);
     const synA = base.synergies.filter((x) => x.on).length, synB = nb.synergies.filter((x) => x.on).length;

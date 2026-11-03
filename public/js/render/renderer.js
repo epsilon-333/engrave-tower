@@ -147,6 +147,21 @@ function lichSprite(frame, flip) { // frame 0~3: 로브 자락이 흔들린다
   return (lichCache[key] = c);
 }
 
+// 스킬 역할 그림 (7×7, # = 색 · o = 흰 빛)
+const ROLE_GLYPH = {
+  공격: ['......o', '.....#.', '....#..', '.#.#...', '..#....', '.#.#...', '#......'],
+  연타: ['#..#..#', '.#..#..', '..#..#.', '.#..#..', '#..#..#', '.......', '.......'].map((r, i) => i < 5 ? r : '.......'),
+  이동: ['...#...', '....#..', '#######', '....#..', '...#...', '.......', '.......'].map((r, i, a) => a[(i + 6) % 7]),
+  방어: ['.#####.', '#ooooo#', '#o###o#', '#o###o#', '.#o#o#.', '..#o#..', '...#...'],
+  제어: ['.##.##.', '#..#..#', '#..#..#', '.##.##.', '...#...', '..#.#..', '.#...#.'],
+  마무리: ['...#...', '..#o#..', '#######', '.#ooo#.', '..#o#..', '.#.#.#.', '#.....#'],
+  궁극: ['#.#.#.#', '#######', '#o#o#o#', '#######', '.#####.', '.......', '.......'].map((r, i, a) => a[(i + 6) % 7]),
+  강화: ['...#...', '..###..', '.#####.', '...#...', '...#...', '..###..', '.......'],
+  준비: ['.......', '.#####.', '#.ooo.#', '#.o#o.#', '#.ooo.#', '.#####.', '.......'],
+  소환: ['.#####.', '#.....#', '#o#.#o#', '#.....#', '.#.#.#.', '..###..', '.......'],
+  장판: ['.......', '.......', '.#####.', '#ooooo#', '.#####.', '.......', '.......'],
+  전환: ['..###..', '.#...#.', '#..#..#', '#.###.#', '#..#..#', '.#...#.', '..###..'],
+};
 export class Renderer {
   constructor(canvas) {
     this.c = canvas;
@@ -4548,7 +4563,7 @@ export class Renderer {
       const k = cd > 0 ? 1 - cd / max : 1;
       const need = sk.costAll ? sk.costAll.min : sk.cost || 0;
       const lack = need > p.res;
-      this.cooldownBox(x, y0, box, k, keys[i], '', ROLE_COLOR[sk.role], cd);
+      this.cooldownBox(x, y0, box, k, keys[i], '', ROLE_COLOR[sk.role], cd, sk);
       if (lack && k >= 1) { g.fillStyle = 'rgba(40,0,0,0.55)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); }
       this.text(sk.name.slice(0, 5), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), lack ? '#ff8a80' : '#d8d0e8', 'center'); // 한 줄 · 작은 글씨 (이웃 칸과 겹치지 않게)
       if (need) this.text(String(need), x + box - 3 * v, y0 + 5 * v, Math.max(1, u - 1), lack ? '#ff8a80' : RACES[w.b.race].res.color, 'right');
@@ -4562,10 +4577,18 @@ export class Renderer {
     }
   }
 
+  // 스킬 칸 그림: 역할마다 7×7 도트 그림 (Dead Cells처럼 칸만 봐도 무슨 기술인지), 색은 원소 · 역할 색
+  skillGlyph(x, y, s, sk) {
+    const G = ROLE_GLYPH[sk.role] || ROLE_GLYPH['공격'], g = this.g, px = Math.max(1, Math.floor(s / 11)), ox = Math.round(x + (s - 7 * px) / 2), oy = Math.round(y + (s - 7 * px) / 2) - px;
+    const col = ELEM[sk.elem]?.color || ROLE_COLOR[sk.role] || '#e8e0f4';
+    for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) if (G[r][c] !== '.') { g.fillStyle = '#0d0b10'; g.fillRect(ox + c * px + px, oy + r * px + px, px, px); }
+    for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) { const ch = G[r][c]; if (ch === '.') continue; g.fillStyle = ch === '#' ? col : '#ffffff'; g.fillRect(ox + c * px, oy + r * px, px, px); }
+  }
   // 스킬 칸: 기다리는 동안은 어둡게 덮고 남은 초를 크게, 다 차면 금빛 테두리
-  cooldownBox(x, y, s, k, key, label, border, rem = 0) {
+  cooldownBox(x, y, s, k, key, label, border, rem = 0, sk = null) {
     const g = this.g, u = this.u;
     this.panel(x, y, s, s);
+    if (sk) this.skillGlyph(x, y, s, sk);
     if (border) { g.fillStyle = border; g.fillRect(x, y + s - 2 * u, s, 2 * u); }
     if (k < 1) {
       g.fillStyle = 'rgba(0,0,0,0.74)';
@@ -4583,7 +4606,8 @@ export class Renderer {
       g.fillStyle = 'rgba(255,207,90,0.16)'; g.fillRect(x + u, y + u, s - 2 * u, s - 2 * u);
       g.strokeStyle = '#ffcf5a'; g.lineWidth = u; g.strokeRect(x + 1.5 * u, y + 1.5 * u, s - 3 * u, s - 3 * u);
     }
-    this.text(key, x + s / 2, y + s / 2, key.length > 1 ? Math.max(1, u - 1) || 1 : u, k >= 1 ? '#ffe8a8' : '#8a8098', 'center', true, true);
+    if (sk) this.text(key, x + 3 * u, y + 5 * u, Math.max(1, u - 1), k >= 1 ? '#ffe8a8' : '#8a8098', 'left', true, true); // 그림이 있으면 키는 왼쪽 위에 작게
+    else this.text(key, x + s / 2, y + s / 2, key.length > 1 ? Math.max(1, u - 1) || 1 : u, k >= 1 ? '#ffe8a8' : '#8a8098', 'center', true, true);
   }
 
   drawMinimap(w) {
