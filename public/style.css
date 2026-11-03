@@ -636,3 +636,42 @@ input[type="search"], input[type="text"], input:not([type]) { font: inherit; col
 body:has(#panel:not([hidden])) #chat, body:has(#overlay:not([hidden])) #chat { display: none; }
 #chat { bottom: 132px; }
 body.touch #cloudChip { right: auto; bottom: auto; }
+/* 큰 창: 위 머리줄(제목 · 레벨 · 골드 · 지금 탭 · ✕) + 왼쪽 세로 탭 (Diablo IV · PoE 2처럼 묶음별) */
+.hub-top { flex-wrap: nowrap; gap: 16px; padding: 8px 14px; }
+.hub-top .hub-now { margin: 0 0 0 auto; font-size: var(--fs-l) !important; color: var(--text); font-family: Galmuri11, sans-serif; }
+.hub-top .close.icon { margin-left: 12px; width: 34px; height: 30px; padding: 0; font-size: 16px; }
+.hub-wrap { display: grid; grid-template-columns: 150px 1fr; align-items: start; }
+.rail { position: sticky; top: 50px; display: grid; gap: 14px; padding: 14px 8px 14px 12px; max-height: calc(100vh - 60px); overflow-y: auto; margin: 0 !important; }
+.rail-g { display: grid; gap: 4px; }
+.rail-h { font: 11px Galmuri11, sans-serif; color: var(--muted); letter-spacing: 2px; padding: 0 4px 2px; border-bottom: 1px solid var(--line); margin-bottom: 2px; }
+.rail button { text-align: left; padding: 7px 10px; background: transparent; box-shadow: none; font-size: var(--fs-m); }
+.rail button:hover:not(:disabled) { background: var(--bg3); }
+.rail button.on { background: var(--bg3); color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.hub-body { max-width: 1180px; margin: 0; width: 100%; }
+@media (max-width: 760px) {
+  .hub-wrap { grid-template-columns: 1fr; }
+  .rail { position: sticky; top: 46px; z-index: 1; display: flex; gap: 4px; padding: 6px 8px; overflow-x: auto; max-height: none; background: var(--bg0); border-bottom: 2px solid var(--line); }
+  .rail-g { display: flex; gap: 4px; } .rail-h { display: none; }
+  .rail button { white-space: nowrap; padding: 6px 10px; }
+  .hub-top .hub-now { display: none; }
+}
+/* 공명 제단: 두 단 (왼쪽 목록 · 오른쪽 자세히) */
+.eng-split { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 14px; align-items: start; }
+.eng-detail { position: sticky; top: 60px; }
+.eng-detail .card { width: 100%; }
+.eng-rows { display: grid !important; grid-template-columns: 1fr !important; gap: 2px !important; }
+.eng-row { display: grid; grid-template-columns: minmax(8em, 1.4fr) minmax(0, 1fr) minmax(5em, 0.9fr) 6.5em; align-items: center; gap: 8px; text-align: left;
+  padding: 6px 10px; background: var(--bg1); box-shadow: inset 3px 0 0 var(--g, var(--line)); font-size: var(--fs-s); }
+.eng-row:hover:not(:disabled) { background: var(--bg3); }
+.eng-row.on { background: var(--bg3); box-shadow: inset 3px 0 0 var(--g), inset 0 0 0 1px var(--accent); }
+.eng-row.unknown { color: var(--muted); }
+.er-name { font-weight: 600; color: var(--g, var(--text)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eng-row.unknown .er-name { color: var(--muted); font-weight: 400; }
+.er-tags { display: flex; gap: 4px; flex-wrap: wrap; } .er-tags i { font-style: normal; font-size: var(--fs-xs); color: var(--c); }
+.er-skill { color: #ffd27a; font-size: var(--fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.er-state { text-align: right; font-size: var(--fs-xs); } .er-state .ok { color: var(--ok); font-weight: 400; }
+@media (max-width: 1000px) { .eng-split { grid-template-columns: 1fr; } .eng-detail { position: static; order: -1; } }
+/* 용어 말풍선 */
+.term { border-bottom: 1px dotted var(--muted); cursor: help; position: relative; }
+.term:hover::after { content: attr(data-tip); position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 20; width: max-content; max-width: 260px; white-space: normal;
+  padding: 6px 9px; font-size: var(--fs-xs); line-height: 1.5; color: var(--text); background: var(--bg0); box-shadow: 0 0 0 2px #0d0b10, inset 0 0 0 1px var(--line-hi); pointer-events: none; }
