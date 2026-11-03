@@ -9,6 +9,18 @@ from pixelrig import Model, Part, Shape
 W, H = 26, 32
 CX = 13          # 몸 가운데 x
 FOOT = 31        # 발바닥 y
+# 그림체: 플레이어(0x72 캐릭터)와 맞춘다 — 키 약 20px · 몸통 비율 · 재질마다 적은 색 (0x72 캐릭터는 한 명에 6~9색)
+FIT_0X72 = True
+GSCALE = (0.86, 0.76, CX, FOOT + 0.5) if FIT_0X72 else None
+COLORS = 11 if FIT_0X72 else None
+HEAD_K = 1.3 if FIT_0X72 else 1  # 0x72처럼 머리는 크게 (몸만 줄이고 머리는 덜 줄인다 → 눈 · 입이 남는다)
+
+
+def fit_pose(pose):
+    p = dict(pose)
+    if HEAD_K != 1:
+        v = p.get('head', (0,)); p['head'] = (v[0], v[1] if len(v) > 1 else 0, v[2] if len(v) > 2 else 0, HEAD_K, HEAD_K)
+    return p
 
 
 def shade(h, k):
@@ -267,7 +279,7 @@ def build(spec):
     elif item == 'shield': i_sh += [Shape('poly', 'metal', IL((-2.6, -3.4), (2.4, -3.4), (2.4, 1.6), (-0.1, 4.0), (-2.6, 1.6))), Shape('line', 'trimF', IP(-0.1, -3), IP(-0.1, 3.4), 0.7 * k, flat=True)]
     if i_sh: parts.append(Part('item', 'armN', hand, 3.7 if item not in ('book', 'ledger', 'scroll', 'map', 'basket') else 3.65, i_sh, sep=False))
 
-    model = Model(W, H, parts, ramps, spec.get('outline', '#140e12'), flats)
+    model = Model(W, H, parts, ramps, spec.get('outline', '#140e12'), flats, gscale=GSCALE)
     return model, item
 
 
@@ -481,14 +493,28 @@ person('frostTrader', race='human', outfit='coat', cloth='#5a7a9a', inner='#e8ee
 person('sandHarbor', race='human', body='tall', outfit='robe', cloth='#e8e0c8', trim='#3a6a8a', hair='#1a1410', hairStyle='short', hat='turban', hatc='#3a6a8a', beard='stache', item='scroll', skin='dark')
 person('skullHarbor', race='human', body='stout', outfit='rags', cloth='#5a4a3a', hair='#2a2018', hairStyle='bald', beard='full', hat='bandana', hatc='#1a1a1a', item='hammer', skin='tan')
 
-# ── 플레이어 종족 (무기는 게임이 손에 따로 그린다 · item 없음): NPC와 같은 뼈대 도트로 그림체를 맞춘다 ──
-person('pl_knight', race='human', outfit='armor', metal='#b8c0d0', cloth='#3a5a9a', tabard=True, emblem='buckle', hat='helm', plume=True, featherc='#e85030', cape='#2a4a8a', hair='#6a4428', brows=True)
-person('pl_wizard', race='human', outfit='robe', cloth='#3a3a8a', trim='#e8c860', hair='#e8e4f0', hairStyle='long', beard='long', hat='wizard', hatc='#2a2a7a', stars=True, sash=True)
-person('pl_elf', race='elf', outfit='tunic', cloth='#3a7a3a', pants='#4a3a22', hair='#e8d080', hairStyle='long', cape='#5a8a3a', boots='#5a3a22', circletGem='greengem', hat='circlet')
-person('pl_orc', race='orc', body='stout', outfit='vest', cloth='#7a5a3a', vestc='#4a3020', hair='#2a2018', hairStyle='mohawk', sash=True, brows=True, boots='#3a2a1a')
-person('pl_dino', race='lizard', outfit='vest', cloth='#c8603a', vestc='#6a4a2a', scalec='#c8603a', skin='#c8603a', sash=True, pants='#6a4a2a', hat='feathers', featherc='#e8c040')
-person('pl_assassin', race='human', outfit='coat', cloth='#2a2430', inner='#4a3a44', hat='hood', hatc='#1e1a24', sash=True, boots='#1a1418', skin='fair', hair='#1a1418')
-person('pl_undead', race='undead', outfit='robe', cloth='#3a2a4a', trim='#8ae85a', hat='hood', hatc='#2a1e34', glowEye='#9af06a', glowc='#9af06a')
+
+
+def reduce_colors(rows, n):
+    # 한 사람의 모든 프레임을 한 팔레트 n색으로 (외곽선 색은 그대로) — 0x72처럼 재질마다 2~3단만 남는다
+    frames = [im for r in rows for im in r]
+    pix = [p for im in frames for p in im.getdata() if p[3] and p[:3] != (20, 14, 18)]
+    if not pix: return rows
+    strip = Image.new('RGB', (len(pix), 1)); strip.putdata([p[:3] for p in pix])
+    pal = strip.quantize(colors=n, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+    out = []
+    for r in rows:
+        nr = []
+        for im in r:
+            q = im.convert('RGB').quantize(palette=pal, dither=Image.Dither.NONE).convert('RGB')
+            o = im.copy(); po = o.load(); pq = q.load(); pi = im.load()
+            for y in range(im.size[1]):
+                for x in range(im.size[0]):
+                    p = pi[x, y]
+                    if p[3] and p[:3] != (20, 14, 18): po[x, y] = pq[x, y] + (255,)
+            nr.append(o)
+        out.append(nr)
+    return out
 
 
 if __name__ == '__main__':
@@ -502,8 +528,9 @@ if __name__ == '__main__':
         an = anims(P[cid], item)
         base = len(rows)
         meta['chars'][cid] = {'anims': {name: {'row': base + r, 'n': len(fr)} for r, (name, fr) in enumerate(an)}}
-        for name, frames in an:
-            rows.append([model.render(dict(pose)) for pose in frames])
+        mine = [[model.render(fit_pose(pose)) for pose in frames] for name, frames in an]
+        if COLORS: mine = reduce_colors(mine, COLORS)
+        rows.extend(mine)
     img = Image.new('RGBA', (4 * W, len(rows) * H), (0, 0, 0, 0))
     for r, fr in enumerate(rows):
         for c, im in enumerate(fr): img.alpha_composite(im, (c * W, r * H))

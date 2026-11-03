@@ -76,9 +76,10 @@ def joint(px, py, ang, dx=0, dy=0, sx=1, sy=1):
 
 
 class Model:
-    def __init__(self, w, h, parts, ramps, outline, flats=None, offset=(0, 0)):
+    def __init__(self, w, h, parts, ramps, outline, flats=None, offset=(0, 0), gscale=None):
         self.w, self.h, self.parts, self.ramps, self.outline = w, h, parts, ramps, hexc(outline)
         self.offset = offset
+        self.gscale = gscale  # (sx, sy, 기준 x, 기준 y): 모델 전체를 기준점(발밑) 둘레로 줄인다 — 다른 그림체의 몸 비율에 맞출 때
         self.flats = {k: hexc(v) for k, v in (flats or {}).items()}
         self.by = {p.name: p for p in parts}
         self.ramps = {k: [hexc(c) for c in v] for k, v in ramps.items()}
@@ -93,7 +94,10 @@ class Model:
             sx = v[3] if len(v) > 3 else 1; sy = v[4] if len(v) > 4 else 1
             m = joint(p.pivot[0], p.pivot[1], ang, dx, dy, sx, sy)
             if p.parent: m = mat_mul(world(self.by[p.parent]), m)
-            else: m = mat_mul([[1, 0, self.offset[0]], [0, 1, self.offset[1]], [0, 0, 1]], m)
+            else:
+                root = [[1, 0, self.offset[0]], [0, 1, self.offset[1]], [0, 0, 1]]
+                if self.gscale: gx, gy, ax, ay = self.gscale; root = mat_mul(root, [[gx, 0, ax - ax * gx], [0, gy, ay - ay * gy], [0, 0, 1]])
+                m = mat_mul(root, m)
             M[p.name] = m
             return m
         order = sorted([p for p in self.parts if p.name not in hide], key=lambda p: -p.z)
