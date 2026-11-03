@@ -95,6 +95,8 @@ export function rollDoors(run) {
 // ───── 이번 등반이 빌드에 더하는 것 (computeBuild 의 extraEffects) ─────
 // 탑의 가호: 탑 안에서는 누구나 최대 체력 +250 (몸이 약한 클래스도 버틸 수 있게)
 export const TOWER_HP = 250;
+// 수호자 · 구역의 주인을 쓰러뜨리면 체력을 이만큼 되찾는다 (탑 안의 유일한 회복 · 물약 말고)
+export const BOSS_HEAL = 0.4;
 export function runEffects(run) {
   const fx = [{ type: 'add', key: 'maxHp', v: TOWER_HP }];
   if (run.oath?.drought) fx.push({ type: 'mul', key: 'healMul', v: 1 - 0.25 * run.oath.drought });

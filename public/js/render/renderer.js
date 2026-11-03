@@ -257,7 +257,9 @@ export class Renderer {
 
   levelUp(w, level, pts) {
     const p = w.player;
-    this.banner = { text: `레벨 업!  Lv ${level}`, sub: `도감이 채워질수록 강해진다 · 스탯 포인트 +${pts} (광장의 수련 교관)`, t: 4, color: '#ffe080' };
+    const fight = w.enemies?.some((e) => !e.dead && !e.npcRef && Math.hypot(e.x - p.x, e.y - p.y) < 220);
+    if (fight) this.note(`레벨 업! Lv ${level} · 스탯 포인트 +${pts} (C 캐릭터)`, '#ffe080'); // 싸우는 중에는 화면 가운데를 가리지 않게 작게
+    else this.banner = { text: `레벨 업!  Lv ${level}`, sub: `스탯 포인트 +${pts} · C 캐릭터 창에서 나눈다`, t: 3, color: '#ffe080' };
     this.shockwave(p.x, p.y, 60, '#ffe080', 30); this.burst(p.x, p.y - 8, '#ffe080', 40, 140);
     sfx('levelup', { vol: 0.9 });
   }
@@ -657,7 +659,7 @@ export class Renderer {
     if (ev.fx === 'wind') { for (let i = 0; i < 24; i++) { const a = Math.random() * Math.PI * 2; this.parts.push({ x: ev.x + Math.cos(a) * 20, y: ev.y - 6 + Math.sin(a) * 12, vx: -Math.sin(a) * 90, vy: Math.cos(a) * 50, t: 0.6, max: 0.6, color: '#d8ffe0', g: 0 }); } sfx('dash', { vol: 0.5, rate: 1.3 }); }
     if (ev.fx === 'roar') { this.shockwave(ev.x, ev.y, 70, '#ffcf8a', 36); this.shake = 4; sfx('hitHeavy', { vol: 0.8, rate: 0.55 }); }
     if (ev.fx === 'spin') { this.fx.push({ k: 'spin', x: ev.x, y: ev.y, r: 46, type: 'phys', t: 0.3, max: 0.3 }); }
-    this.texts.push({ x: ev.x, y: ev.y - 30, text: ev.name, color: col === '#ffffff' ? '#ffe8a8' : col, t: 0.9, vy: -10, vx: 0, label: true });
+    // 보통 스킬은 이름 글자를 띄우지 않는다 (아래 스킬 칸에 이미 있다 · 싸움 화면이 글자로 덮이지 않게). 궁극기만 위에서 크게
   }
 
   // 탑의 무기 등급 연출: 등급이 높을수록 화려하게 (희귀 반짝임 → 영웅 충격파 · 불티 → 전설 금빛 빛살 · 떠오르는 불씨 → 신화 두 겹 충격파 · 화면 번쩍 · 별빛 폭발)
@@ -4137,6 +4139,15 @@ export class Renderer {
   }
 
   // ───────── 글씨 (실제 해상도) ─────────
+  // 칸 아래 이름: 칸 너비에 맞게. 넘치면 낱말 단위로 줄이고(「할퀴고 빠지기」 → 「할퀴고」), 그래도 넘치면 글자를 줄인다
+  fitName(name, maxW, n) {
+    const g = this.g; g.font = `${11 * n}px ${FONT}`;
+    if (g.measureText(name).width <= maxW) return name;
+    const words = name.split(' '); let out = words[0];
+    for (let i = 1; i < words.length && g.measureText(out + ' ' + words[i]).width <= maxW; i++) out += ' ' + words[i];
+    while (out.length > 2 && g.measureText(out).width > maxW) out = out.slice(0, -1);
+    return out;
+  }
   text(s, x, y, n, color, align = 'left', outline = true, bold = false) {
     const g = this.g, size = 11 * n;
     g.font = `${bold ? 'bold ' : ''}${size}px ${FONT}`;
@@ -4309,6 +4320,7 @@ export class Renderer {
     // 데스크톱: 미니맵 아래 정보띠(시계 · 골드 · 지역)에 시계를 넣고, 여정은 그 밑 오른쪽 (퀘스트 추적 칸)
     if (desk && w.mode === 'field') { this.drawMinimap(w); this.hudRightY = this.hudRightBottom || 120 * u; }
     else if (w.mode !== 'field') this.drawClock(w); // 바깥(미니맵이 있는 곳)은 미니맵 아래 정보띠에 시계가 있다
+    this.journeyBottom = 0;
     if (this.journey && !w.climb && !w.pvp && !w.practice) {
       if (desk) this.drawJourney(w, null, (w.mode === 'field' ? this.hudRightY : 34 * u) + 4 * u, W - 10 * u);
       else this.drawJourney(w, bx, ry + 6 * u);
@@ -4316,8 +4328,8 @@ export class Renderer {
     this.drawTip();
 
     if (w.mode === 'field' && !desk) this.drawMinimap(w);
-    else if (!document.body.classList.contains('touch') && w.t < 8) { // 안내 띠는 들어온 뒤 8초만 (늘 떠 있으면 화면이 지저분하다)
-      const hint = document.body.classList.contains('touch') ? '시설 가까이 가서 확인 버튼 · 캐릭터 버튼으로 스탯 배분' : 'WASD 이동 · G 상호작용 · I 장비 · B 가방 · C 캐릭터 · 아래쪽 문으로 나가기';
+    else if (!document.body.classList.contains('touch') && w.t < 8 && !w.climb && !w.pvp && w.map?.indoor) { // 안내 띠: 집 · 실내에 들어온 뒤 8초만 (탑 · 보스전에는 띄우지 않는다)
+      const hint = 'G 상호작용 · I 장비 · B 가방 · C 캐릭터 · 아래쪽 문으로 나가기';
       g.font = `${11 * u}px ${FONT}`;
       const tw2 = g.measureText(hint).width + 20 * u;
       const vv = Math.max(2, u), hy0 = H - 32 * vv - 26 * u; // 스킬바 위로
@@ -4463,6 +4475,7 @@ export class Renderer {
     if (line) lines.push(line);
     const show = lines.slice(0, 3), h = 30 * u + show.length * 12 * tu;
     this.panel(x, y, tw, h);
+    this.journeyBottom = y + h;
     g.fillStyle = J.done ? '#8fcf7a' : '#e9b85c'; g.fillRect(x, y, 2 * u, h);
     this.text(`여정 ${J.n} / ${J.total}${J.done ? ' · 완료!' : ''}`, x + 7 * u, y + 7 * u, tu, J.done ? '#8fcf7a' : '#c8b88a', 'left', false);
     this.text(J.title, x + 7 * u, y + 19 * u, u, '#f6dfae', 'left', true, true);
@@ -4554,7 +4567,7 @@ export class Renderer {
       if (id === 'weapon') {
         const k = p.skillCd > 0 ? 1 - p.skillCd / p.skillMax : 1;
         this.cooldownBox(x, y0, box, k, keys[i], '', null, p.skillCd);
-        this.text((WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기').slice(0, 5), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#dcd2c6', 'center');
+        this.text(this.fitName(WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기', box * 1.3, Math.max(1, u - 1)), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#dcd2c6', 'center');
         return;
       }
       if (!id) { if (touch) return; this.cooldownBox(x, y0, box, 1, keys[i], '', null, 0); g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); this.text('빈 칸', x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#8c8079', 'center'); return; }
@@ -4565,7 +4578,7 @@ export class Renderer {
       const lack = need > p.res;
       this.cooldownBox(x, y0, box, k, keys[i], '', ROLE_COLOR[sk.role], cd, sk);
       if (lack && k >= 1) { g.fillStyle = 'rgba(40,0,0,0.55)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); }
-      this.text(sk.name.slice(0, 5), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), lack ? '#e88a78' : '#dcd2c6', 'center'); // 한 줄 · 작은 글씨 (이웃 칸과 겹치지 않게)
+      this.text(this.fitName(sk.name, box * 1.3, Math.max(1, u - 1)), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), lack ? '#e88a78' : '#dcd2c6', 'center'); // 한 줄 · 작은 글씨 (이웃 칸과 겹치지 않게)
       if (need) this.text(String(need), x + box - 3 * v, y0 + 5 * v, Math.max(1, u - 1), lack ? '#e88a78' : RACES[w.b.race].res.color, 'right');
     });
     // 시전바
@@ -4598,7 +4611,9 @@ export class Renderer {
       g.beginPath(); g.moveTo(x + s / 2, y + s / 2); g.arc(x + s / 2, y + s / 2, s, -Math.PI / 2 + k * Math.PI * 2, Math.PI * 1.5); g.closePath(); g.fill();
       g.restore();
       if (rem > 0.05) { // 남은 시간: 칸 가운데 크게, 키 이름은 왼쪽 위에 작게
-        this.text(rem >= 3 ? String(Math.ceil(rem)) : rem.toFixed(1), x + s / 2, y + s / 2 + u, rem >= 3 && rem < 10 ? u + 1 : u, '#ffffff', 'center', true, true); // 소수 · 두 자리는 조금 작게 (이웃 칸과 겹치지 않게)
+        if (sk) { g.save(); g.globalAlpha = 0.4; this.skillGlyph(x, y, s, sk); g.restore(); } // 재사용 중에도 그림이 흐리게 보이게
+        g.fillStyle = 'rgba(8,6,12,0.7)'; g.fillRect(x + u, y + s - 10 * u, s - 2 * u, 9 * u);
+        this.text(rem >= 3 ? String(Math.ceil(rem)) : rem.toFixed(1), x + s / 2, y + s - 5 * u, Math.max(1, u - 1), '#ffffff', 'center', true, true); // 남은 시간은 칸 아래쪽에 작게 (그림을 가리지 않게)
         this.text(key, x + 3 * u, y + 5 * u, Math.max(1, u - 1), '#a89a8f', 'left', true, true);
         return;
       }
@@ -4652,7 +4667,7 @@ export class Renderer {
     this.panel(sx0, sy0, sw, stripH);
     const c = w.clock;
     if (c) { const dk = darkness(c.min); this.text(`${c.day}일 · ${clockText(c)}`, sx0 + 5 * u, sy0 + 7 * u, tu2, dk > 0.6 ? '#c8d0ff' : '#f6dfae', 'left', false); }
-    this.text(`◆ ${w.loot.gold}`, sx0 + sw - 5 * u, sy0 + 7 * u, tu2, '#e9b85c', 'right', false, true);
+    { const wallet = this.walletGold ?? 0, carry = w.loot?.gold || 0; this.text(`◆ ${wallet}${carry ? ` +${carry}` : ''}`, sx0 + sw - 5 * u, sy0 + 7 * u, tu2, '#e9b85c', 'right', false, true); } // 가진 골드 (+ 주웠지만 아직 맡기지 않은 골드)
     this.text(`${w.zone.name}${w.depth ? ` 지하 ${w.depth + 1}층` : ''} · 탐험 ${this.pctV}%`, sx0 + 5 * u, sy0 + 17 * u, tu2, '#c9beb2', 'left', false);
     let y = sy0 + stripH + 10 * u;
     if (w.loot.banked) { this.text('야영지에 잔향을 맡김', mx + mw, y, tu2, '#ffd88a', 'right'); y += 12 * u; }

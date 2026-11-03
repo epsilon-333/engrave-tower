@@ -9,7 +9,7 @@ import { rollLoot, LOOT_RARITY } from '../data/crafting.js';
 import { rollTowerWeapon, W_RARITY } from '../data/weapons.js';
 import { rollTowerGear } from '../data/towergear.js'; // 탑의 방어구 · 장신구 · 왼손 장비도 떨어진다
 import { ITEMS } from '../data/items.js';
-import { climbMul, setZoneRef, floorFoes, rollDoors, actOf, REWARDS, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, rollFloorMod } from '../data/climb.js';
+import { climbMul, setZoneRef, floorFoes, rollDoors, actOf, REWARDS, BOSS_HEAL, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, rollFloorMod } from '../data/climb.js';
 import { RAID_BOSS } from '../data/raid.js';
 import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
 import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO, SKILL_BAL, CLASS_BAL, CLASS_BAL_PVE } from '../data/skills.js';
@@ -318,7 +318,8 @@ export class World {
     for (const e of this.enemies) if (!e.dead && !e.climb && e.def.treasure) { e.dead = true; this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '보물 고블린이 도망쳤다', color: '#ffcf3a' }); this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: e.x, y2: e.y - 30 }); }
     for (const dr of this.drops) dr.magnet = true; // 떨어진 부산물을 놓치지 않게
     const big = C.kind === 'guardian' || C.kind === 'lord';
-    this.emit({ t: 'banner', text: big ? `${C.boss?.def.name || '수호자'} 처치!` : `${C.f}층 돌파`, sub: '문이 열렸다 · 떨어진 것을 모두 주웠다', color: big ? '#ffcf5a' : '#e8d8a8' });
+    if (big) this.heal(this.d.maxHp * BOSS_HEAL, 'spring');
+    this.emit({ t: 'banner', text: big ? `${C.boss?.def.name || '수호자'} 처치!` : `${C.f}층 돌파`, sub: big ? `체력 ${Math.round(BOSS_HEAL * 100)}% 회복 · 문이 열렸다` : '문이 열렸다 · 떨어진 것을 모두 주웠다', color: big ? '#ffcf5a' : '#e8d8a8' });
     this.emit({ t: 'climbClear', x: C.center.x, y: C.center.y });
     this.openClimbDoors();
     this.signals.push({ t: 'climbCleared', f: C.f, kind: C.kind });
