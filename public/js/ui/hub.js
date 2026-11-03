@@ -8,6 +8,7 @@ import { codexPoints, levelFor, codexTotals, monsterStage, STAGE_KILLS, STAGE_MA
 import { JOURNALS, PEOPLE, STORY_ITEMS } from '../data/story.js';
 import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
 import { engravingWeapons } from '../data/engweapons.js';
+import { monsterWhere, whereText, towerOnly, echoSources } from '../data/where.js';
 import { ITEMS, STYLES, WEAPON_SKILLS, weaponHands, WCAT_NAME } from '../data/items.js';
 import { MONSTERS, ECHOES, ZONES } from '../data/monsters.js';
 import { WORLD_ZONE, ENTRANCES } from '../data/maps/overworld.js';
@@ -341,7 +342,8 @@ export class Hub {
     const recipe = Object.entries(e.recipe).map(([eid, n]) => {
       const have = s.echoes[eid] || 0;
       const nm = s.codex.echoes[eid] ? ECHOES[eid].name : '???';
-      return `<span class="rq ${have >= n ? 'ok' : ''}" style="--c:${ECHOES[eid].color}">◆ ${nm} ${have}/${n}</span>`;
+      const src = echoSources(eid).filter((m) => (s.codex.kills?.[m] || 0) > 0).map((m) => `${MONSTERS[m].name}: ${whereText(m, 3)}`).join(' / ') || '도감 「각인 재료」에서 찾기';
+      return `<span class="rq ${have >= n ? 'ok' : ''}" style="--c:${ECHOES[eid].color}" title="${esc(src)}">◆ ${nm} ${have}/${n}</span>`;
     }).join('');
     if (!known) {
       return `<div class="card unknown" data-q="${esc(this.engSearchText(id, s, true))}"><div class="c-head"><b>??? 미확인 각인</b><span class="grade" style="--g:${GRADES[e.grade].color}">${GRADES[e.grade].name}</span></div>
@@ -437,7 +439,7 @@ export class Hub {
     const head = `<div class="codex-head">
       <div><b>도감 점수 ${pts}</b> · 다음 레벨까지 ${lv.need - lv.into}점 <span class="bar"><i style="width:${(lv.into / lv.need) * 100}%"></i></span></div>
       <p class="muted">새 몬스터를 알아가고, 장소를 찾고, 기록을 읽고, 사람의 사연을 끝까지 듣고, 새 물고기를 낚고, 땅속 유물을 찾으면 도감이 채워지고 레벨이 오릅니다.</p>
-      <nav class="codex-nav">${[['monsters', `몬스터 ${tot.monsters.done}/${tot.monsters.all}`], ['places', `장소 ${tot.places.done}/${tot.places.all}`], ['records', `기록 ${tot.records.done}/${tot.records.all}`], ['people', `사람 ${tot.people.done}/${tot.people.all}`], ['fish', `물고기 ${tot.fish.done}/${tot.fish.all}`], ['artifacts', `유물 ${tot.artifacts.done}/${tot.artifacts.all}`], ['etc', '원소 반응 · 태그']]
+      <nav class="codex-nav">${[['monsters', `몬스터 ${tot.monsters.done}/${tot.monsters.all}`], ['places', `장소 ${tot.places.done}/${tot.places.all}`], ['records', `기록 ${tot.records.done}/${tot.records.all}`], ['people', `사람 ${tot.people.done}/${tot.people.all}`], ['fish', `물고기 ${tot.fish.done}/${tot.fish.all}`], ['artifacts', `유물 ${tot.artifacts.done}/${tot.artifacts.all}`], ['mats', '각인 재료'], ['etc', '원소 반응 · 태그']]
         .map(([k, n]) => `<button class="sm ${sec === k ? 'on' : 'ghost'}" data-act="codexSec" data-id="${k}">${n}</button>`).join('')}</nav></div>`;
     let body = '';
     if (sec === 'monsters') {
@@ -451,6 +453,8 @@ export class Hub {
           const info = [`HP ${m.hp} · ${m.type === 'mag' ? '마법' : '물리'} 공격 ${m.atk}`];
           if (st >= 2) info.push(`물리 저항 ${m.pres} / 마법 저항 ${m.mres}${m.status ? ` · ${({ burn: '화상', poison: '중독', bleed: '출혈', chill: '냉기' })[m.status]}을 건다` : ''}`, `떨어뜨림: ${[m.echo && ECHOES[m.echo.id]?.name, ...dropsOf(id)].filter(Boolean).join(', ')}`);
           else info.push('<span class="muted">5마리를 잡으면 약점과 떨어뜨리는 것이 기록된다</span>');
+          info.push(`사는 곳: ${whereText(id, 5)}${towerOnly(id) ? ' <b style="color:#ffd27a">(탑 전용)</b>' : ''}`);
+          if (m.part) { const engs = Object.keys(ENGRAVINGS).filter((eid) => ENGRAVINGS[eid].recipe[m.part]); info.push(`부산물: ${ECHOES[m.part].name}${engs.length ? ` → 각인 ${engs.map((eid) => `「${ENGRAVINGS[eid].name}」`).join(' ')}` : ''}`); }
           return `<div class="li ${st >= STAGE_MAX ? 'on' : ''}"><b>${m.name}</b> <span class="stars">${stars}</span> <small>처치 ${n}${next}</small><br><small>${info.join('<br>')}</small></div>`;
         }).join('')}</div>`;
       }).join('');
@@ -465,6 +469,20 @@ export class Hub {
       body = story + `<h4>등반가 세린의 일지</h4><div class="list">${Object.entries(JOURNALS).map(([id, j]) => c.journals?.[id] ? `<details class="li on"><summary><b>${j.title}</b> <small>${j.where}</small></summary><p class="journal">${esc(j.text).replace(/\n/g, '<br>')}</p></details>` : '<div class="li off">??? <small>찢겨 나간 일지 한 장</small></div>').join('')}</div>
         <h4>고대 석판</h4><div class="list">${(c.lore || []).map((t) => `<div class="li lore">${esc(t)}</div>`).join('') || '<div class="li off">필드의 고대 석판을 찾아 읽어 보세요.</div>'}</div>
         <h4>가지고 있는 이야기 물건</h4><div class="list">${Object.entries(items).filter(([, n]) => n > 0).map(([id, n]) => `<div class="li"><b style="color:${STORY_ITEMS[id].color}">${STORY_ITEMS[id].name}</b>${n > 1 ? ` ×${n}` : ''} <small>${STORY_ITEMS[id].desc}</small></div>`).join('') || '<div class="li off">없음</div>'}</div>`;
+    } else if (sec === 'mats') {
+      // 각인 재료: 계열 잔향 · 몬스터 부산물마다 어느 몬스터가 · 어디서 남기는지, 어느 각인에 쓰이는지 (만난 몬스터만 이름이 보인다)
+      const seenM = (id) => (c.kills?.[id] || 0) > 0;
+      const row = (eid) => {
+        const E = ECHOES[eid], srcs = echoSources(eid), known = s.codex.echoes?.[eid] || srcs.some(seenM);
+        const uses = Object.keys(ENGRAVINGS).filter((k) => ENGRAVINGS[k].recipe[eid]);
+        if (!known) return `<div class="li off">??? <small>아직 모르는 재료 · 각인 ${uses.length}개에 쓰인다</small></div>`;
+        const where = srcs.map((id) => seenM(id) ? `<b>${MONSTERS[id].name}</b> — ${whereText(id, 4)}${towerOnly(id) ? ' <b style="color:#ffd27a">(탑 전용)</b>' : ''}` : `??? <small class="muted">(${whereText(id, 2)})</small>`);
+        return `<div class="li ${s.echoes?.[eid] ? 'on' : ''}"><b style="color:${E.color}">◆ ${E.name}</b> <small>가진 것 ${s.echoes?.[eid] || 0}</small><br><small>${where.join('<br>')}</small><br><small class="muted">쓰는 각인: ${uses.slice(0, 8).map((k) => ENGRAVINGS[k].name).join(' · ')}${uses.length > 8 ? ` 외 ${uses.length - 8}개` : ''}</small></div>`;
+      };
+      const fams = Object.keys(ECHOES).filter((k) => !ECHOES[k].part), parts = Object.keys(ECHOES).filter((k) => ECHOES[k].part);
+      body = `<p class="muted">각인을 새기는 재료가 어디서 나오는지 · 모르는 몬스터는 사는 곳만 보인다</p>
+        <h4>계열 잔향 <small>${fams.length}종</small></h4><div class="list">${fams.map(row).join('')}</div>
+        <h4>몬스터 부산물 <small>${parts.length}종</small></h4><div class="list">${parts.map(row).join('')}</div>`;
     } else if (sec === 'fish') {
       body = fishCodex(s);
     } else if (sec === 'artifacts') {
@@ -640,6 +658,7 @@ function codexGroups() {
     { name: `${WORLD_ZONE.name} · 들판과 동굴`, ids: [...WORLD_ZONE.pool, ...Object.values(ENTRANCES).map((d) => d.elite).filter(Boolean)] },
     { name: LABY_ZONE.name, ids: [...LABY_ZONE.pool, LABY_ZONE.elite] },
     { name: PALACE_ZONE.name, ids: [...PALACE_ZONE.pool, PALACE_ZONE.elite] },
+    { name: '각인의 탑 수호자 · 주인 (탑 전용)', ids: Object.keys(MONSTERS).filter((id) => towerOnly(id)) },
   ];
   const seen = new Set();
   for (const g of groups) g.ids = g.ids.filter((id) => MONSTERS[id] && !seen.has(id) && seen.add(id));
