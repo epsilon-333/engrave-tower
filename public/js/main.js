@@ -3551,6 +3551,7 @@ const seenErr = new Set();
 function reportError(err) {
   const key = String(err?.message || err).slice(0, 120);
   if (seenErr.has(key)) return;
+  if (/fetch|network|load failed|websocket/i.test(key)) { console.warn(err); return; } // 인터넷이 잠깐 끊긴 것은 알리지 않는다
   seenErr.add(key); console.error(err);
   let el = document.getElementById('errToast');
   if (!el) { el = document.createElement('div'); el.id = 'errToast'; document.body.appendChild(el); el.onclick = () => { el.hidden = true; }; }
