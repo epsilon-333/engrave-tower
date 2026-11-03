@@ -693,4 +693,7 @@ const RING = { dur: 5.6, text: '빛은 여덟 종족의 몸에 새겨졌다. 우
   if (t > 3.1 && t < 3.25) cover(raw, 0.35 * (1 - (t - 3.1) / 0.15), '#ffffff');
 } };
 
-export const ACT2 = [RW, RE, RK, RO, RU, RA, RDn, RR, RING];
+// 종족 장면은 처음 보는 사람에게 길다 (8장면 × 4.2초): 같은 그림을 1.6배 빠르게, 한 장면 2.6초로
+const FAST = 1.6;
+const quick = (S) => ({ ...S, dur: S.dur / FAST, textAt: (S.textAt ?? 0.5) / FAST, draw: (g, t, raw) => S.draw(g, t * FAST, raw) });
+export const ACT2 = [...[RW, RE, RK, RO, RU, RA, RDn, RR].map(quick), RING];
