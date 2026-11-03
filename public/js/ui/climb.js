@@ -98,6 +98,11 @@ export function createClimb(ctx) {
       if (s.kind === 'lord') {
         const act = actOf(s.f), first = !c.lords[act.n];
         c.lords[act.n] = (c.lords[act.n] || 0) + 1;
+        if (first && act.n === 5) setTimeout(() => ctx.showModal(`<h2>각인의 왕이 쓰러졌다</h2>
+          <p class="lvup">탑 한가운데의 빛이 다시 타오른다.</p>
+          <p>삼백 년 전 마지막 왕이 닫은 문 너머, 탑은 아직 끝나지 않았다. 쓰러뜨린 수호자들이 <b>각성해서</b> 51층부터 다시 기다린다.</p>
+          <p class="muted">본편을 마쳤다 · 이제부터는 51~100층과 서약으로 기록에 도전한다</p>
+          <div class="actions"><button data-close>계속</button></div>`), 1200); // 본편 끝 (50층)
         if (s.f < CLIMB_TOP) ctx.banner({ text: '기록이 남았다', sub: first ? `다음부터 ${s.f + 1}층에서 시작할 수 있다${act.n === 1 ? ' · 서약이 열렸다' : ''}` : `${s.f + 1}층부터 시작할 수 있다`, t: 4, color: '#8ad8ff' });
       }
       if (s.kind === 'guardian' || s.kind === 'lord') r.bosses.push(w.climb.boss?.def.name || '');
