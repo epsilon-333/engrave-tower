@@ -178,7 +178,7 @@ onNet('chat', (m) => {
 });
 function onlineBadge() {
   chatEl.hidden = !net.up || gameEl.hidden;
-  if (!chatEl.hidden && isTouch()) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 · 동료 ${net.players.size}명` : `온라인 · 근처 ${net.players.size}명`; // 모바일: 키 안내는 빼고 짧게
+  if (!chatEl.hidden && isTouch()) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 · 동료 ${net.players.size}명` : net.players.size ? `근처 ${net.players.size}명` : ''; // 모바일: 짧게 · 아무도 없으면 띄우지 않는다
   else if (!chatEl.hidden) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 탑 · 같은 층 동료 ${net.players.size}명 · Enter 채팅 (/p 파티)` : world?.zone?.id === 'world' ? (net.players.size ? `온라인 · 근처 ${net.players.size}명 · Enter 채팅` : '') : ''; // 근처에 아무도 없거나 혼자인 곳(탑 · 던전)에서는 글을 띄우지 않는다
   netInfo.hidden = !netInfo.textContent;
 }
@@ -3630,7 +3630,13 @@ onCloud(() => {
   const t = document.createElement('span');
   t.textContent = (cloud.id ? (cloud.name || '내 계정') + ' · ' : '') + cloudLabel();
   chip.appendChild(t);
+  chip.dataset.at = Date.now();
 });
+// 게임 중에는 상태가 바뀐 뒤 4초만 보인다 (타이틀 · 문제가 있을 때는 늘). HUD · 여정과 겹치지 않게
+setInterval(() => {
+  const important = ['error', 'expired', 'stale', 'connecting'].includes(cloud.state);
+  chip.hidden = !(important || !titleEl.hidden || Date.now() - (+chip.dataset.at || 0) < 4000);
+}, 500);
 
 // 모바일: 터치 조작 화면 켜기
 if (isTouch()) {
