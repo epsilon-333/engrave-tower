@@ -1,51 +1,56 @@
 """참고 그림에서 따낸 도트(tools/sprites/hero_ref/*.png)를 종족답게 고친다 → tools/sprites/hero_final/*.png
-  공룡 수인: 파랑 → 초록 비늘 · 공룡 머리 탈(위턱 이빨 아래로 얼굴) · 등 가시 · 뒤로 늘어진 천 → 꼬리
-  오크: 피부를 진한 초록으로 · 엄니 · 뾰족 귀 · 굵은 눈썹
-  언데드: 해골 얼굴(눈구멍 속 보라 불빛 · 콧구멍 · 이빨) · 갈비뼈 · 너덜너덜한 망토 끝
-  나머지 다섯은 그대로 옮긴다.
-    python3 tools/hero_edit.py   → art/preview_hero_final.png (원본 · 고친 것)
+원칙: 원래 그림의 얼굴 위치 · 모양 · 명암은 그대로. 색은 「색조만 돌려」 명암 단계를 살리고, 새로 찍는 점은 그 캐릭터가 이미 쓰는 색으로.
+  공룡 수인: 파랑 → 초록(파충류 얼굴 · 비늘) · 입과 작은 이빨 · 앞으로 나온 주둥이 · 머리 가시 끝 주황 · 꼬리 가시
+  오크: 올리브 피부(얼굴 · 손)를 조금 더 초록으로 · 엄니 · 뾰족 귀
+  언데드: 눈구멍 속 보라 불빛 · 이빨
+    python3 tools/hero_edit.py   → art/preview_hero_final.png (윗줄 원래 · 아랫줄 고친 것)
 """
-import os
+import colorsys, os
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC, DST = os.path.join(HERE, 'sprites', 'hero_ref'), os.path.join(HERE, 'sprites', 'hero_final')
 ORDER = ['knight', 'elf', 'orc', 'dragon', 'assassin', 'dino', 'wizard', 'undead']
 O = (24, 18, 26, 255)
-hx = lambda h: tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
 
 
-def grid(im, g, x0, y0, pal, clear=False):
-    """g: 글자 격자 · '.' 는 건드리지 않음 · '_' 는 지움"""
-    px = im.load()
-    for j, row in enumerate(g):
-        for i, ch in enumerate(row):
-            X, Y = x0 + i, y0 + j
-            if not (0 <= X < im.width and 0 <= Y < im.height): continue
-            if ch == '.': continue
-            px[X, Y] = (0, 0, 0, 0) if ch == '_' else pal[ch]
+def hsv(p): return colorsys.rgb_to_hsv(p[0] / 255, p[1] / 255, p[2] / 255)
+def rgb(h, s, v): r, g, b = colorsys.hsv_to_rgb(h % 1, max(0, min(1, s)), max(0, min(1, v))); return (round(r * 255), round(g * 255), round(b * 255), 255)
 
 
-def recolor(im, mapping, y1=None):
-    px = im.load()
-    for y in range(im.height if y1 is None else y1):
-        for x in range(im.width):
-            p = px[x, y]
-            if p[3] and '#%02x%02x%02x' % p[:3] in mapping: px[x, y] = hx(mapping['#%02x%02x%02x' % p[:3]])
-
-
-def clear_rows(im, y0, y1, x0=0, x1=None):
-    px = im.load()
+def hue_shift(im, lo, hi, to, sat=1.0, val=1.0, min_s=0.12, box=None):
+    """색조가 lo~hi(도) 인 점을 to(도) 쪽으로 · 같은 비율로 (명암 단계 그대로)"""
+    px = im.load(); x0, y0, x1, y1 = box or (0, 0, im.width, im.height)
     for y in range(y0, y1):
-        for x in range(x0, x1 if x1 is not None else im.width): px[x, y] = (0, 0, 0, 0)
+        for x in range(x0, x1):
+            p = px[x, y]
+            if not p[3]: continue
+            h, s, v = hsv(p)
+            if s < min_s or not (lo <= h * 360 <= hi): continue
+            px[x, y] = rgb(to / 360 + (h * 360 - (lo + hi) / 2) / 360 * 0.5, s * sat, v * val)
 
 
-def pad_top(im, n):
-    out = Image.new('RGBA', (im.width, im.height + n), (0, 0, 0, 0)); out.paste(im, (0, n)); return out
+def colors_of(im):
+    px = im.load(); out = set()
+    for y in range(im.height):
+        for x in range(im.width):
+            if px[x, y][3] and px[x, y][:3] != O[:3]: out.add(px[x, y][:3])
+    return sorted(out, key=lambda c: sum(c))
+
+
+def near(cols, want):
+    """그 캐릭터가 쓰는 색 중 want 와 가장 가까운 것"""
+    return min(cols, key=lambda c: sum((a - b) ** 2 for a, b in zip(c, want))) + (255,)
+
+
+def put(im, pts, col):
+    px = im.load()
+    for x, y in pts:
+        if 0 <= x < im.width and 0 <= y < im.height: px[x, y] = col
 
 
 def fix_outline(im):
-    """투명과 닿은 바깥 칸에 외곽선을 다시 두른다 (새로 그린 곳 둘레)"""
+    """투명과 닿은 바깥 칸에 외곽선 (새로 붙인 점 둘레)"""
     w, h = im.size; src = im.copy().load(); px = im.load()
     for y in range(h):
         for x in range(w):
@@ -54,93 +59,54 @@ def fix_outline(im):
     return im
 
 
-# ───── 공룡 수인 ─────
-DINO_COL = {  # 파랑 → 초록 비늘 (밝기 순서는 그대로)
-    '#758dd6': '#6cbf5e', '#869edc': '#86d070', '#5868bb': '#4a9a4c', '#4a4e8f': '#3b7a44', '#3c3766': '#2c5a3a',
-    '#96a7d8': '#a6e08a', '#7579b4': '#5aa452', '#8594cf': '#7cc866', '#28254d': '#1e3a2c', '#adb3d5': '#c8eaa8', '#e7dbdf': '#f2e2b0',
-}
-DP = {'O': O, 'G': hx('#6cbf5e'), 'H': hx('#a6e08a'), 'D': hx('#3b7a44'), 'd': hx('#24503a'), 's': hx('#f3a548'), 'S': hx('#c46a2c'),
-      'T': hx('#fff4dc'), 'k': hx('#f4dccc'), 'K': hx('#d8b4a8'), 'e': hx('#1a1420'), 'w': hx('#ffffff'), 'y': hx('#f2e2b0')}
-DINO_HEAD = [  # 18×16 · 오른쪽을 보는 공룡 머리 탈 · 위턱 이빨 아래로 아이 얼굴
-    '.....O.O..........',
-    '....OsOsO.O.......',
-    '...OsSOsSOsO......',
-    '..OGGGGGGGGGOO....',
-    '.OGGHHHGGGGGGGOO..',
-    '.OGHHGGGGGGGOwOGO.',
-    'OGGGGGDGGGGGOeOGGO',
-    'OGGDDGGGGGGGGGGGGGO',
-    'OGDdDGGGGGGGGGGGGGO',
-    'OGGGGTOTOTOTOTOTOO.',
-    'OGGGOkkkkkkkkkkO...',
-    'OGGOkkekkkkekkkO...',
-    'OGDOkkekkkkekkKO...',
-    '.ODOkkkkkkkkkKO....',
-    '.ODDOyTOTOTOTyO....',
-    '..OOOOOOOOOOOO.....',
-]
-
-
 def make_dino(im):
-    recolor(im, DINO_COL)
-    im = pad_top(im, 2)
-    clear_rows(im, 0, 15)
-    grid(im, DINO_HEAD, 5, 0, DP)
-    # 꼬리(왼쪽 아래로 늘어진 부분) 윗선을 따라 가시 세 개
+    hue_shift(im, 200, 260, 112, sat=0.95)  # 파랑 → 초록 (얼굴 · 머리 가시 · 꼬리)
+    cols = colors_of(im)
+    light, mid, dark = near(cols, (175, 230, 150)), near(cols, (110, 190, 100)), near(cols, (40, 90, 60))
+    cream = near(cols, (245, 240, 225))
+    put(im, [(24, 10), (24, 11), (24, 12)], mid)  # 주둥이가 앞으로 한 칸
+    put(im, [(24, 9)], O); put(im, [(25, 10), (25, 11), (25, 12)], O); put(im, [(24, 13)], O)
     px = im.load()
-    for x in (1, 3, 5):
+    for y in range(12, 17):  # 사람 같던 흰 턱 → 연한 노란 배 색 (파충류의 아래턱)
+        for x in range(13, 23):
+            p = px[x, y]
+            if p[3]:
+                h, s2, v = hsv(p)
+                if v > 0.8 and s2 < 0.2: px[x, y] = (232, 232, 168, 255) if v > 0.9 else (196, 200, 132, 255)
+    put(im, [(17, 13), (19, 13), (21, 13)], (255, 250, 236, 255)); put(im, [(18, 13), (20, 13)], O)  # 입: 작은 이빨
+    orange, orange2 = (243, 165, 72, 255), (200, 106, 44, 255)
+    px = im.load()
+    for x in range(im.width):  # 머리 위 가시 끝(맨 위 칠한 점) → 주황
+        for y in range(0, 6):
+            if px[x, y][3] and px[x, y][:3] != O[:3]: px[x, y] = orange if (x + y) % 2 else orange2; break
+    for x in (1, 3, 5):  # 꼬리 윗선 가시
         for y in range(18, im.height):
             if px[x, y][3]:
-                if px[x, y][:3] == O[:3] and y + 1 < im.height and px[x, y + 1][3]: px[x, y] = DP['s']; px[x, y - 1] = O if y > 0 else px[x, y - 1]
+                if px[x, y][:3] == O[:3] and y + 1 < im.height and px[x, y + 1][3]: px[x, y] = orange
                 break
     return fix_outline(im)
 
 
-# ───── 오크 ─────
-ORC_COL = {'#a79f81': '#7fae4a', '#aba785': '#8fc058', '#8a866d': '#5f8a3a', '#cabcae': '#b4d87a', '#775f66': '#5a3f3a', '#665659': '#4c3532'}
-OP = {'O': O, 'g': hx('#8fc058'), 'G': hx('#5f8a3a'), 'T': hx('#fff4dc'), 'e': hx('#1a1420'), 'b': hx('#2e2420'), 'r': hx('#e04a3a')}
-
-
 def make_orc(im):
-    recolor(im, ORC_COL, 15)  # 머리 · 목만 (갑옷 색은 그대로)
-    # 얼굴(9~13줄, 10~20칸)을 깨끗이: 굵은 눈썹 · 눈 · 엄니
-    face = [
-        'gggggggggg',
-        'bbbgggbbbg',
-        'geegggeegg',
-        'geegggeegg',
-        'gggggggggg',
-        'gTggggggTg',
-        'OTgggggTOO',
-    ]
-    grid(im, face, 11, 8, OP)
-    grid(im, ['OO..', 'OgO.', 'OggO'], 7, 8, OP)     # 왼쪽 귀
-    grid(im, ['..OO', '.OgO', 'OggO'], 20, 8, OP)    # 오른쪽 귀
+    hue_shift(im, 35, 75, 90, sat=1.7, min_s=0.08)  # 올리브 피부(얼굴 · 손) → 조금 더 초록, 같은 비율로
+    cols = colors_of(im)
+    tusk = (242, 234, 210, 255); skin = near(cols, (150, 175, 95)); skin2 = near(cols, (110, 135, 70))  # 엄니는 상아색 (초록으로 돌린 색 중에서 고르면 피부와 같아져 안 보였다)
+    put(im, [(12, 16), (12, 15), (12, 14), (18, 16), (18, 15), (18, 14)], tusk)  # 아래에서 솟은 엄니 (세 칸)
+    put(im, [(11, 15), (11, 16), (19, 15), (19, 16)], O)
+    put(im, [(7, 11), (6, 10), (7, 10)], skin2); put(im, [(8, 11)], skin)  # 왼쪽 뾰족 귀 (뒤로)
     return fix_outline(im)
 
 
-# ───── 언데드 ─────
-UP = {'O': O, 'B': hx('#e8dcd0'), 'b': hx('#b8a898'), 'e': hx('#120c18'), 'v': hx('#c27aff'), 'V': hx('#f0d0ff'), 'r': hx('#d0c4b8')}
-
-
 def make_undead(im):
-    skull = [
-        'BBBBBBBBB',
-        'BeeeBbeeeB',
-        'BeVeBbeVeB',
-        'BeeebBeeeB',
-        'BBBBeBBBBB',
-        'BeBeBeBeBb',
-        '.bBbBbBbb.',
-    ]
-    grid(im, skull, 11, 7, UP)
-    # 갈비뼈 (가슴 15~17줄)
-    for y in (15, 17):
-        grid(im, ['rOrOrOr'], 10, y, UP)
-    # 망토 끝을 너덜너덜하게
-    px = im.load()
-    for x, y in ((1, 25), (3, 26), (0, 23), (5, 26), (2, 24)):
-        if 0 <= x < im.width and 0 <= y < im.height: px[x, y] = (0, 0, 0, 0)
+    px = im.load(); cols = colors_of(im)
+    glow, glow2 = (196, 122, 255, 255), (240, 208, 255, 255)
+    # 눈구멍(얼굴 가운데의 검은 세로 줄) 안에 보라 불빛
+    eyes = [(x, y) for y in range(8, 14) for x in range(11, 21) if px[x, y][3] and px[x, y][:3] == O[:3]]
+    for x in sorted({e[0] for e in eyes}):
+        col = [e for e in eyes if e[0] == x]
+        if len(col) >= 2: px[x, col[len(col) // 2][1]] = glow; px[x, col[len(col) // 2][1] - 1] = glow2
+    bone = near(cols, (225, 215, 220))
+    put(im, [(14, 15), (16, 15), (18, 15)], bone); put(im, [(15, 15), (17, 15)], O)  # 이빨
     return fix_outline(im)
 
 

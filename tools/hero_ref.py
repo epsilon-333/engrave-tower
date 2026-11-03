@@ -34,16 +34,19 @@ def grid_fit(a, p):
     return best[1:]
 
 
-def sample(a, pp, ox, oy):
+def sample(a, pp, ox, oy, colors=18):
+    """큰 그림을 먼저 18색으로 정리한 뒤, 칸마다 가운데 60% 안에서 가장 많이 나온 색 (번진 가장자리 · 잡티에 덜 흔들린다)"""
+    q = np.asarray(Image.fromarray(a.astype(np.uint8)).quantize(colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB')).astype(int)
     xs = np.arange(ox, a.shape[1] - pp / 2, pp); ys = np.arange(oy, a.shape[0] - pp / 2, pp)
     out = np.zeros((len(ys), len(xs), 4), np.uint8)
-    r = max(1, int(pp * 0.28))
+    r = max(1, int(pp * 0.3))
     for j, y in enumerate(ys):
         for i, x in enumerate(xs):
             cy, cx = int(y + pp / 2), int(x + pp / 2)
-            blk = a[max(0, cy - r):cy + r + 1, max(0, cx - r):cx + r + 1].reshape(-1, 3)
-            col = np.median(blk, 0)
-            if col.sum() < 70: continue  # 검은 배경
+            blk = q[max(0, cy - r):cy + r + 1, max(0, cx - r):cx + r + 1].reshape(-1, 3)
+            vals, cnt = np.unique(blk, axis=0, return_counts=True)
+            col = vals[cnt.argmax()]
+            if col.sum() < 60: continue  # 검은 배경
             out[j, i, :3] = col; out[j, i, 3] = 255
     return out
 
@@ -112,7 +115,7 @@ if __name__ == '__main__':
             px = trim(sample(crop, pp, ox, oy))
             res[rid] = px
             print(f'{rid:9s} 격자 {pp:.2f}px · 도트 {px.shape[1]}×{px.shape[0]}')
-    q = [despeck(quantize([im], 16)[0]) for im in res.values()]  # 캐릭터마다 16색 (한 팔레트로 묶으면 초록이 회색으로 뭉개졌다)
+    q = [despeck(im) for im in res.values()]  # 색은 캐릭터마다 큰 그림에서 18색으로 이미 정리했다
     os.makedirs(OUTD, exist_ok=True)
     for (rid, _), im in zip(res.items(), q):
         Image.fromarray(outline(im)).save(os.path.join(OUTD, rid + '.png'))
