@@ -746,7 +746,6 @@ let world = null, paused = false, endTimer = 0, last = 0, acc = 0, modal = null;
 // 여정(목표 안내): 등반에서 생긴 일을 기록해 두면 여정이 저장만 보고 판단한다
 function journeyEvent(k, d) {
   const c = (save.climb ||= newClimbSave());
-  if (k === 'eng') { c.maxEng = Math.max(c.maxEng || 0, d.n); c.maxLv = Math.max(c.maxLv || 0, ...(save.run?.eng || []).map((e) => e.lv)); }
   if (k === 'floor' && d.f === (save.run?.startF || 1) && oathScore(save.run?.oath) > 0) c.oathRuns = (c.oathRuns || 0) + 1;
   journeyT = 0;
 }
@@ -759,12 +758,11 @@ function journeyTick(dt) {
   let J = journeyNow(save);
   if (!J) { renderer.journey = null; return; }
   if (J.done && !paused && world.state === 'play') { // 끝냈다: 보상 · 다음 목표 (한꺼번에 여럿을 끝냈으면 한 번에 알린다)
-    const titles = [], sum = { gold: 0, shards: 0 };
+    const titles = [], sum = { gold: 0 };
     while (J && J.done) {
       const r = J.step.reward || {};
       (save.journey ||= {})[J.step.id] = Date.now();
       if (r.gold) { save.gold += r.gold; sum.gold += r.gold; }
-      if (r.shards) { save.climb ||= newClimbSave(); save.climb.shards = (save.climb.shards || 0) + r.shards; sum.shards += r.shards; }
       if (r.potion) { bagAdd(lifeOf(), r.potion, 1); sum.potion = r.potion; }
       titles.push(J.step.title);
       J = journeyNow(save);
@@ -1059,7 +1057,7 @@ function migrateSave(sv) {
   return sv;
 }
 
-const buildNow = () => (world?.climb && save?.run ? climbUi.buildFor(save.run) : computeBuild(toLoadout(save))); // 등반 중이면 이번 등반의 각인 · 축복까지
+const buildNow = () => (world?.climb && save?.run ? climbUi.buildFor(save.run) : computeBuild(toLoadout(save))); // 등반 중이면 탑의 가호 · 서약까지
 // 생활 데이터: 저장의 같은 객체를 세계에 넘긴다 (캐고 · 베고 · 낚고 · 키운 것이 곧바로 저장에 남는다)
 const lifeOf = () => ({ get knack() { return (save.knack ||= newKnack()); }, bag: save.bag, tools: save.tools, nodes: save.nodes, chopped: save.chopped, farm: save.farm, fishLog: save.fishLog, artifacts: save.artifacts, farmOpts: save.farmOpts, chest: save.chest, get cap() { return save.bagCap || 30; }, get quickFood() { return save.quickFood; } });
 // 세계마다 함께 넘기는 저장 객체: 생활 · 하루의 시간 · 오래가는 효과(음식 · 잠)
@@ -1155,7 +1153,7 @@ function showWorldIntro() {
   showModal(`<h2>각인의 탑</h2>
     <div class="tut intro-short">
       <p class="big">섬 한가운데, <b>각인의 탑</b> 꼭대기의 빛이 꺼져 간다.</p>
-      <p>탑을 오르며 <b>각인</b>을 새기고, 매번 다른 조합으로 꼭대기를 노려라.<br>쓰러져도 <b class="cl-star">✦ 별빛</b>은 남는다 — 별빛으로 영구히 강해진다.</p>
+      <p>섬을 탐험해 <b>몬스터 지대</b>를 찾고, 사냥으로 얻은 <b>부산물</b>로 <b>각인</b>을 새겨 강해진 뒤 탑을 오른다.<br>구역의 주인을 쓰러뜨릴 때마다(10층마다) 다음엔 그 위층부터 시작할 수 있다.</p>
       <p>무엇을 할지 모르겠다면 <b>왼쪽 위의 여정</b>과 화면 가장자리의 <b>화살표</b>를 따라가자. (J: 여정 전체)</p>
       <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · 우클릭 무기 기술 · Q·E·R·F 스킬 · Space 구르기(무적) · G 상호작용 · C 캐릭터 · M 지도 · Esc 메뉴</p>
       <details><summary class="muted">섬에서 할 수 있는 것 더 보기</summary>
