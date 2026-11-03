@@ -147,7 +147,7 @@ export class Hub {
         <div class="code-row"><input id="buildCode" value="${encodeLoadout(toLoadout(s))}" readonly><button class="sm" data-act="copyCode">복사</button></div>
         <div class="code-row"><input id="peekCode" placeholder="다른 빌드 코드 붙여 넣기"><button class="sm" data-act="peek">보기</button></div>
         <div id="peekOut"></div>
-        <p class="danger-zone"><button class="sm ghost" data-act="reset">처음부터 다시 시작</button></p>
+        <p class="muted">처음부터 다시 시작하려면: Esc → 설정 → 처음부터 다시 시작</p>
       </section>
     </div>`;
   }
