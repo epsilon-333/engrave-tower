@@ -738,3 +738,5 @@ body.touch #cloudChip { right: auto; bottom: auto; }
 .modal h4 { margin: 14px 0 4px; color: var(--accent); }
 body.big-text .modal, body.big-text #panel { font-size: 18px; }
 #errToast { position: fixed; right: 10px; bottom: 34px; z-index: 90; max-width: min(460px, 90vw); background: rgba(60,16,16,0.92); color: #ffd8d0; border: 1px solid #a04a40; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+#cloudChip[hidden] { display: none !important; }
+body.touch #happenPanel.mini { top: calc(6px + env(safe-area-inset-top, 0px)) !important; right: 50%; transform: translateX(50%); }
