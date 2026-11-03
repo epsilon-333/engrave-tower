@@ -2777,6 +2777,15 @@ export class World {
   }
 
   // ═══════ 소환수 (정령·망령·분신·사령 군주) ═══════
+  // 부하를 벽에서 빼낸다: 지금 자리 둘레의 가까운 빈자리 → 없으면 내 곁의 빈자리
+  allyRescue(al) {
+    const r = Math.max(3, (al.r || 5) - 1), p = this.player;
+    for (const [cx, cy] of [[al.x, al.y], [p.x, p.y]]) for (let d = 4; d <= 40; d += 4) for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2, x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d;
+      if (!this.blocked(x, y, r) && (cx === p.x || this.clearLine(x, y, p.x, p.y) || d <= 12)) { al.x = x; al.y = y; al.path = null; return; }
+    }
+    al.x = p.x; al.y = p.y; al.path = null;
+  }
   updateAllies() {
     if (!this.allies.length) return;
     const p = this.player;
@@ -2899,18 +2908,23 @@ export class World {
         if (tgt) { tx = tgt.x; ty = tgt.y; }
         const vx = tx - al.x, vy = ty - al.y, l = Math.hypot(vx, vy) || 1;
         const spd = al.kind === 'lich' ? 70 : al.kind === 'skeleton' || al.kind === 'soul' ? 95 : 110;
+        al.r = al.r || 5;
         if (l > (tgt ? tgt.r + 8 : 6)) {
+          const x0 = al.x, y0 = al.y;
+          if (al.forcePath > 0) al.forcePath -= DT;
           const [mx, my] = this.pathDir(al, tx, ty);
-          al.r = al.r || 5;
           this.move(al, mx * spd * DT * (al.returning ? 1.4 : 1), my * spd * DT * (al.returning ? 1.4 : 1));
-        }
-        for (const o of this.allies) {
+          // 벽에 끼었나: 가려는데 거의 못 움직이면 → 칸 단위 길찾기로 바꾸고, 그래도 오래 못 가면 내 곁 빈자리로 옮긴다
+          if (Math.hypot(al.x - x0, al.y - y0) < spd * DT * 0.2) { al.stuckT = (al.stuckT || 0) + DT; if (al.stuckT > 0.25) al.forcePath = 1.2; } else al.stuckT = Math.max(0, (al.stuckT || 0) - DT * 2);
+          if (al.stuckT > 1.6) { this.allyRescue(al); al.stuckT = 0; }
+        } else al.stuckT = 0;
+        for (const o of this.allies) { // 부하끼리 겹치지 않게 살짝 밀어 낸다 (벽 안으로는 밀지 않는다)
           if (o === al || o.kind === 'spirit' || o.kind === 'spiritKing') continue;
           const dx = al.x - o.x, dy = al.y - o.y, dd = Math.hypot(dx, dy);
-          if (dd < 12 && dd > 0.01) { al.x += (dx / dd) * (12 - dd) * 0.25; al.y += (dy / dd) * (12 - dd) * 0.25; }
-          else if (dd <= 0.01) al.x += (al.id % 2 ? 1 : -1);
+          if (dd < 12 && dd > 0.01) this.move(al, (dx / dd) * (12 - dd) * 0.25, (dy / dd) * (12 - dd) * 0.25);
+          else if (dd <= 0.01) this.move(al, al.id % 2 ? 1 : -1, 0);
         }
-        if (this.blocked(al.x, al.y, 3)) { al.x = p.x; al.y = p.y; }
+        if (this.blocked(al.x, al.y, Math.max(3, al.r - 1))) this.allyRescue(al); // 이미 벽에 박혀 있으면 바로 빼낸다
         if (Math.abs(vx) > 1) al.dir = vx > 0 ? 1 : -1;
         if (tgt && l < tgt.r + 14 && al.cd <= 0) {
           al.cd = al.kind === 'lich' ? 0.9 : al.kind === 'clone' ? 0.45 : al.kind === 'skeleton' ? 0.6 : al.kind === 'soul' ? 0.8 : 0.7;
@@ -3840,7 +3854,7 @@ export class World {
   // 소환수 길찾기: 곧장 갈 수 있으면 직진, 막히면 타일 단위 너비 우선 탐색으로 돌아간다 (0.4초마다 다시 계산)
   pathDir(o, tx, ty) {
     const dx = tx - o.x, dy = ty - o.y, l = Math.hypot(dx, dy) || 1;
-    if (this.mode !== 'field' || this.clearLine(o.x, o.y, tx, ty)) { o.path = null; return [dx / l, dy / l]; }
+    if (this.mode !== 'field' || (!(o.forcePath > 0) && this.clearLine(o.x, o.y, tx, ty))) { o.path = null; return [dx / l, dy / l]; } // forcePath: 벽 모서리에 걸려 못 가면 잠깐 칸 단위 길찾기로만
     const tw = this.tw, th = this.th;
     const sx = Math.floor(o.x / TILE), sy = Math.floor(o.y / TILE), gx = Math.floor(tx / TILE), gy = Math.floor(ty / TILE);
     o.pathT = (o.pathT || 0) - DT;
