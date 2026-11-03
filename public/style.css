@@ -736,3 +736,4 @@ body.touch #cloudChip { right: auto; bottom: auto; }
 .set-row select { font: inherit; background: #0f0d0e; color: var(--text); border: 1px solid #4c4244; padding: 3px 6px; }
 .modal h4 { margin: 14px 0 4px; color: var(--accent); }
 body.big-text .modal, body.big-text #panel { font-size: 18px; }
+#errToast { position: fixed; right: 10px; bottom: 34px; z-index: 90; max-width: min(460px, 90vw); background: rgba(60,16,16,0.92); color: #ffd8d0; border: 1px solid #a04a40; padding: 6px 10px; font-size: 12px; cursor: pointer; }

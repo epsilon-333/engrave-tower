@@ -45,6 +45,18 @@ export function renderMap(world) {
       if (t === T_CRACK) crackLines(g, px, py);
     }
   }
+  // 큰 판석: 바닥 두 칸 × 두 칸을 한 장처럼 (16px마다 이음선이 있어 모눈종이처럼 보이던 것)
+  // 짝이 맞는 이웃끼리 사이의 이음선을, 같은 판 안쪽 무늬를 옮겨 덮는다
+  for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+    if (!open(at(x, y))) continue;
+    const px = x * TILE, py = y * TILE;
+    if (x % 2 === 1 && open(at(x - 1, y))) g.drawImage(raw, px + 4, py, 4, TILE, px - 2, py, 4, TILE);
+  }
+  for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+    if (!open(at(x, y))) continue;
+    const px = x * TILE, py = y * TILE;
+    if (y % 2 === 1 && open(at(x, y - 1))) g.drawImage(raw, px, py + 4, TILE, 4, px, py - 2, TILE, 4);
+  }
   // 바닥 그림자 + 벽 테두리 (밝은 돌 테두리)
   for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
     const t = at(x, y), px = x * TILE, py = y * TILE;
