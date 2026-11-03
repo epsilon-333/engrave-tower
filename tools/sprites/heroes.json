@@ -1,0 +1,1 @@
+{"knight": {"w": 16, "h": 28, "y0": 0, "anims": {"idle": {"row": 0, "n": 4}, "run": {"row": 1, "n": 4}, "attack": {"row": 2, "n": 3}, "roll": {"row": 3, "n": 4}, "hit": {"row": 4, "n": 1}}}}

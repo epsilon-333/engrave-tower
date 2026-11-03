@@ -1467,7 +1467,14 @@ export class Renderer {
     const art = RACE_ART[w.b.race];
     const moving = p.moving && p.dashT <= 0;
     const soaring = art.base === 'dragonkin' && (p.airT > 0 || p.motion?.kind === 'soar');
-    const name = soaring ? this.animFrame('dragonkin', 'soar', w.t, 12) : this.animFrame(art.base, moving ? 'run' : 'idle', moving ? p.walkT : w.t, moving ? 11 : 6);
+    let name = soaring ? this.animFrame('dragonkin', 'soar', w.t, 12) : this.animFrame(art.base, moving ? 'run' : 'idle', moving ? p.walkT : w.t, moving ? 11 : 6);
+    { // 동작 그림이 있는 종족(tools/heroes.py): 구르기 · 맞음 · 공격은 몸 전체가 그 자세로
+      const has = (k) => frames(art.base, k)[0].includes(`_${k}_`), pick = (k, u) => { const fr = frames(art.base, k); return fr[Math.max(0, Math.min(fr.length - 1, Math.floor(u * fr.length)))]; };
+      const swing = p.swingMax && p.swingT > 0 ? 1 - p.swingT / p.swingMax : p.motion && p.motion.dur ? p.motion.t / p.motion.dur : -1;
+      if (!soaring && p.dashT > 0 && has('roll')) name = pick('roll', 1 - p.dashT / 0.16);
+      else if (!soaring && p.hitFlash > 0 && has('hit')) name = pick('hit', 0);
+      else if (!soaring && swing >= 0 && swing < 1 && has('attack')) name = pick('attack', swing < 0.25 ? 0 : swing < 0.7 ? 0.5 : 0.99);
+    }
     if (moving && !(p.air > 0)) {
       const step = Math.floor(p.walkT * 5.5);
       if (step !== this.lastStep) {

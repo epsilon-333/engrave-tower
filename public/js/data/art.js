@@ -7,7 +7,7 @@ export const RACE_ART = {
   golem: { base: 'stone_golem' },
   dragon: { base: 'dragonkin' },
   undead: { base: 'necromancer' },
-  knight: { base: 'knight_m' },
+  knight: { base: 'h_knight' }, // 우리 그림 (tools/heroes.py) · 예전 0x72 그림은 'knight_m'
   wizard: { base: 'wizzard_m' },
 };
 

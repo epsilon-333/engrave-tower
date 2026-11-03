@@ -37,6 +37,9 @@ def build_manifest(out=OUT):
     cr = _load('creatures')
     if cr:
         for cid, c in cr.items(): add('creatures.png', 'c_' + cid, c, c.get('y0', 0))
+    hr = _load('heroes')  # 플레이어 종족 (tools/heroes.py)
+    if hr:
+        for rid, c in hr.items(): add('heroes.png', 'h_' + rid, c, c.get('y0', 0))
     sm = _load('sheet_meta')
     if sm:
         if 'dragon_fire' in sm: add('dragon_fire.png', 'true_dragon', sm['dragon_fire']); meta['true_dragon'] = sm['dragon_fire']
