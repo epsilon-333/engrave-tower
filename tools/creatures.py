@@ -655,6 +655,9 @@ C_ = {
 }
 
 
+CREATURE_COLORS = 11
+from pixelrig import reduce_colors
+
 if __name__ == '__main__':
     out = sys.argv[1]
     only = sys.argv[2:] or None
@@ -663,6 +666,7 @@ if __name__ == '__main__':
         if only and cid not in only: continue
         model, an = fn()
         rows = [[model.render(dict(p)) for p in fr] for _, fr in an]
+        rows = reduce_colors(rows, CREATURE_COLORS)  # 플레이어(0x72) · 사람 도트와 같은 색 수 (재질마다 2~3단)
         cols = max(len(r) for r in rows)
         blk = Image.new('RGBA', (cols * model.w, len(rows) * model.h), (0, 0, 0, 0))
         for r, fr in enumerate(rows):

@@ -161,15 +161,43 @@ class Model:
         return out
 
 
-def sheet(model, anims, path):
+def reduce_colors(rows, n):
+    # 한 그림의 모든 프레임을 한 팔레트 n색으로 (외곽선 색은 그대로) — 0x72처럼 재질마다 2~3단만 남는다
+    frames = [im for r in rows for im in r]
+    pix = [p for im in frames for p in (im.get_flattened_data() if hasattr(im, 'get_flattened_data') else im.getdata()) if p[3] and p[:3] != (20, 14, 18)]
+    if not pix: return rows
+    strip = Image.new('RGB', (len(pix), 1)); strip.putdata([p[:3] for p in pix])
+    pal = strip.quantize(colors=n, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+    out = []
+    for r in rows:
+        nr = []
+        for im in r:
+            q = im.convert('RGB').quantize(palette=pal, dither=Image.Dither.NONE).convert('RGB')
+            o = im.copy(); po = o.load(); pq = q.load(); pi = im.load()
+            for y in range(im.size[1]):
+                for x in range(im.size[0]):
+                    p = pi[x, y]
+                    if p[3] and p[:3] != (20, 14, 18): po[x, y] = pq[x, y] + (255,)
+            nr.append(o)
+        out.append(nr)
+    return out
+
+
+
+def sheet(model, anims, path, colors=11):
     # anims: [(이름, [pose, ...])] → 행마다 한 동작
     cols = max(len(fr) for _, fr in anims)
     img = Image.new('RGBA', (cols * model.w, len(anims) * model.h), (0, 0, 0, 0))
     meta = {}
+    rows = []
     for r, (name, frames) in enumerate(anims):
-        for c, pose in enumerate(frames):
+        row = []
+        for pose in frames:
             hide = pose.pop('_hide', ())
-            img.alpha_composite(model.render(pose, hide), (c * model.w, r * model.h))
-        meta[name] = {'row': r, 'n': len(frames)}
+            row.append(model.render(pose, hide))
+        rows.append(row); meta[name] = {'row': r, 'n': len(frames)}
+    if colors: rows = reduce_colors(rows, colors)
+    for r, row in enumerate(rows):
+        for c, im in enumerate(row): img.alpha_composite(im, (c * model.w, r * model.h))
     img.save(path)
     return img, meta

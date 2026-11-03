@@ -40,7 +40,7 @@ def quantize_sheet(frames, colors):
     strip = Image.new('RGBA', (tot, 1))
     sp = strip.load(); i = 0
     for f in frames:
-        for p in f.getdata():
+        for p in (f.get_flattened_data() if hasattr(f, 'get_flattened_data') else f.getdata()):
             if p[3]: sp[i, 0] = p; i += 1
     pal = strip.crop((0, 0, max(1, i), 1)).convert('RGB').quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
     out = []
@@ -71,7 +71,7 @@ def run(name, colors=28, write=True):
     if write:
         out.save(os.path.join(CUSTOM, name + '.png'))
         m['w'], m['h'], m['scale'], m['fit'] = nw, nh, 1, colors
-        if 'stride' in m: m['stride'] = {k: round(v, 2) for k, v in m['stride'].items()}
+        if 'stride' in m: m['stride'] = {k: round(v * scale, 2) for k, v in m['stride'].items()}  # 보폭도 게임 크기로 (그릴 때 scale을 곱하던 것)
         json.dump(allm, open(metaf, 'w', encoding='utf-8'), ensure_ascii=False)
         from sprites import build_manifest; build_manifest()
     return out, (nw, nh), (W, H, scale)

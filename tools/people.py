@@ -4,7 +4,7 @@
 from sprites import meta_path, build_manifest
 import math, sys, json
 from PIL import Image
-from pixelrig import Model, Part, Shape
+from pixelrig import Model, Part, Shape, reduce_colors
 
 W, H = 26, 32
 CX = 13          # 몸 가운데 x
@@ -493,28 +493,6 @@ person('frostTrader', race='human', outfit='coat', cloth='#5a7a9a', inner='#e8ee
 person('sandHarbor', race='human', body='tall', outfit='robe', cloth='#e8e0c8', trim='#3a6a8a', hair='#1a1410', hairStyle='short', hat='turban', hatc='#3a6a8a', beard='stache', item='scroll', skin='dark')
 person('skullHarbor', race='human', body='stout', outfit='rags', cloth='#5a4a3a', hair='#2a2018', hairStyle='bald', beard='full', hat='bandana', hatc='#1a1a1a', item='hammer', skin='tan')
 
-
-
-def reduce_colors(rows, n):
-    # 한 사람의 모든 프레임을 한 팔레트 n색으로 (외곽선 색은 그대로) — 0x72처럼 재질마다 2~3단만 남는다
-    frames = [im for r in rows for im in r]
-    pix = [p for im in frames for p in im.getdata() if p[3] and p[:3] != (20, 14, 18)]
-    if not pix: return rows
-    strip = Image.new('RGB', (len(pix), 1)); strip.putdata([p[:3] for p in pix])
-    pal = strip.quantize(colors=n, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
-    out = []
-    for r in rows:
-        nr = []
-        for im in r:
-            q = im.convert('RGB').quantize(palette=pal, dither=Image.Dither.NONE).convert('RGB')
-            o = im.copy(); po = o.load(); pq = q.load(); pi = im.load()
-            for y in range(im.size[1]):
-                for x in range(im.size[0]):
-                    p = pi[x, y]
-                    if p[3] and p[:3] != (20, 14, 18): po[x, y] = pq[x, y] + (255,)
-            nr.append(o)
-        out.append(nr)
-    return out
 
 
 if __name__ == '__main__':
