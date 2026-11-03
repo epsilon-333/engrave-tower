@@ -33,6 +33,7 @@ export class Hub {
     try { this.tab = localStorage.getItem('et-tab') || 'char'; } catch { /* 무시 */ }
     this.toastT = null;
     root.addEventListener('click', (e) => this.onClick(e));
+    root.addEventListener('input', (e) => { if (e.target.id === 'engSearch') { this.altarQ = e.target.value; this.applyEngSearch(); } }); // 각인 찾기
     root.addEventListener('change', (e) => { if (e.target.dataset?.act === 'autoAim') { setAutoAim(e.target.checked); this.toast(e.target.checked ? '자동 조준 켜짐' : '자동 조준 꺼짐'); } }); // autoAimChange
   }
 
@@ -62,6 +63,7 @@ export class Hub {
       </header>
       <main class="hub-body">${this['tab_' + this.tab](s, b)}</main>
       <div id="toast"></div>`;
+    if (this.tab === 'altar') this.applyEngSearch();
   }
 
   tab_bag(s) { return bagTab(s); }
@@ -218,9 +220,11 @@ export class Hub {
       <section class="panel">
         <h3>각인 목록 <small>처음에는 내 클래스에 맞는 각인만 보입니다 · ★로 찜하면 필요한 잔향과 사냥터를 알려 줘요</small></h3>
         ${filterBar}
+        <div class="filters eng-search"><input id="engSearch" type="search" placeholder="찾기: 이름 · 몬스터 · 효과 · 스킬 · 무기 (예: 처치 근력, 대시 보호막, 늪 마녀)" value="${esc(this.altarQ || '')}" style="flex:1;min-width:14em;background:#1a1626;color:#ece4f6;border:1px solid #5a4a78;border-radius:4px;padding:5px 8px;font:inherit"> <span id="engCount" class="muted"></span></div>
+        <div class="filters"><span class="muted">원하는 효과 </span>${['치명타', '처치', '맞으면', '대시', '회피', '스킬을 쓰면', '보호막', '각성하면', '동안', '마다', '화상', '냉기', '중독', '출혈', '저주', '흡혈', '반사', '회복', '궁극'].map((w) => `<button class="sm ${(this.altarQ || '').split(/\s+/).includes(w) ? 'on' : 'ghost'}" data-act="aquery" data-id="${w}">${w === '동안' ? '잠깐 스탯' : w === '마다' ? '스탯 바꾸기' : w}</button>`).join('')}${this.altarQ ? '<button class="sm" data-act="aquery" data-id="">지우기</button>' : ''}</div>
         ${viewBar}
         ${goalHtml}
-        ${groups || '<p class="muted">조건에 맞는 각인이 없습니다.</p>'}
+        <div id="engList">${groups || '<p class="muted">조건에 맞는 각인이 없습니다.</p>'}</div>
       </section>`;
   }
 
@@ -312,6 +316,22 @@ export class Hub {
     return out.join('');
   }
 
+  // 각인 찾기에 쓰는 글자: 이름 · 몬스터 · 부산물 · 태그 · 효과 · 능력치 · 스킬 · 맞는 무기 · 등급 (아직 모르는 각인은 효과 · 스킬 · 무기 · 등급만)
+  engSearchText(id, s, unknown = false) {
+    const e = ENGRAVINGS[id], sk = SKILLS[engravingSkillFor(id, s.race)];
+    const parts = [GRADES[e.grade].name, ...engravingWeapons(id).map((c) => WCAT_NAME[c] || c), ...e.tags.map((t) => TAGS[t]?.name || t), ...e.effects.map((x) => x.text || ''), ...Object.keys(e.stats || {}).map((k) => (STAT_INFO[k] || SPECIAL_INFO[k])?.name || k), sk?.name || '', sk?.role || '', sk?.ult ? '궁극' : ''];
+    if (!unknown) parts.push(e.name, e.from && MONSTERS[e.from] ? MONSTERS[e.from].name : '', ...Object.keys(e.recipe).map((r) => ECHOES[r]?.name || ''), sk?.desc || '');
+    return parts.join(' ').toLowerCase();
+  }
+  // 찾기: 다시 그리지 않고 카드만 숨긴다 (글자를 칠 때 입력칸이 흔들리지 않게)
+  applyEngSearch() {
+    const q = (this.altarQ || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const box = this.root.querySelector('#engList'); if (!box) return;
+    let shown = 0;
+    for (const c of box.querySelectorAll('.card[data-q]')) { const ok = q.every((w) => c.dataset.q.includes(w)); c.hidden = !ok; if (ok) shown++; }
+    for (const g of box.querySelectorAll('.cards')) { const any = [...g.children].some((c) => !c.hidden); g.hidden = !any; const h = g.previousElementSibling; if (h?.tagName === 'H4') h.hidden = !any; }
+    const n = this.root.querySelector('#engCount'); if (n) n.textContent = q.length ? `${shown}개 찾음` : '';
+  }
   engravingCard(id, s, b) {
     const e = ENGRAVINGS[id];
     const known = Object.keys(e.recipe).some((eid) => s.codex.echoes[eid]);
@@ -324,7 +344,7 @@ export class Hub {
       return `<span class="rq ${have >= n ? 'ok' : ''}" style="--c:${ECHOES[eid].color}">◆ ${nm} ${have}/${n}</span>`;
     }).join('');
     if (!known) {
-      return `<div class="card unknown"><div class="c-head"><b>??? 미확인 각인</b><span class="grade" style="--g:${GRADES[e.grade].color}">${GRADES[e.grade].name}</span></div>
+      return `<div class="card unknown" data-q="${esc(this.engSearchText(id, s, true))}"><div class="c-head"><b>??? 미확인 각인</b><span class="grade" style="--g:${GRADES[e.grade].color}">${GRADES[e.grade].name}</span></div>
         <div class="c-meta">각인</div><div class="recipe">${recipe}</div></div>`;
     }
     const stats = Object.entries(e.stats).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k]).name} ${v > 0 ? '+' : ''}${v}`).join(', ');
@@ -335,7 +355,7 @@ export class Hub {
     const summary = e.effects.map((x) => x.text).join(' · ');
     const wlist = engravingWeapons(id), weaponLine = ENGRAVING_SKILLS[id] ? `<div class="c-meta">맞는 무기: ${wlist.length >= 14 ? '모든 무기' : wlist.map((c) => WCAT_NAME[c] || c).join(' · ') || '없음'}</div>` : '';
     const fromLine = e.from && MONSTERS[e.from] ? `<div class="c-meta">${s.codex.kills?.[e.from] ? MONSTERS[e.from].name : '???'}의 부산물로 새긴다</div>` : '';
-    return `<div class="card ${goal ? 'goal' : ''}" style="--g:${GRADES[e.grade].color}">
+    return `<div class="card ${goal ? 'goal' : ''}" data-q="${esc(this.engSearchText(id, s))}" style="--g:${GRADES[e.grade].color}">
       <div class="c-head"><b>${e.name}</b><span><button class="star ${goal ? 'on' : ''}" data-act="goal" data-id="${id}" title="목표로 찜">★</button> <span class="grade">${GRADES[e.grade].name}</span></span></div>
       <div class="c-meta">${(() => { const sk = engravingSkillFor(id, s.race), orig = ENGRAVING_SKILLS[id]; return sk ? `<b style="color:#ffd27a">스킬: ${SKILLS[sk].name}</b>${sk !== orig ? ` <small class="muted">(궁극기 「${SKILLS[orig].name}」는 그 종족만)</small>` : ''} · ` : ''; })()}부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
       ${fromLine}
@@ -582,6 +602,7 @@ export class Hub {
       case 'aview': this.altarView = id; break;
       case 'agrade': this.altarGrade = +id; break;
       case 'aweapon': this.altarWeapon = id; break;
+      case 'aquery': { const ws = (this.altarQ || '').split(/\s+/).filter(Boolean); this.altarQ = !id ? '' : ws.includes(id) ? ws.filter((w) => w !== id).join(' ') : [...ws, id].join(' '); break; }
       case 'codexSec': this.codexSec = id; break;
       case 'goal': {
         s.goals ||= [];
