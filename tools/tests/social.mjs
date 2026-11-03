@@ -48,9 +48,11 @@ A.send({ t: 'guildInvite', to: id(B) }); await wait(80); B.send({ t: 'guildAnswe
 ok(A.last('guild')?.members.length === 2 && B.last('guild')?.name === '새벽별', '길드 초대 · 수락');
 B.send({ t: 'chat', text: '안녕하세요 길드', ch: 'guild' }); await wait(100);
 ok(A.last('chat')?.ch === 'guild' && !C.inbox.some((m) => m.t === 'chat' && m.ch === 'guild'), '길드 채팅은 길드원에게만');
-A.send({ t: 'guildRank', uid: 'uid-narae-0002', rank: 'officer' }); await wait(100);
-ok(B.last('guild')?.members.find((m) => m.uid === 'uid-narae-0002')?.rank === 'officer', '길드장이 부길드장을 세운다');
-B.send({ t: 'guildKick', uid: 'uid-garam-0001' }); await wait(100);
+const pid = (who, name) => who.last('guild')?.members.find((m) => m.name === name)?.uid;
+ok(!JSON.stringify(A.last('guild')).includes('uid-narae-0002'), '길드 창에 다른 사람의 진짜 uid가 보이지 않는다');
+A.send({ t: 'guildRank', uid: pid(A, '나래'), rank: 'officer' }); await wait(100);
+ok(B.last('guild')?.members.find((m) => m.me)?.rank === 'officer', '길드장이 부길드장을 세운다');
+B.send({ t: 'guildKick', uid: pid(B, '가람') }); await wait(100);
 ok(A.last('guild')?.id, '부길드장은 길드장을 내보낼 수 없다');
 const gid = gs.id;
 

@@ -78,6 +78,7 @@ function openChat() { chatIn.hidden = false; chatIn.focus(); }
 function closeChat() { chatIn.value = ''; chatIn.hidden = true; chatIn.blur(); }
 chatIn.addEventListener('keydown', (e) => {
   e.stopPropagation();
+  if (e.isComposing || e.keyCode === 229) return; // 한글 조합 중 Enter: 마지막 글자가 빠지거나 남지 않게
   if (e.key === 'Enter') {
     let t = chatIn.value.trim(), ch = 'all';
     const mm = t.match(/^\/(p|g|파|길)\s+/i); // /p 파티 · /g 길드
@@ -177,7 +178,8 @@ onNet('chat', (m) => {
 function onlineBadge() {
   chatEl.hidden = !net.up || gameEl.hidden;
   if (!chatEl.hidden && isTouch()) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 · 동료 ${net.players.size}명` : `온라인 · 근처 ${net.players.size}명`; // 모바일: 키 안내는 빼고 짧게
-  else if (!chatEl.hidden) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 탑 · 같은 층 동료 ${net.players.size}명 · Enter 채팅 (/p 파티)` : world?.zone?.id === 'world' ? `온라인 · 근처 ${net.players.size}명 · Enter 채팅 · O 파티 · 길드` : '온라인 · 바깥 세계에서만 서로 보인다 · O 파티 · 길드';
+  else if (!chatEl.hidden) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 탑 · 같은 층 동료 ${net.players.size}명 · Enter 채팅 (/p 파티)` : world?.zone?.id === 'world' ? (net.players.size ? `온라인 · 근처 ${net.players.size}명 · Enter 채팅` : '') : ''; // 근처에 아무도 없거나 혼자인 곳(탑 · 던전)에서는 글을 띄우지 않는다
+  netInfo.hidden = !netInfo.textContent;
 }
 let lastPP = null;
 function onlineTick(dt) {
@@ -293,7 +295,7 @@ function inviteCard(html, onYes, onNo, sec = 20) {
 }
 const MAP_NAME = (m) => (!m ? '혼자 있는 곳' : m === 'world' ? '바깥 세계' : m.startsWith('tw') ? `각인의 탑 ${m.split('f')[1]}층` : m);
 const RANK_NAME = { leader: '길드장', officer: '부길드장', member: '길드원' };
-const myRank = () => net.guild?.members.find((x) => x.uid === save.uid)?.rank;
+const myRank = () => net.guild?.members.find((x) => x.me)?.rank;
 const isPartyLeader = () => !!net.party && net.party.leader === net.id;
 const seenText = (t) => { if (!t) return '오래전'; const m = (Date.now() - t) / 60000; return m < 60 ? `${Math.max(1, Math.round(m))}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
 onNet('partyInvite', (m) => inviteCard(`<b>파티 초대</b><p>${esc(m.name)} <small>${RACES[m.race]?.name || ''} · Lv ${m.lv || 1}</small></p>`, () => netSend({ t: 'partyAnswer', to: m.from, ok: true }), () => netSend({ t: 'partyAnswer', to: m.from, ok: false })));
@@ -307,7 +309,7 @@ onNet('party', (m) => {
   refreshSocial();
 });
 onNet('guild', (m) => {
-  const g = m.id ? { id: m.id, name: m.name, rank: m.members.find((x) => x.uid === save.uid)?.rank || 'member' } : null;
+  const g = m.id ? { id: m.id, name: m.name, rank: m.members.find((x) => x.me)?.rank || 'member' } : null;
   if (JSON.stringify(g) !== JSON.stringify(save.guild || null)) { save.guild = g; writeSave(save); }
   if (!m.id && m.why) renderer.banner = { text: '길드', sub: m.why, t: 2.2, color: '#c8b8a0' };
   refreshSocial();
@@ -458,7 +460,7 @@ function guildHtml(near) {
     `;
   const r = myRank(), mng = r === 'leader' || r === 'officer';
   const rows = g.members.map((x) => {
-    const me = x.uid === save.uid;
+    const me = !!x.me;
     const btn = me ? '<button class="sm ghost" data-gact="leave">나가기</button>'
       : r === 'leader' ? `${x.rank === 'member' ? `<button class="sm ghost" data-gact="officer" data-uid="${x.uid}">부길드장으로</button>` : `<button class="sm ghost" data-gact="member" data-uid="${x.uid}">길드원으로</button>`}<button class="sm ghost" data-gact="leader" data-uid="${x.uid}">길드장 넘기기</button><button class="sm ghost" data-gact="kick" data-uid="${x.uid}">내보내기</button>`
       : r === 'officer' && x.rank === 'member' ? `<button class="sm ghost" data-gact="kick" data-uid="${x.uid}">내보내기</button>` : '';
@@ -981,6 +983,12 @@ let reGolem = false;
 
 // 예전 저장 데이터를 새 구조로 옮긴다 (인간·드워프 → 기사, 없어진 슬롯·무기 정리)
 const ADMIN_LEVEL = 100;
+function adminKit(sv) { // 운영자: 탑의 무기 · 장비 모두 · 100레벨 (서버가 열쇠를 확인한 뒤에만)
+  sv.items ||= [];
+  for (const id of Object.keys(ITEMS)) if ((ITEMS[id].towerWeapon || ITEMS[id].towerGear) && !sv.items.includes(id)) sv.items.push(id);
+  if ((sv.level || 1) < ADMIN_LEVEL) { sv.points = (sv.points || 0) + pointsAt(ADMIN_LEVEL) - pointsAt(sv.level || 1); sv.level = ADMIN_LEVEL; }
+}
+onNet('welcome', (m) => { if (m.admin && save) { adminKit(save); writeSave(save); } });
 function migrateSave(sv) {
   if (!sv) return sv;
   if (sv.tower?.max && !sv.climb?.fromOld) { // 예전 탑(시간 등급)에서 오른 층만큼 별빛으로 바꿔 준다
@@ -995,7 +1003,7 @@ function migrateSave(sv) {
     const total = Math.max(0, (sv.level || 1) - 1), spent = Object.values(sv.alloc || {}).reduce((a, v) => a + (v || 0), 0);
     if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
   }
-  const admin = cloud.name === '운영자';
+  const admin = !!net.admin; // 서버가 운영자 열쇠를 확인했을 때만 (이름이 「운영자」라는 것만으로는 아니다)
   { // 바뀐 탑 장비(예전 단계별 장비 tg1Armor …)처럼 이제 없는 장비는 치운다
     sv.items = (sv.items || []).filter((id) => !/^tg\d/.test(id) || ITEMS[id]);
     for (const k of Object.keys(sv.gear || {})) if (/^tg\d/.test(sv.gear[k] || '') && !ITEMS[sv.gear[k]]) sv.gear[k] = null;
@@ -1010,18 +1018,14 @@ function migrateSave(sv) {
       sv.twTaken = bad.length;
     }
   }
-  if (admin) { // 운영자: 탑의 무기 · 장비 모두 · 100레벨
-    sv.items ||= [];
-    for (const id of Object.keys(ITEMS)) if ((ITEMS[id].towerWeapon || ITEMS[id].towerGear) && !sv.items.includes(id)) sv.items.push(id);
-    if ((sv.level || 1) < ADMIN_LEVEL) { sv.points = (sv.points || 0) + pointsAt(ADMIN_LEVEL) - pointsAt(sv.level || 1); sv.level = ADMIN_LEVEL; }
-  }
+  if (admin) adminKit(sv);
   if (!sv.statFix3) { // 자동 성장 절반 → 레벨마다 1.75점
     sv.statFix3 = true;
     const total = pointsAt(sv.level || 1), spent = Object.values(sv.alloc || {}).reduce((a, v) => a + (v || 0), 0);
     if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
   }
-  if (!sv.statFix3) { // 지금까지 여러 성지에서 쌓은 수련 단계는 모두 내 종족 성지의 수련으로 옮겨 남긴다
-    sv.statFix3 = true;
+  if (!sv.sanctFix1) { // 지금까지 여러 성지에서 쌓은 수련 단계는 모두 내 종족 성지의 수련으로 옮겨 남긴다
+    sv.sanctFix1 = true;
     const S2 = (sv.story ||= {}).sanct ||= {};
     const total = Object.values(S2).reduce((a, x) => a + (x?.train || 0), 0);
     for (const x of Object.values(S2)) if (x) x.train = 0;
@@ -1805,6 +1809,7 @@ function showTutorial() {
 const ALWAYS_TABS = ['char', 'gear', 'where', 'bag', 'codex'];
 const STATION_TABS = { altar: ['altar'], shop: ['shop', 'forge', 'craft'], forge: ['forge', 'shop', 'craft'], codex: ['codex', 'learn'], char: ['char', 'learn'], quest: ['quest'], trade: ['trade'], hunt: ['hunt'], cook: ['cook', 'storage'], storage: ['storage', 'cook'], craft: ['craft', 'storage'] };
 function openPanel(tab, fromStation = false) {
+  { const hp = document.getElementById('happenPanel'); if (hp) hp.hidden = true; } // 큰 창 위에 떠 있지 않게
   touch?.reset();
   tutFlags.panel = true;
   hub.station = fromStation ? tab : null;
@@ -1822,6 +1827,7 @@ function closePanel() {
 }
 
 function showModal(html, onClose) {
+  { const hp = document.getElementById('happenPanel'); if (hp) hp.hidden = true; }
   touch?.reset();
   const giver = talkNpc && !html.includes('data-give') ? talkNpc : null;
   overlay.innerHTML = `<div class="modal">${html}${giver ? `<div class="give-row">${giver.mem ? `<span class="muted">${esc(giver.label0 || giver.label || '').split(' ')[0]}은(는) ${opinionText(giver.mem.op)}${Object.keys(giver.mem.knows).length ? ` · 들은 소문: ${Object.keys(giver.mem.knows).slice(0, 3).map((d) => ({ assault: '사람을 때림', beatDown: '사람을 때려눕힘', raid: '상단 습격', rob: '세금 마차 약탈', escort: '상단 호위', guard: '마차 호위', donate: '기부', bribe: '뇌물', stop: '싸움 말림', official: '관리 살해', gift: '선물' })[d] || d).join(' · ')}` : ''}</span>` : ''}<span class="muted">돈을 건넨다 — ${esc(giveHint(giver))}</span><span>${[10, 50, 200].map((n) => `<button class="sm ghost" data-give="${n}">◆ ${n}</button>`).join('')}</span></div>` : ''}</div>`;
@@ -3429,9 +3435,11 @@ function updateHappenPanel() {
   let el = document.getElementById('happenPanel');
   const w = world, show = w?.map?.outdoor && !w.voyage && HAPPEN_LIST.length && !modal && panelEl.hidden && (save?.tutorial?.done || !save?.tutorial); // 창이 열리면 숨긴다 · 튜토리얼 중에는 안 보인다
   if (!show) { if (el) el.hidden = true; return; }
-  if (!el) { el = document.createElement('div'); el.id = 'happenPanel'; gameEl.appendChild(el); el.onclick = (e) => { const id = e.target.closest('[data-tr]')?.dataset.tr; if (!id) return; if (id === 'off') { world.track = null; return; } const h = HAPPEN_LIST.find((q) => q.id === id); if (h) world.track = { x: h.o.x, y: h.o.y, name: HAPPENINGS[h.type].name, hid: id }; }; }
+  if (!el) { el = document.createElement('div'); el.id = 'happenPanel'; gameEl.appendChild(el); el.onclick = (e) => { if (e.target.closest('b')) { if (el.dataset.open) delete el.dataset.open; else el.dataset.open = '1'; updateHappenPanel(); return; } const id = e.target.closest('[data-tr]')?.dataset.tr; if (!id) return; if (id === 'off') { world.track = null; return; } const h = HAPPEN_LIST.find((q) => q.id === id); if (h) world.track = { x: h.o.x, y: h.o.y, name: HAPPENINGS[h.type].name, hid: id }; }; }
   el.hidden = false;
-  if (renderer.hudRightBottom) { const cr = canvas.getBoundingClientRect(); el.style.top = `${Math.round(cr.top + (renderer.hudRightBottom * cr.height) / canvas.height) + 8}px`; } // 작은 지도 아래 글과 겹치지 않게
+  const touchUi = document.body.classList.contains('touch');
+  el.classList.toggle('mini', touchUi && !el.dataset.open); // 휴대폰: 제목만 (눌러서 펼친다) — 오른쪽 조이스틱 · 스킬 버튼을 가리지 않게
+  { const below = Math.max(renderer.hudRightBottom || 0, touchUi ? 0 : renderer.journeyBottom || 0); if (below) { const cr = canvas.getBoundingClientRect(); el.style.top = `${Math.round(cr.top + (below * cr.height) / canvas.height) + 8}px`; } } // 작은 지도 · 여정 상자 아래 (겹치지 않게)
   const p = w.player;
   if (w.track?.hid) { const h = HAPPEN_LIST.find((q) => q.id === w.track.hid); if (h) { w.track.x = h.o.x; w.track.y = h.o.y; } else w.track = null; }
   el.innerHTML = `<b>근처에서 벌어지는 일</b>${HAPPEN_LIST.slice(0, 3).map((h) => { const d = Math.round(Math.hypot(h.o.x - p.x, h.o.y - p.y) / TILE), left = Math.max(0, Math.ceil((h.o.endT - w.t) / 60)); return `<div class="hp-row ${w.track?.hid === h.id ? 'on' : ''}" data-tr="${h.id}">${esc(HAPPENINGS[h.type].name)}<small>${esc(h.where)} · ${d}칸 · ${left}분</small><small class="deed">${esc(DEED_SHORT[h.type] || '')}</small></div>`; }).join('')}${w.track ? '<div class="hp-row off" data-tr="off">안내 끄기</div>' : ''}`;
@@ -3495,6 +3503,7 @@ function tick(ts) {
       if (endTimer > (world.state === 'dead' ? 1.4 : 0.3)) endRun(world.state === 'dead' ? 'dead' : 'clear');
     }
     renderer.consume(world);
+    renderer.walletGold = save?.gold | 0;
     renderer.draw(world, paused ? 0 : dt);
   }
 }
