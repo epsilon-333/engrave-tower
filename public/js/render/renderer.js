@@ -235,6 +235,7 @@ export class Renderer {
     this.fg.fillStyle = '#05040a'; this.fg.fillRect(0, 0, w.tw, w.th);
     this.mini = document.createElement('canvas'); this.mini.width = w.tw; this.mini.height = w.th;
     this.mg = this.mini.getContext('2d');
+    if (w.map.outdoor) this.silhouette(w); // 바깥 세계: 안 가 본 곳도 땅 · 바다 윤곽만 흐리게 (무엇이 있는지는 가 봐야 보인다)
     this.applyReveal(true);
     if (w.zone) this.banner = w.map.outdoor ? { text: w.zone.name, sub: '어디로든 갈 수 있다. 저 멀리 탑이 보인다.', t: 3.6, color: '#ffe8a8' } : { text: `${w.zone.floor}층 · ${w.zone.name}`, sub: '몬스터는 지역마다 무리지어 산다. 탐험하라.', t: 3.2, color: '#ffe8a8' };
     this.glowDeco = w.map.deco.filter((d) => GLOW[d.kind]);
@@ -242,6 +243,14 @@ export class Renderer {
     if (w.mapKnown) this.knowMap(w);
   }
 
+  silhouette(w) {
+    const img = this.mg.createImageData(w.tw, w.th), d = img.data;
+    for (let i = 0; i < w.tw * w.th; i++) {
+      const t = w.tiles[i], sea = t === T_DEEP || t === T_LIQUID, c = sea ? [12, 18, 32] : t === T_WALL ? [30, 30, 34] : [34, 40, 36];
+      d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2]; d[i * 4 + 3] = 255;
+    }
+    this.mg.putImageData(img, 0, 0);
+  }
   // 피노의 지도: 아직 안 가 본 곳도 작은 지도에 흐릿하게
   knowMap(w) {
     for (let i = 0; i < w.tiles.length; i++) {
