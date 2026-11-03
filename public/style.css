@@ -599,3 +599,40 @@ b.dim { color: #e8c890; }
 .sk-scale span.on { color: #8af08a; }
 .sk-scale span.on::before { content: '✓ '; }
 .stat-row .rec { font-size: 10px; color: #0d0b10; background: #ffcf5a; padding: 0 4px; margin-left: 2px; }
+
+/* ───────── 디자인 규칙 (UI 개편): 색 · 글꼴 크기 · 테두리 상자 · 버튼 · 토글 · 슬라이더를 한곳에서 ─────────
+   참고: Hades(싸우는 화면은 최소 · 메뉴는 목록 하나) · Dead Cells(스킬 칸) · Diablo IV(아이템 카드 · 비교) · Path of Exile 2(목록 + 자세히) · Slay the Spire(용어 말풍선) · Stardew Valley(도트 상자) */
+:root {
+  --bg0: #0d0b12; --bg1: #171421; --bg2: #211c2e; --bg3: #2c2540;
+  --line: #3a3350; --line-hi: #5a4e72; --text: #ece6f4; --muted: #9a92ad; --accent: #ffcf5a; --accent-dk: #241a00;
+  --r0: #c8c0d0; --r1: #5ab0ff; --r2: #c070ff; --r3: #ffb030; --r4: #ff4a6a;
+  --fs-xs: 12px; --fs-s: 13px; --fs-m: 15px; --fs-l: 18px; --fs-xl: 24px;
+}
+small { font-size: var(--fs-s); }
+.muted { color: var(--muted); }
+/* 버튼: 기본 · 강조(.on / .primary) · 흐림(.ghost) */
+button.primary { background: var(--accent); color: var(--accent-dk); box-shadow: inset 0 -3px 0 #b8862a, inset 0 2px 0 #ffe9a8, 0 0 0 2px #0d0b10; }
+button.primary:hover:not(:disabled) { background: #ffdc80; }
+button.ghost { box-shadow: inset 0 0 0 1px var(--line), 0 0 0 1px #0d0b10; }
+button.ghost:hover:not(:disabled) { background: var(--bg3); box-shadow: inset 0 0 0 1px var(--line-hi), 0 0 0 1px #0d0b10; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 토글 (체크박스): 브라우저 기본 대신 도트 상자 */
+input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 18px; height: 18px; margin: 0 8px 0 0; vertical-align: -4px; cursor: pointer;
+  background: var(--bg0); box-shadow: inset 0 0 0 2px var(--line-hi), 0 0 0 1px #0d0b10; position: relative; flex: none; }
+input[type="checkbox"]:checked { background: var(--accent); box-shadow: inset 0 0 0 2px #b8862a, 0 0 0 1px #0d0b10; }
+input[type="checkbox"]:checked::after { content: ''; position: absolute; left: 5px; top: 2px; width: 5px; height: 9px; border: solid var(--accent-dk); border-width: 0 3px 3px 0; transform: rotate(45deg); }
+/* 슬라이더 */
+input[type="range"] { appearance: none; -webkit-appearance: none; height: 8px; background: var(--bg0); box-shadow: inset 0 0 0 1px var(--line-hi); cursor: pointer; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 18px; background: var(--accent); box-shadow: inset 0 -3px 0 #b8862a, 0 0 0 2px #0d0b10; }
+input[type="range"]::-moz-range-thumb { width: 14px; height: 18px; border: 0; border-radius: 0; background: var(--accent); box-shadow: inset 0 -3px 0 #b8862a, 0 0 0 2px #0d0b10; }
+/* 입력칸 */
+input[type="search"], input[type="text"], input:not([type]) { font: inherit; color: var(--text); background: var(--bg0); border: 0; box-shadow: inset 0 0 0 2px var(--line); padding: 6px 10px; }
+/* 저장 표시: 화면 가운데 위 → 오른쪽 아래 구석에 작게 (제목 · 창 · 일시정지를 가리지 않게) */
+#cloudChip { left: auto; right: calc(10px + env(safe-area-inset-right, 0px)); top: auto; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); transform: none;
+  font-size: var(--fs-xs); padding: 2px 8px 2px 4px; opacity: 0.8; }
+#cloudChip.st-error, #cloudChip.st-expired, #cloudChip.st-stale { opacity: 1; box-shadow: 0 0 0 2px #0d0b10, inset 0 0 0 1px var(--warn); }
+#cloudChip.st-expired span::before, #cloudChip.st-stale span::before, #cloudChip.st-connecting span::before { background: #ff7a6a; }
+/* 채팅 · 온라인 줄: 큰 창 · 일시정지가 열리면 숨긴다 (창 위로 비치던 것) · 체력 막대 위에 */
+body:has(#panel:not([hidden])) #chat, body:has(#overlay:not([hidden])) #chat { display: none; }
+#chat { bottom: 132px; }
+body.touch #cloudChip { right: auto; bottom: auto; }

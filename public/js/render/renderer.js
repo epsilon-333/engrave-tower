@@ -4228,25 +4228,30 @@ export class Renderer {
     const W = this.c.width, H = this.c.height;
     g.setTransform(1, 0, 0, 1, 0, 0);
     const m = 10 * u;
+    // 데스크톱: 내 상태는 왼쪽 아래 한 덩어리 (Hades · Dead Cells처럼 화면 가운데를 비운다). 모바일: 예전처럼 왼쪽 위 (아래는 조이스틱)
+    const desk = !document.body.classList.contains('touch');
+    const R = RACES[w.b.race]?.res;
+    const pw = (desk ? 24 : 26) * u, bw = (desk ? 120 : 110) * u, bh = (desk ? 9 : 10) * u, gh = desk ? 5 * u : 7 * u;
+    const extra = R && (w.b.cls === 'necromancer' || w.b.race === 'wizard') ? 10 * u : 0;
+    const frameH = Math.max(pw, bh + (R ? 3 * u + gh : 0) + extra);
+    const fx = m, fy = desk ? H - m - frameH - 6 * u : m;
+    this.hudFrameTop = fy;
     // 초상화 + 체력
-    const pw = 26 * u;
-    this.panel(m, m, pw, pw);
+    this.panel(fx, fy, pw, pw);
     const art = RACE_ART[w.b.race];
     const face = sprite(frames(art.base, 'idle')[0], art.tint || '');
-    if (face) { g.imageSmoothingEnabled = false; const fs = Math.floor((pw - 4 * u) / 16); g.drawImage(face, Math.round((face.width - 16) / 2), face.height - 24, 16, 16, m + (pw - 16 * fs) / 2, m + (pw - 16 * fs) / 2, 16 * fs, 16 * fs); }
-    const bx = m + pw + 6 * u, bw = 110 * u, bh = 10 * u;
-    this.panel(bx, m, bw, bh);
+    if (face) { g.imageSmoothingEnabled = false; const fs = Math.floor((pw - 4 * u) / 16); g.drawImage(face, Math.round((face.width - 16) / 2), face.height - 24, 16, 16, fx + (pw - 16 * fs) / 2, fy + (pw - 16 * fs) / 2, 16 * fs, 16 * fs); }
+    const bx = fx + pw + 6 * u, m0 = fy;
+    this.panel(bx, m0, bw, bh);
     const hpK = Math.max(0, p.hp / d.maxHp);
-    g.fillStyle = '#3a1016'; g.fillRect(bx + u, m + u, bw - 2 * u, bh - 2 * u);
-    g.fillStyle = '#c8303c'; g.fillRect(bx + u, m + u, (bw - 2 * u) * hpK, bh - 2 * u);
-    g.fillStyle = '#ff6a6a'; g.fillRect(bx + u, m + u, (bw - 2 * u) * hpK, 2 * u);
-    if (p.shield > 0) { g.fillStyle = '#a8d8ff'; g.fillRect(bx + u, m + bh - 3 * u, (bw - 2 * u) * Math.min(1, p.shield / d.maxHp), 2 * u); }
-    this.text(`${Math.ceil(p.hp)} / ${d.maxHp}`, bx + bw / 2, m + bh / 2, u, '#ffffff', 'center');
+    g.fillStyle = '#3a1016'; g.fillRect(bx + u, m0 + u, bw - 2 * u, bh - 2 * u);
+    g.fillStyle = hpK < 0.3 && Math.floor(w.t * 3) % 2 ? '#e8404c' : '#c8303c'; g.fillRect(bx + u, m0 + u, (bw - 2 * u) * hpK, bh - 2 * u);
+    g.fillStyle = '#ff6a6a'; g.fillRect(bx + u, m0 + u, (bw - 2 * u) * hpK, 2 * u);
+    if (p.shield > 0) { g.fillStyle = '#a8d8ff'; g.fillRect(bx + u, m0 + bh - 3 * u, (bw - 2 * u) * Math.min(1, p.shield / d.maxHp), 2 * u); }
+    this.text(`${Math.ceil(p.hp)} / ${d.maxHp}`, desk ? bx + bw - 4 * u : bx + bw / 2, m0 + bh / 2, desk ? Math.max(1, u - 1) : u, '#ffffff', desk ? 'right' : 'center');
     // 종족 자원 게이지
-    let ry = m + bh + 3 * u;
-    const R = RACES[w.b.race]?.res;
+    let ry = m0 + bh + 3 * u;
     if (R) {
-      const gh = 7 * u;
       this.panel(bx, ry, bw, gh);
       g.fillStyle = '#0d0b18'; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u);
       const k = Math.max(0, Math.min(1, p.res / 100));
@@ -4254,11 +4259,14 @@ export class Renderer {
       g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(bx + u, ry + u, (bw - 2 * u) * k, u);
       for (const t of [0.25, 0.5, 0.75]) { g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(bx + u + (bw - 2 * u) * t, ry + u, u, gh - 2 * u); }
       if (k >= 1 && Math.floor(w.t * 4) % 2) { g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u); }
-      this.text(`${R.name} ${Math.floor(p.res)}`, bx + bw / 2, ry + gh / 2, Math.max(1, u - 1), '#ffffff', 'center');
+      if (desk) this.text(`${R.name} ${Math.floor(p.res)}`, bx + bw + 4 * u, ry + gh / 2, Math.max(1, u - 1), R.color, 'left'); // 얇은 막대: 이름 · 수치는 막대 오른쪽에
+      else this.text(`${R.name} ${Math.floor(p.res)}`, bx + bw / 2, ry + gh / 2, Math.max(1, u - 1), '#ffffff', 'center');
       ry += gh + 2 * u;
       if (w.b.cls === 'necromancer') { this.text(`거둔 영혼 ${p.souls.length} / 10`, bx, ry + 5 * u, Math.max(1, u - 1), '#7ae8ff'); ry += 10 * u; }
       if (w.b.race === 'wizard') { const el = ELEM[p.elem]; this.text(`속성: ${el.name}${w.zElem?.weak === p.elem ? ' (약점!)' : w.zElem?.resist === p.elem ? ' (내성)' : ''}`, bx, ry + 5 * u, Math.max(1, u - 1), el.color); ry += 10 * u; }
     }
+    // 데스크톱: 버프 · 상태이상은 막대 위쪽 줄에 (위로 쌓인다) / 모바일: 막대 아래
+    if (desk) ry = fy - 10 * u;
     // 버프 (마우스를 올리면 설명)
     const tips = this.tipRects = [], tu = Math.max(1, u - 1);
     let bxx = bx;
@@ -4269,7 +4277,7 @@ export class Renderer {
       const left = bf.t >= 60 ? `${Math.ceil(bf.t / 60)}분` : bf.t.toFixed(bf.persist ? 0 : 1), label = `${nm} ${left}`;
       this.g.font = `${11 * tu}px ${FONT}`;
       const lw = this.g.measureText(label).width;
-      if (bxx > bx && bxx + lw > bx + 250 * u) { bxx = bx; ry += 10 * u; } // 길면 다음 줄로
+      if (bxx > bx && bxx + lw > bx + 250 * u) { bxx = bx; ry += desk ? -10 * u : 10 * u; } // 길면 다음 줄로 (데스크톱은 위로)
       this.text(label, bxx, ry + 5 * u, tu, bf.color || '#ffffff');
       const lines = modLines(bf.mods);
       if (!lines.length && sk?.desc) lines.push(sk.desc.replace(/\s*(마력|기력|분노|마나|기운|영혼)\s*\d+\.?$/, ''));
@@ -4277,17 +4285,22 @@ export class Renderer {
       tips.push({ x: bxx, y: ry, w: lw + 3 * u, h: 10 * u, title: nm, color: bf.color || '#ffffff', lines, left: bf.t });
       bxx += lw + 8 * u;
     }
-    if (Object.keys(p.buffs).length) ry += 10 * u;
+    if (Object.keys(p.buffs).length) ry += desk ? -10 * u : 10 * u;
     // 상태이상
     const names = { burn: ['화상', '#ff7a2a', '불에 데어 잠깐 동안 계속 피해를 받는다. 물에 들어가면 꺼진다.'], poison: ['중독', '#9be15d', '독이 퍼져 잠깐 동안 계속 피해를 받는다.'], bleed: ['출혈', '#e0445a', '피를 흘려 잠깐 동안 계속 피해를 받는다. 겹칠수록 세다.'], chill: ['냉기', '#9fe3ff', '몸이 얼어 이동 · 공격이 느려진다.'] };
     let sxx = bx;
     for (const k of Object.keys(p.st)) { const nm = names[k] || [k, '#ffffff', '']; this.text(nm[0], sxx, ry + 5 * u, u, nm[1]); tips.push({ x: sxx, y: ry, w: 26 * u, h: 10 * u, title: nm[0], color: nm[1], lines: [nm[2]].filter(Boolean), left: p.st[k]?.t }); sxx += 30 * u; }
     this.drawSkillBar(w);
-    this.drawClock(w);
-    if (this.journey && !w.climb && !w.pvp && !w.practice) this.drawJourney(w, bx, ry + 6 * u);
+    // 데스크톱: 미니맵 아래 정보띠(시계 · 골드 · 지역)에 시계를 넣고, 여정은 그 밑 오른쪽 (퀘스트 추적 칸)
+    if (desk && w.mode === 'field') { this.drawMinimap(w); this.hudRightY = this.hudRightBottom || 120 * u; }
+    else this.drawClock(w);
+    if (this.journey && !w.climb && !w.pvp && !w.practice) {
+      if (desk) this.drawJourney(w, null, (w.mode === 'field' ? this.hudRightY : 34 * u) + 4 * u, W - 10 * u);
+      else this.drawJourney(w, bx, ry + 6 * u);
+    }
     this.drawTip();
 
-    if (w.mode === 'field') this.drawMinimap(w);
+    if (w.mode === 'field' && !desk) this.drawMinimap(w);
     else if (!document.body.classList.contains('touch')) {
       const hint = document.body.classList.contains('touch') ? '시설 가까이 가서 확인 버튼 · 캐릭터 버튼으로 스탯 배분' : 'WASD 이동 · G 상호작용 · I 장비 · B 가방 · C 캐릭터 · 아래쪽 문으로 나가기';
       g.font = `${11 * u}px ${FONT}`;
@@ -4423,10 +4436,11 @@ export class Renderer {
   }
 
   // 여정: 지금의 목표 하나 (왼쪽 위 · 체력 아래) + 장소가 있으면 화면 가장자리 화살표
-  drawJourney(w, x, y) {
+  drawJourney(w, x, y, right = null) {
     const J = this.journey, u = this.u, tu = Math.max(1, u - 1), g = this.g;
     g.font = `bold ${11 * u}px ${FONT}`;
     const tw = Math.max(150 * u, g.measureText(J.title).width + 16 * u);
+    if (right != null) x = right - tw; // 오른쪽 맞춤 (미니맵 아래)
     g.font = `${11 * tu}px ${FONT}`;
     const hint = J.hint || '', lines = [];
     let line = '';
@@ -4607,17 +4621,21 @@ export class Renderer {
     for (const e of w.enemies) if ((e.def.elite || e.champion) && seen(e.x, e.y)) dot(e.x, e.y, '#ff4040', 2);
     if (Math.floor(w.t * 4) % 2 === 0) dot(w.player.x, w.player.y, '#ffffff', 1.5);
     this.minimapBottom = my + mh;
-    if (w.climb) { for (const o of w.objects) if (o.kind === 'climbDoor') dot(o.x, o.y, CLIMB_REWARDS[o.next]?.color || '#fff', 2); else if (o.kind === 'climbReward' && !o.opened) dot(o.x, o.y, '#ffe8a8', 2.2); return; } // 탑 등반: 아래 글은 등반 HUD 가 그린다
-    let y = my + mh + 12 * u;
+    if (w.climb) { this.hudRightBottom = my + mh + 8 * this.u; for (const o of w.objects) if (o.kind === 'climbDoor') dot(o.x, o.y, CLIMB_REWARDS[o.next]?.color || '#fff', 2); else if (o.kind === 'climbReward' && !o.opened) dot(o.x, o.y, '#ffe8a8', 2.2); return; } // 탑 등반: 아래 글은 등반 HUD 가 그린다
     if (!this.pctT || this.pctT < w.t) { this.pctT = w.t + 0.5; this.pctV = Math.round(w.exploredPct() * 100); }
-    this.text(`${w.zone.name}${w.depth ? ` 지하 ${w.depth + 1}층` : ''} · 탐험 ${this.pctV}%`, mx + mw, y, u, '#d8d0e8', 'right');
-    if (w.loot.banked) { y += 14 * u; this.text('야영지에 잔향을 맡김', mx + mw, y, Math.max(1, u - 1), '#ffd88a', 'right'); }
-    y += 16 * u;
+    // 정보띠: 미니맵 바로 아래 한 상자에 시계 · 골드 / 지역 · 탐험 (따로 떠 있던 글자를 모은다)
+    const sw = mw + 4 * u, sx0 = mx - 2 * u, sy0 = my + mh + 4 * u, tu2 = Math.max(1, u - 1), stripH = 24 * u;
+    this.panel(sx0, sy0, sw, stripH);
+    const c = w.clock;
+    if (c) { const dk = darkness(c.min); this.text(`${c.day}일 · ${clockText(c)}`, sx0 + 5 * u, sy0 + 7 * u, tu2, dk > 0.6 ? '#c8d0ff' : '#ffe8a8', 'left', false); }
+    this.text(`◆ ${w.loot.gold}`, sx0 + sw - 5 * u, sy0 + 7 * u, tu2, '#ffcf5a', 'right', false, true);
+    this.text(`${w.zone.name}${w.depth ? ` 지하 ${w.depth + 1}층` : ''} · 탐험 ${this.pctV}%`, sx0 + 5 * u, sy0 + 17 * u, tu2, '#c8c0d8', 'left', false);
+    let y = sy0 + stripH + 10 * u;
+    if (w.loot.banked) { this.text('야영지에 잔향을 맡김', mx + mw, y, tu2, '#ffd88a', 'right'); y += 12 * u; }
     for (const [id, n] of Object.entries(w.loot.echoes)) {
-      this.text(`◆ ${ECHOES[id].name} ${n}`, mx + mw, y, u, ECHOES[id].color, 'right');
-      y += 14 * u;
+      this.text(`◆ ${ECHOES[id].name} ${n}`, mx + mw, y, tu2, ECHOES[id].color, 'right');
+      y += 12 * u;
     }
-    this.text(`골드 ${w.loot.gold}`, mx + mw, y, u, '#ffcf5a', 'right');
     if (w.goalNeeds?.length) {
       y += 20 * u;
       this.text('★ 목표 잔향', mx + mw, y, u, '#ffcf5a', 'right');
