@@ -1897,8 +1897,8 @@ function bindVolume() {
 
 function showPause() {
   const field = world.mode === 'field' && !world.voyage;
-  showModal(`<h2>일시정지</h2>
-    <button data-close>계속하기</button>
+  showModal(`<h2 class="pause-h">일시정지</h2>
+    <button data-close class="primary">계속하기</button>
     ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button><button id="rankBtn" class="ghost">랭킹 · N</button>' : ''}
     ${net.admin ? '<button id="adminBtn" class="ghost">운영자 · 접속한 사람</button>' : cloud.name === '운영자' && net.up ? '<p class="muted">운영자 열쇠 (서버의 ADMIN_KEY) <input id="adminKeyIn" type="password" style="width:9em"> <button id="adminKeyGo" class="sm ghost">확인</button></p>' : ''}
     ${isTouch() ? `<div class="actions col"><button id="tChar" class="ghost">캐릭터 · 스킬 · 스탯</button><button id="tMap" class="ghost">지도</button><button id="tQuest" class="ghost">퀘스트</button><button id="tGear" class="ghost">장비 · 어디서 얻나</button>${net.up ? '<button id="tChat" class="ghost">채팅</button>' : ''}</div>` : ''}
@@ -1931,6 +1931,7 @@ function escAction() {
   if (!world || gameEl.hidden) return;
   if (!panelEl.hidden) return closePanel();
   if (modal) return modal();
+  if (renderer.bigMap) { renderer.bigMap = false; return; } // 큰 지도가 열려 있으면 지도부터 닫는다 (일시정지가 지도 위에 겹쳐 뜨던 것)
   if (world.state === 'play') showPause();
 }
 

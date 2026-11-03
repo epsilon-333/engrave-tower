@@ -4293,7 +4293,7 @@ export class Renderer {
     this.drawSkillBar(w);
     // 데스크톱: 미니맵 아래 정보띠(시계 · 골드 · 지역)에 시계를 넣고, 여정은 그 밑 오른쪽 (퀘스트 추적 칸)
     if (desk && w.mode === 'field') { this.drawMinimap(w); this.hudRightY = this.hudRightBottom || 120 * u; }
-    else this.drawClock(w);
+    else if (w.mode !== 'field') this.drawClock(w); // 바깥(미니맵이 있는 곳)은 미니맵 아래 정보띠에 시계가 있다
     if (this.journey && !w.climb && !w.pvp && !w.practice) {
       if (desk) this.drawJourney(w, null, (w.mode === 'field' ? this.hudRightY : 34 * u) + 4 * u, W - 10 * u);
       else this.drawJourney(w, bx, ry + 6 * u);

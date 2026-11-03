@@ -675,3 +675,12 @@ body.touch #cloudChip { right: auto; bottom: auto; }
 .term { border-bottom: 1px dotted var(--muted); cursor: help; position: relative; }
 .term:hover::after { content: attr(data-tip); position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 20; width: max-content; max-width: 260px; white-space: normal;
   padding: 6px 9px; font-size: var(--fs-xs); line-height: 1.5; color: var(--text); background: var(--bg0); box-shadow: 0 0 0 2px #0d0b10, inset 0 0 0 1px var(--line-hi); pointer-events: none; }
+/* 일시정지 (Hades처럼 왼쪽 정렬 목록 하나) */
+.modal:has(.pause-h) { text-align: left; min-width: 380px; gap: 8px; }
+.modal:has(.pause-h) h2 { text-align: left; margin-bottom: 6px; }
+.modal:has(.pause-h) > button, .modal:has(.pause-h) .actions button { text-align: left; padding: 9px 14px; }
+.modal:has(.pause-h) .ck { display: flex; align-items: center; padding: 4px 2px; font-size: var(--fs-m); cursor: pointer; }
+.modal:has(.pause-h) > p.muted { font-size: var(--fs-s); line-height: 1.6; margin: 2px 0; }
+/* 종족 선택: 스탯 이름(물저 · 마저)이 두 줄로 쪼개지지 않게 */
+.mini-stats i { width: 30px; white-space: nowrap; }
+.mini-stats span { white-space: nowrap; }
