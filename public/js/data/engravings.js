@@ -698,3 +698,36 @@ export const REACTIONS = {
 
 // 몬스터 개체마다 하나씩: 그 몬스터의 부산물로 새기는 각인 (data/monsterparts.js)
 registerPartEngravings(ENGRAVINGS, MONSTERS);
+
+// 효과 문구에 숫자가 없으면 실제 수치를 붙인다 (설계 규칙: 효과는 숫자로 분명하게)
+// 피해는 「공격력의 몇 %」, 범위는 칸(16px) 단위, 상태이상은 중첩 수
+const STATUS_NAME = { burn: '화상', chill: '냉기', poison: '중독', bleed: '출혈', shock: '감전', curse: '저주' };
+const tiles = (r) => `${(r / 16).toFixed(1).replace(/\.0$/, '')}칸`;
+const atkName = (type) => (type === 'mag' ? '마법 공격력' : '물리 공격력');
+export function actionDetail(a = {}) {
+  const out = [];
+  const hit = (x) => { out.push(`반경 ${tiles(x.r)} · ${atkName(x.type)}의 ${Math.round(x.mul * 100)}% 피해`); if (x.status) out.push(`${STATUS_NAME[x.status] || x.status} ${x.stacks || 1}중첩`); };
+  if (a.aoe) hit(a.aoe);
+  if (a.strike) hit(a.strike);
+  if (a.cloud) out.push(`반경 ${tiles(a.cloud.r)} 독 구름 ${a.cloud.dur}초 (초당 4 + 독성×0.8 + 마법 공격력의 20%)`);
+  if (a.status && !a.aoe && !a.strike) out.push(`${STATUS_NAME[a.status] || a.status} ${a.stacks || 1}중첩`);
+  if (a.heal) out.push(`최대 체력의 ${Math.round(a.heal * 100)}% 회복`);
+  if (a.shield) out.push(`최대 체력 ${Math.round(a.shield * 100)}% 보호막 · 탑에서는 절반`);
+  return out.join(' · ');
+}
+const FLAG_DETAIL = {
+  poisonSpread: '반경 3.8칸 안의 적에게 중독 중첩의 절반',
+  poisonBurst: '반경 2.1칸 독 구름 3초 (초당 4 + 독성×0.8)',
+  noHeal: '체력 회복 0%',
+  undeadLifesteal: '흡혈 100% 적용',
+};
+for (const e of Object.values(ENGRAVINGS)) for (const x of e.effects || []) {
+  const t = x.text || '';
+  if (x.type === 'on') { // 확률은 적혀 있어도 「얼마나」가 없으면 붙인다
+    const a = x.action || {}, big = a.aoe || a.strike || a.cloud || a.shield || a.heal;
+    const has = /\d/.test(t) && (!big || /반경|\d+%\s*(피해|회복|보호막)|(피해|보호막|회복)\s*[+×]?\d/.test(t));
+    if (has) continue;
+    const d = [x.chance < 1 && !/\d+%\s*확률/.test(t) ? `${Math.round(x.chance * 100)}% 확률` : '', actionDetail(a)].filter(Boolean).join(' · ');
+    if (d) x.text = `${t} (${d})`;
+  } else if (!/\d/.test(t) && x.type === 'flag' && FLAG_DETAIL[x.flag]) x.text = `${t} (${FLAG_DETAIL[x.flag]})`;
+}

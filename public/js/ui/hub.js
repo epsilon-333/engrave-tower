@@ -63,7 +63,7 @@ export class Hub {
     const rail = GROUPS.map(([gname, ks]) => { const list = ks.filter((k) => tabName[k]); return list.length ? `<div class="rail-g"><div class="rail-h">${gname}</div>${list.map((k) => `<button data-tab="${k}" class="${this.tab === k ? 'on' : ''}">${tabName[k]}${dot(k)}</button>`).join('')}</div>` : ''; }).join('');
     this.root.innerHTML = `
       <header class="hub-top">
-        <div class="title">아르케</div>
+        <div class="title">각인의 탑</div>
         <div class="who">${RACES[s.race].name} · Lv ${s.level} ${(() => { const lv = levelFor(codexPoints(s)); return `<span class="xp" title="도감 점수 ${lv.into}/${lv.need} — 다음 레벨까지"><i style="width:${(lv.into / lv.need) * 100}%"></i></span>`; })()} <span class="gold">◆ ${s.gold} 골드</span></div>
         <h2 class="hub-now">${tabName[this.tab] || ''}</h2>
         <button class="close icon" data-act="close" title="닫기 (Esc)">✕</button>
@@ -147,7 +147,7 @@ export class Hub {
         <div class="code-row"><input id="buildCode" value="${encodeLoadout(toLoadout(s))}" readonly><button class="sm" data-act="copyCode">복사</button></div>
         <div class="code-row"><input id="peekCode" placeholder="다른 빌드 코드 붙여 넣기"><button class="sm" data-act="peek">보기</button></div>
         <div id="peekOut"></div>
-        <p class="danger-zone"><button class="sm ghost" data-act="reset">처음부터 다시 시작</button></p>
+        <p class="muted">처음부터 다시 시작하려면: Esc → 설정 → 처음부터 다시 시작</p>
       </section>
     </div>`;
   }
@@ -747,21 +747,26 @@ function w2t(w, race) {
 }
 
 // 종족 선택 화면
+// 종족 고르기: 다루기 쉬운 순서 (처음 하는 사람이 앞에서부터 고르게) · 어려움 1~3
+const RACE_ORDER = ['knight', 'orc', 'elf', 'dragon', 'dino', 'wizard', 'assassin', 'undead'];
+const RACE_DIFF = { knight: 1, orc: 1, elf: 2, dragon: 2, dino: 2, wizard: 3, assassin: 3, undead: 3 };
 export function renderRaceSelect(root, onPick, onIntro) {
   // 골렘족은 새로 고를 수 없다 (예전 저장의 골렘은 그대로 쓸 수 있다)
   root.innerHTML = `<div class="race-select">
-    <h1>아르케</h1>
+    <h1>각인의 탑</h1>
     ${onIntro ? '<button class="intro-again" id="introAgain">▶ 인트로 다시 보기</button>' : ''}
-    <p class="muted">탑에 잠든 고대 문양을 몸에 새겨라. 강한 각인보다 <b>맞물리는 조합</b>이 이긴다.</p>
-    <div class="races">${Object.entries(RACES).filter(([id]) => id !== 'golem').map(([id, r]) => `
+    <p class="muted">몬스터를 사냥해 얻은 부산물로 <b>각인</b>을 새기고, 탑을 오른다. 처음이라면 <b>기사</b>를 추천해요.</p>
+    <div class="races">${RACE_ORDER.filter((id) => RACES[id]).map((id) => { const r = RACES[id], d = RACE_DIFF[id] || 2; return `
       <button class="race" data-race="${id}">
+        ${id === 'knight' ? '<span class="rec">추천</span>' : ''}
         <canvas width="96" height="120" data-race="${id}"></canvas>
         <b>${r.name}</b><small>${r.origin} · ${r.passive}</small>
-        <div class="mini-stats">${BASE_STATS.map((k) => `<span><i>${STAT_INFO[k].short}</i><em style="width:${r.base[k] * 4}px"></em>${r.base[k]}</span>`).join('')}</div>
+        <span class="diff" title="다루기 어려운 정도">${'★'.repeat(d)}${'☆'.repeat(3 - d)} ${['', '쉬움', '보통', '어려움'][d]}</span>
         <p>${r.desc}</p>
         <p class="sw"><span class="up">강점 ${r.strong}</span><span class="down">약점 ${r.weak}</span></p>
-      </button>`).join('')}</div>
-    <p class="muted credit">그래픽: 16x16 DungeonTileset II by 0x72 (CC0) · 효과음: Kenney (CC0) · 글꼴: 갈무리, Noto Sans KR (OFL)</p></div>`;
+        <details class="mini-wrap" onclick="event.stopPropagation()"><summary>시작 스탯</summary><div class="mini-stats">${BASE_STATS.map((k) => `<span><i>${STAT_INFO[k].short}</i><em style="width:${r.base[k] * 4}px"></em>${r.base[k]}</span>`).join('')}</div></details>
+      </button>`; }).join('')}</div>
+    </div>`;
   root.querySelectorAll('.race').forEach((b) => b.addEventListener('click', () => onPick(b.dataset.race)));
   root.querySelector('#introAgain')?.addEventListener('click', onIntro);
 }

@@ -9,7 +9,7 @@ import { rollLoot, LOOT_RARITY } from '../data/crafting.js';
 import { rollTowerWeapon, W_RARITY } from '../data/weapons.js';
 import { rollTowerGear } from '../data/towergear.js'; // 탑의 방어구 · 장신구 · 왼손 장비도 떨어진다
 import { ITEMS } from '../data/items.js';
-import { climbMul, setZoneRef, floorFoes, rollDoors, clearReward, actOf, REWARDS, floorGold, goldGain, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, FLOOR_MODS, rollFloorMod } from '../data/climb.js';
+import { climbMul, setZoneRef, floorFoes, rollDoors, actOf, REWARDS, BOSS_HEAL, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, rollFloorMod } from '../data/climb.js';
 import { RAID_BOSS } from '../data/raid.js';
 import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
 import { SKILLS, ELEM, ELEM_CYCLE, ZONE_ELEM, aimRule, skillFit, handFit, crossMul, CANT_TEXT, PVP, WORD_FAMILY, WORD_COMBO, SKILL_BAL, CLASS_BAL, CLASS_BAL_PVE } from '../data/skills.js';
@@ -244,13 +244,6 @@ export class World {
     C.center = { x: mc.center.x * TILE + 8, y: mc.center.y * TILE + 8 };
     C.doorSpots = mc.doors.map((d) => ({ x: d.x * TILE + 8, y: d.y * TILE + 8 }));
     C.spawns = mc.spawns.map((sp) => ({ x: sp.x * TILE + 8, y: sp.y * TILE + 8 }));
-    if (REWARDS[k]?.room) { // 싸움 없는 방: 가운데의 것과 이야기하고, 문은 처음부터 열려 있다
-      const label = k === 'shop' ? '탑의 상인 · 물건 보기' : k === 'altar' ? '낡은 제단 · 살펴보기' : '쉼터의 모닥불 · 쉬기';
-      this.objects.push({ kind: 'climbRoom', room: k, x: C.center.x, y: C.center.y, label, reusable: true, npc: k === 'shop' ? { name: '탑의 상인' } : null, art: 'merchant' });
-      C.phase = 'room';
-      this.openClimbDoors();
-      return;
-    }
     if (this.coop?.role === 'member') { C.remote = true; return; } // 파티 등반 (동료): 몬스터는 파티장이 알려 준다 · 층이 열리는 것도 파티장이
     if (k === 'guardian' || k === 'lord') {
       const act = actOf(C.f), id = k === 'lord' ? act.lord : act.guardian, lx = this.map.lair.x * TILE + 8, ly = this.map.lair.y * TILE + 8;
@@ -262,7 +255,7 @@ export class World {
     // 싸움터: 적을 물결 셋(낮은 층은 둘)으로 나눠 부른다 · 가끔 층의 특성
     C.mod = rollFloorMod(C.f, k, this.rng);
     if (C.mod === 'dark') this.zone = { ...this.zone, dark: Math.min(0.88, (this.zone.dark || 0.4) * 2.2) };
-    const trial = k === 'trial', n = Math.round(floorFoes(C.f, trial) * (C.mod === 'horde' ? 1.4 : 1)), pool = this.zone.pool;
+    const n = Math.round(floorFoes(C.f) * (C.mod === 'horde' ? 1.4 : 1)), pool = this.zone.pool;
     const parts = C.f <= 2 ? [0.55, 0.45] : [0.4, 0.33, 0.27];
     let left = n;
     C.waves = parts.map((q, i) => { const m = i === parts.length - 1 ? left : Math.max(1, Math.round(n * q)); left -= m; return m; }).map((m, wi) => {
@@ -271,10 +264,6 @@ export class World {
       for (let i = 0; i < m; i++) { const c = centers[i % centers.length], a = this.rng.range(0, Math.PI * 2), r = this.rng.range(0, 22); let x = c.x + Math.cos(a) * r, y = c.y + Math.sin(a) * r; if (this.blocked(x, y, 7)) { x = c.x; y = c.y; } list.push({ id: this.rng.pick(pool), x, y }); }
       return list;
     });
-    if (trial) C.waves[C.waves.length - 1].push({ ...this.climbSpot(90), id: this.rng.pick(pool), champ: true });
-    if (C.mod === 'treasure' || (C.f >= 3 && this.rng.chance(0.12))) C.waves[Math.min(1, C.waves.length - 1)].push({ ...this.climbSpot(120), id: 'treasureGoblin', treasure: true }); // 보물 고블린: 잡으면 금화 (도망쳐도 층은 열린다)
-    if (C.mod === 'treasure') C.waves[0].push({ ...this.climbSpot(160), id: 'treasureGoblin', treasure: true });
-    if (C.mod === 'treasure' || (C.f >= 2 && this.rng.chance(0.35))) { const sp = this.climbSpot(200); this.objects.push({ kind: 'chest', x: sp.x, y: sp.y, rich: this.rng.chance(0.2), trap: false, label: '보물 상자' }); }
     C.total = C.waves.reduce((a, w) => a + w.length, 0);
     C.waveT = 1.1;
     for (const sp of C.waves[0]) this.emit({ t: 'telegraphCircle', x: sp.x, y: sp.y, r: 12, dur: 1.1 });
@@ -287,7 +276,7 @@ export class World {
   }
   climbSpawn(list) {
     const C = this.climb;
-    const affixP = C.kind === 'trial' ? 1 : Math.min(0.7, 0.1 + 0.05 * (actOf(C.f).n - 1) + 0.2 * (C.oath.elite || 0)); // 뒤 구역일수록 강화 개체가 많다
+    const affixP = Math.min(0.7, 0.1 + 0.05 * (actOf(C.f).n - 1) + 0.2 * (C.oath.elite || 0)); // 뒤 구역일수록 강화 개체가 많다
     for (const sp of list) {
       const e = this.makeEnemy(sp.id, sp.x, sp.y, { affixP, champion: sp.champ ? '시련' : null });
       e.home = { x: e.x, y: e.y }; e.hidden = false; e.climb = !sp.treasure;
@@ -327,31 +316,19 @@ export class World {
     C.phase = 'reward';
     for (const e of this.enemies) if (!e.dead && e.summoned) { e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: e.def.pal.a, defId: e.defId, dir: e.dir }); } // 남은 부하는 흩어진다
     for (const e of this.enemies) if (!e.dead && !e.climb && e.def.treasure) { e.dead = true; this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '보물 고블린이 도망쳤다', color: '#ffcf3a' }); this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: e.x, y2: e.y - 30 }); }
-    const rw = clearReward(C.reward || C.kind);
-    C.reward = rw;
-    const g = goldGain(Math.round(floorGold(C.f) * (FLOOR_MODS[C.mod]?.gold || 1)), run, C.meta);
-    run.gold += g; run.floorsCleared++;
-    if (C.meta.spring) this.heal(this.d.maxHp * 0.03 * C.meta.spring, 'spring');
+    for (const dr of this.drops) dr.magnet = true; // 떨어진 부산물을 놓치지 않게
     const big = C.kind === 'guardian' || C.kind === 'lord';
-    this.emit({ t: 'banner', text: big ? `${C.boss?.def.name || '수호자'} 처치!` : `${C.f}층 돌파`, sub: `탑 금화 +${g}${REWARDS[rw.type] && rw.type !== 'fight' ? ` · 보상: ${REWARDS[rw.type].name}` : ''}`, color: big ? '#ffcf5a' : '#e8d8a8' });
+    if (big) this.heal(this.d.maxHp * BOSS_HEAL, 'spring');
+    this.emit({ t: 'banner', text: big ? `${C.boss?.def.name || '수호자'} 처치!` : `${C.f}층 돌파`, sub: big ? `체력 ${Math.round(BOSS_HEAL * 100)}% 회복 · 문이 열렸다` : '문이 열렸다 · 떨어진 것을 모두 주웠다', color: big ? '#ffcf5a' : '#e8d8a8' });
     this.emit({ t: 'climbClear', x: C.center.x, y: C.center.y });
-    if (REWARDS[rw.type]) this.objects.push({ kind: 'climbReward', reward: rw.type, minGrade: rw.minGrade || 1, legendary: !!rw.legendary, shards: rw.shards || 0, x: C.center.x, y: C.center.y, label: `${REWARDS[rw.type].name} 받기`, reusable: true, born: this.t });
-    else this.openClimbDoors();
-    this.signals.push({ t: 'climbCleared', f: C.f, kind: C.kind });
-  }
-  // 보상을 받았다 (main 이 고른 뒤 부른다) → 문이 열린다
-  climbRewardTaken() {
-    const C = this.climb; if (!C) return;
-    const o = this.objects.find((x) => x.kind === 'climbReward');
-    if (o) { o.opened = true; o.reusable = false; this.emit({ t: 'ring', x: o.x, y: o.y, r: 26, color: REWARDS[o.reward]?.color || '#ffe8a8' }); }
     this.openClimbDoors();
+    this.signals.push({ t: 'climbCleared', f: C.f, kind: C.kind });
   }
   openClimbDoors() {
     const C = this.climb; if (!C || C.doorsOpen) return;
     C.doorsOpen = true;
     if (this.coop?.role === 'member') return; // 파티 등반: 문은 파티장이 고른다
-    let doors = C.forceDoors || rollDoors({ ...C.run, f: C.f }, this.rng, C.meta);
-    if (C.run.forceTrial && doors.length && doors[0].kind !== 'guardian' && doors[0].kind !== 'lord') { C.run.forceTrial = false; doors = doors.map((d) => ({ kind: d.kind === 'rest' ? 'rest' : 'trial' })).filter((d, i, a) => a.findIndex((x) => x.kind === d.kind) === i); } // 고요한 샘: 다음 층은 시련
+    const doors = rollDoors({ ...C.run, f: C.f });
     if (!doors.length) { this.signals.push({ t: 'climbTop' }); return; } // 꼭대기
     const spots = doors.length === 1 ? [C.doorSpots[1]] : doors.length === 2 ? [C.doorSpots[0], C.doorSpots[2]] : C.doorSpots;
     doors.forEach((d, i) => {
@@ -1238,6 +1215,7 @@ export class World {
       o.face = Math.sign(this.player.x - o.x) || o.face || 1; this.emit({ t: 'npcTalk', x: o.x, y: o.y });
       return;
     }
+    if (o.kind === 'climbDoor') { if (this.t - (o.born || 0) < 0.4) return; this.signals.push({ t: 'climbDoor', next: o.next }); return; }
     if (o.kind === 'trainBoard') { this.signals.push({ t: 'sanctTrain', race: o.race }); return; }
     if (o.kind === 'questThing') { this.findQuestThing(o); return; }
     if (o.kind === 'waypoint') { // 이동 포탈: 처음 만지면 깨어나고, 깨어난 포탈에서는 다른 포탈로 건너간다
@@ -1253,9 +1231,6 @@ export class World {
     if (o.kind === 'rest') { this.player.hp = this.d.maxHp; this.emit({ t: 'camp', x: o.x, y: o.y }); this.signals.push({ t: 'rest' }); return; }
     if (o.kind === 'caveDoor') { this.signals.push({ t: 'enterZone', zone: o.zone, from: 'cave' }); return; }
     if (o.kind === 'towerDoor') { this.signals.push({ t: 'tower' }); return; }
-    if (o.kind === 'climbReward') { if (this.t - (o.born || 0) < 0.6) return; this.signals.push({ t: 'climbReward', reward: o.reward, minGrade: o.minGrade, legendary: o.legendary, shards: o.shards }); return; }
-    if (o.kind === 'climbDoor') { if (this.t - (o.born || 0) < 0.4) return; this.signals.push({ t: 'climbDoor', next: o.next }); return; }
-    if (o.kind === 'climbRoom') { this.signals.push({ t: 'climbRoom', room: o.room }); return; }
     if (o.kind === 'raidAltar') { this.signals.push({ t: 'raid' }); return; } // 레이드 제단 // 각인의 탑 100층 (예전 층 고르기는 보류)
     if (o.kind === 'journal') {
       if (this.codex && !this.codex.journals?.[o.id]) { (this.codex.journals ||= {})[o.id] = true; this.signals.push({ t: 'codex' }); this.emit({ t: 'text', x: o.x, y: o.y - 18, text: '기록 도감에 남겼다', color: '#e8d8a8' }); }
@@ -3696,12 +3671,6 @@ export class World {
       this.emit({ t: 'text', x: p.x, y: p.y - 18, text: '불굴!', color: '#ffd060' });
       return;
     }
-    if (this.climb && this.climb.run.revives > 0) { // 탑의 축복 「두 번째 숨」
-      this.climb.run.revives--; p.hp = this.d.maxHp * 0.25; p.invuln = 2; p.st = {};
-      for (const e of this.enemiesNear(p.x, p.y, 70)) { const a = Math.atan2(e.y - p.y, e.x - p.x); e.kbx += Math.cos(a) * 260; e.kby += Math.sin(a) * 260; }
-      this.emit({ t: 'banner', text: '두 번째 숨', sub: `다시 일어났다 · 남은 횟수 ${this.climb.run.revives}`, color: '#8ad8ff' }); this.emit({ t: 'ring', x: p.x, y: p.y, r: 70, color: '#8ad8ff' }); this.emit({ t: 'shake', v: 4 });
-      return;
-    }
     if (this.pit?.e && !this.pit.e.dead) {
       p.hp = Math.max(1, Math.round(this.d.maxHp * 0.2)); p.invuln = 2;
       const e = this.pit.e; e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: '#3a3a4a' });
@@ -4994,15 +4963,15 @@ export class World {
       const dx = p.x - dr.x, dy = p.y - dr.y, dist = Math.hypot(dx, dy) || 1;
       const full = dr.kind === 'good' && this.life && !bagFits(this.life, dr.id);
       if (full && dist < 20 && this.t - (this.fullNoteT || -9) > 3) { this.fullNoteT = this.t; this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '가방이 가득 찼다 · 집 보관함에 넣거나 팔자', color: '#ffb0a0' }); }
-      if (dr.t > 0.45 && dist < 80 && !full) {
-        const pull = 260 + (80 - dist) * 6;
+      if (dr.t > 0.45 && (dist < 80 || dr.magnet) && !full) { // magnet: 탑의 층을 깨면 그 층에 떨어진 것이 모두 나에게 날아온다
+        const pull = 260 + Math.max(0, 80 - dist) * 6;
         dr.vx += (dx / dist) * pull * DT * 4; dr.vy += (dy / dist) * pull * DT * 4;
       }
       dr.vx *= 0.9; dr.vy *= 0.9;
       dr.x += dr.vx * DT; dr.y += dr.vy * DT;
       if (dr.t > 0.45 && dist < 9 && !full) {
         dr.taken = true;
-        if (dr.kind === 'gold') { if (this.climb) this.climb.run.gold += dr.amount; else this.loot.gold += dr.amount; this.emit({ t: 'pickup', kind: 'gold', x: p.x, y: p.y }); }
+        if (dr.kind === 'gold') { this.loot.gold += dr.amount; this.emit({ t: 'pickup', kind: 'gold', x: p.x, y: p.y }); }
         else if (dr.kind === 'good') {
           if (this.life && bagAdd(this.life, dr.id, dr.amount)) this.emit({ t: 'goodGet', id: dr.id, n: dr.amount, x: p.x, y: p.y });
         } else if (dr.kind === 'tweapon') {

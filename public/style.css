@@ -8,8 +8,8 @@
 }
 * { box-sizing: border-box; }
 html, body { user-select: none; margin: 0; height: 100%; background: var(--bg); color: var(--text);
-  font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; font-size: 15px; }
-h1, h2, h3, .hub-top .title, .modal h2, .race b { font-family: Galmuri11, "Noto Sans KR", sans-serif; -webkit-font-smoothing: none; }
+  font-family: Galmuri11, "Malgun Gothic", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; font-size: 15px; }
+h1, h2, h3, .hub-top .title, .modal h2, .race b { font-family: Galmuri11, Galmuri11, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; -webkit-font-smoothing: none; }
 .panel h3 { font-size: 22px !important; } .hub-top .title { font-size: 22px !important; } .modal h2 { font-size: 22px !important; }
 [hidden] { display: none !important; }
 button { font: inherit; color: var(--text); background: #3a3032; border: 0; padding: 7px 14px; cursor: pointer;
@@ -517,7 +517,11 @@ b.dim { color: #e8c890; }
 
 /* 근처에서 벌어지는 일 */
 #happenPanel { position: absolute; right: calc(8px + env(safe-area-inset-right, 0px)); top: calc(210px + env(safe-area-inset-top, 0px)); z-index: 5; width: min(220px, 46vw); background: rgba(16, 12, 26, 0.82); border: 2px solid #4c4244; padding: 6px 8px; font-size: 13px; color: #ede4d8; }
-#happenPanel b { color: #f0c878; display: block; margin-bottom: 4px; }
+#happenPanel b { color: #f0c878; display: block; margin-bottom: 4px; cursor: pointer; }
+#happenPanel.mini { width: auto; padding: 4px 8px; }
+#happenPanel.mini b { margin: 0; }
+#happenPanel.mini b::after { content: ' ▸'; }
+#happenPanel.mini .hp-row { display: none; }
 #happenPanel .hp-row { padding: 4px 6px; margin: 2px 0; background: rgba(255,255,255,0.05); cursor: pointer; display: grid; }
 #happenPanel .hp-row small { color: #ab9f95; font-size: 11px; }
 #happenPanel .hp-row.on { background: rgba(255, 210, 122, 0.18); outline: 1px solid #f0c878; }
@@ -543,7 +547,7 @@ b.dim { color: #e8c890; }
 .cl-card { position: relative; display: grid; align-content: start; gap: 5px; padding: 12px 12px 10px; background: linear-gradient(180deg, #241f1e, #16121f); color: #e8e0f0; border: 0; box-shadow: inset 0 0 0 2px var(--g), 0 0 0 2px #0c0a0b; cursor: pointer; font: inherit; text-align: left; transition: transform .08s, box-shadow .08s; }
 .cl-card:hover:not([disabled]) { transform: translateY(-3px); box-shadow: inset 0 0 0 2px var(--g), 0 0 0 2px #0c0a0b, 0 6px 18px rgba(0,0,0,.5), 0 0 16px color-mix(in srgb, var(--g) 45%, transparent); }
 .cl-card[disabled] { opacity: .45; cursor: default; }
-.cl-card b { font-size: 17px; color: var(--g); font-family: Galmuri11, "Noto Sans KR", sans-serif; }
+.cl-card b { font-size: 17px; color: var(--g); font-family: Galmuri11, Galmuri11, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
 .cl-card .cl-grade { font-size: 12px; color: var(--g); opacity: .85; }
 .cl-card .cl-key { position: absolute; top: 8px; right: 10px; font-size: 12px; color: #8c8079; border: 1px solid #4c4244; padding: 0 5px; }
 .cl-card .cl-tags { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -702,11 +706,40 @@ body.touch #cloudChip { right: auto; bottom: auto; }
 .cs-head { display: flex; justify-content: space-between; gap: 8px; } .cs-head b { color: #f0c878; } .cs-head span { font-size: var(--fs-xs); color: var(--c); }
 .cs-meta { font-size: var(--fs-xs); color: var(--muted); } .cs-desc { font-size: var(--fs-s); line-height: 1.55; }
 /* ? 말풍선: 긴 설명은 여기 */
-.help { display: inline-grid; place-items: center; width: 17px; height: 17px; margin-left: 6px; font: 700 11px "Noto Sans KR", sans-serif; color: var(--muted); background: var(--bg0); box-shadow: inset 0 0 0 1px var(--line-hi); cursor: help; position: relative; vertical-align: 3px; }
+.help { display: inline-grid; place-items: center; width: 17px; height: 17px; margin-left: 6px; font: 700 11px Galmuri11, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; color: var(--muted); background: var(--bg0); box-shadow: inset 0 0 0 1px var(--line-hi); cursor: help; position: relative; vertical-align: 3px; }
 .help:hover { color: var(--accent); }
 .help:hover::after { content: attr(data-tip); position: absolute; left: 0; top: calc(100% + 6px); z-index: 20; width: max-content; max-width: 300px; white-space: normal; text-align: left;
-  padding: 7px 10px; font: 400 var(--fs-s)/1.55 "Noto Sans KR", sans-serif; color: var(--text); background: var(--bg0); box-shadow: 0 0 0 2px #0c0a0b, inset 0 0 0 1px var(--line-hi); pointer-events: none; letter-spacing: 0; }
+  padding: 7px 10px; font: 400 var(--fs-s)/1.55 Galmuri11, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; color: var(--text); background: var(--bg0); box-shadow: 0 0 0 2px #0c0a0b, inset 0 0 0 1px var(--line-hi); pointer-events: none; letter-spacing: 0; }
 /* 도감: 아직 모르는 칸은 작은 ??? 타일로 (긴 「아직 만나지 못했다」 줄이 늘어서지 않게) */
 .list:has(> .mini) { display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-start; }
 .list:has(> .mini) > .li:not(.mini) { flex: 1 1 100%; }
 .li.mini { flex: 0 0 auto; width: 46px; text-align: center; padding: 4px 0; color: var(--muted); font-size: var(--fs-xs); border-left: 0; background: var(--bg0); }
+
+/* 타이틀 화면 */
+.title-screen { position: fixed; inset: 0; background: #05040a; overflow: hidden; }
+.title-bg { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.title-fg { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 10px; padding: 24px 16px; text-align: center; background: radial-gradient(ellipse at center, rgba(5,4,10,0.15), rgba(5,4,10,0.7)); }
+.title-fg h1 { font-family: Galmuri14, Galmuri11, sans-serif; font-size: clamp(44px, 9vw, 96px); color: var(--accent); margin: 0; letter-spacing: 6px; text-shadow: 4px 4px 0 #5a2a00, 0 0 24px rgba(233,184,92,0.35); }
+.title-sub { font-family: Galmuri11, sans-serif; color: #e8dcc0; margin: 0 0 18px; letter-spacing: 3px; text-shadow: 2px 2px 0 #000; }
+.title-menu { display: grid; gap: 8px; width: min(320px, 100%); }
+.title-menu button { font: 16px Galmuri11, sans-serif; padding: 12px; }
+.title-menu button small { display: block; font-size: 12px; opacity: 0.8; margin-top: 2px; }
+.title-menu .primary small { color: #4a3418; opacity: 1; }
+.title-menu .primary { background: var(--accent); color: #1a1410; border: 0; }
+.title-foot { position: absolute; bottom: 10px; left: 0; right: 0; font-size: 11px; color: rgba(232,220,192,0.5); margin: 0; }
+
+.race { position: relative; }
+.race .rec { position: absolute; top: 8px; right: 8px; font: 12px Galmuri11, sans-serif; background: var(--accent); color: #1a1410; padding: 2px 6px; }
+.race .diff { display: block; font-size: 12px; color: #e9b85c; margin: 2px 0 4px; }
+.race .mini-wrap { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.race .mini-wrap summary { cursor: pointer; }
+.set-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 6px 0; }
+.set-row select { font: inherit; background: #0f0d0e; color: var(--text); border: 1px solid #4c4244; padding: 3px 6px; }
+.modal h4 { margin: 14px 0 4px; color: var(--accent); }
+body.big-text .modal, body.big-text #panel { font-size: 18px; }
+#errToast { position: fixed; right: 10px; bottom: 34px; z-index: 90; max-width: min(460px, 90vw); background: rgba(60,16,16,0.92); color: #ffd8d0; border: 1px solid #a04a40; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+#cloudChip[hidden] { display: none !important; }
+body.touch #happenPanel.mini { top: calc(6px + env(safe-area-inset-top, 0px)) !important; right: 50%; transform: translateX(50%); }
+#saveWarn { position: fixed; left: 50%; top: 8px; transform: translateX(-50%); z-index: 95; max-width: min(560px, 94vw); background: rgba(70,22,20,0.95); color: #ffe0d8; border: 1px solid #c0584a; padding: 8px 12px; font-size: 13px; line-height: 1.5; }
+#saveWarn[hidden] { display: none; }
+.title-warn { max-width: min(420px, 92vw); background: rgba(70,22,20,0.9); color: #ffe0d8; border: 1px solid #c0584a; padding: 8px 12px; font-size: 13px; line-height: 1.5; margin: 6px 0 0; }

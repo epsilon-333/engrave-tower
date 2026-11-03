@@ -22,11 +22,13 @@ const TYPES = {
 };
 
 const server = http.createServer((req, res) => {
-  let url = decodeURIComponent(req.url.split('?')[0]);
+  let url;
+  try { url = decodeURIComponent(req.url.split('?')[0]); } catch { res.writeHead(400); return res.end('bad request'); } // 잘못된 주소 하나로 서버가 꺼지지 않게
   if (url === '/') url = '/index.html';
   if (url === '/online') { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' }); return res.end(JSON.stringify({ online: clients.size })); }
   const file = path.normalize(path.join(ROOT, url));
-  if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end(); }
+  const rel = path.relative(ROOT, file);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) { res.writeHead(403); return res.end(); } // public 밖(옆 폴더 포함)으로 나가지 못하게
   fs.readFile(file, (err, buf) => {
     if (err) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
@@ -124,13 +126,17 @@ function grantDeliver(c) { for (const k of grantKeys(c)) for (const g of grants[
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const guildByName = (name) => Object.values(guilds).find((g) => g.name.toLowerCase() === name.toLowerCase());
 const canManage = (g, uid) => ['leader', 'officer'].includes(g?.members[uid]?.rank);
-function guildState(g) {
+// 공개 번호: 길드 창에는 uid 대신 이것을 보낸다 (uid는 저장의 비밀 열쇠 — 알면 그 사람으로 접속할 수 있다)
+const PUB_SALT = process.env.PUB_SALT || crypto.randomBytes(16).toString('hex');
+const pubUid = (uid) => crypto.createHash('sha256').update(PUB_SALT + uid).digest('hex').slice(0, 16);
+const uidOfPub = (g, pid) => Object.keys(g?.members || {}).find((u) => pubUid(u) === pid);
+function guildState(g, forUid) {
   const on = new Set([...clients.values()].filter((o) => o.guild === g.id).map((o) => o.uid));
-  const members = Object.entries(g.members).map(([uid, m]) => ({ uid, name: m.name, rank: m.rank, race: m.race, lv: m.lv, online: on.has(uid), seen: m.seen || 0 }))
+  const members = Object.entries(g.members).map(([uid, m]) => ({ uid: pubUid(uid), me: uid === forUid, name: m.name, rank: m.rank, race: m.race, lv: m.lv, online: on.has(uid), seen: m.seen || 0 }))
     .sort((a, b) => RANKS.indexOf(a.rank) - RANKS.indexOf(b.rank) || b.online - a.online || b.lv - a.lv);
   return { t: 'guild', id: g.id, name: g.name, notice: g.notice || '', members };
 }
-function guildSync(g) { const s = guildState(g); for (const o of clients.values()) if (o.guild === g.id) send(o, s); }
+function guildSync(g) { for (const o of clients.values()) if (o.guild === g.id) send(o, guildState(g, o.uid)); }
 function guildJoin(c, g, rank) {
   g.members[c.uid] = { name: c.name, rank, race: c.race, lv: c.lv, seen: Date.now() };
   c.guild = g.id; saveGuilds(); guildSync(g); pinfo(c);
@@ -189,12 +195,25 @@ function onData(c, d) {
     handle(c, m);
   }
 }
+// 속도 제한: 한 사람이 1초에 보낼 수 있는 메시지 (넘치면 버린다 · 계속 넘치면 끊는다)
+const RATE = { pos: 40, chron: 0.2, officialKill: 0.2, all: 120 };
+function allow(c, k) {
+  const now = Date.now(), b = (c.rate ||= {}), r = (b[k] ||= { n: 0, t: now });
+  const per = RATE[k] || RATE.all, cap = Math.max(1, per * 2);
+  r.n = Math.max(0, r.n - ((now - r.t) / 1000) * per); r.t = now;
+  if (r.n + 1 > cap) return false;
+  r.n += 1; return true;
+}
 function handle(c, m) {
+  if (!m || typeof m.t !== 'string') return;
+  if (!allow(c, 'all')) { c.flood = (c.flood || 0) + 1; if (c.flood > 600) drop(c); return; }
+  if (RATE[m.t] && !allow(c, m.t)) return;
   switch (m.t) {
     case 'hello': { // 이름 · 종족 · 클래스 · 무기 · 레벨 · 저장마다 붙은 고유 번호(uid) · 저장에 남은 길드
       c.name = clean(m.name, 16) || '여행자'; c.race = clean(m.race, 12);
       c.admin = !!ADMIN_KEY && c.name === '운영자' && String(m.adminKey || '') === ADMIN_KEY;
-      if (c.name.includes('운영자') && !c.admin) c.name = '여행자'; // 열쇠 없이 운영자 이름은 쓸 수 없다 c.cls = clean(m.cls, 20); c.weapon = clean(m.weapon, 30); c.lv = +m.lv || 1;
+      if (c.name.includes('운영자') && !c.admin) c.name = '여행자'; // 열쇠 없이 운영자 이름은 쓸 수 없다
+      c.cls = clean(m.cls, 20); c.weapon = clean(m.weapon, 30); c.lv = Math.max(1, Math.min(999, Math.floor(+m.lv) || 1));
       const uid = clean(m.uid, 40);
       c.uid = uid.length >= 8 ? uid : null;
       send(c, { t: 'welcome', id: c.id, online: clients.size, admin: c.admin });
@@ -260,7 +279,7 @@ function handle(c, m) {
     case 'rankSet': { // 내 기록 (돈 · 탑 최고 층 · 레이드 최단 시간)
       if (!c.uid) break;
       const r = (ranking[c.uid] ||= { raid: {} });
-      r.name = c.name; r.race = c.race; r.gold = Math.max(0, Math.min(1e9, +m.gold || 0)); r.tower = Math.max(r.tower || 0, Math.min(50, +m.tower || 0));
+      r.name = c.name; r.race = c.race; r.gold = Math.max(0, Math.min(1e9, +m.gold || 0)); r.tower = Math.max(r.tower || 0, Math.min(100, Math.floor(+m.tower) || 0));
       for (const id of ['golem', 'queen', 'dragon']) { const v = +m.raid?.[id]; if (v > 0 && (!r.raid[id] || v < r.raid[id])) r.raid[id] = Math.round(v); }
       r.at = Date.now(); rankDirty = true;
       break;
@@ -387,13 +406,13 @@ function handle(c, m) {
     }
     case 'guildLeave': { const g = c.guild && guilds[c.guild]; if (g) guildRemove(g, c.uid, '길드에서 나왔다'); break; }
     case 'guildKick': {
-      const g = c.guild && guilds[c.guild], uid = clean(m.uid, 40), t = g?.members[uid];
+      const g = c.guild && guilds[c.guild], uid = uidOfPub(g, clean(m.uid, 40)), t = uid && g?.members[uid];
       if (!t || uid === c.uid || !canManage(g, c.uid) || t.rank === 'leader' || (t.rank === 'officer' && g.members[c.uid].rank !== 'leader')) break;
       guildRemove(g, uid, '길드에서 내보내졌다');
       break;
     }
     case 'guildRank': { // 길드장: 부길드장 세우기 · 내리기 · 길드장 넘기기
-      const g = c.guild && guilds[c.guild], uid = clean(m.uid, 40), t = g?.members[uid];
+      const g = c.guild && guilds[c.guild], uid = uidOfPub(g, clean(m.uid, 40)), t = uid && g?.members[uid];
       if (!t || uid === c.uid || g.members[c.uid]?.rank !== 'leader') break;
       if (m.rank === 'leader') { t.rank = 'leader'; g.members[c.uid].rank = 'officer'; }
       else if (m.rank === 'officer' || m.rank === 'member') t.rank = m.rank;

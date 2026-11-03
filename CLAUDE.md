@@ -12,7 +12,9 @@
 - GitHub에 올리라고 하면 커밋하고 push 한다. 커밋 메시지는 한국어.
 
 ## 방향
-- **2026-11-01: 2D(main · `public/index.html`, `public/js/`)에 집중한다.** 아래 3D 계획은 보류.
+- **2026-11-01: 2D(main · `public/index.html`, `public/js/`)에 집중한다.** 아래 3D 계획은 보류 (3D 파일은 지금 저장소에 없다).
+- **2026-11-03 확정 고리**: 탐험(몬스터 지대 찾기) → 사냥(몬스터 부산물) → 공명 제단에서 각인 → 탑 등반. 종족 성지에서 수련 · 일일 의뢰. 농사 · 낚시 · 요리는 남긴다(요리 = 탑 안 회복).
+- **탑 규칙 (2026-11-03)**: 탑 안 각인 · 축복 · 연마 · 상인 · 제단 · 쉼터 · 탑 금화 · 별빛 · 탑의 축복 없음. 층은 언제나 몬스터(5층 수호자 · 10층 주인), 문 하나. 세이브는 10층마다(주인을 이기면 다음 구역 첫 층부터). 수호자 · 주인 처치 시 체력 40%(`BOSS_HEAL`). 수치는 `public/js/data/climb.js`.
 - 탑 난이도는 `public/js/data/curve.js` 표 하나로 정한다. 손으로 고치지 말고 `tools/curve.mjs`의 목표를 바꾼 뒤 `node tools/curve.mjs gen`.
 
 ### (보류) 3D 계획 (2026-10-19 기준)
@@ -23,7 +25,7 @@
   - 스킬에 **성질**(불·얼음·충격·베기·바람·번개)을 붙이고 세계는 성질에 반응 → 푸는 방법이 여러 가지(불을 안 붙이고 운석을 떨어뜨려도 된다). 정답이 하나인 퍼즐 금지. 누구나 쓰는 도구(횃불·폭발 버섯·미는 바위)로 전사도 풀 수 있게.
   - **종족 8개, 종족별 성지**에서 종족 강화(마탑·세계수 숲·왕성·투기장·납골당·그림자 길드·거대 둥지·용의 둥지). **골렘족은 뺀다.**
   - **도감으로 레벨업**(몬스터 처치 1/5/15 · 장소 · 기록 · 사람), **몬스터가 떨어뜨린 물건으로 이야기가 나아간다**.
-- 2D 버전(`public/index.html`, `public/js/`)은 브랜치 `skills-graphics-overhaul`에 있다. 1층 이끼 동굴(직접 설계한 맵, 피노·세린 이야기)이 여기 있다.
+- 2D 버전은 지금 main(`public/index.html`, `public/js/`)에 있다. 1층 이끼 동굴(직접 설계한 맵, 피노·세린 이야기)도 여기 있다.
 
 ## 설계 규칙 (사용자 확정)
 - 다른 스킬이 깔아 둔 것이 있어야만 쓰는 스킬 금지. 처형·넘어짐 같은 애매한 효과 금지. 효과는 숫자로 분명하게.
@@ -38,7 +40,9 @@
 - 에셋은 CC0 등 상업적으로 쓸 수 있는 것만.
 
 ## 도구와 테스트
-- `tools/tests/*.mjs`: 2D 시뮬레이션 테스트. 예) `node tools/tests/simtest.mjs` → `ALL OK`, `node tools/tests/storytest.mjs`
+- `tools/tests/*.mjs`: 2D 시뮬레이션 테스트. 예) `node tools/tests/simtest.mjs` → `ALL OK`, `node tools/tests/storytest.mjs`. 한꺼번에: `node tools/tests/all.mjs` (실패하면 종료 코드 1)
+- 밸런스: `node tools/tests/climbsim.mjs <클래스> <레벨> <등반 수> <최대 층> <시작 층>`. 몬스터 상대 클래스 배율은 `CLASS_BAL_PVE`(data/skills.js)
+- 디버그: 브라우저 콘솔의 `window.__game` (world · dbg.climb · dbg.save), `window.__bot = (input, w) => {...}` 로 자동 플레이
 - `tools/cut_sheet.py art/source/sheet_dragon_kings.webp public/assets/custom`: 사용자가 준 시트에서 용·정령왕 프레임을 만든다(Pillow·numpy·opencv 필요). 자른 뒤 반드시 `cd tools && python3 pixelfit.py king_fire` 처럼 그림체 맞추기(게임 크기 1:1 · 28색 · 외곽선)를 돌린다.
 - 그림체 기준은 플레이어(0x72 캐릭터): 키 약 20px · 큰 머리 · 한 그림 11색 안팎 · 짙은 외곽선. 사람(people.py)은 이 비율로 줄여 그리고, 모든 뼈대 도트는 11색으로 묶는다(pixelrig.reduce_colors).
 - 도트 그림 형식 (하나로 통일): 그림은 `public/assets/custom/*.png`, 칸 정보는 `tools/sprites/*.json`, 게임은 목록 하나 `public/assets/custom/sprites.json`만 읽는다. 그림 도구(people·creatures·raptor·dragonkin·cut_sheet)를 돌리면 목록이 다시 만들어진다. 손으로 고쳤으면 `python3 tools/sprites.py`.

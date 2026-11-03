@@ -58,7 +58,7 @@ export function createIntro(display, { onDone, loop = false, startAt = 0 } = {})
     const a = subtitleAlpha(i, lt);
     if (a > 0) {
       const fs = Math.max(18, Math.round(sc * 4.2)), y = oy + IH * sc - Math.round(fs * 1.6);
-      dg.font = `${fs}px Galmuri11, "Noto Sans KR", sans-serif`; dg.textAlign = 'center'; dg.textBaseline = 'middle';
+      dg.font = `${fs}px Galmuri11, sans-serif`; dg.textAlign = 'center'; dg.textBaseline = 'middle';
       dg.globalAlpha = a; dg.fillStyle = '#05040a';
       const o = Math.max(2, Math.round(fs / 10));
       for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, o], [-o, o], [o, -o]]) dg.fillText(SCENES[i].text, W / 2 + dx, y + dy);

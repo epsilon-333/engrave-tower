@@ -6,18 +6,19 @@ import { computeBuild, fitEngravings } from './sim/build.js';
 import { Renderer } from './render/renderer.js';
 import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
-import { createIntro } from './intro/intro.js';
-import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, setStaleHook } from './save.js';
+import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
+import { padState, applyPad, padMenu } from './gamepad.js';
+import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, setStaleHook, onLocalSave, isStale } from './save.js';
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
 import { codexPoints, levelFor } from './data/codex.js';
 import { TILE, generateField } from './sim/mapgen.js';
-import { ENTRANCES } from './data/maps/overworld.js';
+import { ENTRANCES, BIOME_LIST } from './data/maps/overworld.js';
 import { LABY_ZONE, PALACE_ZONE, buildLabyrinth, buildPalace } from './data/maps/interiors.js';
 import { HOUSES, buildHouse } from './data/maps/houses.js';
 import { cycleSeed, growPlot } from './sim/life.js';
 import { newClock, canSleep, sleepUntilMorning, absMin, clockText } from './sim/time.js';
 import { registerCrafted, craftItem, LOOT_RARITY } from './data/crafting.js';
-import { registerAllDishes, registerDish } from './data/cooking.js';
+import { registerAllDishes, registerDish, eatInfo } from './data/cooking.js';
 import { LEARN, ABILITIES } from './data/learn.js';
 import { CROPS } from './data/goods.js';
 import { GOODS, SELL_BONUS } from './data/goods.js';
@@ -37,11 +38,11 @@ import { STAT_INFO } from './data/stats.js';
 import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
 import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText, spiritSpecialText, STONE_PRICE_CALLER, CALLER_RATES, spiritLevel, SPIRIT_LV_XP } from './data/spirits.js';
 import { spiritIconURL } from './render/spirits.js';
-import { getAutoAim, setAutoAim, getNpcAttack, setNpcAttack } from './settings.js';
+import { getAutoAim, setAutoAim, getNpcAttack, setNpcAttack, opts, setOpt } from './settings.js';
 import { witness, opinionText } from './sim/npclife.js';
 import { ENGRAVINGS } from './data/engravings.js';
 import { RACE_ART } from './data/art.js';
-import { unlockAudio, sfx, startMusic, getVolume, setVolume } from './audio.js';
+import { unlockAudio, sfx, startMusic, stopMusic, getVolume, setVolume } from './audio.js';
 import { setupTouch, isTouch } from './touch.js';
 import { PORTS, CARGO, CARGO_CAP, destName, buyPrice as portBuy, sellPrice as portSell, noteTrade, rememberPrices, cargoCount, SEA_EVENTS } from './data/trade.js';
 import { SHIP_ZONE, buildShipDeck } from './data/maps/ship.js';
@@ -78,6 +79,7 @@ function openChat() { chatIn.hidden = false; chatIn.focus(); }
 function closeChat() { chatIn.value = ''; chatIn.hidden = true; chatIn.blur(); }
 chatIn.addEventListener('keydown', (e) => {
   e.stopPropagation();
+  if (e.isComposing || e.keyCode === 229) return; // 한글 조합 중 Enter: 마지막 글자가 빠지거나 남지 않게
   if (e.key === 'Enter') {
     let t = chatIn.value.trim(), ch = 'all';
     const mm = t.match(/^\/(p|g|파|길)\s+/i); // /p 파티 · /g 길드
@@ -176,8 +178,9 @@ onNet('chat', (m) => {
 });
 function onlineBadge() {
   chatEl.hidden = !net.up || gameEl.hidden;
-  if (!chatEl.hidden && isTouch()) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 · 동료 ${net.players.size}명` : `온라인 · 근처 ${net.players.size}명`; // 모바일: 키 안내는 빼고 짧게
-  else if (!chatEl.hidden) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 탑 · 같은 층 동료 ${net.players.size}명 · Enter 채팅 (/p 파티)` : world?.zone?.id === 'world' ? `온라인 · 근처 ${net.players.size}명 · Enter 채팅 · O 파티 · 길드` : '온라인 · 바깥 세계에서만 서로 보인다 · O 파티 · 길드';
+  if (!chatEl.hidden && isTouch()) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 · 동료 ${net.players.size}명` : net.players.size ? `근처 ${net.players.size}명` : ''; // 모바일: 짧게 · 아무도 없으면 띄우지 않는다
+  else if (!chatEl.hidden) netInfo.textContent = world?.pvp ? '⚔ 결투 중' : coRun ? `파티 탑 · 같은 층 동료 ${net.players.size}명 · Enter 채팅 (/p 파티)` : world?.zone?.id === 'world' ? (net.players.size ? `온라인 · 근처 ${net.players.size}명 · Enter 채팅` : '') : ''; // 근처에 아무도 없거나 혼자인 곳(탑 · 던전)에서는 글을 띄우지 않는다
+  netInfo.hidden = !netInfo.textContent;
 }
 let lastPP = null;
 function onlineTick(dt) {
@@ -293,7 +296,7 @@ function inviteCard(html, onYes, onNo, sec = 20) {
 }
 const MAP_NAME = (m) => (!m ? '혼자 있는 곳' : m === 'world' ? '바깥 세계' : m.startsWith('tw') ? `각인의 탑 ${m.split('f')[1]}층` : m);
 const RANK_NAME = { leader: '길드장', officer: '부길드장', member: '길드원' };
-const myRank = () => net.guild?.members.find((x) => x.uid === save.uid)?.rank;
+const myRank = () => net.guild?.members.find((x) => x.me)?.rank;
 const isPartyLeader = () => !!net.party && net.party.leader === net.id;
 const seenText = (t) => { if (!t) return '오래전'; const m = (Date.now() - t) / 60000; return m < 60 ? `${Math.max(1, Math.round(m))}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
 onNet('partyInvite', (m) => inviteCard(`<b>파티 초대</b><p>${esc(m.name)} <small>${RACES[m.race]?.name || ''} · Lv ${m.lv || 1}</small></p>`, () => netSend({ t: 'partyAnswer', to: m.from, ok: true }), () => netSend({ t: 'partyAnswer', to: m.from, ok: false })));
@@ -307,7 +310,7 @@ onNet('party', (m) => {
   refreshSocial();
 });
 onNet('guild', (m) => {
-  const g = m.id ? { id: m.id, name: m.name, rank: m.members.find((x) => x.uid === save.uid)?.rank || 'member' } : null;
+  const g = m.id ? { id: m.id, name: m.name, rank: m.members.find((x) => x.me)?.rank || 'member' } : null;
   if (JSON.stringify(g) !== JSON.stringify(save.guild || null)) { save.guild = g; writeSave(save); }
   if (!m.id && m.why) renderer.banner = { text: '길드', sub: m.why, t: 2.2, color: '#c8b8a0' };
   refreshSocial();
@@ -458,7 +461,7 @@ function guildHtml(near) {
     `;
   const r = myRank(), mng = r === 'leader' || r === 'officer';
   const rows = g.members.map((x) => {
-    const me = x.uid === save.uid;
+    const me = !!x.me;
     const btn = me ? '<button class="sm ghost" data-gact="leave">나가기</button>'
       : r === 'leader' ? `${x.rank === 'member' ? `<button class="sm ghost" data-gact="officer" data-uid="${x.uid}">부길드장으로</button>` : `<button class="sm ghost" data-gact="member" data-uid="${x.uid}">길드원으로</button>`}<button class="sm ghost" data-gact="leader" data-uid="${x.uid}">길드장 넘기기</button><button class="sm ghost" data-gact="kick" data-uid="${x.uid}">내보내기</button>`
       : r === 'officer' && x.rank === 'member' ? `<button class="sm ghost" data-gact="kick" data-uid="${x.uid}">내보내기</button>` : '';
@@ -697,7 +700,8 @@ const TUT = [
   { text: 'Space로 굴러 보세요 — 구르는 동안은 공격을 피한다', done: (w, t) => w.player.dashCharges < t.dash0 },
   { text: '좌클릭으로 허수아비를 세 번 때리세요 (마우스 쪽으로 휘두른다)', setup: (w, t) => { const e = w.makeEnemy('dummy', w.player.x + 46, w.player.y); e.home = { x: e.x, y: e.y }; e.tut = true; w.enemies.push(e); t.dummy = e; t.hp = e.hp; t.hits = 0; },
     done: (w, t) => { if (!t.dummy) return true; if (t.dummy.hp < t.hp) { t.hits++; t.hp = t.dummy.hp; } return t.hits >= 3; } },
-  { text: 'Q · E로 스킬을 써 보세요 — 아래 칸에 남은 시간이 숫자로 보인다', done: (w) => Object.values(w.player.cds || {}).some((v) => v > 0.45) },
+  { text: 'Q · E 스킬로 허수아비를 맞혀 보세요 — [차지]라고 적힌 스킬은 길게 눌렀다 놓으면 세진다', setup: (w, t) => { t.hp0 = t.dummy?.hp ?? 0; if (t.dummy && !t.dummy.dead) t.dummy.hp = t.dummy.maxHp; t.hp0 = t.dummy?.hp ?? 0; },
+    done: (w, t) => Object.values(w.player.cds || {}).some((v) => v > 0.45) && (!t.dummy || t.dummy.dead || t.dummy.hp < t.hp0) },
   { text: '우클릭으로 무기 기술을 써 보세요', done: (w) => w.player.skillCd > 0 || !!w.player.charging },
   { text: '무언가 앞에서 G — 표지판을 읽고, 사람에게 말을 걸고, 모닥불에서 쉰다', done: () => tutFlags.interact },
   { text: 'I 장비 · B 가방 · J 퀘스트 · C 캐릭터 — 하나를 열어 보세요', done: () => tutFlags.panel },
@@ -746,25 +750,24 @@ let world = null, paused = false, endTimer = 0, last = 0, acc = 0, modal = null;
 // 여정(목표 안내): 등반에서 생긴 일을 기록해 두면 여정이 저장만 보고 판단한다
 function journeyEvent(k, d) {
   const c = (save.climb ||= newClimbSave());
-  if (k === 'eng') { c.maxEng = Math.max(c.maxEng || 0, d.n); c.maxLv = Math.max(c.maxLv || 0, ...(save.run?.eng || []).map((e) => e.lv)); }
   if (k === 'floor' && d.f === (save.run?.startF || 1) && oathScore(save.run?.oath) > 0) c.oathRuns = (c.oathRuns || 0) + 1;
   journeyT = 0;
 }
 let journeyT = 0;
 function journeyTick(dt) {
   if (!save || !world) { renderer.journey = null; return; }
+  if (save.tutorial && !save.tutorial.done) { renderer.journey = null; return; } // 튜토리얼 중에는 여정을 숨긴다 (할 일 안내가 한 화면에 여럿 뜨지 않게)
   if ((journeyT -= dt) > 0) return;
   journeyT = 0.5;
   if (world.zone?.id === 'world' && world.near?.kind === 'towerDoor' && !save.flags?.towerSeen) (save.flags ||= {}).towerSeen = 1;
   let J = journeyNow(save);
   if (!J) { renderer.journey = null; return; }
   if (J.done && !paused && world.state === 'play') { // 끝냈다: 보상 · 다음 목표 (한꺼번에 여럿을 끝냈으면 한 번에 알린다)
-    const titles = [], sum = { gold: 0, shards: 0 };
+    const titles = [], sum = { gold: 0 };
     while (J && J.done) {
       const r = J.step.reward || {};
       (save.journey ||= {})[J.step.id] = Date.now();
       if (r.gold) { save.gold += r.gold; sum.gold += r.gold; }
-      if (r.shards) { save.climb ||= newClimbSave(); save.climb.shards = (save.climb.shards || 0) + r.shards; sum.shards += r.shards; }
       if (r.potion) { bagAdd(lifeOf(), r.potion, 1); sum.potion = r.potion; }
       titles.push(J.step.title);
       J = journeyNow(save);
@@ -867,12 +870,51 @@ function showStyleSelect(race) {
   document.getElementById('backRace').onclick = () => showRaceSelect();
 }
 
+// ───── 타이틀 화면: 게임을 켜면 언제나 여기부터 (로그인은 하고 싶을 때만) ─────
+// 뒤에는 인트로의 「삼백 년 뒤」 장면(마을 · 모닥불 · 탑)을 천천히 되풀이해 그린다
+function showTitle() {
+  gameEl.hidden = true; titleEl.hidden = false;
+  const canLogin = !isClaudePage() && cloud.mode === 'local';
+  const who = cloud.mode !== 'local' && cloud.name ? `<p class="muted">${esc(cloud.name)} 계정 · 서버에 저장</p>` : '';
+  startMusic('title');
+  titleEl.innerHTML = `<div class="title-screen"><canvas class="title-bg"></canvas><div class="title-fg">
+    <h1>각인의 탑</h1><p class="title-sub">— 아르케 섬의 이야기 —</p>
+    <div class="title-menu">
+      <button id="tsGo" class="primary">${save ? `이어 하기 <small>${RACES[save.race]?.name || ''} · Lv ${save.level || 1}</small>` : '새로 시작'}</button>
+      ${canLogin ? '<button id="tsLogin" class="ghost">계정으로 저장 · 로그인</button>' : ''}
+      <button id="tsIntro" class="ghost">인트로 보기</button>
+    </div>${who}
+    ${IN_APP ? '<p class="title-warn"><b>앱 안 브라우저에서 열었어요</b> — 이대로 하면 창을 닫을 때 진행이 지워질 수 있어요. 오른쪽 위 메뉴에서 「다른 브라우저로 열기」(크롬 · 사파리)를 눌러 주세요. 또는 로그인하면 서버에 저장돼요.</p>' : ''}
+    <p class="title-foot">그래픽 0x72 (CC0) · 효과음 Kenney (CC0) · 글꼴 갈무리 (OFL) · 이펙트 pixelfx (MIT)</p></div></div>`;
+  const cv = titleEl.querySelector('.title-bg'), st = makeStage(), t0 = performance.now();
+  const T0 = INTRO_TOTAL - 6 - 3.6 - 6.2 + 0.6, LEN = 4.8; // 「그리고 삼백 년 뒤」 장면의 가운데 (어두워지기 전)
+  const draw = () => {
+    if (titleEl.hidden || !cv.isConnected) return;
+    const W = (cv.width = cv.clientWidth), H = (cv.height = cv.clientHeight);
+    st.draw(T0 + (((performance.now() - t0) / 1000) % LEN));
+    const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+    const sc = Math.max(W / st.lo.width, H / st.lo.height); // 화면을 꽉 채운다 (넘치는 곳은 잘린다)
+    g.drawImage(st.lo, (W - st.lo.width * sc) / 2, (H - st.lo.height * sc) / 2, st.lo.width * sc, st.lo.height * sc);
+    requestAnimationFrame(draw);
+  };
+  draw();
+  const go = () => {
+    unlockAudio(); sfx('select');
+    try { localStorage.setItem('et-guest', '1'); } catch { /* 무시 */ }
+    if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else firstStart();
+  };
+  document.getElementById('tsGo').onclick = go;
+  const li = document.getElementById('tsLogin'); if (li) li.onclick = () => showLogin((remote) => { afterLogin(remote); });
+  document.getElementById('tsIntro').onclick = () => { unlockAudio(); playIntro(showTitle); };
+  titleEl.onkeydown = null;
+}
+
 // ───── 로그인 화면 (일반 웹 배포용) ─────
 function showLogin(onDone) {
   gameEl.hidden = true; titleEl.hidden = false;
   titleEl.innerHTML = `<div class="login">
-    <h1>아르케</h1>
-    
+    <h1>각인의 탑</h1>
+    <p class="muted">계정이 있으면 어느 기기에서든 이어서 할 수 있어요.</p>
     <form id="loginForm" class="login-box" autocomplete="on">
       <label for="lgId">아이디</label>
       <input id="lgId" name="username" autocomplete="username" maxlength="16" placeholder="2~16자 한글·영문·숫자" required>
@@ -880,7 +922,7 @@ function showLogin(onDone) {
       <input id="lgPw" name="password" type="password" autocomplete="current-password" minlength="4" placeholder="4자 이상" required>
       <p id="lgErr" class="err" role="alert"></p>
       <div class="row"><button type="submit" id="lgLogin">로그인</button><button type="button" id="lgReg" class="ghost">회원가입</button></div>
-      <button type="button" id="lgGuest" class="link">로그인 없이 하기 (이 브라우저에만 저장)</button>
+      <button type="button" id="lgGuest" class="link">← 로그인 없이 하기 (이 브라우저에만 저장)</button>
     </form></div>`;
   const $ = (id) => document.getElementById(id);
   const go = async (fn) => {
@@ -897,7 +939,7 @@ function showLogin(onDone) {
   };
   $('loginForm').onsubmit = (e) => { e.preventDefault(); go(login); };
   $('lgReg').onclick = () => go(register);
-  $('lgGuest').onclick = () => { try { localStorage.setItem('et-guest', '1'); } catch { /* 무시 */ } onDone(null); };
+  $('lgGuest').onclick = () => { try { localStorage.setItem('et-guest', '1'); } catch { /* 무시 */ } showTitle(); };
   $('lgId').focus();
 }
 
@@ -943,6 +985,7 @@ function setupSaveGuards(startStamp = 0) {
   setStaleHook(() => {
     if (cloud.mode === 'local' || cloud.state === 'stale') return;
     markStale();
+    saveWarn('<b>이 창은 저장이 멈췄어요</b> — 같은 브라우저의 다른 창에서 게임을 하고 있어요. 다른 창을 닫고 이 창을 새로 고치면 다시 저장돼요.');
     showModal(`<h2>다른 창에서 게임 중</h2><p>이 브라우저의 다른 창이 이 계정의 진행을 저장했어요. 이 창의 진행은 이제 저장되지 않아요 (옛 진행으로 덮어쓰지 않게).</p>
       <div class="row"><button id="stReload">이 창에서 이어 하기 (새로고침)</button><button data-close class="ghost">닫기</button></div>`);
     document.getElementById('stReload').onclick = () => location.reload();
@@ -983,6 +1026,12 @@ let reGolem = false;
 
 // 예전 저장 데이터를 새 구조로 옮긴다 (인간·드워프 → 기사, 없어진 슬롯·무기 정리)
 const ADMIN_LEVEL = 100;
+function adminKit(sv) { // 운영자: 탑의 무기 · 장비 모두 · 100레벨 (서버가 열쇠를 확인한 뒤에만)
+  sv.items ||= [];
+  for (const id of Object.keys(ITEMS)) if ((ITEMS[id].towerWeapon || ITEMS[id].towerGear) && !sv.items.includes(id)) sv.items.push(id);
+  if ((sv.level || 1) < ADMIN_LEVEL) { sv.points = (sv.points || 0) + pointsAt(ADMIN_LEVEL) - pointsAt(sv.level || 1); sv.level = ADMIN_LEVEL; }
+}
+onNet('welcome', (m) => { if (m.admin && save) { adminKit(save); writeSave(save); } });
 function migrateSave(sv) {
   if (!sv) return sv;
   if (sv.tower?.max && !sv.climb?.fromOld) { // 예전 탑(시간 등급)에서 오른 층만큼 별빛으로 바꿔 준다
@@ -997,7 +1046,7 @@ function migrateSave(sv) {
     const total = Math.max(0, (sv.level || 1) - 1), spent = Object.values(sv.alloc || {}).reduce((a, v) => a + (v || 0), 0);
     if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
   }
-  const admin = cloud.name === '운영자';
+  const admin = !!net.admin; // 서버가 운영자 열쇠를 확인했을 때만 (이름이 「운영자」라는 것만으로는 아니다)
   { // 바뀐 탑 장비(예전 단계별 장비 tg1Armor …)처럼 이제 없는 장비는 치운다
     sv.items = (sv.items || []).filter((id) => !/^tg\d/.test(id) || ITEMS[id]);
     for (const k of Object.keys(sv.gear || {})) if (/^tg\d/.test(sv.gear[k] || '') && !ITEMS[sv.gear[k]]) sv.gear[k] = null;
@@ -1012,18 +1061,14 @@ function migrateSave(sv) {
       sv.twTaken = bad.length;
     }
   }
-  if (admin) { // 운영자: 탑의 무기 · 장비 모두 · 100레벨
-    sv.items ||= [];
-    for (const id of Object.keys(ITEMS)) if ((ITEMS[id].towerWeapon || ITEMS[id].towerGear) && !sv.items.includes(id)) sv.items.push(id);
-    if ((sv.level || 1) < ADMIN_LEVEL) { sv.points = (sv.points || 0) + pointsAt(ADMIN_LEVEL) - pointsAt(sv.level || 1); sv.level = ADMIN_LEVEL; }
-  }
+  if (admin) adminKit(sv);
   if (!sv.statFix3) { // 자동 성장 절반 → 레벨마다 1.75점
     sv.statFix3 = true;
     const total = pointsAt(sv.level || 1), spent = Object.values(sv.alloc || {}).reduce((a, v) => a + (v || 0), 0);
     if (spent > total) { sv.alloc = {}; sv.points = total; } else sv.points = total - spent;
   }
-  if (!sv.statFix3) { // 지금까지 여러 성지에서 쌓은 수련 단계는 모두 내 종족 성지의 수련으로 옮겨 남긴다
-    sv.statFix3 = true;
+  if (!sv.sanctFix1) { // 지금까지 여러 성지에서 쌓은 수련 단계는 모두 내 종족 성지의 수련으로 옮겨 남긴다
+    sv.sanctFix1 = true;
     const S2 = (sv.story ||= {}).sanct ||= {};
     const total = Object.values(S2).reduce((a, x) => a + (x?.train || 0), 0);
     for (const x of Object.values(S2)) if (x) x.train = 0;
@@ -1059,7 +1104,7 @@ function migrateSave(sv) {
   return sv;
 }
 
-const buildNow = () => (world?.climb && save?.run ? climbUi.buildFor(save.run) : computeBuild(toLoadout(save))); // 등반 중이면 이번 등반의 각인 · 축복까지
+const buildNow = () => (world?.climb && save?.run ? climbUi.buildFor(save.run) : computeBuild(toLoadout(save))); // 등반 중이면 탑의 가호 · 서약까지
 // 생활 데이터: 저장의 같은 객체를 세계에 넘긴다 (캐고 · 베고 · 낚고 · 키운 것이 곧바로 저장에 남는다)
 const lifeOf = () => ({ get knack() { return (save.knack ||= newKnack()); }, bag: save.bag, tools: save.tools, nodes: save.nodes, chopped: save.chopped, farm: save.farm, fishLog: save.fishLog, artifacts: save.artifacts, farmOpts: save.farmOpts, chest: save.chest, get cap() { return save.bagCap || 30; }, get quickFood() { return save.quickFood; } });
 // 세계마다 함께 넘기는 저장 객체: 생활 · 하루의 시간 · 오래가는 효과(음식 · 잠)
@@ -1086,7 +1131,7 @@ function enterWorld(at = null, first = false) {
   world.questReady = (save.quests || []).some((q) => q.done);
   returnTo = null;
   renderer.setWorld(world);
-  startMusic('plaza');
+  startMusic('plaza'); regionMusic.last = null;
   startLoop();
   if (first || !save.owTutorial) showWorldIntro();
   else if (!save.lifeIntro) showLifeIntro();
@@ -1155,7 +1200,7 @@ function showWorldIntro() {
   showModal(`<h2>각인의 탑</h2>
     <div class="tut intro-short">
       <p class="big">섬 한가운데, <b>각인의 탑</b> 꼭대기의 빛이 꺼져 간다.</p>
-      <p>탑을 오르며 <b>각인</b>을 새기고, 매번 다른 조합으로 꼭대기를 노려라.<br>쓰러져도 <b class="cl-star">✦ 별빛</b>은 남는다 — 별빛으로 영구히 강해진다.</p>
+      <p>섬을 탐험해 <b>몬스터 지대</b>를 찾고, 사냥으로 얻은 <b>부산물</b>로 <b>각인</b>을 새겨 강해진 뒤 탑을 오른다.<br>구역의 주인을 쓰러뜨릴 때마다(10층마다) 다음엔 그 위층부터 시작할 수 있다.</p>
       <p>무엇을 할지 모르겠다면 <b>왼쪽 위의 여정</b>과 화면 가장자리의 <b>화살표</b>를 따라가자. (J: 여정 전체)</p>
       <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · 우클릭 무기 기술 · Q·E·R·F 스킬 · Space 구르기(무적) · G 상호작용 · C 캐릭터 · M 지도 · Esc 메뉴</p>
       <details><summary class="muted">섬에서 할 수 있는 것 더 보기</summary>
@@ -1672,8 +1717,11 @@ function doSleep() {
 }
 // 빠른 칸 음식 (H)
 function eatQuick() {
-  const id = save.quickFood;
-  if (!id || !(save.bag[id] > 0)) { renderer.banner = { text: '빠른 칸에 음식이 없다', sub: '가방(B)에서 요리 옆의 H를 눌러 빠른 칸에 둔다', t: 2, color: '#c8b8a0' }; return; }
+  let id = save.quickFood;
+  if (!id || !(save.bag[id] > 0)) { // 빠른 칸이 비었으면 가방에서 가장 많이 회복하는 음식을 먹는다
+    id = Object.keys(save.bag || {}).filter((k) => save.bag[k] > 0 && eatInfo(k)).sort((a, b) => (eatInfo(b).heal || 0) - (eatInfo(a).heal || 0))[0];
+  }
+  if (!id) { renderer.banner = { text: '먹을 것이 없다', sub: '요리 · 낚시 · 농사로 음식을 만들자 — 탑 안에서 H로 먹으면 체력이 돌아온다', t: 2.4, color: '#c8b8a0' }; return; }
   world.eat(id);
 }
 // 옛 기술 석판 · 물의 정령 · 자라: 기술 배우기
@@ -1786,7 +1834,7 @@ function startLoop() {
 
 function showTutorial() {
   save.tutorial = 1; writeSave(save);
-  showModal(`<h2>아르케에 온 것을 환영한다</h2>
+  showModal(`<h2>각인의 탑에 온 것을 환영한다</h2>
     <div class="tut">
       <p><b>1.</b> 북쪽 <b>관문</b>으로 들어가 필드를 탐험하고, 몬스터가 남기는 <b>잔향</b>을 모으세요.</p>
       <p><b>2.</b> 어떤 몬스터가 어떤 잔향을 주는지는 지역마다 다릅니다. 원하는 각인이 있으면 그 몬스터를 찾아가세요.</p>
@@ -1807,6 +1855,7 @@ function showTutorial() {
 const ALWAYS_TABS = ['char', 'gear', 'where', 'bag', 'codex'];
 const STATION_TABS = { altar: ['altar'], shop: ['shop', 'forge', 'craft'], forge: ['forge', 'shop', 'craft'], codex: ['codex', 'learn'], char: ['char', 'learn'], quest: ['quest'], trade: ['trade'], hunt: ['hunt'], cook: ['cook', 'storage'], storage: ['storage', 'cook'], craft: ['craft', 'storage'] };
 function openPanel(tab, fromStation = false) {
+  { const hp = document.getElementById('happenPanel'); if (hp) hp.hidden = true; } // 큰 창 위에 떠 있지 않게
   touch?.reset();
   tutFlags.panel = true;
   hub.station = fromStation ? tab : null;
@@ -1824,6 +1873,7 @@ function closePanel() {
 }
 
 function showModal(html, onClose) {
+  { const hp = document.getElementById('happenPanel'); if (hp) hp.hidden = true; }
   touch?.reset();
   const giver = talkNpc && !html.includes('data-give') ? talkNpc : null;
   overlay.innerHTML = `<div class="modal">${html}${giver ? `<div class="give-row">${giver.mem ? `<span class="muted">${esc(giver.label0 || giver.label || '').split(' ')[0]}은(는) ${opinionText(giver.mem.op)}${Object.keys(giver.mem.knows).length ? ` · 들은 소문: ${Object.keys(giver.mem.knows).slice(0, 3).map((d) => ({ assault: '사람을 때림', beatDown: '사람을 때려눕힘', raid: '상단 습격', rob: '세금 마차 약탈', escort: '상단 호위', guard: '마차 호위', donate: '기부', bribe: '뇌물', stop: '싸움 말림', official: '관리 살해', gift: '선물' })[d] || d).join(' · ')}` : ''}</span>` : ''}<span class="muted">돈을 건넨다 — ${esc(giveHint(giver))}</span><span>${[10, 50, 200].map((n) => `<button class="sm ghost" data-give="${n}">◆ ${n}</button>`).join('')}</span></div>` : ''}</div>`;
@@ -1885,35 +1935,66 @@ function bindVolume() {
 
 function showPause() {
   const field = world.mode === 'field' && !world.voyage;
+  const leave = world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button>'
+    : world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>'
+    : field ? (world.climb ? '<button id="retreat" class="ghost">등반 포기 (주운 것은 모두 가져간다)</button>' : world.zone?.id === 'world' ? '' : '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button>') : '';
+  const canTitle = !world.climb && !world.pvp && !coRun;
   showModal(`<h2 class="pause-h">일시정지</h2>
     <button data-close class="primary">계속하기</button>
-    ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button><button id="rankBtn" class="ghost">랭킹 · N</button>' : ''}
-    ${net.admin ? '<button id="adminBtn" class="ghost">운영자 · 접속한 사람</button>' : cloud.name === '운영자' && net.up ? '<p class="muted">운영자 열쇠 (서버의 ADMIN_KEY) <input id="adminKeyIn" type="password" style="width:9em"> <button id="adminKeyGo" class="sm ghost">확인</button></p>' : ''}
     ${isTouch() ? `<div class="actions col"><button id="tChar" class="ghost">캐릭터 · 스킬 · 스탯</button><button id="tMap" class="ghost">지도</button><button id="tQuest" class="ghost">퀘스트</button><button id="tGear" class="ghost">장비 · 어디서 얻나</button>${net.up ? '<button id="tChat" class="ghost">채팅</button>' : ''}</div>` : ''}
-    ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> NPC 공격 (끄면 사람에게 맞지 않는다)</label><label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
-    ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">포기하면 상대의 승리.</p>' : field && !world.practice ? world.climb ? '<button id="retreat" class="ghost">등반 포기 (별빛은 모두 남는다)</button>' : '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">귀환 포탈로 돌아가면 잔향을 모두 지킨다.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
-    ${volumeHtml()}
-    ${isClaudePage() ? '' : cloud.mode === 'account' ? `<p class="muted">${esc(cloud.name)} 계정으로 로그인 중</p><button id="logoutBtn" class="ghost">로그아웃</button>` : '<button id="loginBtn" class="ghost">로그인 / 회원가입</button>'}`);
-  bindVolume();
-  const lo = document.getElementById('logoutBtn'), li = document.getElementById('loginBtn');
-  if (lo) lo.onclick = async () => { await logout(); clearSave(); save = null; world = null; overlay.hidden = true; paused = false; modal = null; showLogin(afterLogin); };
-  if (li) li.onclick = () => { overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
-  document.getElementById('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
-  document.getElementById('npcAtkCk').onchange = (e) => { setNpcAttack(e.target.checked); if (world) world.npcAttack = e.target.checked; };
-  const sb = document.getElementById('socialBtn'); if (sb) sb.onclick = () => showSocial();
-  const rb = document.getElementById('rankBtn'); if (rb) rb.onclick = () => showRank();
-  const ab = document.getElementById('adminBtn'); if (ab) ab.onclick = () => showAdmin();
-  const ak = document.getElementById('adminKeyGo'); if (ak) ak.onclick = () => { try { localStorage.setItem('adminKey', document.getElementById('adminKeyIn').value); } catch {} netConnect(onlineInfo); setTimeout(() => { if (modal) showPause(); }, 700); };
+    ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button><button id="rankBtn" class="ghost">랭킹 · N</button>' : ''}
+    ${net.admin ? '<button id="adminBtn" class="ghost">운영자 · 접속한 사람</button>' : ''}
+    <button id="settingsBtn" class="ghost">설정</button>
+    ${field ? '' : '<button id="howto" class="ghost">조작 · 도움말</button>'}
+    ${leave}
+    ${canTitle ? '<button id="titleBtn" class="ghost">저장하고 타이틀로</button>' : ''}`);
+  const $ = (id) => document.getElementById(id);
   const close0 = () => { overlay.hidden = true; paused = false; modal = null; };
-  const tm = document.getElementById('tMap'); if (tm) tm.onclick = () => { close0(); if (world.map?.outdoor) renderer.bigMap = !renderer.bigMap; };
-  const tq = document.getElementById('tQuest'); if (tq) tq.onclick = () => { close0(); showQuestLog(); };
-  const tg = document.getElementById('tGear'); if (tg) tg.onclick = () => { close0(); openPanel('gear'); };
-  const tc = document.getElementById('tChat'); if (tc) tc.onclick = () => { close0(); openChat(); };
-  const tch = document.getElementById('tChar'); if (tch) tch.onclick = () => { close0(); if (!world.practice) openPanel('char'); };
-  if (world.practice) document.getElementById('exitPractice').onclick = () => { overlay.hidden = true; paused = false; modal = null; exitPractice(); };
-  else if (field) document.getElementById('retreat').onclick = () => { overlay.hidden = true; endRun('retreat'); };
-  else document.getElementById('howto').onclick = () => showTutorial();
+  const on = (id, f) => { const el = $(id); if (el) el.onclick = f; };
+  on('settingsBtn', () => showSettings(showPause));
+  on('socialBtn', () => showSocial()); on('rankBtn', () => showRank()); on('adminBtn', () => showAdmin());
+  on('tMap', () => { close0(); if (world.map?.outdoor) renderer.bigMap = !renderer.bigMap; });
+  on('tQuest', () => { close0(); showQuestLog(); });
+  on('tGear', () => { close0(); openPanel('gear'); });
+  on('tChat', () => { close0(); openChat(); });
+  on('tChar', () => { close0(); if (!world.practice) openPanel('char'); });
+  on('exitPractice', () => { close0(); exitPractice(); });
+  on('retreat', () => { overlay.hidden = true; endRun('retreat'); });
+  on('howto', () => showTutorial());
+  on('titleBtn', () => { writeSave(save); cloudSaveNow(save); close0(); stopMusic(); world = null; showTitle(); });
 }
+
+// 설정: 소리 · 조작 · 화면 · 계정 · 저장 지우기
+function showSettings(back) {
+  const sel = (id, cur, list) => `<select id="${id}">${list.map(([v, t]) => `<option value="${v}" ${String(cur) === String(v) ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+  showModal(`<h2>설정</h2>
+    <h4>소리</h4>${volumeHtml()}
+    <h4>조작</h4>
+    <label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T) — 가까운 적을 저절로 겨눈다</label>
+    <label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> 마을 사람도 때릴 수 있게 (끄면 사람에게 맞지 않는다)</label>
+    <h4>화면</h4>
+    <p class="set-row">화면 흔들림 ${sel('optShake', opts.shake, [[1, '보통'], [0.5, '약하게'], [0, '끔']])}</p>
+    <p class="set-row">피해 숫자 ${sel('optDmg', opts.dmgNum, [['all', '모두'], ['crit', '치명타만'], ['off', '끔']])}</p>
+    <label class="ck"><input type="checkbox" id="optBig" ${opts.bigText ? 'checked' : ''}> 창 글자 크게</label>
+    ${document.fullscreenEnabled ? `<button id="fsBtn" class="ghost">${document.fullscreenElement ? '창 모드로' : '전체 화면'}</button>` : ''}
+    <h4>계정 · 저장</h4>
+    ${isClaudePage() ? '<p class="muted">이 페이지의 Claude 계정에 저장된다</p>' : cloud.mode === 'account' ? `<p class="muted">${esc(cloud.name)} 계정으로 로그인 중</p><button id="logoutBtn" class="ghost">로그아웃</button>` : '<button id="loginBtn" class="ghost">로그인 / 회원가입 (어느 기기에서든 이어서)</button>'}
+    <details class="danger-zone"><summary class="muted">처음부터 다시 시작</summary><p class="muted">레벨 · 장비 · 각인 · 도감이 모두 지워지고 되돌릴 수 없어요${cloud.mode !== 'local' ? ' (서버 저장도 지워져요)' : ''}. 지우려면 아래에 <b>지운다</b>를 적으세요.</p><input id="resetIn" placeholder="지운다"> <button id="resetGo" class="sm ghost">지우기</button></details>
+    <div class="actions"><button id="setBack">돌아간다</button></div>`, () => back());
+  bindVolume();
+  const $ = (id) => document.getElementById(id);
+  $('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
+  $('npcAtkCk').onchange = (e) => { setNpcAttack(e.target.checked); if (world) world.npcAttack = e.target.checked; };
+  $('optShake').onchange = (e) => setOpt('shake', +e.target.value);
+  $('optDmg').onchange = (e) => setOpt('dmgNum', e.target.value);
+  $('optBig').onchange = (e) => { setOpt('bigText', e.target.checked); document.body.classList.toggle('big-text', e.target.checked); };
+  if ($('fsBtn')) $('fsBtn').onclick = () => { (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {}); setTimeout(() => showSettings(back), 300); };
+  if ($('logoutBtn')) $('logoutBtn').onclick = async () => { await logout(); clearSave(); save = null; world = null; overlay.hidden = true; paused = false; modal = null; showTitle(); };
+  if ($('loginBtn')) $('loginBtn').onclick = () => { writeSave(save); overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
+  $('resetGo').onclick = () => { if ($('resetIn').value.trim() !== '지운다') { $('resetIn').focus(); return; } overlay.hidden = true; paused = false; modal = null; resetGame(); };
+  $('setBack').onclick = () => back();
+}
+document.body.classList.toggle('big-text', !!opts.bigText);
 
 function escAction() {
   if (!world || gameEl.hidden) return;
@@ -1981,6 +2062,7 @@ function readInput() {
   input.autoAim = getAutoAim();
   if (window.__bot) { window.__bot(input, world); return; } // 디버그: 자동 플레이
   if (touch) { touch.apply(); return; }
+  if (padNow?.active) { applyPad(padNow, input, world?.player); return; }
   input.moveX = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
   input.moveY = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0);
   input.gHeld = keys.has('KeyG'); // G를 누르고 있으면 계속 캔다
@@ -3431,9 +3513,11 @@ function updateHappenPanel() {
   let el = document.getElementById('happenPanel');
   const w = world, show = w?.map?.outdoor && !w.voyage && HAPPEN_LIST.length && !modal && panelEl.hidden && (save?.tutorial?.done || !save?.tutorial); // 창이 열리면 숨긴다 · 튜토리얼 중에는 안 보인다
   if (!show) { if (el) el.hidden = true; return; }
-  if (!el) { el = document.createElement('div'); el.id = 'happenPanel'; gameEl.appendChild(el); el.onclick = (e) => { const id = e.target.closest('[data-tr]')?.dataset.tr; if (!id) return; if (id === 'off') { world.track = null; return; } const h = HAPPEN_LIST.find((q) => q.id === id); if (h) world.track = { x: h.o.x, y: h.o.y, name: HAPPENINGS[h.type].name, hid: id }; }; }
+  if (!el) { el = document.createElement('div'); el.id = 'happenPanel'; gameEl.appendChild(el); el.onclick = (e) => { if (e.target.closest('b')) { if (el.dataset.open) delete el.dataset.open; else el.dataset.open = '1'; updateHappenPanel(); return; } const id = e.target.closest('[data-tr]')?.dataset.tr; if (!id) return; if (id === 'off') { world.track = null; return; } const h = HAPPEN_LIST.find((q) => q.id === id); if (h) world.track = { x: h.o.x, y: h.o.y, name: HAPPENINGS[h.type].name, hid: id }; }; }
   el.hidden = false;
-  if (renderer.hudRightBottom) { const cr = canvas.getBoundingClientRect(); el.style.top = `${Math.round(cr.top + (renderer.hudRightBottom * cr.height) / canvas.height) + 8}px`; } // 작은 지도 아래 글과 겹치지 않게
+  const touchUi = document.body.classList.contains('touch');
+  el.classList.toggle('mini', touchUi && !el.dataset.open); // 휴대폰: 제목만 (눌러서 펼친다) — 오른쪽 조이스틱 · 스킬 버튼을 가리지 않게
+  { const below = Math.max(renderer.hudRightBottom || 0, touchUi ? 0 : renderer.journeyBottom || 0); if (below) { const cr = canvas.getBoundingClientRect(); el.style.top = `${Math.round(cr.top + (below * cr.height) / canvas.height) + 8}px`; } } // 작은 지도 · 여정 상자 아래 (겹치지 않게)
   const p = w.player;
   if (w.track?.hid) { const h = HAPPEN_LIST.find((q) => q.id === w.track.hid); if (h) { w.track.x = h.o.x; w.track.y = h.o.y; } else w.track = null; }
   el.innerHTML = `<b>근처에서 벌어지는 일</b>${HAPPEN_LIST.slice(0, 3).map((h) => { const d = Math.round(Math.hypot(h.o.x - p.x, h.o.y - p.y) / TILE), left = Math.max(0, Math.ceil((h.o.endT - w.t) / 60)); return `<div class="hp-row ${w.track?.hid === h.id ? 'on' : ''}" data-tr="${h.id}">${esc(HAPPENINGS[h.type].name)}<small>${esc(h.where)} · ${d}칸 · ${left}분</small><small class="deed">${esc(DEED_SHORT[h.type] || '')}</small></div>`; }).join('')}${w.track ? '<div class="hp-row off" data-tr="off">안내 끄기</div>' : ''}`;
@@ -3457,8 +3541,67 @@ function arcTalk(id) {
 }
 
 let autosaveT = 0;
+// 바깥 세계: 지역마다 곡이 바뀐다 (마을 · 들판 / 숲 / 늪 / 폐허 / 묘지 / 설원 · 바위산 / 화산 / 황야 · 협곡)
+const REGION_MUSIC = { plains: 'plaza', meadow: 'plaza', lake: 'plaza', mistcoast: 'plaza', forest: 'forest', jungle: 'forest', swamp: 'swamp', ruins: 'labyrinth', graveyard: 'grave', snow: 'frost', mountains: 'frost', volcano: 'rift', wasteland: 'desert', canyon: 'desert', tower: 'title' };
+function regionMusic() {
+  if (world?.zone?.id !== 'world' || world.regionCur == null || world.regionCur === regionMusic.last) return;
+  regionMusic.last = world.regionCur;
+  startMusic(REGION_MUSIC[BIOME_LIST[world.regionCur]?.id] || 'plaza');
+}
+// 오류 알림: 조용히 삼키지 않고 오른쪽 아래에 작게 알린다 (같은 오류는 한 번만 · 콘솔에 자세히)
+const seenErr = new Set();
+function reportError(err) {
+  const key = String(err?.message || err).slice(0, 120);
+  if (seenErr.has(key)) return;
+  if (/fetch|network|load failed|websocket/i.test(key)) { console.warn(err); return; } // 인터넷이 잠깐 끊긴 것은 알리지 않는다
+  seenErr.add(key); console.error(err);
+  let el = document.getElementById('errToast');
+  if (!el) { el = document.createElement('div'); el.id = 'errToast'; document.body.appendChild(el); el.onclick = () => { el.hidden = true; }; }
+  el.hidden = false; el.textContent = `오류가 났어요 (게임은 계속돼요): ${key} — 눌러서 닫기`;
+  clearTimeout(reportError.t); reportError.t = setTimeout(() => { el.hidden = true; }, 12000);
+}
+addEventListener('error', (e) => reportError(e.error || e.message));
+addEventListener('unhandledrejection', (e) => reportError(e.reason));
+// 그림 보간: 세계는 1초에 60번 움직이지만 120 · 144Hz 화면은 그보다 자주 그린다 → 지난 틱과 이번 틱 사이 위치로 그려 덜컥이지 않게
+const lerpList = (w) => [w.player, ...w.enemies, ...(w.projs || [])];
+function snapPrev(w) { for (const e of lerpList(w)) if (e) { e._px = e.x; e._py = e.y; } }
+function lerpIn(w, a) {
+  if (a >= 0.999) return null;
+  const done = [];
+  for (const e of lerpList(w)) {
+    if (!e || e._px == null) continue;
+    const dx = e.x - e._px, dy = e.y - e._py;
+    if (dx * dx + dy * dy > 48 * 48) continue; // 순간이동 · 문 지나기는 보간하지 않는다
+    done.push([e, e.x, e.y]); e.x = e._px + dx * a; e.y = e._py + dy * a;
+  }
+  return done;
+}
+function lerpOut(list) { for (const [e, x, y] of list) { e.x = x; e.y = y; } }
+// 저장이 안 될 때는 반드시 알린다: 브라우저가 저장을 거부(시크릿 창 · 저장 공간 꽉 참) · 다른 창에서 게임 중
+function saveWarn(text) {
+  let el = document.getElementById('saveWarn');
+  if (!el) { el = document.createElement('div'); el.id = 'saveWarn'; document.body.appendChild(el); }
+  el.hidden = !text; if (text) el.innerHTML = text;
+}
+onLocalSave((err) => {
+  if (err && cloud.mode === 'local') saveWarn(`<b>저장이 안 되고 있어요</b> — 브라우저가 저장을 막았어요 (${esc(err)}). 시크릿 창 · 앱 안 브라우저(카카오톡 등)라면 크롬 · 사파리로 열어 주세요. 일시정지 → 설정 → 로그인하면 서버에 저장돼요.`);
+  else if (err) saveWarn(`<b>이 기기에는 저장이 안 되고 있어요</b> (${esc(err)}) — 서버 저장은 계속돼요.`);
+  else if (!isStale()) saveWarn('');
+});
+// 앱 안 브라우저(카카오톡 · 네이버 · 인스타그램 · 페이스북 · 라인): 창을 닫으면 저장이 지워지는 일이 많다
+const IN_APP = /KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|Line\/|; wv\)/i.test(navigator.userAgent || '');
+let padNow = null;
+function padTick() { // 게임패드: 창이 떠 있으면 버튼 고르기, 아니면 싸움 입력 (readInput)
+  const st = padNow = padState(); if (!st) return;
+  if (!titleEl.hidden) { padMenu(st, titleEl); return; }
+  if (!world || gameEl.hidden) return;
+  if (st.pressed(9)) { escAction(); return; } // Start: 일시정지 · 창 닫기
+  if (!panelEl.hidden) { padMenu(st, panelEl, () => closePanel()); return; }
+  if (modal) { padMenu(st, overlay, () => modal?.()); return; }
+  if (st.pressed(8) && world.state === 'play' && !world.practice) openPanel('char'); // Back: 캐릭터
+}
 function frame(ts) {
-  try { tick(ts); updateVoyBar(); const pnow = performance.now(); politicsTick(Math.min(0.1, (pnow - (frame.pt || pnow)) / 1000)); frame.pt = pnow; } catch (err) { if (!frame.warned) { frame.warned = true; console.error(err); } } // 한 번의 오류로 게임이 멈추지 않게
+  try { padTick(); tick(ts); updateVoyBar(); const pnow = performance.now(); politicsTick(Math.min(0.1, (pnow - (frame.pt || pnow)) / 1000)); frame.pt = pnow; } catch (err) { reportError(err); } // 한 번의 오류로 게임이 멈추지 않게 (대신 알린다)
   requestAnimationFrame(frame);
 }
 function tick(ts) {
@@ -3471,6 +3614,7 @@ function tick(ts) {
       acc += dt;
       if (!paused) readInput();
       while (acc >= DT) {
+        snapPrev(world);
         world.step(paused ? IDLE_INPUT : input);
         input.dash = false; input.interact = false; input.skill = false; input.s1 = false; input.s2 = false; input.s3 = false; input.s4 = false; input.wskill = false; input.mount = false;
         acc -= DT;
@@ -3496,8 +3640,11 @@ function tick(ts) {
       endTimer += dt;
       if (endTimer > (world.state === 'dead' ? 1.4 : 0.3)) endRun(world.state === 'dead' ? 'dead' : 'clear');
     }
+    regionMusic();
     renderer.consume(world);
-    renderer.draw(world, paused ? 0 : dt);
+    renderer.walletGold = save?.gold | 0;
+    const lerped = (!paused || coRun) && world.state === 'play' ? lerpIn(world, Math.min(1, acc / DT)) : null;
+    try { renderer.draw(world, paused ? 0 : dt); } finally { if (lerped) lerpOut(lerped); }
   }
 }
 
@@ -3515,7 +3662,13 @@ onCloud(() => {
   const t = document.createElement('span');
   t.textContent = (cloud.id ? (cloud.name || '내 계정') + ' · ' : '') + cloudLabel();
   chip.appendChild(t);
+  chip.dataset.at = Date.now();
 });
+// 게임 중에는 상태가 바뀐 뒤 4초만 보인다 (타이틀 · 문제가 있을 때는 늘). HUD · 여정과 겹치지 않게
+setInterval(() => {
+  const important = ['error', 'expired', 'stale', 'connecting'].includes(cloud.state);
+  chip.hidden = !(important || !titleEl.hidden || Date.now() - (+chip.dataset.at || 0) < 4000);
+}, 500);
 
 // 모바일: 터치 조작 화면 켜기
 if (isTouch()) {
@@ -3533,8 +3686,6 @@ if (isTouch()) {
   setSaveHook(cloudSave);
   if (save && remote !== save) cloudSave(save);
   setupSaveGuards(startStamp);
-  let guest = false; try { guest = !!localStorage.getItem('et-guest'); } catch { /* 무시 */ }
-  if (!isClaudePage() && cloud.mode === 'local' && !guest) { showLogin(afterLogin); requestAnimationFrame(frame); return; }
-  if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else firstStart();
+  showTitle(); // 게임을 켜면 타이틀부터 (로그인은 원할 때만)
   requestAnimationFrame(frame);
 })();
