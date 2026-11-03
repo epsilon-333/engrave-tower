@@ -9,7 +9,7 @@ import { JOURNALS, PEOPLE, STORY_ITEMS } from '../data/story.js';
 import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
 import { engravingWeapons } from '../data/engweapons.js';
 import { monsterWhere, whereText, towerOnly, echoSources } from '../data/where.js';
-import { ITEMS, STYLES, WEAPON_SKILLS, weaponHands, WCAT_NAME } from '../data/items.js';
+import { ITEMS, STYLES, WEAPON_SKILLS, weaponHands, WCAT_NAME, weaponCat } from '../data/items.js';
 import { MONSTERS, ECHOES, ZONES } from '../data/monsters.js';
 import { WORLD_ZONE, ENTRANCES } from '../data/maps/overworld.js';
 import { LABY_ZONE, PALACE_ZONE } from '../data/maps/interiors.js';
@@ -17,7 +17,7 @@ import { computeBuild, encodeLoadout, decodeLoadout, SLOTS, SLOT_KEYS, fitEngrav
 import { condText, evalCond } from '../sim/conditions.js';
 import { toLoadout, writeSave, refreshQuests, claimQuest } from '../save.js';
 import { sfx } from '../audio.js';
-import { engravingSkillFor, SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS, skillLoad, skillCap } from '../data/skills.js';
+import { engravingSkillFor, KIND_NAME, SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS, skillLoad, skillCap } from '../data/skills.js';
 import { getAutoAim, setAutoAim } from '../settings.js';
 import { skillScale, weaponStat, SKILL_PERKS, WEAPON_PERKS, CLASS_STATS, statMul } from '../data/statscale.js';
 import { bagTab, tradeTab, forgeTab, lifeClick, fishCodex, artifactCodex } from './life.js';
@@ -182,11 +182,12 @@ export class Hub {
       const e = ENGRAVINGS[id];
       if (filter === 'all') return true;
       if (filter === 'goal') return (s.goals || []).includes(id);
+      if (filter === 'mine') return (s.owned[id] || 0) > 0 || Object.values(s.slots || {}).includes(id) || (s.climb?.run?.eng || []).some((x) => x.id === id); // 내가 얻은 각인 (보유 · 장착 · 지금 등반에서 새긴 것)
       if (filter === 'ready') return Object.entries(e.recipe).every(([eid, n]) => (s.echoes[eid] || 0) >= n) || (s.owned[id] || 0) > 0;
       return !!ftags && e.tags.some((t) => ftags.includes(t));
     };
     const clsBtns = RACE_CLASSES(s.race).filter((c) => CLASS_TAGS[c]).sort((a2, c2) => (c2 === b.cls) - (a2 === b.cls)).map((c) => [`cls:${c}`, c === b.cls ? `내 클래스 · ${CLASSES[c].name}` : CLASSES[c].name]);
-    const filterBar = `<div class="filters">${[...clsBtns, ['all', '전체'], ['goal', '★ 찜'], ['ready', '새길 수 있음']]
+    const filterBar = `<div class="filters">${[...clsBtns, ['all', '전체'], ['mine', `내 각인 ${Object.values(s.owned || {}).filter((n) => n > 0).length}`], ['goal', '★ 찜'], ['ready', '새길 수 있음']]
       .map(([k, n]) => `<button class="sm ${filter === k ? 'on' : ''}" data-act="filter" data-id="${k}">${n}</button>`).join('')}</div>
       ${ftags ? `<p class="muted">${CLASSES[fcls].name}에게 잘 맞는 각인 · 핵심 태그 ${ftags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</p>` : ''}`;
     const goalHtml = this.goalPanel(s);
@@ -377,12 +378,19 @@ export class Hub {
     const goal = (s.goals || []).includes(id);
     const summary = e.effects.map((x) => x.text).join(' · ');
     const wlist = engravingWeapons(id), weaponLine = ENGRAVING_SKILLS[id] ? `<div class="c-meta">맞는 무기: ${wlist.length >= 14 ? '모든 무기' : wlist.map((c) => WCAT_NAME[c] || c).join(' · ') || '없음'}</div>` : '';
+    const skId = engravingSkillFor(id, s.race), SK = SKILLS[skId], orig = ENGRAVING_SKILLS[id];
+    const skillBox = SK ? `<div class="c-skill" style="--c:${ROLE_COLOR[SK.role] || '#ffd27a'}">
+      <div class="cs-head"><b>${SK.ult ? '궁극 · ' : ''}${esc(SK.name)}</b><span>${SK.role}</span></div>
+      <div class="cs-meta">재사용 ${SK.cd}초${SK.cost ? ` · 자원 ${SK.cost}` : SK.costAll ? ` · 자원 전부(${SK.costAll.min} 이상)` : SK.mana ? ` · 마나 ${SK.mana}` : ''} · ${KIND_NAME[SK.kind || 'body'] || '몸'}으로 쓴다 · 부하 ${skillLoad(skId)}</div>
+      <div class="cs-desc">${termify(esc(SK.desc || ''))}</div>
+      ${skId !== orig ? `<div class="cs-meta muted">원래 스킬 「${esc(SKILLS[orig].name)}」(궁극)은 그 종족만 · 다른 종족은 이 기술을 쓴다</div>` : ''}</div>` : '';
     const fromLine = e.from && MONSTERS[e.from] ? `<div class="c-meta">${s.codex.kills?.[e.from] ? MONSTERS[e.from].name : '???'}의 부산물로 새긴다</div>` : '';
     return `<div class="card ${goal ? 'goal' : ''}" data-q="${esc(this.engSearchText(id, s))}" style="--g:${GRADES[e.grade].color}">
       <div class="c-head"><b>${e.name}</b><span><button class="star ${goal ? 'on' : ''}" data-act="goal" data-id="${id}" title="목표로 찜">★</button> <span class="grade">${GRADES[e.grade].name}</span></span></div>
       <div class="c-meta">${(() => { const sk = engravingSkillFor(id, s.race), orig = ENGRAVING_SKILLS[id]; return sk ? `<b style="color:#ffd27a">스킬: ${SKILLS[sk].name}</b>${sk !== orig ? ` <small class="muted">(궁극기 「${SKILLS[orig].name}」는 그 종족만)</small>` : ''} · ` : ''; })()}부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
       ${fromLine}
       ${weaponLine}
+      ${skillBox}
       <div class="badges">${this.badges(id, s, b)}</div>
       <div class="c-sum">${termify(esc(summary))}</div>
       <details><summary>자세히</summary><div class="c-stats">${stats}</div><ul class="c-eff">${effs}</ul></details>
@@ -420,14 +428,31 @@ export class Hub {
       return `<div class="card ${has ? 'owned' : ''}"><div class="c-head"><b>${it.name}</b>${it.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
         ${it.cls ? `<div class="c-meta" style="color:${it.cls === s.cls ? '#ffd27a' : '#9a90b0'}">${CLASSES[it.cls].name} 전용${it.bdesc ? ' · ' + it.bdesc : ''}${it.cls !== s.cls && it.bdesc ? ' (클래스가 다르면 효과 없음)' : ''}</div>` : ''}${w}${req}<div class="c-stats">${stats || '&nbsp;'}</div><ul class="c-eff">${effs}</ul>${prev}<div class="c-act">${btn}</div></div>`;
     };
-    const bySlot = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl && (!ownedOnly || s.items.includes(id)) && (!ITEMS[id].cls || CLASSES[ITEMS[id].cls].race === s.race) && (!ITEMS[id].starter && id !== 'rustySword' || s.items.includes(id)) && (!ITEMS[id].treasure && !ITEMS[id].forged  && !ITEMS[id].towerWeapon && !ITEMS[id].towerGear && !ITEMS[id].crafted && !ITEMS[id].lootWeapon || s.items.includes(id))).sort((a, b) => (ITEMS[b].cls === s.cls) - (ITEMS[a].cls === s.cls)).map(card).join('');
+    const idsOf = (sl) => Object.keys(ITEMS).filter((id) => ITEMS[id].slot === sl && (!ownedOnly || s.items.includes(id)) && (!ITEMS[id].cls || CLASSES[ITEMS[id].cls].race === s.race) && (!ITEMS[id].starter && id !== 'rustySword' || s.items.includes(id)) && (!ITEMS[id].treasure && !ITEMS[id].forged  && !ITEMS[id].towerWeapon && !ITEMS[id].towerGear && !ITEMS[id].crafted && !ITEMS[id].lootWeapon || s.items.includes(id))).sort((a, b) => (ITEMS[b].cls === s.cls) - (ITEMS[a].cls === s.cls));
+    // 두 단: 왼쪽 한 줄 목록(가진 것 · 장착 중 표시, 부위 · 무기 종류 · 등급 거르기), 오른쪽 고른 장비의 카드와 비교
+    const slotF = this.gearSlot || 'weapon', catF = this.gearCat || 'all', rarF = this.gearRar ?? -1;
+    const RC = ['#c8c0d0', '#5ab0ff', '#c070ff', '#ffb030', '#ff4a6a'];
+    const all = idsOf(slotF).filter((id) => (catF === 'all' || weaponCat(ITEMS[id]) === catF) && (rarF < 0 || (ITEMS[id].rarity ?? -1) === rarF));
+    const equippedIds = new Set(Object.values(gear));
+    all.sort((x, y) => (equippedIds.has(y) - equippedIds.has(x)) || ((ITEMS[y].rarity ?? -1) - (ITEMS[x].rarity ?? -1)) || ((ITEMS[y].tier || 0) - (ITEMS[x].tier || 0)) || (ITEMS[y].weapon?.mul || 0) - (ITEMS[x].weapon?.mul || 0));
+    const sel = all.includes(this.gearSel) ? this.gearSel : all[0];
+    const gearRowItem = (id) => { const it = ITEMS[id], rc = it.rarityColor || RC[it.rarity] || '#c8c0d0';
+      return `<button class="eng-row gear-row ${sel === id ? 'on' : ''}" data-act="gsel" data-id="${id}" style="--g:${rc}"><span class="er-name">${esc(it.name)}</span>
+        <span class="er-tags">${it.weapon ? `<i style="--c:#c8c0d8">${WCAT_NAME[weaponCat(it)] || ''}</i><i style="--c:#ffd27a">위력 ×${it.weapon.mul}</i>` : Object.entries(it.stats || {}).slice(0, 3).map(([k, v]) => `<i style="--c:#c8c0d8">${(STAT_INFO[k] || SPECIAL_INFO[k])?.name || k} +${v}</i>`).join('')}</span>
+        <span class="er-skill">${it.rarity != null ? ['일반', '희귀', '영웅', '전설', '신화'][it.rarity] : ''}</span><span class="er-state">${equippedIds.has(id) ? '<b class="ok">장착 중</b>' : s.items.includes(id) ? '보유' : it.price ? `◆ ${it.price}` : ''}</span></button>`; };
+    const cats = [...new Set(idsOf('weapon').map((id) => weaponCat(ITEMS[id])))];
+    const chip = (act, val, cur, label) => `<button class="sm ${cur === val ? 'on' : 'ghost'}" data-act="${act}" data-id="${val}">${label}</button>`;
+    const gearFilters = `<div class="filters">${[['weapon', '무기'], ['off', '왼손'], ['armor', '방어구'], ['acc', '장신구']].map(([k, n]) => chip('gslot', k, slotF, `${n} ${idsOf(k).length}`)).join('')}</div>
+      ${slotF === 'weapon' ? `<div class="filters"><span class="muted">종류 </span>${chip('gcat', 'all', catF, '전체')}${cats.map((c) => chip('gcat', c, catF, WCAT_NAME[c] || c)).join('')}</div>` : ''}
+      <div class="filters"><span class="muted">등급 </span>${chip('grar', '-1', String(rarF), '전체')}${['일반', '희귀', '영웅', '전설', '신화'].map((n, i) => chip('grar', String(i), String(rarF), n)).join('')}</div>`;
+    const bySlot = () => '';
     return `
       <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots">${gearRow}</div>
-        ${b.notes.filter((n) => /^양손|둘:|^쌍/.test(n.text)).map((n) => `<p class="up">✦ ${esc(n.text)}</p>`).join('') || '<p class="muted">양손 무기는 한손 무기 둘을 합친 만큼의 능력치를 준다 · 한손 무기 둘을 같은 계열로 들면 살짝 강해진다</p>'}</section>
-      <section class="panel">${ownedOnly ? '<p class="muted">가진 장비만 보인다. 새 장비는 대장간에서 사거나 만든다.</p>' : ''}<h3>무기</h3><div class="cards">${bySlot('weapon') || '<p class="muted">없음</p>'}</div>
-        <h3>왼손 도구 <small>한손 무기를 들면 왼손에 하나 든다 · 스킬은 두 손 중 더 맞는 쪽으로 나간다 · 양손 무기를 들면 쉰다</small></h3><div class="cards">${bySlot('off') || '<p class="muted">없음</p>'}</div>
-        <h3>방어구</h3><div class="cards">${bySlot('armor') || '<p class="muted">없음</p>'}</div>
-        <h3>장신구</h3><div class="cards">${bySlot('acc') || '<p class="muted">없음</p>'}</div></section>`;
+        ${b.notes.filter((n) => /^양손|둘:|^쌍/.test(n.text)).map((n) => `<p class="up">✦ ${esc(n.text)}</p>`).join('') || '<p class="muted">양손 무기는 능력치 ×1.3 + 종류마다 양손 보너스 · 한손 무기 둘을 같은 계열로 들면 살짝 강해진다</p>'}</section>
+      <section class="panel"><h3>${ownedOnly ? '내 장비' : '대장간'} <small>${ownedOnly ? '가진 장비만 보인다 · 새 장비는 대장간에서 사거나 탑에서 줍는다' : '살 수 있는 장비 · 가진 장비'}</small></h3>
+        ${gearFilters}
+        <div class="eng-split"><div class="cards eng-rows">${all.map(gearRowItem).join('') || '<p class="muted">없음</p>'}</div>
+        <aside class="eng-detail">${sel ? card(sel) : '<p class="muted">왼쪽에서 장비를 고르면 여기에 자세히 보여요.</p>'}</aside></div></section>`;
   }
 
   // ───── 사냥터 ─────
@@ -644,6 +669,10 @@ export class Hub {
       case 'agrade': this.altarGrade = +id; break;
       case 'aweapon': this.altarWeapon = id; break;
       case 'aselect': this.altarSel = id; break;
+      case 'gsel': this.gearSel = id; break;
+      case 'gslot': this.gearSlot = id; this.gearCat = 'all'; break;
+      case 'gcat': this.gearCat = id; break;
+      case 'grar': this.gearRar = +id; break;
       case 'aquery': { const ws = (this.altarQ || '').split(/\s+/).filter(Boolean); this.altarQ = !id ? '' : ws.includes(id) ? ws.filter((w) => w !== id).join(' ') : [...ws, id].join(' '); break; }
       case 'codexSec': this.codexSec = id; break;
       case 'goal': {
