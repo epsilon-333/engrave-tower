@@ -31,7 +31,7 @@ let saveHook = null;
 export function setSaveHook(f) { saveHook = f; }
 // 같은 브라우저의 창끼리: 누가 더 새 진행을 저장했는지 알린다 (옛 창이 서버를 덮어쓰지 않게)
 const TAB = Math.random().toString(36).slice(2);
-let chan = null; try { chan = new BroadcastChannel('et-save'); } catch { /* 지원 안 함 */ }
+let chan = null; try { chan = new BroadcastChannel('et-save'); chan.unref?.(); } catch { /* 지원 안 함 */ }
 let staleHook = null;
 let stale = false; // 다른 창이 더 새 진행을 저장했다: 이 창은 더 쓰지 않는다
 export function setStaleHook(f) { staleHook = f; if (chan) chan.onmessage = (m) => { if (m.data?.tab !== TAB && m.data?.t === 'saved' && !stale) { stale = true; staleHook?.(); } }; }

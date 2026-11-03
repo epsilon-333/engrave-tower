@@ -9,7 +9,7 @@ import { evalCond, condText } from './conditions.js';
 export const STAT_MAX = 300;
 import { GROWTH_MUL } from '../data/races.js';
 import { weaponScale, CLASS_STATS } from '../data/statscale.js';
-import { SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES } from '../data/skills.js';
+import { engravingSkillFor, SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES } from '../data/skills.js';
 
 export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back']; // 각인 칸 다섯: 앞 넷이 Q · E · R · F(스킬 + 패시브), 마지막은 패시브만 (부위 구분 없음 · 이름은 예전 저장 그대로)
 export const SKILL_SLOTS = SLOTS.slice(0, 4), SLOT_KEYS = ['Q', 'E', 'R', 'F', '패시브'];
@@ -219,10 +219,10 @@ export function computeBuild(lo) {
   // 액티브 스킬: 각인 칸 Q · E · R · F에 장착한 각인의 스킬 (빈 칸은 비워 둔다). 탑 등반에서 새긴 각인의 스킬은 빈 칸을 채운다
   // allSkills(연습 · 시뮬레이션)일 때만 예전처럼 클래스 스킬에서 고른다
   const cls = lo.cls && CLASSES[lo.cls]?.race === lo.race ? lo.cls : RACE_CLASSES(lo.race)[0];
-  let skills, available;
+  let skills, available, innateSkills = [];
   if (lo.allSkills) {
     available = CLASSES[cls].skills.slice();
-    for (const src of active) if (src.kind === 'engraving' && ENGRAVING_SKILLS[src.id] && !available.includes(ENGRAVING_SKILLS[src.id])) available.push(ENGRAVING_SKILLS[src.id]);
+    for (const src of active) { const sk = src.kind === 'engraving' && engravingSkillFor(src.id, lo.race); if (sk && !available.includes(sk)) available.push(sk); }
     skills = (lo.skills || []).filter((id) => available.includes(id)).slice(0, 4);
     if (!lo.skills) {
       const pick = (roles) => available.find((id) => roles.includes(SKILLS[id].role) && !skills.includes(id));
@@ -230,8 +230,14 @@ export function computeBuild(lo) {
       for (const id of available) if (skills.length < 4 && !skills.includes(id)) skills.push(id);
     }
   } else {
-    skills = SKILL_SLOTS.map((sl) => { const id = lo.engravings?.[sl]; return id && ENGRAVINGS[id] && SKILLS[ENGRAVING_SKILLS[id]] ? ENGRAVING_SKILLS[id] : null; });
-    for (const re of lo.runEng || []) { const sk = ENGRAVING_SKILLS[re.id]; const i = skills.indexOf(null); if (sk && SKILLS[sk] && i >= 0 && !skills.includes(sk)) skills[i] = sk; }
+    skills = SKILL_SLOTS.map((sl) => { const id = lo.engravings?.[sl]; return id && ENGRAVINGS[id] ? engravingSkillFor(id, lo.race) : null; });
+    for (const re of lo.runEng || []) { const sk = engravingSkillFor(re.id, lo.race); const i = skills.indexOf(null); if (sk && i >= 0 && !skills.includes(sk)) skills[i] = sk; }
+    // 종족 스킬은 처음부터 그 종족의 것: 각인이 없는 칸은 내 클래스 스킬(레벨에 맞게 열린 것)로 채운다. 각인을 넣으면 그 칸은 각인 스킬로 바뀐다
+    const own = CLASSES[cls].skills.filter((id) => SKILLS[id] && (SKILLS[id].unlock || 1) <= (lo.level || 1) && !skills.includes(id));
+    const pickOwn = (roles) => { const i = own.findIndex((id) => roles.includes(SKILLS[id].role)); return i >= 0 ? own.splice(i, 1)[0] : null; };
+    const order = [['준비', '강화', '전환', '방어'], ['공격', '이동', '연타', '제어', '소환'], ['마무리'], ['궁극']];
+    for (let i = 0; i < skills.length; i++) if (!skills[i]) skills[i] = pickOwn(order[i] || []) || own.shift() || null;
+    innateSkills = skills.filter((id) => id && CLASSES[cls].skills.includes(id));
     available = skills.filter(Boolean);
   }
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
@@ -254,7 +260,7 @@ export function computeBuild(lo) {
   // 무기 계열의 스탯 계수 · 개방 (평타 · 무기 기술 피해, 80 이상 공격 속도)
   const wScale = weaponScale({ weaponItem: ITEMS[weaponId], stats });
   d.atkSpeed *= wScale.spd;
-  return { lo, statSrc, wScale, race: lo.race, level: lo.level || 1, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
+  return { innateSkills, lo, statSrc, wScale, race: lo.race, level: lo.level || 1, stats, derived: d, flags, triggers, tags, synergies, awakenings, notes, load, overload, extreme, weapon: ITEMS[weaponId].weapon, weaponId, weaponItem: ITEMS[weaponId], wcat, hands, spirit: lo.spirit?.id ? lo.spirit : null, spirits2: lo.spirits2 || [], /* 정령사: 함께하는 정령 둘 더 */ offId: offA?.id || null, offItem, offIsWeapon: !!offSrc, cls, skills, available, abilities: lo.abilities || {} };
 }
 
 // 무기 계열: 마법(마도서 · 완드 · 보주 · 인형) / 단검(민첩 칼) / 검 / 도끼 / 둔기 / 던지기 / 채찍

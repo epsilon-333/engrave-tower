@@ -589,6 +589,20 @@ export const ENGRAVING_SKILLS = {
 
 registerPartSkills(ENGRAVING_SKILLS); // 몬스터 부산물 각인의 스킬
 
+// 궁극기는 그 종족만: 다른 종족이 궁극기 각인을 새기면 같은 계열의 마무리 기술을 쓴다
+export const ULT_ALT = {
+  grandFireball: 'wordCataclysm', shadowDance: 'thousandCuts', extinction: 'stampede', dragonForm: 'infernoDive', absoluteZero: 'blizzard',
+  apexPredator: 'huntersLeap', skyfall: 'bladeStorm', colossus: 'meteorFall', doomBrand: 'plagueNova', timeStop: 'singularity', undying: 'judgement',
+  axeLegion: 'whirlingAxe', skyPiercer: 'galeShot', wordSilence: 'wordCataclysm', rageBurst: 'earthSplitter', lichLord: 'deathNova', venomBurst: 'acidRain', spiritKing: 'natureWrath',
+};
+export function skillOwnerRace(id) { for (const c of Object.values(CLASSES)) if (c.skills.includes(id)) return c.race; return null; }
+// 이 종족이 이 각인을 새겼을 때 실제로 쓰는 스킬
+export function engravingSkillFor(eid, race) {
+  const sk = ENGRAVING_SKILLS[eid]; if (!sk || !SKILLS[sk]) return null;
+  if (SKILLS[sk].ult) { const own = skillOwnerRace(sk); if (own && own !== race) return SKILLS[ULT_ALT[sk]] ? ULT_ALT[sk] : null; }
+  return sk;
+}
+
 // 자동 조준 규칙: 스킬에 적힌 aim이 없으면 동작을 보고 고른다
 export function aimRule(def) {
   if (def.aim) return def.aim;

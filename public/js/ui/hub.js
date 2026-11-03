@@ -7,7 +7,8 @@ import { SANCTUMS as SANCT_ALL } from '../data/sanctums.js';
 import { codexPoints, levelFor, codexTotals, monsterStage, STAGE_KILLS, STAGE_MAX, zonePlaces, placeKey, PLACE_ZONES } from '../data/codex.js';
 import { JOURNALS, PEOPLE, STORY_ITEMS } from '../data/story.js';
 import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
-import { ITEMS, STYLES, WEAPON_SKILLS, weaponHands } from '../data/items.js';
+import { engravingWeapons } from '../data/engweapons.js';
+import { ITEMS, STYLES, WEAPON_SKILLS, weaponHands, WCAT_NAME } from '../data/items.js';
 import { MONSTERS, ECHOES, ZONES } from '../data/monsters.js';
 import { WORLD_ZONE, ENTRANCES } from '../data/maps/overworld.js';
 import { LABY_ZONE, PALACE_ZONE } from '../data/maps/interiors.js';
@@ -15,7 +16,7 @@ import { computeBuild, encodeLoadout, decodeLoadout, SLOTS, SLOT_KEYS, fitEngrav
 import { condText, evalCond } from '../sim/conditions.js';
 import { toLoadout, writeSave, refreshQuests, claimQuest } from '../save.js';
 import { sfx } from '../audio.js';
-import { SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS, skillLoad, skillCap } from '../data/skills.js';
+import { engravingSkillFor, SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS, skillLoad, skillCap } from '../data/skills.js';
 import { getAutoAim, setAutoAim } from '../settings.js';
 import { skillScale, weaponStat, SKILL_PERKS, WEAPON_PERKS, CLASS_STATS, statMul } from '../data/statscale.js';
 import { bagTab, tradeTab, forgeTab, lifeClick, fishCodex, artifactCodex } from './life.js';
@@ -147,7 +148,7 @@ export class Hub {
     const slots = SLOTS;
     const slotHtml = slots.map((sl) => {
       const id = s.slots[sl], e = id && ENGRAVINGS[id];
-      const i = SLOTS.indexOf(sl), passive = i === 4, sk = e && !passive && SKILLS[ENGRAVING_SKILLS[id]];
+      const i = SLOTS.indexOf(sl), passive = i === 4, sk = e && !passive && SKILLS[engravingSkillFor(id, s.race)];
       const mv = e ? `${i > 0 ? `<button class="sm ghost" data-act="moveE" data-slot="${sl}" data-id="-1" title="앞 칸과 바꾸기">◀</button>` : ''}${i < 4 ? `<button class="sm ghost" data-act="moveE" data-slot="${sl}" data-id="1" title="뒤 칸과 바꾸기">▶</button>` : ''}` : '';
       return `<div class="slot ${e ? 'filled' : ''} ${passive ? 'passive' : ''}" ${e ? `style="--g:${GRADES[e.grade].color}"` : ''}>
         <div class="sl-name"><b class="sl-key">${SLOT_KEYS[i]}</b> ${passive ? '패시브만' : '스킬 + 패시브'}</div>
@@ -181,7 +182,8 @@ export class Hub {
     const goalHtml = this.goalPanel(s);
     // 정리: 몬스터별(기본) · 태그별 · 등급으로 거르기 (부위는 없다: 어느 각인이든 어느 칸에)
     const view = this.altarView === 'tag' ? 'tag' : 'mon', grade = this.altarGrade || 0;
-    const passAll = (id) => pass(id) && (!grade || ENGRAVINGS[id].grade === grade);
+    const wf = this.altarWeapon || 'all'; // 무기 종류로 찾기: 한 각인이 여러 무기에 들어간다 (그 무기로 스킬을 80% 이상 힘으로 쓸 때)
+    const passAll = (id) => pass(id) && (!grade || ENGRAVINGS[id].grade === grade) && (wf === 'all' || engravingWeapons(id).includes(wf === 'mine' ? b.wcat : wf));
     const block = (title, sub, ids) => ids.length ? `<h4>${title} <small>${sub ? sub + ' · ' : ''}${ids.length}종</small></h4><div class="cards">${ids.map((id) => this.engravingCard(id, s, b)).join('')}</div>` : '';
     const byGrade = (ids) => ids.sort((x, y) => ENGRAVINGS[x].grade - ENGRAVINGS[y].grade);
     let groups = '';
@@ -203,7 +205,8 @@ export class Hub {
         + block('태그 없음', '', byGrade(Object.keys(ENGRAVINGS).filter((id) => passAll(id) && !ENGRAVINGS[id].tags.length)));
     }
     const viewBar = `<div class="filters">${[['mon', '몬스터 · 지역별'], ['tag', '태그별']].map(([k, n]) => `<button class="sm ${view === k ? 'on' : 'ghost'}" data-act="aview" data-id="${k}">${n}</button>`).join('')}
-      <span class="muted"> · 등급 </span>${[[0, '전체'], ...[1, 2, 3, 4, 5].map((g) => [g, GRADES[g].name])].map(([g, n]) => `<button class="sm ${grade === g ? 'on' : 'ghost'}" data-act="agrade" data-id="${g}">${n}</button>`).join('')}</div>`;
+      <span class="muted"> · 등급 </span>${[[0, '전체'], ...[1, 2, 3, 4, 5].map((g) => [g, GRADES[g].name])].map(([g, n]) => `<button class="sm ${grade === g ? 'on' : 'ghost'}" data-act="agrade" data-id="${g}">${n}</button>`).join('')}</div>
+      <div class="filters"><span class="muted">무기 </span>${[['all', '전체'], ['mine', `내 무기 · ${WCAT_NAME[b.wcat] || b.wcat}`], ...Object.entries(WCAT_NAME)].map(([k, n]) => `<button class="sm ${wf === k ? 'on' : 'ghost'}" data-act="aweapon" data-id="${k}">${n}</button>`).join('')}</div>`;
 
     return `
       ${this.skillPanel(s, b)}
@@ -330,11 +333,13 @@ export class Hub {
     const prev = canEquip || owned ? this.preview(s, (lo) => { const free = SLOTS.find((x) => !lo.engravings[x]) || SLOTS[0]; lo.engravings = { ...lo.engravings, [free]: id }; }) : '';
     const goal = (s.goals || []).includes(id);
     const summary = e.effects.map((x) => x.text).join(' · ');
+    const wlist = engravingWeapons(id), weaponLine = ENGRAVING_SKILLS[id] ? `<div class="c-meta">맞는 무기: ${wlist.length >= 14 ? '모든 무기' : wlist.map((c) => WCAT_NAME[c] || c).join(' · ') || '없음'}</div>` : '';
     const fromLine = e.from && MONSTERS[e.from] ? `<div class="c-meta">${s.codex.kills?.[e.from] ? MONSTERS[e.from].name : '???'}의 부산물로 새긴다</div>` : '';
     return `<div class="card ${goal ? 'goal' : ''}" style="--g:${GRADES[e.grade].color}">
       <div class="c-head"><b>${e.name}</b><span><button class="star ${goal ? 'on' : ''}" data-act="goal" data-id="${id}" title="목표로 찜">★</button> <span class="grade">${GRADES[e.grade].name}</span></span></div>
-      <div class="c-meta">${ENGRAVING_SKILLS[id] ? `<b style="color:#ffd27a">스킬: ${SKILLS[ENGRAVING_SKILLS[id]].name}</b> · ` : ''}부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
+      <div class="c-meta">${(() => { const sk = engravingSkillFor(id, s.race), orig = ENGRAVING_SKILLS[id]; return sk ? `<b style="color:#ffd27a">스킬: ${SKILLS[sk].name}</b>${sk !== orig ? ` <small class="muted">(궁극기 「${SKILLS[orig].name}」는 그 종족만)</small>` : ''} · ` : ''; })()}부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
       ${fromLine}
+      ${weaponLine}
       <div class="badges">${this.badges(id, s, b)}</div>
       <div class="c-sum">${esc(summary)}</div>
       <details><summary>자세히</summary><div class="c-stats">${stats}</div><ul class="c-eff">${effs}</ul></details>
@@ -531,7 +536,7 @@ export class Hub {
         const after = computeBuild(toLoadout(s));
         if (after.load > after.derived.loadCap) { delete s.slots[target]; this.toast(`부하가 넘친다 (${after.load} / ${after.derived.loadCap}) · 다른 각인을 빼거나 정신을 올리자`); break; }
         const ti = SLOTS.indexOf(target);
-        this.toast(`${e.name} → ${SLOT_KEYS[ti]} 칸${ti < 4 && ENGRAVING_SKILLS[id] ? ` · 스킬 「${SKILLS[ENGRAVING_SKILLS[id]].name}」` : ' · 패시브만'}`);
+        this.toast(`${e.name} → ${SLOT_KEYS[ti]} 칸${ti < 4 && engravingSkillFor(id, s.race) ? ` · 스킬 「${SKILLS[engravingSkillFor(id, s.race)].name}」` : ' · 패시브만'}`);
         break;
       }
       case 'unequipE': delete s.slots[slot]; break;
@@ -576,6 +581,7 @@ export class Hub {
       case 'filter': this.altarFilter = id; break;
       case 'aview': this.altarView = id; break;
       case 'agrade': this.altarGrade = +id; break;
+      case 'aweapon': this.altarWeapon = id; break;
       case 'codexSec': this.codexSec = id; break;
       case 'goal': {
         s.goals ||= [];

@@ -8,7 +8,7 @@ import { evalCond, condText } from '../sim/conditions.js';
 import { toLoadout, applyRun } from '../save.js';
 import { ZONES } from '../data/monsters.js';
 import { ENGRAVINGS, TAGS } from '../data/engravings.js';
-import { SKILLS, ENGRAVING_SKILLS } from '../data/skills.js';
+import { SKILLS, ENGRAVING_SKILLS, engravingSkillFor } from '../data/skills.js';
 import { STAT_INFO, SPECIAL_INFO } from '../data/stats.js';
 import {
   CLIMB_TOP, ACTS, actOf, floorKind, recLevel, REWARDS, newRun, offerEngravings, addEngraving, offerHone, BLESSINGS, offerBless,
@@ -33,7 +33,7 @@ export function createClimb(ctx) {
     // 스킬 칸은 그대로: 각인이 준 스킬은 빈 칸에만 들어간다 (Q·E·R·F가 밀리지 않게)
     if (!lo.skills) lo.skills = computeBuild(lo).skills.slice();
     else lo.skills = lo.skills.slice();
-    for (const e of r.eng) { const sk = ENGRAVING_SKILLS[e.id]; if (sk && lo.skills.length < 4 && !lo.skills.includes(sk)) lo.skills.push(sk); }
+    for (const e of r.eng) { const sk = engravingSkillFor(e.id, lo.race); if (sk && lo.skills.length < 4 && !lo.skills.includes(sk)) lo.skills.push(sk); }
     lo.runEng = r.eng; lo.extraEffects = runEffects(r, meta());
     return computeBuild(lo);
   }
@@ -191,7 +191,7 @@ export function createClimb(ctx) {
       const tier = !up && T?.tiers.find((x) => x.n === n);
       return `<span class="tag" style="--c:${T?.color || '#aaa'}">${T?.name || t} ${n}${tier ? ' ▲발동' : ''}</span>`;
     }).join(' ');
-    const sk = ENGRAVING_SKILLS[id] ? `<div class="cl-skill">스킬: ${SKILLS[ENGRAVING_SKILLS[id]]?.name || ''}</div>` : '';
+    const skId = engravingSkillFor(id, S().race), sk = skId ? `<div class="cl-skill">스킬: ${SKILLS[skId]?.name || ''}${skId !== ENGRAVING_SKILLS[id] ? ' <small>(궁극기는 그 종족만)</small>' : ''}</div>` : '';
     return `<button class="cl-card" data-pick="${idx}" style="--g:${GRADE_COLOR[e.grade]}">
       <span class="cl-key">${idx + 1}</span>
       <span class="cl-grade">${GRADE_NAME[e.grade]}${up ? ` · 연마 ${cur?.lv ?? 0} → ${(cur?.lv ?? 0) + 1}` : ''}</span>
