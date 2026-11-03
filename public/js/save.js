@@ -42,6 +42,11 @@ let staleHook = null;
 let stale = false; // 다른 창이 더 새 진행을 저장했다: 이 창은 더 쓰지 않는다
 export function setStaleHook(f) { staleHook = f; if (chan) chan.onmessage = (m) => { if (m.data?.tab !== TAB && m.data?.t === 'saved' && !stale) { stale = true; staleHook?.(); } }; }
 export let localSaveError = null; // 브라우저 저장소가 꽉 찼는지 (조용히 실패하지 않게)
+const saveListeners = new Set();
+export function onLocalSave(f) { saveListeners.add(f); } // 저장할 때마다 실패 여부를 알린다 (화면에 띄우기용)
+export const isStale = () => stale;
+// 브라우저가 공간이 모자랄 때 이 사이트의 저장을 지우지 않게 요청한다 (크롬 · 사파리 · 파이어폭스)
+try { navigator.storage?.persist?.().catch(() => {}); } catch { /* 무시 */ }
 export function writeSave(s) {
   if (stale) return;
   s.updatedAt = Date.now();
@@ -53,7 +58,13 @@ export function writeSave(s) {
       if (cur) localStorage.setItem(BACKUPS[0], cur);
     }
   } catch { /* 저장소가 꽉 찼으면 백업은 건너뛴다 */ }
-  try { localStorage.setItem(KEY, JSON.stringify(s)); localSaveError = null; } catch (e) { localSaveError = e?.name || 'error'; }
+  const json = JSON.stringify(s);
+  try { localStorage.setItem(KEY, json); localSaveError = null; }
+  catch (e) { // 저장 공간이 모자라면 백업 칸을 비우고 한 번 더 (본 저장이 먼저)
+    try { for (const k of BACKUPS) localStorage.removeItem(k); localStorage.setItem(KEY, json); localSaveError = null; }
+    catch (e2) { localSaveError = e2?.name || 'error'; }
+  }
+  saveListeners.forEach((f) => f(localSaveError));
   try { chan?.postMessage({ t: 'saved', tab: TAB }); } catch { /* 무시 */ }
   saveHook?.(s);
 }

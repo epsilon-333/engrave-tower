@@ -8,7 +8,7 @@ import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
 import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
 import { padState, applyPad, padMenu } from './gamepad.js';
-import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, setStaleHook } from './save.js';
+import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, setStaleHook, onLocalSave, isStale } from './save.js';
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
 import { codexPoints, levelFor } from './data/codex.js';
 import { TILE, generateField } from './sim/mapgen.js';
@@ -884,6 +884,7 @@ function showTitle() {
       ${canLogin ? '<button id="tsLogin" class="ghost">계정으로 저장 · 로그인</button>' : ''}
       <button id="tsIntro" class="ghost">인트로 보기</button>
     </div>${who}
+    ${IN_APP ? '<p class="title-warn"><b>앱 안 브라우저에서 열었어요</b> — 이대로 하면 창을 닫을 때 진행이 지워질 수 있어요. 오른쪽 위 메뉴에서 「다른 브라우저로 열기」(크롬 · 사파리)를 눌러 주세요. 또는 로그인하면 서버에 저장돼요.</p>' : ''}
     <p class="title-foot">그래픽 0x72 (CC0) · 효과음 Kenney (CC0) · 글꼴 갈무리 (OFL) · 이펙트 pixelfx (MIT)</p></div></div>`;
   const cv = titleEl.querySelector('.title-bg'), st = makeStage(), t0 = performance.now();
   const T0 = INTRO_TOTAL - 6 - 3.6 - 6.2 + 0.6, LEN = 4.8; // 「그리고 삼백 년 뒤」 장면의 가운데 (어두워지기 전)
@@ -984,6 +985,7 @@ function setupSaveGuards(startStamp = 0) {
   setStaleHook(() => {
     if (cloud.mode === 'local' || cloud.state === 'stale') return;
     markStale();
+    saveWarn('<b>이 창은 저장이 멈췄어요</b> — 같은 브라우저의 다른 창에서 게임을 하고 있어요. 다른 창을 닫고 이 창을 새로 고치면 다시 저장돼요.');
     showModal(`<h2>다른 창에서 게임 중</h2><p>이 브라우저의 다른 창이 이 계정의 진행을 저장했어요. 이 창의 진행은 이제 저장되지 않아요 (옛 진행으로 덮어쓰지 않게).</p>
       <div class="row"><button id="stReload">이 창에서 이어 하기 (새로고침)</button><button data-close class="ghost">닫기</button></div>`);
     document.getElementById('stReload').onclick = () => location.reload();
@@ -3575,6 +3577,19 @@ function lerpIn(w, a) {
   return done;
 }
 function lerpOut(list) { for (const [e, x, y] of list) { e.x = x; e.y = y; } }
+// 저장이 안 될 때는 반드시 알린다: 브라우저가 저장을 거부(시크릿 창 · 저장 공간 꽉 참) · 다른 창에서 게임 중
+function saveWarn(text) {
+  let el = document.getElementById('saveWarn');
+  if (!el) { el = document.createElement('div'); el.id = 'saveWarn'; document.body.appendChild(el); }
+  el.hidden = !text; if (text) el.innerHTML = text;
+}
+onLocalSave((err) => {
+  if (err && cloud.mode === 'local') saveWarn(`<b>저장이 안 되고 있어요</b> — 브라우저가 저장을 막았어요 (${esc(err)}). 시크릿 창 · 앱 안 브라우저(카카오톡 등)라면 크롬 · 사파리로 열어 주세요. 일시정지 → 설정 → 로그인하면 서버에 저장돼요.`);
+  else if (err) saveWarn(`<b>이 기기에는 저장이 안 되고 있어요</b> (${esc(err)}) — 서버 저장은 계속돼요.`);
+  else if (!isStale()) saveWarn('');
+});
+// 앱 안 브라우저(카카오톡 · 네이버 · 인스타그램 · 페이스북 · 라인): 창을 닫으면 저장이 지워지는 일이 많다
+const IN_APP = /KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|Line\/|; wv\)/i.test(navigator.userAgent || '');
 let padNow = null;
 function padTick() { // 게임패드: 창이 떠 있으면 버튼 고르기, 아니면 싸움 입력 (readInput)
   const st = padNow = padState(); if (!st) return;
