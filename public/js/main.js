@@ -12,7 +12,7 @@ import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, 
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
 import { codexPoints, levelFor } from './data/codex.js';
 import { TILE, generateField } from './sim/mapgen.js';
-import { ENTRANCES } from './data/maps/overworld.js';
+import { ENTRANCES, BIOME_LIST } from './data/maps/overworld.js';
 import { LABY_ZONE, PALACE_ZONE, buildLabyrinth, buildPalace } from './data/maps/interiors.js';
 import { HOUSES, buildHouse } from './data/maps/houses.js';
 import { cycleSeed, growPlot } from './sim/life.js';
@@ -876,6 +876,7 @@ function showTitle() {
   gameEl.hidden = true; titleEl.hidden = false;
   const canLogin = !isClaudePage() && cloud.mode === 'local';
   const who = cloud.mode !== 'local' && cloud.name ? `<p class="muted">${esc(cloud.name)} 계정 · 서버에 저장</p>` : '';
+  startMusic('title');
   titleEl.innerHTML = `<div class="title-screen"><canvas class="title-bg"></canvas><div class="title-fg">
     <h1>각인의 탑</h1><p class="title-sub">— 아르케 섬의 이야기 —</p>
     <div class="title-menu">
@@ -1128,7 +1129,7 @@ function enterWorld(at = null, first = false) {
   world.questReady = (save.quests || []).some((q) => q.done);
   returnTo = null;
   renderer.setWorld(world);
-  startMusic('plaza');
+  startMusic('plaza'); regionMusic.last = null;
   startLoop();
   if (first || !save.owTutorial) showWorldIntro();
   else if (!save.lifeIntro) showLifeIntro();
@@ -3538,6 +3539,13 @@ function arcTalk(id) {
 }
 
 let autosaveT = 0;
+// 바깥 세계: 지역마다 곡이 바뀐다 (마을 · 들판 / 숲 / 늪 / 폐허 / 묘지 / 설원 · 바위산 / 화산 / 황야 · 협곡)
+const REGION_MUSIC = { plains: 'plaza', meadow: 'plaza', lake: 'plaza', mistcoast: 'plaza', forest: 'forest', jungle: 'forest', swamp: 'swamp', ruins: 'labyrinth', graveyard: 'grave', snow: 'frost', mountains: 'frost', volcano: 'rift', wasteland: 'desert', canyon: 'desert', tower: 'title' };
+function regionMusic() {
+  if (world?.zone?.id !== 'world' || world.regionCur == null || world.regionCur === regionMusic.last) return;
+  regionMusic.last = world.regionCur;
+  startMusic(REGION_MUSIC[BIOME_LIST[world.regionCur]?.id] || 'plaza');
+}
 let padNow = null;
 function padTick() { // 게임패드: 창이 떠 있으면 버튼 고르기, 아니면 싸움 입력 (readInput)
   const st = padNow = padState(); if (!st) return;
@@ -3587,6 +3595,7 @@ function tick(ts) {
       endTimer += dt;
       if (endTimer > (world.state === 'dead' ? 1.4 : 0.3)) endRun(world.state === 'dead' ? 'dead' : 'clear');
     }
+    regionMusic();
     renderer.consume(world);
     renderer.walletGold = save?.gold | 0;
     renderer.draw(world, paused ? 0 : dt);
