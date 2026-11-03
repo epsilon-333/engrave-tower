@@ -24,8 +24,14 @@ export function newLife() {
   return { bag: {}, tools: { pickaxe: 1, axe: 1, shovel: 1, hoe: 1, can: 1, rod: 1 }, nodes: {}, chopped: {}, farm: {}, fishLog: {}, artifacts: {}, farmOpts: {} };
 }
 
+// 저장 백업: 10분마다 이전 저장을 두 칸(b1 → b2)에 돌려 둔다. 본 저장이 깨지면 백업에서 되살린다
+const BACKUPS = [KEY + '-b1', KEY + '-b2'];
+let lastBackup = 0;
 export function loadSave() {
-  try { const s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null; } catch { return null; }
+  for (const k of [KEY, ...BACKUPS]) {
+    try { const s = localStorage.getItem(k); if (!s) continue; const v = JSON.parse(s); if (v && typeof v === 'object' && v.race) { if (k !== KEY) console.warn('저장이 깨져 백업에서 되살렸다:', k); return v; } } catch { /* 깨진 칸: 다음 백업으로 */ }
+  }
+  return null;
 }
 let saveHook = null;
 export function setSaveHook(f) { saveHook = f; }
@@ -39,12 +45,20 @@ export let localSaveError = null; // 브라우저 저장소가 꽉 찼는지 (�
 export function writeSave(s) {
   if (stale) return;
   s.updatedAt = Date.now();
+  try {
+    if (Date.now() - lastBackup > 10 * 60 * 1000) { // 백업 돌리기 (지금 칸 → b1 → b2)
+      lastBackup = Date.now();
+      const cur = localStorage.getItem(KEY), b1 = localStorage.getItem(BACKUPS[0]);
+      if (b1) localStorage.setItem(BACKUPS[1], b1);
+      if (cur) localStorage.setItem(BACKUPS[0], cur);
+    }
+  } catch { /* 저장소가 꽉 찼으면 백업은 건너뛴다 */ }
   try { localStorage.setItem(KEY, JSON.stringify(s)); localSaveError = null; } catch (e) { localSaveError = e?.name || 'error'; }
   try { chan?.postMessage({ t: 'saved', tab: TAB }); } catch { /* 무시 */ }
   saveHook?.(s);
 }
 export function clearSave() {
-  try { localStorage.removeItem(KEY); } catch { /* 무시 */ }
+  try { localStorage.removeItem(KEY); for (const k of BACKUPS) localStorage.removeItem(k); } catch { /* 무시 */ }
 }
 
 export function toLoadout(s) {
