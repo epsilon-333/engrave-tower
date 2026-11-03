@@ -215,7 +215,7 @@ onNet('duelInvite', (m) => {
   if (!world || paused || world.pvp || world.zone?.id !== 'world' || world.state !== 'play') { netSend({ t: 'duelAnswer', to: m.from, ok: false }); return; }
   const close = () => { overlay.hidden = true; paused = false; modal = null; clearTimeout(t); };
   showModal(`<h2>결투 신청</h2><p><b>${esc(m.name)}</b> (${RACES[m.race]?.name || '?'} · Lv ${m.lv || 1}) — 결투 신청이 왔다.</p>
-    <p class="muted">투기장에서 1:1로 싸운다. 대전에서는 피해 60% · 회복 50% · 보호막 60% · CC 60%로 줄어든다. 져도 잃는 것은 없다.</p>
+    <p class="muted">1:1 대전. 져도 잃는 것은 없다.</p>
     <div class="actions"><button id="dAcc">받아들인다</button><button id="dDec" class="ghost">거절한다</button></div>`, () => { close(); netSend({ t: 'duelAnswer', to: m.from, ok: false }); });
   const t = setTimeout(() => { if (document.getElementById('dDec')) { close(); netSend({ t: 'duelAnswer', to: m.from, ok: false }); } }, 15000);
   document.getElementById('dAcc').onclick = () => { close(); netSend({ t: 'duelAnswer', to: m.from, ok: true, maxHp: world.d.maxHp }); };
@@ -355,7 +355,7 @@ function showTrade() {
       <div class="soc-make"><input id="tgold" type="number" min="0" max="${save.gold}" value="${T.mine.gold}" placeholder="골드"><button class="sm" data-tgold>골드 정하기</button></div><small class="muted">가진 골드 ${save.gold}</small>
       <h4>가방</h4><div class="soc-list trade-list">${goodsRows || '<p class="muted">없음</p>'}</div><h4>장비 (들고 있지 않은 것)</h4><div class="soc-list trade-list">${itemRows || '<p class="muted">없음</p>'}</div></div>
     <div><h4>받을 것 ${T.theirOk ? '<span class="up">✔ 확정</span>' : ''}</h4><p>${theirs.length ? theirs.map(esc).join(' · ') : '<span class="muted">아직 없다</span>'}</p></div></div>
-    <p class="muted">어느 쪽이든 내놓을 것을 바꾸면 확정이 풀린다. 둘 다 확정하면 바로 주고받는다.</p>
+    <p class="muted">둘 다 확정하면 주고받는다.</p>
     <div class="actions"><button id="tOk" ${T.myOk ? 'disabled' : ''}>확정</button><button id="tNo" class="ghost">그만두기</button></div></div>`, () => tradeCancel());
   const box = document.getElementById('tradeBox');
   box.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => e.stopPropagation()));
@@ -436,7 +436,7 @@ function socialHtml() {
 function nearHtml(near, kind) {
   if (!kind) return '';
   near = near.filter((rp) => (kind === 'party' ? !rp.party : !rp.gname)); // 이미 파티 · 길드에 있는 사람은 초대할 수 없다
-  if (!near.length) return '<p class="muted">근처에 다른 사람이 없다 (바깥 세계에서만 서로 보인다).</p>';
+  if (!near.length) return '<p class="muted">근처에 아무도 없다.</p>';
   return `<h4>근처 사람</h4><div class="soc-list">${near.map((rp) => `<div class="soc-row"><span class="nm"><b>${esc(rp.name)}</b>${rp.gname ? ` <small class="gtag">[${esc(rp.gname)}]</small>` : ''}</span><span class="muted">${RACES[rp.race]?.name || ''} · Lv ${rp.lv || 1}</span><span class="btns"><button class="sm" data-inv="${kind}" data-id="${rp.id}">${kind === 'party' ? '파티 초대' : '길드 초대'}</button></span></div>`).join('')}</div>`;
 }
 function partyHtml(near) {
@@ -457,7 +457,7 @@ function guildHtml(near) {
   const g = net.guild;
   if (!g) return `<p class="muted">길드에 들지 않았다. 길드를 세우면 길드원끼리 채팅(/g)하고 이름 앞에 길드 이름이 붙는다. 길드는 서버에 남는다.</p>
     <div class="soc-make"><input id="gname" maxlength="12" placeholder="길드 이름 (2~12글자)"><button data-gact="create" ${save.gold >= GUILD_COST ? '' : 'disabled'}>세우기 · ${GUILD_COST} 골드</button></div>
-    <p class="muted">초대를 받으면 화면 오른쪽 위에 카드가 뜬다.</p>`;
+    `;
   const r = myRank(), mng = r === 'leader' || r === 'officer';
   const rows = g.members.map((x) => {
     const me = x.uid === save.uid;
@@ -468,7 +468,7 @@ function guildHtml(near) {
   }).join('');
   return `<h3 class="gname">「${esc(g.name)}」 <small>${g.members.length}명 · 접속 ${g.members.filter((x) => x.online).length}명</small></h3>
     ${mng ? `<div class="soc-make"><input id="gnotice" maxlength="80" value="${esc(g.notice)}" placeholder="길드 공지"><button class="sm" data-gact="notice">공지 바꾸기</button></div>` : g.notice ? `<p class="gnotice">${esc(g.notice)}</p>` : ''}
-    <div class="soc-list">${rows}</div><p class="muted">길드 채팅: 채팅 창(Enter)에서 앞에 /g 를 붙인다.</p>${nearHtml(near, mng ? 'guild' : null)}`;
+    <div class="soc-list">${rows}</div><p class="muted">길드 채팅은 /g</p>${nearHtml(near, mng ? 'guild' : null)}`;
 }
 function bindSocial() {
   const el = document.getElementById('social'); if (!el) return;
@@ -529,7 +529,7 @@ function showRaid() {
     <div class="muted">깬 횟수 ${R.clears[id] || 0}${R.week[id] === wk ? ' · 이번 주 보물상자 받음' : ' · 이번 주 보물상자 남음'}</div>
     <div class="c-act"><button class="sm" data-raid="${id}">${lead ? '파티와 들어가기' : '들어가기'}</button></div></div>`).join('');
   showModal(`<h2>레이드 제단</h2><p class="muted">거대한 보스와 싸우는 둥근 방. 체력이 셋으로 나뉘어 단계마다 패턴이 바뀐다 — 빨간 예고를 보고 피하고, 「표식」이 붙으면 동료에게서 떨어진다. 파티(최대 4명)로 오면 함께 싸운다 (인원수만큼 보스가 단단해진다).</p>
-    ${net.party && !isPartyLeader() ? '<p class="muted">파티에 있다 — 파티장이 들어가면 함께 갈지 묻는다.</p>' : ''}<div class="skill-row">${cards}</div><div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
+    ${net.party && !isPartyLeader() ? '<p class="muted">파티장이 들어가면 함께 간다.</p>' : ''}<div class="skill-row">${cards}</div><div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
   overlay.querySelectorAll('[data-raid]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; const id = b.dataset.raid; if (lead) startCoRaid(id); else enterRaid(id); }));
 }
 let raidT0 = 0;
@@ -837,7 +837,7 @@ function showStyleSelect(race) {
   const R = RACES[race];
   titleEl.innerHTML = `<div class="race-select">
     <h1>${R.name}</h1>
-    ${reGolem ? '<p class="lvup">골렘족은 이제 몬스터가 되었어요. 새 종족과 클래스를 골라 주세요 — 레벨 · 장비 · 돈 · 도감은 그대로예요.</p>' : ''}<p class="muted">클래스를 고르세요. 클래스마다 스킬 6개와 전용 무기가 있습니다. 광장의 공명 제단에서 언제든 바꿀 수 있어요.</p>
+    ${reGolem ? '<p class="lvup">골렘족은 이제 몬스터가 되었어요. 새 종족과 클래스를 골라 주세요 — 레벨 · 장비 · 돈 · 도감은 그대로예요.</p>' : ''}<p class="muted">공명 제단에서 언제든 바꿀 수 있다.</p>
     <div class="styles">${RACE_CLASSES(race).map((id) => {
       const c = CLASSES[id];
       return `<button class="style" data-style="${id}">
@@ -874,7 +874,7 @@ function showLogin(onDone) {
   gameEl.hidden = true; titleEl.hidden = false;
   titleEl.innerHTML = `<div class="login">
     <h1>아르케</h1>
-    <p class="muted">계정으로 로그인하면 어느 기기에서든 이어서 할 수 있습니다.</p>
+    
     <form id="loginForm" class="login-box" autocomplete="on">
       <label for="lgId">아이디</label>
       <input id="lgId" name="username" autocomplete="username" maxlength="16" placeholder="2~16자 한글·영문·숫자" required>
@@ -909,7 +909,7 @@ function showQuestLog() {
   const zoneName = (id) => ZONES.find((z) => z.id === id)?.name || '';
   const bar = (v, n) => `<span class="qbar"><i style="width:${Math.min(100, Math.round((v / Math.max(1, n)) * 100))}%"></i></span><small>${Math.min(v, n)} / ${n}</small>`;
   const board = (save.quests || []).map((q) => `<div class="qrow ${q.done ? 'done' : ''}"><b>${q.text}</b> <small class="muted">${zoneName(q.zone)}</small>
-    <div class="qmeta">${bar(q.progress || 0, q.n)}<small>${q.done ? '<em class="up">완료 · 마을 의뢰 게시판에서 보상 받기</em>' : `보상 ◆ ${q.reward.gold}`}</small></div></div>`).join('') || '<p class="muted">받은 의뢰가 없다. 바람결 마을 의뢰 게시판에서 받을 수 있다.</p>';
+    <div class="qmeta">${bar(q.progress || 0, q.n)}<small>${q.done ? '<em class="up">완료 · 마을 의뢰 게시판에서 보상 받기</em>' : `보상 ◆ ${q.reward.gold}`}</small></div></div>`).join('') || '<p class="muted">받은 의뢰 없음 · 마을 게시판</p>';
   const sanct = Object.keys(SANCTUMS).map((race) => {
     const st = save.story?.sanct?.[race], cur = st?.cur; if (!cur) return '';
     const d = sanctQuestDef(race, cur.id); if (!d) return '';
@@ -917,7 +917,7 @@ function showQuestLog() {
     const what = d.kind === 'kill' ? `${d.n}마리 처치` : d.kind === 'bring' ? `${GOODS[d.item]?.name} ${d.n}개 가져가기` : `${FIND_NAME[d.look]} ${d.n}개 찾기 (작은 지도에 ◆)`;
     return `<div class="qrow ${have >= d.n ? 'done' : ''}"><b style="color:${SANCTUMS[race].color}">${d.title}</b> <small class="muted">${SANCTUMS[race].name}</small>
       <p class="muted">${d.text}</p><small>${what}</small><div class="qmeta">${bar(have, d.n)}${have >= d.n ? '<small><em class="up">다 했다 · 성지에 돌아가 알리기</em></small>' : ''}</div></div>`;
-  }).join('') || '<p class="muted">받은 성지 의뢰가 없다. 종족 성지의 주민에게 말을 걸어 보자.</p>';
+  }).join('') || '<p class="muted">받은 성지 의뢰 없음</p>';
   const JN = journeyNow(save), jg = save.journey || {};
   const jrows = JOURNEY.map((st, i) => { const done = !!jg[st.id], cur = JN && JN.i === i; if (!done && !cur && i > (JN?.i ?? 0) + 2) return ''; return `<div class="qrow jn ${done ? 'done' : cur ? 'cur' : 'next'}"><b>${done ? '✓' : cur ? '▶' : '·'} ${i + 1}. ${st.title}</b> <small class="muted">${journeyReward(st.reward)}</small>${cur ? `<p class="muted">${st.hint}</p>` : ''}</div>`; }).join('');
   const jdone = JOURNEY.filter((st) => jg[st.id]).length;
@@ -1365,7 +1365,7 @@ function scrollShopHtml() {
       <div class="c-act"><button class="sm" data-scroll="${id}" data-n="1" ${save.gold >= price ? '' : 'disabled'}>1장 ◆ ${price}</button><button class="sm" data-scroll="${id}" data-n="5" ${save.gold >= price * 5 ? '' : 'disabled'}>5장 ◆ ${price * 5}</button></div></div>`;
   }).join('');
   return `<div class="talk"><p>「마법사가 아니어도 좋네. 종이에 담긴 별빛은 읽는 자를 가리지 않으니.」</p>
-    <p class="muted">주문서는 한 번 읽으면 사라진다. 가방(B)에서 「읽기」를 누른다.</p></div><div class="skill-row">${cards}</div>`;
+    <p class="muted">가방(B)에서 읽는다. 한 번 쓰면 사라진다.</p></div><div class="skill-row">${cards}</div>`;
 }
 function buyScroll(id, n) {
   const price = buyPrice(id) * n;
@@ -1809,7 +1809,7 @@ function showTutorial() {
       <p><b>6.</b> 필드에는 <b>야영지</b>(잔향 맡기기), <b>떠돌이 상인</b>, <b>낡은 제단</b>(대가 없는 축복), 가장 깊은 곳의 <b>아래층 계단</b>이 있어요.</p>
       <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · Q·E·R·F(1·2·3·4) 스킬 · T 자동 조준 · 우클릭 무기 기술 · Space 대시(무적) · G 상호작용 · C 캐릭터 · Esc 메뉴</p>
       ${touch ? '<p class="keys">모바일: 왼쪽 조이스틱 이동 · 오른쪽 조이스틱을 누르면 공격(밀면 그 방향 조준, 그냥 누르면 가까운 적 자동 조준) · 버튼으로 스킬·대시·상호작용</p>' : ''}
-      <p class="muted">빨갛게 번쩍이는 적은 곧 공격합니다. 대시로 피하세요!</p>
+      <p class="muted">빨갛게 번쩍이면 곧 공격한다. 대시로 피한다.</p>
     </div>
     <button data-close>시작하기</button>`);
 }
@@ -1903,7 +1903,7 @@ function showPause() {
     ${net.admin ? '<button id="adminBtn" class="ghost">운영자 · 접속한 사람</button>' : cloud.name === '운영자' && net.up ? '<p class="muted">운영자 열쇠 (서버의 ADMIN_KEY) <input id="adminKeyIn" type="password" style="width:9em"> <button id="adminKeyGo" class="sm ghost">확인</button></p>' : ''}
     ${isTouch() ? `<div class="actions col"><button id="tChar" class="ghost">캐릭터 · 스킬 · 스탯</button><button id="tMap" class="ghost">지도</button><button id="tQuest" class="ghost">퀘스트</button><button id="tGear" class="ghost">장비 · 어디서 얻나</button>${net.up ? '<button id="tChat" class="ghost">채팅</button>' : ''}</div>` : ''}
     ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> NPC 공격 (끄면 사람에게 맞지 않는다)</label><label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
-    ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">결투에서는 잃는 것이 없다. 포기하면 상대의 승리가 된다.</p>' : field && !world.practice ? world.climb ? '<button id="retreat" class="ghost">등반 포기 (별빛은 모두 남는다)</button>' : '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">시작 지점의 귀환 포탈로 돌아가면 잔향을 전부 지킬 수 있습니다. 야영지에 맡긴 잔향은 죽어도 잃지 않아요.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
+    ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">포기하면 상대의 승리.</p>' : field && !world.practice ? world.climb ? '<button id="retreat" class="ghost">등반 포기 (별빛은 모두 남는다)</button>' : '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">귀환 포탈로 돌아가면 잔향을 모두 지킨다.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
     ${volumeHtml()}
     ${isClaudePage() ? '' : cloud.mode === 'account' ? `<p class="muted">${esc(cloud.name)} 계정으로 로그인 중</p><button id="logoutBtn" class="ghost">로그아웃</button>` : '<button id="loginBtn" class="ghost">로그인 / 회원가입</button>'}`);
   bindVolume();
@@ -2026,7 +2026,7 @@ function showMerchant(zoneId) {
       <div class="shop-list">${world.merchantStock.map((it, i) => `<div class="shop-row" style="--c:${ECHOES[it.id].color}">
         <span>◆ ${ECHOES[it.id].name}</span><span class="muted">남은 수량 ${it.left}</span>
         <button data-buy="${i}" ${it.left && save.gold >= it.price ? '' : 'disabled'}>${it.price} 골드</button></div>`).join('')}</div>
-      <p class="muted">산 잔향은 바로 보관되어, 쓰러져도 잃지 않습니다.</p>
+      
       <button data-close>닫기</button>`);
     overlay.querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => {
       const it = world.merchantStock[+b.dataset.buy];

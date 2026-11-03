@@ -42,7 +42,7 @@ export function storageTab(s) {
     return Object.keys(GOOD_CATS).filter((c) => groups[c]).map((c) => `<h4>${GOOD_CATS[c]}</h4><div class="goods">${groups[c].map(([id, n]) => row(id, n, from)).join('')}</div>`).join('') || '<p class="muted">비어 있다.</p>';
   };
   const quick = Object.entries(GOOD_CATS).filter(([c]) => Object.entries(s.bag || {}).some(([id, n]) => n > 0 && GOODS[id]?.cat === c));
-  return `<section class="panel"><h3>보관함 <small>집에 두고 다니는 물건 · 칸 제한 없음</small></h3>
+  return `<section class="panel"><h3>보관함 </h3>
       <p class="muted">${bagLine(s)} · 물건 종류마다 한 칸 (같은 물건은 몇 개든 한 칸). 가방이 가득 차면 새 물건을 주울 수 없다. 잡화점에서 가방을 늘릴 수 있다.</p>
       <div class="qbtns">${quick.map(([c, n]) => `<button class="sm ghost" data-act="storeCat" data-id="${c}">${n} 모두 넣기</button>`).join('')}</div></section>
     <div class="cols"><section class="panel"><h3>가방</h3>${list(s.bag || {}, 'bag')}</section>
@@ -58,7 +58,7 @@ export function cookTab(s, ui) {
   const slots = Array.from({ length: 5 }, (_, i) => pot[i]
     ? `<button class="potslot on" data-act="potOut" data-n="${i}" title="${esc(GOODS[pot[i]].name)}">${ico(pot[i])}</button>`
     : '<span class="potslot"></span>').join('');
-  let result = '<p class="muted">재료를 넣어 보세요. 무엇을 넣느냐에 따라 요리 이름과 효과가 달라진다.</p>';
+  let result = '<p class="muted">재료를 넣으세요</p>';
   if (pv) {
     const d = { recipe: pv.recipe, eff: pv.eff, lvl: pv.lvl, heal: pv.heal };
     result = `<div class="cookres">${ico(pv.key, 'big')}<div><b>${dishName(d)}${pv.lvl ? ' ' + '★'.repeat(pv.lvl) : ''}</b><br>
@@ -71,12 +71,12 @@ export function cookTab(s, ui) {
   const ingHtml = Object.keys(KIND_NAME).filter((k) => byKind[k]).map((k) => `<h4>${KIND_NAME[k]}</h4><div class="goods">${byKind[k].map((id) => {
     const f = FOOD[id];
     return `<button class="good ing" data-act="potIn" data-id="${id}" title="${esc(goodTitle(id))}" ${pot.length >= 5 ? 'disabled' : ''}>${ico(id)}<b>${have(id)}</b><span>${GOODS[id].name}</span><em>${f.heal}%${f.eff ? ` · <i style="color:${FOOD_EFFECTS[f.eff].color}">${FOOD_EFFECTS[f.eff].name}${'★'.repeat(f.p)}</i>` : ''}</em></button>`;
-  }).join('')}</div>`).join('') || '<p class="muted">요리할 재료가 없다. 물고기를 낚고, 채소를 키우고, 약초 · 버섯 · 산딸기를 따고, 짐승을 잡아 고기를 얻자.</p>';
+  }).join('')}</div>`).join('') || '<p class="muted">재료 없음</p>';
   const known = Object.keys(s.dishLog || {}).length;
   const book = RECIPES.filter((r) => r.id !== 'stew').map((r) => s.dishLog?.[r.id] ? `<span class="chip on">${r.name}</span>` : '<span class="chip off">???</span>').join('');
-  return `<section class="panel"><h3>부엌 <small>재료를 5개까지 넣는다 · 가방과 보관함의 재료를 함께 쓴다</small></h3>
+  return `<section class="panel"><h3>부엌 <small>최대 5개</small></h3>
       <div class="pot">${slots}</div>${result}
-      <p class="muted">같은 효과의 재료끼리 모을수록 강하고(★~★★★) 오래간다. 효과가 다른 재료를 섞으면 효과는 사라진다. 요리는 가방에서 먹거나, 빠른 칸에 두고 <b>H</b>로 먹는다. 효과는 하나만 걸리고 새로 먹으면 바뀐다.</p></section>
+      </section>
     <section class="panel"><h3>재료</h3>${ingHtml}</section>
     <section class="panel"><h3>요리책 <small>${known}/${RECIPES.length - 1} · 새 요리를 만들 때마다 도감 +1</small></h3><div class="chips">${book}</div></section>`;
 }
@@ -91,7 +91,7 @@ export function craftTab(s, ui) {
   const types = Object.entries(WTYPES).map(([id, t]) => `<button class="sm ${cs.type === id ? 'on' : 'ghost'}" data-act="cType" data-id="${id}">${t.name}</button>`).join('');
   const matBtns = mats.map((m) => { const M = WMATS[m]; return `<button class="sm ${cs.mat === m ? 'on' : 'ghost'}" data-act="cMat" data-id="${m}" title="${M.name}: 위력 ×${M.mul}">${ico(M.good)} ${M.name}</button>`; }).join('');
   const ownParts = Object.entries(s.bag || {}).filter(([id, n]) => n > 0 && PART_FX[id]);
-  const partBtns = ownParts.map(([id, n]) => { const used = cs.parts.filter((x) => x === id).length; return `<button class="good ing" data-act="cPart" data-id="${id}" title="${esc(goodTitle(id))}" ${n - used <= 0 || cs.parts.length >= 2 ? 'disabled' : ''}>${ico(id)}<b>${n - used}</b><span>${GOODS[id].name}</span></button>`; }).join('') || '<p class="muted">몬스터 부산물이 없다. 몬스터를 잡으면 가끔 떨어뜨린다 (우두머리는 반드시).</p>';
+  const partBtns = ownParts.map(([id, n]) => { const used = cs.parts.filter((x) => x === id).length; return `<button class="good ing" data-act="cPart" data-id="${id}" title="${esc(goodTitle(id))}" ${n - used <= 0 || cs.parts.length >= 2 ? 'disabled' : ''}>${ico(id)}<b>${n - used}</b><span>${GOODS[id].name}</span></button>`; }).join('') || '<p class="muted">부산물 없음</p>';
   const chosen = [0, 1].map((i) => cs.parts[i] ? `<button class="potslot on" data-act="cPartOut" data-n="${i}" title="${esc(GOODS[cs.parts[i]].name)}">${ico(cs.parts[i])}<small>${esc(GOODS[cs.parts[i]].name)}</small></button>` : '<span class="potslot"></span>').join('');
   const it = craftItem({ type: cs.type, mat: cs.mat, parts: cs.parts }), cost = craftCost(cs.type, cs.mat, cs.parts);
   const ok = s.gold >= cost.gold && Object.entries(cost.mats).every(([id, n]) => (s.bag?.[id] || 0) >= n);
@@ -126,10 +126,10 @@ export function learnTab(s, ui, b) {
       <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''} · 지금 무기로: <b class="${fit <= 0 ? 'warn' : ''}">${fitText(fit)}</b></div><div class="c-sum">${esc(sk.desc)}</div><div class="c-act">${btn}</div></div>`;
   }).join('');
   const tablets = Object.entries(LEARN).filter(([, L]) => L.where === 'tablet').map(([id, L]) => `<span class="chip ${(s.learned || []).includes(id) ? 'on' : 'off'}">${(s.learned || []).includes(id) ? SKILLS[id].name : '???'} · ${TABLET_BIOME_NAME[L.biome]}</span>`).join('');
-  return `<section class="panel"><h3>${where === 'dojo' ? '교관 가르의 무기술' : '사서 에일의 마법'} <small>클래스와 상관없이 누구나 배운다 · 배운 기술은 캐릭터 창(C)에서 Q·E·R·F에 넣는다</small></h3>
+  return `<section class="panel"><h3>${where === 'dojo' ? '교관 가르의 무기술' : '사서 에일의 마법'} </h3>
       <p class="muted">${where === 'dojo' ? '"무기를 바꾸면 쓸 수 있는 기술도 바뀐다네. 지팡이로는 제대로 못 베고, 활 없이는 못 쏘지."' : '"마법은 지팡이나 마도서가 있으면 온전히 나오지만, 맨손이면 힘이 덜 실려요."'}</p>
       <div class="skill-row">${cards}</div></section>
-    ${where === 'dojo' ? `<section class="panel"><h3>옛 기술 석판 <small>섬 곳곳의 깊은 곳에 새겨진 기술 · 읽으면 바로 배운다</small></h3><div class="chips">${tablets}</div></section>` : ''}`;
+    ${where === 'dojo' ? `<section class="panel"><h3>옛 기술 석판 </h3><div class="chips">${tablets}</div></section>` : ''}`;
 }
 
 // ───── 스킬 고르기 (캐릭터 창): 클래스 스킬 + 배운 기술 + 각인 스킬, 지금 무기와 맞는지 ─────
@@ -149,11 +149,11 @@ export function skillPickHtml(s, b) {
   const learned = (b.available || []).filter((id) => SKILLS[id] && (SKILLS[id].cls !== b.cls) && !SKILLS[id].engraving);
   const eng = (b.available || []).filter((id) => SKILLS[id]?.engraving);
   return `<section class="panel"><h3>스킬 <small>최대 4개 · Q / E / R / F · 무기: ${ITEMS[b.weaponId].name} (${WCAT_NAME[b.wcat] || b.wcat})</small></h3>
-      <p class="sk-cap">스킬 부하 <b>${b.skillLoad} / ${b.skillCap}</b> <small>센 스킬일수록 무겁다 · 4레벨마다 한도 +1 · 센 스킬 하나와 가벼운 스킬 여럿 중에서 고른다</small></p>
-      <p class="muted">무기에 맞지 않는 스킬은 약해지고(지팡이로 베기 → 30%), 아예 못 쓰는 것도 있다(활 없이 쏘기 · 방패 없이 방패 기술). <b>한손 무기</b>라면 왼손 도구(마법 부적 · 손쇠뇌 · 작은 방패 · 투척 주머니)를 함께 들어 모든 스킬을 쓸 수 있다 — 스킬은 두 손 중 더 맞는 쪽으로 나간다. 마법은 든 무기에 따라 모양이 바뀐다 (근접 무기: 앞을 휩쓰는 짧고 센 마법 · 활: 빠르고 멀리 가는 마법 화살).</p>
+      <p class="sk-cap">스킬 부하 <b>${b.skillLoad} / ${b.skillCap}</b> </p>
+
       <div class="skill-row">${cls.map((id) => card(id, false)).join('')}${locked.map((id) => card(id, true)).join('')}</div>
-      <h4>배운 기술 <small>수련장 교관 · 서고 사서에게 배우거나, 섬의 옛 기술 석판을 읽는다</small></h4>
-      <div class="skill-row">${learned.map((id) => card(id, false)).join('') || '<p class="muted">아직 없다. 마을 수련장 · 서고에 가 보자.</p>'}</div>
+      <h4>배운 기술 </h4>
+      <div class="skill-row">${learned.map((id) => card(id, false)).join('') || '<p class="muted">없음</p>'}</div>
       ${eng.length ? `<h4>각인 스킬</h4><div class="skill-row">${eng.map((id) => card(id, false)).join('')}</div>` : ''}
       ${spiritPickHtml(s)}</section>`;
 }

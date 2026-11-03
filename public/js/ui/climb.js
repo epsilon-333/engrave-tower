@@ -52,13 +52,13 @@ export function createClimb(ctx) {
     const lordsDone = Object.keys(c.lords || {}).length;
     const acts = ACTS.map((a) => `<span class="cl-act ${c.best >= a.to ? 'done' : c.best >= a.from - 1 ? 'now' : ''}" style="--c:${a.color}"><b>${a.from}~${a.to}층</b>${a.name}<small>권장 Lv ${a.rec}+</small></span>`).join('');
     ctx.showModal(`<h2>각인의 탑</h2>
-      <p class="muted">층마다 적을 모두 쓰러뜨리고 → 보상을 고르고 → 다음 문을 고른다. 5층마다 수호자, 10층마다 구역의 주인.<br>쓰러져도 <b class="cl-star">✦ 별빛</b>은 남는다. 별빛으로 <b>탑의 축복</b>을 배워 더 높이.</p>
+      <p class="muted">5층마다 수호자 · 10층마다 구역의 주인 · 쓰러져도 <b class="cl-star">✦ 별빛</b>은 남는다</p>
       <div class="cl-acts">${acts}</div>
       <p>최고 기록 <b>${c.best}층</b> / ${CLIMB_TOP} · 별빛 <b class="cl-star">✦ ${c.shards}</b>${lordsDone ? ` · 서약 <b>${sc}</b>` : ''} · 내 레벨 <b>Lv ${S().level}</b></p>
       ${r ? `<div class="cl-resume"><b>오르던 등반이 있다 — ${r.f}층</b> · 각인 ${r.eng.length}개 · 탑 금화 ${r.gold}<div class="actions"><button id="clResume">이어서 오르기</button><button id="clAbandon" class="ghost">포기한다 (별빛 ${r.shards}은 받는다)</button></div></div>`
         : `<div class="actions">${starts.map((f) => `<button data-clstart="${f}" class="${f === 1 ? '' : 'ghost'}">${f}층부터${f > 1 ? ` (각인 ${startBonus(f).eng} · 축복 ${startBonus(f).bless} 먼저)` : ''}</button>`).join('')}</div>`}
       <div class="actions"><button id="clMeta" class="ghost">탑의 축복 (영구 성장)</button>${lordsDone ? '<button id="clOath" class="ghost">서약 (난이도)</button>' : ''}${c.runs ? '<button id="clRec" class="ghost">기록</button>' : ''}<button data-close class="ghost">돌아간다</button></div>
-      ${ctx.partyLeader?.() && !r ? '<p class="muted">파티장이다 — 파티와 함께 오르려면 「파티와 오르기」</p><div class="actions"><button id="clParty">1층부터 파티와 오르기</button></div>' : ''}`);
+      ${ctx.partyLeader?.() && !r ? '<div class="actions"><button id="clParty">1층부터 파티와 오르기</button></div>' : ''}`);
     document.querySelectorAll('[data-clstart]').forEach((b) => (b.onclick = () => { close(); startClimb(+b.dataset.clstart); }));
     const $ = (id) => document.getElementById(id);
     if ($('clResume')) $('clResume').onclick = () => { close(); resume(); };
@@ -381,7 +381,7 @@ export function createClimb(ctx) {
         <p class="muted">${n ? `지금: ${M.text(n)}` : '아직 없음'}${max ? '' : ` → 다음: ${M.text(n + 1)}`}</p></div>
         ${max ? '<span class="muted">다 배웠다</span>' : `<button data-meta="${id}" ${c.shards >= cost ? '' : 'disabled'}>✦ ${cost}</button>`}</div>`;
     }).join('');
-    ctx.showModal(`<h2>탑의 축복</h2><p class="muted">별빛으로 배우는 영구 성장 · 탑 안에서만 힘을 낸다</p><p>가진 별빛 <b class="cl-star">✦ ${c.shards}</b></p><div class="cl-metas">${rows}</div><div class="actions"><button id="clBack">돌아간다</button></div>`, () => {});
+    ctx.showModal(`<h2>탑의 축복</h2><p>가진 별빛 <b class="cl-star">✦ ${c.shards}</b></p><div class="cl-metas">${rows}</div><div class="actions"><button id="clBack">돌아간다</button></div>`, () => {});
     document.querySelectorAll('[data-meta]').forEach((b) => (b.onclick = () => {
       const id = b.dataset.meta, M = META[id], n = m[id] || 0, cost = M.cost(n);
       if (n >= M.max || c.shards < cost) return;

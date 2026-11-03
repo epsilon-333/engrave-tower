@@ -4316,7 +4316,7 @@ export class Renderer {
     this.drawTip();
 
     if (w.mode === 'field' && !desk) this.drawMinimap(w);
-    else if (!document.body.classList.contains('touch')) {
+    else if (!document.body.classList.contains('touch') && w.t < 8) { // 안내 띠는 들어온 뒤 8초만 (늘 떠 있으면 화면이 지저분하다)
       const hint = document.body.classList.contains('touch') ? '시설 가까이 가서 확인 버튼 · 캐릭터 버튼으로 스탯 배분' : 'WASD 이동 · G 상호작용 · I 장비 · B 가방 · C 캐릭터 · 아래쪽 문으로 나가기';
       g.font = `${11 * u}px ${FONT}`;
       const tw2 = g.measureText(hint).width + 20 * u;

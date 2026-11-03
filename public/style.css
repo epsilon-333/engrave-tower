@@ -695,3 +695,12 @@ body.touch #cloudChip { right: auto; bottom: auto; }
 .c-skill { margin: 6px 0; padding: 7px 9px; background: var(--bg0); box-shadow: inset 3px 0 0 var(--c); display: grid; gap: 3px; }
 .cs-head { display: flex; justify-content: space-between; gap: 8px; } .cs-head b { color: #ffd27a; } .cs-head span { font-size: var(--fs-xs); color: var(--c); }
 .cs-meta { font-size: var(--fs-xs); color: var(--muted); } .cs-desc { font-size: var(--fs-s); line-height: 1.55; }
+/* ? 말풍선: 긴 설명은 여기 */
+.help { display: inline-grid; place-items: center; width: 17px; height: 17px; margin-left: 6px; font: 700 11px "Noto Sans KR", sans-serif; color: var(--muted); background: var(--bg0); box-shadow: inset 0 0 0 1px var(--line-hi); cursor: help; position: relative; vertical-align: 3px; }
+.help:hover { color: var(--accent); }
+.help:hover::after { content: attr(data-tip); position: absolute; left: 0; top: calc(100% + 6px); z-index: 20; width: max-content; max-width: 300px; white-space: normal; text-align: left;
+  padding: 7px 10px; font: 400 var(--fs-s)/1.55 "Noto Sans KR", sans-serif; color: var(--text); background: var(--bg0); box-shadow: 0 0 0 2px #0d0b10, inset 0 0 0 1px var(--line-hi); pointer-events: none; letter-spacing: 0; }
+/* 도감: 아직 모르는 칸은 작은 ??? 타일로 (긴 「아직 만나지 못했다」 줄이 늘어서지 않게) */
+.list:has(> .mini) { display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-start; }
+.list:has(> .mini) > .li:not(.mini) { flex: 1 1 100%; }
+.li.mini { flex: 0 0 auto; width: 46px; text-align: center; padding: 4px 0; color: var(--muted); font-size: var(--fs-xs); border-left: 0; background: var(--bg0); }

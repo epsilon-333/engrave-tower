@@ -35,12 +35,10 @@ export function bagTab(s) {
   for (const [id, n] of Object.entries(s.bag || {})) { if (!(n > 0)) continue; const g = GOODS[id] || registerDish(id); if (g) (groups[g.cat] ||= []).push([id, n]); }
   const body = Object.keys(GOOD_CATS).filter((c) => groups[c]).map((c) => `<h4>${GOOD_CATS[c]}</h4><div class="goods">${groups[c].map(([id, n]) =>
     `<div class="good ${s.quickFood === id ? 'quick' : ''}" title="${esc(goodTitle(id))}">${ico(id)}<b>${n}</b><span>${GOODS[id].name}</span>${foodButtons(s, id)}</div>`).join('')}</div>`).join('')
-    || '<p class="muted">가방이 비어 있다. 바위를 캐고, 나무를 베고, 반짝이는 흙을 파고, 물가에서 낚시를 해 보자.</p>';
+    || '<p class="muted">비어 있음</p>';
   const fishN = Object.keys(s.fishLog || {}).length, artN = Object.keys(s.artifacts || {}).length;
-  return `<section class="panel"><h3>도구 <small>대장간에서 더 좋은 도구로 바꿀 수 있다</small></h3><div class="tools">${tools}</div>
-      <p class="muted">물건 가까이에서 <b>G</b>: 바위 · 광맥 캐기 / 나무 베기 / 반짝이는 흙 파기 / 물가에서 낚시(찌가 가라앉으면 G, 그다음 흘러오는 박에 맞춰 G · Space · 클릭) / 마을 텃밭에서 밭 갈기 · 씨앗 심기 · 물 주기 · 수확. <b>G를 누르고 있으면</b> 계속 캔다.</p></section>
-    <section class="panel"><h3>가방 <small>${bagLine(s)} · ◆ ${s.gold} 골드 · 잡은 물고기 ${fishN}/${Object.keys(FISH).length}종 · 찾은 유물 ${artN}/${Object.keys(ARTIFACTS).length}</small></h3>
-      <p class="muted">물건 종류마다 한 칸. 요리 · 열매 · 채소 · 약초는 <b>먹기</b>로 먹는다. 요리를 빠른 칸(<b>H</b>)에 두면 싸우는 중에도 H로 먹는다. 남는 물건은 집 보관함에 두자.</p>${body}</section>`;
+  return `<section class="panel"><h3>도구<span class="help" data-tip="대장간에서 더 좋은 도구로 바꾼다. 물건 가까이에서 G: 캐기 · 베기 · 파기 · 낚시 · 밭일. G를 누르고 있으면 계속 한다.">?</span></h3><div class="tools">${tools}</div></section>
+    <section class="panel"><h3>가방 <small>${bagLine(s)}</small><span class="help" data-tip="종류마다 한 칸. 먹을 것은 「먹기」, 빠른 칸(H)에 두면 싸우는 중에도 먹는다.">?</span></h3>${body}</section>`;
 }
 
 // ───── 잡화점 ─────
@@ -84,7 +82,7 @@ export function forgeTab(s) {
     <section class="panel"><h3>무기 강화 <small>단계마다 모든 피해 +6% (최대 ${REINFORCE_MAX}단계)</small></h3>
       <div class="trow r3"><span><b>${ITEMS[wid]?.name || '무기'} ${lv ? `+${lv}` : ''}</b><small>지금: 피해 +${lv * 6}% · 장착한 무기를 강화한다</small></span>
       ${rc ? `<span class="mats">→ +${lv + 1} (피해 +${(lv + 1) * 6}%)<br>${matsHtml(s, rc.mats, rc.gold)}</span><button class="sm" data-act="reinforce" ${canPay(s, rc.mats, rc.gold) ? '' : 'disabled'}>강화</button>` : '<span class="muted">최고 단계</span>'}</div></section>
-    <section class="panel"><h3>장비 만들기 <small>만든 장비는 '대장간' 탭에서 장착한다</small></h3><div class="fcards">${gear}</div></section>`;
+    <section class="panel"><h3>장비 만들기 </h3><div class="fcards">${gear}</div></section>`;
 }
 
 // 버튼 처리 (처리했으면 true)
@@ -137,11 +135,11 @@ export function fishCodex(s) {
     if (!log) return `<div class="li off fishrow"><span class="gi"></span><span>??? <small>박자 ${'★'.repeat(f.beat)}${'☆'.repeat(5 - f.beat)} · 사는 곳: ${where}</small></span></div>`;
     return `<div class="li on fishrow">${ico(id)}<span><b>${f.name}</b>${f.legend ? ' <em class="up">전설</em>' : ''} <small>박자 ${'★'.repeat(f.beat)}${'☆'.repeat(5 - f.beat)} · 잡은 수 ${log.n} · 최대 ${log.best}cm (${f.size[0]}~${f.size[1]}cm) · ${where} · ◆ ${f.price}</small></span></div>`;
   }).join('');
-  return `<h4>물고기 <small>새 물고기를 낚을 때마다 도감 +1</small></h4><div class="list">${rows}</div><p class="muted">찌가 가라앉으면 G, 그다음 흘러오는 박이 원에 닿을 때 G · Space · 클릭. ★이 많을수록 박자가 빠르고 복잡하다. 다 '완벽'이면 더 큰 물고기가 잡힌다. 지렁이 미끼는 빨리 물게 하고, 좋은 낚싯대는 판정을 넉넉하게 하고 낚싯줄(목숨)을 늘려 준다.</p>`;
+  return `<h4>물고기 </h4><div class="list">${rows}</div>`;
 }
 export function artifactCodex(s) {
   const rows = Object.entries(ARTIFACTS).map(([id, a]) => s.artifacts?.[id]
     ? `<div class="li on fishrow">${ico('art:' + id)}<span><b>${a.name}</b> <small>${BIOME_NAME[a.biome]}</small><br><small>${esc(a.text)}</small></span></div>`
     : `<div class="li off fishrow"><span class="gi"></span><span>??? <small>단서: ${BIOME_NAME[a.biome]}의 반짝이는 흙 속</small></span></div>`).join('');
-  return `<h4>유물 <small>찾을 때마다 도감 +2</small></h4><div class="list">${rows}</div><p class="muted">반짝이는 흙을 삽으로 파면 가끔 그 지역의 유물이 나온다. 삽이 좋을수록 자주 나온다.</p>`;
+  return `<h4>유물 <small>찾을 때마다 도감 +2</small></h4><div class="list">${rows}</div>`;
 }

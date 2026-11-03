@@ -117,11 +117,11 @@ export class Hub {
         <h3>${race.name} <small>${race.passive}</small></h3>
         <p class="muted">${race.desc}</p>
         <div class="points">남은 포인트 <b>${s.points}</b>
-          <button class="sm" data-act="respec">배분 초기화 (무료)</button></div>
-        <div class="tier-help">포인트 효율: 0~20 ×1.0 · 21~40 ×1.3 · 41~60 ×1.7 · 61+ ×2.2 &nbsp;|&nbsp; 30/50/70/90에서 각성</div>
+          <button class="sm ghost" data-act="respec">초기화</button></div>
+        
         ${BASE_STATS.map(statRow).join('')}
         <h4>특수 스탯</h4><div class="chips">${specials}</div>
-        <h4>숙련으로 깨달은 것 <small class="muted">같은 일을 오래 하다 보면 어느 날 문득 깨닫는다</small></h4>
+        <h4>숙련</h4>
         <div class="chips">${Object.keys(s.knack?.got || {}).filter((id) => KNACKS[id]).map((id) => KNACKS[id].kind === 'life' ? `<span class="chip" title="${esc(KNACKS[id].desc)}">${KNACKS[id].name}</span>` : `<span class="chip" title="${esc(KNACKS[id].hint)}">${SKILLS[KNACKS[id].skill]?.name || id}</span>`).join('') || '<span class="muted">아직 없음</span>'}</div>
       </section>
       <section class="panel">
@@ -138,14 +138,14 @@ export class Hub {
         <div class="load ${b.overload ? 'over' : ''}">각인 부하 <b>${b.load} / ${d.loadCap}</b><span class="bar"><i style="width:${Math.min(100, (b.load / d.loadCap) * 100)}%"></i></span></div>
         ${b.extreme ? '<div class="badge extreme">극한 상태: 주력 스탯 +20%</div>' : ''}
         <h4>발동 중인 각성 (${awOn.length})</h4>
-        <div class="list">${awOn.map((a) => `<div class="li on"><b>${STAT_INFO[a.stat].name} ${a.at}</b> ${a.name}: ${a.desc}</div>`).join('') || '<div class="muted">아직 없음. 한 스탯을 30까지 올려 보세요.</div>'}</div>
+        <div class="list">${awOn.map((a) => `<div class="li on"><b>${STAT_INFO[a.stat].name} ${a.at}</b> ${a.name}: ${a.desc}</div>`).join('') || '<div class="muted">없음</div>'}</div>
         <h4>태그 시너지</h4>
-        <div class="list">${b.synergies.map((x) => `<div class="li ${x.on ? 'on' : 'off'}"><span class="tag" style="--c:${TAGS[x.tag].color}">${TAGS[x.tag].name} ${x.n}/${x.need}</span> ${x.text}</div>`).join('') || '<div class="muted">각인과 장비의 태그를 모아 보세요.</div>'}</div>
+        <div class="list">${b.synergies.map((x) => `<div class="li ${x.on ? 'on' : 'off'}"><span class="tag" style="--c:${TAGS[x.tag].color}">${TAGS[x.tag].name} ${x.n}/${x.need}</span> ${x.text}</div>`).join('') || '<div class="muted">없음</div>'}</div>
         <h4>조건 효과</h4>
         <div class="list">${b.notes.map((n) => `<div class="li ${n.kind}">${esc(n.text)}</div>`).join('') || '<div class="muted">없음</div>'}</div>
-        <h4>빌드 코드 <small>(공유용 · 나중에 온라인 대전에 사용)</small></h4>
+        <h4>빌드 코드</h4>
         <div class="code-row"><input id="buildCode" value="${encodeLoadout(toLoadout(s))}" readonly><button class="sm" data-act="copyCode">복사</button></div>
-        <div class="code-row"><input id="peekCode" placeholder="다른 빌드 코드를 붙여 넣으면 수치를 미리 봅니다"><button class="sm" data-act="peek">보기</button></div>
+        <div class="code-row"><input id="peekCode" placeholder="다른 빌드 코드 붙여 넣기"><button class="sm" data-act="peek">보기</button></div>
         <div id="peekOut"></div>
         <p class="danger-zone"><button class="sm ghost" data-act="reset">처음부터 다시 시작</button></p>
       </section>
@@ -222,21 +222,21 @@ export class Hub {
     return `
       ${this.skillPanel(s, b)}
       <section class="panel">
-        <h3>각인 <small>Q · E · R · F 칸은 그 각인의 스킬이 그 키로 나가고 패시브도 적용 · 마지막 칸은 패시브만 · 부하 <b>${b.load} / ${b.derived.loadCap}</b> (기본 20 · 정신 10마다 +1 · 넘치게는 장착할 수 없다)</small></h3>
+        <h3>각인 <small>부하 <b>${b.load} / ${b.derived.loadCap}</b></small>${help('Q · E · R · F 칸: 그 각인의 스킬과 패시브. 마지막 칸: 패시브만. 부하 한도는 20 + 정신 10마다 1.')}</h3>
         <div class="slots">${slotHtml}</div>
         <h4>보유 잔향</h4><div class="echoes">${echoInv}</div>
       </section>
       <section class="panel">
-        <h3>각인 목록 <small>처음에는 내 클래스에 맞는 각인만 보입니다 · ★로 찜하면 필요한 잔향과 사냥터를 알려 줘요</small></h3>
+        <h3>각인 목록${help('★로 찜하면 필요한 재료와 사냥터가 표시된다.')}</h3>
         ${filterBar}
-        <div class="filters eng-search"><input id="engSearch" type="search" placeholder="찾기: 이름 · 몬스터 · 효과 · 스킬 · 무기 (예: 처치 근력, 대시 보호막, 늪 마녀)" value="${esc(this.altarQ || '')}" style="flex:1;min-width:14em"> <span id="engCount" class="muted"></span></div>
+        <div class="filters eng-search"><input id="engSearch" type="search" placeholder="이름, 몬스터, 효과로 찾기" value="${esc(this.altarQ || '')}" style="flex:1;min-width:14em"> <span id="engCount" class="muted"></span></div>
         <details class="more-filters" ${this.altarMore ? 'open' : ''}><summary>거르기 · 정리 <small>${[this.altarQ && '검색', grade && '등급', (this.altarWeapon || 'all') !== 'all' && '무기', view === 'tag' && '태그별'].filter(Boolean).join(' · ') || '전체 보기'}</small></summary>
         <div class="filters"><span class="muted">원하는 효과 </span>${['치명타', '처치', '맞으면', '대시', '회피', '스킬을 쓰면', '보호막', '각성하면', '동안', '마다', '화상', '냉기', '중독', '출혈', '저주', '흡혈', '반사', '회복', '궁극'].map((w) => `<button class="sm ${(this.altarQ || '').split(/\s+/).includes(w) ? 'on' : 'ghost'}" data-act="aquery" data-id="${w}">${w === '동안' ? '잠깐 스탯' : w === '마다' ? '스탯 바꾸기' : w}</button>`).join('')}${this.altarQ ? '<button class="sm" data-act="aquery" data-id="">지우기</button>' : ''}</div>
         ${viewBar}
         </details>
         ${goalHtml}
-        <div class="eng-split"><div id="engList">${groups || '<p class="muted">조건에 맞는 각인이 없습니다.</p>'}</div>
-        <aside class="eng-detail">${this.altarSel && ENGRAVINGS[this.altarSel] ? this.engravingCard(this.altarSel, s, b) : '<p class="muted">왼쪽 목록에서 각인을 고르면 여기에 자세히 보여요.</p>'}</aside></div>
+        <div class="eng-split"><div id="engList">${groups || '<p class="muted">없음</p>'}</div>
+        <aside class="eng-detail">${this.altarSel && ENGRAVINGS[this.altarSel] ? this.engravingCard(this.altarSel, s, b) : '<p class="muted">각인을 고르세요</p>'}</aside></div>
       </section>`;
   }
 
@@ -280,12 +280,12 @@ export class Hub {
     const auto = getAutoAim();
     const now = SLOT_KEYS.slice(0, 4).map((k, i) => { const id = b.skills[i], sk = id && SKILLS[id]; return `<div class="skc ${sk ? 'on' : ''}" style="--c:${sk ? ROLE_COLOR[sk.role] : '#5a5068'}"><div class="c-head"><b>[${k}] ${sk ? sk.name : '비어 있음'}</b>${sk ? `<span class="role">${sk.role}</span>` : ''}</div><div class="c-sum">${sk ? esc(sk.desc) : '공명 제단에서 이 칸에 각인을 넣으면 그 각인의 스킬이 나간다'}</div>${sk ? scaleLine(id) : ''}</div>`; }).join('');
     return `<section class="panel">
-      <h3>클래스 <small>언제든 무료로 바꿀 수 있어요 · 바꾸면 그 클래스의 시작 무기를 받습니다</small></h3>
+      <h3>클래스${help('언제든 무료로 바꾼다. 바꾸면 그 클래스의 시작 무기를 받는다.')}</h3>
       <div class="cls-row">${clsRow}</div>
-      <h3>스킬 <small>스킬은 각인 칸 Q · E · R · F에 넣은 각인에서 나온다 (따로 고르는 스킬 칸은 없다)</small></h3>
+      <h3>스킬${help('빈 칸은 내 클래스 스킬, 각인을 넣으면 그 각인의 스킬.')}</h3>
       <div class="skill-tools">
         <label class="toggle"><input type="checkbox" data-act="autoAim" ${auto ? 'checked' : ''}> 자동 조준 <small>(T)</small></label>
-        <button class="sm" data-act="practice">연습 모드 · 모든 스킬 써 보기</button>
+        <button class="sm" data-act="practice">연습장</button>
       </div>
       <div class="skill-row">${now}${wcard}</div>
     </section>`;
@@ -306,7 +306,7 @@ export class Hub {
       return `<div class="li ${have >= n ? 'on' : ''}"><span style="color:${ECHOES[eid].color}">◆ ${s.codex.echoes[eid] ? ECHOES[eid].name : '???'}</span> ${Math.min(have, n)}/${n} · ${src.slice(0, 3).join(', ')}</div>`;
     }).join('');
     return `<div class="goal-box"><h4>★ 목표: ${goals.map((id) => ENGRAVINGS[id].name).join(', ')}</h4><div class="list">${rows}</div>
-      <p class="muted">필드에서도 화면 오른쪽에 목표 잔향 진행이 표시됩니다.</p></div>`;
+      </div>`;
   }
 
   // 지금 빌드 기준 배지: 시너지 발동, 조건 충족, 스타일 일치
@@ -448,16 +448,16 @@ export class Hub {
     const bySlot = () => '';
     return `
       <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots">${gearRow}</div>
-        ${b.notes.filter((n) => /^양손|둘:|^쌍/.test(n.text)).map((n) => `<p class="up">✦ ${esc(n.text)}</p>`).join('') || '<p class="muted">양손 무기는 능력치 ×1.3 + 종류마다 양손 보너스 · 한손 무기 둘을 같은 계열로 들면 살짝 강해진다</p>'}</section>
-      <section class="panel"><h3>${ownedOnly ? '내 장비' : '대장간'} <small>${ownedOnly ? '가진 장비만 보인다 · 새 장비는 대장간에서 사거나 탑에서 줍는다' : '살 수 있는 장비 · 가진 장비'}</small></h3>
+        ${b.notes.filter((n) => /^양손|둘:|^쌍/.test(n.text)).map((n) => `<p class="up">✦ ${esc(n.text)}</p>`).join('') || ''}</section>
+      <section class="panel"><h3>${ownedOnly ? '내 장비' : '대장간'}</h3>
         ${gearFilters}
         <div class="eng-split"><div class="cards eng-rows">${all.map(gearRowItem).join('') || '<p class="muted">없음</p>'}</div>
-        <aside class="eng-detail">${sel ? card(sel) : '<p class="muted">왼쪽에서 장비를 고르면 여기에 자세히 보여요.</p>'}</aside></div></section>`;
+        <aside class="eng-detail">${sel ? card(sel) : '<p class="muted">장비를 고르세요</p>'}</aside></div></section>`;
   }
 
   // ───── 사냥터 ─────
   tab_hunt(s) {
-    return `<section class="panel"><h3>관문 정보 <small>원하는 잔향을 주는 몬스터가 사는 곳을 고르세요</small></h3>
+    return `<section class="panel"><h3>관문 정보</h3>
       <div class="zones">${ZONES.map((z) => {
         const mons = [...z.pool, z.elite].map((m) => {
           const def = MONSTERS[m], seen = s.codex.kills[m];
@@ -484,7 +484,7 @@ export class Hub {
     const sec = this.codexSec ||= 'monsters';
     const head = `<div class="codex-head">
       <div><b>도감 점수 ${pts}</b> · 다음 레벨까지 ${lv.need - lv.into}점 <span class="bar"><i style="width:${(lv.into / lv.need) * 100}%"></i></span></div>
-      <p class="muted">새 몬스터를 알아가고, 장소를 찾고, 기록을 읽고, 사람의 사연을 끝까지 듣고, 새 물고기를 낚고, 땅속 유물을 찾으면 도감이 채워지고 레벨이 오릅니다.</p>
+      
       <nav class="codex-nav">${[['monsters', `몬스터 ${tot.monsters.done}/${tot.monsters.all}`], ['places', `장소 ${tot.places.done}/${tot.places.all}`], ['records', `기록 ${tot.records.done}/${tot.records.all}`], ['people', `사람 ${tot.people.done}/${tot.people.all}`], ['fish', `물고기 ${tot.fish.done}/${tot.fish.all}`], ['artifacts', `유물 ${tot.artifacts.done}/${tot.artifacts.all}`], ['mats', '각인 재료'], ['etc', '원소 반응 · 태그']]
         .map(([k, n]) => `<button class="sm ${sec === k ? 'on' : 'ghost'}" data-act="codexSec" data-id="${k}">${n}</button>`).join('')}</nav></div>`;
     let body = '';
@@ -493,7 +493,7 @@ export class Hub {
       body = codexGroups().map(({ name, ids }) => {
         return `<h4>${name}</h4><div class="list">${ids.map((id) => {
           const m = MONSTERS[id], n = c.kills?.[id] || 0, st = monsterStage(id, n);
-          if (!st) return '<div class="li off">??? <small>아직 만나지 못했다</small></div>';
+          if (!st) return '<div class="li off mini" title="아직 만나지 못했다">???</div>';
           const stars = '★'.repeat(st) + '☆'.repeat(Math.max(0, STAGE_MAX - st));
           const next = st < STAGE_MAX ? ` · 다음 단계까지 ${STAGE_KILLS[st] - n}마리` : ` · <b>완성</b> · 다음 1점까지 ${Math.max(200, (Math.floor(n / 100) + 1) * 100) - n}마리`;
           const info = [`HP ${m.hp} · ${m.type === 'mag' ? '마법' : '물리'} 공격 ${m.atk}`];
@@ -505,7 +505,7 @@ export class Hub {
         }).join('')}</div>`;
       }).join('');
     } else if (sec === 'places') {
-      body = PLACE_ZONES.map((z) => `<h4>${z.id === 'world' ? '' : `${z.floor}층 · `}${z.name}</h4><div class="list">${zonePlaces(z).map((n) => c.places?.[placeKey(z.id, n)] ? `<div class="li on"><b>${n}</b></div>` : '<div class="li off">??? <small>아직 찾지 못한 장소</small></div>').join('')}</div>`).join('');
+      body = PLACE_ZONES.map((z) => `<h4>${z.id === 'world' ? '' : `${z.floor}층 · `}${z.name}</h4><div class="list">${zonePlaces(z).map((n) => c.places?.[placeKey(z.id, n)] ? `<div class="li on"><b>${n}</b></div>` : '<div class="li off mini" title="아직 찾지 못한 장소">???</div>').join('')}</div>`).join('');
     } else if (sec === 'records') {
       const sr = Object.keys(SANCT_ALL), relRows = [];
       for (let i = 0; i < sr.length; i++) for (let j = i + 1; j < sr.length; j++) { const r = relation(sr[i], sr[j]); if (r.v) relRows.push([sr[i], sr[j], r]); }
@@ -526,7 +526,7 @@ export class Hub {
         return `<div class="li ${s.echoes?.[eid] ? 'on' : ''}"><b style="color:${E.color}">◆ ${E.name}</b> <small>가진 것 ${s.echoes?.[eid] || 0}</small><br><small>${where.join('<br>')}</small><br><small class="muted">쓰는 각인: ${uses.slice(0, 8).map((k) => ENGRAVINGS[k].name).join(' · ')}${uses.length > 8 ? ` 외 ${uses.length - 8}개` : ''}</small></div>`;
       };
       const fams = Object.keys(ECHOES).filter((k) => !ECHOES[k].part), parts = Object.keys(ECHOES).filter((k) => ECHOES[k].part);
-      body = `<p class="muted">각인을 새기는 재료가 어디서 나오는지 · 모르는 몬스터는 사는 곳만 보인다</p>
+      body = `
         <h4>계열 잔향 <small>${fams.length}종</small></h4><div class="list">${fams.map(row).join('')}</div>
         <h4>몬스터 부산물 <small>${parts.length}종</small></h4><div class="list">${parts.map(row).join('')}</div>`;
     } else if (sec === 'fish') {
@@ -536,7 +536,7 @@ export class Hub {
     } else if (sec === 'people') {
       body = `<div class="list">${Object.values(PEOPLE).map((p) => {
         const done = p.steps.filter((st) => f[st]).length;
-        if (!done) return '<div class="li off">??? <small>아직 만나지 못한 사람</small></div>';
+        if (!done) return '<div class="li off mini" title="아직 만나지 못한 사람">???</div>';
         return `<div class="li ${done === p.steps.length ? 'on' : ''}"><b>${p.name}</b> <small>${p.title} · 사연 ${done}/${p.steps.length}</small><br><small>${p.summary.slice(0, done).join('<br>')}</small></div>`;
       }).join('')}</div>`;
     } else {
@@ -585,7 +585,7 @@ export class Hub {
     </div>`).join('');
     return `<section class="panel"><h3>의뢰 게시판 <small>의뢰인 마르코: "탑 아래 사람들이 부탁한 일들이오."</small></h3>
       <div class="cards">${cards}</div>
-      <p class="muted">의뢰는 해당 지역에서 사냥을 마치고 돌아오면 진행됩니다. 완료하면 새 의뢰가 올라옵니다.</p></section>`;
+      </section>`;
   }
 
   onClick(ev) {
@@ -713,6 +713,7 @@ const TERMS = {
   각성: '스탯이 30 · 50 · 70 · 90 · 110 …을 넘으면 켜지는 능력. 싸우는 중 잠깐 오른 스탯으로도 켜진다.', 치명타: '피해가 크게 늘어나는 공격 (감각 · 장비로 확률이 오른다).',
   연쇄: '각인이 일으킨 일(폭발 · 보호막 · 각성 …)이 다른 각인을 다시 깨운다. 단계 제한 없음.', 회피: '공격을 완전히 피한다.', 궁극: '그 종족만 쓰는 가장 센 기술.',
 };
+const help = (t) => ` <span class="help" data-tip="${t}">?</span>`; // 설명은 ? 말풍선 안으로 (제목 옆에 길게 늘어놓지 않는다)
 const TERM_RE = new RegExp(`(${Object.keys(TERMS).join('|')})`, 'g');
 const termify = (html) => html.replace(TERM_RE, (w) => `<span class="term" data-tip="${TERMS[w]}">${w}</span>`);
 
