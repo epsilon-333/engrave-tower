@@ -3546,6 +3546,19 @@ function regionMusic() {
   regionMusic.last = world.regionCur;
   startMusic(REGION_MUSIC[BIOME_LIST[world.regionCur]?.id] || 'plaza');
 }
+// 오류 알림: 조용히 삼키지 않고 오른쪽 아래에 작게 알린다 (같은 오류는 한 번만 · 콘솔에 자세히)
+const seenErr = new Set();
+function reportError(err) {
+  const key = String(err?.message || err).slice(0, 120);
+  if (seenErr.has(key)) return;
+  seenErr.add(key); console.error(err);
+  let el = document.getElementById('errToast');
+  if (!el) { el = document.createElement('div'); el.id = 'errToast'; document.body.appendChild(el); el.onclick = () => { el.hidden = true; }; }
+  el.hidden = false; el.textContent = `오류가 났어요 (게임은 계속돼요): ${key} — 눌러서 닫기`;
+  clearTimeout(reportError.t); reportError.t = setTimeout(() => { el.hidden = true; }, 12000);
+}
+addEventListener('error', (e) => reportError(e.error || e.message));
+addEventListener('unhandledrejection', (e) => reportError(e.reason));
 let padNow = null;
 function padTick() { // 게임패드: 창이 떠 있으면 버튼 고르기, 아니면 싸움 입력 (readInput)
   const st = padNow = padState(); if (!st) return;
@@ -3557,7 +3570,7 @@ function padTick() { // 게임패드: 창이 떠 있으면 버튼 고르기, 아
   if (st.pressed(8) && world.state === 'play' && !world.practice) openPanel('char'); // Back: 캐릭터
 }
 function frame(ts) {
-  try { padTick(); tick(ts); updateVoyBar(); const pnow = performance.now(); politicsTick(Math.min(0.1, (pnow - (frame.pt || pnow)) / 1000)); frame.pt = pnow; } catch (err) { if (!frame.warned) { frame.warned = true; console.error(err); } } // 한 번의 오류로 게임이 멈추지 않게
+  try { padTick(); tick(ts); updateVoyBar(); const pnow = performance.now(); politicsTick(Math.min(0.1, (pnow - (frame.pt || pnow)) / 1000)); frame.pt = pnow; } catch (err) { reportError(err); } // 한 번의 오류로 게임이 멈추지 않게 (대신 알린다)
   requestAnimationFrame(frame);
 }
 function tick(ts) {
