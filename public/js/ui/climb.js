@@ -8,6 +8,7 @@ import { computeBuild } from '../sim/build.js';
 import { buildClimbFloor } from '../sim/climbmap.js';
 import { toLoadout, applyRun } from '../save.js';
 import { ZONES } from '../data/monsters.js';
+import { eatInfo } from '../data/cooking.js';
 import { CLIMB_TOP, ACTS, actOf, floorKind, recLevel, newRun, runEffects, OATHS, oathScore, climbStarts, newClimbSave, FLOOR_MODS } from '../data/climb.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -35,6 +36,7 @@ export function createClimb(ctx) {
     const acts = ACTS.map((a) => `<span class="cl-act ${c.lords?.[a.n] ? 'done' : c.best >= a.from - 1 ? 'now' : ''}" style="--c:${a.color}"><b>${a.from}~${a.to}층</b>${a.name}<small>권장 Lv ${a.rec}+</small></span>`).join('');
     ctx.showModal(`<h2>각인의 탑</h2>
       <p class="muted">층마다 몬스터 · 5층마다 수호자 · 10층마다 구역의 주인. 주인을 쓰러뜨리면 다음 구역부터 시작할 수 있다.</p>
+      <p class="muted">탑 안에서는 수호자 · 주인을 쓰러뜨릴 때만 체력이 돌아온다. <b>음식(H)</b> · <b>물약(Z)</b>을 챙기자 — 가방의 음식 ${Object.entries(S().bag || {}).filter(([k, n]) => n > 0 && eatInfo(k)).reduce((a, [, n]) => a + n, 0) || '없음'}</p>
       <div class="cl-acts">${acts}</div>
       <p>최고 기록 <b>${c.best}층</b> / ${CLIMB_TOP}${lordsDone ? ` · 서약 <b>${sc}</b>` : ''} · 내 레벨 <b>Lv ${S().level}</b></p>
       <div class="actions">${starts.map((f, i) => `<button data-clstart="${f}" class="${i === starts.length - 1 ? '' : 'ghost'}">${f}층부터</button>`).join('')}</div>

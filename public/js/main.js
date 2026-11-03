@@ -18,7 +18,7 @@ import { HOUSES, buildHouse } from './data/maps/houses.js';
 import { cycleSeed, growPlot } from './sim/life.js';
 import { newClock, canSleep, sleepUntilMorning, absMin, clockText } from './sim/time.js';
 import { registerCrafted, craftItem, LOOT_RARITY } from './data/crafting.js';
-import { registerAllDishes, registerDish } from './data/cooking.js';
+import { registerAllDishes, registerDish, eatInfo } from './data/cooking.js';
 import { LEARN, ABILITIES } from './data/learn.js';
 import { CROPS } from './data/goods.js';
 import { GOODS, SELL_BONUS } from './data/goods.js';
@@ -700,7 +700,8 @@ const TUT = [
   { text: 'Space로 굴러 보세요 — 구르는 동안은 공격을 피한다', done: (w, t) => w.player.dashCharges < t.dash0 },
   { text: '좌클릭으로 허수아비를 세 번 때리세요 (마우스 쪽으로 휘두른다)', setup: (w, t) => { const e = w.makeEnemy('dummy', w.player.x + 46, w.player.y); e.home = { x: e.x, y: e.y }; e.tut = true; w.enemies.push(e); t.dummy = e; t.hp = e.hp; t.hits = 0; },
     done: (w, t) => { if (!t.dummy) return true; if (t.dummy.hp < t.hp) { t.hits++; t.hp = t.dummy.hp; } return t.hits >= 3; } },
-  { text: 'Q · E로 스킬을 써 보세요 — 아래 칸에 남은 시간이 숫자로 보인다', done: (w) => Object.values(w.player.cds || {}).some((v) => v > 0.45) },
+  { text: 'Q · E 스킬로 허수아비를 맞혀 보세요 — [차지]라고 적힌 스킬은 길게 눌렀다 놓으면 세진다', setup: (w, t) => { t.hp0 = t.dummy?.hp ?? 0; if (t.dummy && !t.dummy.dead) t.dummy.hp = t.dummy.maxHp; t.hp0 = t.dummy?.hp ?? 0; },
+    done: (w, t) => Object.values(w.player.cds || {}).some((v) => v > 0.45) && (!t.dummy || t.dummy.dead || t.dummy.hp < t.hp0) },
   { text: '우클릭으로 무기 기술을 써 보세요', done: (w) => w.player.skillCd > 0 || !!w.player.charging },
   { text: '무언가 앞에서 G — 표지판을 읽고, 사람에게 말을 걸고, 모닥불에서 쉰다', done: () => tutFlags.interact },
   { text: 'I 장비 · B 가방 · J 퀘스트 · C 캐릭터 — 하나를 열어 보세요', done: () => tutFlags.panel },
@@ -755,6 +756,7 @@ function journeyEvent(k, d) {
 let journeyT = 0;
 function journeyTick(dt) {
   if (!save || !world) { renderer.journey = null; return; }
+  if (save.tutorial && !save.tutorial.done) { renderer.journey = null; return; } // 튜토리얼 중에는 여정을 숨긴다 (할 일 안내가 한 화면에 여럿 뜨지 않게)
   if ((journeyT -= dt) > 0) return;
   journeyT = 0.5;
   if (world.zone?.id === 'world' && world.near?.kind === 'towerDoor' && !save.flags?.towerSeen) (save.flags ||= {}).towerSeen = 1;
@@ -1712,8 +1714,11 @@ function doSleep() {
 }
 // 빠른 칸 음식 (H)
 function eatQuick() {
-  const id = save.quickFood;
-  if (!id || !(save.bag[id] > 0)) { renderer.banner = { text: '빠른 칸에 음식이 없다', sub: '가방(B)에서 요리 옆의 H를 눌러 빠른 칸에 둔다', t: 2, color: '#c8b8a0' }; return; }
+  let id = save.quickFood;
+  if (!id || !(save.bag[id] > 0)) { // 빠른 칸이 비었으면 가방에서 가장 많이 회복하는 음식을 먹는다
+    id = Object.keys(save.bag || {}).filter((k) => save.bag[k] > 0 && eatInfo(k)).sort((a, b) => (eatInfo(b).heal || 0) - (eatInfo(a).heal || 0))[0];
+  }
+  if (!id) { renderer.banner = { text: '먹을 것이 없다', sub: '요리 · 낚시 · 농사로 음식을 만들자 — 탑 안에서 H로 먹으면 체력이 돌아온다', t: 2.4, color: '#c8b8a0' }; return; }
   world.eat(id);
 }
 // 옛 기술 석판 · 물의 정령 · 자라: 기술 배우기
