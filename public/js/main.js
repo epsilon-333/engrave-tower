@@ -7,6 +7,7 @@ import { Renderer } from './render/renderer.js';
 import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
 import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
+import { padState, applyPad, padMenu } from './gamepad.js';
 import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, setStaleHook } from './save.js';
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
 import { codexPoints, levelFor } from './data/codex.js';
@@ -2053,6 +2054,7 @@ function readInput() {
   input.autoAim = getAutoAim();
   if (window.__bot) { window.__bot(input, world); return; } // 디버그: 자동 플레이
   if (touch) { touch.apply(); return; }
+  if (padNow?.active) { applyPad(padNow, input, world?.player); return; }
   input.moveX = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
   input.moveY = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0);
   input.gHeld = keys.has('KeyG'); // G를 누르고 있으면 계속 캔다
@@ -3531,8 +3533,18 @@ function arcTalk(id) {
 }
 
 let autosaveT = 0;
+let padNow = null;
+function padTick() { // 게임패드: 창이 떠 있으면 버튼 고르기, 아니면 싸움 입력 (readInput)
+  const st = padNow = padState(); if (!st) return;
+  if (!titleEl.hidden) { padMenu(st, titleEl); return; }
+  if (!world || gameEl.hidden) return;
+  if (st.pressed(9)) { escAction(); return; } // Start: 일시정지 · 창 닫기
+  if (!panelEl.hidden) { padMenu(st, panelEl, () => closePanel()); return; }
+  if (modal) { padMenu(st, overlay, () => modal?.()); return; }
+  if (st.pressed(8) && world.state === 'play' && !world.practice) openPanel('char'); // Back: 캐릭터
+}
 function frame(ts) {
-  try { tick(ts); updateVoyBar(); const pnow = performance.now(); politicsTick(Math.min(0.1, (pnow - (frame.pt || pnow)) / 1000)); frame.pt = pnow; } catch (err) { if (!frame.warned) { frame.warned = true; console.error(err); } } // 한 번의 오류로 게임이 멈추지 않게
+  try { padTick(); tick(ts); updateVoyBar(); const pnow = performance.now(); politicsTick(Math.min(0.1, (pnow - (frame.pt || pnow)) / 1000)); frame.pt = pnow; } catch (err) { if (!frame.warned) { frame.warned = true; console.error(err); } } // 한 번의 오류로 게임이 멈추지 않게
   requestAnimationFrame(frame);
 }
 function tick(ts) {
