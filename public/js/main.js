@@ -37,11 +37,11 @@ import { STAT_INFO } from './data/stats.js';
 import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
 import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText, spiritSpecialText, STONE_PRICE_CALLER, CALLER_RATES, spiritLevel, SPIRIT_LV_XP } from './data/spirits.js';
 import { spiritIconURL } from './render/spirits.js';
-import { getAutoAim, setAutoAim, getNpcAttack, setNpcAttack } from './settings.js';
+import { getAutoAim, setAutoAim, getNpcAttack, setNpcAttack, opts, setOpt } from './settings.js';
 import { witness, opinionText } from './sim/npclife.js';
 import { ENGRAVINGS } from './data/engravings.js';
 import { RACE_ART } from './data/art.js';
-import { unlockAudio, sfx, startMusic, getVolume, setVolume } from './audio.js';
+import { unlockAudio, sfx, startMusic, stopMusic, getVolume, setVolume } from './audio.js';
 import { setupTouch, isTouch } from './touch.js';
 import { PORTS, CARGO, CARGO_CAP, destName, buyPrice as portBuy, sellPrice as portSell, noteTrade, rememberPrices, cargoCount, SEA_EVENTS } from './data/trade.js';
 import { SHIP_ZONE, buildShipDeck } from './data/maps/ship.js';
@@ -1926,35 +1926,66 @@ function bindVolume() {
 
 function showPause() {
   const field = world.mode === 'field' && !world.voyage;
+  const leave = world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button>'
+    : world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>'
+    : field ? (world.climb ? '<button id="retreat" class="ghost">등반 포기 (주운 것은 모두 가져간다)</button>' : world.zone?.id === 'world' ? '' : '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button>') : '';
+  const canTitle = !world.climb && !world.pvp && !coRun;
   showModal(`<h2 class="pause-h">일시정지</h2>
     <button data-close class="primary">계속하기</button>
-    ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button><button id="rankBtn" class="ghost">랭킹 · N</button>' : ''}
-    ${net.admin ? '<button id="adminBtn" class="ghost">운영자 · 접속한 사람</button>' : cloud.name === '운영자' && net.up ? '<p class="muted">운영자 열쇠 (서버의 ADMIN_KEY) <input id="adminKeyIn" type="password" style="width:9em"> <button id="adminKeyGo" class="sm ghost">확인</button></p>' : ''}
     ${isTouch() ? `<div class="actions col"><button id="tChar" class="ghost">캐릭터 · 스킬 · 스탯</button><button id="tMap" class="ghost">지도</button><button id="tQuest" class="ghost">퀘스트</button><button id="tGear" class="ghost">장비 · 어디서 얻나</button>${net.up ? '<button id="tChat" class="ghost">채팅</button>' : ''}</div>` : ''}
-    ${world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>' : ''}<label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> NPC 공격 (끄면 사람에게 맞지 않는다)</label><label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T)</label>
-    ${world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button><p class="muted">포기하면 상대의 승리.</p>' : field && !world.practice ? world.climb ? '<button id="retreat" class="ghost">등반 포기 (별빛은 모두 남는다)</button>' : '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button><p class="muted">귀환 포탈로 돌아가면 잔향을 모두 지킨다.</p>' : '<button id="howto" class="ghost">조작법 보기</button>'}
-    ${volumeHtml()}
-    ${isClaudePage() ? '' : cloud.mode === 'account' ? `<p class="muted">${esc(cloud.name)} 계정으로 로그인 중</p><button id="logoutBtn" class="ghost">로그아웃</button>` : '<button id="loginBtn" class="ghost">로그인 / 회원가입</button>'}`);
-  bindVolume();
-  const lo = document.getElementById('logoutBtn'), li = document.getElementById('loginBtn');
-  if (lo) lo.onclick = async () => { await logout(); clearSave(); save = null; world = null; overlay.hidden = true; paused = false; modal = null; showLogin(afterLogin); };
-  if (li) li.onclick = () => { overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
-  document.getElementById('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
-  document.getElementById('npcAtkCk').onchange = (e) => { setNpcAttack(e.target.checked); if (world) world.npcAttack = e.target.checked; };
-  const sb = document.getElementById('socialBtn'); if (sb) sb.onclick = () => showSocial();
-  const rb = document.getElementById('rankBtn'); if (rb) rb.onclick = () => showRank();
-  const ab = document.getElementById('adminBtn'); if (ab) ab.onclick = () => showAdmin();
-  const ak = document.getElementById('adminKeyGo'); if (ak) ak.onclick = () => { try { localStorage.setItem('adminKey', document.getElementById('adminKeyIn').value); } catch {} netConnect(onlineInfo); setTimeout(() => { if (modal) showPause(); }, 700); };
+    ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button><button id="rankBtn" class="ghost">랭킹 · N</button>' : ''}
+    ${net.admin ? '<button id="adminBtn" class="ghost">운영자 · 접속한 사람</button>' : ''}
+    <button id="settingsBtn" class="ghost">설정</button>
+    ${field ? '' : '<button id="howto" class="ghost">조작 · 도움말</button>'}
+    ${leave}
+    ${canTitle ? '<button id="titleBtn" class="ghost">저장하고 타이틀로</button>' : ''}`);
+  const $ = (id) => document.getElementById(id);
   const close0 = () => { overlay.hidden = true; paused = false; modal = null; };
-  const tm = document.getElementById('tMap'); if (tm) tm.onclick = () => { close0(); if (world.map?.outdoor) renderer.bigMap = !renderer.bigMap; };
-  const tq = document.getElementById('tQuest'); if (tq) tq.onclick = () => { close0(); showQuestLog(); };
-  const tg = document.getElementById('tGear'); if (tg) tg.onclick = () => { close0(); openPanel('gear'); };
-  const tc = document.getElementById('tChat'); if (tc) tc.onclick = () => { close0(); openChat(); };
-  const tch = document.getElementById('tChar'); if (tch) tch.onclick = () => { close0(); if (!world.practice) openPanel('char'); };
-  if (world.practice) document.getElementById('exitPractice').onclick = () => { overlay.hidden = true; paused = false; modal = null; exitPractice(); };
-  else if (field) document.getElementById('retreat').onclick = () => { overlay.hidden = true; endRun('retreat'); };
-  else document.getElementById('howto').onclick = () => showTutorial();
+  const on = (id, f) => { const el = $(id); if (el) el.onclick = f; };
+  on('settingsBtn', () => showSettings(showPause));
+  on('socialBtn', () => showSocial()); on('rankBtn', () => showRank()); on('adminBtn', () => showAdmin());
+  on('tMap', () => { close0(); if (world.map?.outdoor) renderer.bigMap = !renderer.bigMap; });
+  on('tQuest', () => { close0(); showQuestLog(); });
+  on('tGear', () => { close0(); openPanel('gear'); });
+  on('tChat', () => { close0(); openChat(); });
+  on('tChar', () => { close0(); if (!world.practice) openPanel('char'); });
+  on('exitPractice', () => { close0(); exitPractice(); });
+  on('retreat', () => { overlay.hidden = true; endRun('retreat'); });
+  on('howto', () => showTutorial());
+  on('titleBtn', () => { writeSave(save); cloudSaveNow(save); close0(); stopMusic(); world = null; showTitle(); });
 }
+
+// 설정: 소리 · 조작 · 화면 · 계정 · 저장 지우기
+function showSettings(back) {
+  const sel = (id, cur, list) => `<select id="${id}">${list.map(([v, t]) => `<option value="${v}" ${String(cur) === String(v) ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+  showModal(`<h2>설정</h2>
+    <h4>소리</h4>${volumeHtml()}
+    <h4>조작</h4>
+    <label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T) — 가까운 적을 저절로 겨눈다</label>
+    <label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> 마을 사람도 때릴 수 있게 (끄면 사람에게 맞지 않는다)</label>
+    <h4>화면</h4>
+    <p class="set-row">화면 흔들림 ${sel('optShake', opts.shake, [[1, '보통'], [0.5, '약하게'], [0, '끔']])}</p>
+    <p class="set-row">피해 숫자 ${sel('optDmg', opts.dmgNum, [['all', '모두'], ['crit', '치명타만'], ['off', '끔']])}</p>
+    <label class="ck"><input type="checkbox" id="optBig" ${opts.bigText ? 'checked' : ''}> 창 글자 크게</label>
+    ${document.fullscreenEnabled ? `<button id="fsBtn" class="ghost">${document.fullscreenElement ? '창 모드로' : '전체 화면'}</button>` : ''}
+    <h4>계정 · 저장</h4>
+    ${isClaudePage() ? '<p class="muted">이 페이지의 Claude 계정에 저장된다</p>' : cloud.mode === 'account' ? `<p class="muted">${esc(cloud.name)} 계정으로 로그인 중</p><button id="logoutBtn" class="ghost">로그아웃</button>` : '<button id="loginBtn" class="ghost">로그인 / 회원가입 (어느 기기에서든 이어서)</button>'}
+    <details class="danger-zone"><summary class="muted">처음부터 다시 시작</summary><p class="muted">레벨 · 장비 · 각인 · 도감이 모두 지워지고 되돌릴 수 없어요${cloud.mode !== 'local' ? ' (서버 저장도 지워져요)' : ''}. 지우려면 아래에 <b>지운다</b>를 적으세요.</p><input id="resetIn" placeholder="지운다"> <button id="resetGo" class="sm ghost">지우기</button></details>
+    <div class="actions"><button id="setBack">돌아간다</button></div>`, () => back());
+  bindVolume();
+  const $ = (id) => document.getElementById(id);
+  $('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
+  $('npcAtkCk').onchange = (e) => { setNpcAttack(e.target.checked); if (world) world.npcAttack = e.target.checked; };
+  $('optShake').onchange = (e) => setOpt('shake', +e.target.value);
+  $('optDmg').onchange = (e) => setOpt('dmgNum', e.target.value);
+  $('optBig').onchange = (e) => { setOpt('bigText', e.target.checked); document.body.classList.toggle('big-text', e.target.checked); };
+  if ($('fsBtn')) $('fsBtn').onclick = () => { (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {}); setTimeout(() => showSettings(back), 300); };
+  if ($('logoutBtn')) $('logoutBtn').onclick = async () => { await logout(); clearSave(); save = null; world = null; overlay.hidden = true; paused = false; modal = null; showTitle(); };
+  if ($('loginBtn')) $('loginBtn').onclick = () => { writeSave(save); overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
+  $('resetGo').onclick = () => { if ($('resetIn').value.trim() !== '지운다') { $('resetIn').focus(); return; } overlay.hidden = true; paused = false; modal = null; resetGame(); };
+  $('setBack').onclick = () => back();
+}
+document.body.classList.toggle('big-text', !!opts.bigText);
 
 function escAction() {
   if (!world || gameEl.hidden) return;

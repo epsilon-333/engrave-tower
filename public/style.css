@@ -732,3 +732,7 @@ body.touch #cloudChip { right: auto; bottom: auto; }
 .race .diff { display: block; font-size: 12px; color: #e9b85c; margin: 2px 0 4px; }
 .race .mini-wrap { margin-top: 6px; font-size: 12px; color: var(--muted); }
 .race .mini-wrap summary { cursor: pointer; }
+.set-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 6px 0; }
+.set-row select { font: inherit; background: #0f0d0e; color: var(--text); border: 1px solid #4c4244; padding: 3px 6px; }
+.modal h4 { margin: 14px 0 4px; color: var(--accent); }
+body.big-text .modal, body.big-text #panel { font-size: 18px; }

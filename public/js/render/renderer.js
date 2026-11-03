@@ -1,5 +1,6 @@
 // 캔버스 렌더러: world 상태를 읽어서 그리기만 한다 (게임 로직 없음)
 // 화면 크기에 맞춰 정수 배율(S)로 도트를 키우고, 글씨는 실제 해상도로 따로 그린다.
+import { opts } from '../settings.js';
 import { TILE, T_LIQUID, T_WALL, T_CRACK, T_BUILD, T_DEEP } from '../sim/mapgen.js';
 import { paintTile, drawOutdoorProp, renderChunk, CHUNK, drawRelic, drawSign, drawTurtle } from './outdoor.js';
 import { renderInterior, drawInteriorProp } from './interior.js';
@@ -335,7 +336,8 @@ export class Renderer {
           }
           { // 같은 적에게 짧은 사이에 들어온 피해는 숫자 하나로 합친다 (숫자가 겹쳐 지저분하지 않게) · 치명타는 따로 크게
             const same = !ev.crit && ev.id != null && this.texts.find((q) => q.tid === ev.id && !q.crit && q.t > 0.5);
-            if (same) { same.val += ev.v; same.text = fmt(same.val); same.t = 0.75; same.pop = 0.07; if (ev.heavy) same.heavy = true; }
+            if (opts.dmgNum === 'off' || (opts.dmgNum === 'crit' && !ev.crit)) { /* 설정: 피해 숫자 숨김 */ }
+            else if (same) { same.val += ev.v; same.text = fmt(same.val); same.t = 0.75; same.pop = 0.07; if (ev.heavy) same.heavy = true; }
             else this.texts.push({ tid: ev.id, val: ev.v, x: ev.x + (Math.random() - 0.5) * 6, y: ev.y, text: fmt(ev.v), color: ev.color, t: 0.75, crit: ev.crit, heavy: ev.heavy, small: ev.small, vy: -34, vx: (Math.random() - 0.5) * 24, pop: ev.crit || ev.heavy ? 0.14 : 0.07 });
           }
           if (ev.id != null) this.squash.set(ev.id, 0.14);
@@ -821,8 +823,9 @@ export class Renderer {
     this.cam.y = mh <= VH ? (mh - VH) / 2 : Math.max(0, Math.min(mh - VH, this.cam.y));
     this.shake = Math.max(0, this.shake - dt * 22);
     // 카메라는 1배 칸에 맞춘다 (세계를 칸 단위로 그려서, 움직이는 것과 바닥이 서로 떨리지 않게)
-    const cx = Math.round(this.cam.x + (Math.random() - 0.5) * this.shake);
-    const cy = Math.round(this.cam.y + (Math.random() - 0.5) * this.shake);
+    const shk = this.shake * opts.shake; // 설정: 화면 흔들림 세기
+    const cx = Math.round(this.cam.x + (Math.random() - 0.5) * shk);
+    const cy = Math.round(this.cam.y + (Math.random() - 0.5) * shk);
     this.cx = cx; this.cy = cy;
 
     let g = this.g = this.wg;

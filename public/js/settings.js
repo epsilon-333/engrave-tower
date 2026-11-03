@@ -16,3 +16,9 @@ export function setNpcAttack(v) {
   npcAttack = !!v;
   try { localStorage.setItem('et-npcattack', npcAttack ? '1' : '0'); } catch { /* 무시 */ }
 }
+
+// 화면 설정: 화면 흔들림 세기(0 · 0.5 · 1) · 피해 숫자(all 모두 · crit 치명타만 · off 끔) · 글자 크기(1 · 1.25 · 1.5)
+const OPT_KEY = 'et-opts';
+export const opts = { shake: 1, dmgNum: 'all', textScale: 1 };
+try { Object.assign(opts, JSON.parse(localStorage.getItem(OPT_KEY) || '{}')); } catch { /* 무시 */ }
+export function setOpt(k, v) { opts[k] = v; try { localStorage.setItem(OPT_KEY, JSON.stringify(opts)); } catch { /* 무시 */ } }
