@@ -3560,6 +3560,21 @@ function reportError(err) {
 }
 addEventListener('error', (e) => reportError(e.error || e.message));
 addEventListener('unhandledrejection', (e) => reportError(e.reason));
+// 그림 보간: 세계는 1초에 60번 움직이지만 120 · 144Hz 화면은 그보다 자주 그린다 → 지난 틱과 이번 틱 사이 위치로 그려 덜컥이지 않게
+const lerpList = (w) => [w.player, ...w.enemies, ...(w.projs || [])];
+function snapPrev(w) { for (const e of lerpList(w)) if (e) { e._px = e.x; e._py = e.y; } }
+function lerpIn(w, a) {
+  if (a >= 0.999) return null;
+  const done = [];
+  for (const e of lerpList(w)) {
+    if (!e || e._px == null) continue;
+    const dx = e.x - e._px, dy = e.y - e._py;
+    if (dx * dx + dy * dy > 48 * 48) continue; // 순간이동 · 문 지나기는 보간하지 않는다
+    done.push([e, e.x, e.y]); e.x = e._px + dx * a; e.y = e._py + dy * a;
+  }
+  return done;
+}
+function lerpOut(list) { for (const [e, x, y] of list) { e.x = x; e.y = y; } }
 let padNow = null;
 function padTick() { // 게임패드: 창이 떠 있으면 버튼 고르기, 아니면 싸움 입력 (readInput)
   const st = padNow = padState(); if (!st) return;
@@ -3584,6 +3599,7 @@ function tick(ts) {
       acc += dt;
       if (!paused) readInput();
       while (acc >= DT) {
+        snapPrev(world);
         world.step(paused ? IDLE_INPUT : input);
         input.dash = false; input.interact = false; input.skill = false; input.s1 = false; input.s2 = false; input.s3 = false; input.s4 = false; input.wskill = false; input.mount = false;
         acc -= DT;
@@ -3612,7 +3628,8 @@ function tick(ts) {
     regionMusic();
     renderer.consume(world);
     renderer.walletGold = save?.gold | 0;
-    renderer.draw(world, paused ? 0 : dt);
+    const lerped = (!paused || coRun) && world.state === 'play' ? lerpIn(world, Math.min(1, acc / DT)) : null;
+    try { renderer.draw(world, paused ? 0 : dt); } finally { if (lerped) lerpOut(lerped); }
   }
 }
 
