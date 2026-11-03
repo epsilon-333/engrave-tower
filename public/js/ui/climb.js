@@ -75,7 +75,7 @@ export function createClimb(ctx) {
     const rec = recLevel(f), low = S().level < rec;
     const MOD = FLOOR_MODS[w.climb.mod];
     ctx.banner({ text: fk === 'lord' ? `${f}층 · ${act.name}의 주인` : fk === 'guardian' ? `${f}층 · 수호자` : MOD ? `${f}층 · ${MOD.name}` : `각인의 탑 ${f}층`, sub: `${MOD ? `${MOD.text} · ` : ''}${act.name}${low ? ` · 권장 Lv ${rec} (지금 Lv ${S().level} · 적이 더 세다)` : ''}`, t: 2.6, color: fk === 'lord' ? '#ff7a5a' : fk === 'guardian' ? '#ffb07a' : act.color });
-    ctx.music(zone.id); ctx.sfx('open'); ctx.startLoop();
+    ctx.music(fk === 'fight' ? zone.id : 'boss'); ctx.sfx('open'); ctx.startLoop(); // 수호자 · 주인 층은 보스곡
     ctx.onEvent?.('floor', { f });
   }
 
