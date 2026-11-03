@@ -20,19 +20,44 @@ def load():
     return im, w, h
 
 
+LEG_Y = 29        # 다리: 29줄부터 (그 위는 몸통 아랫단)
+CAPE_Y, CAPE_X = 21, 9   # 망토: 목 둘레(18~20줄)에서 이어져 등 뒤 왼쪽 아래(21줄부터 · 9칸 왼쪽)로 늘어진다
+
+
 def split(im):
-    """위 · 왼다리 · 오른다리 · 망토 끝 (원래 그림의 칸 그대로 · 겹치는 칸 없이)"""
+    """위(머리 · 목 둘레 망토 · 몸통) · 왼다리 · 오른다리 (원래 그림의 칸 그대로)"""
     w, h = im.size; px = im.load()
-    parts = {k: Image.new('RGBA', (w, h), (0, 0, 0, 0)) for k in ('upper', 'legL', 'legR', 'cape')}
+    parts = {k: Image.new('RGBA', (w, h), (0, 0, 0, 0)) for k in ('upper', 'legL', 'legR')}
     for y in range(h):
         for x in range(w):
             p = px[x, y]
             if not p[3]: continue
-            if y >= 27 and 9 <= x <= 20: k = 'legL' if x <= 14 else 'legR'
-            elif x <= 8 and y >= 19: k = 'cape'
-            else: k = 'upper'
+            k = ('legL' if x <= 14 else 'legR') if y >= LEG_Y and 8 <= x <= 20 else 'upper'
             parts[k].putpixel((x, y), p)
     return parts
+
+
+def sway(img, amp, lift=0):
+    """망토를 천처럼: 목에 붙은 윗줄은 그대로, 아래로 갈수록 amp 만큼 더 뒤(왼쪽)로 · lift 만큼 들린다.
+    밀려서 몸과 벌어진 틈은 그 줄의 망토 색으로 이어 채운다 (몸에서 떨어지지 않게)"""
+    w, h = img.size; src = img.load(); out = img.copy(); o = out.load()
+    for y in range(CAPE_Y, h):
+        for x in range(0, CAPE_X + 1): o[x, y] = (0, 0, 0, 0)
+    bottom = h - 1
+    for y in range(CAPE_Y, h):
+        t = (y - CAPE_Y) / max(1, bottom - CAPE_Y)
+        d, dy = round(amp * t), -round(lift * t)
+        xs = [x for x in range(0, CAPE_X + 1) if src[x, y][3]]
+        if not xs: continue
+        for x in xs:
+            X, Y = x + d, y + dy
+            if 0 <= X < w and 0 <= Y < h and not (o[X, Y][3] and o[X, Y][:3] != O[:3]): o[X, Y] = src[x, y]
+        if d < 0:  # 틈 메우기: 밀린 오른쪽 끝 → 원래 오른쪽 끝까지 그 줄의 안쪽 색
+            fill = next((src[x, y] for x in reversed(xs) if src[x, y][:3] != O[:3]), None)
+            if fill:
+                for X in range(max(xs) + d + 1, max(xs) + 1):
+                    if 0 <= y + dy < h and not o[X, y + dy][3]: o[X, y + dy] = fill
+    return out
 
 
 def colors(im):
@@ -104,14 +129,13 @@ def smear(fr, P, cx, cy, r, a0, a1, thick=3):
 
 
 def frame(parts, P, w, h, up=(0, 0), legL=(0, 0), legR=(0, 0), cape=(0, 0), head=(0, 0), extra=None, behind=None):
-    """up: 위 덩어리 (x, y) · legL/legR: 다리 (앞뒤, 들림) · cape: 망토 끝 · head: 머리만 더 (윗 18줄)"""
+    """up: 위 덩어리 (x, y) · legL/legR: 다리 (앞뒤, 들림) · cape: 망토 휘날림 (뒤로 몇 칸, 들림) · head: 머리만 더 (윗 18줄)"""
     W, H = w + PAD_L + PAD_R, h + PAD_T
     fr = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     ox, oy = PAD_L, PAD_T
     if behind: behind(fr, ox, oy)
-    fr.alpha_composite(parts['cape'], (ox + cape[0] + up[0], oy + cape[1] + up[1]))
     for k, (dx, lift) in (('legL', legL), ('legR', legR)): fr.alpha_composite(parts[k], (ox + dx, oy - lift))
-    body = parts['upper']
+    body = sway(parts['upper'], -abs(cape[0]), abs(cape[1])) if cape != (0, 0) else parts['upper']
     if head != (0, 0):  # 머리(윗 18줄)만 따로 조금 더 기울인다
         top = body.crop((0, 0, w, 18)); rest = body.crop((0, 18, w, h))
         fr.alpha_composite(rest, (ox + up[0], oy + 18 + up[1])); fr.alpha_composite(top, (ox + up[0] + head[0], oy + up[1] + head[1]))
