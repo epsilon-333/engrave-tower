@@ -6,7 +6,7 @@ import { computeBuild, fitEngravings } from './sim/build.js';
 import { Renderer } from './render/renderer.js';
 import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
-import { createIntro } from './intro/intro.js';
+import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
 import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, setStaleHook } from './save.js';
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
 import { codexPoints, levelFor } from './data/codex.js';
@@ -867,12 +867,49 @@ function showStyleSelect(race) {
   document.getElementById('backRace').onclick = () => showRaceSelect();
 }
 
+// ───── 타이틀 화면: 게임을 켜면 언제나 여기부터 (로그인은 하고 싶을 때만) ─────
+// 뒤에는 인트로의 「삼백 년 뒤」 장면(마을 · 모닥불 · 탑)을 천천히 되풀이해 그린다
+function showTitle() {
+  gameEl.hidden = true; titleEl.hidden = false;
+  const canLogin = !isClaudePage() && cloud.mode === 'local';
+  const who = cloud.mode !== 'local' && cloud.name ? `<p class="muted">${esc(cloud.name)} 계정 · 서버에 저장</p>` : '';
+  titleEl.innerHTML = `<div class="title-screen"><canvas class="title-bg"></canvas><div class="title-fg">
+    <h1>각인의 탑</h1><p class="title-sub">— 아르케 섬의 이야기 —</p>
+    <div class="title-menu">
+      <button id="tsGo" class="primary">${save ? `이어 하기 <small>${RACES[save.race]?.name || ''} · Lv ${save.level || 1}</small>` : '새로 시작'}</button>
+      ${canLogin ? '<button id="tsLogin" class="ghost">계정으로 저장 · 로그인</button>' : ''}
+      <button id="tsIntro" class="ghost">인트로 보기</button>
+    </div>${who}
+    <p class="title-foot">그래픽 0x72 (CC0) · 효과음 Kenney (CC0) · 글꼴 갈무리 (OFL) · 이펙트 pixelfx (MIT)</p></div></div>`;
+  const cv = titleEl.querySelector('.title-bg'), st = makeStage(), t0 = performance.now();
+  const T0 = INTRO_TOTAL - 6 - 3.6 - 6.2 + 0.6, LEN = 4.8; // 「그리고 삼백 년 뒤」 장면의 가운데 (어두워지기 전)
+  const draw = () => {
+    if (titleEl.hidden || !cv.isConnected) return;
+    const W = (cv.width = cv.clientWidth), H = (cv.height = cv.clientHeight);
+    st.draw(T0 + (((performance.now() - t0) / 1000) % LEN));
+    const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+    const sc = Math.max(W / st.lo.width, H / st.lo.height); // 화면을 꽉 채운다 (넘치는 곳은 잘린다)
+    g.drawImage(st.lo, (W - st.lo.width * sc) / 2, (H - st.lo.height * sc) / 2, st.lo.width * sc, st.lo.height * sc);
+    requestAnimationFrame(draw);
+  };
+  draw();
+  const go = () => {
+    unlockAudio(); sfx('select');
+    try { localStorage.setItem('et-guest', '1'); } catch { /* 무시 */ }
+    if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else firstStart();
+  };
+  document.getElementById('tsGo').onclick = go;
+  const li = document.getElementById('tsLogin'); if (li) li.onclick = () => showLogin((remote) => { afterLogin(remote); });
+  document.getElementById('tsIntro').onclick = () => { unlockAudio(); playIntro(showTitle); };
+  titleEl.onkeydown = null;
+}
+
 // ───── 로그인 화면 (일반 웹 배포용) ─────
 function showLogin(onDone) {
   gameEl.hidden = true; titleEl.hidden = false;
   titleEl.innerHTML = `<div class="login">
-    <h1>아르케</h1>
-    
+    <h1>각인의 탑</h1>
+    <p class="muted">계정이 있으면 어느 기기에서든 이어서 할 수 있어요.</p>
     <form id="loginForm" class="login-box" autocomplete="on">
       <label for="lgId">아이디</label>
       <input id="lgId" name="username" autocomplete="username" maxlength="16" placeholder="2~16자 한글·영문·숫자" required>
@@ -880,7 +917,7 @@ function showLogin(onDone) {
       <input id="lgPw" name="password" type="password" autocomplete="current-password" minlength="4" placeholder="4자 이상" required>
       <p id="lgErr" class="err" role="alert"></p>
       <div class="row"><button type="submit" id="lgLogin">로그인</button><button type="button" id="lgReg" class="ghost">회원가입</button></div>
-      <button type="button" id="lgGuest" class="link">로그인 없이 하기 (이 브라우저에만 저장)</button>
+      <button type="button" id="lgGuest" class="link">← 로그인 없이 하기 (이 브라우저에만 저장)</button>
     </form></div>`;
   const $ = (id) => document.getElementById(id);
   const go = async (fn) => {
@@ -897,7 +934,7 @@ function showLogin(onDone) {
   };
   $('loginForm').onsubmit = (e) => { e.preventDefault(); go(login); };
   $('lgReg').onclick = () => go(register);
-  $('lgGuest').onclick = () => { try { localStorage.setItem('et-guest', '1'); } catch { /* 무시 */ } onDone(null); };
+  $('lgGuest').onclick = () => { try { localStorage.setItem('et-guest', '1'); } catch { /* 무시 */ } showTitle(); };
   $('lgId').focus();
 }
 
@@ -1788,7 +1825,7 @@ function startLoop() {
 
 function showTutorial() {
   save.tutorial = 1; writeSave(save);
-  showModal(`<h2>아르케에 온 것을 환영한다</h2>
+  showModal(`<h2>각인의 탑에 온 것을 환영한다</h2>
     <div class="tut">
       <p><b>1.</b> 북쪽 <b>관문</b>으로 들어가 필드를 탐험하고, 몬스터가 남기는 <b>잔향</b>을 모으세요.</p>
       <p><b>2.</b> 어떤 몬스터가 어떤 잔향을 주는지는 지역마다 다릅니다. 원하는 각인이 있으면 그 몬스터를 찾아가세요.</p>
@@ -3540,8 +3577,6 @@ if (isTouch()) {
   setSaveHook(cloudSave);
   if (save && remote !== save) cloudSave(save);
   setupSaveGuards(startStamp);
-  let guest = false; try { guest = !!localStorage.getItem('et-guest'); } catch { /* 무시 */ }
-  if (!isClaudePage() && cloud.mode === 'local' && !guest) { showLogin(afterLogin); requestAnimationFrame(frame); return; }
-  if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else firstStart();
+  showTitle(); // 게임을 켜면 타이틀부터 (로그인은 원할 때만)
   requestAnimationFrame(frame);
 })();

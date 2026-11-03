@@ -714,3 +714,21 @@ body.touch #cloudChip { right: auto; bottom: auto; }
 .list:has(> .mini) { display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-start; }
 .list:has(> .mini) > .li:not(.mini) { flex: 1 1 100%; }
 .li.mini { flex: 0 0 auto; width: 46px; text-align: center; padding: 4px 0; color: var(--muted); font-size: var(--fs-xs); border-left: 0; background: var(--bg0); }
+
+/* 타이틀 화면 */
+.title-screen { position: fixed; inset: 0; background: #05040a; overflow: hidden; }
+.title-bg { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.title-fg { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 10px; padding: 24px 16px; text-align: center; background: radial-gradient(ellipse at center, rgba(5,4,10,0.15), rgba(5,4,10,0.7)); }
+.title-fg h1 { font-family: Galmuri14, Galmuri11, sans-serif; font-size: clamp(44px, 9vw, 96px); color: var(--accent); margin: 0; letter-spacing: 6px; text-shadow: 4px 4px 0 #5a2a00, 0 0 24px rgba(233,184,92,0.35); }
+.title-sub { font-family: Galmuri11, sans-serif; color: #e8dcc0; margin: 0 0 18px; letter-spacing: 3px; text-shadow: 2px 2px 0 #000; }
+.title-menu { display: grid; gap: 8px; width: min(320px, 100%); }
+.title-menu button { font: 16px Galmuri11, sans-serif; padding: 12px; }
+.title-menu button small { display: block; font-size: 12px; opacity: 0.75; margin-top: 2px; }
+.title-menu .primary { background: var(--accent); color: #1a1410; border: 0; }
+.title-foot { position: absolute; bottom: 10px; left: 0; right: 0; font-size: 11px; color: rgba(232,220,192,0.5); margin: 0; }
+
+.race { position: relative; }
+.race .rec { position: absolute; top: 8px; right: 8px; font: 12px Galmuri11, sans-serif; background: var(--accent); color: #1a1410; padding: 2px 6px; }
+.race .diff { display: block; font-size: 12px; color: #e9b85c; margin: 2px 0 4px; }
+.race .mini-wrap { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.race .mini-wrap summary { cursor: pointer; }
