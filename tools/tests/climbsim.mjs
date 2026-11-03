@@ -1,6 +1,7 @@
 // 탑 등반 자동 플레이: 간단한 봇이 층을 깨고 → 보상을 고르고 → 문을 골라 오른다.
 // 오류가 없는지 · 층마다 얼마나 걸리고 얼마나 맞는지 · 어디서 쓰러지는지를 잰다 (밸런스 맞추기용)
-// 사용: node tools/tests/climbsim.mjs [클래스=greatsword] [레벨=자동] [등반 수=3] [최대 층=100] [탑의 축복 단계=0]
+// 사용: node tools/tests/climbsim.mjs [클래스=greatsword] [레벨=자동] [등반 수=3] [최대 층=100] [시작 층=1]
+// 탑 안에는 각인 · 보상이 없다: 탑 밖에서 갖춘 빌드 그대로 층마다 몬스터만 상대한다
 const root = new URL('../../public/js', import.meta.url).href;
 const { World } = await import(root + '/sim/world.js');
 const { computeBuild } = await import(root + '/sim/build.js');
@@ -15,7 +16,7 @@ const { TOWER_WEAPONS } = await import(root + '/data/weapons.js');
 const WT = process.env.WT;
 
 const args = process.argv.slice(2);
-const clsArg = args[0] || 'greatsword', lvArg = args[1] && args[1] !== 'auto' ? +args[1] : null, RUNS = +(args[2] || 3), TOP = +(args[3] || 100), META_LV = +(args[4] || 0);
+const clsArg = args[0] || 'greatsword', lvArg = args[1] && args[1] !== 'auto' ? +args[1] : null, RUNS = +(args[2] || 3), TOP = +(args[3] || 100), START_F = +(args[4] || 1);
 const QUIET = process.env.QUIET;
 
 function towerWeaponFor(cid, f) {
@@ -37,13 +38,12 @@ function loadout(cid, level, f = 1) {
   return { race: R, cls: cid, level, allSkills: false, alloc: { [main]: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings: {}, gear: { weapon: tw || c.weapons[1] || c.weapons[0] }, skills: null };
 }
 
-function makeWorld(run, door, lo, meta, prev) {
+function makeWorld(run, lo) {
   const f = run.f, act = C.actOf(f), z = ZONES.find((x) => x.id === act.zone);
   const fk = C.floorKind(f);
-  const room = fk !== 'fight' ? fk : C.REWARDS[door]?.room ? door : door === 'trial' ? 'trial' : 'fight';
   const seed = (run.seed + f * 7919) >>> 0;
-  const b = computeBuild({ ...lo, runEng: run.eng, extraEffects: C.runEffects(run, meta) });
-  const w = new World({ build: b, mode: 'field', zone: z, zoneId: z.id, seed, map: buildClimbFloor(z, seed, f, room), tower: { f }, climb: { run, f, kind: room, reward: room === 'fight' ? door : null, meta } });
+  const b = computeBuild({ ...lo, extraEffects: C.runEffects(run) });
+  const w = new World({ build: b, mode: 'field', zone: z, zoneId: z.id, seed, map: buildClimbFloor(z, seed, f, fk), tower: { f }, climb: { run, f, kind: fk } });
   w.player.hp = Math.max(1, (run.hpFrac ?? 1) * w.d.maxHp);
   if (run.res != null) w.player.res = run.res;
   return w;
@@ -89,24 +89,17 @@ function botInput(w, st) {
   return inp;
 }
 
-const policy = (doors, run, rng) => { // 문 고르기: 각인 · 축복을 좋아하고, 체력이 낮으면 샘
-  const pref = { eng: 5, bless: 4, hone: 3, trial: 2.5, shop: 2, heal: run.hpFrac < 0.45 ? 6 : 1, rest: run.hpFrac < 0.6 ? 6 : 2, gold: 1.5, shard: 1.5, altar: 1.5 };
-  return doors.slice().sort((a, b) => (pref[b.kind] || 1) - (pref[a.kind] || 1) + (rng.next() - 0.5) * 1.2)[0];
-};
-
 function simRun(cid, seed) {
-  const rng = createRng(seed);
-  const meta = META_LV ? { hp: META_LV, dmg: META_LV, luck: Math.min(4, META_LV), reroll: Math.min(3, META_LV), revive: Math.min(2, Math.floor(META_LV / 2)), spring: Math.min(3, META_LV) } : {};
-  const run = C.newRun({ seed, meta });
+  const run = C.newRun({ seed, startF: START_F });
   const log = [];
-  let door = 'eng', w = null;
+  let w = null;
   while (run.f < TOP) {
     run.f++;
     const lv = lvArg || C.recLevel(run.f);
     const lo = loadout(cid, lv, run.f);
-    w = makeWorld(run, door, lo, meta);
+    w = makeWorld(run, lo);
     const st = { danger: [], skillT: 0, si: 0, skill: 0.7 };
-    let frames = 0, hurt0 = 0, next = null;
+    let frames = 0, next = null;
     const T0 = w.t;
     while (frames < 60 * 240 && w.state === 'play' && !next) {
       const inp = w.climb.phase === 'fight' ? botInput(w, st) : { moveX: 0, moveY: 0, aimX: w.player.x, aimY: w.player.y };
@@ -114,38 +107,19 @@ function simRun(cid, seed) {
       w.step(inp);
       frames++;
       for (const s of w.signals.splice(0)) {
-        if (s.t === 'climbReward') {
-          if (s.reward === 'eng') { const o = C.offerEngravings(run, rng, { minGrade: s.minGrade, legendary: s.legendary, luck: meta.luck || 0 }); if (o.length) C.addEngraving(run, o[0].id); }
-          else if (s.reward === 'hone') { const h = C.offerHone(run, rng); if (h.length) C.addEngraving(run, h[0]); }
-          else if (s.reward === 'bless') { const b = C.offerBless(run, rng)[0]; run.bless[b] = (run.bless[b] || 0) + 1; }
-          else if (s.reward === 'gold') run.gold += C.goldGain(C.goldReward(run.f), run, meta);
-          else if (s.reward === 'heal') w.heal(w.d.maxHp * 0.4, 'spring');
-          else if (s.reward === 'shard') run.shards += C.shardGain(C.shardReward(run.f), run, meta);
-          const k = w.player.hp / w.d.maxHp; w.setBuild(computeBuild({ ...lo, runEng: run.eng, extraEffects: C.runEffects(run, meta) })); w.player.hp = k * w.d.maxHp;
-          w.climbRewardTaken();
-        } else if (s.t === 'climbCleared') {
-          run.shards += C.shardGain(1 + (C.clearReward(w.climb.reward || w.climb.kind).shards || 0), run, meta);
-          const o = w.objects.find((x) => x.kind === 'climbReward'); if (o) w.interact(o);
-        } else if (s.t === 'climbRoom') { /* 봇은 방을 그냥 지나간다 */ }
-        else if (s.t === 'climbDoor') next = s.next;
+        if (s.t === 'climbDoor') next = s.next;
         else if (s.t === 'climbTop') next = 'top';
       }
-      if (w.climb.phase === 'room' && frames === 30) { const o = w.objects.find((x) => x.kind === 'climbRoom'); if (o?.room === 'rest') w.heal(w.d.maxHp * 0.5, 'spring'); if (o?.room === 'shop') { const items = C.rollShop(run, rng, meta); const hl = items.find((x) => x.kind === 'heal'); if (hl && w.player.hp < w.d.maxHp * 0.6 && run.gold >= hl.price) { run.gold -= hl.price; w.heal(w.d.maxHp * 0.35, 'spring'); } for (const it of items) if (it.kind === 'eng' && run.gold >= it.price) { run.gold -= it.price; C.addEngraving(run, it.id); } } }
-      if ((w.climb.phase === 'reward' || w.climb.phase === 'room') && w.climb.doorsOpen && !next) {
-        const doors = w.objects.filter((o) => o.kind === 'climbDoor');
-        if (doors.length) { const d = policy(doors.map((o) => ({ kind: o.next, o })), run, rng); w.interact(d.o); }
-      }
-      if (w.climb.phase === 'reward' && !w.climb.doorsOpen) { const o = w.objects.find((x) => x.kind === 'climbReward' && !x.opened); if (o && frames % 30 === 0) w.interact(o); }
+      if (w.climb.phase !== 'fight' && w.climb.doorsOpen && !next) { const d = w.objects.find((o) => o.kind === 'climbDoor'); if (d) w.interact(d); }
     }
     const took = (w.t - T0), hurt = w.tower.hurt, maxHp = w.d.maxHp;
-    log.push({ f: run.f, kind: w.climb.kind, took: Math.round(took), hurtPct: Math.round((hurt / maxHp) * 100), hpLeft: Math.round((w.player.hp / maxHp) * 100), dead: w.state !== 'play', lv: lvArg || C.recLevel(run.f), eng: run.eng.length, timeout: frames >= 60 * 240 });
+    log.push({ f: run.f, kind: w.climb.kind, took: Math.round(took), hurtPct: Math.round((hurt / maxHp) * 100), hpLeft: Math.round((w.player.hp / maxHp) * 100), dead: w.state !== 'play', lv, timeout: frames >= 60 * 240 });
     if (w.state !== 'play' || !next || frames >= 60 * 240) break;
     run.hpFrac = Math.max(0.05, w.player.hp / w.d.maxHp); run.res = w.player.res;
-    door = next === 'top' ? null : next;
-    if (door === 'shop') run.lastShop = run.f + 1;
     if (next === 'top') break;
   }
-  return { reached: log.filter((x) => !x.dead && !x.timeout).length ? log[log.length - 1].dead || log[log.length - 1].timeout ? log[log.length - 1].f - 1 : log[log.length - 1].f : 0, log, run };
+  const last = log[log.length - 1];
+  return { reached: !last ? 0 : last.dead || last.timeout ? last.f - 1 : last.f, log, run };
 }
 
 const results = [];
@@ -153,9 +127,9 @@ for (let i = 0; i < RUNS; i++) {
   const r = simRun(clsArg, 1000 + i * 77);
   results.push(r);
   if (!QUIET) {
-    console.log(`\n# ${clsArg} 등반 ${i + 1}: ${r.reached}층까지 · 각인 ${r.run.eng.length} · 축복 ${Object.values(r.run.bless).reduce((a, b) => a + b, 0)} · 별빛 ${r.run.shards}`);
+    console.log(`\n# ${clsArg} 등반 ${i + 1}: ${START_F}층부터 ${r.reached}층까지`);
     for (const x of r.log) if (process.env.ALL || x.f % 5 === 0 || x.dead || x.timeout || x.f <= 3) console.log(`  ${String(x.f).padStart(2)}층 ${x.kind.padEnd(8)} Lv${String(x.lv).padStart(2)} ${String(x.took).padStart(4)}초 · 받은 피해 ${String(x.hurtPct).padStart(4)}% · 남은 체력 ${x.hpLeft}%${x.dead ? ' · 쓰러짐' : ''}${x.timeout ? ' · 시간 초과' : ''}`);
   }
 }
 const avg = results.reduce((a, r) => a + r.reached, 0) / results.length;
-console.log(`\n${clsArg} · 레벨 ${lvArg || '권장'} · 축복 ${META_LV} · 평균 ${avg.toFixed(1)}층 (${results.map((r) => r.reached).join(', ')})`);
+console.log(`\n${clsArg} · 레벨 ${lvArg || '권장'} · ${START_F}층부터 · 평균 ${avg.toFixed(1)}층 (${results.map((r) => r.reached).join(', ')})`);

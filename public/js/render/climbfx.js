@@ -1,7 +1,5 @@
 // 탑 등반의 것들 그리기: 다음 층으로 가는 문(위에 보상 그림) · 층을 깨면 나타나는 보상 제단 · 쉬는 방의 상인 · 제단 · 모닥불
-import { REWARDS, actOf, BLESSINGS, GRADE_COLOR, GRADE_NAME, oathScore, recLevel, levelGap, FLOOR_MODS } from '../data/climb.js';
-import { ENGRAVINGS, TAGS } from '../data/engravings.js';
-import { STAT_INFO, SPECIAL_INFO } from '../data/stats.js';
+import { REWARDS, actOf, oathScore, recLevel, levelGap, FLOOR_MODS } from '../data/climb.js';
 
 const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
 const px = (g, c, x, y, w = 1, h = 1) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); };
@@ -143,7 +141,7 @@ export function drawClimbObject(R, w, o, dt) {
   }
 }
 
-// 등반 HUD: 위 가운데(층 · 남은 적), 작은 지도 아래(금화 · 별빛 · 다시 고르기 · 두 번째 숨 · 서약), 왼쪽 아래(새긴 각인 · 축복)
+// 등반 HUD: 위 가운데(층 · 남은 적), 작은 지도 아래(이 층 시간 · 서약 · 권장 레벨), 문이 화면 밖이면 화살표
 export function drawClimbHud(R, w, topY) {
   const C = w.climb, run = C.run, u = R.u, g = R.g, W = R.c.width, H = R.c.height, tu = Math.max(1, u - 1);
   const act = actOf(C.f);
@@ -155,8 +153,7 @@ export function drawClimbHud(R, w, topY) {
     if (C.phase === 'fight') {
       const alive = w.enemies.filter((e) => !e.dead && e.climb && !e.summoned).length + C.waves.slice(C.waveI).reduce((a, x) => a + x.filter((q) => !q.treasure).length, 0);
       sub = `남은 적 ${alive}`; col = alive <= 2 ? '#ffe8a8' : '#ff9a8a';
-    } else if (C.phase === 'reward') sub = w.objects.some((o) => o.kind === 'climbReward' && !o.opened) ? '보상을 받자 — 가운데 빛 앞에서 G' : '문을 골라 나아가자 — 문 위의 그림이 다음 층의 보상';
-    else if (C.phase === 'room') sub = '문을 골라 나아가자';
+    } else sub = '문이 열렸다 — 문 앞에서 G';
     R.text(sub, W / 2, topY + 15 * u, tu, col, 'center', true, false);
     const M = FLOOR_MODS[C.mod]; if (M) R.text(`${M.name} · ${M.text}`, W / 2, topY + 28 * u, tu, M.color, 'center', true, false);
   }
@@ -169,41 +166,11 @@ export function drawClimbHud(R, w, topY) {
   // 작은 지도 아래
   const x = W - 10 * u;
   let y = (R.minimapBottom || 80 * u) + 14 * u;
-  R.text(`◆ 탑 금화 ${run.gold}`, x, y, u, '#ffd84a', 'right', true, true); y += 15 * u;
-  R.text(`✦ 별빛 ${run.shards}`, x, y, u, '#b8a8ff', 'right', true, true); y += 15 * u;
   const tt = w.tower?.t || 0, hasteOver = C.oath.haste && tt > 90;
   R.text(`이 층 ${Math.floor(tt / 60)}:${String(Math.floor(tt % 60)).padStart(2, '0')}${C.oath.haste ? ' / 1:30' : ''}`, x, y, tu, hasteOver ? '#ff8a7a' : '#b8b0c8', 'right'); y += 13 * u;
-  if (run.rerolls) { R.text(`다시 고르기 ${run.rerolls}`, x, y, tu, '#ffe8a8', 'right'); y += 13 * u; }
-  if (run.revives) { R.text(`두 번째 숨 ${run.revives}`, x, y, tu, '#8ad8ff', 'right'); y += 13 * u; }
   const sc = oathScore(run.oath); if (sc) { R.text(`서약 ${sc}`, x, y, tu, '#ff8a7a', 'right'); y += 13 * u; }
   const lg = levelGap(C.f, w.b.level); if (lg.gap) { R.text(`권장 Lv ${recLevel(C.f)} · 적 공격 +${Math.round((lg.atk - 1) * 100)}%`, x, y, tu, '#ff9a8a', 'right'); y += 13 * u; }
-  // 보상 · 문이 화면 밖이면 가장자리 화살표
-  const ro = w.objects.find((o) => o.kind === 'climbReward' && !o.opened);
-  if (ro && C.phase === 'reward') R.edgeArrow(ro.x, ro.y - 14, '#ffe8a8', '보상', true);
-  else if (C.phase !== 'fight') { const p = w.player; let best = null, bd = 1e9; for (const o of w.objects) if (o.kind === 'climbDoor') { const d = Math.hypot(o.x - p.x, o.y - p.y); if (d < bd) { bd = d; best = o; } } if (best) R.edgeArrow(best.x, best.y - 16, '#c8b8ff', '문', false); }
-  // 왼쪽 아래: 새긴 각인 · 축복
-  const cs = 14 * u, gap = 3 * u, x0 = 10 * u, y0 = H - 78 * u;
-  let cx = x0, row = 0;
-  const tips = R.tipRects || (R.tipRects = []);
-  const chip = (col, label, title, lines, lv) => {
-    if (cx + cs > W * 0.3) { cx = x0; row++; }
-    const yy = y0 - row * (cs + gap);
-    g.fillStyle = '#0d0b10'; g.fillRect(cx - u, yy - u, cs + 2 * u, cs + 2 * u);
-    g.fillStyle = '#1a1626'; g.fillRect(cx, yy, cs, cs);
-    g.fillStyle = col; g.fillRect(cx, yy, cs, 2 * u); g.fillRect(cx, yy + cs - u, cs, u);
-    R.text(label, cx + cs / 2, yy + cs / 2 + u, tu, col, 'center', false, true);
-    if (lv) R.text(`+${lv}`, cx + cs - u, yy + 3 * u, Math.max(1, tu - (tu > 1 ? 1 : 0)), '#ffffff', 'right', true, true);
-    tips.push({ x: cx, y: yy, w: cs, h: cs, title, color: col, lines, up: true });
-    cx += cs + gap;
-  };
-  for (const e of run.eng) {
-    const d = ENGRAVINGS[e.id]; if (!d) continue;
-    const st = Object.entries(d.stats || {}).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k] || { name: k }).name} ${v > 0 ? '+' : ''}${v}`).join(' · ');
-    chip(GRADE_COLOR[d.grade], d.name.slice(0, 1), `${d.name}${e.lv ? ` +${e.lv}` : ''}`, [`${GRADE_NAME[d.grade]} · ${(d.tags || []).map((t) => TAGS[t]?.name || t).join(' · ')}`, ...(st ? [st] : []), ...(d.effects || []).map((x) => x.text)], e.lv);
-  }
-  for (const [id, n] of Object.entries(run.bless || {})) {
-    const B = BLESSINGS[id]; if (!B) continue;
-    chip(B.color, B.name.slice(0, 1), `${B.name}${n > 1 ? ` ×${n}` : ''}`, [B.text + (n > 1 ? ` (×${n})` : '')], n > 1 ? n : 0);
-  }
+  // 문이 화면 밖이면 가장자리 화살표
+  if (C.phase !== 'fight') { const p = w.player; let best = null, bd = 1e9; for (const o of w.objects) if (o.kind === 'climbDoor') { const d = Math.hypot(o.x - p.x, o.y - p.y); if (d < bd) { bd = d; best = o; } } if (best) R.edgeArrow(best.x, best.y - 16, '#c8b8ff', '문', false); }
   R.drawTip();
 }
