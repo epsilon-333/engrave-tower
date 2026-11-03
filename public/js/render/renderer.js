@@ -4255,7 +4255,7 @@ export class Renderer {
     this.panel(fx, fy, pw, pw);
     const art = RACE_ART[w.b.race];
     const face = sprite(frames(art.base, 'idle')[0], art.tint || '');
-    if (face) { g.imageSmoothingEnabled = false; const fs = Math.floor((pw - 4 * u) / 16); g.drawImage(face, Math.round((face.width - 16) / 2), face.height - 24, 16, 16, fx + (pw - 16 * fs) / 2, fy + (pw - 16 * fs) / 2, 16 * fs, 16 * fs); }
+    if (face) { g.imageSmoothingEnabled = false; const fs = Math.floor((pw - 4 * u) / 16); g.drawImage(face, Math.round((face.width - 16) / 2), face.height >= 32 ? 3 : face.height - 24, 16, 16, fx + (pw - 16 * fs) / 2, fy + (pw - 16 * fs) / 2, 16 * fs, 16 * fs); }
     const bx = fx + pw + 6 * u, m0 = fy;
     this.panel(bx, m0, bw, bh);
     const hpK = Math.max(0, p.hp / d.maxHp);

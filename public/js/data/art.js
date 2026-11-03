@@ -1,14 +1,14 @@
 // 데이터 ↔ 스프라이트 연결 (렌더 전용). tint 는 CSS filter
-export const RACE_ART = {
-  elf: { base: 'elf_m' },
-  orc: { base: 'orc_warrior' },
-  dino: { base: 'lizard_m', tint: 'hue-rotate(-40deg) saturate(1.3)' },
-  assassin: { base: 'hood_assassin' },
+export const RACE_ART = { // 플레이어 종족: NPC와 같은 뼈대 도트(tools/people.py의 pl_*) — 용족은 날개 동작이 있는 dragonkin 시트
+  elf: { base: 'p_pl_elf' },
+  orc: { base: 'p_pl_orc' },
+  dino: { base: 'p_pl_dino' },
+  assassin: { base: 'p_pl_assassin' },
   golem: { base: 'stone_golem' },
   dragon: { base: 'dragonkin' },
-  undead: { base: 'necromancer' },
-  knight: { base: 'knight_m' },
-  wizard: { base: 'wizzard_m' },
+  undead: { base: 'p_pl_undead' },
+  knight: { base: 'p_pl_knight' },
+  wizard: { base: 'p_pl_wizard' },
 };
 
 export const MONSTER_ART = {

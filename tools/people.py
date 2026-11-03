@@ -481,6 +481,15 @@ person('frostTrader', race='human', outfit='coat', cloth='#5a7a9a', inner='#e8ee
 person('sandHarbor', race='human', body='tall', outfit='robe', cloth='#e8e0c8', trim='#3a6a8a', hair='#1a1410', hairStyle='short', hat='turban', hatc='#3a6a8a', beard='stache', item='scroll', skin='dark')
 person('skullHarbor', race='human', body='stout', outfit='rags', cloth='#5a4a3a', hair='#2a2018', hairStyle='bald', beard='full', hat='bandana', hatc='#1a1a1a', item='hammer', skin='tan')
 
+# ── 플레이어 종족 (무기는 게임이 손에 따로 그린다 · item 없음): NPC와 같은 뼈대 도트로 그림체를 맞춘다 ──
+person('pl_knight', race='human', outfit='armor', metal='#b8c0d0', cloth='#3a5a9a', tabard=True, emblem='buckle', hat='helm', plume=True, featherc='#e85030', cape='#2a4a8a', hair='#6a4428', brows=True)
+person('pl_wizard', race='human', outfit='robe', cloth='#3a3a8a', trim='#e8c860', hair='#e8e4f0', hairStyle='long', beard='long', hat='wizard', hatc='#2a2a7a', stars=True, sash=True)
+person('pl_elf', race='elf', outfit='tunic', cloth='#3a7a3a', pants='#4a3a22', hair='#e8d080', hairStyle='long', cape='#5a8a3a', boots='#5a3a22', circletGem='greengem', hat='circlet')
+person('pl_orc', race='orc', body='stout', outfit='vest', cloth='#7a5a3a', vestc='#4a3020', hair='#2a2018', hairStyle='mohawk', sash=True, brows=True, boots='#3a2a1a')
+person('pl_dino', race='lizard', outfit='vest', cloth='#c8603a', vestc='#6a4a2a', scalec='#c8603a', skin='#c8603a', sash=True, pants='#6a4a2a', hat='feathers', featherc='#e8c040')
+person('pl_assassin', race='human', outfit='coat', cloth='#2a2430', inner='#4a3a44', hat='hood', hatc='#1e1a24', sash=True, boots='#1a1418', skin='fair', hair='#1a1418')
+person('pl_undead', race='undead', outfit='robe', cloth='#3a2a4a', trim='#8ae85a', hat='hood', hatc='#2a1e34', glowEye='#9af06a', glowc='#9af06a')
+
 
 if __name__ == '__main__':
     out = sys.argv[1]
