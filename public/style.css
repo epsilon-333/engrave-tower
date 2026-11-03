@@ -740,3 +740,6 @@ body.big-text .modal, body.big-text #panel { font-size: 18px; }
 #errToast { position: fixed; right: 10px; bottom: 34px; z-index: 90; max-width: min(460px, 90vw); background: rgba(60,16,16,0.92); color: #ffd8d0; border: 1px solid #a04a40; padding: 6px 10px; font-size: 12px; cursor: pointer; }
 #cloudChip[hidden] { display: none !important; }
 body.touch #happenPanel.mini { top: calc(6px + env(safe-area-inset-top, 0px)) !important; right: 50%; transform: translateX(50%); }
+#saveWarn { position: fixed; left: 50%; top: 8px; transform: translateX(-50%); z-index: 95; max-width: min(560px, 94vw); background: rgba(70,22,20,0.95); color: #ffe0d8; border: 1px solid #c0584a; padding: 8px 12px; font-size: 13px; line-height: 1.5; }
+#saveWarn[hidden] { display: none; }
+.title-warn { max-width: min(420px, 92vw); background: rgba(70,22,20,0.9); color: #ffe0d8; border: 1px solid #c0584a; padding: 8px 12px; font-size: 13px; line-height: 1.5; margin: 6px 0 0; }
