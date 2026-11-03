@@ -8,7 +8,7 @@ import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
 import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
 import { padState, applyPad, padMenu } from './gamepad.js';
-import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, setStaleHook, onLocalSave, isStale } from './save.js';
+import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, setStaleHook, onLocalSave, isStale } from './save.js';
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
 import { codexPoints, levelFor } from './data/codex.js';
 import { TILE, generateField } from './sim/mapgen.js';
@@ -33,7 +33,7 @@ import { RACE_STORY, relation, allies, ALLY_AFF, REL_NAME, REL_COLOR } from './d
 import { ITEMS, STYLES, WEAPON_SKILLS } from './data/items.js';
 import './data/weapons.js'; // 탑의 무기 100종을 장비 목록에 올린다
 import './data/towergear.js'; // 탑의 방어구 · 장신구 · 부적 30종
-import { CC_EXTRA, CLASSES, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc } from './data/skills.js';
+import { CC_EXTRA, CLASSES, ENGRAVING_SKILLS, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc } from './data/skills.js';
 import { STAT_INFO } from './data/stats.js';
 import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
 import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText, spiritSpecialText, STONE_PRICE_CALLER, CALLER_RATES, spiritLevel, SPIRIT_LV_XP } from './data/spirits.js';
@@ -854,14 +854,14 @@ function showStyleSelect(race) {
     const c = CLASSES[b.dataset.style];
     sfx('levelup');
     if (reGolem) { // 예전 골렘 저장: 종족 · 클래스만 바꾼다
-      reGolem = false; save.race = race; save.cls = b.dataset.style; save.style = c.style;
+      reGolem = false; save.race = race; save.cls = b.dataset.style; save.style = c.style; grantClassEngravings(save);
       if (!(save.items ||= []).includes(c.weapons[0])) save.items.push(c.weapons[0]);
       (save.gear ||= {}).weapon = c.weapons[0];
       refreshQuests(save); writeSave(save); cloudSaveNow(save); titleEl.hidden = true; enterWorld();
       return;
     }
     save = newSave(race);
-    save.cls = b.dataset.style; save.style = c.style;
+    save.cls = b.dataset.style; save.style = c.style; grantClassEngravings(save);
     save.items = ['rustySword', c.weapons[0]];
     save.gear = { weapon: c.weapons[0] };
     save.tutorial = { step: 0 }; // 처음 시작하는 사람은 튜토리얼부터
@@ -3600,6 +3600,12 @@ function padTick() { // 게임패드: 창이 떠 있으면 버튼 고르기, 아
   if (modal) { padMenu(st, overlay, () => modal?.()); return; }
   if (st.pressed(8) && world.state === 'play' && !world.practice) openPanel('char'); // Back: 캐릭터
 }
+// 레벨업으로 받은 내 클래스 스킬 각인을 알린다 (받은 뒤 처음 보이는 화면에서 한 번)
+function announceClassEng() {
+  const L = save.newEng.filter((id) => ENGRAVINGS[id]); save.newEng = [];
+  for (const id of L) { const sk = SKILLS[ENGRAVING_SKILLS[id]]; renderer.note(`각인 획득: ${ENGRAVINGS[id].name}${sk ? ` · 스킬 「${sk.name}」` : ''} (제단에서 끼운다)`, '#e9b85c'); }
+  if (L.length) writeSave(save);
+}
 function frame(ts) {
   try { padTick(); tick(ts); updateVoyBar(); const pnow = performance.now(); politicsTick(Math.min(0.1, (pnow - (frame.pt || pnow)) / 1000)); frame.pt = pnow; } catch (err) { reportError(err); } // 한 번의 오류로 게임이 멈추지 않게 (대신 알린다)
   requestAnimationFrame(frame);
@@ -3609,6 +3615,7 @@ function tick(ts) {
   last = ts;
   if (world && !gameEl.hidden) {
     world.npcAttack = getNpcAttack(); world.econ = econOf(save);
+    if (save.newEng?.length && world.state === 'play') announceClassEng();
     if (renderer.hitstop > 0) renderer.hitstop -= dt;
     else if ((!paused || coRun) && world.state === 'play') { // 파티 탑: 창을 열어도 세계는 돈다 (동료가 기다리지 않게)
       acc += dt;

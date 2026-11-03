@@ -5,6 +5,8 @@ import { codexPoints, levelFor } from './data/codex.js';
 import { newStory } from './data/story.js';
 import { ZONES, MONSTERS, ECHOES } from './data/monsters.js';
 import { newClock } from './sim/time.js';
+import { CLASSES, SKILLS, ENGRAVING_SKILLS } from './data/skills.js';
+import { ENGRAVINGS } from './data/engravings.js';
 
 const KEY = 'engrave-tower-save-v1';
 
@@ -99,7 +101,30 @@ export function syncLevel(s) {
   const { level } = levelFor(codexPoints(s));
   let ups = 0;
   while (s.level < level) { s.level++; s.points += pointsAt(s.level) - pointsAt(s.level - 1); ups++; }
+  grantClassEngravings(s);
   return ups;
+}
+
+// 내 클래스 스킬 각인은 레벨업으로 얻는다: 스킬이 열리는 레벨(unlock)에 그 스킬을 단 각인 하나를 준다
+// 고르는 각인: 몬스터 부산물(m_)보다 원래 각인, 그중 낮은 등급. 스킬마다 한 번만 (s.classEng에 적어 둔다)
+export function classEngravingFor(skillId) {
+  const L = Object.keys(ENGRAVING_SKILLS).filter((e) => ENGRAVING_SKILLS[e] === skillId && ENGRAVINGS[e]);
+  L.sort((a, b) => (a.startsWith('m_') - b.startsWith('m_')) || (ENGRAVINGS[a].grade - ENGRAVINGS[b].grade));
+  return L[0] || null;
+}
+export function grantClassEngravings(s) {
+  const c = CLASSES[s.cls]; if (!c) return [];
+  s.owned ||= {}; s.classEng ||= {};
+  const got = [];
+  for (const sk of c.skills) {
+    if (!SKILLS[sk] || s.classEng[sk] || (SKILLS[sk].unlock || 1) > (s.level || 1)) continue;
+    const eid = classEngravingFor(sk); if (!eid) continue;
+    s.classEng[sk] = eid;
+    s.owned[eid] = (s.owned[eid] || 0) + 1;
+    got.push(eid);
+  }
+  if (got.length) (s.newEng ||= []).push(...got); // 화면에 알릴 것 (보여 주고 비운다)
+  return got;
 }
 
 // ───── 의뢰 (광장 게시판) ─────

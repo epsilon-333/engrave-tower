@@ -15,7 +15,7 @@ import { WORLD_ZONE, ENTRANCES } from '../data/maps/overworld.js';
 import { LABY_ZONE, PALACE_ZONE } from '../data/maps/interiors.js';
 import { computeBuild, encodeLoadout, decodeLoadout, SLOTS, SLOT_KEYS, fitEngravings, twoHandBonus, weaponFamily, FAMILY_NAME } from '../sim/build.js';
 import { condText, evalCond } from '../sim/conditions.js';
-import { toLoadout, writeSave, refreshQuests, claimQuest } from '../save.js';
+import { toLoadout, writeSave, refreshQuests, claimQuest, grantClassEngravings } from '../save.js';
 import { sfx } from '../audio.js';
 import { engravingSkillFor, KIND_NAME, SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS, skillLoad, skillCap } from '../data/skills.js';
 import { getAutoAim, setAutoAim } from '../settings.js';
@@ -346,7 +346,7 @@ export class Hub {
   }
   // 목록 한 줄: 등급 색 · 이름(모르면 ???) · 태그 · 스킬 · 재료 준비 여부
   engravingRow(id, s) {
-    const e = ENGRAVINGS[id], known = Object.keys(e.recipe).some((eid) => s.codex.echoes[eid]);
+    const e = ENGRAVINGS[id], known = (s.owned[id] || 0) > 0 || Object.keys(e.recipe).some((eid) => s.codex.echoes[eid]);
     const can = Object.entries(e.recipe).every(([eid, n]) => (s.echoes[eid] || 0) >= n), owned = s.owned[id] || 0;
     const sk = SKILLS[engravingSkillFor(id, s.race)], goal = (s.goals || []).includes(id);
     return `<button class="eng-row ${this.altarSel === id ? 'on' : ''} ${known ? '' : 'unknown'}" data-act="aselect" data-id="${id}" data-q="${esc(this.engSearchText(id, s, !known))}" style="--g:${GRADES[e.grade].color}">
@@ -357,7 +357,7 @@ export class Hub {
   }
   engravingCard(id, s, b) {
     const e = ENGRAVINGS[id];
-    const known = Object.keys(e.recipe).some((eid) => s.codex.echoes[eid]);
+    const known = (s.owned[id] || 0) > 0 || Object.keys(e.recipe).some((eid) => s.codex.echoes[eid]);
     const owned = s.owned[id] || 0;
     const equipped = Object.values(s.slots).filter((x) => x === id).length;
     const can = Object.entries(e.recipe).every(([eid, n]) => (s.echoes[eid] || 0) >= n);
@@ -645,6 +645,7 @@ export class Hub {
         const c = CLASSES[id];
         if (!c || c.race !== s.race) break;
         s.cls = id; s.skills = undefined; s.style = c.style;
+        grantClassEngravings(s); // 이 클래스의 스킬 각인 (지금 레벨까지 열린 것)
         const starter = c.weapons[0];
         if (!s.items.includes(starter)) { s.items.push(starter); this.toast(`${c.name} · 시작 무기 「${ITEMS[starter].name}」를 받았습니다`); }
         else this.toast(`${c.name}(으)로 바꿨습니다`);
