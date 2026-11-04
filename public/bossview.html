@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>보스 동작 보기</title>
+<style>
+  :root { --bg: #1c1a24; --panel: #2a2734; --text: #efe6d6; --muted: #a89fb4; --accent: #ffcf5a; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: Galmuri11, "Malgun Gothic", sans-serif; }
+  header { padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  h1 { font-size: 18px; margin: 0 12px 0 0; }
+  button { background: var(--panel); color: var(--text); border: 1px solid #4a4458; border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  button.on { border-color: var(--accent); color: var(--accent); }
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; padding: 0 16px 24px; }
+  .card { background: var(--panel); border-radius: 8px; padding: 8px; text-align: center; }
+  .card canvas { image-rendering: pixelated; width: 100%; height: auto; background: #2f3a2f; border-radius: 4px; }
+  .card b { display: block; margin-top: 6px; }
+  .card small { color: var(--muted); }
+  label { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>보스 동작 보기</h1>
+  <span id="anims"></span>
+  <label><input type="checkbox" id="slow"> 느리게</label>
+</header>
+<div id="grid"></div>
+<script type="module">
+const NAMES = { climbChief: '가면 족장 (5층)', mossLord: '이끼 군주 (10층)', bogHag: '늪 마녀 수장 (15층)', climbQueen: '늪의 거인 (20층)', demonCaptain: '방패 악귀 대장 (25층)', climbRift: '균열 수호자 (30층)', frostOgre: '얼음 오우거 왕 (35층)', climbWitch: '서리 마녀 (40층)', wraithLord: '망령 기사단장 (45층)', engraveKing: '각인의 왕 (50층)',
+  stormHarpy: '폭풍 하피 여왕 (55층)', skyWhale: '하늘 고래 아에로 (60층)', mirrorSelf: '거울에 비친 나 (65층)', shardQueen: '깨진 거울의 여왕 (70층)', foreman: '공장 감독 (75층)', clockKeeper: '시계지기 (80층)', clockKeeper2: '시계지기 3단계', archivist: '대서고관 (85층)', starReader: '별을 읽는 자 (90층)', highPriest: '교단 대사제 (95층)', lastKing: '마지막 왕 (100층)' };
+const LABEL = { idle: '서기', run: '걷기', attack: '공격', skill: '기술', hit: '맞음', death: '쓰러짐' };
+const FPS = { idle: 3, run: 7, attack: 6, skill: 5, hit: 3, death: 4 };
+const man = await (await fetch('assets/custom/sprites.json')).json();
+const img = new Image(); img.src = 'assets/custom/bosses.png'; await img.decode();
+const bosses = man.sheets.filter((s) => s.img === 'bosses.png');
+let anim = 'idle';
+const bar = document.getElementById('anims');
+for (const k of Object.keys(LABEL)) { const b = document.createElement('button'); b.textContent = LABEL[k]; b.dataset.k = k; b.onclick = () => { anim = k; t0 = performance.now(); [...bar.children].forEach((x) => x.classList.toggle('on', x.dataset.k === k)); }; bar.appendChild(b); }
+bar.children[0].classList.add('on');
+const grid = document.getElementById('grid'), cards = [];
+for (const s of bosses) {
+  const id = s.prefix.replace(/^b_/, ''), c = document.createElement('div'); c.className = 'card';
+  const cv = document.createElement('canvas'); cv.width = 110; cv.height = 104; c.appendChild(cv);
+  c.insertAdjacentHTML('beforeend', `<b>${NAMES[id] || id}</b><small></small>`); grid.appendChild(c); cards.push({ s, cv, small: c.querySelector('small') });
+}
+let t0 = performance.now();
+function draw(now) {
+  const slow = document.getElementById('slow').checked ? 0.35 : 1, t = (now - t0) / 1000 * slow;
+  for (const { s, cv, small } of cards) {
+    const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, cv.width, cv.height);
+    const a = s.anims[anim] || s.anims.idle, once = anim === 'death' || anim === 'attack' || anim === 'skill';
+    let i = Math.floor(t * FPS[anim]);
+    i = once ? (i % (a.n + 4) >= a.n ? a.n - 1 : i % (a.n + 4)) : i % a.n; // 한 번씩 하는 동작은 끝에서 잠깐 멈췄다 다시
+    g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(cv.width / 2, cv.height - 6, s.w * 0.32, 3, 0, 0, Math.PI * 2); g.fill();
+    g.drawImage(img, i * s.w, s.y0 + a.row * s.h, s.w, s.h, Math.round((cv.width - s.w) / 2), cv.height - 4 - s.h, s.w, s.h);
+    small.textContent = s.anims[anim] ? `${LABEL[anim]} ${i + 1} / ${a.n}` : `${LABEL[anim]} 장면 없음 (서기로)`;
+  }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
