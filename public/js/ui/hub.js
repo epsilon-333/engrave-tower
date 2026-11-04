@@ -10,7 +10,7 @@ import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
 import { engravingWeapons } from '../data/engweapons.js';
 import { monsterWhere, whereText, towerOnly, echoSources } from '../data/where.js';
 import { ITEMS, STYLES, WEAPON_SKILLS, weaponHands, WCAT_NAME, weaponCat } from '../data/items.js';
-import { MONSTERS, ECHOES, ZONES } from '../data/monsters.js';
+import { MONSTERS, ECHOES, ZONES, TOWER_ZONES, ALL_ZONES } from '../data/monsters.js';
 import { WORLD_ZONE, ENTRANCES } from '../data/maps/overworld.js';
 import { LABY_ZONE, PALACE_ZONE } from '../data/maps/interiors.js';
 import { computeBuild, encodeLoadout, decodeLoadout, SLOTS, SLOT_KEYS, fitEngravings, twoHandBonus, weaponFamily, FAMILY_NAME } from '../sim/build.js';
@@ -299,7 +299,7 @@ export class Hub {
     const rows = Object.entries(need).map(([eid, n]) => {
       const have = s.echoes[eid] || 0;
       const src = [];
-      for (const z of ZONES) for (const m of [...z.pool, z.elite]) {
+      for (const z of ALL_ZONES) for (const m of [...z.pool, z.elite]) {
         const def = MONSTERS[m];
         if (def.echo.id === eid || def.condEcho?.id === eid) src.push(s.codex.kills[m] ? `${def.name}(${z.name})` : `???(${z.name})`);
       }
@@ -722,6 +722,7 @@ const termify = (html) => html.replace(TERM_RE, (w) => `<span class="term" data-
 function codexGroups() {
   const groups = [
     ...ZONES.map((z) => ({ name: `${z.floor}층 · ${z.name}`, ids: [...z.pool, z.elite, ...(z.id === 'cave' ? ['treasureGoblin'] : [])] })),
+    ...TOWER_ZONES.map((z) => ({ name: `각인의 탑 ${z.floor * 10 - 9}~${z.floor * 10}층 · ${z.name} (탑 전용)`, ids: [...z.pool] })),
     { name: `${WORLD_ZONE.name} · 들판과 동굴`, ids: [...WORLD_ZONE.pool, ...Object.values(ENTRANCES).map((d) => d.elite).filter(Boolean)] },
     { name: LABY_ZONE.name, ids: [...LABY_ZONE.pool, LABY_ZONE.elite] },
     { name: PALACE_ZONE.name, ids: [...PALACE_ZONE.pool, PALACE_ZONE.elite] },
@@ -735,7 +736,7 @@ function codexGroups() {
 }
 
 function zoneOfEcho(eid) {
-  for (const z of ZONES) for (const m of [...z.pool, z.elite]) {
+  for (const z of ALL_ZONES) for (const m of [...z.pool, z.elite]) {
     const def = MONSTERS[m];
     if (def.echo.id === eid || def.condEcho?.id === eid || def.part === eid) return z.id;
   }

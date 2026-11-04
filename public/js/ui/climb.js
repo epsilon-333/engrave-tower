@@ -7,7 +7,7 @@ import { World } from '../sim/world.js';
 import { computeBuild } from '../sim/build.js';
 import { buildClimbFloor } from '../sim/climbmap.js';
 import { toLoadout, applyRun } from '../save.js';
-import { ZONES } from '../data/monsters.js';
+import { ALL_ZONES } from '../data/monsters.js';
 import { eatInfo } from '../data/cooking.js';
 import { CLIMB_TOP, ACTS, actOf, floorKind, recLevel, newRun, runEffects, OATHS, oathScore, climbStarts, newClimbSave, FLOOR_MODS } from '../data/climb.js';
 
@@ -60,7 +60,7 @@ export function createClimb(ctx) {
   function enterFloor(door, co = ctx.coSpec?.() || null) {
     const r = run();
     r.f++; r.door = door;
-    const f = r.f, act = actOf(f), zone = ZONES.find((z) => z.id === act.zone);
+    const f = r.f, act = actOf(f), zone = ALL_ZONES.find((z) => z.id === act.zone);
     const fk = floorKind(f);
     const seed = (r.seed + f * 7919) >>> 0;
     const map = buildClimbFloor(zone, seed, f, fk);
@@ -74,8 +74,9 @@ export function createClimb(ctx) {
     ctx.setWorld(w, co);
     const rec = recLevel(f), low = S().level < rec;
     const MOD = FLOOR_MODS[w.climb.mod];
-    ctx.banner({ text: fk === 'lord' ? `${f}층 · ${act.name}의 주인` : fk === 'guardian' ? `${f}층 · 수호자` : MOD ? `${f}층 · ${MOD.name}` : `각인의 탑 ${f}층`, sub: `${MOD ? `${MOD.text} · ` : ''}${act.name}${low ? ` · 권장 Lv ${rec} (지금 Lv ${S().level} · 적이 더 세다)` : ''}`, t: 2.6, color: fk === 'lord' ? '#ff7a5a' : fk === 'guardian' ? '#ffb07a' : act.color });
-    ctx.music(fk === 'fight' ? zone.id : 'boss'); ctx.sfx('open'); ctx.startLoop(); // 수호자 · 주인 층은 보스곡
+    const zoneStart = fk === 'fight' && f % 10 === 1; // 새 구역의 첫 층: 구역 이름과 장치를 알려 준다
+    ctx.banner({ text: fk === 'lord' ? `${f}층 · ${act.name}의 주인` : fk === 'guardian' ? `${f}층 · 수호자` : zoneStart ? `${f}층 · ${act.name}` : MOD ? `${f}층 · ${MOD.name}` : `각인의 탑 ${f}층`, sub: `${MOD ? `${MOD.text} · ` : ''}${zoneStart && act.gimmick ? act.gimmick : act.name}${low ? ` · 권장 Lv ${rec} (지금 Lv ${S().level} · 적이 더 세다)` : ''}`, t: 2.6, color: fk === 'lord' ? '#ff7a5a' : fk === 'guardian' ? '#ffb07a' : act.color });
+    ctx.music(fk === 'fight' ? zone.id : f === 50 || f === CLIMB_TOP ? 'boss_final' : `boss_${zone.id}`); ctx.sfx('open'); ctx.startLoop(); // 수호자 · 주인 층은 보스곡
     ctx.onEvent?.('floor', { f });
   }
 
@@ -100,8 +101,8 @@ export function createClimb(ctx) {
         c.lords[act.n] = (c.lords[act.n] || 0) + 1;
         if (first && act.n === 5) setTimeout(() => ctx.showModal(`<h2>각인의 왕이 쓰러졌다</h2>
           <p class="lvup">탑 한가운데의 빛이 다시 타오른다.</p>
-          <p>삼백 년 전 마지막 왕이 닫은 문 너머, 탑은 아직 끝나지 않았다. 쓰러뜨린 수호자들이 <b>각성해서</b> 51층부터 다시 기다린다.</p>
-          <p class="muted">본편을 마쳤다 · 이제부터는 51~100층과 서약으로 기록에 도전한다</p>
+          <p>삼백 년 전 마지막 왕이 닫은 문 너머, 잠들어 있던 <b>탑의 기억</b>이 깨어난다. 하늘 정원 · 거울 미궁 · 태엽 시계탑 · 별의 서고 · 빛의 정상 — 오를수록 그날의 진실에 다가간다.</p>
+          <p class="muted">본편을 마쳤다 · 51층부터는 새 구역 다섯 (구역마다 장치가 있다) · 100층 꼭대기에서 마지막 왕이 기다린다</p>
           <div class="actions"><button data-close>계속</button></div>`), 1200); // 본편 끝 (50층)
         if (s.f < CLIMB_TOP) ctx.banner({ text: '기록이 남았다', sub: first ? `다음부터 ${s.f + 1}층에서 시작할 수 있다${act.n === 1 ? ' · 서약이 열렸다' : ''}` : `${s.f + 1}층부터 시작할 수 있다`, t: 4, color: '#8ad8ff' });
       }
@@ -146,7 +147,7 @@ export function createClimb(ctx) {
     const starts = climbStarts(c.lords), next = starts[starts.length - 1];
     ctx.sfx(kind === 'dead' ? 'error' : 'levelup', { vol: 0.7 });
     ctx.showModal(`<h2>${title}</h2>
-      ${kind === 'top' ? '<p class="lvup">꺼져 가던 꼭대기의 빛이 다시 타오른다. 이제 서약을 걸고 다시 오를 수 있다.</p>' : ''}${by ? `<p class="muted">${esc(by)}</p>` : ''}
+      ${kind === 'top' ? `<p class="lvup">마지막 왕이 무릎을 꿇었다. 「…이제 빛을 맡기마.」</p><p>삼백 년 동안 꺼져 가던 꼭대기의 빛이 다시 타오르고, 섬의 하늘이 새벽빛으로 바뀐다.</p><p class="muted">${c.wins > 1 ? '다시 꼭대기에 닿았다' : '진짜 끝을 보았다'} · 이제 서약을 걸고 다시 오를 수 있다</p>` : ''}${by ? `<p class="muted">${esc(by)}</p>` : ''}
       <div class="cl-sum"><div><small>오른 층</small><b>${reached}층</b></div><div><small>걸린 시간</small><b>${fmtT(rec.time)}</b></div><div><small>가져온 부산물</small><b>${keptN}개</b></div><div><small>골드</small><b class="cl-gold">◆ ${res.gold || 0}</b></div></div>
       ${kind === 'dead' ? '<p class="muted">쓰러지면 주운 것의 60%만 가져온다.</p>' : ''}${sc ? `<p class="muted">서약 ${sc}</p>` : ''}
       ${res.ups ? `<p class="lvup">레벨 업! Lv ${s.level}</p>` : ''}

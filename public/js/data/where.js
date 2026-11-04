@@ -1,6 +1,6 @@
 // 어디서 만나나: 몬스터 · 잔향 · 부산물을 얻을 수 있는 곳 (도감 · 제단이 함께 쓴다)
 // 바깥 지역(권장 레벨) · 바깥 던전 · 미궁 · 왕궁 · 각인의 탑(층) · 레이드
-import { ZONES, MONSTERS } from './monsters.js';
+import { ZONES, ALL_ZONES, MONSTERS } from './monsters.js';
 import { BIOME_LIST, ENTRANCES } from './maps/overworld.js';
 import { LABY_ZONE, PALACE_ZONE } from './maps/interiors.js';
 import { ACTS } from './climb.js';
@@ -18,7 +18,7 @@ function build() {
   }
   for (const z of [LABY_ZONE, PALACE_ZONE]) for (const id of [...(z.pool || []), z.elite]) add(id, { kind: 'dungeon', name: z.name });
   for (const a of ACTS) {
-    const z = ZONES.find((x) => x.id === a.zone);
+    const z = ALL_ZONES.find((x) => x.id === a.zone);
     for (const id of [...z.pool, z.elite]) add(id, { kind: 'tower', name: `각인의 탑 ${a.from}~${a.to}층`, tower: true });
     add(a.guardian, { kind: 'tower', name: `각인의 탑 ${a.from + 4}층 수호자`, tower: true });
     add(a.lord, { kind: 'tower', name: `각인의 탑 ${a.to}층 주인`, tower: true });

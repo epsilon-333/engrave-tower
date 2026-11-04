@@ -7,7 +7,7 @@ const { World } = await import(root + '/sim/world.js');
 const { computeBuild } = await import(root + '/sim/build.js');
 const { buildClimbFloor } = await import(root + '/sim/climbmap.js');
 const { createRng } = await import(root + '/sim/rng.js');
-const { ZONES } = await import(root + '/data/monsters.js');
+const { ZONES, ALL_ZONES } = await import(root + '/data/monsters.js');
 const { CLASSES } = await import(root + '/data/skills.js');
 const { ITEMS } = await import(root + '/data/items.js');
 const C = await import(root + '/data/climb.js');
@@ -39,7 +39,7 @@ function loadout(cid, level, f = 1) {
 }
 
 function makeWorld(run, lo) {
-  const f = run.f, act = C.actOf(f), z = ZONES.find((x) => x.id === act.zone);
+  const f = run.f, act = C.actOf(f), z = ALL_ZONES.find((x) => x.id === act.zone);
   const fk = C.floorKind(f);
   const seed = (run.seed + f * 7919) >>> 0;
   const b = computeBuild({ ...lo, extraEffects: C.runEffects(run) });

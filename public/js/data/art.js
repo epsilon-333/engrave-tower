@@ -101,7 +101,51 @@ export const MONSTER_ART = {
   climbWitch: { base: 'p_m_frostWitch', scale: 1.9 },
   wraithLord: { base: 'p_m_wraithKnight', scale: 1.8, ghost: true },
   engraveKing: { base: 'p_m_fallenKnight', scale: 2.1, tint: 'sepia(1) saturate(2.6) hue-rotate(-12deg) brightness(1.15)' },
+  // 탑 51~100층 (지금은 있는 그림에 색을 입혀 쓴다 · 새 그림은 나중에)
+  windSpirit: { beast: 'waterSpirit', fly: true, tint: 'hue-rotate(-15deg) saturate(0.45) brightness(1.55)' },
+  harpyWarrior: { base: 'c_harpy', fly: true, tint: 'hue-rotate(175deg) saturate(0.7) brightness(1.2)' },
+  petalSprite: { base: 'c_thornSprite', fly: true, tint: 'hue-rotate(225deg) saturate(1.3) brightness(1.25)' },
+  cloudSheep: { beast: 'boar', tint: 'grayscale(1) brightness(2.3) contrast(0.75)' },
+  hawkRider: { base: 'p_m_forestArcher', tint: 'hue-rotate(110deg) saturate(0.8) brightness(1.15)' },
+  gargoyle: { base: 'c_ruinSentinel', tint: 'hue-rotate(190deg) saturate(0.5) brightness(1.05)' },
+  stormHarpy: { base: 'c_harpy', fly: true, scale: 1.9, tint: 'hue-rotate(190deg) saturate(1.8) brightness(1.15) contrast(1.15)' },
+  skyWhale: { base: 'c_seaSerpent', fly: true, scale: 2.3, tint: 'hue-rotate(10deg) saturate(0.7) brightness(1.35)' },
+  mirrorKnight: { base: 'p_m_wraithKnight', tint: 'grayscale(0.8) brightness(1.55) contrast(1.15)' },
+  glassCrawler: { beast: 'spider', tint: 'grayscale(0.7) brightness(1.9) hue-rotate(180deg)' },
+  mirrorSlime: { beast: 'spikeSlime', tint: 'grayscale(0.85) brightness(1.9)' },
+  shardBird: { beast: 'bat', fly: true, tint: 'grayscale(0.6) brightness(1.8) hue-rotate(170deg)' },
+  phantomArcher: { base: 'p_m_darkArcher', ghost: true, tint: 'hue-rotate(160deg) brightness(1.7) saturate(0.6)' },
+  mirrorWitch: { base: 'p_m_frostWitch', tint: 'grayscale(0.7) brightness(1.3)' },
+  mirrorSelf: { mirrorPlayer: true, scale: 1.5, tint: 'grayscale(0.85) brightness(1.65) contrast(1.25)' }, // 내 종족 그림을 거울빛으로
+  mirrorShade: { mirrorPlayer: true, ghost: true, tint: 'brightness(0.22) contrast(1.6) saturate(0)' }, // 거울 미궁: 내 그림자
+  shardQueen: { base: 'p_m_raidQueen', scale: 2.0, tint: 'grayscale(0.85) brightness(1.5) contrast(1.2)' },
+  clockSoldier: { base: 'p_royalGuard', tint: 'sepia(0.9) saturate(1.5) hue-rotate(-12deg) brightness(0.95)' },
+  gearSpider: { beast: 'spider', tint: 'sepia(1) saturate(1.8) hue-rotate(-15deg) brightness(1.1)' },
+  timeBat: { base: 'c_bat', fly: true, tint: 'sepia(1) saturate(2.2) hue-rotate(5deg) brightness(1.2)' },
+  hourglassSpirit: { beast: 'fireSpirit', fly: true, tint: 'sepia(0.6) saturate(0.9) hue-rotate(15deg) brightness(1.3)' },
+  steamGolem: { base: 'c_magmaGolem', scale: 1.1, tint: 'sepia(0.9) saturate(0.6) brightness(1.25)' },
+  clockmaker: { base: 'p_m_goblinShaman', tint: 'sepia(0.9) saturate(1.2) hue-rotate(-20deg)' },
+  foreman: { base: 'c_raidGolem', scale: 1.5, tint: 'sepia(1) saturate(1.6) hue-rotate(-10deg) brightness(1.05)' },
+  clockKeeper: { base: 'p_m_iceShaman', scale: 2.0, tint: 'sepia(1) saturate(2.2) hue-rotate(5deg) brightness(1.25)' },
+  bookworm: { beast: 'beetle', tint: 'sepia(1) saturate(0.9) brightness(1.2)' },
+  grimoire: { beast: 'book', fly: true },
+  inkWraith: { beast: 'ghost', ghost: true, fly: true, tint: 'brightness(0.5) saturate(1.5) hue-rotate(40deg)' },
+  stargazer: { base: 'p_m_necroAcolyte', tint: 'hue-rotate(-50deg) saturate(1.3) brightness(1.3)' },
+  archiveKeeper: { base: 'c_ruinSentinel', scale: 1.1, tint: 'sepia(0.6) hue-rotate(220deg) saturate(1.3) brightness(0.95)' },
+  erasedRecord: { base: 'p_m_cultist', tint: 'grayscale(1) brightness(1.7)' },
+  archivist: { base: 'p_royalMage', scale: 1.9, tint: 'hue-rotate(200deg) saturate(1.3) brightness(1.05)' },
+  starReader: { base: 'p_lead_wizard', scale: 2.1, tint: 'hue-rotate(200deg) saturate(1.2) brightness(1.25)' },
+  lightWarden: { base: 'c_ruinSentinel', scale: 1.1, tint: 'sepia(1) saturate(2.4) hue-rotate(5deg) brightness(1.35)' },
+  engravedShade: { raceLook: true, ghost: true, tint: 'grayscale(0.6) brightness(1.5) hue-rotate(180deg)' }, // 8종족의 옛 전사 (나올 때 종족 하나)
+  wingedApostle: { base: 'c_harpy', fly: true, tint: 'sepia(1) saturate(1.5) brightness(1.5)' },
+  starlightSpirit: { beast: 'waterSpirit', fly: true, tint: 'sepia(1) saturate(2) hue-rotate(10deg) brightness(1.5)' },
+  cultShade: { base: 'p_m_cultist', tint: 'brightness(0.55) contrast(1.4)' },
+  lightEater: { beast: 'panther', tint: 'brightness(0.6) saturate(1.6) hue-rotate(30deg)' },
+  highPriest: { base: 'p_cultist', scale: 1.9, tint: 'saturate(1.5) brightness(0.85) contrast(1.25)' },
+  lastKing: { base: 'p_king', scale: 2.3, tint: 'sepia(0.5) saturate(1.4) brightness(1.4) contrast(1.1)' },
 };
+// 각인 망령 · 마지막 왕이 빌려 쓰는 8종족의 옛 전사 그림
+export const RACE_LOOK = { wizard: 'p_keep_wizard', elf: 'p_keep_elf', knight: 'p_keep_knight', orc: 'p_keep_orc', undead: 'p_keep_undead', assassin: 'p_keep_assassin', dino: 'p_keep_dino', dragon: 'p_keep_dragon' };
 
 export const NPC_ART = {
   // 모두 tools/people.py 로 하나하나 그린 사람 (색만 바꾼 재활용 없음)
@@ -256,4 +300,9 @@ export const ZONE_TINT = {
   labyrinth: 'sepia(0.5) saturate(0.8) brightness(0.85)',
   palace: 'hue-rotate(150deg) saturate(1.3) brightness(1.1)',
   arena: 'sepia(0.35) saturate(0.7) brightness(1.6)', // 연습 실험장: 밝은 모래빛 돌바닥
+  sky: 'grayscale(1) brightness(1.75) sepia(0.2) hue-rotate(170deg) saturate(1.8)', // 하늘 정원: 흰빛 도는 푸른 돌
+  mirror: 'grayscale(0.9) brightness(1.55) contrast(1.1) sepia(0.15) hue-rotate(180deg)', // 거울 미궁: 푸른 은빛 돌
+  clock: 'sepia(0.85) saturate(1.3) hue-rotate(-12deg) brightness(0.9)', // 태엽 시계탑: 구리 · 놋쇠
+  library: 'hue-rotate(215deg) saturate(0.55) brightness(0.8)', // 별의 서고: 남보랏빛 돌
+  summit: 'sepia(0.7) saturate(1.2) brightness(1.4)', // 빛의 정상: 금빛 흰 돌
 };

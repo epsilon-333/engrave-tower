@@ -116,10 +116,56 @@ const P = [
   ['rockThrower', '투척꾼의 둥근 돌', '굴러가는 돌', 'arm', 2, ['brawl'], { str: 3, sen: 1 }, [on('crit', 0.3, strike(30, 0.7, 'phys', 'rocks', { stun: 0.3 }), '치명타면 30% 확률로 돌이 떨어진다')], 'boulderToss'],
   ['harpy', '하피의 깃털', '하피의 날갯짓', 'back', 2, ['wind', 'bleed'], { agi: 4 }, [on('dash', 1, strike(36, 0.6, 'wind', 'gale', { status: 'bleed' }), '대시하면 둘레에 바람 칼날')], 'windStep'],
   ['watcherEye', '감시안의 눈알', '지켜보는 눈', 'head', 3, ['reflect', 'curse'], { sen: 4, mres: 3 }, [add('crit', 0.03, '치명타 확률 +3%'), on('hurtMag', 0.3, shards(3, 0.6, 'mag'), '마법에 맞으면 30% 확률로 광선 파편 3개'), conv('sen', 3, 'mag', '감각 3마다 마력 +1')], 'weakMark'],
+
+  // ── 탑 51~60 하늘 정원 ──
+  ['windSpirit', '바람 정령의 숨결', '바람의 숨결', 'back', 3, ['wind'], { agi: 4, mag: 2 }, [mul('moveSpeed', 1.05, '이동 속도 +5%'), on('dash', 1, strike(40, 0.8, 'wind', 'gale'), '대시하면 둘레에 바람 칼날 (피해 80%)')], 'galeShot'],
+  ['harpyWarrior', '하피 전사의 칼깃', '칼깃 날개', 'arm', 3, ['wind', 'bleed'], { agi: 4, str: 3 }, [on('crit', 0.3, st('bleed', 2), '치명타면 30% 확률로 출혈 2중첩'), mul('atkSpeed', 1.04, '공격 속도 +4%')], 'windStep'],
+  ['petalSprite', '꽃잎 요정의 꽃가루', '흩날리는 꽃잎', 'head', 3, ['wind', 'curse'], { spi: 4, mag: 3 }, [on('hit', 0.1, st('curse'), '공격하면 10% 확률로 저주'), on('dodge', 1, ts('spi', 4, 6), '회피하면 6초 동안 정신 +4')], 'shurikenFan'],
+  ['cloudSheep', '구름 양의 솜털', '구름 솜털', 'back', 3, ['giant', 'wind'], { vit: 5, pres: 3 }, [mul('dmgTakenMul', 0.96, '받는 피해 -4%'), add('knockback', 40, '넉백 +40')], 'rush'],
+  ['hawkRider', '매 기수의 깃 화살', '매의 눈', 'arm', 3, ['wind'], { sen: 5, agi: 2 }, [add('critDmg', 0.12, '치명타 피해 +12%'), on('crit', 1, ts('sen', 3, 6), '치명타면 6초 동안 감각 +3')], 'aimedShot'],
+  ['gargoyle', '가고일의 돌날개', '돌날개', 'back', 3, ['giant', 'reflect'], { pres: 6, vit: 3 }, [add('reflect', 6, '반사 +6%'), on('hurt', 0.15, { shield: 0.04 }, '맞으면 15% 확률로 보호막(최대 체력 4%)')], 'stoneSkin'],
+  ['stormHarpy', '폭풍 여왕의 깃관', '폭풍의 깃관', 'head', 5, ['wind', 'bleed'], { agi: 10, sen: 6, str: 4 }, [mul('moveSpeed', 1.08, '이동 속도 +8%'), on('dash', 1, strike(56, 1.4, 'wind', 'gale', { status: 'bleed', stacks: 2 }), '대시하면 폭풍 칼날 (피해 140% · 출혈 2중첩)'), mul('dashCd', 0.9, '대시 쿨타임 -10%')], 'windStep'],
+  ['skyWhale', '아에로의 노래 비늘', '하늘 고래의 노래', 'heart', 5, ['giant', 'wind'], { vit: 12, spi: 6 }, [mul('maxHp', 1.1, '최대 HP +10%'), add('regen', 0.002, '초당 최대 HP 0.2% 회복'), on('hurt', 0.15, strike(64, 1.2, 'wind', 'gale', { stun: 0.4 }), '맞으면 15% 확률로 둘레를 바람으로 밀쳐 낸다 (피해 120% · 0.4초 기절)')], 'soar'],
+  // ── 탑 61~70 거울 미궁 ──
+  ['mirrorKnight', '거울 기사의 은빛 방패', '은빛 방패', 'arm', 3, ['reflect', 'giant'], { pres: 6, mres: 4 }, [add('reflect', 8, '반사 +8%'), mul('dmgTakenMul', 0.97, '받는 피해 -3%')], 'shieldBash'],
+  ['glassCrawler', '유리 거미의 투명 다리', '투명한 다리', 'leg', 3, ['bleed', 'shadow'], { agi: 5, sen: 2 }, [on('dash', 1, buff('glass', 1.5, { crit: 1.4 }, '유리 발걸음', '#d8ecff'), '대시 뒤 1.5초 동안 치명타 확률 1.4배')], 'pounce'],
+  ['mirrorSlime', '반사 슬라임의 거울 막', '거울 점액', 'leg', 3, ['slime', 'reflect'], { pres: 4, mres: 5 }, [add('reflect', 7, '반사 +7%'), on('hurtMag', 0.3, shards(3, 0.6, 'mag'), '마법에 맞으면 30% 확률로 거울 파편 3개')], 'eMirrorWall'],
+  ['shardBird', '파편 새의 유리 깃', '유리 깃', 'back', 3, ['wind', 'bleed'], { agi: 4, sen: 3 }, [on('dodge', 1, shards(4, 0.6), '회피하면 유리 깃 4개를 쏜다'), add('crit', 0.02, '치명타 확률 +2%')], 'dartFan'],
+  ['phantomArcher', '환영 궁수의 빈 화살통', '환영 화살', 'arm', 3, ['shadow'], { sen: 5, agi: 3 }, [on('crit', 0.3, strike(30, 0.8, 'dark', 'doom'), '치명타면 30% 확률로 환영 화살이 한 번 더 (피해 80%)'), add('dodge', 0.02, '회피 +2%')], 'pierceArrow'],
+  ['mirrorWitch', '거울 마녀의 손거울', '비추는 손거울', 'head', 3, ['reflect', 'curse'], { mag: 5, mres: 3 }, [mul('magAtk', 1.05, '마법 공격력 +5%'), add('reflect', 5, '반사 +5%')], 'reflectCrystal'],
+  ['mirrorSelf', '비친 나의 거울 조각', '또 하나의 나', 'heart', 5, ['shadow', 'reflect'], { str: 6, agi: 6, mag: 6, sen: 6 }, [mul('dmgMul', 1.08, '모든 피해 +8%'), add('reflect', 8, '반사 +8%'), on('dodge', 1, strike(48, 1.4, 'dark', 'doom'), '회피하면 그림자가 대신 벤다 (피해 140%)')], 'shadowDance'],
+  ['shardQueen', '여왕의 깨진 왕관 거울', '깨진 거울의 왕관', 'head', 5, ['reflect', 'bleed'], { mag: 10, mres: 6, sen: 4 }, [add('reflect', 14, '반사 +14%'), on('crit', 0.3, shards(6, 0.8, 'mag'), '치명타면 30% 확률로 거울 조각 6개가 튄다'), mul('magAtk', 1.08, '마법 공격력 +8%')], 'eMirrorWall'],
+  // ── 탑 71~80 태엽 시계탑 ──
+  ['clockSoldier', '태엽 병정의 태엽 열쇠', '감긴 태엽', 'heart', 3, ['giant', 'brawl'], { str: 5, pres: 4 }, [on('kill', 0.3, buff('wind', 3, { atkSpeed: 1.12 }, '감긴 태엽', '#d8a860'), '처치하면 30% 확률로 3초 동안 공격 속도 +12%')], 'shieldBash'],
+  ['gearSpider', '톱니 거미의 톱니 다리', '톱니 다리', 'leg', 3, ['bleed'], { agi: 4, str: 3 }, [on('hit', 0.12, st('bleed'), '공격하면 12% 확률로 출혈'), mul('moveSpeed', 1.04, '이동 속도 +4%')], 'rakeRetreat'],
+  ['timeBat', '시간 박쥐의 멈춘 날개', '느린 날갯짓', 'back', 3, ['ice', 'wind'], { agi: 4, iceAff: 2 }, [on('hit', 0.12, st('chill'), '공격하면 12% 확률로 냉기'), mul('dashCd', 0.94, '대시 쿨타임 -6%')], 'shadowEvade'],
+  ['hourglassSpirit', '모래시계 정령의 금모래', '금모래', 'head', 3, ['ice'], { spi: 5, mag: 3 }, [mul('costMul', 0.95, '스킬 자원 -5%'), on('cast', 1, ts('mag', 3, 6), '스킬을 쓰면 6초 동안 마력 +3')], 'timeStop'],
+  ['steamGolem', '증기 골렘의 압력판', '증기 압력', 'heart', 3, ['giant', 'fire'], { vit: 6, pres: 4 }, [on('hurt', 0.15, strike(44, 0.9, 'fire', 'burst', { status: 'burn' }), '맞으면 15% 확률로 증기가 터진다 (피해 90%)'), mul('maxHp', 1.04, '최대 HP +4%')], 'groundSmash'],
+  ['clockmaker', '시계공의 작은 드라이버', '고쳐 쓰는 손', 'arm', 3, ['drain'], { spi: 4, vit: 3 }, [on('kill', 0.3, { heal: 0.02 }, '처치하면 30% 확률로 체력 2% 회복'), add('regen', 0.001, '초당 최대 HP 0.1% 회복')], 'braceForIt'],
+  ['foreman', '감독의 증기 망치', '증기 망치', 'arm', 5, ['brawl', 'fire'], { str: 10, vit: 6 }, [mul('physAtk', 1.08, '물리 공격력 +8%'), on('crit', 0.3, strike(56, 1.6, 'fire', 'quake', { status: 'burn', stun: 0.4 }), '치명타면 30% 확률로 망치가 땅을 친다 (피해 160% · 0.4초 기절)')], 'groundSmash'],
+  ['clockKeeper', '멈춘 시계의 심장', '멈춘 시간', 'heart', 5, ['ice', 'curse'], { mag: 10, spi: 8 }, [mul('chillMul', 1.2, '냉기 효과 +20%'), on('cast', 0.25, buff('tick', 3, { cdRate: 1.5 }, '빨라진 초침', '#ffe0a0'), '스킬을 쓰면 25% 확률로 3초 동안 쿨타임이 1.5배 빨리 돈다'), mul('magAtk', 1.06, '마법 공격력 +6%')], 'timeStop'],
+  // ── 탑 81~90 별의 서고 ──
+  ['bookworm', '책벌레의 갉은 책장', '갉아먹은 글', 'leg', 3, ['bleed'], { agi: 4, sen: 2 }, [on('hit', 0.12, st('bleed'), '공격하면 12% 확률로 출혈'), on('kill', 1, ts('agi', 3, 6), '처치하면 6초 동안 민첩 +3')], 'pounce'],
+  ['grimoire', '마도서의 불타는 쪽', '불타는 문장', 'head', 3, ['fire', 'curse'], { mag: 5, fireAff: 2 }, [on('hit', 0.12, st('burn'), '공격하면 12% 확률로 화상'), mul('magAtk', 1.04, '마법 공격력 +4%')], 'wordFire'],
+  ['inkWraith', '잉크 망령의 먹물', '번지는 먹', 'back', 3, ['shadow', 'ice'], { mag: 4, spi: 3 }, [on('hurt', 0.2, st('chill', 2), '맞으면 20% 확률로 때린 적에게 냉기 2중첩'), add('dodge', 0.02, '회피 +2%')], 'shadowEvade'],
+  ['stargazer', '관측자의 별 지도', '별 지도', 'head', 3, ['fire'], { sen: 4, mag: 3 }, [add('crit', 0.03, '치명타 확률 +3%'), on('crit', 0.2, strike(36, 0.9, 'fire', 'meteor', { status: 'burn' }), '치명타면 20% 확률로 작은 별이 떨어진다 (피해 90%)')], 'iceComet'],
+  ['archiveKeeper', '서고지기의 쇠 책갈피', '쇠 책갈피', 'arm', 3, ['giant'], { pres: 6, vit: 4 }, [mul('dmgTakenMul', 0.95, '받는 피해 -5%'), on('shield', 1, ts('vit', 5, 6), '보호막을 얻으면 6초 동안 체력 +5')], 'ironWall'],
+  ['erasedRecord', '지워진 기록의 빈 종이', '지워진 이름', 'back', 3, ['shadow', 'bleed'], { agi: 5, sen: 3 }, [on('dash', 1, buff('erased', 2, { physAtk: 1.18 }, '지워진 자', '#d8d8e0'), '대시 뒤 2초 동안 물리 공격력 +18%')], 'ambush'],
+  ['archivist', '대서고관의 열쇠 꾸러미', '금서의 열쇠', 'head', 5, ['curse', 'fire'], { mag: 10, spi: 6 }, [mul('statusDmgMul', 1.15, '상태이상 피해 +15%'), on('cast', 1, ts('mag', 5, 6), '스킬을 쓰면 6초 동안 마력 +5'), mul('costMul', 0.94, '스킬 자원 -6%')], 'wordFire'],
+  ['starReader', '대현자의 별 눈', '별을 읽는 눈', 'head', 5, ['fire', 'curse'], { mag: 12, sen: 6 }, [mul('magAtk', 1.1, '마법 공격력 +10%'), on('crit', 0.3, strike(60, 1.8, 'fire', 'meteor', { status: 'burn', stacks: 2 }), '치명타면 30% 확률로 별이 떨어진다 (피해 180%)')], 'grandFireball'],
+  // ── 탑 91~100 빛의 정상 ──
+  ['lightWarden', '파수꾼의 빛나는 핵', '빛의 파수', 'heart', 3, ['light', 'giant'], { pres: 5, mres: 5 }, [mul('dmgTakenMul', 0.95, '받는 피해 -5%'), on('shield', 1, strike(44, 1.0, 'holy', 'holy'), '보호막을 얻으면 둘레에 빛기둥 (피해 100%)')], 'ironWall'],
+  ['engravedShade', '옛 전사의 각인 조각', '옛 전사의 각인', 'arm', 3, ['light', 'undying'], { str: 4, agi: 4 }, [mul('physAtk', 1.05, '물리 공격력 +5%'), on('kill', 0.3, ts('str', 4, 8), '처치하면 30% 확률로 8초 동안 근력 +4')], 'crossCut'],
+  ['wingedApostle', '사도의 흰 깃', '흰 날개', 'back', 3, ['light', 'wind'], { agi: 4, spi: 3 }, [mul('moveSpeed', 1.05, '이동 속도 +5%'), on('dodge', 1, strike(36, 0.8, 'holy', 'holy'), '회피하면 그 자리에 빛이 내린다 (피해 80%)')], 'soar'],
+  ['starlightSpirit', '별빛 정령의 핵', '별빛 핵', 'heart', 3, ['light'], { mag: 5, spi: 3 }, [mul('magAtk', 1.05, '마법 공격력 +5%'), on('cast', 1, ts('spi', 4, 6), '스킬을 쓰면 6초 동안 정신 +4')], 'eChainBolt'],
+  ['cultShade', '사도의 검은 성표', '검은 성표', 'head', 3, ['shadow', 'curse'], { mag: 4, agi: 3 }, [on('hit', 0.12, st('curse'), '공격하면 12% 확률로 저주'), add('crit', 0.02, '치명타 확률 +2%')], 'painLink'],
+  ['lightEater', '빛 먹는 자의 검은 혀', '삼킨 빛', 'leg', 3, ['shadow', 'drain'], { agi: 5, vit: 2 }, [add('lifesteal', 2, '흡혈 +2%'), on('kill', 0.3, { heal: 0.02 }, '처치하면 30% 확률로 체력 2% 회복')], 'shadowStep'],
+  ['highPriest', '대사제의 꺼진 등불', '꺼진 등불', 'head', 5, ['curse', 'shadow'], { mag: 10, spi: 8 }, [mul('statusDmgMul', 1.12, '상태이상 피해 +12%'), on('kill', 0.35, strike(56, 1.6, 'dark', 'doom'), '처치하면 35% 확률로 어둠의 문 (피해 160%)'), add('crit', 0.04, '치명타 확률 +4%')], 'eSoulHarvest'],
+  ['lastKing', '마지막 왕의 빛의 핵', '꺼지지 않는 빛', 'heart', 5, ['light', 'undying'], { str: 9, mag: 9, agi: 7, sen: 7 }, [mul('dmgMul', 1.12, '모든 피해 +12%'), on('crit', 0.3, strike(64, 2.2, 'holy', 'holy'), '치명타면 30% 확률로 빛기둥 (피해 220%)'), on('awaken', 1, { shield: 0.1 }, '싸우는 중 각성하면 보호막(최대 체력 10%)')], 'colossus'],
 ];
 
 // ── 몬스터에 붙이고 각인 · 잔향 목록에 올린다 (monsters.js · engravings.js · skills.js 가 불러 쓴다) ──
-const FAM_COLOR = { goo: '#7ed957', wing: '#9a8cff', rust: '#c08a4a', chief: '#ffb347', venom: '#9be15d', blood: '#e0445a', spore: '#d9b36b', queen: '#5dff9e', ember: '#ff7a2a', magma: '#ff5a2a', cinder: '#ffa060', core: '#ff8a40', frost: '#9fe3ff', mirror: '#e8f4ff', icecore: '#7fc8ff', witch: '#b8e8ff', bone: '#efe6d0', soul: '#c8a8ff', rot: '#9a9a5a', meltcore: '#ffa0c0', grave: '#c45cff' };
+const FAM_COLOR = { goo: '#7ed957', wing: '#9a8cff', rust: '#c08a4a', chief: '#ffb347', venom: '#9be15d', blood: '#e0445a', spore: '#d9b36b', queen: '#5dff9e', ember: '#ff7a2a', magma: '#ff5a2a', cinder: '#ffa060', core: '#ff8a40', frost: '#9fe3ff', mirror: '#e8f4ff', icecore: '#7fc8ff', witch: '#b8e8ff', bone: '#efe6d0', soul: '#c8a8ff', rot: '#9a9a5a', meltcore: '#ffa0c0', grave: '#c45cff', gale: '#bfe8ff', feather: '#ffe8c8', storm: '#7ac8ff', glass: '#d8ecff', shard: '#f0f8ff', gear: '#d8a860', steam: '#e0d8c8', time: '#ffe0a0', ink: '#8a7ab8', page: '#e8d8b0', star: '#c8d8ff', dawn: '#fff0b0', halo: '#ffe8f8', crown: '#ffd84a' };
 export const PART_LIST = P.map(([who, part, name, slot, grade, tags, stats, effects, skill]) => {
   const ids = who.split('/'), key = 'p_' + ids[0];
   return { key, ids, part, eng: 'm_' + ids[0], name, slot, grade, tags, stats, effects, skill };

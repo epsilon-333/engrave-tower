@@ -22,19 +22,20 @@ import { ECHOES, AFFIXES } from '../data/monsters.js';
 import { WEAPON_SKILLS, ITEMS, OFF_LOOK } from '../data/items.js';
 import { SKILLS, ELEM, ROLE_COLOR } from '../data/skills.js';
 import { RACES } from '../data/races.js';
-import { RACE_ART, MONSTER_ART, NPC_ART, WEAPON_ART, weaponArt } from '../data/art.js';
+import { RACE_ART, MONSTER_ART, NPC_ART, WEAPON_ART, weaponArt, RACE_LOOK } from '../data/art.js';
 import { BOSS_PASSIVES } from '../data/tower.js';
 import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
 const PASSIVE_NAME = Object.fromEntries(Object.entries(BOSS_PASSIVES).map(([k, v]) => [k, v.name]));
 import { STORY_ITEMS, storyObjective, pinoTalk } from '../data/story.js';
 import { sfx, tone } from '../audio.js';
 import { drawClimbObject, rewardIcon, drawClimbHud } from './climbfx.js';
+import { towerEvent, drawTowerFloor, drawTowerOver, drawLightPillar, drawTowerScreen, introPose } from './towerfx.js';
 import { REWARDS as CLIMB_REWARDS, ACTS as CLIMB_ACTS, actOf as climbAct, recLevel as climbRec } from '../data/climb.js';
 import { ENGRAVINGS as ALL_ENG } from '../data/engravings.js';
 import { skyColor, darkness, clockText, partOfDay } from '../sim/time.js';
 
 const FONT = 'Galmuri11, "Malgun Gothic", sans-serif';
-const GLOW = { glowshroom: [26, '#5affd0'], candle: [30, '#ffb04a'], brazier: [46, '#ffa040'], ember: [18, '#ff7a2a'], crystalB: [22, '#7ad8ff'], crystalR: [22, '#ff5a2a'], glowPlant: [24, '#7af0ff'] };
+const GLOW = { mirrorShard: [16, '#e8f4ff'], lightShard: [18, '#ffe8a0'], starDust: [14, '#c8d8ff'], glowshroom: [26, '#5affd0'], candle: [30, '#ffb04a'], brazier: [46, '#ffa040'], ember: [18, '#ff7a2a'], crystalB: [22, '#7ad8ff'], crystalR: [22, '#ff5a2a'], glowPlant: [24, '#7af0ff'] };
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 // 활을 겨눈 손: 어깨에서 조준 쪽으로 팔을 뻗은 자리 (위 · 아래로 쏠 때도 활이 겨눈 쪽에 온다)
 const bowHand = (a) => ({ hx: 1 + Math.cos(a) * 11, hy: -9 + Math.sin(a) * 10 });
@@ -336,6 +337,7 @@ export class Renderer {
   consume(w) {
     for (const ev of w.events) {
       if (this.lifeEvent(w, ev)) continue;
+      if (w.climb && towerEvent(this, w, ev)) continue; // 탑 51~100층 장치 · 보스 등장
       switch (ev.t) {
         case 'dmg':
           if (ev.who === 'p') {
@@ -861,7 +863,8 @@ export class Renderer {
   draw(w, dt) {
     const main = this.mainG, S = this.S, VW = this.VW, VH = this.VH;
     const p = w.player;
-    const tx = p.x - VW / 2 + (p.aimX || 0) * 16, ty = p.y - VH / 2 + (p.aimY || 0) * 10;
+    const foc = this.camFocus?.t > 0 ? this.camFocus : null; if (foc) foc.t -= dt; // 보스 등장: 카메라가 보스를 비춘다
+    const tx = foc ? foc.x - VW / 2 : p.x - VW / 2 + (p.aimX || 0) * 16, ty = foc ? foc.y - VH / 2 : p.y - VH / 2 + (p.aimY || 0) * 10;
     if (!Number.isFinite(this.cam.x) || !Number.isFinite(this.cam.y)) { this.cam.x = tx; this.cam.y = ty; } // 카메라가 한 번 NaN이 되면 조준 → 카메라로 계속 번지므로 바로 되돌린다
     this.cam.x += (tx - this.cam.x) * Math.min(1, dt * 8);
     this.cam.y += (ty - this.cam.y) * Math.min(1, dt * 8);
@@ -883,6 +886,7 @@ export class Renderer {
     if (w.map.outdoor) { this.drawChunks(w, cx, cy); this.drawOutdoorLife(w, cx, cy); if (w.farmRect && w.life) for (const [key, pl] of Object.entries(w.life.farm)) { const [fx, fy] = key.split(',').map(Number); drawSoil(g, fx, fy, !!pl.wateredAt, w.t); } }
     else g.drawImage(this.mapCanvasNight && (this.nightK || 0) > 0.42 ? this.mapCanvasNight : this.mapCanvas, 0, 0);
     this.drawLiquidAnim(w, cx, cy);
+    if (w.climb) drawTowerFloor(this, w, g, cx, cy); // 톱니 띠 · 별자리 · 시계 문자판 · 하늘 · 바뀔 칸 예고
     if (w.map.ship) this.drawSailing(w);
     if (w.map.plaza) this.drawPlazaFloor(w);
 
@@ -1026,6 +1030,7 @@ export class Renderer {
     this.drawFx(w, dt);
     this.anims.draw(this.g, dt);
 
+    if (w.climb) drawTowerOver(this, w, g, cx, cy); // 회오리 · 시간 칼날 · 되감기 잔상 · 고래 그림자 · 돌풍 예고
     for (const q of this.parts) {
       q.t -= dt; q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.9; q.vy *= 0.9;
       const a = Math.min(1, (q.t / q.max) * 1.6);
@@ -1300,6 +1305,13 @@ export class Renderer {
     return v;
   }
 
+  // 몬스터 그림: 내 모습을 비추는 거울 보스 · 8종족 옛 전사(나올 때 정한 종족)는 그때그때 고른다
+  enemyArt(w, e) {
+    const art = MONSTER_ART[e.defId] || { base: 'goblin' };
+    if (art.mirrorPlayer) return { ...art, base: (RACE_ART[e.mirrorRace || w.b?.race] || RACE_ART.knight).base };
+    if (art.raceLook) return { ...art, base: RACE_LOOK[e.raceLook] || RACE_LOOK.knight };
+    return art;
+  }
   drawEnemy(w, e, dt) {
     const g = this.g, def = e.def;
     if (e.npcRef) { e._top = null; return; } // 화난 NPC는 NPC 그림으로 그린다
@@ -1307,7 +1319,7 @@ export class Renderer {
     if (def.ai === 'dummy') return this.drawDummy(w, e);
     if (def.ai === 'target') return drawTrainTarget(this, w, e);
     if (e.bones > 0) return drawBonePile(this, w, e); // 수련: 쓰러진 해골이 뼈 무더기로 (곧 다시 일어선다)
-    const art = MONSTER_ART[e.defId] || { base: 'goblin' };
+    const art = this.enemyArt(w, e);
     if (e.passives && dt > 0) { // 보스 기운: 몸 둘레에서 피어오르는 독 방울 · 서리 알갱이 · 불티 (고리는 그리지 않는다)
       const au = e.passives.includes('burnAura') ? '#ff8a3a' : e.passives.includes('frostAura') ? '#cfefff' : e.passives.includes('poisonAura') ? '#9be15d' : null;
       if (au && Math.random() < 0.5) { const a = Math.random() * Math.PI * 2, rr = e.r + 10 + Math.random() * 50; this.parts.push({ x: e.x + Math.cos(a) * rr, y: e.y + Math.sin(a) * rr * 0.6, vx: 0, vy: -14 - Math.random() * 18, t: 0.9, max: 0.9, color: au, g: -4, glow: true, size: 1.5 }); }
@@ -1347,7 +1359,7 @@ export class Renderer {
     const flash = e.hitFlash > 0 ? true : ((wind && (!e.pose || e.windT < 0.22)) || fuse) && Math.floor(w.t * (fuse ? 30 : 20)) % 2 ? (fuse ? '#ffffff' : '#ff4040') : false; // 몸 기술: 준비 동작이 보이게 마지막 순간에만 번쩍
     // 그림이 없으면 투명해지지 않도록 고블린 그림으로 대체
     const pose = e.pose && art.beast ? e.pose.k : wind ? 'wind' : e.moving ? 'walk' : 'idle', bf = Math.floor((w.t + e.phase) * (e.pose?.k === 'crouch' ? 10 : e.moving || art.fly ? 9 : 3)) % 4; // 몸 기술 동작은 그 동작 그림으로
-    const img = art.beast ? beastImg(art.beast, pose, bf, e.dir < 0, flash)
+    const img = art.beast ? beastImg(art.beast, pose, bf, e.dir < 0, flash, e.tintX || art.tint || '')
       : art.mimic ? sprite(e.dormant ? 'chest_full_open_anim_f0' : `chest_mimic_open_anim_f${e.moving || wind ? 1 + (Math.floor(w.t * 8) % 2) : 2}`, '', flash, e.dir < 0)
       : sprite(name, e.mirrorT > 0 ? 'grayscale(1) brightness(1.75) contrast(1.4)' : e.tintX || art.tint || '', e.morphT > 0 && Math.floor(w.t * 24) % 2 ? '#ffffff' : flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);
     if (!img) return;
@@ -1365,11 +1377,14 @@ export class Renderer {
     if (def.elite || e.champion) { g.fillStyle = `rgba(255,60,40,${0.18 + 0.1 * Math.sin(w.t * 4)})`; ellipse(g, e.x, e.y + 3, w0 * 0.55, w0 * 0.2); }
     else if (e.affix) { g.fillStyle = hexA(AFFIXES[e.affix].color, 0.25 + 0.1 * Math.sin(w.t * 5)); ellipse(g, e.x, e.y + 3, w0 * 0.5, w0 * 0.18); }
     if (fuse) { g.fillStyle = `rgba(255,120,60,${0.25 + 0.25 * Math.sin(w.t * 30)})`; disc(g, e.x, e.y, def.boom?.r || 30); }
-    this.shadow(e.x, e.y + 3, Math.max(5, img.width * sc * 0.32));
+    const ip = e.introT > 0 ? introPose(this, w, e) : null; // 보스 등장: 떨어져 내린다 · 솟는다 · 모인다
+    this.shadow(e.x, e.y + 3, Math.max(5, img.width * sc * 0.32) * (ip ? Math.max(0.2, ip.shadow) : 1));
     if (art.ghost) g.globalAlpha = 0.65 + 0.15 * Math.sin(w.t * 3 + e.phase);
+    if (def.veil && !(e.revealT > 0)) g.globalAlpha = 0.13 + 0.05 * Math.sin(w.t * 5 + e.phase); // 지워진 기록: 맞기 전에는 거의 보이지 않는다
     const carryLift = e.carried > 0 ? 18 + (w.player.air || 0) : 0;
     const flyUp = art.fly ? 6 + Math.sin(w.t * 3 + e.phase) * 2 : 0; // 나는 몬스터는 땅 위에 떠 있다
-    const dx = Math.round(e.x - w0 / 2 + wobble), dy = Math.round(e.y + 4 - h0 - carryLift + lungeY - flyUp);
+    const dx = Math.round(e.x - w0 / 2 + wobble), dy = Math.round(e.y + 4 - h0 - carryLift + lungeY - flyUp - (ip?.lift || 0) + (ip?.sink || 0) * h0);
+    if (ip) { g.globalAlpha *= ip.alpha; if (ip.sink > 0) { g.save(); g.beginPath(); g.rect(dx - 4, dy - 4, Math.round(w0) + 8, Math.round(e.y + 4 - dy) + 4); g.clip(); } }
     const bp = e.pose ? beastPose(e.pose, e.dir || 1, w.t) : null; // 몸 기술 동작: 몸 전체가 일어서고 · 웅크리고 · 내밀고 · 내려찍는다
     if (bp) {
       g.save(); g.translate(Math.round(e.x + wobble + bp.x), Math.round(e.y + 4 - carryLift - flyUp + bp.y)); g.rotate(bp.rot); g.scale(bp.sx, bp.sy);
@@ -1377,6 +1392,7 @@ export class Renderer {
       if (e.pose.k === 'dizzy') for (let i = 0; i < 3; i++) { const a = w.t * 7 + i * 2.1; g.fillStyle = '#ffe060'; g.fillRect(Math.round(e.x + Math.cos(a) * 8), Math.round(dy - 5 + Math.sin(a) * 2), 2, 2); }
       if ((e.pose.k === 'crouch' && e.mv?.k === 'headbutt') && dt > 0 && Math.random() < 0.35) this.parts.push({ x: e.x - (e.dir || 1) * e.r, y: e.y + 3, vx: -(e.dir || 1) * (30 + Math.random() * 40), vy: -20 - Math.random() * 20, t: 0.45, max: 0.45, color: '#a89880', g: 200, puff: true, size: 2 }); // 뒷발로 땅을 긁는 흙먼지
     } else g.drawImage(img, dx, dy, Math.round(w0), Math.round(h0));
+    if (ip?.sink > 0) g.restore();
     g.globalAlpha = 1;
     if (e.st.frozen > 0) {
       g.fillStyle = 'rgba(170,225,255,0.5)'; g.fillRect(dx, dy + 2, Math.round(w0), Math.round(h0) - 2);
@@ -3366,6 +3382,7 @@ export class Renderer {
   drawObject(w, o, dt) {
     const g = this.g, t = w.t;
     if (o.kind === 'climbDoor' || o.kind === 'climbReward' || o.kind === 'climbRoom') return drawClimbObject(this, w, o, dt); // 탑 등반
+    if (o.kind === 'lightPillar') return drawLightPillar(this, w, o); // 빛의 정상: 빛기둥
     if (o.kind === 'gate') {
       const x = o.door * TILE, y = 1 * TILE;
       g.fillStyle = hexA(o.color, 0.55 + 0.2 * Math.sin(t * 3)); g.fillRect(x + 3, y + 3, 26, 29);
@@ -4149,6 +4166,7 @@ export class Renderer {
     for (const d of this.glowDeco) if (inView(d.x, d.y)) { const [r, c] = GLOW[d.kind]; hole(d.x, d.y - 3, r * (1 + Math.sin(w.t * 3 + d.x) * 0.08), 0.9); colored.push([d.x, d.y - 3, r * 0.8, c]); }
     for (const o of w.objects) if (inView(o.x, o.y)) {
       if (o.kind === 'portal') { hole(o.x, o.y, 70); colored.push([o.x, o.y, 50, o.color]); }
+      else if (o.kind === 'lightPillar') { if (o.litT > 0) { hole(o.x, o.y - 16, 120 * flick); colored.push([o.x, o.y - 16, 96, '#ffe8a0']); } else hole(o.x, o.y - 30, 26, 0.6); }
       else if (o.kind === 'climbDoor') { hole(o.x, o.y - 16, 60); colored.push([o.x, o.y - 16, 46, CLIMB_REWARDS[o.next]?.color || '#ffffff']); }
       else if (o.kind === 'climbReward') { if (!o.opened) { hole(o.x, o.y - 18, 80); colored.push([o.x, o.y - 18, 60, CLIMB_REWARDS[o.reward]?.color || '#ffffff']); } }
       else if (o.kind === 'climbRoom') { hole(o.x, o.y - 8, 110); colored.push([o.x, o.y - 8, 70, o.room === 'altar' ? '#c45cff' : '#ffb050']); }
@@ -4376,7 +4394,7 @@ export class Renderer {
     }
     if (Object.keys(p.buffs).length) ry += desk ? -10 * u : 10 * u;
     // 상태이상
-    const names = { burn: ['화상', '#ff7a2a', '불에 데어 잠깐 동안 계속 피해를 받는다. 물에 들어가면 꺼진다.'], poison: ['중독', '#9be15d', '독이 퍼져 잠깐 동안 계속 피해를 받는다.'], bleed: ['출혈', '#e0445a', '피를 흘려 잠깐 동안 계속 피해를 받는다. 겹칠수록 세다.'], chill: ['냉기', '#9fe3ff', '몸이 얼어 이동 · 공격이 느려진다.'] };
+    const names = { burn: ['화상', '#ff7a2a', '불에 데어 잠깐 동안 계속 피해를 받는다. 물에 들어가면 꺼진다.'], poison: ['중독', '#9be15d', '독이 퍼져 잠깐 동안 계속 피해를 받는다.'], bleed: ['출혈', '#e0445a', '피를 흘려 잠깐 동안 계속 피해를 받는다. 겹칠수록 세다.'], chill: ['냉기', '#9fe3ff', '몸이 얼어 이동 · 공격이 느려진다.'], curse: ['저주', '#b7a4ff', '저주가 몸을 갉아 잠깐 동안 계속 피해를 받는다.'], shock: ['감전', '#ffe14a', '전기가 흘러 잠깐 동안 계속 피해를 받는다.'] };
     let sxx = bx;
     for (const k of Object.keys(p.st)) { const nm = names[k] || [k, '#ffffff', '']; this.text(nm[0], sxx, ry + 5 * u, u, nm[1]); tips.push({ x: sxx, y: ry, w: 26 * u, h: 10 * u, title: nm[0], color: nm[1], lines: [nm[2]].filter(Boolean), left: p.st[k]?.t }); sxx += 30 * u; }
     this.drawSkillBar(w);
@@ -4493,7 +4511,8 @@ export class Renderer {
       this.text(`각인의 탑 ${w.tower.f}층 · ${fmt(tt)} / ${fmt(par)}`, W / 2, topY, u, over ? '#ff8a7a' : '#e8d8a8', 'center', true, true);
     }
     // 정예 체력바
-    const boss = w.enemies.find((e) => (e.def.elite || e.champion) && e.state === 'chase' && !e.dead);
+    const tb = w.tower?.boss && !w.tower.boss.dead ? w.tower.boss : null;
+    const boss = w.climb?.intro ? null : tb || w.enemies.find((e) => (e.def.elite || e.champion) && e.state === 'chase' && !e.dead); // 탑: 진짜 보스 체력 (분신 · 가짜 거울이 아니라) · 등장 연출 동안은 감춘다
     if (boss) {
       const bw2 = Math.min(W * 0.5, 260 * u), bx2 = (W - bw2) / 2, by2 = topY + 28 * u; // 화면 위쪽 (아래 스킬 칸 · 위쪽 저장 안내를 가리지 않게)
       this.text(boss.champion || boss.def.name, W / 2, by2 - 9 * u, u, '#e8907c', 'center', true, true);
@@ -4523,6 +4542,7 @@ export class Renderer {
       g.globalAlpha = 1;
       if (this.banner.t <= 0) this.banner = null;
     }
+    if (w.climb) drawTowerScreen(this, w, g, W, H, u, dt); // 시간의 종 · 멈춘 시간 · 보스 등장 띠와 이름
   }
 
   // 여정: 지금의 목표 하나 (왼쪽 위 · 체력 아래) + 장소가 있으면 화면 가장자리 화살표
