@@ -510,11 +510,54 @@ person('skullHarbor', race='human', body='stout', outfit='rags', cloth='#5a4a3a'
 
 # ── 공룡수인 NPC: 플레이어의 0x72 도마뱀 그림(CC0)을 그대로 쓰고 비늘 · 옷 색만 사람마다 바꾼다 ──
 # (id: 몸(m/f), 비늘 색, 옷 색, 크기)
-DINO_0X72 = {
-    'dinoTamer': ('m', '#5a9a4a', '#c8a070', 1.0), 'keep_dino': ('m', '#4a8a3a', '#6a8a3a', 1.0), 'lead_dino': ('m', '#3f8a3a', '#5a7a2a', 1.0),
-    'res_dino_0': ('f', '#6ab84a', '#c8a070', 1.0), 'res_dino_1': ('m', '#4a8a5a', '#8a6a4a', 1.0), 'res_dino_2': ('m', '#8a9a3a', '#4a5a2a', 1.0),
-    'res_dino_3': ('m', '#8ad06a', '#c8a070', 0.8), 'cap_fish': ('f', '#5a8a7a', '#3a6a7a', 1.0),
+DINO_0X72 = {  # id: (몸 m/f, 비늘 색, 옷 색, 크기, 모자, 든 것, 모자 색)
+    'dinoTamer': ('m', '#5a9a4a', '#c8a070', 1.0, 'straw', 'crook', None), 'keep_dino': ('m', '#6a8a5a', '#6a8a3a', 1.0, 'beanie', 'cane', '#8a6ab8'),
+    'lead_dino': ('m', '#3f8a3a', '#5a7a2a', 1.0, 'crest', 'spear', None),
+    'res_dino_0': ('f', '#6ab84a', '#c8a070', 1.0, 'flower', None, '#ff8ab8'), 'res_dino_1': ('m', '#4a8a5a', '#8a6a4a', 1.0, 'band', 'spear', '#d83a2a'),
+    'res_dino_2': ('m', '#8a9a3a', '#4a5a2a', 1.0, 'band', None, '#e8c040'), 'res_dino_3': ('m', '#8ad06a', '#c8a070', 0.8, None, None, None),
+    'cap_fish': ('f', '#5a8a7a', '#3a6a7a', 1.0, 'band', None, '#3a7ad8'),
+    'm_lizardWarrior': ('m', '#4a7a3a', '#6a3a2a', 1.0, 'helm', 'spear', '#8a8a9a'), 'm_lavaLizard': ('m', '#c8481a', '#3a2a2a', 1.0, 'horns', None, '#2a1a1a'),
 }
+# 모자 · 든 것 (도트로 직접): k 외곽선 · c 모자 색 · d 어두운 모자 색 · w 흰색
+HATS = {
+    'straw': (['...kkkkkkk....', '..kccccccck...', 'kkcccccccccckk', 'kccccccccccccck'[:14], '.kkkkkkkkkkkk.'], 1, -3, '#e0c070'),
+    'beanie': (['....kkkkk.....', '..kkcccccck...', '.kccccccccck..', '.kddddddddddk.'], 2, -2, None),
+    'helm': (['....kkkkkk....', '..kkccwccckk..', '.kccwcccccccck', '.kddddddddddk.', '.k.........k..'], 1, -2, None),
+    'horns': (['.k........k...', 'kck......kck..', 'kck......kck..', '.kck....kck...'], 2, -3, None),
+    'flower': (['.kk.', 'kcck', 'cbbc', 'kcck', '.kk.'], 2, -3, None),
+    'crest': (['.k..k..k.', 'kak.kbk.kck', 'kak.kbk.kck', 'kak.kbk.kck', '.k..k..k.'], 2, -4, None),
+}
+def put_hat(px, hat, color, ox, top):
+    rows, hx, hy, dflt = HATS[hat]
+    col = color or dflt or '#c84030'
+    pal = {'k': (34, 34, 34, 255), 'c': None, 'd': None, 'w': (240, 240, 232, 255), 'a': (226, 74, 52, 255), 'b': (240, 200, 64, 255)}
+    rgb = tuple(int(col[i:i + 2], 16) for i in (1, 3, 5))
+    pal['c'] = rgb + (255,); dk = shade(col, -0.35); pal['d'] = tuple(int(dk[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
+    if hat == 'crest': pal['c'] = (64, 150, 230, 255)
+    for j, row in enumerate(rows):
+        for i, ch in enumerate(row):
+            if ch == '.' or ch not in pal: continue
+            x, y = ox + hx + i, top + hy + j
+            if 0 <= x < W and 0 <= y < H: px[x, y] = pal[ch]
+def put_band(px, color, ox, top):  # 머리띠: 머리 위쪽 두 줄을 띠 색으로, 뒤로 매듭 끈
+    rgb = tuple(int(color[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
+    for y in (top + 2, top + 3):
+        for x in range(ox + 2, ox + 16):
+            if 0 <= x < W and px[x, y][3] and px[x, y][:3] != (34, 34, 34): px[x, y] = rgb
+    for (dx, dy) in ((0, 2), (-1, 3), (0, 3), (-1, 4)):
+        x, y = ox + 1 + dx, top + dy
+        if 0 <= x < W: px[x, y] = rgb
+def put_item(px, item, ox, oy):  # 손에 든 막대 (오른손 쪽)
+    if not item: return
+    wood, dark, tip = (138, 90, 50, 255), (34, 34, 34, 255), (200, 208, 220, 255)
+    x = ox + 15
+    top = oy + (8 if item == 'spear' else 13 if item == 'crook' else 16)
+    for y in range(top, oy + 28):
+        px[x, y] = wood; px[x + 1, y] = dark
+    if item == 'spear':
+        for (dx, dy) in ((0, -1), (0, -2), (-1, -1), (1, -1), (0, -3)): px[x + dx, top + dy] = tip
+    if item == 'crook':
+        for (dx, dy) in ((-1, -1), (-2, -1), (-3, 0), (-3, 1)): px[x + dx, top + dy] = wood
 X72 = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'public', 'assets', '0x72')
 # 0x72 도마뱀의 색 → 바꿀 재질 (비늘 밝은 · 어두운 / 옷 밝은 · 어두운)
 X72_SWAP = {'m': {'#4ba747': ('scale', 0), '#3d734f': ('scale', -0.3), '#775c55': ('cloth', 0), '#483b3a': ('cloth', -0.4)},
@@ -522,7 +565,7 @@ X72_SWAP = {'m': {'#4ba747': ('scale', 0), '#3d734f': ('scale', -0.3), '#775c55'
 
 
 def dino_rows(cid):
-    sex, scale_c, cloth_c, k = DINO_0X72[cid]
+    sex, scale_c, cloth_c, k, hat, item, hatc = DINO_0X72[cid]
     sheet = Image.open(os.path.join(X72, 'sheet.png')).convert('RGBA')
     tl = {l.split()[0]: list(map(int, l.split()[1:5])) for l in open(os.path.join(X72, 'tile_list.txt'), encoding='utf-8') if len(l.split()) >= 5}
     swap = {tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)): v for h, v in X72_SWAP[sex].items()}
@@ -538,7 +581,13 @@ def dino_rows(cid):
                     px[xx, yy] = tuple(int(hx[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
         if k != 1: fr = fr.resize((max(1, round(w * k)), max(1, round(h * k))), Image.NEAREST)
         out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-        out.alpha_composite(fr, (CX - fr.size[0] // 2, FOOT + 1 - fr.size[1]))  # 발밑을 다른 사람과 같은 줄에
+        ox, oy = CX - fr.size[0] // 2, FOOT + 1 - fr.size[1]
+        out.alpha_composite(fr, (ox, oy))  # 발밑을 다른 사람과 같은 줄에
+        o = out.load()
+        top = next((yy for yy in range(H) if o[min(W - 1, ox + 12), yy][3]), oy + 12)  # 이 프레임의 정수리 (주둥이 쪽 평평한 윗선)
+        put_item(o, item, ox, oy)
+        if hat == 'band': put_band(o, hatc, ox, top)
+        elif hat: put_hat(o, hat, hatc, ox, top)
         return out
     idle = [frame(f'lizard_{sex}_idle_anim_f{i}') for i in range(4)]
     run = [frame(f'lizard_{sex}_run_anim_f{i}') for i in range(4)]
