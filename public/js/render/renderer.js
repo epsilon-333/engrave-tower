@@ -1325,7 +1325,9 @@ export class Renderer {
     else if (e.windT > 0 || this.lunge.has(e.id) || e.exposedT > 0 && false) kind = 'attack';
     else kind = e.moving ? 'run' : 'idle';
     const fr = frames(base, kind);
-    return fr[Math.floor((w.t + e.phase) * (kind === 'run' ? 4 : 1.4)) % fr.length];
+    if (kind === 'attack' && fr.length >= 3) return e.windT > 0 ? fr[0] : fr[1 + (Math.floor((w.t + e.phase) * 6) % (fr.length - 1))]; // 준비 → 내려치기 → 내려친 순간
+    const fps = kind === 'run' ? (fr.length > 2 ? 7 : 4) : kind === 'skill' ? 3 : fr.length > 2 ? 2.4 : 1.4; // 장면이 많은 보스는 그만큼 빨리 넘긴다
+    return fr[Math.floor((w.t + e.phase) * fps) % fr.length];
   }
   drawEnemy(w, e, dt) {
     const g = this.g, def = e.def;
