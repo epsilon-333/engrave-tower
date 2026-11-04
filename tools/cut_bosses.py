@@ -89,72 +89,6 @@ POSES = {
 LORDS = ['mossLord', 'climbQueen', 'climbRift', 'climbWitch', 'shardQueen', 'clockKeeper', 'clockKeeper2', 'starReader']
 SCALE = {**{k: 0.66 for k in LORDS}, 'engraveKing': 0.72, 'lastKing': 0.72, 'skyWhale': 0.7}
 
-# ───── 도트 따기: AI 그림은 한 점이 약 2px인 번진 그림이라, 섞어서 줄이지 않고 2×2 칸마다 대표색 하나를 고른다 ─────
-OUTL = (22, 14, 20, 255)
-PIX, COLORS = 3, 14  # 원본 3×3 칸 = 게임 픽셀 하나 · 보스마다 14색 (플레이어 그림체처럼 덩어리로)
-def pixelize(fr, k=2):
-    a = np.array(fr).astype(int); H, W, _ = a.shape
-    best = None
-    for oy in range(k):  # 칸 경계가 그림의 점 경계와 가장 잘 맞는 자리 (칸 안 색 차이가 가장 작은 곳)
-        for ox in range(k):
-            b = a[oy:oy + (H - oy) // k * k, ox:ox + (W - ox) // k * k]
-            blk = b.reshape(b.shape[0] // k, k, b.shape[1] // k, k, 4).transpose(0, 2, 1, 3, 4).reshape(b.shape[0] // k, b.shape[1] // k, k * k, 4)
-            var = blk[..., :3].std(2).sum()
-            if best is None or var < best[0]: best = (var, blk)
-    blk = best[1]
-    # 대표색: 칸 안에서 다른 칸들과 가장 가까운 색 (평균이 아니라 실제 있는 색 하나 · 경계 번짐을 버린다)
-    rgb = blk[..., :3]; al = blk[..., 3]
-    d = np.abs(rgb[:, :, :, None, :] - rgb[:, :, None, :, :]).sum(-1).sum(-1)
-    pick = d.argmin(2)
-    out = np.take_along_axis(rgb, pick[:, :, None, None].repeat(3, 3), 2)[:, :, 0]
-    alpha = (al > 127).sum(2) >= (k * k + 1) // 2
-    img = np.dstack([out, np.where(alpha, 255, 0)]).astype(np.uint8)
-    return Image.fromarray(img, 'RGBA')
-
-def palette_all(frames, n):
-    tot = [p for f in frames for p in np.array(f).reshape(-1, 4) if p[3]]
-    strip = Image.fromarray(np.array(tot, np.uint8)[None, :, :3], 'RGB')
-    pal = strip.quantize(colors=n, method=Image.Quantize.MAXCOVERAGE, kmeans=4, dither=Image.Dither.NONE)
-    out = []
-    for f in frames:
-        q = np.array(f.convert('RGB').quantize(palette=pal, dither=Image.Dither.NONE).convert('RGB')); al = np.array(f)[:, :, 3]
-        out.append(Image.fromarray(np.dstack([q, al]).astype(np.uint8), 'RGBA'))
-    return out
-
-def clean(f, line=True):
-    # 잡티: 여덟 이웃 누구와도 같지 않고 이웃 대부분이 한 색이면 그 색으로 · 떨어진 점 지우기 · 짙은 색은 외곽선 색으로 · 1px 외곽선
-    a = np.array(f).astype(int); H, W, _ = a.shape; o = a.copy()
-    for y in range(1, H - 1):
-        for x in range(1, W - 1):
-            if not a[y, x, 3]: continue
-            nb = [tuple(a[y + dy, x + dx]) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if (dx or dy)]
-            me = tuple(a[y, x])
-            if me in nb: continue
-            from collections import Counter
-            c, n = Counter(nb).most_common(1)[0]
-            if n >= 5: o[y, x] = c
-    al = o[:, :, 3] > 0
-    for y in range(H):
-        for x in range(W):
-            if al[y, x] and sum(al[yy, xx] for yy, xx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)) if 0 <= yy < H and 0 <= xx < W) == 0: o[y, x, 3] = 0
-    # 가장자리에 남은 원본 배경색 번짐 (투명한 칸에 닿은 배경빛 보라 칸) — 두 번
-    for _ in range(2):
-        al = o[:, :, 3] > 0
-        edge = al & ~(np.roll(al, 1, 0) & np.roll(al, -1, 0) & np.roll(al, 1, 1) & np.roll(al, -1, 1))
-        near = np.minimum(np.abs(o[:, :, :3] - np.array([100, 77, 168])).sum(2), np.abs(o[:, :, :3] - np.array([72, 54, 128])).sum(2)) < 48
-        o[edge & near, 3] = 0
-    # 발밑에 남은 원본 배경의 보랏빛 그림자 (아래 다섯 줄)
-    bgsh = np.abs(o[:, :, :3] - np.array([72, 54, 128])).sum(2) < 60
-    bgsh[: max(0, H - 5)] = False; o[bgsh & (o[:, :, 3] > 0), 3] = 0
-    dark = (o[:, :, :3].sum(2) < 95) & (o[:, :, 3] > 0); o[dark] = OUTL
-    if not line: return Image.fromarray(o.astype(np.uint8), 'RGBA')
-    al = o[:, :, 3] > 0; out = o.copy()
-    for y in range(H):
-        for x in range(W):
-            if al[y, x]: continue
-            if any(0 <= yy < H and 0 <= xx < W and al[yy, xx] for yy, xx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1))): out[y, x] = OUTL
-    return Image.fromarray(out.astype(np.uint8), 'RGBA')
-
 def anchor(fr):
     a = np.array(fr)[:, :, 3] > 0
     ys, xs = np.nonzero(a)
@@ -171,8 +105,13 @@ def build():
     for boss, frs in res.items():
         frames = [f for f, _ in frs]
         sc = SCALE.get(boss, 0.6)
-        small = [pixelize(f.crop(f.getbbox()), PIX) for f in frames]  # 원본의 점 하나 = 게임 픽셀 하나
-        small = [clean(clean(s, False)) for s in palette_all(small, COLORS)]  # 잡티 정리는 두 번
+        small = []
+        for f in frames:
+            bb = f.getbbox(); f = f.crop(bb)
+            s = fit_frame(f, sc)
+            small.append(s)
+        small = quantize_sheet(small, 28)
+        small = [outline(s) for s in small]
         anc = [anchor(s) for s in small]
         L = max(ax for ax, _ in anc) + 2; R = max(s.width - ax for s, (ax, _) in zip(small, anc)) + 2
         T = max(ay for _, ay in anc) + 2
