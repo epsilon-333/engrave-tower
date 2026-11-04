@@ -11,15 +11,19 @@ CX = 13          # 몸 가운데 x
 FOOT = 31        # 발바닥 y
 # 그림체: 플레이어(0x72 캐릭터)와 맞춘다 — 키 약 20px · 몸통 비율 · 재질마다 적은 색 (0x72 캐릭터는 한 명에 6~9색)
 FIT_0X72 = True
-GSCALE = (0.86, 0.76, CX, FOOT + 0.5) if FIT_0X72 else None
+# 0x72 플레이어처럼 귀엽게: 키는 작고(몸 · 다리를 많이 줄인다) 머리는 몸의 절반쯤 · 색은 또렷하게
+import os
+GX, GY = float(os.environ.get('PGX', 0.9)), float(os.environ.get('PGY', 0.58))
+GSCALE = (GX, GY, CX, FOOT + 0.5) if FIT_0X72 else None
 COLORS = 11 if FIT_0X72 else None
-HEAD_K = 1.3 if FIT_0X72 else 1  # 0x72처럼 머리는 크게 (몸만 줄이고 머리는 덜 줄인다 → 눈 · 입이 남는다)
+HEAD_K = float(os.environ.get('PHK', 1.5)) if FIT_0X72 else 1  # 머리는 덜 줄인다 → 눈 · 입이 남는다 (세로는 몸이 더 눌린 만큼 되돌려 둥글게)
+SAT = float(os.environ.get('PSAT', 1.25))  # 색을 이만큼 더 진하게 (0x72 캐릭터의 맑은 색)
 
 
 def fit_pose(pose):
     p = dict(pose)
     if HEAD_K != 1:
-        v = p.get('head', (0,)); p['head'] = (v[0], v[1] if len(v) > 1 else 0, v[2] if len(v) > 2 else 0, HEAD_K, HEAD_K)
+        v = p.get('head', (0,)); p['head'] = (v[0], v[1] if len(v) > 1 else 0, v[2] if len(v) > 2 else 0, HEAD_K, HEAD_K * GX / GY)
     return p
 
 
@@ -30,7 +34,16 @@ def shade(h, k):
     return '#%02x%02x%02x' % (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
 
 
+def saturate(h, k):
+    import colorsys
+    r, g, b = (int(h[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    hh, l, ss = colorsys.rgb_to_hls(r, g, b)
+    r, g, b = colorsys.hls_to_rgb(hh, l, min(1, ss * k))
+    return '#%02x%02x%02x' % tuple(round(c * 255) for c in (r, g, b))
+
+
 def ramp(h):
+    h = saturate(h, SAT)
     return [shade(h, 0.22), h, shade(h, -0.22), shade(h, -0.48)]
 
 
