@@ -698,7 +698,11 @@ export class Renderer {
   }
   // 무기 스킬(우클릭)의 무기 종류 표식: 같은 원소라도 칼은 X자 베기, 망치는 땅이 갈라지고, 활은 화살비, 지팡이는 문양이 터진다
   weaponSig(ev) {
-    const c = ev.wcat, col = ELEM[ev.elem]?.color && ev.elem !== 'phys' ? ELEM[ev.elem].color : ['#f4f0ff', '#cfe6ff', '#e4cfff', '#ffe6a0', '#ffc0cc'][ev.rar || 0], r = Math.max(26, ev.r || 30), A = this.anims, x = ev.x, y = ev.y;
+    const rar = ev.rar || 0, c = ev.wcat, col = ELEM[ev.elem]?.color && ev.elem !== 'phys' ? ELEM[ev.elem].color : ['#f4f0ff', '#cfe6ff', '#e4cfff', '#ffe6a0', '#ffc0cc'][rar], r = Math.max(26, ev.r || 30) * (1 + 0.12 * rar), A = this.anims, x = ev.x, y = ev.y;
+    // 등급이 높을수록: 표식이 커지고(+12%/등급) · 영웅부터 한 번 더 · 전설부터 등급 색 충격파와 불티 · 신화는 화면이 번쩍이고 테두리가 물든다
+    if (rar >= 2) setTimeout(() => { if (this.world) this.weaponSig({ ...ev, rar: 0, r: (ev.r || 30) * 0.8 }); }, 140);
+    if (rar >= 3) { const rc = ['#c8c0d0', '#7ac4ff', '#c890ff', '#ffc84a', '#ff5a7a'][rar]; this.shockwave(x, y, r * 1.1, rc, 36); this.burst(x, y - 6, rc, 24, 170); }
+    if (rar >= 4) { this.flash = { color: '255,220,230', t: 0.16, max: 0.16 }; this.rimFlash = { color: '#ff5a7a', t: 0.5, max: 0.5 }; this.hitstop = Math.max(this.hitstop, 0.06); this.shockwave(x, y, r * 1.5, '#ffffff', 44); }
     switch (c) {
       case 'blade': A.add('bladeArc', { x, y, ang: -0.7, range: r, angle: 2.4, col }); A.add('bladeArc', { x, y, ang: Math.PI + 0.7, range: r, angle: 2.4, col, max: 0.34 }); break;
       case 'great': A.add('bladeArc', { x, y, ang: Math.PI / 2, range: r * 1.15, angle: 3.4, col }); A.add('cracks', { x, y, r: r * 0.8, col }); break;

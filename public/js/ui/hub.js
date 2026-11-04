@@ -229,7 +229,7 @@ export class Hub {
       <section class="panel">
         <h3>각인 목록${help('★로 찜하면 필요한 재료와 사냥터가 표시된다.')}</h3>
         ${filterBar}
-        <div class="filters eng-search"><input id="engSearch" type="search" placeholder="이름, 몬스터, 효과로 찾기" value="${esc(this.altarQ || '')}" style="flex:1;min-width:14em"> <span id="engCount" class="muted"></span></div>
+        <div class="filters eng-search"><input id="engSearch" type="search" placeholder="각인 이름 · 스킬 이름 · 몬스터 · 효과로 찾기" value="${esc(this.altarQ || '')}" style="flex:1;min-width:14em"> <span id="engCount" class="muted"></span></div>
         <details class="more-filters" ${this.altarMore ? 'open' : ''}><summary>거르기 · 정리 <small>${[this.altarQ && '검색', grade && '등급', (this.altarWeapon || 'all') !== 'all' && '무기', view === 'tag' && '태그별'].filter(Boolean).join(' · ') || '전체 보기'}</small></summary>
         <div class="filters"><span class="muted">원하는 효과 </span>${['치명타', '처치', '맞으면', '대시', '회피', '스킬을 쓰면', '보호막', '각성하면', '동안', '마다', '화상', '냉기', '중독', '출혈', '저주', '흡혈', '반사', '회복', '궁극'].map((w) => `<button class="sm ${(this.altarQ || '').split(/\s+/).includes(w) ? 'on' : 'ghost'}" data-act="aquery" data-id="${w}">${w === '동안' ? '잠깐 스탯' : w === '마다' ? '스탯 바꾸기' : w}</button>`).join('')}${this.altarQ ? '<button class="sm" data-act="aquery" data-id="">지우기</button>' : ''}</div>
         ${viewBar}
@@ -331,9 +331,10 @@ export class Hub {
   // 각인 찾기에 쓰는 글자: 이름 · 몬스터 · 부산물 · 태그 · 효과 · 능력치 · 스킬 · 맞는 무기 · 등급 (아직 모르는 각인은 효과 · 스킬 · 무기 · 등급만)
   engSearchText(id, s, unknown = false) {
     const e = ENGRAVINGS[id], sk = SKILLS[engravingSkillFor(id, s.race)];
-    const parts = [GRADES[e.grade].name, ...engravingWeapons(id).map((c) => WCAT_NAME[c] || c), ...e.tags.map((t) => TAGS[t]?.name || t), ...e.effects.map((x) => x.text || ''), ...Object.keys(e.stats || {}).map((k) => (STAT_INFO[k] || SPECIAL_INFO[k])?.name || k), sk?.name || '', sk?.role || '', sk?.ult ? '궁극' : ''];
-    if (!unknown) parts.push(e.name, e.from && MONSTERS[e.from] ? MONSTERS[e.from].name : '', ...Object.keys(e.recipe).map((r) => ECHOES[r]?.name || ''), sk?.desc || '');
-    return parts.join(' ').toLowerCase();
+    const parts = [e.name, GRADES[e.grade].name, ...engravingWeapons(id).map((c) => WCAT_NAME[c] || c), ...e.tags.map((t) => TAGS[t]?.name || t), ...e.effects.map((x) => x.text || ''), ...Object.keys(e.stats || {}).map((k) => (STAT_INFO[k] || SPECIAL_INFO[k])?.name || k), sk?.name || '', sk?.role || '', sk?.ult ? '궁극' : ''];
+    if (!unknown) parts.push(e.from && MONSTERS[e.from] ? MONSTERS[e.from].name : '', ...Object.keys(e.recipe).map((r) => ECHOES[r]?.name || ''), sk?.desc || '');
+    const t = parts.join(' ').toLowerCase();
+    return t + ' ' + t.replace(/\s+/g, ''); // 띄어쓰기 없이 쳐도 찾는다 (「고블린탐욕」 · 「할퀴고빠지기」)
   }
   // 찾기: 다시 그리지 않고 카드만 숨긴다 (글자를 칠 때 입력칸이 흔들리지 않게)
   applyEngSearch() {
@@ -350,7 +351,7 @@ export class Hub {
     const can = Object.entries(e.recipe).every(([eid, n]) => (s.echoes[eid] || 0) >= n), owned = s.owned[id] || 0;
     const sk = SKILLS[engravingSkillFor(id, s.race)], goal = (s.goals || []).includes(id);
     return `<button class="eng-row ${this.altarSel === id ? 'on' : ''} ${known ? '' : 'unknown'}" data-act="aselect" data-id="${id}" data-q="${esc(this.engSearchText(id, s, !known))}" style="--g:${GRADES[e.grade].color}">
-      <span class="er-name">${goal ? '★ ' : ''}${known ? esc(e.name) : '??? 미확인 각인'}</span>
+      <span class="er-name">${goal ? '★ ' : ''}${esc(e.name)}${known ? '' : ' <small class="muted">미확인</small>'}</span>
       <span class="er-tags">${e.tags.map((t) => `<i style="--c:${TAGS[t]?.color}">${TAGS[t]?.name || t}</i>`).join('')}</span>
       <span class="er-skill">${sk ? esc(sk.name) : ''}</span>
       <span class="er-state">${owned ? `<b class="ok">보유 ${owned}</b>` : can ? '<b class="ok">새길 수 있음</b>' : ''}</span></button>`;
@@ -368,7 +369,7 @@ export class Hub {
       return `<span class="rq ${have >= n ? 'ok' : ''}" style="--c:${ECHOES[eid].color}" title="${esc(src)}">◆ ${nm} ${have}/${n}</span>`;
     }).join('');
     if (!known) {
-      return `<div class="card unknown" data-q="${esc(this.engSearchText(id, s, true))}"><div class="c-head"><b>??? 미확인 각인</b><span class="grade" style="--g:${GRADES[e.grade].color}">${GRADES[e.grade].name}</span></div>
+      return `<div class="card unknown" data-q="${esc(this.engSearchText(id, s, true))}"><div class="c-head"><b>${esc(e.name)} <small class="muted">미확인</small></b><span class="grade" style="--g:${GRADES[e.grade].color}">${GRADES[e.grade].name}</span></div>
         <div class="c-meta">각인</div><div class="recipe">${recipe}</div></div>`;
     }
     const stats = Object.entries(e.stats).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k]).name} ${v > 0 ? '+' : ''}${v}`).join(', ');
