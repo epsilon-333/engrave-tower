@@ -1346,7 +1346,7 @@ export class Renderer {
     const fuse = e.fuse > 0;
     const flash = e.hitFlash > 0 ? true : ((wind && (!e.pose || e.windT < 0.22)) || fuse) && Math.floor(w.t * (fuse ? 30 : 20)) % 2 ? (fuse ? '#ffffff' : '#ff4040') : false; // 몸 기술: 준비 동작이 보이게 마지막 순간에만 번쩍
     // 그림이 없으면 투명해지지 않도록 고블린 그림으로 대체
-    const pose = wind ? 'wind' : e.moving ? 'walk' : 'idle', bf = Math.floor((w.t + e.phase) * (e.moving || art.fly ? 9 : 3)) % 4;
+    const pose = e.pose && art.beast ? e.pose.k : wind ? 'wind' : e.moving ? 'walk' : 'idle', bf = Math.floor((w.t + e.phase) * (e.pose?.k === 'crouch' ? 10 : e.moving || art.fly ? 9 : 3)) % 4; // 몸 기술 동작은 그 동작 그림으로
     const img = art.beast ? beastImg(art.beast, pose, bf, e.dir < 0, flash)
       : art.mimic ? sprite(e.dormant ? 'chest_full_open_anim_f0' : `chest_mimic_open_anim_f${e.moving || wind ? 1 + (Math.floor(w.t * 8) % 2) : 2}`, '', flash, e.dir < 0)
       : sprite(name, e.mirrorT > 0 ? 'grayscale(1) brightness(1.75) contrast(1.4)' : e.tintX || art.tint || '', e.morphT > 0 && Math.floor(w.t * 24) % 2 ? '#ffffff' : flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);

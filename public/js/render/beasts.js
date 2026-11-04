@@ -40,7 +40,7 @@ const sw = (f) => (f % 2 ? 1 : -1); // 다리 앞뒤
 const B = {
   // 독거미: 다리가 긴 보라 거미 · 배에 초록 무늬
   spider: { W: 27, H: 17, faceLeft: true, draw(P, f, pose) {
-    const low = pose === 'wind' ? 2 : 0, by = 9 + low;
+    const low = pose === 'wind' || pose === 'crouch' ? 2 : pose === 'spit' ? -1 : 0, by = 9 + low;
     for (let s = 0; s < 4; s++) { // 다리 8개 (양쪽 4개씩) · 마디가 위로 꺾인다
       const hip = 10 + s * 2.2, ph = (s + f) % 2 ? 1 : -1;
       for (const side of [-1, 1]) {
@@ -50,30 +50,48 @@ const B = {
     }
     P.e(17, by - 1, 6.5, 5, '#5a2078'); P.e(17, by - 2, 5.5, 3.8, '#8a40b8'); P.e(16, by - 4, 3, 1.5, '#c88af0');
     P.p(16, by - 1, '#9be15d'); P.p(18, by, '#9be15d'); P.p(19, by - 2, '#9be15d'); P.p(15, by + 1, '#5ab040');
-    P.e(9, by, 3.2, 3, '#4a1a68'); P.e(9, by - 1, 2.5, 2, '#7a3aa0');
+    const hy = pose === 'spit' ? -2 : 0; // 실을 뱉을 때 머리를 든다
+    P.e(9, by + hy, 3.2, 3, '#4a1a68'); P.e(9, by - 1 + hy, 2.5, 2, '#7a3aa0');
+    if (pose === 'spit') { P.p(5, by + hy, '#f4f2ea'); P.p(4, by + hy + 1, '#f4f2ea'); }
     P.p(7, by - 1, '#ff3a3a'); P.p(8, by - 2, '#ff3a3a'); P.p(7, by + 1, '#ffd0d0');
     P.p(6, by + 2, '#e8dcc0'); P.p(8, by + 3, '#e8dcc0'); // 독니
   } },
   // 돌진 멧돼지: 큰 엄니 · 등 갈기 · 예고 때 몸을 낮춘다
   boar: { W: 27, H: 17, draw(P, f, pose) {
-    const low = pose === 'wind' ? 2 : 0, bob = pose === 'walk' ? f % 2 : 0, by = 8 + low + bob;
-    [[5, 0], [8, 1], [14, 1], [17, 0]].forEach(([x, o]) => { const k = pose === 'walk' ? ((f + o) % 2 ? 1 : -1) : 0; P.r(x, by + 3, 2, 13 - by - 3 + 3, '#3a2414'); P.r(x + k, 15, 2, 1, '#1e120a'); });
+    // crouch: 고개를 숙이고 뒷발로 땅을 긁는다 · lunge: 머리를 내밀고 다리를 뻗는다
+    const crouch = pose === 'crouch' || pose === 'wind', lunge = pose === 'lunge', low = crouch ? 3 : lunge ? 1 : 0, bob = pose === 'walk' ? f % 2 : 0, by = 8 + low + bob;
+    [[5, 0], [8, 1], [14, 1], [17, 0]].forEach(([x, o], i) => {
+      let k = pose === 'walk' || lunge ? ((f + o) % 2 ? 1 : -1) : 0;
+      if (crouch && i < 2) k = f % 2 ? -2 : 0; // 뒷발 긁기
+      if (lunge) k = i < 2 ? -2 : 2;
+      P.r(x, by + 3, 2, 13 - by - 3 + 3, '#3a2414'); P.r(x + k, 15, 2, 1, '#1e120a');
+    });
     P.e(11, by, 8, 5, '#5a3a20'); P.e(11, by - 1, 7, 4, '#8a5a34'); P.e(10, by - 3, 5, 1.5, '#a8743e');
     for (let x = 5; x <= 15; x += 2) P.r(x, by - 6 + (x % 4 ? 0 : 1), 1, 2, '#2a1a0e'); // 갈기
-    P.e(19, by + 1 + low, 4, 3.5, '#7a4a2a'); P.e(19, by + low, 3, 2.5, '#9a6a3e');
-    P.r(21, by + 1 + low, 3, 3, '#c89070'); P.p(23, by + 2 + low, '#5a3a2a'); // 코
-    P.p(19, by - 1 + low, '#141018'); P.p(18, by - 3 + low, '#3a2414'); P.p(17, by - 3 + low, '#3a2414'); // 눈 · 귀
-    P.l(21, by + 4 + low, 22, by + 1 + low, '#f0e8d0'); P.p(23, by + low, '#f0e8d0'); P.p(20, by + 4 + low, '#d0c8b0'); // 엄니
+    const hx = lunge ? 2 : 0; if (hx) P.r(17, by - 1, 3, 4, '#7a4a2a');
+    P.e(19 + hx, by + 1 + low, 4, 3.5, '#7a4a2a'); P.e(19 + hx, by + low, 3, 2.5, '#9a6a3e');
+    P.r(21 + hx, by + 1 + low, 3, 3, '#c89070'); P.p(23 + hx, by + 2 + low, '#5a3a2a'); // 코
+    P.p(19 + hx, by - 1 + low, crouch ? '#ff3a2a' : '#141018'); P.p(18 + hx, by - 3 + low, '#3a2414'); P.p(17 + hx, by - 3 + low, '#3a2414'); // 눈(노려볼 때 붉게) · 귀
+    P.l(21 + hx, by + 4 + low, 22 + hx, by + 1 + low, '#f0e8d0'); P.p(23 + hx, by + low, '#f0e8d0'); P.p(20 + hx, by + 4 + low, '#d0c8b0'); // 엄니
     P.l(3, by - 1, 1, by - 3 + bob, '#5a3a20'); // 꼬리
   } },
   // 얼음 늑대: 푸른 털 · 얼음 송곳니 · 등에 얼음 결정
   wolf: { W: 24, H: 16, draw(P, f, pose) {
-    const low = pose === 'wind' ? 1 : 0, bob = pose === 'walk' ? f % 2 : 0, by = 8 + low + bob;
+    const howl = pose === 'howl', leap = pose === 'leap', low = pose === 'wind' || pose === 'crouch' ? 2 : 0, bob = pose === 'walk' ? f % 2 : 0, by = 8 + low + bob;
     const st = pose === 'walk' ? f : 0;
+    if (leap) { // 몸을 쭉 뻗어 날아든다: 앞발은 앞으로, 뒷발은 뒤로
+      P.l(6, by + 2, 2, by + 5, '#3a6a98'); P.l(9, by + 2, 5, by + 6, '#3a6a98'); P.l(15, by + 2, 21, by + 4, '#3a6a98'); P.l(18, by + 2, 23, by + 3, '#3a6a98');
+      P.e(12, by, 8.5, 3.5, '#3a6a98'); P.e(12, by - 1, 7.5, 2.5, '#6a9ac8'); P.e(21, by - 1, 3.5, 3, '#4a7aa8'); P.r(22, by - 1, 2, 2, '#8ab8e0'); P.p(21, by - 2, '#3affff'); P.l(4, by - 1, 0, by - 2, '#6a9ac8');
+      return;
+    }
     [[6, 0], [9, 1], [15, 1], [18, 0]].forEach(([x, o]) => { const k = (st + o) % 2 ? 1 : -1; P.l(x, by + 3, x + k, 15, '#3a6a98'); P.p(x + k, 15, '#d0ecff'); });
     P.e(12, by, 7.5, 4, '#3a6a98'); P.e(12, by - 1, 6.5, 3, '#6a9ac8'); P.e(11, by - 2, 4.5, 1.3, '#a8d0f0'); P.e(12, by + 2, 4, 1.2, '#e8f4ff');
     P.p(9, by - 4, '#e8f8ff'); P.p(10, by - 5, '#bfe8ff'); P.p(13, by - 4, '#e8f8ff'); P.p(14, by - 5, '#bfe8ff'); // 얼음 결정
     P.l(4, by - 1, 1, by - 4 - bob, '#6a9ac8'); P.p(1, by - 5 - bob, '#e8f4ff'); // 꼬리
+    if (howl) { // 고개를 하늘로 들고 운다
+      P.e(19, by - 4, 3, 3.5, '#4a7aa8'); P.e(19, by - 5, 2, 2.5, '#8ab8e0'); P.r(20, by - 9, 2, 3, '#8ab8e0'); P.p(21, by - 10, '#141018'); P.p(18, by - 4, '#ffffff'); P.p(17, by - 7, '#4a7aa8');
+      P.p(22, by - 11, '#d0ecff'); P.p(23, by - 13, '#d0ecff'); return;
+    }
     P.e(20, by - 1, 3.5, 3, '#4a7aa8'); P.e(20, by - 2, 2.5, 2, '#8ab8e0');
     P.r(21, by - 1, 3, 2, '#8ab8e0'); P.p(23, by - 1, '#141018'); // 주둥이 · 코
     P.p(19, by - 5, '#4a7aa8'); P.p(20, by - 6, '#6a9ac8'); P.p(21, by - 5, '#4a7aa8'); // 귀
@@ -117,14 +135,14 @@ const B = {
     }
   } },
   // 사막 전갈: 큰 집게 · 몸 위로 휘어 올라간 꼬리와 붉은 독침
-  scorpion: { W: 28, H: 18, draw(P, f, pose) {
-    const up = pose === 'wind' ? 2 : 0, by = 13, st = pose === 'walk' ? f % 2 : 0;
-    for (let i = 0; i < 3; i++) for (const s of [0, 1]) { const x = 9 + i * 3, k = (i + st + s) % 2 ? 1 : -1; P.l(x, by + 1, x + k * 2, 17, '#6a4a22'); }
+  scorpion: { W: 28, H: 22, draw(P, f, pose) {
+    const up = pose === 'coil' ? 4 : pose === 'wind' ? 2 : 0, by = 17, st = pose === 'walk' ? f % 2 : 0; // 꼬리를 높이 감아 올린다
+    for (let i = 0; i < 3; i++) for (const s of [0, 1]) { const x = 9 + i * 3, k = (i + st + s) % 2 ? 1 : -1; P.l(x, by + 1, x + k * 2, by + 4, '#6a4a22'); }
     P.e(12, by, 6, 3, '#7a5428'); P.e(12, by - 1, 5, 2, '#c8944e'); P.r(9, by - 2, 7, 1, '#e8c078');
-    const tail = [[6, by - 1], [4, by - 4], [4, by - 7 - up], [6, by - 10 - up], [9, by - 11 - up]]; // 꼬리 마디
-    tail.forEach(([x, y], i) => { P.e(x, y, 1.6, 1.6, '#7a5428'); P.p(x, y - 1, '#e8c078'); });
+    const tail = [[6, by - 1], [4, by - 4 - up * 0.3], [4 - up * 0.2, by - 7 - up * 0.7], [6, by - 10 - up], [9, by - 11 - up]]; // 꼬리 마디 (감아 올릴수록 위 마디가 더 올라간다)
+    tail.forEach(([x, y], i) => { if (i) P.l(tail[i - 1][0], tail[i - 1][1], x, y, '#7a5428'); P.e(x, y, 1.6, 1.6, '#7a5428'); P.p(x, y - 1, '#e8c078'); });
     P.l(10, by - 11 - up, 12, by - 9 - up, '#c02020'); P.p(12, by - 8 - up, '#ff5a3a'); // 독침
-    const cl = pose === 'wind' ? 1 : f % 2; // 집게
+    const cl = pose === 'wind' || pose === 'coil' ? 1 : f % 2; // 집게
     P.e(19, by - 1, 2, 1.5, '#7a5428'); P.e(22, by - 2, 2.5, 2, '#a8743e'); P.l(23, by - 4, 25, by - 3 - cl, '#7a5428'); P.l(23, by, 25, by - 1 + cl, '#7a5428');
     P.p(17, by - 2, '#141018'); P.p(18, by - 2, '#141018');
   } },
@@ -145,7 +163,7 @@ const B = {
   } },
   // 철갑 딱정벌레: 금속처럼 빛나는 등껍질 · 뿔 · 다리 6개
   beetle: { W: 22, H: 15, draw(P, f, pose) {
-    const st = pose === 'walk' ? f % 2 : 0, by = 8 + (pose === 'wind' ? 1 : 0);
+    const st = pose === 'walk' ? f % 2 : 0, by = 8 + (pose === 'wind' || pose === 'crouch' ? 2 : 0); // 박치기 준비: 뿔을 낮춘다
     for (let i = 0; i < 3; i++) { const x = 7 + i * 4, k = (i + st) % 2 ? 1 : -1; P.l(x, by + 3, x + k, 14, '#1a222a'); }
     P.e(10, by, 8, 5, '#2a3a4a'); P.e(10, by - 1, 7, 4, '#5a7088'); P.e(9, by - 2, 5, 2, '#8aa4c0');
     P.l(4, by - 3, 14, by - 3, '#d8ecff'); P.p(6, by - 4, '#ffffff'); P.l(10, by - 4, 10, by + 3, '#2a3a4a'); // 광택 · 날개 틈
@@ -190,7 +208,7 @@ const B = {
   } },
   // 그림자 표범: 검은 몸 · 보라 발톱과 눈 · 날렵한 꼬리
   panther: { W: 26, H: 15, draw(P, f, pose) {
-    const st = pose === 'walk' ? f : 0, by = 7 + (pose === 'wind' ? 2 : 0), stretch = pose === 'walk' && f % 2 ? 1 : 0;
+    const st = pose === 'walk' ? f : 0, by = 7 + (pose === 'wind' || pose === 'crouch' ? 3 : 0), stretch = pose === 'leap' ? 3 : pose === 'walk' && f % 2 ? 1 : 0; // 웅크렸다 쭉 뻗어 덮친다
     [[6, 0], [9, 1], [16, 1], [19, 0]].forEach(([x, o]) => { const k = (st + o) % 2 ? 2 : -1; P.l(x, by + 3, x + k, 14, '#1a1620'); P.p(x + k + 1, 14, '#c070ff'); });
     P.e(13, by, 9 + stretch, 3.5, '#18141e'); P.e(13, by - 1, 8, 2.5, '#2a2434'); P.e(12, by - 2, 5, 1, '#3e3650');
     P.l(4, by - 1, 1, by - 4 + (f % 2), '#2a2434'); P.l(1, by - 4 + (f % 2), 0, by - 2, '#2a2434'); // 꼬리
