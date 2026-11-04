@@ -1,5 +1,5 @@
 // 짐승 · 몬스터의 몸 기술: 각인 스킬을 닮았지만 그 몸에 맞게 — 멧돼지는 박치기로 밀어붙이고, 곰은 일어섰다 내려찍는다
-// 모든 기술: 예고(빨간 선 · 원) → 준비 동작(e.pose) → 공격 → 빈틈(회복 동작). 빈틈에 반격하라는 뜻이다
+// 모든 기술: 준비 동작(e.pose) → 공격 → 빈틈(회복 동작). 바닥 예고는 없다 (땅굴 기습만 보스일 때 원). 빈틈에 반격하라는 뜻이다
 // world.enemyMove가 start를, 기술 중에는 tick을 부른다. e.pose는 렌더러가 몸을 움직이는 데 쓴다 ({ k, t, max })
 const DT = 1 / 60; // world.js와 같은 틱
 
@@ -37,7 +37,7 @@ export const BEAST = {
     start(w, e, p) {
       const a = ang(e, p); e.mv = { k: 'headbutt', ph: 'wind', t: 0.75, ang: a, run: 0 };
       pose(e, 'crouch', 0.75); e.windT = 0.75; e.windMax = 0.75;
-      w.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 200, y2: e.y + Math.sin(a) * 200, dur: 0.75, color: '#ff3a3a', w: e.r * 2 });
+      w.tele(e, false, { t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 200, y2: e.y + Math.sin(a) * 200, dur: 0.75, color: '#ff3a3a', w: e.r * 2 });
       w.emit({ t: 'beastWind', id: e.id, k: 'paw', x: e.x, y: e.y, ang: a });
     },
     tick(w, e, mv, p) {
@@ -66,7 +66,7 @@ export const BEAST = {
     start(w, e, p) {
       const a = ang(e, p), fx = e.x + Math.cos(a) * (e.r + 14), fy = e.y + Math.sin(a) * (e.r + 14);
       e.mv = { k: 'maul', ph: 'wind', t: 0.65, ang: a, x: fx, y: fy }; pose(e, 'rear', 0.65); e.windT = 0.65; e.windMax = 0.65;
-      w.emit({ t: 'telegraphCircle', x: fx, y: fy, r: 30, dur: 0.65 });
+      w.tele(e, false, { t: 'telegraphCircle', x: fx, y: fy, r: 30, dur: 0.65 });
     },
     tick(w, e, mv) {
       if (mv.ph === 'wind') {
@@ -105,7 +105,7 @@ export const BEAST = {
   pounce: {
     start(w, e, p) {
       e.mv = { k: 'pounce', ph: 'wind', t: 0.4, x0: e.x, y0: e.y, x: p.x, y: p.y }; pose(e, 'crouch', 0.4); e.windT = 0.4; e.windMax = 0.4;
-      w.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: 22, dur: 0.95 });
+      w.tele(e, false, { t: 'telegraphCircle', x: p.x, y: p.y, r: 22, dur: 0.95 });
     },
     tick(w, e, mv) {
       if (mv.ph === 'wind') { if (mv.t > 0) return true; mv.ph = 'air'; mv.t = mv.max = 0.55; pose(e, 'leap', 0.55); return true; }
@@ -124,7 +124,7 @@ export const BEAST = {
   },
   // 꼬리 휘두르기: 몸을 비틀었다가(0.5초) 꼬리로 둘레를 한 바퀴 쓴다. 맞으면 옆으로 날아간다
   tailSweep: {
-    start(w, e) { e.mv = { k: 'tailSweep', t: 0.5 }; pose(e, 'coil', 0.5); e.windT = 0.5; e.windMax = 0.5; w.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: e.r + 24, dur: 0.5 }); },
+    start(w, e) { e.mv = { k: 'tailSweep', t: 0.5 }; pose(e, 'coil', 0.5); e.windT = 0.5; e.windMax = 0.5; w.tele(e, false, { t: 'telegraphCircle', x: e.x, y: e.y, r: e.r + 24, dur: 0.5 }); },
     tick(w, e, mv, p) {
       if (mv.ph !== 'recover') {
         if (mv.t > 0) return true;
@@ -144,7 +144,7 @@ export const BEAST = {
       if (mv.ph === 'dig') { if (mv.t > 0) return true; mv.ph = 'under'; mv.t = 1.1; e.under = true; return true; }
       if (mv.ph === 'under') {
         if (mv.t > 0.8) { const a = ang(e, p), sp = e.def.speed * 2.2 * DT; if (!w.blocked(e.x + Math.cos(a) * sp, e.y + Math.sin(a) * sp, e.r)) { e.x += Math.cos(a) * sp; e.y += Math.sin(a) * sp; } return true; }
-        if (!mv.marked) { mv.marked = true; mv.x = p.x; mv.y = p.y; w.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: 26, dur: 0.8 }); w.emit({ t: 'text', x: p.x, y: p.y - 22, text: '땅이 들썩인다!', color: '#e8c890' }); }
+        if (!mv.marked) { mv.marked = true; mv.x = p.x; mv.y = p.y; w.tele(e, true, { t: 'telegraphCircle', x: p.x, y: p.y, r: 26, dur: 0.8 }); w.emit({ t: 'text', x: p.x, y: p.y - 22, text: '땅이 들썩인다!', color: '#e8c890' }); }
         if (mv.t > 0) return true;
         e.under = false; if (!w.blocked(mv.x, mv.y, e.r)) { e.x = mv.x; e.y = mv.y; }
         hitP(w, e, e.atk * 1.5, { x: e.x, y: e.y, r: 26, stun: 0.5 });
@@ -157,7 +157,7 @@ export const BEAST = {
   },
   // 발 구르기: 크게 일어섰다가(0.8초) 땅을 구른다. 둘레 80이 바깥으로 밀려난다
   stomp: {
-    start(w, e) { e.mv = { k: 'stomp', t: 0.8 }; pose(e, 'rear', 0.8); e.windT = 0.8; e.windMax = 0.8; w.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 80, dur: 0.8 }); },
+    start(w, e) { e.mv = { k: 'stomp', t: 0.8 }; pose(e, 'rear', 0.8); e.windT = 0.8; e.windMax = 0.8; w.tele(e, false, { t: 'telegraphCircle', x: e.x, y: e.y, r: 80, dur: 0.8 }); },
     tick(w, e, mv) {
       if (mv.ph !== 'recover') {
         if (mv.t > 0) return true;

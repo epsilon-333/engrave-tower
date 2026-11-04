@@ -4607,6 +4607,9 @@ export class World {
     this.coTgt = prev;
   }
   // true면 이번 틱은 기술 중 (평소 걷기 · 휘두르기는 쉰다)
+  // 예고(바닥 원 · 선): 보스의 읽기 어려운 기술(hard)만 그린다. 나머지는 준비 동작(e.pose)으로 읽는다
+  tele(e, hard, ev) { if (hard && (e.def?.elite || e.champion || e.kit)) this.emit(ev); }
+  mobPose(e, k, dur) { e.pose = { k, t: dur, max: dur }; }
   // 몬스터의 몸 기술에 맞은 나: 밀려난다 (벽에 부딪히면 잠깐 기절) · 묶임 · 느려짐 · 기절
   knockPlayer(fx, fy, dist, opt = {}) {
     const p = this.player; if (p.down || p.leap || p.airT > 0) return;
@@ -4664,39 +4667,39 @@ export class World {
       if (BEAST[pick]) { if (def.elite || e.champion || !e.saidBeast?.[pick]) { (e.saidBeast ||= {})[pick] = 1; this.emit({ t: 'text', x: e.x, y: e.y - 30, text: (e.skillNames || def.skillNames)?.[pick] || BEAST_NAMES[pick], color: '#ffd0a0' }); } BEAST[pick].start(this, e, p, dist); return true; } // 몸 기술: 처음 한 번은 이름이 뜬다
       const sn = (e.skillNames || def.skillNames)?.[pick]; if (sn) this.emit({ t: 'text', x: e.x, y: e.y - 30, text: sn, color: '#ffd0a0' }); // 플레이어 스킬처럼 이름이 뜬다
       if (pick === 'combo' && dist < melee + 16) { e.mv = { k: 'combo', t: 0.35, n: 3 }; e.windT = 0.35; e.windMax = 0.35; this.emit({ t: 'windup', id: e.id }); return true; }
-      if (pick === 'leap' && dist > 40 && dist < 170) { e.mv = { k: 'leap', t: 0.75, max: 0.75, x0: e.x, y0: e.y, x: tx, y: ty }; this.emit({ t: 'telegraphCircle', x: tx, y: ty, r: 30, dur: 0.75 }); return true; }
-      if (pick === 'fan' && dist < 190) { e.mv = { k: 'fan', t: 0.45, ang: Math.atan2(ty - e.y, tx - e.x) }; e.windT = 0.45; e.windMax = 0.45; this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(e.mv.ang) * 120, y2: e.y + Math.sin(e.mv.ang) * 120, dur: 0.45, color: '#ff5a5a' }); return true; }
+      if (pick === 'leap' && dist > 40 && dist < 170) { e.mv = { k: 'leap', t: 0.75, max: 0.75, x0: e.x, y0: e.y, x: tx, y: ty }; this.tele(e, false, { t: 'telegraphCircle', x: tx, y: ty, r: 30, dur: 0.75 }); this.mobPose(e, 'crouch', 0.3); return true; }
+      if (pick === 'fan' && dist < 190) { e.mv = { k: 'fan', t: 0.45, ang: Math.atan2(ty - e.y, tx - e.x) }; e.windT = 0.45; e.windMax = 0.45; this.mobPose(e, 'spit', 0.45); this.tele(e, false, { t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(e.mv.ang) * 120, y2: e.y + Math.sin(e.mv.ang) * 120, dur: 0.45, color: '#ff5a5a' }); return true; }
       if (pick === 'retreat' && dist < 70) { const l = dist || 1; e.mv = { k: 'retreat', t: 0.35, vx: (e.x - p.x) / l, vy: (e.y - p.y) / l }; return true; }
-      if (pick === 'pool' && dist < 200) { e.mv = { k: 'pool', t: 1.0, x: tx, y: ty }; this.emit({ t: 'telegraphCircle', x: tx, y: ty, r: 34, dur: 1.0 }); this.emit({ t: 'windup', id: e.id }); return true; }
+      if (pick === 'pool' && dist < 200) { e.mv = { k: 'pool', t: 1.0, x: tx, y: ty }; this.tele(e, true, { t: 'telegraphCircle', x: tx, y: ty, r: 34, dur: 1.0 }); this.mobPose(e, 'spit', 1.0); this.emit({ t: 'windup', id: e.id }); return true; }
       if (pick === 'spiral' || pick === 'split') { // 빙글 도는 탄 · 갈라지는 탄
         e.mv = { k: pick, t: 0.45, ang: Math.atan2(ty - e.y, tx - e.x) }; e.windT = 0.45; e.windMax = 0.45; this.emit({ t: 'windup', id: e.id }); return true;
       }
-      if (pick === 'whirl') { e.mv = { k: 'whirl', t: 0.55 }; this.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: e.r + 26, dur: 0.55 }); e.windT = 0.55; e.windMax = 0.55; return true; }
+      if (pick === 'whirl') { e.mv = { k: 'whirl', t: 0.55 }; this.tele(e, false, { t: 'telegraphCircle', x: e.x, y: e.y, r: e.r + 26, dur: 0.55 }); this.mobPose(e, 'coil', 0.55); e.windT = 0.55; e.windMax = 0.55; return true; }
       if (pick === 'shove') { e.mv = { k: 'shove', t: 0.4 }; e.windT = 0.4; e.windMax = 0.4; this.emit({ t: 'windup', id: e.id }); return true; }
-      if (pick === 'quake') { e.mv = { k: 'quake', t: 0.8, r: 0 }; this.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 70, dur: 0.8 }); e.windT = 0.8; e.windMax = 0.8; return true; }
+      if (pick === 'quake') { e.mv = { k: 'quake', t: 0.8, r: 0 }; this.tele(e, false, { t: 'telegraphCircle', x: e.x, y: e.y, r: 70, dur: 0.8 }); this.mobPose(e, 'rear', 0.8); e.windT = 0.8; e.windMax = 0.8; return true; }
       if (pick === 'rain') { // 비: 모든 사람 발밑과 둘레에 장판이 떨어진다
         const spots = this.coTargets().map((q) => ({ x: q.x, y: q.y }));
         for (let i = 0; i < 3; i++) spots.push({ x: e.x + this.rng.range(-110, 110), y: e.y + this.rng.range(-80, 80) });
-        e.mv = { k: 'rain', t: 1.1, spots }; for (const q of spots) this.emit({ t: 'telegraphCircle', x: q.x, y: q.y, r: 30, dur: 1.1 }); return true;
+        e.mv = { k: 'rain', t: 1.1, spots }; for (const q of spots) this.tele(e, true, { t: 'telegraphCircle', x: q.x, y: q.y, r: 30, dur: 1.1 }); this.mobPose(e, 'howl', 1.1); return true;
       }
       if (pick === 'adds') { // 부하를 깨운다
         for (let i = 0; i < 2; i++) { const a = this.rng.range(0, Math.PI * 2); let x = e.x + Math.cos(a) * 40, y = e.y + Math.sin(a) * 40; if (this.blocked(x, y, 6)) { x = e.x; y = e.y; } const m = this.makeEnemy(def.adds || 'goblin', x, y, { summoned: true }); m.summoner = e.id; m.state = 'chase'; m.home = { ...e.home }; this.enemies.push(m); }
         this.emit({ t: 'summon', x: e.x, y: e.y }); this.emit({ t: 'text', x: e.x, y: e.y - 40, text: '부하를 깨운다', color: '#ffb07a' }); return false;
       }
       if (pick === 'charge') { // 돌진: 굵은 예고선을 따라 끝까지
-        const a = Math.atan2(ty - e.y, tx - e.x); e.mv = { k: 'charge', t: 0.8, ang: a, run: 0.55 };
-        this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 260, y2: e.y + Math.sin(a) * 260, dur: 0.8, color: '#ff3a3a', w: e.r * 2 }); e.windT = 0.8; e.windMax = 0.8; return true;
+        const a = Math.atan2(ty - e.y, tx - e.x); e.mv = { k: 'charge', t: 0.8, ang: a, run: 0.55 }; this.mobPose(e, 'crouch', 0.8);
+        this.tele(e, false, { t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 260, y2: e.y + Math.sin(a) * 260, dur: 0.8, color: '#ff3a3a', w: e.r * 2 }); e.windT = 0.8; e.windMax = 0.8; return true;
       }
       if (pick === 'mark') { // 표식: 한 사람을 따라다니는 원이 터진다 (동료에게서 떨어져야 한다)
         const tg = this.rng.pick(this.coTargets()) || p; e.mv = { k: 'mark', t: 2.2, tg };
         this.emit({ t: 'telegraphCircle', x: tg.x, y: tg.y, r: 40, dur: 2.2, follow: tg === this.player ? 'p' : null }); this.emit({ t: 'text', x: tg.x, y: tg.y - 26, text: '표식!', color: '#ff5a5a' }); return true;
       }
       if (pick === 'nova') { // 둘레 폭발: 멀리 떨어져야 산다
-        e.mv = { k: 'nova', t: 1.2 }; this.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 110, dur: 1.2, follow: null }); e.windT = 1.2; e.windMax = 1.2; return true;
+        e.mv = { k: 'nova', t: 1.2 }; this.tele(e, true, { t: 'telegraphCircle', x: e.x, y: e.y, r: 110, dur: 1.2, follow: null }); this.mobPose(e, 'rear', 1.2); e.windT = 1.2; e.windMax = 1.2; return true;
       }
       if (pick === 'beam') { // 감시안: 조준선을 보여 준 뒤 광선
         const a = Math.atan2(ty - e.y, tx - e.x); e.mv = { k: 'beam', t: 0.9, ang: a };
-        this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 230, y2: e.y + Math.sin(a) * 230, dur: 0.9, color: '#ff3a3a', w: 6 }); e.windT = 0.9; e.windMax = 0.9; return true;
+        this.mobPose(e, 'spit', 0.9); this.tele(e, true, { t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 230, y2: e.y + Math.sin(a) * 230, dur: 0.9, color: '#ff3a3a', w: 6 }); e.windT = 0.9; e.windMax = 0.9; return true;
       }
       if (pick === 'heal') {
         const hurt = this.enemies.filter((o) => !o.dead && !o.remote && Math.hypot(o.x - e.x, o.y - e.y) < 100 && o.hp < o.maxHp * 0.7);
