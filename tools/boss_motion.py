@@ -62,19 +62,47 @@ def dust(im, puffs):  # 내려친 순간: 땅에서 흙먼지 덩어리 (가운�
                 elif d <= r + 0.5: po[x, y] = (40, 26, 30, 255)
     return out
 
-# 가면 족장 (게임 크기 80×82 · 발밑 80): 다리 · 발은 66~80줄 · 뒷발 x 14~31 · 앞발 x 35~53 · 허리 위는 0~62줄
+def eyes_of(im, box):
+    """해골 눈구멍: 밝은 뼈 사이에 갇힌 짙은 칸 덩어리 둘의 가운데"""
+    px = im.load(); x0, y0, x1, y1 = box
+    pts = [(x, y) for y in range(y0, y1) for x in range(x0, x1) if px[x, y][3] and sum(px[x, y][:3]) < 140
+           and any(sum(px[x, y - k][:3]) > 560 for k in range(1, 5)) and any(sum(px[x, y + k][:3]) > 560 for k in range(1, 6))]
+    if not pts: return []
+    mid = sorted(p[0] for p in pts)[len(pts) // 2]
+    out = []
+    for grp in ([p for p in pts if p[0] < mid], [p for p in pts if p[0] >= mid]):
+        if grp: out.append((round(sum(x for x, _ in grp) / len(grp)), round(sum(y for _, y in grp) / len(grp))))
+    return out
+
+def feet_of(im):
+    """맨 아래 여섯 줄에서 발 둘의 가로 자리"""
+    W, H = im.size; px = im.load()
+    cols = [x for x in range(W) if any(px[x, y][3] for y in range(H - 7, H))]
+    if not cols: return (0, W // 2), (W // 2, W)
+    gaps = [(cols[i + 1] - cols[i], i) for i in range(len(cols) - 1)]
+    g, i = max(gaps) if gaps else (0, len(cols) // 2)
+    if g < 2: i = len(cols) // 2
+    return (cols[0] - 1, cols[i] + 1), (cols[i + 1] - 1 if i + 1 < len(cols) else cols[i], cols[-1] + 2)
+
+# 가면 족장: 허리 위(가슴 위쪽)는 0~54%줄 · 몸은 0~80%줄 · 발은 아래 18%
 def chief(F):
     A, B, K, S = F['idle0'], F['idle1'], F['atk'], F['skill']
-    breathe = lambda im: shift_band(im, 0, 44, dy=1, x1=60)  # 숨을 내쉬면 가슴 위(머리 · 어깨)가 한 칸 내려앉는다 (몽둥이 위에서 끊어 줄이 생기지 않게)
+    W, H = A.size; chest, body, leg = int(H * 0.54), int(H * 0.8), int(H * 0.83)
+    head = (int(W * 0.45), int(H * 0.15), int(W * 0.8), int(H * 0.45))
+    breathe = lambda im: shift_band(im, 0, chest, dy=1, x1=int(W * 0.75))  # 숨을 내쉬면 머리 · 어깨가 한 칸 내려앉는다 (몽둥이 위에서 끊는다)
     idle = [A, breathe(A), B, breathe(B)]
-    up = lambda im: shift_band(im, 0, 66, dy=-1)  # 걸음 사이: 몸이 한 칸 떠오른다
-    lift_f = lambda im: shift_band(im, 68, 81, dy=-3, x0=35, x1=54)  # 앞발 떼기
-    lift_b = lambda im: shift_band(im, 68, 81, dy=-3, x0=12, x1=32)  # 뒷발 떼기
+    up = lambda im: shift_band(im, 0, body, dy=-1)
+    (bx0, bx1), (fx0, fx1) = feet_of(A)
+    lift_f = lambda im: shift_band(im, leg, H, dy=-2, x0=fx0, x1=fx1)
+    lift_b = lambda im: shift_band(im, leg, H, dy=-2, x0=bx0, x1=bx1)
     walk = [lift_f(breathe(A)), up(A), lift_b(breathe(A)), up(A)]
-    windup = glow_eyes(shift_band(B, 0, 44, dx=-1, dy=1, x1=60), [(45, 29), (51, 31)])  # 준비: 머리 · 어깨를 뒤로 낮추고 눈이 번쩍
-    impact = dust(shift_band(K, 0, 44, dy=1, x1=60), [(57, 77, 2), (63, 76, 3), (69, 78, 2), (74, 77, 2)])  # 내려친 순간: 몸이 실리고 흙이 튄다
+    wb = shift_band(B, 0, chest, dx=-1, dy=1, x1=int(W * 0.75))
+    windup = glow_eyes(wb, eyes_of(wb, head), r=1)
+    kb = shift_band(K, 0, chest, dy=1, x1=int(W * 0.75))
+    impact = dust(kb, [(int(W * 0.72), H - 3, 2), (int(W * 0.8), H - 4, 2), (int(W * 0.88), H - 3, 1)])
     attack = [windup, K, impact]
-    skill = [S, glow_eyes(shift_band(S, 0, 44, dy=-1), [(48, 24), (54, 26)]), glow_eyes(S, [(48, 25), (54, 27)])]  # 포효: 가슴을 펴며 눈에 불이 켜진다
+    su = shift_band(S, 0, chest, dy=-1)
+    skill = [S, glow_eyes(su, eyes_of(su, head), r=1), glow_eyes(S, eyes_of(S, head), r=1)]
     return {'idle': idle, 'run': walk, 'attack': attack, 'skill': skill}
 
 if __name__ == '__main__':
