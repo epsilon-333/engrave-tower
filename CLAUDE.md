@@ -44,6 +44,7 @@
 - 밸런스: `node tools/tests/climbsim.mjs <클래스> <레벨> <등반 수> <최대 층> <시작 층>`. 몬스터 상대 클래스 배율은 `CLASS_BAL_PVE`(data/skills.js)
 - 디버그: 브라우저 콘솔의 `window.__game` (world · dbg.climb · dbg.save), `window.__bot = (input, w) => {...}` 로 자동 플레이
 - `tools/cut_sheet.py art/source/sheet_dragon_kings.webp public/assets/custom`: 사용자가 준 시트에서 용·정령왕 프레임을 만든다(Pillow·numpy·opencv 필요). 자른 뒤 반드시 `cd tools && python3 pixelfit.py king_fire` 처럼 그림체 맞추기(게임 크기 1:1 · 28색 · 외곽선)를 돌린다.
+- `python3 tools/cut_bosses.py build`: 사용자가 준 보스 시트(`art/source/sheet_tower_bosses.png`, 보스 20명 × 자세 4)를 자세마다 통째로 잘라 `public/assets/custom/bosses.png`로 (조각으로 나눠 움직이지 않는다 · 서기 두 자세 · 공격 · 기술 · 시계지기 3단계는 따로 그린 모습).
 - 그림체 기준은 플레이어(0x72 캐릭터): 키 약 20px · 큰 머리 · 한 그림 11색 안팎 · 짙은 외곽선. 사람(people.py)은 이 비율로 줄여 그리고, 모든 뼈대 도트는 11색으로 묶는다(pixelrig.reduce_colors).
 - 도트 그림 형식 (하나로 통일): 그림은 `public/assets/custom/*.png`, 칸 정보는 `tools/sprites/*.json`, 게임은 목록 하나 `public/assets/custom/sprites.json`만 읽는다. 그림 도구(people·creatures·raptor·dragonkin·cut_sheet)를 돌리면 목록이 다시 만들어진다. 손으로 고쳤으면 `python3 tools/sprites.py`.
 - `tools/curve.mjs`: 탑 난이도 표 · `tools/engdoc.mjs`: 각인 전체 목록 문서 · `tools/tests/engskill.mjs` · `chain.mjs`: 각인 스킬 · 연쇄 시험.

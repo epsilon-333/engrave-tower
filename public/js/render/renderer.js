@@ -25,6 +25,8 @@ import { RACES } from '../data/races.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, WEAPON_ART, weaponArt, RACE_LOOK } from '../data/art.js';
 import { BOSS_PASSIVES } from '../data/tower.js';
 import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
+const BOSS_MELEE = new Set(['combo', 'cleave', 'whirl', 'shove', 'charge', 'leap', 'jumps3', 'quake', 'grab', 'retreat']);
+const SHEET_LOOKS = ['saturate(1.25) contrast(1.1) brightness(1.08)', 'saturate(1.5) contrast(1.3) brightness(0.92)']; // 보스 시트 2 · 3단계: 색을 돌리지 않고 진하게만
 const PASSIVE_NAME = Object.fromEntries(Object.entries(BOSS_PASSIVES).map(([k, v]) => [k, v.name]));
 import { STORY_ITEMS, storyObjective, pinoTalk } from '../data/story.js';
 import { sfx, tone } from '../audio.js';
@@ -1312,6 +1314,19 @@ export class Renderer {
     if (art.raceLook) return { ...art, base: RACE_LOOK[e.raceLook] || RACE_LOOK.knight };
     return art;
   }
+  // 보스 시트: 지금 하는 일에 맞는 자세 그림 하나를 통째로 (조각을 움직이지 않는다)
+  // 서기 = 두 자세를 천천히 번갈아 (숨쉬기) · 걷기 = 두 자세를 빠르게 · 내려치기 · 돌진 · 도약 = 공격 자세 · 그 밖의 큰 기술 = 기술 자세
+  bossFrame(w, e, art) {
+    const base = art.phase3 && e.bphase >= 2 ? art.phase3 : art.base;
+    let kind;
+    if (e.introT > 0) kind = 1 - e.introT / (e.introMax || 1) > 0.55 ? 'skill' : 'idle'; // 등장: 마지막에 포효 자세
+    else if (e.soaring || e.morphT > 0) kind = 'skill';
+    else if (e.mv) kind = BOSS_MELEE.has(e.mv.k) ? 'attack' : 'skill';
+    else if (e.windT > 0 || this.lunge.has(e.id) || e.exposedT > 0 && false) kind = 'attack';
+    else kind = e.moving ? 'run' : 'idle';
+    const fr = frames(base, kind);
+    return fr[Math.floor((w.t + e.phase) * (kind === 'run' ? 4 : 1.4)) % fr.length];
+  }
   drawEnemy(w, e, dt) {
     const g = this.g, def = e.def;
     if (e.npcRef) { e._top = null; return; } // 화난 NPC는 NPC 그림으로 그린다
@@ -1327,8 +1342,8 @@ export class Renderer {
       if (e.bphase >= 2 && Math.random() < 0.25) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 1.6, y: e.y - Math.random() * e.r, vx: (Math.random() - 0.5) * 10, vy: -16, t: 1.0, max: 1.0, color: '#1a1020', g: -4, puff: true, size: 3 });
     }
     if (e.soaring) { // 날아오름: 몸이 웅크렸다 하늘로 솟구쳐 화면 밖으로 · 땅에는 작아졌다 커지는 그림자 (떨어질 때는 뛰어내리기 동작이 이어 받는다)
-      const up = 2.6 - (e.mv?.t ?? 0), k = Math.min(1, up / 0.4), sc = (art.scale || 1) * (e.scale || 1);
-      const fr = sprite(this.animFrame(art.base, 'idle', w.t, 6), e.tintX || art.tint || '', false, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', false, e.dir < 0);
+      const up = 2.6 - (e.mv?.t ?? 0), k = Math.min(1, up / 0.4), sc = art.sheet ? 1 : (art.scale || 1) * (e.scale || 1);
+      const fr = sprite(art.sheet ? this.bossFrame(w, e, art) : this.animFrame(art.base, 'idle', w.t, 6), e.tintX || art.tint || '', false, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', false, e.dir < 0);
       const shK = Math.max(0.25, 1 - k * 0.75);
       g.fillStyle = `rgba(0,0,0,${0.12 + 0.22 * shK})`; ellipse(g, e.x, e.y + 3, e.r * 1.2 * shK, e.r * 0.45 * shK);
       if (fr && k < 1) { const off = k * k * 260, sq = up < 0.08 ? 0.8 : 1; g.drawImage(fr, Math.round(e.x - fr.width * sc / 2), Math.round(e.y + 4 - fr.height * sc * sq - off), Math.round(fr.width * sc), Math.round(fr.height * sc * sq)); }
@@ -1352,8 +1367,9 @@ export class Renderer {
       return;
     }
     if (e.morphT > 0) e.morphT -= dt;
-    const sc = (art.scale || 1) * (e.scale || 1) * (e.morphT > 0 ? 1 + 0.18 * Math.sin((1 - e.morphT / 0.9) * Math.PI) : 1);
-    const name = this.animFrame(art.base, e.moving ? 'run' : 'idle', w.t + e.phase, e.moving ? 10 : 6);
+    const sc = art.sheet ? (e.morphT > 0 ? 1 + 0.06 * Math.sin((1 - e.morphT / 0.9) * Math.PI) : 1) // 보스 시트: 도트 그대로 1:1 (키우면 번진다)
+      : (art.scale || 1) * (e.scale || 1) * (e.morphT > 0 ? 1 + 0.18 * Math.sin((1 - e.morphT / 0.9) * Math.PI) : 1);
+    const name = art.sheet ? this.bossFrame(w, e, art) : this.animFrame(art.base, e.moving ? 'run' : 'idle', w.t + e.phase, e.moving ? 10 : 6);
     const wind = e.windT > 0;
     const fuse = e.fuse > 0;
     const flash = e.hitFlash > 0 ? true : ((wind && (!e.pose || e.windT < 0.22)) || fuse) && Math.floor(w.t * (fuse ? 30 : 20)) % 2 ? (fuse ? '#ffffff' : '#ff4040') : false; // 몸 기술: 준비 동작이 보이게 마지막 순간에만 번쩍
@@ -1361,6 +1377,8 @@ export class Renderer {
     const pose = e.pose && art.beast ? e.pose.k : wind ? 'wind' : e.moving ? 'walk' : 'idle', bf = Math.floor((w.t + e.phase) * (e.pose?.k === 'crouch' ? 10 : e.moving || art.fly ? 9 : 3)) % 4; // 몸 기술 동작은 그 동작 그림으로
     const img = art.beast ? beastImg(art.beast, pose, bf, e.dir < 0, flash, e.tintX || art.tint || '')
       : art.mimic ? sprite(e.dormant ? 'chest_full_open_anim_f0' : `chest_mimic_open_anim_f${e.moving || wind ? 1 + (Math.floor(w.t * 8) % 2) : 2}`, '', flash, e.dir < 0)
+      : art.sheet ? sprite(name, e.mirrorT > 0 ? 'grayscale(1) brightness(1.75) contrast(1.4)' : [art.tint || '', ...SHEET_LOOKS][(e.bphase || 0)] + (art.tint && e.bphase ? ' ' + art.tint : ''), // 큰 보스: 맞으면 살짝 밝아지기만 (몸 전체가 흰 덩어리가 되지 않게)
+        e.morphT > 0 && Math.floor(w.t * 24) % 2 ? 'rgba(255,255,255,0.45)' : flash === true ? 'rgba(255,255,255,0.32)' : flash ? 'rgba(255,60,40,0.26)' : false, e.dir < 0)
       : sprite(name, e.mirrorT > 0 ? 'grayscale(1) brightness(1.75) contrast(1.4)' : e.tintX || art.tint || '', e.morphT > 0 && Math.floor(w.t * 24) % 2 ? '#ffffff' : flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);
     if (!img) return;
     let sq = this.squash.get(e.id) || 0;
@@ -4181,6 +4199,7 @@ export class Renderer {
       if (!inView(e.x, e.y)) continue;
       if (e.st.burn) { hole(e.x, e.y - 8, 30, 0.8); colored.push([e.x, e.y - 8, 22, '#ff7a2a']); }
       if (e.def.elite) hole(e.x, e.y - 10, 44, 0.6);
+      if (MONSTER_ART[e.defId]?.sheet) hole(e.x, e.y - 30, 100, 0.8); // 큰 보스는 어두운 층에서도 몸 전체가 보이게
     }
     for (const dr of w.drops) if (inView(dr.x, dr.y)) hole(dr.x, dr.y, 14, 0.7);
     if (z.liquid === 'lava') {

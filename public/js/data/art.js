@@ -144,6 +144,14 @@ export const MONSTER_ART = {
   highPriest: { base: 'p_cultist', scale: 1.9, tint: 'saturate(1.5) brightness(0.85) contrast(1.25)' },
   lastKing: { base: 'p_king', scale: 2.3, tint: 'sepia(0.5) saturate(1.4) brightness(1.4) contrast(1.1)' },
 };
+// 탑 보스 20명: 사용자가 준 시트에서 자세마다 통째로 (tools/cut_bosses.py · 서기 두 자세 · 공격 · 기술) — 위 줄의 예전 그림을 덮는다
+const BOSS_SHEET = { climbChief: {}, mossLord: {}, bogHag: {}, climbQueen: {}, demonCaptain: {}, climbRift: {}, frostOgre: {}, climbWitch: {}, wraithLord: {}, engraveKing: {}, stormHarpy: {}, skyWhale: {}, mirrorSelf: {}, shardQueen: {}, foreman: {}, clockKeeper: {}, archivist: {}, starReader: {}, highPriest: {}, lastKing: {} };
+BOSS_SHEET.clockKeeper = { phase3: 'b_clockKeeper2' }; // 3단계: 검을 든 어두운 시계지기로 바뀐다
+BOSS_SHEET.highPriest = { tint: 'brightness(0.78) saturate(1.25) contrast(1.15)' };
+BOSS_SHEET.wraithLord = { ghost: true };
+BOSS_SHEET.stormHarpy = { fly: true };
+BOSS_SHEET.skyWhale = { fly: true };
+for (const [id, o] of Object.entries(BOSS_SHEET)) MONSTER_ART[id] = { base: 'b_' + id, sheet: true, ...o };
 // 각인 망령 · 마지막 왕이 빌려 쓰는 8종족의 옛 전사 그림
 export const RACE_LOOK = { wizard: 'p_keep_wizard', elf: 'p_keep_elf', knight: 'p_keep_knight', orc: 'p_keep_orc', undead: 'p_keep_undead', assassin: 'p_keep_assassin', dino: 'p_keep_dino', dragon: 'p_keep_dragon' };
 
