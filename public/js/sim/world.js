@@ -3501,6 +3501,8 @@ export class World {
       for (const o of this.enemiesNear(pos.x, pos.y, S.r)) { this.damageEnemy(o, base, S.type || 'phys', { src: 'aoe', color: S.elem ? ELEM[S.elem]?.color : null }); if (S.status) this.applyStatus(o, S.status, S.stacks || 1); if (S.stun && !o.dead) this.stunE(o, o.def.elite ? S.stun * 0.35 : S.stun); if (!o.dead) this.chainEvent('hit', o, o); } // 일격에 맞은 적: 맞힘 효과가 다음 순간 다시 깨어난다 (연쇄)
     }
     if (a.status && target) this.applyStatus(target, a.status, a.stacks || 1);
+    if (a.stun && target && !target.dead && target.def) this.stunE(target, target.def.elite || target.champion ? a.stun * 0.35 : a.stun); // 각인: 잠깐 기절
+    if (a.fear && target && !target.dead && target.def) this.fearE(target, a.fear);
     if (a.heal) this.heal(d.maxHp * a.heal, 'skill');
     if (a.res) this.addRes(a.res);
     if (a.tstat) this.addTemp(a.tstat.stat, a.tstat.v, a.tstat.dur || 8, a.tstat.name);
