@@ -1324,7 +1324,16 @@ export class Renderer {
     else if (e.mv) kind = BOSS_MELEE.has(e.mv.k) ? 'attack' : 'skill';
     else if (e.windT > 0 || this.lunge.has(e.id) || e.exposedT > 0 && false) kind = 'attack';
     else kind = e.moving ? 'run' : 'idle';
+    const full = !!atlas[`${base}_hit_anim_f0`]; // 보내 주신 동작 시트가 있는 보스 (맞음 · 쓰러짐까지)
+    if (full && !e.mv && !(e.introT > 0) && (e.exposedT > 0 || e.st?.stun > 0)) kind = 'hit'; // 기절 · 빈틈: 맞은 자세
     const fr = frames(base, kind);
+    if (kind !== 'attack') e._aT = null;
+    if (kind !== 'skill') e._sT = null;
+    if (full && kind === 'attack') { // 준비 자세는 예고 동안 그대로 → 끝나면 내려치기 · 따라가기를 한 번 (초당 9장)
+      if (e.windT > 0 || fr.length < 2) { e._aT = null; return fr[0]; }
+      e._aT ??= w.t; return fr[Math.min(fr.length - 1, 1 + Math.floor((w.t - e._aT) * 9))];
+    }
+    if (full && kind === 'skill') { e._sT ??= w.t; return fr[Math.min(fr.length - 1, Math.floor((w.t - e._sT) * 6))]; } // 기술: 차례로 넘기고 마지막 장면을 기술이 끝날 때까지
     if (kind === 'attack' && fr.length >= 3) return e.windT > 0 ? fr[0] : fr[1 + (Math.floor((w.t + e.phase) * 6) % (fr.length - 1))]; // 준비 → 내려치기 → 내려친 순간
     const fps = kind === 'run' ? (fr.length > 2 ? 7 : 4) : kind === 'skill' ? 3 : fr.length > 2 ? 2.4 : 1.4; // 장면이 많은 보스는 그만큼 빨리 넘긴다
     return fr[Math.floor((w.t + e.phase) * fps) % fr.length];
@@ -1519,6 +1528,14 @@ export class Renderer {
 
   drawCorpse(c, dt) {
     const art = MONSTER_ART[c.defId]; if (!art) { c.t = 0; return; }
+    if (art.sheet && atlas[`${art.base}_death_anim_f0`]) { // 보스: 시트의 쓰러지는 장면 → 누운 채 4초 → 흐려진다
+      if (!c.sheet) { c.sheet = true; c.t = c.max = 5; this.shake = Math.max(this.shake, 8); }
+      c.t -= dt; const el = c.max - c.t, fr = frames(art.base, 'death'), img = sprite(fr[Math.min(fr.length - 1, Math.floor(el * 5))], '', false, c.dir < 0);
+      if (!img) return;
+      this.shadow(c.x, c.y + 3, img.width * 0.32);
+      this.g.globalAlpha = Math.min(1, c.t / 0.8); this.g.drawImage(img, Math.round(c.x - img.width / 2), Math.round(c.y + 4 - img.height)); this.g.globalAlpha = 1;
+      return;
+    }
     c.t -= dt;
     const el = c.max - c.t, g = this.g, sc = (art.scale || 1) * (c.big ? 1.2 : 1);
     const img = art.beast ? beastImg(art.beast, 'idle', 0, c.dir < 0, false) : sprite(frames(art.base, 'idle')[0], art.tint || '', el < 0.08, c.dir < 0);
