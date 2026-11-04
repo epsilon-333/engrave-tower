@@ -674,15 +674,49 @@ export class Renderer {
   }
 
   // 탑의 무기 등급 연출: 등급이 높을수록 화려하게 (희귀 반짝임 → 영웅 충격파 · 불티 → 전설 금빛 빛살 · 떠오르는 불씨 → 신화 두 겹 충격파 · 화면 번쩍 · 별빛 폭발)
-  rarityFx(ev, col) {
+  rarityFx(ev, col) { // 그 등급의 표식 하나만 (아래 등급 표식을 겹쳐 쌓으면 무기마다 같은 덩어리로 섞여 보였다)
     const r = ev.rar, rc = ['#c8c0d0', '#7ac4ff', '#c890ff', '#ffc84a', '#ff5a7a'][r], R = Math.max(24, ev.r || 30);
-    for (let i = 1; i <= r; i++) this.anims.add(RARITY_ANIM[i], { x: ev.x, y: ev.y, r: R * (0.8 + 0.12 * i), col: i === r ? rc : ['#c8c0d0', '#9ad4ff', '#d8b0ff', '#ffe08a', '#ff8aa0'][i] }); // 아래 등급 표식이 겹쳐서 위로 갈수록 화려하다
+    this.anims.add(RARITY_ANIM[r], { x: ev.x, y: ev.y, r: R * (0.8 + 0.12 * r), col: rc });
     if (r >= 3) this.shake = Math.max(this.shake, r);
     if (r >= 4) this.hitstop = Math.max(this.hitstop, 0.05);
   }
 
   // 범위 스킬 연출 (맞는 쪽)
+  // lite: 평타 · 맞음 · 처치로 저절로 터지는 무기 · 장비 효과 — 같은 모습을 작게, 화면 흔들림 · 멈칫 · 번쩍임 없이, 등급 표식은 한 겹만
   aoeFx(ev) {
+    if (!ev.lite) return this.aoeFxFull(ev);
+    // 저절로 터지는 효과: 큰 폭발 그림 대신 작은 타격 — 원소 색 불꽃이 튀고 짧게 빛난다 (높은 등급은 반짝임 하나)
+    const col = ELEM[ev.elem]?.color && ev.elem !== 'phys' ? ELEM[ev.elem].color : '#ffe8b0', R = Math.min(30, (ev.r || 30) * 0.55);
+    this.fx.push({ k: 'impact', x: ev.x, y: ev.y + 2, r: R * 0.6, color: col, t: 0.14, max: 0.14 });
+    this.fx.push({ k: 'glow', x: ev.x, y: ev.y - 6, r: R, color: col, t: 0.18, max: 0.18 });
+    this.sparkBurst(ev.x, ev.y - 4, col, 6);
+    if (ev.elem === 'fire') for (let i = 0; i < 5; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * R, y: ev.y - 4, vx: (Math.random() - 0.5) * 30, vy: -30 - Math.random() * 30, t: 0.4, max: 0.4, g: -40, flame: true, size: 1, color: '#ffffff' });
+    else if (ev.elem === 'ice') for (let i = 0; i < 5; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * R, y: ev.y - 6, vx: (Math.random() - 0.5) * 40, vy: -10, t: 0.5, max: 0.5, color: '#e8f8ff', g: 30, glow: true, size: 1 });
+    else if (ev.elem === 'lightning') for (let i = 0; i < 4; i++) this.parts.push({ x: ev.x, y: ev.y - 8, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 120, t: 0.12, max: 0.12, color: '#ffffff', g: 0, line: true });
+    if (ev.rar >= 3) this.anims.add('glint', { x: ev.x, y: ev.y, r: R, col: ['#c8c0d0', '#7ac4ff', '#c890ff', '#ffc84a', '#ff5a7a'][ev.rar] });
+    sfx('hit', { vol: 0.3, rate: 1.2 });
+  }
+  // 무기 스킬(우클릭)의 무기 종류 표식: 같은 원소라도 칼은 X자 베기, 망치는 땅이 갈라지고, 활은 화살비, 지팡이는 문양이 터진다
+  weaponSig(ev) {
+    const c = ev.wcat, col = ELEM[ev.elem]?.color && ev.elem !== 'phys' ? ELEM[ev.elem].color : ['#f4f0ff', '#cfe6ff', '#e4cfff', '#ffe6a0', '#ffc0cc'][ev.rar || 0], r = Math.max(26, ev.r || 30), A = this.anims, x = ev.x, y = ev.y;
+    switch (c) {
+      case 'blade': A.add('bladeArc', { x, y, ang: -0.7, range: r, angle: 2.4, col }); A.add('bladeArc', { x, y, ang: Math.PI + 0.7, range: r, angle: 2.4, col, max: 0.34 }); break;
+      case 'great': A.add('bladeArc', { x, y, ang: Math.PI / 2, range: r * 1.15, angle: 3.4, col }); A.add('cracks', { x, y, r: r * 0.8, col }); break;
+      case 'axe': A.add('cracks', { x, y, r, col }); this.burst(x, y, '#a89880', 14, 120); break;
+      case 'blunt': A.add('cracks', { x, y, r: r * 1.1, col }); this.shockwave(x, y, r, col, 28); break;
+      case 'scythe': A.add('bladeArc', { x, y, ang: 0, range: r, angle: 6.1, col }); break;
+      case 'polearm': A.add('shardBurst', { x, y, r: r * 0.8, col }); break;
+      case 'whip': A.add('gale', { x, y, r: r * 0.8, col }); break;
+      case 'fist': this.shockwave(x, y, r * 0.7, col, 22); this.shockwave(x, y, r * 1.05, '#ffffff', 18); break;
+      case 'shield': this.shockwave(x, y, r * 0.9, col, 26); A.add('glint', { x, y, r: r * 0.6, col }); break;
+      case 'bow': case 'tube': A.add('arrowRain', { x, y, r: r * 0.8 }); break;
+      case 'throw': A.add('rockRain', { x, y, r: r * 0.7, col: '#c8c0b0' }); break;
+      case 'staff': A.add('runeBurst', { x, y, r, col }); break;
+      case 'tome': A.add('runeBurst', { x, y, r, col, implode: true }); break;
+    }
+  }
+  aoeFxFull(ev) {
+    if (ev.wcat && !ev.ult) this.weaponSig(ev);
     const col = ELEM[ev.elem]?.color || '#ffe8a0';
     const fx = ev.fx;
     this.juice(ev.x, ev.y, col, ev.ult ? 'ult' : ev.fromProj ? 'pop' : 'skill', ev.r || 30);
