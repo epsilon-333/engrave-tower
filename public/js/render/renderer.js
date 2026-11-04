@@ -992,7 +992,7 @@ export class Renderer {
     list.sort((a, b) => a.y - b.y);
     for (const it of list) {
       if (it.pxe) this.anims.px.drawOne(g, it.pxe);
-      else if (it.p) this.drawPlayer(w, p, dt);
+      else if (it.p) { this.drawPlayer(w, p, dt); if (p.webT > 0) drawWeb(g, p.x, p.y, w.t, Math.min(1, p.webT * 3)); } // 거미줄에 묶였다: 몸에 감긴 실
       else if (it.e) this.drawEnemy(w, it.e, dt);
       else if (it.o) this.drawObject(w, it.o, dt);
       else if (it.dr) this.drawDrop(w, it.dr);
@@ -1323,6 +1323,13 @@ export class Renderer {
       if (up < 0.05 && dt > 0) for (let i = 0; i < 8; i++) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y + 3, vx: (Math.random() - 0.5) * 40, vy: -8, t: 0.6, max: 0.6, color: '#a89880', g: 0, puff: true, size: 4 }); // 박차는 순간 먼지
       e._top = null; return;
     }
+    if (e.under) { // 땅굴 기습: 땅속을 파고 다가오는 흙 고랑
+      const bump = Math.abs(Math.sin(w.t * 9 + e.phase)) * 1.2;
+      g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, e.x, e.y + 3, 9, 3);
+      g.fillStyle = '#5a4a36'; ellipse(g, e.x, e.y + 1 - bump, 8, 3.5); g.fillStyle = '#8a7a5e'; ellipse(g, e.x - 2, e.y - bump, 4, 1.6);
+      if (dt > 0 && Math.random() < 0.5) this.parts.push({ x: e.x + (Math.random() - 0.5) * 10, y: e.y, vx: (Math.random() - 0.5) * 30, vy: -30 - Math.random() * 20, t: 0.4, max: 0.4, color: '#7a6448', g: 300, chunk: true, floor: e.y + 3 });
+      e._top = null; return;
+    }
     if (e.hidden) {
       // 땅속 잠복: 흙더미만 보인다
       const bump = Math.sin(w.t * 3 + e.phase) * 0.6;
@@ -1337,7 +1344,7 @@ export class Renderer {
     const name = this.animFrame(art.base, e.moving ? 'run' : 'idle', w.t + e.phase, e.moving ? 10 : 6);
     const wind = e.windT > 0;
     const fuse = e.fuse > 0;
-    const flash = e.hitFlash > 0 ? true : (wind || fuse) && Math.floor(w.t * (fuse ? 30 : 20)) % 2 ? (fuse ? '#ffffff' : '#ff4040') : false;
+    const flash = e.hitFlash > 0 ? true : ((wind && (!e.pose || e.windT < 0.22)) || fuse) && Math.floor(w.t * (fuse ? 30 : 20)) % 2 ? (fuse ? '#ffffff' : '#ff4040') : false; // 몸 기술: 준비 동작이 보이게 마지막 순간에만 번쩍
     // 그림이 없으면 투명해지지 않도록 고블린 그림으로 대체
     const pose = wind ? 'wind' : e.moving ? 'walk' : 'idle', bf = Math.floor((w.t + e.phase) * (e.moving || art.fly ? 9 : 3)) % 4;
     const img = art.beast ? beastImg(art.beast, pose, bf, e.dir < 0, flash)
@@ -1363,7 +1370,13 @@ export class Renderer {
     const carryLift = e.carried > 0 ? 18 + (w.player.air || 0) : 0;
     const flyUp = art.fly ? 6 + Math.sin(w.t * 3 + e.phase) * 2 : 0; // 나는 몬스터는 땅 위에 떠 있다
     const dx = Math.round(e.x - w0 / 2 + wobble), dy = Math.round(e.y + 4 - h0 - carryLift + lungeY - flyUp);
-    g.drawImage(img, dx, dy, Math.round(w0), Math.round(h0));
+    const bp = e.pose ? beastPose(e.pose, e.dir || 1, w.t) : null; // 몸 기술 동작: 몸 전체가 일어서고 · 웅크리고 · 내밀고 · 내려찍는다
+    if (bp) {
+      g.save(); g.translate(Math.round(e.x + wobble + bp.x), Math.round(e.y + 4 - carryLift - flyUp + bp.y)); g.rotate(bp.rot); g.scale(bp.sx, bp.sy);
+      g.drawImage(img, Math.round(-w0 / 2), Math.round(-h0), Math.round(w0), Math.round(h0)); g.restore();
+      if (e.pose.k === 'dizzy') for (let i = 0; i < 3; i++) { const a = w.t * 7 + i * 2.1; g.fillStyle = '#ffe060'; g.fillRect(Math.round(e.x + Math.cos(a) * 8), Math.round(dy - 5 + Math.sin(a) * 2), 2, 2); }
+      if ((e.pose.k === 'crouch' && e.mv?.k === 'headbutt') && dt > 0 && Math.random() < 0.35) this.parts.push({ x: e.x - (e.dir || 1) * e.r, y: e.y + 3, vx: -(e.dir || 1) * (30 + Math.random() * 40), vy: -20 - Math.random() * 20, t: 0.45, max: 0.45, color: '#a89880', g: 200, puff: true, size: 2 }); // 뒷발로 땅을 긁는 흙먼지
+    } else g.drawImage(img, dx, dy, Math.round(w0), Math.round(h0));
     g.globalAlpha = 1;
     if (e.st.frozen > 0) {
       g.fillStyle = 'rgba(170,225,255,0.5)'; g.fillRect(dx, dy + 2, Math.round(w0), Math.round(h0) - 2);
@@ -4852,5 +4865,32 @@ function smear(g, x, y, R, thick, a0, a1) {
   for (const [px, py] of outer) g.lineTo(px, py);
   for (let i = inner.length - 1; i >= 0; i--) g.lineTo(inner[i][0], inner[i][1]);
   g.closePath(); g.fill();
+}
+
+// 몸 기술 동작 → 그림 변형 (발밑 기준). k: 0 → 1 진행
+function beastPose(ps, dir, t) {
+  const k = 1 - Math.max(0, ps.t) / ps.max, out = { x: 0, y: 0, rot: 0, sx: 1, sy: 1 }, ease = (v) => 1 - (1 - v) * (1 - v), back = -dir;
+  switch (ps.k) {
+    case 'crouch': { const q = ease(Math.min(1, k * 2.5)); out.sy = 1 - 0.22 * q; out.sx = 1 + 0.12 * q; out.rot = dir * 0.12 * q; out.x = back * 2 * q + Math.sin(t * 40) * 0.6 * q; break; } // 고개를 숙이고 뒤로 몸을 당긴다 (떨림)
+    case 'lunge': { out.rot = dir * 0.2; out.sx = 1.18; out.sy = 0.9; break; } // 머리부터 내민다
+    case 'rear': { const q = ease(Math.min(1, k * 1.6)); out.sy = 1 + 0.2 * q; out.sx = 1 - 0.08 * q; out.rot = back * 0.35 * q; out.y = -3 * q; break; } // 뒷발로 일어선다
+    case 'slam': { const q = Math.max(0, 1 - k * 3); out.sy = 1 - 0.25 * q; out.sx = 1 + 0.2 * q; out.rot = dir * 0.25 * q; break; } // 내려찍은 직후 납작
+    case 'spit': { const q = Math.sin(Math.min(1, k * 1.5) * Math.PI); out.rot = back * 0.15 * q; out.sy = 1 - 0.1 * q; break; }
+    case 'howl': { const q = Math.sin(Math.min(1, k * 1.2) * Math.PI * 0.5); out.rot = back * 0.4 * q; out.sy = 1 + 0.12 * q; out.y = -2 * q; break; } // 고개를 하늘로
+    case 'coil': { const q = ease(k); out.rot = back * 0.3 * q; out.sx = 1 - 0.1 * q; break; } // 몸을 비튼다
+    case 'leap': { out.rot = dir * (0.35 - 0.7 * k); out.sx = 0.92; out.sy = 1.12; break; } // 날아오를 때 앞으로, 떨어질 때 아래로
+    case 'recover': { const q = 1 - k; out.sy = 1 - 0.06 * q; out.y = Math.sin(t * 6) * 0.5; break; } // 숨을 고른다 (빈틈)
+    case 'dizzy': { out.rot = Math.sin(t * 7) * 0.18; out.x = Math.sin(t * 5) * 1.5; break; }
+    case 'burrow': { const q = ease(k); out.sy = 1 - 0.9 * q; out.y = 2 * q; break; } // 땅속으로 파고든다
+  }
+  return out;
+}
+
+// 몸에 감긴 거미줄: 엇갈린 흰 실 몇 가닥 + 바닥에 붙은 실
+function drawWeb(g, x, y, t, a) {
+  g.save(); g.globalAlpha = 0.85 * a; g.strokeStyle = '#f4f2ea'; g.lineWidth = 1;
+  for (const [x1, y1, x2, y2] of [[-7, -16, 6, -3], [6, -17, -7, -2], [-8, -9, 8, -9], [-6, -3, -10, 4], [6, -3, 10, 4], [0, -18, 0, 2]]) { g.beginPath(); g.moveTo(x + x1, y + y1); g.quadraticCurveTo(x + (x1 + x2) / 2, y + (y1 + y2) / 2 + 2, x + x2, y + y2); g.stroke(); }
+  g.fillStyle = 'rgba(244,242,234,0.5)'; g.fillRect(Math.round(x - 9), Math.round(y + 3), 18, 1);
+  g.restore();
 }
 

@@ -19,6 +19,7 @@ const SPIRIT_DMG_ELEM = { fire: 'fire', ice: 'ice', lightning: 'lightning', wind
 import { RACES } from '../data/races.js';
 import { skillScale } from '../data/statscale.js';
 import { computeBuild } from './build.js';
+import { BEAST, BEAST_CAN, BEAST_KIT, BEAST_NAMES } from './beastmoves.js';
 const TEMP_MAX = 60; // 잠깐 오르는 스탯: 한 스탯에 합쳐서 +60까지
 const STAT_SHORT = { str: '근력', mag: '마력', agi: '민첩', vit: '체력', sen: '감각', spi: '정신', pres: '물리 저항', mres: '마법 저항' };
 // 스킬을 쓰면 잠깐 오르는 스탯 [스탯, 양, 초]
@@ -623,14 +624,14 @@ export class World {
 
   step(input) {
     if (this.tower && this.state === 'play') this.tower.t += DT;
-    this.tickTemp(); this.runChain();
+    this.tickTemp(); this.runChain(); this.tickKnock();
     if (this.player.ccT > 0 || this.player.down) { // 기절 (결투에서 상대의 CC를 맞았다) · 파티 탑에서 쓰러졌다: 아무것도 못 한다
       if (this.player.ccT > 0) this.player.ccT -= DT;
       input = { ...input, moveX: 0, moveY: 0, attack: false, dash: false, interact: false, skill: false, s1: false, s2: false, s3: false, s4: false, wskill: false };
     }
     { // 결투: 상대가 건 묶기 · 침묵 · 공포 (사람에게 걸리는 CC)
       const p = this.player;
-      for (const k of ['rootT', 'silT', 'fearT', 'abT', 'slowT', 'tauntT']) if (p[k] > 0) p[k] -= DT;
+      for (const k of ['rootT', 'silT', 'fearT', 'abT', 'slowT', 'tauntT', 'webT']) if (p[k] > 0) p[k] -= DT;
       if (p.slowT > 0) input = { ...input, moveX: input.moveX * 0.45, moveY: input.moveY * 0.45 };
       if (p.tauntT > 0) { const f = p.tauntAt || this.enemies.find((x) => x.remote); if (f) { const dx = f.x - p.x, dy = f.y - p.y, l = Math.hypot(dx, dy) || 1; input = { ...input, moveX: l > 20 ? dx / l : 0, moveY: l > 20 ? dy / l : 0, aimX: f.x, aimY: f.y }; } } // 도발: 도발한 사람에게 끌려간다
       if (p.abT <= 0) p.ab = 0;
@@ -3237,7 +3238,7 @@ export class World {
   }
 
   damageEnemy(e, amount, type, opt = {}) {
-    if (e.dead || e.hidden || e.begging) return 0;
+    if (e.dead || e.hidden || e.under || e.begging) return 0;
     if (e.mv?.k === 'channel' && !opt.fromDot) e.mv.taken = (e.mv.taken || 0) + amount; // 늪의 마녀: 의식 중 받은 피해 (대략)
     if (e.invulnT > 0) { if (!opt.fromDot) this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '무적', color: '#c8a8ff' }); return 0; } // 망령: 순간이동 뒤 잠깐 무적
     if (e.dormant) { e.dormant = false; e.state = 'chase'; this.aggro(e); this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '미믹!', color: '#ff5a3a' }); }
@@ -3545,6 +3546,7 @@ export class World {
 
   hurtPlayer(amount, type, attacker, opt = {}) {
     const p = this.player, d = this.d, f = this.f;
+    this.hurtLanded = false; // 이번 공격이 정말 맞았나 (회피 · 막기 · 무적이면 false) — 밀려남 같은 몸 효과는 맞았을 때만
     if (attacker?.def?.name && this.climb) this.climb.lastBy = attacker.champion || attacker.def.name; // 등반 결산: 누구에게 쓰러졌나
     if (this.coTgt?.kind) { const al = this.coTgt; if (al.shield1) { al.shield1 = false; this.emit({ t: 'text', x: al.x, y: al.y - 16, text: '막음', color: '#bfe8ff' }); } else { al.hp -= amount * (al.tauntT > 0 ? 0.7 : 1); this.emit({ t: 'allyHurt', x: al.x, y: al.y, v: amount }); } return; } // 소환체가 맞았다
     if (this.coTgt) { this.coHurtMate(this.coTgt, amount, type, attacker, opt); return; } // 파티 탑 (방장): 이 적이 노린 건 동료
@@ -3620,6 +3622,7 @@ export class World {
     if (this.b.race === 'orc') this.addRage((dmg / d.maxHp) * 160 * (f.has('rageFast') ? 1.5 : 1));
     p.lastFight = this.t;
     if (!opt.direct) p.invuln = 0.3;
+    this.hurtLanded = true;
     if (dmg >= 0.5) this.emit({ t: 'dmg', x: p.x, y: p.y - 16, v: dmg, color: '#ff5a5a', who: 'p' });
     else if (absorbed > 0) this.emit({ t: 'text', x: p.x, y: p.y - 16, text: '보호막', color: '#a8d8ff' }); // 보호막이 다 막으면 0.0 대신
     this.emit({ t: 'shake', v: Math.min(5, 1.5 + dmg / 12) });
@@ -4602,8 +4605,32 @@ export class World {
     this.coTgt = prev;
   }
   // true면 이번 틱은 기술 중 (평소 걷기 · 휘두르기는 쉰다)
+  // 몬스터의 몸 기술에 맞은 나: 밀려난다 (벽에 부딪히면 잠깐 기절) · 묶임 · 느려짐 · 기절
+  knockPlayer(fx, fy, dist, opt = {}) {
+    const p = this.player; if (p.down || p.leap || p.airT > 0) return;
+    const a = opt.ang ?? Math.atan2(p.y - fy, p.x - fx), res = 1 - (this.d.statusRes || 0) * 0.5, T = 0.24;
+    p.kb = { vx: Math.cos(a) * dist * res / T, vy: Math.sin(a) * dist * res / T, t: T, wall: opt.wallStun || 0 };
+  }
+  ccPlayer(m) {
+    const p = this.player, res = 1 - (this.d.statusRes || 0) * 0.5, say = (text, color) => this.emit({ t: 'text', x: p.x, y: p.y - 24, text, color });
+    if (m.root) { p.rootT = Math.max(p.rootT || 0, m.root * res); p.webT = m.say ? p.rootT : 0; say(m.say || '묶였다', '#e8e8d8'); }
+    if (m.slow) { p.slowT = Math.max(p.slowT || 0, m.slow * res); say('느려짐', '#9fe3ff'); }
+    if (m.stun) { p.ccT = Math.max(p.ccT || 0, m.stun * res); say('기절', '#ffd060'); }
+  }
+  tickKnock() { // 밀려나는 중: 벽에 막히면 그 자리에서 멈추고, 세게 부딪혔으면 기절
+    const p = this.player, k = p.kb; if (!k) return;
+    const x0 = p.x, y0 = p.y, dx = k.vx * DT, dy = k.vy * DT;
+    this.move(p, dx, dy);
+    const moved = Math.hypot(p.x - x0, p.y - y0), want = Math.hypot(dx, dy);
+    if (want > 0.5 && moved < want * 0.3) {
+      if (k.wall > 0) { p.ccT = Math.max(p.ccT || 0, k.wall); this.emit({ t: 'collide', x: p.x, y: p.y, wall: true }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '벽에 부딪혔다!', color: '#ffd060' }); this.hurtPlayer(this.d.maxHp * 0.04, 'phys', null, { direct: true }); }
+      p.kb = null; return;
+    }
+    if ((k.t -= DT) <= 0) p.kb = null;
+  }
   enemyMove(e, p, dist, frozen) {
     const def = e.def;
+    if (e.pose && (e.pose.t -= DT) <= 0) e.pose = null;
     if (frozen || e.silenceT > 0 || e.st.flee > 0 || e.loseT > 0 || e.remote || e.training) { if (e.mv && frozen) e.mv = null; return false; }
     // 정예 · 우두머리: 체력 절반 아래에서 분노 (빨라지고 자주 쓴다)
     if ((def.elite || e.champion) && !e.enraged && e.hp < e.maxHp * 0.5) {
@@ -4623,13 +4650,14 @@ export class World {
         rain: dist < 260, adds: this.enemies.filter((o) => o.summoner === e.id && !o.dead).length < 3, charge: dist > 50 && dist < 260, mark: true, nova: dist < 120,
         donut: dist < 200, sweep: dist < 230, channel: true, soar: true, mirror: !(e.mirrorT > 0), clones: !this.enemies.some((o) => o.decoyOf === e.id && !o.dead),
         ritual: !this.enemies.some((o) => o.ritualOf === e.id && !o.dead),
-        meteorRain: true, crossBeam: dist < 240, cleave: dist < 130, grab: dist > 50 && dist < 200, spikeTrail: dist < 230, ripple: dist < 170, jumps3: dist < 230 });
-      const list = (phm ? phm[phase] : e.moves || def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]);
+        meteorRain: true, crossBeam: dist < 240, cleave: dist < 130, grab: dist > 50 && dist < 200, spikeTrail: dist < 230, ripple: dist < 170, jumps3: dist < 230 }, BEAST_CAN(e, dist, melee));
+      const list = (phm ? phm[phase] : e.moves || BEAST_KIT[e.defId] || def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]); // 짐승은 몸에 맞는 기술 (beastmoves.js)
       if (!list.length) { e.mvCd = 0.3; return false; } // 지금 쓸 수 있는 기술이 없으면 조금 뒤 다시
       let pick = list[this.rng.int(0, list.length - 1)];
       if (e.kit?.vent && (e.heat = (e.heat || 0) + 1) > e.kit.vent) { pick = 'vent'; e.heat = 0; } // 불꽃 거인: 기술을 몇 번 쓰면 과열
       e.mvCd = (def.elite || e.champion ? 2.4 : 3.5) / (e.enraged ? 1.4 : 1) / (e.moves ? 1.5 : 1) / (e.kit?.awake ? 1.35 : 1) + this.rng.range(0, e.kit?.awake ? 0.8 : 1.5); // 사람(경비 · 관리)은 기술을 더 자주 · 각성한 수호자도
       if (this.bossPick(e, p, pick)) return true;
+      if (BEAST[pick]) { if (def.elite || e.champion || !e.saidBeast?.[pick]) { (e.saidBeast ||= {})[pick] = 1; this.emit({ t: 'text', x: e.x, y: e.y - 30, text: (e.skillNames || def.skillNames)?.[pick] || BEAST_NAMES[pick], color: '#ffd0a0' }); } BEAST[pick].start(this, e, p, dist); return true; } // 몸 기술: 처음 한 번은 이름이 뜬다
       const sn = (e.skillNames || def.skillNames)?.[pick]; if (sn) this.emit({ t: 'text', x: e.x, y: e.y - 30, text: sn, color: '#ffd0a0' }); // 플레이어 스킬처럼 이름이 뜬다
       if (pick === 'combo' && dist < melee + 16) { e.mv = { k: 'combo', t: 0.35, n: 3 }; e.windT = 0.35; e.windMax = 0.35; this.emit({ t: 'windup', id: e.id }); return true; }
       if (pick === 'leap' && dist > 40 && dist < 170) { e.mv = { k: 'leap', t: 0.75, max: 0.75, x0: e.x, y0: e.y, x: tx, y: ty }; this.emit({ t: 'telegraphCircle', x: tx, y: ty, r: 30, dur: 0.75 }); return true; }
@@ -4681,6 +4709,7 @@ export class World {
     }
     mv.t -= DT;
     if (mv.boss) return this.bossMoveTick(e, p, mv);
+    if (BEAST[mv.k]) return BEAST[mv.k].tick(this, e, mv, p);
     switch (mv.k) {
       case 'combo': // 연속 베기: 예고 뒤 세 번 (0.22초 간격)
         if (mv.t > 0) return true;
@@ -5003,7 +5032,7 @@ export class World {
 
   enemiesNear(x, y, r) {
     if (this.pHit && this.npcAttack) pokeNpcs(this, x, y, r, this.curTok);
-    return this.enemies.filter((o) => !o.dead && !o.hidden && Math.hypot(o.x - x, o.y - y) <= r + o.r);
+    return this.enemies.filter((o) => !o.dead && !o.hidden && !o.under && Math.hypot(o.x - x, o.y - y) <= r + o.r); // 땅속(땅굴 기습 중)은 맞지 않는다
   }
 
   // ───────────── 투사체 / 구름 ─────────────
@@ -5077,6 +5106,7 @@ export class World {
           pr.life = 0;
           this.coTgt = hit === p ? null : hit;
           this.hurtPlayer(pr.dmg, pr.type, pr.src && !pr.src.dead ? pr.src : null, { status: pr.status, fromX: pr.x - pr.vx * 0.2, fromY: pr.y - pr.vy * 0.2 });
+          if (pr.cc && hit === p && this.hurtLanded) this.ccPlayer(pr.cc); // 거미줄 같은 몸 효과
           this.coTgt = null;
         }
       }
