@@ -4052,6 +4052,13 @@ export class World {
         const aggroR = def.elite || e.champion ? 130 : 105;
         if (dist < aggroR) this.aggro(e);
       }
+      // 집으로 돌아가는 중: 잠깐(0.8초) 지나면 다시 가까이 온 나를 알아본다 · 길이 막혀 6초 넘게 못 가면 그 자리에서 멈춘다 (나를 무시하고 영영 돌아가던 것)
+      if (e.state === 'return') {
+        e.retT = (e.retT || 0) + DT;
+        const fromHome = Math.hypot(e.x - e.home.x, e.y - e.home.y);
+        if (e.retT > 0.8 && dist < (def.elite || e.champion ? 110 : 90) && fromHome < 380 && !frozen) { e.retT = 0; this.aggro(e); }
+        else if (e.retT > 6) { e.retT = 0; e.state = 'idle'; e.home = { x: e.x, y: e.y }; e.hp = e.maxHp; e.st = {}; }
+      } else e.retT = 0;
       if (e.state === 'chase') {
         const fromHome = Math.hypot(e.x - e.home.x, e.y - e.home.y);
         e.leashT = dist > 260 ? e.leashT + DT : 0;
