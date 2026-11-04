@@ -19,6 +19,11 @@ SHEETS = [
     ('boss_bogHag.png', None, 4, 'bogHag', GRID, 82),
     ('boss_climbQueen.png', None, 4, 'climbQueen', GRID, 86),
     ('boss_demonCaptain.png', None, 4, 'demonCaptain', GRID, 82),
+    ('boss_climbRift.png', None, 4, 'climbRift', GRID, 90),
+    ('boss_frostOgre.png', None, 4, 'frostOgre', GRID, 84),
+    ('boss_climbWitch.png', None, 4, 'climbWitch', GRID, 88),
+    ('boss_wraithLord.png', None, 4, 'wraithLord', GRID, 84),
+    ('boss_engraveKing.png', None, 4, 'engraveKing', GRID, 96),
 ]
 ROW9 = 'boss_row9_rift_ogre_witch_wraith_king.png'
 # 한 줄에 한 보스 (줄 번호, 보스, 동작 → 그 줄의 장면 번호, 게임 키)
@@ -135,8 +140,11 @@ def anchor(fr):
 def boss_sets():
     out = []
     for fn, _, n, boss, anims, tall in SHEETS: out.append((boss, frames_of(fn, n), anims, tall))
-    allf = frames_of(ROW9, [9, 9, 8, 8, 8])
-    for r, boss, anims, tall in ROW9_BOSSES: out.append((boss, [f for f in allf if f.row == r], anims, tall))
+    done = {b for _, _, _, b, _, _ in SHEETS}
+    if any(b not in done for _, b, _, _ in ROW9_BOSSES):  # 한 줄 9장면 시트: 4칸 × 5줄 시트가 없는 보스만
+        allf = frames_of(ROW9, [9, 9, 8, 8, 8])
+        for r, boss, anims, tall in ROW9_BOSSES:
+            if boss not in done: out.append((boss, [f for f in allf if f.row == r], anims, tall))
     return out
 
 def build_sets():
