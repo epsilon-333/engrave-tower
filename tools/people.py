@@ -508,6 +508,43 @@ person('skullHarbor', race='human', body='stout', outfit='rags', cloth='#5a4a3a'
 
 
 
+# ── 공룡수인 NPC: 플레이어의 0x72 도마뱀 그림(CC0)을 그대로 쓰고 비늘 · 옷 색만 사람마다 바꾼다 ──
+# (id: 몸(m/f), 비늘 색, 옷 색, 크기)
+DINO_0X72 = {
+    'dinoTamer': ('m', '#5a9a4a', '#c8a070', 1.0), 'keep_dino': ('m', '#4a8a3a', '#6a8a3a', 1.0), 'lead_dino': ('m', '#3f8a3a', '#5a7a2a', 1.0),
+    'res_dino_0': ('f', '#6ab84a', '#c8a070', 1.0), 'res_dino_1': ('m', '#4a8a5a', '#8a6a4a', 1.0), 'res_dino_2': ('m', '#8a9a3a', '#4a5a2a', 1.0),
+    'res_dino_3': ('m', '#8ad06a', '#c8a070', 0.8), 'cap_fish': ('f', '#5a8a7a', '#3a6a7a', 1.0),
+}
+X72 = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'public', 'assets', '0x72')
+# 0x72 도마뱀의 색 → 바꿀 재질 (비늘 밝은 · 어두운 / 옷 밝은 · 어두운)
+X72_SWAP = {'m': {'#4ba747': ('scale', 0), '#3d734f': ('scale', -0.3), '#775c55': ('cloth', 0), '#483b3a': ('cloth', -0.4)},
+            'f': {'#49a790': ('scale', 0), '#417089': ('scale', -0.3), '#9f294e': ('cloth', 0), '#62232f': ('cloth', -0.4), '#8f4029': ('cloth', -0.15)}}
+
+
+def dino_rows(cid):
+    sex, scale_c, cloth_c, k = DINO_0X72[cid]
+    sheet = Image.open(os.path.join(X72, 'sheet.png')).convert('RGBA')
+    tl = {l.split()[0]: list(map(int, l.split()[1:5])) for l in open(os.path.join(X72, 'tile_list.txt'), encoding='utf-8') if len(l.split()) >= 5}
+    swap = {tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)): v for h, v in X72_SWAP[sex].items()}
+    col = {'scale': scale_c, 'cloth': cloth_c}
+    def frame(name):
+        x, y, w, h = tl[name]
+        fr = sheet.crop((x, y, x + w, y + h)); px = fr.load()
+        for yy in range(h):
+            for xx in range(w):
+                c = px[xx, yy]
+                if c[3] and c[:3] in swap:
+                    key, d = swap[c[:3]]; hx = shade(col[key], d)
+                    px[xx, yy] = tuple(int(hx[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
+        if k != 1: fr = fr.resize((max(1, round(w * k)), max(1, round(h * k))), Image.NEAREST)
+        out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+        out.alpha_composite(fr, (CX - fr.size[0] // 2, FOOT + 1 - fr.size[1]))  # 발밑을 다른 사람과 같은 줄에
+        return out
+    idle = [frame(f'lizard_{sex}_idle_anim_f{i}') for i in range(4)]
+    run = [frame(f'lizard_{sex}_run_anim_f{i}') for i in range(4)]
+    return [('idle', idle), ('run', run), ('work', [run[0], idle[1], run[2], idle[3]])]
+
+
 if __name__ == '__main__':
     out = sys.argv[1]
     only = sys.argv[2:] or None
@@ -515,9 +552,13 @@ if __name__ == '__main__':
     rows = []
     meta = {'w': W, 'h': H, 'chars': {}}
     for cid in ids:
+        base = len(rows)
+        if cid in DINO_0X72:  # 공룡수인: 플레이어 그림 그대로
+            an = dino_rows(cid)
+            meta['chars'][cid] = {'anims': {name: {'row': base + r, 'n': len(fr)} for r, (name, fr) in enumerate(an)}}
+            rows.extend([fr for name, fr in an]); continue
         model, item = build(P[cid])
         an = anims(P[cid], item)
-        base = len(rows)
         meta['chars'][cid] = {'anims': {name: {'row': base + r, 'n': len(fr)} for r, (name, fr) in enumerate(an)}}
         mine = [[model.render(fit_pose(pose)) for pose in frames] for name, frames in an]
         if COLORS: mine = reduce_colors(mine, COLORS)
