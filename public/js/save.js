@@ -42,7 +42,8 @@ const TAB = Math.random().toString(36).slice(2);
 let chan = null; try { chan = new BroadcastChannel('et-save'); chan.unref?.(); } catch { /* 지원 안 함 */ }
 let staleHook = null;
 let stale = false; // 다른 창이 더 새 진행을 저장했다: 이 창은 더 쓰지 않는다
-export function setStaleHook(f) { staleHook = f; if (chan) chan.onmessage = (m) => { if (m.data?.tab !== TAB && m.data?.t === 'saved' && !stale) { stale = true; staleHook?.(); } }; }
+let myAcct = ''; // 이 창이 쓰는 저장의 계정 (다른 계정 · 게스트 창이 저장했다고 이 창을 멈추지 않게)
+export function setStaleHook(f) { staleHook = f; if (chan) chan.onmessage = (m) => { if (m.data?.tab !== TAB && m.data?.t === 'saved' && (m.data.acct || '') === myAcct && !stale) { stale = true; staleHook?.(); } }; }
 export let localSaveError = null; // 브라우저 저장소가 꽉 찼는지 (조용히 실패하지 않게)
 const saveListeners = new Set();
 export function onLocalSave(f) { saveListeners.add(f); } // 저장할 때마다 실패 여부를 알린다 (화면에 띄우기용)
@@ -52,6 +53,8 @@ try { navigator.storage?.persist?.().catch(() => {}); } catch { /* 무시 */ }
 export function writeSave(s) {
   if (stale) return;
   s.updatedAt = Date.now();
+  saveHook?.(s); // 서버 저장 (계정 표시 s.acct도 여기서 붙는다)
+  myAcct = s.acct || '';
   try {
     if (Date.now() - lastBackup > 10 * 60 * 1000) { // 백업 돌리기 (지금 칸 → b1 → b2)
       lastBackup = Date.now();
@@ -67,8 +70,7 @@ export function writeSave(s) {
     catch (e2) { localSaveError = e2?.name || 'error'; }
   }
   saveListeners.forEach((f) => f(localSaveError));
-  try { chan?.postMessage({ t: 'saved', tab: TAB }); } catch { /* 무시 */ }
-  saveHook?.(s);
+  try { chan?.postMessage({ t: 'saved', tab: TAB, acct: myAcct }); } catch { /* 무시 */ }
 }
 export function clearSave() {
   try { localStorage.removeItem(KEY); for (const k of BACKUPS) localStorage.removeItem(k); } catch { /* 무시 */ }

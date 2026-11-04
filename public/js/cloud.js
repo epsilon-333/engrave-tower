@@ -18,12 +18,19 @@ export function onCloud(f) { listeners.add(f); f(cloud); return () => listeners.
 const within = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), ms))]);
 const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { /* 무시 */ } } };
 
+// 응답이 끝내 안 오면(휴대폰 망이 끊긴 채 매달림) 20초 뒤 끊고 실패로 본다 — 안 그러면 「저장 중…」에서 영영 멈춘다
 async function rpc(fn, args) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
-    method: 'POST',
-    headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify(args),
-  });
+  const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const tm = ac && setTimeout(() => ac.abort(), 20000);
+  let r;
+  try {
+    r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args), signal: ac?.signal,
+    });
+  } catch { const e = new Error('network'); e.code = 'network'; throw e; }
+  finally { clearTimeout(tm); }
   const body = await r.json().catch(() => null);
   if (!r.ok) { const e = new Error(body?.message || 'network'); e.code = body?.message || 'network'; throw e; }
   return body;
@@ -117,11 +124,21 @@ export async function logout() {
 // 저장 요청이 몰리면 마지막 상태만 1.5초 뒤 한 번에 쓴다
 export function cloudSave(save) {
   if (cloud.mode === 'local' || cloud.state === 'readonly' || cloud.state === 'stale') return;
-  pending = JSON.parse(JSON.stringify(save));
+  if (cloud.id) save.acct = cloud.id; // 이 저장이 어느 계정 것인지 (같은 브라우저에서 다른 계정 진행과 섞이지 않게)
+  pending = cloneSave(save);
+  if (!pending) { cloud.state = 'error'; cloud.err = 'bad_save'; emit(); return; }
   if (cloud.state === 'expired' || cloud.state === 'connecting') return; // 다시 붙을 때까지 마지막 저장을 들고 있는다
   cloud.state = 'saving'; emit();
   clearTimeout(timer);
   timer = setTimeout(flush, 1500);
+}
+// 저장을 깊은 복사한다. 순환 참조처럼 JSON으로 못 바꾸는 것이 섞여도 저장이 통째로 멈추지 않게 그 부분만 뺀다
+function cloneSave(save) {
+  try { return JSON.parse(JSON.stringify(save)); } catch (e) { console.warn('저장 복사 실패, 문제 부분을 빼고 저장:', e); }
+  try {
+    const seen = new WeakSet();
+    return JSON.parse(JSON.stringify(save, (k, v) => { if (typeof v === 'bigint') return Number(v); if (v && typeof v === 'object') { if (seen.has(v)) return undefined; seen.add(v); } return v; }));
+  } catch { return null; }
 }
 // 같은 브라우저의 다른 창이 더 새 진행을 저장했다: 이 창은 더 쓰지 않는다
 export function markStale() { cloud.state = 'stale'; pending = null; clearTimeout(timer); emit(); }

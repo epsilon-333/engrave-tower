@@ -983,8 +983,8 @@ function firstStart() {
 // 3) 다른 기기 로그인 · 만료로 세션이 끊기면 저장을 버리지 않고 다시 로그인 창을 띄운다
 function setupSaveGuards(startStamp = 0) {
   setStaleHook(() => {
-    if (cloud.mode === 'local' || cloud.state === 'stale') return;
-    markStale();
+    if (cloud.state === 'stale') return;
+    if (cloud.mode !== 'local') markStale(); // 게스트도 이 창의 브라우저 저장은 멈춘다 → 조용히 멈추지 않게 똑같이 알린다
     saveWarn('<b>이 창은 저장이 멈췄어요</b> — 같은 브라우저의 다른 창에서 게임을 하고 있어요. 다른 창을 닫고 이 창을 새로 고치면 다시 저장돼요.');
     showModal(`<h2>다른 창에서 게임 중</h2><p>이 브라우저의 다른 창이 이 계정의 진행을 저장했어요. 이 창의 진행은 이제 저장되지 않아요 (옛 진행으로 덮어쓰지 않게).</p>
       <div class="row"><button id="stReload">이 창에서 이어 하기 (새로고침)</button><button data-close class="ghost">닫기</button></div>`);
@@ -1002,8 +1002,7 @@ function setupSaveGuards(startStamp = 0) {
   };
   setReconnectHandler(decide);
   let asked = false;
-  onCloud(() => {
-    if (cloud.state !== 'expired' || asked) return;
+  const askRelogin = () => {
     asked = true;
     showModal(`<h2>로그인이 풀렸어요</h2><p>다른 기기에서 로그인했거나 로그인이 만료됐어요. 지금 진행은 들고 있으니 다시 로그인하면 바로 저장돼요.</p>
       <form id="rlForm" class="login-box"><label>아이디</label><input id="rlId" value="${esc(cloud.name || '')}" maxlength="16" required><label>비밀번호</label><input id="rlPw" type="password" minlength="4" required><p id="rlErr" class="err"></p><button type="submit">다시 로그인</button></form>`);
@@ -1012,12 +1011,19 @@ function setupSaveGuards(startStamp = 0) {
       try { const remote = await relogin(document.getElementById('rlId').value, document.getElementById('rlPw').value); asked = false; modal?.(); decide(remote); }
       catch (err) { document.getElementById('rlErr').textContent = errorText(err); }
     };
+  };
+  // 로그인이 풀리면 다시 로그인 창. 다른 창(대화 · 상점 등)이 그 창을 덮어도 위쪽 경고의 버튼으로 언제든 다시 연다
+  onCloud(() => {
+    if (cloud.state !== 'expired') { if (asked) { asked = false; saveWarn(''); } return; }
+    if (!document.getElementById('rlNow')) { saveWarn('<b>로그인이 풀려 서버에 저장이 안 되고 있어요</b> — 진행은 들고 있어요. <button class="sm" id="rlNow">다시 로그인</button>'); document.getElementById('rlNow').onclick = askRelogin; }
+    if (!asked) askRelogin();
   });
 }
 
 // 로그인 직후: 서버 저장이 있으면 그것, 없으면 지금 브라우저의 진행을 계정으로 올린다
 function afterLogin(remote) {
   if (remote) save = migrateSave(remote);
+  else if (save && save.acct && save.acct !== cloud.id) { try { localStorage.setItem(`engrave-tower-save-v1-${save.acct}`, JSON.stringify(save)); } catch { /* 무시 */ } save = null; } // 이 브라우저의 진행은 다른 계정 것: 새 계정으로 가져가지 않는다 (지우지 않고 따로 둔다)
   else if (save && cloud.mode !== 'local') cloudSaveNow(save);
   if (save?.race === 'golem') { reGolem = true; titleEl.hidden = false; showRaceSelect(); return; } // 골렘족은 이제 몬스터: 다른 종족을 고른다 (레벨 · 장비 · 돈은 그대로)
   if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else firstStart();
@@ -3686,8 +3692,9 @@ if (isTouch()) {
 
 (async () => {
   const [, , , remote] = await Promise.all([loadAssets(), document.fonts?.load('11px Galmuri11').catch(() => {}), document.fonts?.load('bold 11px Galmuri11').catch(() => {}), initCloud()]);
-  // 서버 저장과 브라우저 저장 중 더 최근 것을 사용
-  if (remote && (!save || (remote.updatedAt || 0) >= (save.updatedAt || 0))) save = remote;
+  // 서버 저장과 브라우저 저장 중 더 최근 것을 사용. 브라우저 저장이 다른 계정의 진행이면 쓰지 않는다 (그 진행으로 이 계정을 덮지 않게)
+  if (save?.acct && cloud.id && save.acct !== cloud.id) save = remote || null;
+  else if (remote && (!save || (remote.updatedAt || 0) >= (save.updatedAt || 0))) save = remote;
   const startStamp = save?.updatedAt || 0; // 이 판이 어느 저장에서 시작했는지 (나중에 서버에 붙을 때 견준다)
   save = migrateSave(save);
   setSaveHook(cloudSave);
