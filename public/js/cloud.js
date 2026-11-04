@@ -51,7 +51,7 @@ export async function initCloud() {
       ref = d.doc(`data/users/${me.id}/save`);
       const snap = await ref.get();
       cloud.state = 'ready'; emit();
-      return snap.exists ? snap.data().save || null : null;
+      return snap.exists ? readRemote(snap.data().save || null) : null;
     } catch { return null; }
   }
   token = ls.get(TOKEN_KEY);
@@ -60,7 +60,7 @@ export async function initCloud() {
     const r = await within(rpc('game_session', { p_token: token }), 8000);
     if (!r) { reconnectLater(); return null; } // 서버가 늦다: 이 판을 저장 없이 두지 말고 뒤에서 다시 붙는다
     loggedIn(r.username);
-    return r.save || null;
+    return readRemote(r.save || null);
   } catch (e) {
     if (e.code === 'invalid_session') { token = null; ls.set(TOKEN_KEY, null); }
     else reconnectLater();
@@ -77,7 +77,7 @@ function reconnectLater() {
     try {
       const r = await within(rpc('game_session', { p_token: token }), 10000);
       if (!r) { setTimeout(tryOnce, 10000); return; }
-      loggedIn(r.username); onReconnect?.(r.save || null);
+      loggedIn(r.username); onReconnect?.(await readRemote(r.save || null));
     } catch (e) {
       if (e.code === 'invalid_session') { cloud.state = 'expired'; emit(); } else setTimeout(tryOnce, 10000);
     }
@@ -88,7 +88,7 @@ function reconnectLater() {
 export async function relogin(username, password) {
   const r = await rpc('game_login', { p_username: username.trim(), p_password: password });
   token = r.token; ls.set(TOKEN_KEY, token); loggedIn(r.username);
-  return r.save || null;
+  return readRemote(r.save || null);
 }
 
 function loggedIn(username) {
@@ -101,6 +101,7 @@ const ERR = {
   bad_username: '아이디는 2~16자의 한글·영문·숫자·_ 만 쓸 수 있습니다.',
   password_too_short: '비밀번호는 4자 이상이어야 합니다.',
   network: '서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.',
+  save_too_large: '저장이 너무 커서 서버가 받지 않습니다.',
 };
 export const errorText = (e) => ERR[e?.code] || ERR.network;
 
@@ -108,7 +109,7 @@ export const errorText = (e) => ERR[e?.code] || ERR.network;
 export async function login(username, password) {
   const r = await rpc('game_login', { p_username: username.trim(), p_password: password });
   token = r.token; ls.set(TOKEN_KEY, token); loggedIn(r.username);
-  return r.save || null;
+  return readRemote(r.save || null);
 }
 export async function register(username, password) {
   const r = await rpc('game_register', { p_username: username.trim(), p_password: password });
@@ -132,6 +133,28 @@ export function cloudSave(save) {
   clearTimeout(timer);
   timer = setTimeout(flush, 1500);
 }
+// 서버에는 저장을 gzip으로 눌러 올린다 (탐험 기록 같은 큰 칸이 많아 「save_too_large」로 거절되던 것 · 보통 10~40배 작아진다)
+// 받을 때는 눌린 것이든 예전처럼 그대로든 다 읽는다
+const canZip = typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
+export async function packSave(obj) {
+  if (!obj || !canZip) return obj;
+  try {
+    const buf = new Uint8Array(await new Response(new Blob([JSON.stringify(obj)]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+    let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    return { gz: 1, z: btoa(bin), updatedAt: obj.updatedAt || 0, level: obj.level || 1, race: obj.race, acct: obj.acct };
+  } catch { return obj; }
+}
+export async function unpackSave(v) {
+  if (!v || !v.gz) return v || null;
+  if (!canZip) { const e = new Error('old_browser'); e.code = 'old_browser'; throw e; }
+  const bin = atob(v.z), buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return JSON.parse(await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+}
+// 서버 저장을 풀다가 실패하면(아주 옛 브라우저) 이 창은 서버에 쓰지 않는다 — 빈 저장으로 서버를 덮지 않게
+async function readRemote(v) {
+  try { return await unpackSave(v); } catch (e) { console.warn('서버 저장을 읽지 못함:', e); cloud.state = 'readonly'; cloud.err = e?.code || 'unpack'; emit(); return null; }
+}
 // 저장을 깊은 복사한다. 순환 참조처럼 JSON으로 못 바꾸는 것이 섞여도 저장이 통째로 멈추지 않게 그 부분만 뺀다
 function cloneSave(save) {
   try { return JSON.parse(JSON.stringify(save)); } catch (e) { console.warn('저장 복사 실패, 문제 부분을 빼고 저장:', e); }
@@ -150,8 +173,9 @@ async function flush() {
   writing = true;
   const body = pending; pending = null;
   try {
-    if (cloud.mode === 'claude') await ref.set({ save: body, updatedAt: Date.now() });
-    else await rpc('game_store', { p_token: token, p_save: body });
+    const packed = await packSave(body);
+    if (cloud.mode === 'claude') await ref.set({ save: packed, updatedAt: Date.now() });
+    else await rpc('game_store', { p_token: token, p_save: packed });
     cloud.state = pending ? 'saving' : 'saved'; cloud.err = null; cloud.syncedAt = body?.updatedAt || 0; // 서버에 마지막으로 올린 진행
   } catch (e) {
     cloud.err = e?.code || 'network';
