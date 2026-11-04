@@ -53,7 +53,7 @@ const MOTION_DUR = { blow3: 0.68, slash: 0.3, sweep: 0.42, overhead: 0.5, thrust
 const STATUS_COLOR = { burn: '#ff7a2a', poison: '#9be15d', bleed: '#e0445a', chill: '#9fe3ff', true: '#ffffff' };
 const ACTIVE_RANGE = 440;
 // 몬스터 기술: 종류마다 2~3가지를 섞어 쓴다 (모두 빨간 예고가 먼저 나온다) · 몬스터 정의의 moves 로 바꿀 수 있다
-const AI_MOVES = { chase: ['combo', 'leap', 'whirl', 'shove'], erratic: ['combo', 'shove'], burrow: ['leap', 'combo', 'quake'], ranged: ['fan', 'retreat', 'spiral', 'split'], summoner: ['pool', 'heal', 'blink', 'spiral'], charge: ['leap', 'combo', 'pool', 'whirl', 'quake'], boss: ['leap', 'pool', 'fan', 'combo', 'split', 'whirl'] };
+const AI_MOVES = { chase: ['combo', 'whirl', 'shove'], erratic: ['combo', 'shove'], burrow: ['combo', 'quake'], /* 뛰어들기는 몸에 맞는 몬스터만 (기본으로 다 뛰면 멀리서 내 발밑에 원이 쉴 새 없이 생겼다) */ ranged: ['fan', 'retreat', 'spiral', 'split'], summoner: ['pool', 'heal', 'blink', 'spiral'], charge: ['leap', 'combo', 'pool', 'whirl', 'quake'], boss: ['leap', 'pool', 'fan', 'combo', 'split', 'whirl'] };
 const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 const ALL_MONSTERS = { ...MONSTERS, ...DUMMIES };
 // 파티 탑: 방장의 적이 낸 사건 중 동료 화면에도 보여 줄 것
@@ -4642,6 +4642,7 @@ export class World {
     const mv = e.mv;
     if (!mv) {
       if ((e.mvCd = (e.mvCd ?? 2 + this.rng.range(0, 2)) - DT) > 0 || e.windT > 0 || dist > 200) return false;
+      if (!def.elite && !e.champion && this.t - (this.lastMobMoveT ?? -9) < 0.7) { e.mvCd = 0.3 + this.rng.range(0, 0.4); return false; } // 보통 몬스터는 기술을 번갈아 쓴다 (여럿이 한꺼번에 예고 원을 그리지 않게)
       const melee = e.r + (p.r || 5) + 10, tx = p.x, ty = p.y;
       const can = { combo: dist < melee + 16, leap: dist > 40 && dist < 170, fan: dist < 190, retreat: dist < 70, pool: dist < 200, blink: dist > 60,
         heal: this.enemies.some((o) => !o.dead && !o.remote && Math.hypot(o.x - e.x, o.y - e.y) < 100 && o.hp < o.maxHp * 0.7) };
@@ -4656,6 +4657,7 @@ export class World {
       const list = (phm ? phm[phase] : e.moves || BEAST_KIT[e.defId] || def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]); // 짐승은 몸에 맞는 기술 (beastmoves.js)
       if (!list.length) { e.mvCd = 0.3; return false; } // 지금 쓸 수 있는 기술이 없으면 조금 뒤 다시
       let pick = list[this.rng.int(0, list.length - 1)];
+      if (!def.elite && !e.champion) this.lastMobMoveT = this.t;
       if (e.kit?.vent && (e.heat = (e.heat || 0) + 1) > e.kit.vent) { pick = 'vent'; e.heat = 0; } // 불꽃 거인: 기술을 몇 번 쓰면 과열
       e.mvCd = (def.elite || e.champion ? 2.4 : 3.5) / (e.enraged ? 1.4 : 1) / (e.moves ? 1.5 : 1) / (e.kit?.awake ? 1.35 : 1) + this.rng.range(0, e.kit?.awake ? 0.8 : 1.5); // 사람(경비 · 관리)은 기술을 더 자주 · 각성한 수호자도
       if (this.bossPick(e, p, pick)) return true;
