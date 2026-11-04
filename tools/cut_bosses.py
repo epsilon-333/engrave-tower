@@ -91,6 +91,7 @@ SCALE = {**{k: 0.66 for k in LORDS}, 'engraveKing': 0.72, 'lastKing': 0.72, 'sky
 
 # ───── 도트 따기: AI 그림은 한 점이 약 2px인 번진 그림이라, 섞어서 줄이지 않고 2×2 칸마다 대표색 하나를 고른다 ─────
 OUTL = (22, 14, 20, 255)
+PIX, COLORS = 3, 14  # 원본 3×3 칸 = 게임 픽셀 하나 · 보스마다 14색 (플레이어 그림체처럼 덩어리로)
 def pixelize(fr, k=2):
     a = np.array(fr).astype(int); H, W, _ = a.shape
     best = None
@@ -120,7 +121,7 @@ def palette_all(frames, n):
         out.append(Image.fromarray(np.dstack([q, al]).astype(np.uint8), 'RGBA'))
     return out
 
-def clean(f):
+def clean(f, line=True):
     # 잡티: 여덟 이웃 누구와도 같지 않고 이웃 대부분이 한 색이면 그 색으로 · 떨어진 점 지우기 · 짙은 색은 외곽선 색으로 · 1px 외곽선
     a = np.array(f).astype(int); H, W, _ = a.shape; o = a.copy()
     for y in range(1, H - 1):
@@ -146,6 +147,7 @@ def clean(f):
     bgsh = np.abs(o[:, :, :3] - np.array([72, 54, 128])).sum(2) < 60
     bgsh[: max(0, H - 5)] = False; o[bgsh & (o[:, :, 3] > 0), 3] = 0
     dark = (o[:, :, :3].sum(2) < 95) & (o[:, :, 3] > 0); o[dark] = OUTL
+    if not line: return Image.fromarray(o.astype(np.uint8), 'RGBA')
     al = o[:, :, 3] > 0; out = o.copy()
     for y in range(H):
         for x in range(W):
@@ -169,8 +171,8 @@ def build():
     for boss, frs in res.items():
         frames = [f for f, _ in frs]
         sc = SCALE.get(boss, 0.6)
-        small = [pixelize(f.crop(f.getbbox())) for f in frames]  # 원본의 점 하나 = 게임 픽셀 하나
-        small = [clean(s) for s in palette_all(small, 24)]
+        small = [pixelize(f.crop(f.getbbox()), PIX) for f in frames]  # 원본의 점 하나 = 게임 픽셀 하나
+        small = [clean(clean(s, False)) for s in palette_all(small, COLORS)]  # 잡티 정리는 두 번
         anc = [anchor(s) for s in small]
         L = max(ax for ax, _ in anc) + 2; R = max(s.width - ax for s, (ax, _) in zip(small, anc)) + 2
         T = max(ay for _, ay in anc) + 2
