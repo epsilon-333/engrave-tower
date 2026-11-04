@@ -841,7 +841,7 @@ export class Renderer {
     this.shake = Math.max(this.shake, big ? 9 : 3); this.hitstop = Math.max(this.hitstop, big ? 0.1 : 0.035);
   }
   hitPop(x, y, col, lv) { // 맞는 자리: 평타 · 보통 스킬은 작은 타격 불꽃(절반 크기), 치명타는 큰 불꽃
-    if (lv === 2) this.anims.px.add('impacts/crit-hit', x, y + 4, { max: 0.6, floor: 0 });
+    if (lv === 2) { this.anims.px.add('impacts/hit-spark', x, y + 4, { scale: 0.95, max: 0.5, floor: 0, rot: (Math.random() - 0.5) * 0.6 }); this.sparkBurst(x, y - 4, '#fff09a', 5); } // 치명타: 큰 타격 불꽃 (예전 crit-hit은 둘레에 큰 고리가 퍼져 싸울 때마다 내 둘레에 원이 생겼다)
     else if (this.anims.px.list.length < 40) this.anims.px.add('impacts/hit-spark', x, y + 4, { scale: lv ? 0.7 : 0.5, max: 0.45, floor: 0, rot: (Math.random() - 0.5) * 0.6 });
   }
   burst(x, y, color, n, speed = 90) {
