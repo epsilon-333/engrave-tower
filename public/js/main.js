@@ -26,7 +26,7 @@ import { KNACKS, knackTick, hasKnack, newKnack } from './data/knacks.js';
 import { net, onNet, netSend, netConnect, netMap, netPos, netLerp } from './net.js';
 import { RAIDS, raidWeek, buildRaidArena } from './data/raid.js';
 import { SANCTUMS, SANCTUM_MAX, TIER_COST, PERK_TIER, TREASURE_TIER, SHARDS_PER_RELIC, sanctumBonusText, SANCT_LIFE, sanctState, affLevel, AFF_LV, AFF_NAME, AFF_REWARD, trainCap, trainSpec, OWN_TRAIN_CAP, OWN_TRAIN_EASE, GIFT_AFF, GIFTS_PER_DAY, TRAIN_AFF, TRAINS_PER_DAY, sanctQuestDef, FIND_NAME, RACE_SHOP } from './data/sanctums.js';
-import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, cloud, isClaudePage, login, register, logout, errorText, relogin, setReconnectHandler, markStale } from './cloud.js';
+import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, cloud, isClaudePage, login, register, logout, errorText, relogin, setReconnectHandler, markStale, cloudFlushOnHide } from './cloud.js';
 import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
 import { RACES, RACE_MIGRATE, pointsAt } from './data/races.js';
 import { RACE_STORY, relation, allies, ALLY_AFF, REL_NAME, REL_COLOR } from './data/lore.js';
@@ -961,6 +961,10 @@ function firstStart() {
 // 2) 시작할 때 서버가 늦어 못 붙었으면 뒤에서 다시 붙는다 → 서버 쪽이 더 새 진행이면 고르게 한다
 // 3) 다른 기기 로그인 · 만료로 세션이 끊기면 저장을 버리지 않고 다시 로그인 창을 띄운다
 function setupSaveGuards(startStamp = 0) {
+  // 창을 닫거나 숨길 때(휴대폰 홈 버튼 · 탭 닫기): 지금 진행을 브라우저에 쓰고 서버에도 바로 보낸다
+  const onHide = () => { if (!save || !world || isStale()) return; try { writeSave(save); cloudFlushOnHide(save); } catch (e) { console.warn('닫을 때 저장 실패', e); } };
+  addEventListener('pagehide', onHide);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) onHide(); });
   setStaleHook(() => {
     if (cloud.state === 'stale') return;
     if (cloud.mode !== 'local') markStale(); // 게스트도 이 창의 브라우저 저장은 멈춘다 → 조용히 멈추지 않게 똑같이 알린다

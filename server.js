@@ -6,6 +6,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
 
 const PORT = process.env.PORT || 5180;
 const HOST = process.env.RENDER ? '0.0.0.0' : undefined;
@@ -19,7 +20,41 @@ const TYPES = {
   '.txt': 'text/plain; charset=utf-8',
   '.ogg': 'audio/ogg',
   '.woff2': 'font/woff2',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.md': 'text/plain; charset=utf-8',
+  '.webmanifest': 'application/manifest+json',
 };
+const ZIP = new Set(['.html', '.js', '.mjs', '.css', '.json', '.txt', '.svg', '.md', '.webmanifest']); // 글자 파일은 gzip으로 눌러 보낸다 (JS만 5MB)
+// 파일 캐시: 바뀌지 않았으면 디스크를 다시 읽지 않고, 브라우저가 이미 가진 파일이면 304 (매번 11MB를 통째로 받던 것 → 바뀐 것만)
+const fileCache = new Map(); // 경로 → { mtime, size, etag, buf, gz }
+function serveFile(req, res, file) {
+  fs.stat(file, (err, st) => {
+    if (err || !st.isFile()) { res.writeHead(404); return res.end('not found'); }
+    const ext = path.extname(file), etag = `"${st.size.toString(36)}-${Math.floor(st.mtimeMs).toString(36)}"`;
+    const head = { 'Content-Type': TYPES[ext] || 'application/octet-stream', 'Cache-Control': 'no-cache', ETag: etag };
+    if (req.headers['if-none-match'] === etag) { res.writeHead(304, head); return res.end(); }
+    const gzOk = ZIP.has(ext) && /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+    const done = (c) => {
+      const body = gzOk && c.gz ? c.gz : c.buf;
+      if (gzOk && c.gz) { head['Content-Encoding'] = 'gzip'; head.Vary = 'Accept-Encoding'; }
+      head['Content-Length'] = body.length;
+      res.writeHead(200, head); res.end(req.method === 'HEAD' ? undefined : body);
+    };
+    const c = fileCache.get(file);
+    if (c && c.etag === etag) return done(c);
+    fs.readFile(file, (err2, buf) => {
+      if (err2) { res.writeHead(404); return res.end('not found'); }
+      const entry = { etag, buf, gz: ZIP.has(ext) && buf.length > 1024 ? zlib.gzipSync(buf, { level: 6 }) : null };
+      if (buf.length < 4 * 1024 * 1024) fileCache.set(file, entry); // 아주 큰 파일은 담아 두지 않는다
+      done(entry);
+    });
+  });
+}
 
 const server = http.createServer((req, res) => {
   let url;
@@ -29,12 +64,10 @@ const server = http.createServer((req, res) => {
   const file = path.normalize(path.join(ROOT, url));
   const rel = path.relative(ROOT, file);
   if (rel.startsWith('..') || path.isAbsolute(rel)) { res.writeHead(403); return res.end(); } // public 밖(옆 폴더 포함)으로 나가지 못하게
-  fs.readFile(file, (err, buf) => {
-    if (err) { res.writeHead(404); return res.end('not found'); }
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
-    res.end(buf);
-  });
+  serveFile(req, res, file);
 });
+server.keepAliveTimeout = 65000; // 앞단 프록시(Render)보다 길게: 연결이 중간에 끊겨 파일 받기가 실패하지 않게
+server.headersTimeout = 66000;
 
 // ───── WebSocket (RFC 6455): 손 맞잡기 · 글자 프레임 · 핑 · 닫기만 ─────
 const clients = new Map(); // id → { sock, buf, name, race, cls, weapon, lv, map, x, y, dir, mo, duel }
@@ -45,7 +78,13 @@ function frame(op, data) {
   const head = n < 126 ? Buffer.from([0x80 | op, n]) : n < 65536 ? Buffer.from([0x80 | op, 126, n >> 8, n & 255]) : (() => { const h = Buffer.alloc(10); h[0] = 0x80 | op; h[1] = 127; h.writeBigUInt64BE(BigInt(n), 2); return h; })();
   return Buffer.concat([head, data]);
 }
-function send(c, msg) { if (!c || c.closed) return; try { c.sock.write(frame(0x1, Buffer.from(JSON.stringify(msg)))); } catch { /* 끊긴 연결 */ } }
+function send(c, msg) {
+  if (!c || c.closed) return;
+  const q = c.sock.writableLength || 0;
+  if (q > 4 * 1024 * 1024) { drop(c); return; } // 받지 못하고 쌓이기만 하는 연결: 서버 메모리가 차서 모두가 느려지지 않게 끊는다
+  if (q > 256 * 1024 && msg.t === 'pos') return; // 느린 연결에는 위치(가장 많은 메시지)부터 건너뛴다
+  try { c.sock.write(frame(0x1, Buffer.from(JSON.stringify(msg)))); } catch { /* 끊긴 연결 */ }
+}
 function drop(c) {
   if (c.closed) return;
   c.closed = true; clients.delete(c.id);
@@ -65,6 +104,7 @@ const PARTY_MAX = 4;
 const partyOf = (c) => (c.party ? parties.get(c.party) : null);
 function partyCast(pt, msg, except) { for (const id of pt.members) { const o = clients.get(id); if (o && o !== except) send(o, msg); } }
 function partySync(pt) {
+  if (!pt) return;
   const list = pt.members.map((id) => clients.get(id)).filter(Boolean);
   partyCast(pt, { t: 'party', id: pt.id, leader: pt.leader, members: list.map((o) => ({ id: o.id, name: o.name, race: o.race, lv: o.lv, map: o.map })) });
   for (const o of list) pinfo(o);
@@ -83,31 +123,49 @@ function partyLeave(c, why) {
 
 // ───── 길드 (파일에 남는다) ─────
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'server-data'), GUILD_FILE = path.join(DATA_DIR, 'guilds.json');
-let guilds = {};
-try { guilds = JSON.parse(fs.readFileSync(GUILD_FILE, 'utf8')) || {}; } catch { guilds = {}; }
-// 바뀌면 바로 쓴다 (쓰는 중에 또 바뀌면 끝난 뒤 한 번 더) · 서버가 꺼질 때도 한 번 쓴다
-let guildWriting = false, guildDirty = false;
-function saveGuilds() {
-  guildDirty = true;
-  if (guildWriting) return;
-  guildWriting = true; guildDirty = false;
-  fs.mkdir(DATA_DIR, { recursive: true }, () => fs.writeFile(GUILD_FILE, JSON.stringify(guilds), () => { guildWriting = false; if (guildDirty) saveGuilds(); }));
+// 파일 쓰기: 임시 파일에 다 쓴 뒤 이름을 바꾼다 (쓰는 중에 서버가 꺼져도 반쯤 쓴 깨진 파일이 남지 않게) · 바로 전 것은 .bak 으로
+function readJson(file, def) {
+  for (const f of [file, file + '.bak']) { try { const v = JSON.parse(fs.readFileSync(f, 'utf8')); if (v && typeof v === 'object') { if (f !== file) console.warn('깨진 파일 대신 백업을 읽었다:', f); return v; } } catch { /* 없거나 깨짐: 다음 */ } }
+  return def;
 }
-for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(GUILD_FILE, JSON.stringify(guilds)); } catch { /* 무시 */ } process.exit(0); });
+const writing = new Map(); // 파일 → 쓰는 중에 또 쓸 내용
+function writeJson(file, data, cb) {
+  const text = JSON.stringify(data);
+  if (writing.has(file)) { writing.set(file, text); return; }
+  writing.set(file, null);
+  const go = (t) => fs.mkdir(DATA_DIR, { recursive: true }, () => {
+    const tmp = file + '.tmp';
+    fs.writeFile(tmp, t, (err) => {
+      if (err) { console.warn('저장 실패:', file, err.message); return next(); }
+      fs.copyFile(file, file + '.bak', () => fs.rename(tmp, file, (err2) => { if (err2) console.warn('저장 실패:', file, err2.message); next(); }));
+    });
+  });
+  const next = () => { const more = writing.get(file); if (more != null) { writing.set(file, null); go(more); } else { writing.delete(file); cb?.(); } };
+  go(text);
+}
+function writeJsonSync(file, data) { try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(file + '.tmp', JSON.stringify(data)); fs.renameSync(file + '.tmp', file); } catch (e) { console.warn('저장 실패:', file, e.message); } }
+let guilds = readJson(GUILD_FILE, {});
+// 바뀌면 바로 쓴다 (쓰는 중에 또 바뀌면 끝난 뒤 한 번 더) · 서버가 꺼질 때도 한 번 쓴다
+function saveGuilds() { writeJson(GUILD_FILE, guilds); }
+// 서버가 꺼질 때(새 버전 배포 · 재시작) 길드 · 랭킹 · 섬의 역사 · 운영자 보상을 모두 써 두고 끈다 (예전엔 길드만 → 마지막 5초의 랭킹이 사라졌다)
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { writeJsonSync(GUILD_FILE, guilds); writeJsonSync(RANK_FILE, ranking); writeJsonSync(WORLD_FILE, shared); writeJsonSync(GRANT_FILE, grants); process.exit(0); });
+// 메시지 하나를 처리하다 생긴 오류로 서버 전체가 꺼지지 않게 (모두의 접속이 끊기고 저장이 날아가던 것)
+process.on('uncaughtException', (e) => console.error('오류 (서버는 계속):', e?.stack || e));
+process.on('unhandledRejection', (e) => console.error('오류 (서버는 계속):', e?.stack || e));
 const RANKS = ['leader', 'officer', 'member'];
 
 // ───── 랭킹: 돈 · 각인의 탑 최고 층 · 레이드 최단 처치 시간 (저장마다 하나 · 파일에 남는다) ─────
 // 함께 쓰는 섬의 역사: 고위 관계자의 생사(직책은 남고 사람은 바뀐다) · 연대기
 const WORLD_FILE = path.join(DATA_DIR, 'world.json');
 let shared = { officials: {}, chronicle: [] };
-try { shared = { officials: {}, chronicle: [], ...JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8')) }; } catch { /* 처음 */ }
+shared = { officials: {}, chronicle: [], ...readJson(WORLD_FILE, {}) };
 let sharedDirty = false;
-setInterval(() => { if (!sharedDirty) return; sharedDirty = false; fs.mkdir(DATA_DIR, { recursive: true }, () => fs.writeFile(WORLD_FILE, JSON.stringify(shared), () => {})); }, 5000);
+setInterval(() => { if (!sharedDirty) return; sharedDirty = false; writeJson(WORLD_FILE, shared); }, 5000);
 const RANK_FILE = path.join(DATA_DIR, 'ranking.json');
 let ranking = {};
-try { ranking = JSON.parse(fs.readFileSync(RANK_FILE, 'utf8')) || {}; } catch { ranking = {}; }
+ranking = readJson(RANK_FILE, {});
 let rankDirty = false;
-setInterval(() => { if (!rankDirty) return; rankDirty = false; fs.mkdir(DATA_DIR, { recursive: true }, () => fs.writeFile(RANK_FILE, JSON.stringify(ranking), () => {})); }, 5000);
+setInterval(() => { if (!rankDirty) return; rankDirty = false; writeJson(RANK_FILE, ranking); }, 5000);
 function rankBoard() {
   const all = Object.values(ranking);
   const top = (key, desc = true, n = 20) => all.filter((r) => key(r) != null && key(r) > 0).sort((a, b) => (desc ? key(b) - key(a) : key(a) - key(b))).slice(0, n).map((r) => ({ name: r.name, race: r.race, v: key(r) }));
@@ -118,8 +176,8 @@ function rankBoard() {
 // 받는 쪽이 받았다고 알려 주면(grantOk) 지운다 — 교환이 아니라서 운영자의 가방에서 빠지지 않는다
 const GRANT_FILE = path.join(DATA_DIR, 'grants.json');
 let grants = {};
-try { grants = JSON.parse(fs.readFileSync(GRANT_FILE, 'utf8')) || {}; } catch { grants = {}; }
-const saveGrants = () => fs.mkdir(DATA_DIR, { recursive: true }, () => fs.writeFile(GRANT_FILE, JSON.stringify(grants), () => {}));
+grants = readJson(GRANT_FILE, {});
+const saveGrants = () => writeJson(GRANT_FILE, grants);
 const grantKeys = (c) => [c.uid, c.name && c.name !== '여행자' ? 'name:' + c.name.toLowerCase() : null].filter(Boolean);
 function grantDeliver(c) { for (const k of grantKeys(c)) for (const g of grants[k] || []) send(c, { t: 'grant', ...g }); }
 // 운영자: 서버 설정(ADMIN_KEY)의 열쇠를 아는 「운영자」만
@@ -165,7 +223,7 @@ server.on('upgrade', (req, sock) => {
   if (req.url.split('?')[0] !== '/ws' || !req.headers['sec-websocket-key']) { sock.destroy(); return; }
   const accept = crypto.createHash('sha1').update(req.headers['sec-websocket-key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   sock.write(['HTTP/1.1 101 Switching Protocols', 'Upgrade: websocket', 'Connection: Upgrade', `Sec-WebSocket-Accept: ${accept}`, '', ''].join('\r\n'));
-  sock.setNoDelay(true);
+  sock.setNoDelay(true); sock.setKeepAlive(true, 30000);
   const c = { id: nextId++, sock, buf: Buffer.alloc(0), name: '여행자', map: null, x: 0, y: 0, dir: 1, mo: '', duel: null, last: Date.now() };
   clients.set(c.id, c);
   sock.on('data', (d) => onData(c, d));
@@ -190,9 +248,13 @@ function onData(c, d) {
     c.last = Date.now();
     if (op === 0x8) { drop(c); return; }
     if (op === 0x9) { try { c.sock.write(frame(0xA, data)); } catch { /* 무시 */ } continue; }
-    if (op !== 0x1) continue;
-    let m; try { m = JSON.parse(data.toString('utf8')); } catch { continue; }
-    handle(c, m);
+    const fin = b[0] & 0x80;
+    let msg = data;
+    if (op === 0x1 && !fin) { c.frag = data; continue; } // 나뉘어 온 메시지: 조각을 모은다
+    if (op === 0x0) { if (!c.frag) continue; c.frag = Buffer.concat([c.frag, data]); if (c.frag.length > MAX_MSG) { drop(c); return; } if (!fin) continue; msg = c.frag; c.frag = null; }
+    else if (op !== 0x1) continue;
+    let m; try { m = JSON.parse(msg.toString('utf8')); } catch { continue; }
+    try { handle(c, m); } catch (e) { console.error('메시지 처리 오류:', m?.t, e?.message); }
   }
 }
 // 속도 제한: 한 사람이 1초에 보낼 수 있는 메시지 (넘치면 버린다 · 계속 넘치면 끊는다)
@@ -460,6 +522,8 @@ function handle(c, m) {
   }
 }
 // 오래 말이 없는 연결은 정리한다
-setInterval(() => { const now = Date.now(); for (const c of clients.values()) if (now - c.last > 60000) drop(c); }, 15000);
+// 서버가 25초마다 핑을 보낸다: 브라우저가 알아서 퐁으로 답하므로 뒤로 간 창(타이머가 느려진다)도 끊기지 않고, 앞단 프록시가 조용한 연결을 끊지 않는다
+// 2분 동안 아무 답이 없으면 정말 끊긴 연결로 보고 정리한다 (예전 1분: 뒤로 간 창 · 느린 휴대폰 망이 자꾸 끊겼다)
+setInterval(() => { const now = Date.now(); for (const c of clients.values()) { if (now - c.last > 120000) { drop(c); continue; } try { c.sock.write(frame(0x9, Buffer.alloc(0))); } catch { drop(c); } } }, 25000);
 
 server.listen(PORT, HOST, () => console.log(`각인의 탑: http://localhost:${PORT}`));

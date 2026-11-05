@@ -28,7 +28,7 @@ ok(all(admin, 'adminGrantRes')[1]?.ok && !all(admin, 'adminGrantRes')[1]?.now, '
 p.ws.close(); await wait(100);
 const p2 = await open('가람', 'player-uid-0001'); await wait(200);
 ok(all(p2, 'grant').length === 0, '받았다고 한 보상은 다시 오지 않는다');
-srv.kill(); await wait(300); srv = start(); await wait(700); // 서버를 다시 띄워도 맡겨 둔 보상은 남는다
+await new Promise((r) => { srv.once('exit', r); srv.kill(); }); srv = start(); await wait(700); // 서버를 다시 띄워도 맡겨 둔 보상은 남는다
 const q = await open('나래', 'player-uid-0002'); await wait(250);
 ok(all(q, 'grant')[0]?.item === 'stormBow', '다음 접속 때 계정 이름으로 받는다 (서버를 다시 띄워도)');
 q.send({ t: 'grantOk', gid: all(q, 'grant')[0].gid }); await wait(100); q.ws.close(); await wait(100);
@@ -38,4 +38,4 @@ const fake = await open('가짜', 'fake-uid-0001'); await wait(150);
 fake.send({ t: 'adminGrant', name: '가짜', item: 'towerLight' }); await wait(150);
 ok(all(fake, 'adminGrantRes').length === 0 && all(fake, 'grant').length === 0, '운영자가 아니면 줄 수 없다');
 for (const c of [admin, p2, q2, fake]) c.ws.close();
-srv.kill(); fs.rmSync(DATA, { recursive: true, force: true });
+await new Promise((r) => { srv.once('exit', r); srv.kill(); }); fs.rmSync(DATA, { recursive: true, force: true });

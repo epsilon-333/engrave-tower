@@ -19,7 +19,7 @@ const within = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r
 const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { /* 무시 */ } } };
 
 // 응답이 끝내 안 오면(휴대폰 망이 끊긴 채 매달림) 20초 뒤 끊고 실패로 본다 — 안 그러면 「저장 중…」에서 영영 멈춘다
-async function rpc(fn, args) {
+async function rpc(fn, args, keepalive = false) {
   const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const tm = ac && setTimeout(() => ac.abort(), 20000);
   let r;
@@ -27,7 +27,7 @@ async function rpc(fn, args) {
     r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
       method: 'POST',
       headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify(args), signal: ac?.signal,
+      body: JSON.stringify(args), signal: ac?.signal, keepalive, // keepalive: 창을 닫는 중에도 끝까지 보낸다 (64KB까지)
     });
   } catch { const e = new Error('network'); e.code = 'network'; throw e; }
   finally { clearTimeout(tm); }
@@ -167,6 +167,21 @@ function cloneSave(save) {
 export function markStale() { cloud.state = 'stale'; pending = null; clearTimeout(timer); emit(); }
 // 즉시 저장 (사냥 결과처럼 중요한 순간)
 export function cloudSaveNow(save) { cloudSave(save); clearTimeout(timer); flush(); }
+// 창을 닫거나 다른 앱으로 넘어갈 때: 1.5초 기다리던 저장을 바로 보낸다 (예전엔 기다리는 사이 창을 닫으면 마지막 진행이 서버에 안 올라갔다)
+export function cloudFlushOnHide(save) {
+  if (save) cloudSave(save);
+  if (!pending || cloud.mode === 'local') return;
+  clearTimeout(timer);
+  if (cloud.mode === 'claude') { flush(); return; }
+  if (writing || cloud.state === 'expired' || cloud.state === 'connecting' || cloud.state === 'stale') return;
+  const body = pending;
+  packSave(body).then((packed) => {
+    const json = JSON.stringify({ p_token: token, p_save: packed });
+    if (json.length > 60000) { flush(); return; } // 너무 크면 keepalive가 안 된다: 보통 저장으로
+    pending = null; writing = true;
+    rpc('game_store', { p_token: token, p_save: packed }, true).then(() => { cloud.state = pending ? 'saving' : 'saved'; cloud.syncedAt = body?.updatedAt || 0; }, () => { pending ||= body; cloud.state = 'error'; }).finally(() => { writing = false; emit(); if (pending) flush(); });
+  });
+}
 
 async function flush() {
   if (writing || !pending || cloud.state === 'expired' || cloud.state === 'connecting' || cloud.state === 'stale') return;

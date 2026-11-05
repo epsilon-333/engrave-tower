@@ -13,7 +13,7 @@ export const netSend = raw;
 export function netConnect(me) { // me: 내 정보 또는 내 정보를 돌려주는 함수
   info = me;
   if (ws || typeof WebSocket === 'undefined') { if (ws?.readyState === 1) hello(); return; }
-  try { ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`); } catch { return; }
+  try { ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`); } catch { ws = null; later(); return; }
   ws.onopen = () => {
     net.up = true; retry = 0;
     hello();
@@ -21,10 +21,15 @@ export function netConnect(me) { // me: 내 정보 또는 내 정보를 돌려�
     emit('up');
   };
   ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch { return; } recv(m); };
-  ws.onclose = () => { const was = net.up; net.up = false; ws = null; net.players.clear(); net.party = null; if (was) emit('down'); if (retry < 10) setTimeout(() => netConnect(info), 1500 * ++retry); };
+  ws.onclose = () => { const was = net.up; net.up = false; ws = null; net.players.clear(); net.party = null; if (was) emit('down'); later(); };
   ws.onerror = () => {};
 }
-// 살아 있다는 신호 (서버는 1분 동안 말이 없으면 끊는다)
+// 끊기면 계속 다시 붙는다 (1.5초 → 최대 20초 간격 · 예전엔 10번 실패하면 영영 포기해서 새로고침 전까지 혼자였다)
+let retryT = null;
+function later() { if (retryT || !info) return; retryT = setTimeout(() => { retryT = null; netConnect(info); }, Math.min(20000, 1500 * ++retry)); }
+const now = () => { if (!ws && info) { clearTimeout(retryT); retryT = null; retry = 0; netConnect(info); } }; // 망이 돌아왔거나 창을 다시 보면 바로
+if (typeof window !== 'undefined') { window.addEventListener('online', now); document.addEventListener('visibilitychange', () => { if (!document.hidden) now(); }); }
+// 살아 있다는 신호 (서버는 2분 동안 말이 없으면 끊는다 · 서버도 핑을 보낸다)
 setInterval(() => raw({ t: 'ping' }), 25000);
 
 function recv(m) {
