@@ -38,7 +38,7 @@ import { STAT_INFO } from './data/stats.js';
 import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
 import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText, spiritSpecialText, STONE_PRICE_CALLER, CALLER_RATES, spiritLevel, SPIRIT_LV_XP } from './data/spirits.js';
 import { spiritIconURL } from './render/spirits.js';
-import { getAutoAim, setAutoAim, getNpcAttack, setNpcAttack, opts, setOpt } from './settings.js';
+import { getAutoAim, setAutoAim, getNpcAttack, setNpcAttack, opts, setOpt, KEY_ACTIONS, keyFor, keyLabel, logicalKey, bindKey, resetKeys } from './settings.js';
 import { witness, opinionText } from './sim/npclife.js';
 import { ENGRAVINGS } from './data/engravings.js';
 import { RACE_ART } from './data/art.js';
@@ -706,7 +706,7 @@ function showTower() { climbUi.showTowerMenu(); }
 function onKnackLearned(id) {
   const k = KNACKS[id]; if (!k) return;
   if (k.kind === 'skill') learnSkill(k.skill, `문득 깨달았다 — ${k.hint}`);
-  else { renderer.banner = { text: `생활 기술 「${k.name}」을 깨달았다`, sub: `${k.desc} · 따로 누르지 않아도 저절로`, t: 4.5, color: '#c8e8a0' }; sfx('levelup', { vol: 0.6 }); }
+  else { renderer.calmBanner({ text: `생활 기술 「${k.name}」을 깨달았다`, sub: `${k.desc} · 따로 누르지 않아도 저절로`, t: 4.5, color: '#c8e8a0' }); sfx('levelup', { vol: 0.6 }); }
   SELL_BONUS.v = hasKnack(save.knack, 'haggler') ? 1.1 : 1;
   writeSave(save);
 }
@@ -1705,7 +1705,7 @@ function learnSkill(id, from) {
   if ((save.learned ||= []).includes(id)) return false;
   save.learned.push(id); writeSave(save);
   world.setBuild(buildNow());
-  renderer.banner = { text: `새 기술 「${SKILLS[id].name}」`, sub: `${from} · 캐릭터 창(C)에서 Q·E·R·F에 넣는다`, t: 4.5, color: '#9fe3ff' };
+  renderer.calmBanner({ text: `새 기술 「${SKILLS[id].name}」`, sub: `${from} · 캐릭터 창(C)에서 Q·E·R·F에 넣는다`, t: 4.5, color: '#9fe3ff' });
   sfx('levelup', { vol: 0.7 });
   return true;
 }
@@ -1940,13 +1940,15 @@ function showPause() {
 }
 
 // 설정: 소리 · 조작 · 화면 · 계정 · 저장 지우기
-function showSettings(back) {
+function showSettings(back, openKeys = false) {
   const sel = (id, cur, list) => `<select id="${id}">${list.map(([v, t]) => `<option value="${v}" ${String(cur) === String(v) ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
   showModal(`<h2>설정</h2>
     <h4>소리</h4>${volumeHtml()}
     <h4>조작</h4>
     <label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T) — 가까운 적을 저절로 겨눈다</label>
     <label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> 마을 사람도 때릴 수 있게 (끄면 사람에게 맞지 않는다)</label>
+    <details class="keys-set"${openKeys ? ' open' : ''}><summary>키 바꾸기</summary><div class="key-grid">${KEY_ACTIONS.map(([def, name]) => `<span>${name}</span><button class="sm ghost" data-rebind="${def}">${keyLabel(keyFor(def))}</button>`).join('')}</div>
+      <p class="muted">버튼을 누른 뒤 쓸 키를 누른다 (Esc: 그만두기). 다른 행동이 쓰던 키면 서로 바뀐다.</p><button id="keysReset" class="sm ghost">기본 키로</button></details>
     <h4>화면</h4>
     <p class="set-row">화면 흔들림 ${sel('optShake', opts.shake, [[1, '보통'], [0.5, '약하게'], [0, '끔']])}</p>
     <p class="set-row">피해 숫자 ${sel('optDmg', opts.dmgNum, [['all', '모두'], ['crit', '치명타만'], ['off', '끔']])}</p>
@@ -1968,6 +1970,17 @@ function showSettings(back) {
   if ($('loginBtn')) $('loginBtn').onclick = () => { writeSave(save); overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
   $('resetGo').onclick = () => { if ($('resetIn').value.trim() !== '지운다') { $('resetIn').focus(); return; } overlay.hidden = true; paused = false; modal = null; resetGame(); };
   $('setBack').onclick = () => back();
+  // 키 바꾸기: 다음에 누른 키를 그 행동에 준다 (게임 입력보다 먼저 받는다)
+  overlay.querySelectorAll('[data-rebind]').forEach((bt) => (bt.onclick = () => {
+    bt.textContent = '키를 누르세요…';
+    const grab = (e) => {
+      e.preventDefault(); e.stopImmediatePropagation(); removeEventListener('keydown', grab, true);
+      if (e.code !== 'Escape') bindKey(bt.dataset.rebind, e.code);
+      showSettings(back, true);
+    };
+    addEventListener('keydown', grab, true);
+  }));
+  $('keysReset').onclick = () => { resetKeys(); showSettings(back, true); };
 }
 document.body.classList.toggle('big-text', !!opts.bigText);
 
@@ -1987,34 +2000,34 @@ addEventListener('keydown', (e) => {
   unlockAudio();
   if (!world || gameEl.hidden) return;
   if (e.code === 'Escape') { e.preventDefault(); return escAction(); }
-  if (!panelEl.hidden && (e.code === 'KeyG' || e.code === 'KeyC' || e.code === 'KeyI' || e.code === 'KeyB' || e.code === 'KeyK')) return closePanel();
-  if (modal && climbUi.key(e)) { e.preventDefault(); return; } // 보상 고르기: 숫자 키 · 실수로 닫지 않게
-  if (modal && (e.code === 'KeyG' || e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyJ')) { e.preventDefault(); return modal(); }
+  const code = logicalKey(e.code); if (code == null) return; // 키 바꾸기 (설정) — 아래는 모두 기본 키로 판단한다
+  if (!panelEl.hidden && (code === 'KeyG' || code === 'KeyC' || code === 'KeyI' || code === 'KeyB' || code === 'KeyK')) return closePanel();
+  if (modal && (code === 'KeyG' || code === 'Enter' || code === 'Space' || code === 'KeyJ')) { e.preventDefault(); return modal(); }
   if (paused) return;
-  keys.add(e.code);
-  if (e.code === 'Space') { input.dash = true; e.preventDefault(); }
-  if (e.code === 'KeyG' && (world.near || world.act)) tutFlags.interact = true;
-  if (e.code === 'KeyG' && world.nearRemote && !world.near && !world.act) openMeet(world.nearRemote);
-  if (e.code === 'KeyO' && !world.practice) showSocial();
-  if (e.code === 'Enter' && net.up && !world.pvp) { e.preventDefault(); openChat(); }
-  if (e.code === 'KeyG') input.interact = true;
-  if (e.code === 'KeyQ' || e.code === 'Digit1') input.s1 = true;
-  if (e.code === 'KeyE' || e.code === 'Digit2') input.s2 = true;
-  if (e.code === 'KeyR' || e.code === 'Digit3') input.s3 = true;
-  if (e.code === 'KeyF' || e.code === 'Digit4') input.s4 = true;
-  if (e.code === 'KeyT') { setAutoAim(!getAutoAim()); renderer.banner = { text: getAutoAim() ? '자동 조준 켜짐' : '자동 조준 꺼짐', t: 1.2, color: '#7ad8ff' }; if (world.practice) showPracticePanel(); }
-  if (e.code === 'KeyC' && (world.mode === 'plaza' || world.state === 'play') && !world.practice) openPanel('char'); // 던전 안에서도 스킬 · 스탯을 바꿀 수 있다 (재사용 대기는 스킬마다 그대로)
-  if (e.code === 'KeyB' && world.state === 'play') openPanel('bag');
-  if ((e.code === 'KeyI' || e.code === 'KeyK') && world.state === 'play') openPanel('gear'); // 장비: 대장간에 가지 않아도 바로 바꾼다
-  if (e.code === 'KeyX' && world.life && world.farmRect) { const sd = cycleSeed(world); renderer.banner = { text: sd ? `${GOODS[sd].name} (${save.bag[sd]}개)` : '씨앗이 없다', sub: sd ? '이 씨앗을 심는다 · X로 바꾸기' : '잡화점에서 씨앗을 산다', t: 1.6, color: '#c8e8a0' }; }
-  if (e.code === 'KeyM' && world.map?.outdoor) renderer.bigMap = !renderer.bigMap;
-  if (e.code === 'KeyN') showRank(); // 랭킹
-  if (e.code === 'KeyJ' && world.state === 'play' && !world.practice) showQuestLog();
-  if (e.code === 'KeyH' && world.state === 'play') eatQuick();
-  if (e.code === 'KeyV' && world.state === 'play') input.mount = true; // 탈것 타기 · 내리기
-  if (e.code === 'KeyZ' && world.state === 'play') world.quickPotion(); // 물약 빨리 마시기
+  keys.add(code);
+  if (code === 'Space') { input.dash = true; e.preventDefault(); }
+  if (code === 'KeyG' && (world.near || world.act)) tutFlags.interact = true;
+  if (code === 'KeyG' && world.nearRemote && !world.near && !world.act) openMeet(world.nearRemote);
+  if (code === 'KeyO' && !world.practice) showSocial();
+  if (code === 'Enter' && net.up && !world.pvp) { e.preventDefault(); openChat(); }
+  if (code === 'KeyG') input.interact = true;
+  if (code === 'KeyQ' || code === 'Digit1') input.s1 = true;
+  if (code === 'KeyE' || code === 'Digit2') input.s2 = true;
+  if (code === 'KeyR' || code === 'Digit3') input.s3 = true;
+  if (code === 'KeyF' || code === 'Digit4') input.s4 = true;
+  if (code === 'KeyT') { setAutoAim(!getAutoAim()); renderer.banner = { text: getAutoAim() ? '자동 조준 켜짐' : '자동 조준 꺼짐', t: 1.2, color: '#7ad8ff' }; if (world.practice) showPracticePanel(); }
+  if (code === 'KeyC' && (world.mode === 'plaza' || world.state === 'play') && !world.practice) openPanel('char'); // 던전 안에서도 스킬 · 스탯을 바꿀 수 있다 (재사용 대기는 스킬마다 그대로)
+  if (code === 'KeyB' && world.state === 'play') openPanel('bag');
+  if ((code === 'KeyI' || code === 'KeyK') && world.state === 'play') openPanel('gear'); // 장비: 대장간에 가지 않아도 바로 바꾼다
+  if (code === 'KeyX' && world.life && world.farmRect) { const sd = cycleSeed(world); renderer.banner = { text: sd ? `${GOODS[sd].name} (${save.bag[sd]}개)` : '씨앗이 없다', sub: sd ? '이 씨앗을 심는다 · X로 바꾸기' : '잡화점에서 씨앗을 산다', t: 1.6, color: '#c8e8a0' }; }
+  if (code === 'KeyM' && world.map?.outdoor) renderer.bigMap = !renderer.bigMap;
+  if (code === 'KeyN') showRank(); // 랭킹
+  if (code === 'KeyJ' && world.state === 'play' && !world.practice) showQuestLog();
+  if (code === 'KeyH' && world.state === 'play') eatQuick();
+  if (code === 'KeyV' && world.state === 'play') input.mount = true; // 탈것 타기 · 내리기
+  if (code === 'KeyZ' && world.state === 'play') world.quickPotion(); // 물약 빨리 마시기
 });
-addEventListener('keyup', (e) => keys.delete(e.code));
+addEventListener('keyup', (e) => keys.delete(logicalKey(e.code) ?? e.code));
 addEventListener('blur', () => { keys.clear(); input.attack = false; });
 canvas.addEventListener('mousemove', (e) => { mouseCX = e.clientX; mouseCY = e.clientY; });
 canvas.addEventListener('mousedown', (e) => { unlockAudio(); if (touch) return; if (e.button === 0 && !paused) input.attack = true; if (e.button === 2 && !paused) input.wskill = true; });

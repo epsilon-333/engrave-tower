@@ -11,7 +11,7 @@ export const ENGRAVINGS = {
     name: '끈적한 점액', slot: 'leg', grade: 1, load: 2, tags: ['slime'],
     stats: { vit: 6, pres: 4 },
     effects: [
-      { type: 'flag', flag: 'slimeSlow', text: '나를 때린 적에게 냉기 1중첩' },
+      { type: 'flag', flag: 'slimeSlow', text: '나를 때린 적이 끈적해져 느려진다 (냉기 1중첩)' },
       { type: 'add', key: 'regen', v: 0.004, text: '초당 HP 0.4% 회복' },
     ],
     recipe: { goo: 4 },

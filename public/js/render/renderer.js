@@ -1,6 +1,6 @@
 // 캔버스 렌더러: world 상태를 읽어서 그리기만 한다 (게임 로직 없음)
 // 화면 크기에 맞춰 정수 배율(S)로 도트를 키우고, 글씨는 실제 해상도로 따로 그린다.
-import { opts } from '../settings.js';
+import { opts, keyFor, keyLabel } from '../settings.js';
 import { TILE, T_LIQUID, T_WALL, T_CRACK, T_BUILD, T_DEEP } from '../sim/mapgen.js';
 import { paintTile, drawOutdoorProp, renderChunk, CHUNK, drawRelic, drawSign, drawTurtle } from './outdoor.js';
 import { renderInterior, drawInteriorProp } from './interior.js';
@@ -457,7 +457,7 @@ export class Renderer {
           this.note(`${it.name}${it.max > 1 ? ` ${Math.min(ev.n, it.max)}/${it.max}` : ''}`, it.color);
           this.texts.push({ x: ev.x, y: ev.y - 18, text: '+' + it.name, color: it.color, t: 1.6, vy: -12, vx: 0, label: true });
           this.burst(ev.x, ev.y, it.color, 14, 60);
-          if (ev.n === 1 && !this.seenItem?.[ev.id]) { (this.seenItem ||= {})[ev.id] = 1; this.banner = { text: it.name, sub: it.desc, t: 3.5, color: it.color }; }
+          if (ev.n === 1 && !this.seenItem?.[ev.id]) { (this.seenItem ||= {})[ev.id] = 1; this.calmBanner({ text: it.name, sub: it.desc, t: 3.5, color: it.color }); }
           sfx('lore', { vol: 0.5 });
           break;
         }
@@ -858,7 +858,14 @@ export class Renderer {
   }
 
   // ─────────────────────────── 그리기 ───────────────────────────
+  // 급하지 않은 큰 알림(처음 주운 물건 · 깨달음 · 새 기술): 싸우는 중이면 미뤘다가 조용해지면 보여 준다
+  calmBanner(b) { (this.calmQueue ||= []).push(b); }
+  inCombat(w) {
+    const p = w.player;
+    return !!w.climb?.boss && !w.climb.boss.dead || w.enemies.some((e) => !e.dead && !e.hidden && e.state === 'chase' && Math.hypot(e.x - p.x, e.y - p.y) < 220);
+  }
   draw(w, dt) {
+    if (this.calmQueue?.length && !this.banner && !this.inCombat(w)) this.banner = this.calmQueue.shift();
     const main = this.mainG, S = this.S, VW = this.VW, VH = this.VH;
     const p = w.player;
     const tx = p.x - VW / 2 + (p.aimX || 0) * 16, ty = p.y - VH / 2 + (p.aimY || 0) * 10;
@@ -4607,13 +4614,13 @@ export class Renderer {
     const nextLv = Math.min(...Object.values(SKILLS).filter((sk) => sk.cls === w.b.cls && (sk.unlock || 1) > w.b.level).map((sk) => sk.unlock));
     const emptyHint = (w.b.available || []).some((id) => SKILLS[id]?.cls && !sk4.includes(id)) ? '제단에서' : Number.isFinite(nextLv) ? `Lv ${nextLv}` : '빈 칸';
     const slots = [...sk4.slice(0, 4), 'weapon'];
-    const keys = ['Q', 'E', 'R', 'F', touch ? '무기' : '우클릭'];
+    const keys = [...['KeyQ', 'KeyE', 'KeyR', 'KeyF'].map((k) => keyLabel(keyFor(k))), touch ? '무기' : '우클릭']; // 키 바꾸기를 따른다
     const n = slots.length + 1;
     const total = n * box + (n - 1) * gap;
     const x0 = touch ? W - total - 8 * u : (W - total) / 2, y0 = touch ? Math.round(H * 0.2) : H - box - 12 * v; // 모바일: 오른쪽 작은 지도 아래 (체력 · 저장 안내와 겹치지 않게)
     // 대시
     const dashMax = d.dashCd * (1 - d.cdr), dashK = p.dashCharges > 0 ? 1 : Math.min(1, 1 - p.dashRecharge / dashMax);
-    this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : 'Space', '', null, p.dashCharges > 0 ? 0 : p.dashRecharge);
+    this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : keyLabel(keyFor('Space')), '', null, p.dashCharges > 0 ? 0 : p.dashRecharge);
     // 빠른 칸 음식 (H)
     const qf = w.life?.quickFood;
     if (qf && !touch) {

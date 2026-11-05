@@ -752,3 +752,6 @@ body.touch #tut b { min-width: 0; }
 body.touch:has(#title:not([hidden])) #cloudChip { top: auto; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
 /* 긴 스킬 이름 버튼: 자르지 않고 글자를 줄여 두 줄로 */
 #touch .tb.long { font-size: 10px; line-height: 1.1; padding: 0 4px; word-break: keep-all; }
+.keys-set summary { cursor: pointer; margin: 6px 0; }
+.key-grid { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 4px 10px; align-items: center; margin: 6px 0; }
+.key-grid button { min-width: 64px; }

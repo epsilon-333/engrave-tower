@@ -191,6 +191,5 @@ export function createClimb(ctx) {
     document.getElementById('clBack').onclick = () => { close(); back?.(); };
   }
 
-  function key() { return false; } // 고르는 창이 없어졌다
-  return { showTowerMenu, startClimb, enterFloor, follow, signal, end, key, showOath, buildFor, active: () => !!run() && !!ctx.world()?.climb };
+  return { showTowerMenu, startClimb, enterFloor, follow, signal, end, showOath, buildFor, active: () => !!run() && !!ctx.world()?.climb };
 }
