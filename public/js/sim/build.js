@@ -4,7 +4,7 @@ import { BASE_STATS, SPECIAL_INFO, AWAKENINGS, EXTREME, eff } from '../data/stat
 import { allSanctums, trainStats } from '../data/sanctums.js';
 import { RACES, RACE_MIGRATE } from '../data/races.js';
 import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
-import { REINFORCE_STEP, REINFORCE_ARMOR, REINFORCE_GEAR } from '../data/goods.js';
+import { REINFORCE_STEP, REINFORCE_ARMOR, REINFORCE_GEAR, rfKey } from '../data/goods.js';
 import { ITEMS, weaponCat, weaponHands } from '../data/items.js';
 import { evalCond, condText } from './conditions.js';
 export const STAT_MAX = 300;
@@ -57,7 +57,7 @@ export function computeBuild(lo) {
     const id = lo.gear?.[s];
     if (s === 'off' && (twoHand || !(ITEMS[id]?.slot === 'off' || offIsWeapon))) continue;
     // 능력치 배율: 양손 무기는 ×1.3, 왼손에 든 무기는 절반
-    const rfK = s === 'weapon' ? 1 : 1 + REINFORCE_GEAR * (lo.reinforce?.[id] || 0); // 강화한 왼손 · 장신구 · 갑옷: 능력치 +10%씩
+    const rfK = s === 'weapon' ? 1 : 1 + REINFORCE_GEAR * (lo.reinforce?.[rfKey(lo.gear, s)] || 0); // 강화한 왼손 · 장신구 · 갑옷: 능력치 +10%씩
     if (id && ITEMS[id]) sources.push({ kind: 'item', id, def: ITEMS[id], mul: (s === 'weapon' && twoHand ? 1.3 : s === 'off' && offIsWeapon ? 0.5 : 1) * rfK }); // 양손 무기 능력치 ×1.3 (예전 ×1.8 — 양손의 장점은 양손 보너스로)
   }
 

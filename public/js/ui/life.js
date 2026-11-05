@@ -1,5 +1,5 @@
 // 생활 화면: 가방 · 잡화점(사고팔기, 시세) · 대장간 제작(도구 강화 · 장비 만들기 · 무기 강화)
-import { GOODS, GOOD_CATS, TOOLS, FORGE, REINFORCE, REINFORCE_MAX, REINFORCE_STEP, REINFORCE_ARMOR, REINFORCE_GEAR, SHOP_STOCK, buyPrice, sellPrice, market, toolUpgradeCost, FISH, ARTIFACTS } from '../data/goods.js';
+import { GOODS, GOOD_CATS, TOOLS, FORGE, REINFORCE, REINFORCE_MAX, rfKey, REINFORCE_STEP, REINFORCE_ARMOR, REINFORCE_GEAR, SHOP_STOCK, buyPrice, sellPrice, market, toolUpgradeCost, FISH, ARTIFACTS } from '../data/goods.js';
 import { ITEMS, WEAPON_SKILLS } from '../data/items.js';
 import { ECHOES } from '../data/monsters.js';
 import { STAT_INFO, SPECIAL_INFO } from '../data/stats.js';
@@ -85,8 +85,8 @@ export function forgeTab(s) {
       <button class="sm" data-act="forge" data-id="${r.id}" ${!has && canPay(s, r.mats, r.gold) ? '' : 'disabled'}>${has ? '가지고 있음' : '만들기'}</button></div>`;
   }).join('');
   const RSLOT = [['weapon', '무기'], ['armor', '갑옷'], ['off', '왼손'], ['acc1', '장신구'], ['acc2', '장신구']];
-  const rfRows = RSLOT.filter(([k]) => s.gear?.[k] && ITEMS[s.gear[k]] && !(k === 'acc2' && s.gear.acc2 === s.gear.acc1)).map(([k, slotName]) => {
-    const id = s.gear[k], lv = s.reinforce?.[id] || 0, rc = lv < REINFORCE_MAX ? REINFORCE[lv] : null;
+  const rfRows = RSLOT.filter(([k]) => s.gear?.[k] && ITEMS[s.gear[k]]).map(([k, slotName]) => {
+    const id = s.gear[k], lv = s.reinforce?.[rfKey(s.gear, k)] || 0, rc = lv < REINFORCE_MAX ? REINFORCE[lv] : null;
     return `<div class="trow r3"><span><b>${slotName} · ${esc(ITEMS[id].name)} ${lv ? `+${lv}` : ''}</b><small>지금: ${rfText(k, lv)}</small></span>
       ${rc ? `<span class="mats">→ +${lv + 1} (${rfText(k, lv + 1)}) · <b class="${rc.rate < 1 ? 'warn' : ''}">성공 ${Math.round(rc.rate * 100)}%</b><br>${matsHtml(s, rc.mats, rc.gold)}${echoHtml(s, rc.echoes)}</span><button class="sm" data-act="reinforce" data-slot="${k}" ${canPayR(s, rc) ? '' : 'disabled'}>강화</button>` : '<span class="muted">최고 단계</span>'}</div>`;
   }).join('') || '<p class="muted">장착한 장비가 없다.</p>';
@@ -129,11 +129,11 @@ export function lifeClick(hub, act, t) {
       return true;
     }
     case 'reinforce': {
-      const slot = t.dataset.slot || 'weapon', wid = s.gear?.[slot], lv = s.reinforce?.[wid] || 0, rc = REINFORCE[lv];
+      const slot = t.dataset.slot || 'weapon', wid = s.gear?.[slot], key = rfKey(s.gear, slot), lv = s.reinforce?.[key] || 0, rc = REINFORCE[lv];
       if (!wid || lv >= REINFORCE_MAX || !canPayR(s, rc)) return true;
       pay(s, rc.mats, rc.gold);
       for (const [e, n] of Object.entries(rc.echoes || {})) s.echoes[e] -= n;
-      if (Math.random() < (rc.rate ?? 1)) { (s.reinforce ||= {})[wid] = lv + 1; hub.toast(`${ITEMS[wid].name} +${lv + 1} 강화 성공!`); }
+      if (Math.random() < (rc.rate ?? 1)) { (s.reinforce ||= {})[key] = lv + 1; hub.toast(`${ITEMS[wid].name} +${lv + 1} 강화 성공!`); }
       else { // 실패: 단계 그대로 · 코인은 잃고 광석 · 몬스터 부산물은 반(올림)을 돌려받는다
         const back = [];
         for (const [g, n] of Object.entries(rc.mats)) { const k = Math.ceil(n / 2); s.bag[g] = (s.bag[g] || 0) + k; back.push(`${GOODS[g]?.name || g} ${k}`); }
