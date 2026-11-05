@@ -140,7 +140,7 @@ export function createClimb(ctx) {
     const sc = oathScore(r.oath);
     if (kind === 'top') c.oathBest = Math.max(c.oathBest || 0, sc);
     let res = { kept: {}, gold: 0, ups: 0 };
-    if (w?.loot) res = applyRun(s, w.loot, kind === 'dead' ? 0.6 : 1, w.discovered || new Set());
+    if (w?.loot) res = applyRun(s, w.loot, 1, w.discovered || new Set()); // 쓰러져도 주운 것은 모두 가져온다
     const rec = { f: reached, kind, time: Math.round(r.time + (w?.tower?.t || 0)), oath: sc, date: Date.now(), startF: r.startF };
     (c.history ||= []).unshift(rec); c.history.length = Math.min(c.history.length, 12);
     if (!c.bestRun || reached > c.bestRun.f || (reached === c.bestRun.f && sc > (c.bestRun.oath || 0))) c.bestRun = rec;
@@ -156,7 +156,7 @@ export function createClimb(ctx) {
     ctx.showModal(`<h2>${title}</h2>
       ${kind === 'top' ? '<p class="lvup">꺼져 가던 꼭대기의 빛이 다시 타오른다. 이제 서약을 걸고 다시 오를 수 있다.</p>' : ''}${by ? `<p class="muted">${esc(by)}</p>` : ''}
       <div class="cl-sum"><div><small>오른 층</small><b>${reached}층</b></div><div><small>걸린 시간</small><b>${fmtT(rec.time)}</b></div><div><small>가져온 부산물</small><b>${keptN}개</b></div><div><small>골드</small><b class="cl-gold">◆ ${res.gold || 0}</b></div></div>
-      ${kind === 'dead' ? '<p class="muted">쓰러지면 주운 것의 60%만 가져온다.</p>' : ''}${sc ? `<p class="muted">서약 ${sc}</p>` : ''}
+      ${kind === 'dead' ? '<p class="muted">쓰러져도 주운 것은 모두 가져온다.</p>' : ''}${sc ? `<p class="muted">서약 ${sc}</p>` : ''}
       ${res.ups ? `<p class="lvup">레벨 업! Lv ${s.level}</p>` : ''}
       <p class="muted">다음 등반은 <b>${next}층</b>부터 시작할 수 있다. 부산물로 공명 제단에서 각인을 새겨 강해지자.</p>
       <div class="actions"><button id="clAgain">${next}층부터 다시 오르기</button><button data-close class="ghost">탑 밖으로</button></div>`, () => { close(); ctx.leave(); });

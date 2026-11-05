@@ -175,7 +175,7 @@ export class Renderer {
     canvas.addEventListener('mousemove', (e) => { const r = canvas.getBoundingClientRect(); this.mouse = { x: ((e.clientX - r.left) / r.width) * canvas.width, y: ((e.clientY - r.top) / r.height) * canvas.height }; });
     canvas.addEventListener('mouseleave', () => { this.mouse = null; });
     this.fx = []; this.texts = []; this.parts = []; this.corpses = []; this.ambient = [];
-    this.alerts = new Map(); this.squash = new Map(); this.chestOpen = new Map(); this.lunge = new Map();
+    this.alerts = new Map(); this.hpShow = new Map(); this.squash = new Map(); this.chestOpen = new Map(); this.lunge = new Map();
     this.shake = 0; this.banner = null; this.hitstop = 0; this.fade = 1; this.hurtFlash = 0; this.flash = null; this.ultName = null;
     this.cam = { x: 0, y: 0 };
     this.anims = new SkillAnims(this); // 스킬 애니메이션 (render/skillanim.js)
@@ -226,7 +226,7 @@ export class Renderer {
       const hw = (this.VW || 640) / 2 + S, hh = (this.VH || 400) / 2 + S; // 처음 보이는 곳은 미리 다 그려 둔다
       for (let cy = Math.floor((w.player.y - hh) / S); cy <= Math.floor((w.player.y + hh) / S); cy++) for (let cx = Math.floor((w.player.x - hw) / S); cx <= Math.floor((w.player.x + hw) / S); cx++) this.chunkAt(w, cx, cy, true);
     } else { this.mapCanvas = w.map.indoor ? renderInterior(w) : renderMap(w); this.mapCanvasNight = w.map.indoor ? renderInterior(w, true) : null; }
-    this.fx = []; this.texts = []; this.parts = []; this.corpses = []; this.ambient = []; this.alerts.clear(); this.squash.clear(); this.chestOpen.clear();
+    this.fx = []; this.texts = []; this.parts = []; this.corpses = []; this.ambient = []; this.alerts.clear(); this.hpShow.clear(); this.squash.clear(); this.chestOpen.clear();
     this.banner = null; this.fade = 1;
     this.cam.x = w.player.x - this.VW / 2; this.cam.y = w.player.y - this.VH / 2;
     this.fog = document.createElement('canvas'); this.fog.width = w.tw; this.fog.height = w.th;
@@ -343,12 +343,13 @@ export class Renderer {
             break;
           }
           { // 같은 적에게 짧은 사이에 들어온 피해는 숫자 하나로 합친다 (숫자가 겹쳐 지저분하지 않게) · 치명타는 따로 크게
-            const same = !ev.crit && ev.id != null && this.texts.find((q) => q.tid === ev.id && !q.crit && q.t > 0.5);
+            const same = ev.id != null && this.texts.find((q) => q.tid === ev.id && !!q.crit === !!ev.crit && q.t > 0.35); // 0.4초 안의 같은 적 피해는 하나로 (치명타는 치명타끼리)
             if (opts.dmgNum === 'off' || (opts.dmgNum === 'crit' && !ev.crit)) { /* 설정: 피해 숫자 숨김 */ }
             else if (same) { same.val += ev.v; same.text = fmt(same.val); same.t = 0.75; same.pop = 0.07; if (ev.heavy) same.heavy = true; }
             else this.texts.push({ tid: ev.id, val: ev.v, x: ev.x + (Math.random() - 0.5) * 6, y: ev.y, text: fmt(ev.v), color: ev.color, t: 0.75, crit: ev.crit, heavy: ev.heavy, small: ev.small, vy: -34, vx: (Math.random() - 0.5) * 24, pop: ev.crit || ev.heavy ? 0.14 : 0.07 });
           }
-          if (ev.id != null) this.squash.set(ev.id, 0.14);
+          if (ev.id != null) { this.squash.set(ev.id, 0.14); this.hpShow.set(ev.id, (this.world?.t ?? 0) + 3); }
+          if (ev.src === 'attack' || ev.src === 'skill') this.hitstop = Math.max(this.hitstop, ev.crit ? 0.07 : ev.heavy ? 0.055 : 0.035); // 히트스톱: 맞힌 순간 아주 잠깐 멈춘다
           if (!ev.small && ev.src !== 'dot' && ev.src !== 'linked') this.hitPop(ev.x, ev.y + 6, ev.color === '#ffffff' ? '#fff2c0' : ev.color, ev.crit ? 2 : ev.heavy || ev.src === 'aoe' || ev.src === 'skill' ? 1 : 0);
           if (ev.src === 'attack') {
             this.sparkBurst(ev.x, ev.y + 8, ev.crit ? '#ffe060' : '#ffffff', ev.crit ? 10 : 5);
@@ -1392,8 +1393,8 @@ export class Renderer {
     if (e.st.poison && Math.random() < 0.15) this.parts.push({ x: e.x + (Math.random() - 0.5) * w0 * 0.6, y: e.y - h0 * 0.3, vx: 0, vy: -15, t: 0.5, max: 0.5, color: '#9be15d', g: -20 });
     if (e.st.bleed && Math.random() < 0.12) this.parts.push({ x: e.x + (Math.random() - 0.5) * w0 * 0.4, y: e.y - h0 * 0.5, vx: 0, vy: 10, t: 0.5, max: 0.5, color: '#c02030', g: 120 });
     e._top = e.y + 4 - h0;
-    // 체력바
-    if (e.hp < e.maxHp && !def.elite && !e.champion) {
+    // 체력바: 맞은 뒤 3초 동안만 (무리일 때 막대가 화면을 덮지 않게)
+    if (e.hp < e.maxHp && !def.elite && !e.champion && (this.hpShow.get(e.id) ?? 0) > w.t) {
       const bw = Math.max(16, Math.round(w0 * 0.9));
       const bx = Math.round(e.x - bw / 2), by = Math.round(e._top - 5);
       g.fillStyle = '#0d0b10'; g.fillRect(bx - 1, by - 1, bw + 2, 4);
@@ -1437,9 +1438,9 @@ export class Renderer {
     // 발견(!)/예고 표시
     const al = this.alerts.get(e.id);
     if (al != null) {
-      if (al < 0) { // 발견: 노란 느낌표
+      if (al < 0) { // 발견: 노란 느낌표 (정예 · 강화 개체만 — 보통 몬스터까지 띄우면 무리일 때 느낌표 덩어리가 된다)
         this.alerts.set(e.id, al + dt);
-        this.bang(e.x, e._top - 14 + (al + 0.7) * -6, '#ffd040');
+        if (def.elite || e.champion || e.affix) this.bang(e.x, e._top - 14 + (al + 0.7) * -6, '#ffd040');
         if (al + dt >= 0) this.alerts.delete(e.id);
       } else if (e.windT > 0) this.bang(e.x, e._top - 14, '#ff3030');
       else this.alerts.delete(e.id);
@@ -4259,7 +4260,7 @@ export class Renderer {
       }
       for (const o of w.objects) if (o.kind === 'gate') this.text(o.label.split(' (')[0], this.sx(o.x), this.sy(o.y + 12), u, o.color, 'center');
     }
-    for (const e of w.enemies) if (e.affix && !e.champion && e._top != null && Math.abs(e.x - w.player.x) < 200 && Math.abs(e.y - w.player.y) < 130) {
+    for (const e of w.enemies) if (e.affix && !e.champion && e._top != null && ((this.hpShow.get(e.id) ?? 0) > w.t || Math.hypot(e.x - w.player.x, e.y - w.player.y) < 60)) { // 강화 개체 이름: 맞은 직후 · 가까이 왔을 때만
       this.text(`${AFFIXES[e.affix].name} ${e.def.name}`, this.sx(e.x), this.sy(e._top - 8), Math.max(1, u - 1), AFFIXES[e.affix].color, 'center', true);
     }
     for (const e of w.enemies) if ((e.def.elite || e.champion) && e._top != null && Math.abs(e.x - w.player.x) < 260 && Math.abs(e.y - w.player.y) < 160) {
@@ -4267,7 +4268,7 @@ export class Renderer {
     }
     { // 몬스터 레벨: 내 레벨보다 5 넘게 높으면 빨강, 5 넘게 낮으면 회색
       const my = w.b.level || 1;
-      for (const e of w.enemies) if (e.lv && !e.dead && !e.champion && !e.def.elite && !e.affix && e._top != null && Math.abs(e.x - w.player.x) < 150 && Math.abs(e.y - w.player.y) < 100)
+      for (const e of w.enemies) if (e.lv && Math.abs(e.lv - my) > 5 && !e.dead && !e.champion && !e.def.elite && !e.affix && e._top != null && Math.abs(e.x - w.player.x) < 150 && Math.abs(e.y - w.player.y) < 100) // 레벨이 비슷하면 숨긴다
         this.text(`Lv ${e.lv}`, this.sx(e.x), this.sy(e._top - 6), Math.max(1, u - 1), e.lv > my + 5 ? '#ff6a5a' : e.lv < my - 5 ? '#9a96a4' : '#f0e6c8', 'center', true);
     }
     for (const e of w.enemies) if (e._pips) {
