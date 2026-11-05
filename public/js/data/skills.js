@@ -60,7 +60,7 @@ export const CLASSES = {
     skills: ['shadowStep', 'weakMark', 'ambush', 'stealth', 'shadowBind', 'shadowDance'] },
   venomHunter: { race: 'assassin', name: '독침 사냥꾼', desc: '덫을 깔고 미끼로 몬스터를 끌어들인다.', trait: '평타가 독을 건다.', weapons: ['blowgun', 'viperBlowgun'], style: 'poison',
     skills: ['snare', 'retreatShot', 'bait', 'dartFan', 'smokeBomb', 'venomBurst'] },
-  spiritcaller: { race: 'elf', name: '정령사', desc: '정령과 계약해 함께 싸운다. 불러낸 정령이 버프를 주고 적을 공격한다.', trait: '정령을 셋까지 함께 데리고 다닌다(둘째 · 셋째는 버프 70%). 세계수 성지의 「정령 계약」에서 정령석을 바쳐 정령과 계약한다(속성 6 · 등급 4, 확률). 같은 정령과 또 계약하면 결속이 올라 강해진다. 「정령 부르기」로 함께하는 정령을 꺼낸다.', weapons: ['spiritBow', 'worldTreeBow'], style: 'wind',
+  spiritcaller: { race: 'elf', name: '정령사', desc: '정령과 계약해 함께 싸운다. 불러낸 정령이 버프를 주고 적을 공격한다.', trait: '정령을 셋까지 함께 데리고 다닌다(둘째 · 셋째는 버프 70%). 세계수 성지의 「정령 계약」에서 코인을 바쳐 정령과 계약한다(속성 6 · 등급 4, 확률 · 엘프만). 같은 정령과 또 계약하면 결속이 올라 강해진다. 「정령 부르기」로 함께하는 정령을 꺼낸다.', weapons: ['spiritBow', 'worldTreeBow'], style: 'wind',
     skills: ['summonSpirit', 'spiritAbsorb', 'spiritEmpower', 'spiritArrow', 'spiritGuard', 'spiritKing'] },
   ranger: { race: 'elf', name: '숲의 사수', desc: '멈춰서 집중하고 멀리서 꿰뚫는다.', trait: '가만히 서 있으면 집중이 쌓인다(0.5초마다 1단계, 최대 3). 다음 사격 피해 단계당 +25%.', weapons: ['rangerBow', 'galeLongbow'], style: 'wind',
     skills: ['pierceArrow', 'windStep', 'vineSnare', 'pushArrow', 'aimedShot', 'skyPiercer'] },
@@ -518,7 +518,7 @@ export function crossReq(def) {
 export const crossMul = (def, b) => { if (!def?.race || def.race === b.race || def.scroll) return 1; const r = crossReq(def); return (b.stats?.[r.stat] || 0) >= r.full ? 1 : 0.85; };
 // 배울 수 없는 것: 그 클래스만 모으는 것(영혼 · 깃든 정령 · 부하)이 있어야 쓰는 스킬
 // 궁극기와 용언(용의 혀로만 말한다)은 그 종족만 쓴다
-export const crossOk = (id) => { const s = SKILLS[id]; return !!s && !!s.cls && !s.ult && !s.word && !s.needSpirit && !s.do.some((o) => ['raiseSouls', 'blastSummons'].includes(o.op)); };
+export const crossOk = (id) => { const s = SKILLS[id]; return !!s && !!s.cls && s.cls !== 'spiritcaller' /* 정령은 엘프만 */ && !s.ult && !s.word && !s.needSpirit && !s.do.some((o) => ['raiseSouls', 'blastSummons'].includes(o.op)); };
 // 설명 끝의 '정령력 20.' 같은 원래 종족 자원 이야기를 뗀다 (다른 종족이 배우면 내 자원으로 쓰니까)
 const RES_TAIL = /\s*(마력|기력|분노|오러|본능|영혼|그림자|정령력|용기|암석 에너지)\s*[+]?\d+\+?\s*(전부|씩)?\.?\s*$/;
 export const plainDesc = (s) => (s?.desc || '').replace(RES_TAIL, '');

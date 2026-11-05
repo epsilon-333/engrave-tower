@@ -1298,7 +1298,6 @@ function showSanctum(race, tab = 'bless') {
   overlay.querySelectorAll('[data-learnx]').forEach((b) => (b.onclick = () => { learnCross(race, b.dataset.learnx); showSanctum(race, 'learn'); }));
   overlay.querySelectorAll('[data-scroll]').forEach((b) => (b.onclick = () => { buyScroll(b.dataset.scroll, +b.dataset.n || 1); showSanctum(race, 'scroll'); }));
   // 정령 계약: 정령석 사기 · 계약 1회 / 10회 · 함께하는 정령 고르기
-  overlay.querySelectorAll('[data-stone]').forEach((b) => (b.onclick = () => { buyStones(+b.dataset.stone); showSanctum(race, 'spirit'); }));
   overlay.querySelectorAll('[data-pull]').forEach((b) => (b.onclick = () => { pullSpirits(+b.dataset.pull); showSanctum(race, 'spirit'); }));
   overlay.querySelectorAll('[data-spmain]').forEach((b) => (b.onclick = () => { save.spirits.main = b.dataset.spmain; save.spirits.extra = (save.spirits.extra || []).filter((x) => x !== b.dataset.spmain); writeSave(save); world.setBuild(buildNow()); showSanctum(race, 'spirit'); }));
   overlay.querySelectorAll('[data-spx]').forEach((b) => (b.onclick = () => { const id = b.dataset.spx, L = (save.spirits.extra ||= []); save.spirits.extra = L.includes(id) ? L.filter((x) => x !== id) : [...L, id].slice(0, 2); writeSave(save); world.setBuild(buildNow()); showSanctum(race, 'spirit'); })); // 정령사: 셋까지 함께
@@ -1414,25 +1413,24 @@ function spiritHtml() {
   const sv = save.spirits || { owned: {}, main: null }, stones = save.bag?.spiritStone || 0, got = Object.keys(sv.owned || {}).length;
   const res = lastPull ? `<h4>계약 결과</h4><div class="sp-grid">${lastPull.map((r) => spiritCard(r.id, sv.owned, sv.main, r.r === 'new' ? 'NEW' : r.r === 'star' ? '결속 ★+1' : '정령석 +1')).join('')}</div>` : '';
   const all = Object.keys(SPIRITS).sort((a, b) => SPIRITS[b].grade - SPIRITS[a].grade);
+  if (save.race !== 'elf') return `<div class="talk"><p>「정령은 세계수 아래에서 태어난 이에게만 손을 내밀어.」</p><p class="muted">정령 계약은 엘프만 할 수 있다.</p></div>`;
   return `<div class="talk"><p>「정령은 부른다고 오지 않아. 마음이 맞는 정령이 스스로 손을 내밀지.」</p>
-    <p class="muted">정령석 하나를 바치면 정령 하나와 계약한다. 같은 정령과 또 계약하면 결속(★)이 올라 힘이 15%씩 세진다 (최대 ★${SPIRIT_STAR_MAX}). 싸울 때는 「정령 부르기」 스킬로 함께하는 정령을 꺼낸다 — 정령사가 아니어도 이 성지의 「기술 배우기」에서 배울 수 있다.</p>
-    <p class="muted">${save.cls === 'spiritcaller' ? '<b class="up">정령사: 정령석이 싸고 좋은 정령이 더 잘 온다 · 함께 싸우면 정령 레벨이 1.5배 빨리 오른다</b><br>' : ''}확률: ${SPIRIT_GRADES.map((G, i) => `<b style="color:${G.color}">${G.name} ${Math.round((save.cls === 'spiritcaller' ? CALLER_RATES[i] : G.rate) * 100)}%</b>`).join(' · ')} · 10회 계약은 희귀 이상 하나 보장 · 정령석은 몬스터가 가끔 떨어뜨린다 (이끼 숲 · 원시림 · 이끼 동굴에서 더 자주, 우두머리는 꼭)</p></div>
-    <div class="sp-bar"><span>정령석 <b>${stones}</b>개 · ◆ ${save.gold}</span>
-      <button class="sm" data-stone="1" ${save.gold >= stonePrice() ? '' : 'disabled'}>정령석 1개 ◆ ${stonePrice()}</button><button class="sm" data-stone="10" ${save.gold >= stonePrice() * 10 ? '' : 'disabled'}>10개 ◆ ${stonePrice() * 10}</button>
-      <button data-pull="1" ${stones >= 1 ? '' : 'disabled'}>계약 1회</button><button data-pull="10" ${stones >= 10 ? '' : 'disabled'}>계약 10회</button></div>
+    <p class="muted">코인을 바치면 정령 하나와 계약한다 (남은 정령석이 있으면 그것부터). 같은 정령과 또 계약하면 결속(★)이 올라 힘이 15%씩 세진다 (최대 ★${SPIRIT_STAR_MAX}). 싸울 때는 「정령 부르기」 스킬로 함께하는 정령을 꺼낸다 (엘프만 계약할 수 있다).</p>
+    <p class="muted">${save.cls === 'spiritcaller' ? '<b class="up">정령사: 계약이 싸고 좋은 정령이 더 잘 온다 · 함께 싸우면 정령 레벨이 1.5배 빨리 오른다</b><br>' : ''}확률: ${SPIRIT_GRADES.map((G, i) => `<b style="color:${G.color}">${G.name} ${Math.round((save.cls === 'spiritcaller' ? CALLER_RATES[i] : G.rate) * 100)}%</b>`).join(' · ')} · 10회 계약은 희귀 이상 하나 보장 · 정령석은 몬스터가 가끔 떨어뜨린다 (이끼 숲 · 원시림 · 이끼 동굴에서 더 자주, 우두머리는 꼭)</p></div>
+    <div class="sp-bar"><span>◆ ${save.gold}${stones ? ` · 남은 정령석 <b>${stones}</b>개 (먼저 쓴다)` : ''}</span>
+      <button data-pull="1" ${canPull(1) ? '' : 'disabled'}>계약 1회 ${stones >= 1 ? '· 정령석 1' : `◆ ${stonePrice()}`}</button><button data-pull="10" ${canPull(10) ? '' : 'disabled'}>계약 10회 ${stones >= 10 ? '· 정령석 10' : `◆ ${pullCost(10)}`}</button></div>
     ${res}
     <h4>내 정령 <small>${got} / ${all.length}</small></h4><div class="sp-grid">${all.map((id) => spiritCard(id, sv.owned, sv.main)).join('')}</div>`;
 }
 const stonePrice = () => (save.cls === 'spiritcaller' ? STONE_PRICE_CALLER : STONE_PRICE); // 정령사는 정령석이 싸다
-function buyStones(n) {
-  const price = stonePrice() * n;
-  if (save.gold < price) return;
-  if (!bagAdd(lifeOf(), 'spiritStone', n)) { renderer.banner = { text: '가방이 가득 찼다', t: 1.6, color: '#ffb0a0' }; return; }
-  save.gold -= price; writeSave(save); sfx('coin', { vol: 0.6 });
-}
+// 계약은 코인으로 바로 한다 (정령석이 남아 있으면 그것부터 쓴다 · 모자란 만큼만 코인)
+const pullCost = (n) => Math.max(0, n - (save.bag?.spiritStone || 0)) * stonePrice();
+const canPull = (n) => save.race === 'elf' && save.gold >= pullCost(n);
 function pullSpirits(n) {
-  if ((save.bag?.spiritStone || 0) < n) return;
-  save.bag.spiritStone -= n; if (save.bag.spiritStone <= 0) delete save.bag.spiritStone;
+  if (!canPull(n)) return;
+  const st = Math.min(n, save.bag?.spiritStone || 0);
+  if (st) { save.bag.spiritStone -= st; if (save.bag.spiritStone <= 0) delete save.bag.spiritStone; }
+  save.gold -= (n - st) * stonePrice(); sfx('coin', { vol: 0.6 });
   const res = [];
   for (let i = 0; i < n; i++) {
     const guarantee = n >= 10 && i === n - 1 && !res.some((r) => SPIRITS[r.id].grade >= 1);

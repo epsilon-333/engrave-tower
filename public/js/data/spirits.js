@@ -1,4 +1,4 @@
-// 정령 계약: 정령석을 바쳐 정령과 계약한다 (확률). 속성 6가지 × 등급 4가지 = 정령 24.
+// 정령 계약: 엘프만 · 코인을 바쳐 정령과 계약한다 (확률 · 남은 정령석이 있으면 그것부터). 속성 6가지 × 등급 4가지 = 정령 24.
 // 싸울 때는 '정령 부르기' 스킬로 함께하는 정령을 꺼낸다. 나와 있는 동안 정령은 버프를 주고 가까운 적을 공격한다.
 // 같은 정령과 또 계약하면 결속(★)이 오른다 (최대 5) — 결속마다 힘 +15%.
 
@@ -9,9 +9,9 @@ export const SPIRIT_GRADES = [
   { name: '전설', color: '#ffc840', mul: 3.2, rate: 0.03 },
 ];
 export const SPIRIT_STAR_MAX = 5, STAR_MUL = 0.15;
-export const STONE_PRICE = 150; // 세계수 성지에서 정령석 하나 값
-// 정령사는 정령과 가깝다: 정령석이 싸고, 좋은 정령이 조금 더 잘 온다
-export const STONE_PRICE_CALLER = 100;
+export const STONE_PRICE = 300; // 계약 1회 값 (코인 · 넘치는 코인을 쓰는 곳)
+// 정령사는 정령과 가깝다: 계약이 싸고, 좋은 정령이 조금 더 잘 온다
+export const STONE_PRICE_CALLER = 200;
 export const CALLER_RATES = [0.45, 0.33, 0.17, 0.05];
 // 정령 레벨: 함께 싸운 시간(초)이 쌓이면 오른다. 레벨마다 힘 +6% (최대 10)
 export const SPIRIT_LV_XP = [0, 120, 300, 600, 1000, 1500, 2200, 3000, 4000, 5400], SPIRIT_LV_MUL = 0.06;

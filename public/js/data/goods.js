@@ -52,7 +52,7 @@ export const GOODS = {
   // ── 잡동사니 ──
   oldBoot: { name: '낡은 장화', cat: 'junk', price: 1, desc: '누군가 잃어버린 장화. 물이 줄줄 샌다.', icon: { t: 'boot', c: ['#6a4a32', '#8a6a4a', '#3a2818'] } },
   // ── 정령석: 세계수 성지에서 정령과 계약할 때 바친다 (몬스터가 가끔 떨어뜨리고, 숲에서 더 자주) ──
-  spiritStone: { name: '정령석', cat: 'gem', price: 40, desc: '정령의 숨이 깃든 맑은 돌. 세계수 성지의 「정령 계약」에서 하나를 바치면 정령 하나와 계약한다.', icon: { t: 'crystal', c: ['#9bffb0', '#e8fff0', '#3a9a6a'] } },
+  spiritStone: { name: '정령석', cat: 'gem', price: 40, desc: '정령의 숨이 깃든 맑은 돌. 세계수 성지의 「정령 계약」에서 코인 대신 하나를 바치면 정령 하나와 계약한다.', icon: { t: 'crystal', c: ['#9bffb0', '#e8fff0', '#3a9a6a'] } },
   // ── 마탑 주문서 (1회용 · 가방에서 '읽기') ──
   scroll_breath: { name: '수중 호흡 주문서', cat: 'scroll', price: 30, desc: '읽으면 3분 동안 물속에서 숨이 줄지 않는다.', use: { kind: 'buff', buff: 'waterBreath', t: 180, color: '#7ad8ff', name: '수중 호흡' }, icon: { t: 'scroll', c: ['#3a8ad8'] } },
   scroll_return: { name: '귀환 주문서', cat: 'scroll', price: 40, desc: '읽으면 바람결 마을로 돌아간다. 던전에서 읽으면 얻은 것을 모두 지킨 채 밖으로 나온다.', use: { kind: 'return' }, icon: { t: 'scroll', c: ['#e8a83a'] } },
