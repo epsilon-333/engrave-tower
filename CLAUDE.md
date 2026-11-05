@@ -39,6 +39,12 @@
 - 3D: 물체가 서로 파고들거나 깜빡이지 않게(겹침·z-fighting 없이), 캐릭터·카메라가 지형을 뚫지 않게.
 - 에셋은 CC0 등 상업적으로 쓸 수 있는 것만.
 
+## 코드 구조 (큰 파일 나누기 · 2026-11-05)
+- `render/renderer.js`(Renderer 본체 · 세계 · 사람 · 몬스터 그리기) + `render/hud.js`(HUD · 지도 · 여정) · `render/fxdraw.js`(이펙트, 바닥 층 `GROUND_FX`과 공중 층) · `render/events.js`(world.events → 이펙트 · 소리) · `render/atmosphere.js`(연기 · 낮밤 · 빛 · 안개)
+- `sim/world.js`(World 본체 · 플레이어 · 피해 계산) + `sim/enemyai.js`(적 · 보스 움직임과 기술) · `sim/skillrun.js`(플레이어 스킬 실행) · `sim/allies.js`(소환수 · 정령)
+- 떼어 낸 파일은 메서드 묶음(`XxxMethods`)이고 본체 끝에서 `Object.assign(Class.prototype, …)`로 붙는다. 메서드 안의 `this`는 그대로 Renderer / World
+- 해방(탑을 올라 섬을 연다)은 `data/unlocks.js` 표 하나. 새 저장(`save.gated`)에만 적용
+
 ## 도구와 테스트
 - `tools/tests/*.mjs`: 2D 시뮬레이션 테스트. 예) `node tools/tests/simtest.mjs` → `ALL OK`, `node tools/tests/storytest.mjs`. 한꺼번에: `node tools/tests/all.mjs` (실패하면 종료 코드 1)
 - 밸런스: `node tools/tests/climbsim.mjs <클래스> <레벨> <등반 수> <최대 층> <시작 층>`. 몬스터 상대 클래스 배율은 `CLASS_BAL_PVE`(data/skills.js)

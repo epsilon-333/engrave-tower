@@ -290,7 +290,8 @@ export const HudMethods = {
     // 정예 체력바
     const tb = w.tower?.boss && !w.tower.boss.dead ? w.tower.boss : null;
     const boss = w.climb?.intro ? null : tb || w.enemies.find((e) => (e.def.elite || e.champion) && e.state === 'chase' && !e.dead);
-    this.hudBoss = boss; // 체력바에 이름이 나온 보스 (몸 위 이름은 숨긴다) // 탑: 진짜 보스 체력 (분신 · 가짜 거울이 아니라) · 등장 연출 동안은 감춘다
+    this.hudBoss = boss; // 체력바에 이름이 나온 보스 (몸 위 이름은 숨긴다)
+    if (boss && w.climb && !boss.dead) this.edgeArrow(boss.x, (boss._top ?? boss.y - 60) + 20, '#ff7a5a', boss.champion || boss.def.name, false); // 보스가 화면 밖이면 가장자리에 화살표 (보일 때는 그리지 않는다) // 탑: 진짜 보스 체력 (분신 · 가짜 거울이 아니라) · 등장 연출 동안은 감춘다
     if (boss) {
       const bw2 = Math.min(W * 0.5, 260 * u), bx2 = (W - bw2) / 2, by2 = topY + 28 * u; // 화면 위쪽 (아래 스킬 칸 · 위쪽 저장 안내를 가리지 않게)
       this.text(boss.champion || boss.def.name, W / 2, by2 - 9 * u, u, '#e8907c', 'center', true, true);
