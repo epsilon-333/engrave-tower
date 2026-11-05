@@ -540,6 +540,17 @@ export class World {
   wallAt(px, py) { const t = this.tileAt(px, py); return t === T_WALL || t === T_CRACK || t === T_BUILD || t === T_GATE; }
   // 싸울 상대인가: 살아 있고 보이며, 허수아비는 광장 · 연습장에서만 (바깥의 허수아비는 스킬이 노리지 않는다)
   targetable(e) { return !e.dead && !e.hidden && (e.def.ai !== 'dummy' || this.mode === 'plaza' || !!this.practice); }
+  // (x, y) 둘레의 탁 트인 땅: 벽 · 물건 · 사람과 떨어져 있고 걸어서 곧장 갈 수 있는 곳 (튜토리얼 허수아비 자리 등)
+  openSpot(x, y) {
+    for (const d of [48, 64, 36, 80]) for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * Math.PI * 2, tx = x + Math.cos(a) * d, ty = y + Math.sin(a) * d * 0.7;
+      if (this.blocked(tx, ty, 12) || this.objects.some((o) => Math.hypot(o.x - tx, o.y - ty) < 28)) continue;
+      let clear = true;
+      for (let s = 0.25; s < 1 && clear; s += 0.25) clear = !this.blocked(x + (tx - x) * s, y + (ty - y) * s, 6);
+      if (clear) return { x: tx, y: ty };
+    }
+    return { x: x + 46, y };
+  }
   blocked(x, y, r, mode = null) {
     const s = (px, py) => this.solid(px, py, mode);
     return s(x - r, y - r) || s(x + r, y - r) || s(x - r, y + r) || s(x + r, y + r) || s(x, y - r) || s(x, y + r) || s(x - r, y) || s(x + r, y);
