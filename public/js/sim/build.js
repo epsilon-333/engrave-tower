@@ -242,7 +242,7 @@ export function computeBuild(lo) {
     available = skills.filter(Boolean);
   }
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
-  if (wpn.kind === 'melee') { d.dmgTakenMul *= 0.9; flags.add('stagger'); }
+  if (wpn.kind === 'melee') { d.dmgTakenMul *= 0.8; flags.add('stagger'); } // 근접: 받는 피해 -20% (무기 설명과 같게 · 예전엔 -10%)
   else flags.add('aimSlow');
   // 손 보정: 양손 무기는 종류마다 장점 하나, 한손 둘을 같은 계열로 들면 살짝 더 강해진다
   const wcat = weaponCat(ITEMS[weaponId]), hands = weaponHands(ITEMS[weaponId]);

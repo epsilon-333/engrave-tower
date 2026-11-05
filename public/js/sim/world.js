@@ -1465,6 +1465,15 @@ export class World {
       const thrust = w.shape === 'thrust';
       const hits = w.hits || 1;
       const strike = (slam = false, mulK = 1) => {
+      { // 탄 쳐내기: 휘두른 범위 안의 적 탄은 사라진다 (근접이 원거리 몬스터에게 일방적으로 맞지 않게)
+        const R = w.range + 10;
+        for (const pr of this.projs) {
+          if (pr.owner !== 'e' || pr.life <= 0) continue;
+          const dx = pr.x - p.x, dy = pr.y - p.y, dd = Math.hypot(dx, dy); if (dd > R) continue;
+          let da = Math.atan2(dy, dx) - ang; da = Math.atan2(Math.sin(da), Math.cos(da));
+          if (great || Math.abs(da) <= Math.max(thrust ? 0.5 : w.arc, 1.2) / 2 + 0.3 || dd < 14) { pr.life = 0; this.emit({ t: 'spark', x: pr.x, y: pr.y, color: pr.color || '#ffe8a0' }); this.emit({ t: 'deflect', x: pr.x, y: pr.y }); }
+        }
+      }
       this.emit({ t: 'swing', x: p.x, y: p.y, ang, range: w.range, arc: thrust ? 0.3 : w.arc, heavy: heavy || great, type, dir: great ? (slam ? -1 : 1) : p.swingDir, dur: great ? 0.12 : p.swingMax, thrust, aura: p.auraT > 0, whip: w.shape === 'whip', fist: w.cat === 'fist', enchant: p.buffs.enchant?.elem });
       for (const e of this.enemies) {
         if (e.dead || e.hidden) continue;
@@ -1990,7 +1999,7 @@ export class World {
     }
     this.damageEnemy(e, base * (crit ? d.critDmg : 1) * charge + extra, type, { src: 'attack', crit, heavy, proj, dist: opt.dist, elem: opt.elem, pen: opt.pen });
     if (opt.weapon && !e.dead) this.weaponExtras(e, base, crit, bleeding);
-    if (this.b.cls === 'predator' && bleeding) this.heal(d.maxHp * 0.0018, 'steal');
+    if (this.b.cls === 'predator' && bleeding) this.heal(d.maxHp * 0.0006, 'steal');
     if (p.buffs.apex && !e.dead) this.applyStatus(e, 'bleed', 2);
     if (p.spirits.length && !e.dead) {
       const fire = this.spiritCount('fire'), forest = this.spiritCount('forest'), wind = this.spiritCount('wind');
@@ -2277,7 +2286,8 @@ export class World {
     if (opt.src === 'attack' || opt.src === 'aoe') {
       let ls = (this.s.lifesteal || 0) + this.modAdd('lifesteal');
       if (this.f.has('lowHpDrain') && p.hp < d.maxHp / 2) ls *= 2;
-      if (ls > 0) this.heal(Math.min(dmg * ls * LIFESTEAL_PER * (opt.src === 'aoe' ? 0.35 : 1), d.maxHp * 0.025), 'steal'); // 범위 공격 흡혈은 약하게, 한 번에 최대 체력 2.5%까지
+      const more = p.lsT === this.t; p.lsT = this.t; // 한 번 휘둘러 여러 적을 맞히면 두 번째 적부터는 범위 공격처럼 약하게
+      if (ls > 0) this.heal(Math.min(dmg * ls * LIFESTEAL_PER * (opt.src === 'aoe' || more ? 0.35 : 1), d.maxHp * 0.025), 'steal'); // 범위 공격 흡혈은 약하게, 한 번에 최대 체력 2.5%까지
     }
     if (opt.src === 'attack' && e.def.reflect) this.hurtPlayer(Math.min(dmg * e.def.reflect, d.maxHp * 0.08), 'phys', null, { direct: true });
     if (e.hp <= 0 && !e.puppet) this.killEnemy(e);
@@ -2806,7 +2816,7 @@ export class World {
       if (this.rng.chance(ch)) this.spawnDrop(e.x, e.y, 'tweapon', rnd() < 0.45 ? rollTowerGear(this.tower.f, rnd) : rollTowerWeapon(this.tower.f, rnd)); // 45%는 방어구 · 장신구 · 왼손
     }
     if (def.condEcho && def.condEcho.when === 'burning' && st.burn && this.rng.chance(def.condEcho.rate)) this.spawnDrop(e.x, e.y, 'echo', def.condEcho.id);
-    if (def.onDeath?.cloud) { const c = def.onDeath.cloud; this.addCloud(e.x, e.y, c.r, c.dps, c.dur, 'e'); }
+    if (def.onDeath?.cloud) { const c = def.onDeath.cloud, x = e.x, y = e.y; this.emit({ t: 'telegraphCircle', x, y, r: c.r, dur: 0.6 }); this.delayed.push({ t: 0.6, run: () => this.addCloud(x, y, c.r, c.dps, c.dur, 'e') }); } // 독구름은 0.6초 예고 뒤에 피어난다 (쓰러뜨린 근접이 피할 틈)
     if (def.onDeath?.blast) { const b = def.onDeath.blast, x = e.x, y = e.y; this.emit({ t: 'telegraphCircle', x, y, r: b.r, dur: 0.7 }); this.emit({ t: 'text', x, y: y - 20, text: '증기가 샌다!', color: '#f0e8d8' }); this.delayed.push({ t: 0.7, run: () => { this.enemyArea(e, x, y, b.r, e.atk * b.mul, 'mag', null); this.emit({ t: 'skillAoe', x, y, r: b.r, fx: 'burst' }); } }); } // 증기 골렘: 쓰러지면 0.7초 뒤 터진다
     if (this.life && !this.practice) {
       const luck = 1 + this.modAdd('luck'), extra = e.champion ? 2 : e.affix ? 1.5 : 1;

@@ -73,7 +73,7 @@ function placeInterior(w) {
 
 // ───── 지금 할 수 있는 생활 동작 (가까운 물건이 없을 때) ─────
 export function lifeAction(w) {
-  if (!w.life || w.mode !== 'field' || w.player.fish) return null;
+  if (!w.life || w.mode !== 'field' || w.player.fish || w.climb || w.raid) return null; // 탑 · 레이드 안에서는 생활(낚시 · 벌목 · 밭)을 하지 않는다
   const p = w.player, ax = p.aimX, ay = p.aimY;
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
   // 나무: 둘레 칸 중 바라보는 쪽에 가까운 것

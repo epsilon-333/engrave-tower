@@ -133,7 +133,7 @@ export const SkillMethods = {
         this.emit({ t: 'skillSingle', x: e.x, y: e.y, fx: op.fx || ctx.def.fx, elem: ctx.elem, big: !!op.scaleRes || ctx.def.ult });
         const bleedN = e.st.bleed?.n || 0;
         countHits([e]);
-        if (op.healPerBleed && bleedN) { this.heal(this.d.maxHp * op.healPerBleed * bleedN, 'skill'); this.emit({ t: 'text', x: p.x, y: p.y - 22, text: `포식 +${bleedN}`, color: '#e0445a' }); }
+        if (op.healPerBleed && bleedN) { this.heal(this.d.maxHp * op.healPerBleed * Math.min(5, bleedN), 'skill'); /* 다섯 중첩까지 */ this.emit({ t: 'text', x: p.x, y: p.y - 22, text: `포식 +${bleedN}`, color: '#e0445a' }); }
         break;
       }
       case 'proj': {

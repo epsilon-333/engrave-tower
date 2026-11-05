@@ -16,7 +16,7 @@ export const STAT_INFO = {
 // 흡혈 1 = 평타로 준 피해의 0.3%를 체력으로 되찾는다 (세계 계산과 화면 설명이 이 값 하나를 쓴다)
 export const LIFESTEAL_PER = 0.003;
 export const SPECIAL_INFO = {
-  lifesteal: { name: '흡혈', unit: '', desc: `1마다 평타로 준 피해의 ${LIFESTEAL_PER * 100}%를 체력으로 (범위 공격은 그 35%, 한 번에 최대 체력 2.5%까지)` },
+  lifesteal: { name: '흡혈', unit: '', desc: `1마다 평타로 준 피해의 ${LIFESTEAL_PER * 100}%를 체력으로 (범위 공격 · 한 번에 맞힌 두 번째 적부터는 그 35%, 한 번에 최대 체력 2.5%까지)` },
   reflect: { name: '반사', unit: '%' },
   toxicity: { name: '독성', unit: '' },
   fireAff: { name: '화염 친화', unit: '' },

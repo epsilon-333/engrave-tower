@@ -85,10 +85,10 @@ export const SKILLS = {
   herdRoar: { name: '몰이 포효', role: '제어', cd: 12, cost: 20, scale: 'phys', fx: 'roar', mo: 'roar',
     desc: '가장 가까운 적 하나만 빼고 주변 적을 3초 동안 도망치게 한다. 본능 20.', do: [{ op: 'aoe', at: 'self', r: 110, mul: 0.2, flee: 3, spareNearest: true }] },
   devour: { name: '포식', role: '마무리', cd: 7, cost: 30, scale: 'phys', fx: 'bite', aim: 'stack', mo: 'bite',
-    desc: '크게 문다. 그 적의 출혈 중첩만큼 체력을 회복한다(중첩당 0.6%). 출혈은 그대로 남는다. 본능 30.', do: [{ op: 'single', range: 54, mul: 2.6, healPerBleed: 0.006, fx: 'bite' }] },
+    desc: '크게 문다. 그 적의 출혈 중첩만큼 체력을 회복한다(중첩당 0.6% · 다섯 중첩까지). 출혈은 그대로 남는다. 본능 30.', do: [{ op: 'single', range: 54, mul: 2.6, healPerBleed: 0.006, fx: 'bite' }] },
   apexPredator: { name: '최상위 포식자', role: '궁극', cd: 30, costAll: { min: 60 }, scale: 'phys', fx: 'buff', ult: true, mo: 'roar',
-    desc: '12초 동안 이동 속도 +40%, 모든 공격에 출혈 2중첩, 흡혈 +15(평타 피해의 4.5%를 체력으로). 본능이 많을수록 공격력도 오른다.',
-    do: [{ op: 'aoe', at: 'self', r: 90, mul: 1.0, status: 'bleed', stacks: 2, fx: 'roar' }, { op: 'buff', id: 'apex', dur: 12, mods: { moveSpeed: 1.4, lifesteal: 15, dmgMul: 1.1 }, color: '#e0445a', scaleRes: true }] },
+    desc: '12초 동안 이동 속도 +40%, 모든 공격에 출혈 2중첩, 흡혈 +4(평타 피해의 1.2%를 체력으로). 본능이 많을수록 공격력도 오른다.',
+    do: [{ op: 'aoe', at: 'self', r: 90, mul: 1.0, status: 'bleed', stacks: 2, fx: 'roar' }, { op: 'buff', id: 'apex', dur: 12, mods: { moveSpeed: 1.4, lifesteal: 4, dmgMul: 1.1 }, color: '#e0445a', scaleRes: true }] },
 
   // ══════ 공룡 수인 · 대지 거수 ══════
   tailSwipe: { name: '꼬리 휘두르기', role: '공격', cd: 4, gain: 10, scale: 'phys', fx: 'spin', mo: 'spin',
@@ -432,7 +432,7 @@ export const SKILL_BAL = {}; // 스킬 하나씩은 보정하지 않는다 (한 
 // ── 클래스 밸런스 보정 (tools/balance.mjs: 30초 실제 싸움 · 무리 / 단단한 적) ──
 export const CLASS_BAL = {"predator": 1, "behemoth": 0.92, "elementalist": 1.07, "chronomancer": 0.9, "guardian": 1.6, "greatsword": 1.6, "berserker": 0.8, "thrower": 1.08, "necromancer": 0.71, "hexer": 0.96, "shadowblade": 0.97, "venomHunter": 1.6, "spiritcaller": 1.5, "ranger": 1.04, "dragoon": 0.68, "dragonSage": 1.09}; // 결투(사람 대 사람)
 // 몬스터를 상대할 때의 클래스 보정 (tools/tests/climbsim.mjs 로 클래스마다 오른 층을 비교해 맞춤)
-export const CLASS_BAL_PVE = {"predator": 1.2, "behemoth": 1.03, "elementalist": 1.4, "chronomancer": 1.45, "guardian": 2.14, "greatsword": 1.72, "berserker": 0.8, "thrower": 1.13, "necromancer": 1.4, "hexer": 1.2, "shadowblade": 0.87, "venomHunter": 1.51, "spiritcaller": 2.2, "ranger": 1.28, "dragoon": 0.63, "dragonSage": 1.2};
+export const CLASS_BAL_PVE = {"predator":  0.75, "behemoth":  1.03, "elementalist":  1.15, "chronomancer":  1.45, "guardian":  2.6, "greatsword":  1.72, "berserker":  0.8, "thrower":  1.3, "necromancer":  1.7, "hexer":  1.25, "shadowblade":  1.05, "venomHunter":  1.65, "spiritcaller":  2.2, "ranger":  1.28, "dragoon":  1.05, "dragonSage":  0.9};
 
 // ── 돈 · 미션으로 얻는 CC기 (누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다) ──
 export const CC_EXTRA = {
