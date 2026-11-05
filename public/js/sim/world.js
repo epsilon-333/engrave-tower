@@ -538,6 +538,8 @@ export class World {
   get canSwim() { return true; }
   get canDive() { return true; }
   wallAt(px, py) { const t = this.tileAt(px, py); return t === T_WALL || t === T_CRACK || t === T_BUILD || t === T_GATE; }
+  // 싸울 상대인가: 살아 있고 보이며, 허수아비는 광장 · 연습장에서만 (바깥의 허수아비는 스킬이 노리지 않는다)
+  targetable(e) { return !e.dead && !e.hidden && (e.def.ai !== 'dummy' || this.mode === 'plaza' || !!this.practice); }
   blocked(x, y, r, mode = null) {
     const s = (px, py) => this.solid(px, py, mode);
     return s(x - r, y - r) || s(x + r, y - r) || s(x - r, y + r) || s(x + r, y + r) || s(x, y - r) || s(x, y + r) || s(x - r, y) || s(x + r, y);
@@ -1754,7 +1756,7 @@ export class World {
   // 자동 조준: 스킬 성격에 맞는 대상 / 지점을 고른다
   pickTarget(def) {
     const p = this.player, rule = aimRule(def), R = 280;
-    const list = this.enemies.filter((e) => !e.dead && !e.hidden && (e.def.ai !== 'dummy' || this.mode === 'plaza' || this.practice) && Math.hypot(e.x - p.x, e.y - p.y) < R);
+    const list = this.enemies.filter((e) => this.targetable(e) && Math.hypot(e.x - p.x, e.y - p.y) < R);
     if (!list.length) return null;
     const dist = (e) => Math.hypot(e.x - p.x, e.y - p.y);
     const nearest = () => list.reduce((a, b) => (dist(a) < dist(b) ? a : b));
@@ -1848,7 +1850,7 @@ export class World {
     const p = this.player;
     let best = null, bd = range;
     for (const e of this.enemies) {
-      if (e.dead || e.hidden || e.def.ai === 'dummy' && this.mode !== 'plaza') continue;
+      if (!this.targetable(e)) continue;
       const dx = e.x - p.x, dy = e.y - p.y, dist = Math.hypot(dx, dy);
       if (dist > range) continue;
       let score = dist;
@@ -2285,7 +2287,7 @@ export class World {
         break;
       }
       case 'danceStrike': {
-        const cand = this.enemiesNear(p.x, p.y, op.r).filter((e) => e.def.ai !== 'dummy' || this.mode === 'plaza' || this.practice);
+        const cand = this.enemiesNear(p.x, p.y, op.r).filter((e) => this.targetable(e));
         if (!cand.length) break;
         let e = cand[this.rng.int(0, cand.length - 1)];
         if (cand.length > 1 && e.id === p.lastDance) e = cand.find((o) => o.id !== p.lastDance);
@@ -2432,7 +2434,7 @@ export class World {
     const p = this.player;
     f.sp = (f.sp ?? 3) - DT * (f.emp > 0 ? 2 : 1);
     if (f.sp > 0) return;
-    const near = this.enemies.filter((e) => !e.dead && !e.hidden && (e.def.ai !== 'dummy' || this.practice || this.mode === 'plaza') && Math.hypot(e.x - p.x, e.y - p.y) < 170).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
+    const near = this.enemies.filter((e) => this.targetable(e) && Math.hypot(e.x - p.x, e.y - p.y) < 170).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
     if (!near.length) { f.sp = 0.5; return; }
     f.sp = spiritSpecialCd(f.grade);
     const king = f.grade >= 3, X = SPIRIT_SPECIAL[f.elem], elem = SPIRIT_DMG_ELEM[f.elem], col = ELEM[elem]?.color || '#9bffb0';
@@ -2472,7 +2474,7 @@ export class World {
     f.cd -= DT * (f.emp > 0 ? 2 : 1);
     if (f.cd > 0) return;
     let tgt = null, td = 150;
-    for (const e of this.enemies) { if (e.dead || e.hidden || e.def.ai === 'dummy' && !this.practice && this.mode !== 'plaza') continue; const d2 = Math.hypot(e.x - p.x, e.y - p.y); if (d2 < td) { td = d2; tgt = e; } }
+    for (const e of this.enemies) { if (!this.targetable(e)) continue; const d2 = Math.hypot(e.x - p.x, e.y - p.y); if (d2 < td) { td = d2; tgt = e; } }
     if (!tgt) { f.cd = 0.2; return; }
     f.cd = 1.15 - 0.08 * f.grade;
     const elem = SPIRIT_DMG_ELEM[f.elem], dmg = this.skillAtk('best') * 0.6 * E.atk * spiritPower(f.id, f.star, f.lv) * (f.emp > 0 ? 1.6 : 1);
@@ -2772,7 +2774,7 @@ export class World {
       if (!al.perm) al.t -= DT; // 사령술사의 부하는 쓰러질 때까지
       al.age = (al.age || 0) + DT;
       al.cd -= DT * (p.buffs.fusion && al.kind === 'spirit' ? 2 : 1);
-      const near = (r) => { let best = null, bd = r; for (const e of this.enemies) { if (e.dead || e.hidden || e.def.ai === 'dummy' && this.mode !== 'plaza') continue; const dd = Math.hypot(e.x - al.x, e.y - al.y); if (dd < bd) { bd = dd; best = e; } } return best; };
+      const near = (r) => { let best = null, bd = r; for (const e of this.enemies) { if (!this.targetable(e)) continue; const dd = Math.hypot(e.x - al.x, e.y - al.y); if (dd < bd) { bd = dd; best = e; } } return best; };
       if (al.kind === 'orbitAxe') {
         al.phase += DT * 7;
         al.x = p.x + Math.cos(al.phase) * al.r; al.y = p.y - 4 + Math.sin(al.phase) * al.r * 0.7;
@@ -2790,7 +2792,7 @@ export class World {
         if (pd > 300) { al.x = p.x - p.dir * 24; al.y = p.y; this.emit({ t: 'summonFx', x: al.x, y: al.y - 20, kind: 'spiritKing', elem: al.elem }); }
         let tgt = null, bd = 170;
         for (const e of this.enemies) {
-          if (e.dead || e.hidden || (e.def.ai === 'dummy' && this.mode !== 'plaza' && !this.practice)) continue;
+          if (!this.targetable(e)) continue;
           if (Math.hypot(e.x - p.x, e.y - p.y) > 190) continue;
           const dd = Math.hypot(e.x - al.x, e.y - al.y);
           if (dd < bd) { bd = dd; tgt = e; }
@@ -2870,7 +2872,7 @@ export class World {
             for (const o of this.allies) if (o !== al && o.tgt && !o.tgt.dead) claims.set(o.tgt.id, (claims.get(o.tgt.id) || 0) + 1);
             let best = null, bs = 1e9;
             for (const e of this.enemies) {
-              if (e.dead || e.hidden || e.def.ai === 'dummy' && this.mode !== 'plaza') continue;
+              if (!this.targetable(e)) continue;
               const dd = Math.hypot(e.x - al.x, e.y - al.y);
               if (dd > 220 || Math.hypot(e.x - p.x, e.y - p.y) > 130) continue;
               const sc = dd + (claims.get(e.id) || 0) * 70;
@@ -3751,7 +3753,7 @@ export class World {
   updateNecroSpecial(al, p) {
     const pd = Math.hypot(al.x - p.x, al.y - p.y);
     if (pd > 360) { al.x = p.x; al.y = p.y; this.emit({ t: 'summonFx', x: al.x, y: al.y, kind: al.kind }); }
-    const foes = this.enemies.filter((e) => !e.dead && !e.hidden && !(e.def.ai === 'dummy' && this.mode !== 'plaza'));
+    const foes = this.enemies.filter((e) => this.targetable(e));
     let tx, ty;
     if (al.kind === 'grasper') { // 내 뒤쪽 비스듬히 50만큼 떨어져 떠 있다
       al.side ||= -(p.dir || 1); // 처음 불렀을 때 내 뒤쪽 · 그 뒤로는 그쪽을 지킨다 (끌고 간 적이 다시 내 앞으로 오지 않게)

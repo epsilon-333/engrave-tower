@@ -59,7 +59,7 @@ export class Hub {
     // 왼쪽 세로 탭 (묶음별): 나 · 세계 · 시설 — 시설 탭은 그 시설에서 열었을 때만 보인다
     const GROUPS = [['나', ['char', 'gear', 'bag', 'altar']], ['세계', ['codex', 'quest', 'where', 'hunt']], ['시설', ['shop', 'forge', 'craft', 'trade', 'learn', 'cook', 'storage']]];
     const tabName = Object.fromEntries(tabs);
-    const dot = (k) => `${k === 'char' && s.points ? ` <b class="dot">${s.points}</b>` : ''}${k === 'quest' && (s.quests || []).some((q) => q.done) ? ' <b class="dot">!</b>' : ''}`;
+    const dot = (k) => `${k === 'char' && s.points ? ` <b class="dot" title="나눌 스탯 포인트 ${s.points}점">${s.points}</b>` : ''}${k === 'quest' && (s.quests || []).some((q) => q.done) ? ' <b class="dot" title="보상을 받을 의뢰가 있다">!</b>' : ''}`;
     const rail = GROUPS.map(([gname, ks]) => { const list = ks.filter((k) => tabName[k]); return list.length ? `<div class="rail-g"><div class="rail-h">${gname}</div>${list.map((k) => `<button data-tab="${k}" class="${this.tab === k ? 'on' : ''}">${tabName[k]}${dot(k)}</button>`).join('')}</div>` : ''; }).join('');
     this.root.innerHTML = `
       <header class="hub-top">
@@ -143,10 +143,10 @@ export class Hub {
         <div class="list">${b.synergies.map((x) => `<div class="li ${x.on ? 'on' : 'off'}"><span class="tag" style="--c:${TAGS[x.tag].color}">${TAGS[x.tag].name} ${x.n}/${x.need}</span> ${x.text}</div>`).join('') || '<div class="muted">없음</div>'}</div>
         <h4>조건 효과</h4>
         <div class="list">${b.notes.map((n) => `<div class="li ${n.kind}">${esc(n.text)}</div>`).join('') || '<div class="muted">없음</div>'}</div>
-        <h4>빌드 코드</h4>
+        <details class="code-wrap"><summary>빌드 코드 (친구와 나누기 · 비교하기)</summary>
         <div class="code-row"><input id="buildCode" value="${encodeLoadout(toLoadout(s))}" readonly><button class="sm" data-act="copyCode">복사</button></div>
         <div class="code-row"><input id="peekCode" placeholder="다른 빌드 코드 붙여 넣기"><button class="sm" data-act="peek">보기</button></div>
-        <div id="peekOut"></div>
+        <div id="peekOut"></div></details>
         <p class="muted">처음부터 다시 시작하려면: Esc → 설정 → 처음부터 다시 시작</p>
       </section>
     </div>`;
@@ -166,7 +166,7 @@ export class Hub {
       </div>`;
     }).join('');
 
-    const echoSpan = ([id, n]) => `<span class="echo" style="--c:${ECHOES[id].color}">◆ ${ECHOES[id].name} <b>${n}</b></span>`;
+    const echoSpan = ([id, n]) => `<span class="echo" style="--c:${ECHOES[id].color}">◇ ${ECHOES[id].name} <b>${n}</b></span>`;
     const haveE = Object.entries(s.echoes).filter(([id, n]) => n > 0 && ECHOES[id]);
     const echoInv = haveE.length ? `${haveE.filter(([id]) => !ECHOES[id].part).map(echoSpan).join('') || '<span class="muted">계열 잔향 없음</span>'}
       <div class="muted" style="margin-top:4px">몬스터 부산물</div>${haveE.filter(([id]) => ECHOES[id].part).map(echoSpan).join('') || '<span class="muted">없음</span>'}` : '<span class="muted">잔향이 없습니다. 사냥터에서 몬스터를 사냥하세요.</span>';
@@ -449,7 +449,7 @@ export class Hub {
     const bySlot = () => '';
     return `
       <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots">${gearRow}</div>
-        ${b.notes.filter((n) => /^양손|둘:|^쌍/.test(n.text)).map((n) => `<p class="up">✦ ${esc(n.text)}</p>`).join('') || ''}</section>
+        ${b.notes.filter((n) => /^양손|둘:|^쌍/.test(n.text)).map((n) => `<p class="up">◇ ${esc(n.text)}</p>`).join('') || ''}</section>
       <section class="panel"><h3>${ownedOnly ? '내 장비' : '대장간'}</h3>
         ${gearFilters}
         <div class="eng-split"><div class="cards eng-rows">${all.map(gearRowItem).join('') || '<p class="muted">없음</p>'}</div>
@@ -462,7 +462,7 @@ export class Hub {
       <div class="zones">${ZONES.map((z) => {
         const mons = [...z.pool, z.elite].map((m) => {
           const def = MONSTERS[m], seen = s.codex.kills[m];
-          const ec = seen ? `<span style="color:${ECHOES[def.echo.id].color}">◆ ${ECHOES[def.echo.id].name}</span>` : '<span class="muted">◆ ???</span>';
+          const ec = seen ? `<span style="color:${ECHOES[def.echo.id].color}">◇ ${ECHOES[def.echo.id].name}</span>` : '<span class="muted">◇ ???</span>';
           const cond = def.condEcho && seen ? `<div class="hint">숨겨진 잔향: ${def.condEcho.hint}하면 ${s.codex.echoes[def.condEcho.id] ? ECHOES[def.condEcho.id].name : '???'}</div>` : '';
           const res = seen ? `<span class="muted">물저 ${def.pres} · 마저 ${def.mres}${def.reflect ? ' · 반사' : ''}</span>` : '';
           return `<div class="mon ${def.elite ? 'elite' : ''}"><b>${seen ? def.name : '???'}</b>${def.boss ? ' <span class="warn">탑의 주인</span>' : def.elite ? ' <span class="warn">정예</span>' : ''} ${ec} ${res}${cond}</div>`;
@@ -767,7 +767,13 @@ export function renderRaceSelect(root, onPick, onIntro) {
         <p class="sw"><span class="up">강점 ${r.strong}</span><span class="down">약점 ${r.weak}</span></p>
         <details class="mini-wrap" onclick="event.stopPropagation()"><summary>시작 스탯</summary><div class="mini-stats">${BASE_STATS.map((k) => `<span><i>${STAT_INFO[k].short}</i><em style="width:${r.base[k] * 4}px"></em>${r.base[k]}</span>`).join('')}</div></details>
       </button>`; }).join('')}</div>
+      <p class="more-hint" aria-hidden="true">▼ 아래로 내리면 종족이 더 있어요</p>
     </div>`;
+  { // 카드가 화면 아래로 넘칠 때만 안내, 조금이라도 내리면 사라진다
+    const hint = root.querySelector('.more-hint'), sc = document.scrollingElement;
+    const upd = () => { hint.hidden = sc.scrollHeight <= innerHeight + 4 || sc.scrollTop > 40; };
+    upd(); addEventListener('scroll', upd, { passive: true });
+  }
   root.querySelectorAll('.race').forEach((b) => b.addEventListener('click', () => onPick(b.dataset.race)));
   root.querySelector('#introAgain')?.addEventListener('click', onIntro);
 }

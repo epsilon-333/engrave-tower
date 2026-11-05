@@ -3365,7 +3365,7 @@ export class Renderer {
 
   drawObject(w, o, dt) {
     const g = this.g, t = w.t;
-    if (o.kind === 'climbDoor' || o.kind === 'climbReward' || o.kind === 'climbRoom') return drawClimbObject(this, w, o, dt); // 탑 등반
+    if (o.kind === 'climbDoor') return drawClimbObject(this, w, o, dt); // 탑 등반
     if (o.kind === 'gate') {
       const x = o.door * TILE, y = 1 * TILE;
       g.fillStyle = hexA(o.color, 0.55 + 0.2 * Math.sin(t * 3)); g.fillRect(x + 3, y + 3, 26, 29);
@@ -4150,8 +4150,6 @@ export class Renderer {
     for (const o of w.objects) if (inView(o.x, o.y)) {
       if (o.kind === 'portal') { hole(o.x, o.y, 70); colored.push([o.x, o.y, 50, o.color]); }
       else if (o.kind === 'climbDoor') { hole(o.x, o.y - 16, 60); colored.push([o.x, o.y - 16, 46, CLIMB_REWARDS[o.next]?.color || '#ffffff']); }
-      else if (o.kind === 'climbReward') { if (!o.opened) { hole(o.x, o.y - 18, 80); colored.push([o.x, o.y - 18, 60, CLIMB_REWARDS[o.reward]?.color || '#ffffff']); } }
-      else if (o.kind === 'climbRoom') { hole(o.x, o.y - 8, 110); colored.push([o.x, o.y - 8, 70, o.room === 'altar' ? '#c45cff' : '#ffb050']); }
       else if (o.kind === 'camp') { hole(o.x + 11, o.y - 2, 80); colored.push([o.x + 11, o.y - 2, 60, '#ffa040']); }
       else if (o.kind === 'shrine' && !o.opened) { hole(o.x, o.y - 28, 40, 0.8); colored.push([o.x, o.y - 28, 30, '#c9a8ff']); }
       else if (o.kind === 'stairs' || o.kind === 'merchant' || o.kind === 'npc') { hole(o.x, o.y - 6, 40, 0.7); }
@@ -4605,6 +4603,9 @@ export class Renderer {
     const touch = document.body.classList.contains('touch');
     const box = (touch ? 16 : 20) * v, gap = 12 * v;
     const sk4 = (w.b.skills || []).filter((x) => x !== 'weapon'); while (sk4.length < 4) sk4.push(null); // Q · E · R · F 자리는 늘 그대로 (빈 각인 칸은 빈 칸)
+    // 빈 칸 아래 안내: 다음 클래스 스킬이 열리는 레벨, 이미 열렸으면 공명 제단에서 끼운다
+    const nextLv = Math.min(...Object.values(SKILLS).filter((sk) => sk.cls === w.b.cls && (sk.unlock || 1) > w.b.level).map((sk) => sk.unlock));
+    const emptyHint = (w.b.available || []).some((id) => SKILLS[id]?.cls && !sk4.includes(id)) ? '제단에서' : Number.isFinite(nextLv) ? `Lv ${nextLv}` : '빈 칸';
     const slots = [...sk4.slice(0, 4), 'weapon'];
     const keys = ['Q', 'E', 'R', 'F', touch ? '무기' : '우클릭'];
     const n = slots.length + 1;
@@ -4639,7 +4640,7 @@ export class Renderer {
         this.text(this.fitName(WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기', box * 1.3, Math.max(1, u - 1)), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#dcd2c6', 'center');
         return;
       }
-      if (!id) { if (touch) return; this.cooldownBox(x, y0, box, 1, keys[i], '', null, 0); g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); this.text('빈 칸', x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#8c8079', 'center'); return; }
+      if (!id) { if (touch) return; this.cooldownBox(x, y0, box, 1, keys[i], '', null, 0); g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); this.text(emptyHint, x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#8c8079', 'center'); return; }
       const sk = SKILLS[id];
       const cd = p.cds[id] || 0, max = p.cdMax?.[id] || sk.cd;
       const k = cd > 0 ? 1 - cd / max : 1;
@@ -4741,7 +4742,7 @@ export class Renderer {
     let y = sy0 + stripH + 10 * u;
     if (w.loot.banked) { this.text('야영지에 잔향을 맡김', mx + mw, y, tu2, '#ffd88a', 'right'); y += 12 * u; }
     for (const [id, n] of Object.entries(w.loot.echoes)) {
-      this.text(`◆ ${ECHOES[id].name} ${n}`, mx + mw, y, tu2, ECHOES[id].color, 'right');
+      this.text(`◇ ${ECHOES[id].name} ${n}`, mx + mw, y, tu2, ECHOES[id].color, 'right');
       y += 12 * u;
     }
     if (w.goalNeeds?.length) {
@@ -4756,7 +4757,7 @@ export class Renderer {
     const obj = w.zone.id === 'cave' && !w.depth ? storyObjective(w.story) : null;
     if (obj) {
       y += 20 * u;
-      this.text('✦ 이야기', mx + mw, y, u, '#f0e0b0', 'right');
+      this.text('★ 이야기', mx + mw, y, u, '#f0e0b0', 'right');
       for (const line of obj) { y += 14 * u; this.text(line, mx + mw, y, Math.max(1, u - 1), '#e8dcc0', 'right'); }
     }    this.hudRightBottom = y + 8 * u;
   }

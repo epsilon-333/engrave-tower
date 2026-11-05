@@ -56,6 +56,8 @@ import { createClimb } from './ui/climb.js';
 import { CLASS_STATS } from './data/statscale.js';
 import { JOURNEY, journeyNow, rewardText as journeyReward } from './data/journey.js';
 import { oathScore, newClimbSave } from './data/climb.js';
+// 디버그 핸들: 내 컴퓨터(localhost)나 주소에 ?debug 가 있을 때만 (배포판에서 콘솔 치트가 쉽지 않게)
+const DEBUG = /^(localhost|127\.|192\.168\.|\[::1\])/.test(location.hostname) || new URLSearchParams(location.search).has('debug');
 
 let save = loadSave();
 const titleEl = document.getElementById('title');
@@ -1220,7 +1222,7 @@ function showWorldIntro() {
     <div class="tut intro-short">
       <p class="big">섬 한가운데, <b>각인의 탑</b> 꼭대기의 빛이 꺼져 간다.</p>
       <p>섬을 탐험해 <b>몬스터 지대</b>를 찾고, 사냥으로 얻은 <b>부산물</b>로 <b>각인</b>을 새겨 강해진 뒤 탑을 오른다.<br>구역의 주인을 쓰러뜨릴 때마다(10층마다) 다음엔 그 위층부터 시작할 수 있다.</p>
-      <p>무엇을 할지 모르겠다면 <b>왼쪽 위의 여정</b>과 화면 가장자리의 <b>화살표</b>를 따라가자. (J: 여정 전체)</p>
+      <p>무엇을 할지 모르겠다면 <b>화면의 여정</b>(데스크톱은 작은 지도 아래)과 화면 가장자리의 <b>화살표</b>를 따라가자. (J: 여정 전체)</p>
       <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · 우클릭 무기 기술 · Q·E·R·F 스킬 · Space 구르기(무적) · G 상호작용 · C 캐릭터 · M 지도 · Esc 메뉴</p>
       <details><summary class="muted">섬에서 할 수 있는 것 더 보기</summary>
       <p>섬은 <b>하나로 이어진 넓은 땅</b>이다. 레벨은 도감(처음 보는 몬스터 · 장소 · 기록 · 사람)으로 오르고, 탑의 권장 레벨에 맞춰 섬을 돌아다니면 된다.</p>
@@ -1928,7 +1930,7 @@ function endRun(kind) {
   cloudSaveNow(save);
   const done = (save.quests || []).filter((q) => q.done).length;
   const title = { clear: '무사히 귀환했다', retreat: '긴급 귀환', dead: '쓰러졌다…' }[kind];
-  const echoes = Object.entries(res.kept).map(([id, n]) => `<span class="echo" style="--c:${ECHOES[id].color}">◆ ${ECHOES[id].name} ×${n}</span>`).join('') || '<span class="muted">얻은 잔향 없음</span>';
+  const echoes = Object.entries(res.kept).map(([id, n]) => `<span class="echo" style="--c:${ECHOES[id].color}">◇ ${ECHOES[id].name} ×${n}</span>`).join('') || '<span class="muted">얻은 잔향 없음</span>';
   world.state = 'over';
   sfx(kind === 'dead' ? 'error' : 'levelup', { vol: 0.6 });
   showModal(`
@@ -2078,7 +2080,7 @@ function touchInteract() {
 }
 function readInput() {
   input.autoAim = getAutoAim();
-  if (window.__bot) { window.__bot(input, world); return; } // 디버그: 자동 플레이
+  if (DEBUG && window.__bot) { window.__bot(input, world); return; } // 디버그: 자동 플레이
   if (touch) { touch.apply(); return; }
   if (padNow?.active) { applyPad(padNow, input, world?.player); return; }
   input.moveX = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
@@ -2112,7 +2114,7 @@ function showMerchant(zoneId) {
     showModal(`<h2>떠돌이 상인 오반</h2>
       <p class="muted">"잔향이 필요하오? 값만 맞으면 드리지." · 보유 골드 ${save.gold}</p>
       <div class="shop-list">${world.merchantStock.map((it, i) => `<div class="shop-row" style="--c:${ECHOES[it.id].color}">
-        <span>◆ ${ECHOES[it.id].name}</span><span class="muted">남은 수량 ${it.left}</span>
+        <span>◇ ${ECHOES[it.id].name}</span><span class="muted">남은 수량 ${it.left}</span>
         <button data-buy="${i}" ${it.left && save.gold >= it.price ? '' : 'disabled'}>${it.price} 골드</button></div>`).join('')}</div>
       
       <button data-close>닫기</button>`);
@@ -3674,7 +3676,7 @@ function tick(ts) {
 }
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-window.__game = { get world() { return world; }, get paused() { return paused; }, get coRun() { return coRun; }, get modal() { return !!modal; }, renderer, hub, dbg: { climb: climbUi, spawnHappening: () => spawnHappening(), enterIsland: (id) => enterIsland(id), save: () => save, talk: (id) => sanctTalk(id), talkId: (id) => arcTalk(id) || portTalk(id), capExec } }; // 디버그용
+if (DEBUG) window.__game = { get world() { return world; }, get paused() { return paused; }, get coRun() { return coRun; }, get modal() { return !!modal; }, renderer, hub, dbg: { climb: climbUi, spawnHappening: () => spawnHappening(), enterIsland: (id) => enterIsland(id), save: () => save, talk: (id) => sanctTalk(id), talkId: (id) => arcTalk(id) || portTalk(id), capExec } }; // 디버그용
 
 // 로그인·저장 상태 표시
 const chip = document.createElement('div');

@@ -5,8 +5,6 @@ import { CURVE_HP, CURVE_ATK } from './curve.js';
 import { MONSTERS } from './monsters.js';
 
 export const CLIMB_TOP = 100;
-// 한 등반에서 새길 수 있는 각인은 6개까지 (다 차면 가진 각인의 연마만 나온다)
-export const MAX_ENG = 6;
 
 // 구역: 10층마다 풍경 · 몬스터가 바뀐다. 5층에 수호자, 10층에 구역의 주인
 export const ACTS = [
@@ -52,9 +50,9 @@ const BASE_REF = { hp: 48, atk: 8.5 }; // 1층(이끼 굴) 몬스터 평균에 �
 export function climbMul(f, zoneId, oath = {}) {
   const ref = ZONE_REF[zoneId] || BASE_REF;
   // 난이도 표 하나 (data/curve.js · tools/curve.mjs 로 만든다): 층 f 의 보통 몬스터 평균 체력 · 공격력. 구역마다 몬스터 기본값이 달라도 평균이 표에 맞게 나눠 준다
-  const i = Math.max(1, Math.min(100, f)), over = Math.pow(1.03, Math.max(0, f - 100)); // 100층 너머는 층마다 3%씩
-  const hp = CURVE_HP[i] * over / ref.hp * (1 + 0.15 * (oath.hide || 0));
-  const atk = CURVE_ATK[i] * over / ref.atk * (1 + 0.15 * (oath.fangs || 0));
+  const i = Math.max(1, Math.min(CLIMB_TOP, f));
+  const hp = CURVE_HP[i] / ref.hp * (1 + 0.15 * (oath.hide || 0));
+  const atk = CURVE_ATK[i] / ref.atk * (1 + 0.15 * (oath.fangs || 0));
   return { hp, atk };
 }
 // 층의 특성: 4층부터 싸움터의 1/4 정도에 붙는다 (같은 층이 되풀이되는 느낌을 줄인다)

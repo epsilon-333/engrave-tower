@@ -57,15 +57,17 @@ export function createIntro(display, { onDone, loop = false, startAt = 0 } = {})
     dg.drawImage(stage.lo, ox, oy, IW * sc, IH * sc);
     const a = subtitleAlpha(i, lt);
     if (a > 0) {
-      const fs = Math.max(18, Math.round(sc * 4.2)), y = oy + IH * sc - Math.round(fs * 1.6);
+      const fs = Math.max(22, Math.round(sc * 5.2)), y = oy + IH * sc - Math.round(fs * 1.6);
       dg.font = `${fs}px Galmuri11, sans-serif`; dg.textAlign = 'center'; dg.textBaseline = 'middle';
-      dg.globalAlpha = a; dg.fillStyle = '#05040a';
+      dg.globalAlpha = a * 0.55; dg.fillStyle = '#05040a'; // 밝은 장면에서도 읽히게 글 뒤에 어둠 띠
+      { const bw = dg.measureText(SCENES[i].text).width + fs * 2; dg.fillRect(Math.round(W / 2 - bw / 2), Math.round(y - fs * 0.9), Math.round(bw), Math.round(fs * 1.8)); }
+      dg.globalAlpha = a;
       const o = Math.max(2, Math.round(fs / 10));
       for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, o], [-o, o], [o, -o]]) dg.fillText(SCENES[i].text, W / 2 + dx, y + dy);
       dg.fillStyle = '#f4ecd8'; dg.fillText(SCENES[i].text, W / 2, y);
       dg.globalAlpha = 1;
     }
-    if (t > 1 && t < TOTAL - 1) { dg.font = `${Math.max(12, Math.round(sc * 2.4))}px Galmuri11, sans-serif`; dg.textAlign = 'right'; dg.fillStyle = 'rgba(232,224,240,0.35)'; dg.fillText('아무 키나 누르면 건너뜁니다', W - 16, 22); }
+    if (t > 1 && t < TOTAL - 1) { dg.font = `${Math.max(15, Math.round(sc * 3))}px Galmuri11, sans-serif`; dg.textAlign = 'right'; dg.textBaseline = 'middle'; dg.fillStyle = 'rgba(232,224,240,0.75)'; dg.fillText('아무 키나 누르면 건너뜁니다 ▶', W - 20, 28); }
     raf = requestAnimationFrame(frame);
   }
   return { start() { on(); raf = requestAnimationFrame(frame); }, stop: finish };

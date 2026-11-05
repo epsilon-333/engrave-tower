@@ -33,16 +33,24 @@ export function createClimb(ctx) {
     if (run()) S().run = null; // 예전 저장에 남은 중간 등반: 세이브는 10층마다라서 이어 하지 않는다
     const starts = climbStarts(c.lords);
     const lordsDone = Object.keys(c.lords || {}).length;
-    const acts = ACTS.map((a) => `<span class="cl-act ${c.lords?.[a.n] ? 'done' : c.best >= a.from - 1 ? 'now' : ''}" style="--c:${a.color}"><b>${a.from}~${a.to}층</b>${a.name}<small>권장 Lv ${a.rec}+</small></span>`).join('');
+    const acts = ACTS.map((a) => { const st = c.lords?.[a.n] ? 'done' : c.best >= a.from - 1 ? 'now' : 'locked'; return `<span class="cl-act ${st}" style="--c:${a.color}"><b>${a.from}~${a.to}층</b>${a.name}<small>${st === 'done' ? '돌파' : st === 'locked' ? '잠김' : `권장 Lv ${a.rec}+`}</small></span>`; }).join('');
+    const food = Object.entries(S().bag || {}).filter(([k, n]) => n > 0 && eatInfo(k)).reduce((a, [, n]) => a + n, 0);
     ctx.showModal(`<h2>각인의 탑</h2>
       <p class="muted">층마다 몬스터 · 5층마다 수호자 · 10층마다 구역의 주인. 주인을 쓰러뜨리면 다음 구역부터 시작할 수 있다.</p>
-      <p class="muted">탑 안에서는 수호자 · 주인을 쓰러뜨릴 때만 체력이 돌아온다. <b>음식(H)</b> · <b>물약(Z)</b>을 챙기자 — 가방의 음식 ${Object.entries(S().bag || {}).filter(([k, n]) => n > 0 && eatInfo(k)).reduce((a, [, n]) => a + n, 0) || '없음'}</p>
+      <p class="muted">탑 안에서 크게 회복하는 길은 수호자 · 주인 처치(체력 40%)뿐이다. <b>음식(H)</b> · <b>물약(Z)</b>을 챙기자 — 가방의 음식 ${food || '없음'}</p>
       <div class="cl-acts">${acts}</div>
       <p>최고 기록 <b>${c.best}층</b> / ${CLIMB_TOP}${lordsDone ? ` · 서약 <b>${sc}</b>` : ''} · 내 레벨 <b>Lv ${S().level}</b></p>
       <div class="actions">${starts.map((f, i) => `<button data-clstart="${f}" class="${i === starts.length - 1 ? '' : 'ghost'}">${f}층부터</button>`).join('')}</div>
       <div class="actions">${lordsDone ? '<button id="clOath" class="ghost">서약 (난이도)</button>' : ''}${c.runs ? '<button id="clRec" class="ghost">기록</button>' : ''}<button data-close class="ghost">돌아간다</button></div>
       ${ctx.partyLeader?.() ? `<div class="actions">${starts.map((f) => `<button data-clparty="${f}" class="ghost">${f}층부터 파티와 오르기</button>`).join('')}</div>` : ''}`);
-    document.querySelectorAll('[data-clstart]').forEach((b) => (b.onclick = () => { close(); startClimb(+b.dataset.clstart); }));
+    const go = (f) => { // 음식 없이 오르려 하면 한 번 묻는다 (탑 안의 회복은 보스 처치 · 음식 · 물약뿐)
+      if (food) { close(); startClimb(f); return; }
+      ctx.showModal(`<h2>음식 없이 오를까?</h2><p>가방에 음식이 없다. 탑 안에서는 수호자 · 주인을 쓰러뜨릴 때(체력 40%) 말고는 음식(H) · 물약(Z)으로만 회복한다.</p><p class="muted">모닥불에서 요리해 가방에 넣어 두자.</p>
+        <div class="actions"><button id="clGoAnyway">그래도 오른다</button><button id="clBack" class="ghost">돌아간다</button></div>`);
+      document.getElementById('clGoAnyway').onclick = () => { close(); startClimb(f); };
+      document.getElementById('clBack').onclick = () => showTowerMenu();
+    };
+    document.querySelectorAll('[data-clstart]').forEach((b) => (b.onclick = () => go(+b.dataset.clstart)));
     document.querySelectorAll('[data-clparty]').forEach((b) => (b.onclick = () => { close(); ctx.startCoClimb?.(+b.dataset.clparty); }));
     const $ = (id) => document.getElementById(id);
     if ($('clOath')) $('clOath').onclick = () => showOath(showTowerMenu);

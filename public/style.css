@@ -190,7 +190,8 @@ button.danger { background: #8a2a2a; }
 button.link { background: none; box-shadow: none; color: var(--muted); text-decoration: underline; padding: 6px 0; }
 
 /* 스타일 선택 · 제단 필터 · 배지 · 목표 */
-.styles { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin: 18px 0; }
+.styles { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 380px)); justify-content: center; gap: 14px; margin: 24px 0; }
+.race-select .more-hint { position: sticky; bottom: 0; margin: 0; padding: 18px 0 10px; font: 14px Galmuri11, sans-serif; color: var(--accent); background: linear-gradient(transparent, var(--bg) 60%); pointer-events: none; }
 .style { display: grid; gap: 6px; text-align: left; padding: 14px; background: var(--panel); }
 .style b { font-size: 17px; }
 .style p { margin: 0; color: var(--muted); font-size: 14px; }
@@ -537,6 +538,7 @@ b.dim { color: #e8c890; }
 .cl-act { display: grid; gap: 2px; padding: 8px 4px; background: #161314; box-shadow: inset 0 0 0 1px #2f2829; font-size: 13px; color: #8c8079; }
 .cl-act b { color: var(--c); font-size: 13px; }
 .cl-act small { font-size: 11px; color: #6e625c; }
+.cl-act.locked { opacity: 0.45; }
 .cl-act.now { box-shadow: inset 0 0 0 2px var(--c); color: #e8dcc8; }
 .cl-act.done { color: #c8c0d0; background: #1e1a19; }
 .cl-act.done b::after { content: ' ✓'; color: #93d47f; }
@@ -743,3 +745,10 @@ body.touch #happenPanel.mini { top: calc(6px + env(safe-area-inset-top, 0px)) !i
 #saveWarn { position: fixed; left: 50%; top: 8px; transform: translateX(-50%); z-index: 95; max-width: min(560px, 94vw); background: rgba(70,22,20,0.95); color: #ffe0d8; border: 1px solid #c0584a; padding: 8px 12px; font-size: 13px; line-height: 1.5; }
 #saveWarn[hidden] { display: none; }
 .title-warn { max-width: min(420px, 92vw); background: rgba(70,22,20,0.9); color: #ffe0d8; border: 1px solid #c0584a; padding: 8px 12px; font-size: 13px; line-height: 1.5; margin: 6px 0 0; }
+
+/* 휴대폰: 튜토리얼 띠는 화면 위쪽(터치 버튼을 가리지 않게) · 타이틀 화면의 저장 표시는 아래로(제목을 가리지 않게) */
+body.touch #tut { top: calc(64px + env(safe-area-inset-top, 0px)); bottom: auto; max-width: calc(100vw - 24px); font-size: 13px; }
+body.touch #tut b { min-width: 0; }
+body.touch:has(#title:not([hidden])) #cloudChip { top: auto; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+/* 긴 스킬 이름 버튼: 자르지 않고 글자를 줄여 두 줄로 */
+#touch .tb.long { font-size: 10px; line-height: 1.1; padding: 0 4px; word-break: keep-all; }
