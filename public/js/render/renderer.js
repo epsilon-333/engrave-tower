@@ -25,6 +25,7 @@ import { RACES } from '../data/races.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, weaponArt, RACE_LOOK } from '../data/art.js';
 import { BOSS_PASSIVES } from '../data/tower.js';
 import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
+const GROUND_FX = new Set(['tcircle', 'tdonut', 'lineTele', 'cracks', 'scorch', 'scrape', 'castCircle', 'rune', 'glyphs', 'rageCracks', 'path']); // 바닥에 그리는 이펙트
 const BOSS_MELEE = new Set(['combo', 'cleave', 'whirl', 'shove', 'charge', 'leap', 'jumps3', 'quake', 'grab', 'retreat']);
 const SHEET_LOOKS = ['saturate(1.25) contrast(1.1) brightness(1.08)', 'saturate(1.5) contrast(1.3) brightness(0.92)']; // 보스 시트 2 · 3단계: 색을 돌리지 않고 진하게만
 const PASSIVE_NAME = Object.fromEntries(Object.entries(BOSS_PASSIVES).map(([k, v]) => [k, v.name]));
@@ -576,7 +577,8 @@ export class Renderer {
         case 'parry': this.rimFlash = { color: '#fff6c0', t: 0.4, max: 0.4 }; this.shockwave(ev.x, ev.y, 40, '#fff6c0', 24); this.burst(ev.x, ev.y - 6, '#fff6c0', 30, 160); this.texts.push({ x: ev.x, y: ev.y - 26, text: '받아치기!', color: '#ffe080', t: 1, vy: -14, vx: 0, label: true, size: 2 }); this.shake = 5; sfx('hitArmor', { vol: 1 }); sfx('reaction', { vol: 0.5, rate: 1.5 }); break;
         case 'buff': this.rimFlash = { color: ev.color || '#ffffff', t: 0.35, max: 0.35 * 1.8 }; for (let i = 0; i < 7; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 14, y: ev.y, vx: 0, vy: -30 - Math.random() * 25, t: 0.55, max: 0.55, color: ev.color, g: -8 }); sfx('echo', { vol: 0.5 }); break;
         case 'elemShift': this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 24, color: ELEM[ev.elem].color, t: 0.4, max: 0.4, w: 3 }); this.burst(ev.x, ev.y - 6, ELEM[ev.elem].color, 16, 80); this.texts.push({ x: ev.x, y: ev.y - 24, text: `${ELEM[ev.elem].name}${ev.weak ? ' · 약점!' : ''}`, color: ELEM[ev.elem].color, t: 1, vy: -12, vx: 0, label: true }); sfx('open', { vol: 0.5, rate: 1.2 }); break;
-        case 'beamFx': { const len = Math.hypot(ev.x2 - ev.x1, ev.y2 - ev.y1); if (!this.anims.px.add('arcane/arcane-beam', ev.x1, ev.y1, { rot: Math.atan2(ev.y2 - ev.y1, ev.x2 - ev.x1), scale: Math.max(0.4, len / 238), palette: PAL[ev.elem] || PAL.dark, floor: 0, max: 0.16 })) this.fx.push({ k: 'beam', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.3, max: 0.3 }); sfx('dash', { vol: 0.5, rate: 1.6 }); break; } // 광선: pixelfx 빔 (실이 꼬이며 맥박치는 빛줄기)
+        case 'beamFx': { if (ev.wall && Math.random() < 0.6) { this.sparkBurst(ev.x2, ev.y2, '#ffe0a0', 4); if (Math.random() < 0.4) this.parts.push({ x: ev.x2, y: ev.y2, vx: (Math.random() - 0.5) * 20, vy: -12, t: 0.5, max: 0.5, color: '#8a8070', g: -2, puff: true, size: 2 }); } // 광선이 벽에 부딪힌 자리
+          const len = Math.hypot(ev.x2 - ev.x1, ev.y2 - ev.y1); if (!this.anims.px.add('arcane/arcane-beam', ev.x1, ev.y1, { rot: Math.atan2(ev.y2 - ev.y1, ev.x2 - ev.x1), scale: Math.max(0.4, len / 238), palette: PAL[ev.elem] || PAL.dark, floor: 0, max: 0.16 })) this.fx.push({ k: 'beam', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.3, max: 0.3 }); sfx('dash', { vol: 0.5, rate: 1.6 }); break; } // 광선: pixelfx 빔 (실이 꼬이며 맥박치는 빛줄기)
         case 'seaSight': this.banner = { text: ev.id === 'pirates' ? '수평선에 검은 돛이 보인다' : ev.id === 'serpent' ? '물결 사이로 커다란 등지느러미가…' : ev.id === 'castaway' ? '저 멀리 뗏목이 떠 있다' : '저 멀리 상선이 보인다', sub: '점점 다가온다', t: 3, color: ev.id === 'pirates' ? '#ff9a7a' : '#bfe8ff' }; break;
         case 'graspArm': this.fx.push({ k: 'arm', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.55, max: 0.55 }); sfx('dash', { vol: 0.5, rate: 0.6 }); break;
         case 'summonFx': { const col = ev.elem ? ELEM[ev.elem].color : ev.kind === 'clone' ? '#8a6aff' : ev.kind === 'skeleton' ? '#e8e0d0' : '#c45cff';
@@ -873,7 +875,16 @@ export class Renderer {
     const main = this.mainG, S = this.S, VW = this.VW, VH = this.VH;
     const p = w.player;
     const foc = this.camFocus?.t > 0 ? this.camFocus : null; if (foc) foc.t -= dt; // 보스 등장: 카메라가 보스를 비춘다
-    const tx = foc ? foc.x - VW / 2 : p.x - VW / 2 + (p.aimX || 0) * 16, ty = foc ? foc.y - VH / 2 : p.y - VH / 2 + (p.aimY || 0) * 10;
+    let tx = foc ? foc.x - VW / 2 : p.x - VW / 2 + (p.aimX || 0) * 16, ty = foc ? foc.y - VH / 2 : p.y - VH / 2 + (p.aimY || 0) * 10;
+    { // 보스 층: 보스 쪽으로 조금 당기고, 큰 보스의 머리가 화면 위로 잘리지 않게 (나는 화면 아래 40px 안쪽에 남는다)
+      const bo = !foc && w.climb?.boss && !w.climb.boss.dead ? w.climb.boss : null;
+      if (bo && Math.abs(bo.y - p.y) < VH && Math.abs(bo.x - p.x) < VW) {
+        const top = bo._top ?? bo.y - 90;
+        tx += (bo.x - p.x) * 0.25; ty += ((top + bo.y) / 2 - p.y) * 0.25;
+        const hud = 96 / (this.S || 1); // 화면 위 보스 체력바 높이만큼 비운다
+        if (top - hud < ty) ty = Math.max(top - hud, p.y - VH + 40);
+      }
+    }
     if (!Number.isFinite(this.cam.x) || !Number.isFinite(this.cam.y)) { this.cam.x = tx; this.cam.y = ty; } // 카메라가 한 번 NaN이 되면 조준 → 카메라로 계속 번지므로 바로 되돌린다
     this.cam.x += (tx - this.cam.x) * Math.min(1, dt * 8);
     this.cam.y += (ty - this.cam.y) * Math.min(1, dt * 8);
@@ -988,6 +999,7 @@ export class Renderer {
       }
     }
     this.anims.drawGround(g, dt); // 바닥에 새기는 것 (땅 갈라짐): 사람 · 건물 아래
+    this.drawFx(w, dt, true); // 바닥 이펙트: 예고 원 · 예고선 · 갈라짐 (몸 아래로)
     // 엔티티 (y 정렬)
     const vis = (x, y) => x > cx - 48 && x < cx + VW + 48 && y > cy - 48 && y < cy + VH + 64;
     const list = [];
@@ -1324,28 +1336,39 @@ export class Renderer {
   }
   // 보스 시트: 지금 하는 일에 맞는 자세 그림 하나를 통째로 (조각을 움직이지 않는다)
   // 서기 = 두 자세를 천천히 번갈아 (숨쉬기) · 걷기 = 두 자세를 빠르게 · 내려치기 · 돌진 · 도약 = 공격 자세 · 그 밖의 큰 기술 = 기술 자세
+  // 보스 시트 그림 고르기. 걷기는 「걸은 거리」로 넘기고(발이 미끄러지지 않게), 잠깐 멈춘 것은 걷기로 둔다(깜빡이지 않게),
+  // 자세가 바뀌면 그 줄의 첫 장면부터, 공격 · 기술이 끝나면 마지막 장면을 잠깐 붙든 뒤 서기로
   bossFrame(w, e, art) {
     const base = art.phase3 && e.bphase >= 2 ? art.phase3 : art.base;
+    const M = (e._bm ||= { lx: e.x, ly: e.y, lt: w.t, still: 1, dist: 0, kind: 'idle', kT: w.t, last: null, endT: -9 });
+    { // 얼마나 걸었나 (그릴 때마다 · 순간이동은 걸음으로 치지 않는다)
+      const d = Math.hypot(e.x - M.lx, e.y - M.ly), dtt = Math.max(0, w.t - M.lt);
+      if (d < 48) M.dist += d;
+      M.still = d > 0.15 ? 0 : M.still + dtt; M.lx = e.x; M.ly = e.y; M.lt = w.t;
+    }
+    const charging = e.mv?.k === 'charge' && e.mv.t <= e.mv.run; // 돌진: 달리는 그림을 빠르게
     let kind;
     if (e.introT > 0) kind = 1 - e.introT / (e.introMax || 1) > 0.55 ? 'skill' : 'idle'; // 등장: 마지막에 포효 자세
     else if (e.soaring || e.morphT > 0) kind = 'skill';
+    else if (charging) kind = 'run';
     else if (e.mv) kind = art.skl?.includes(e.mv.k) ? 'skill' : art.atk?.includes(e.mv.k) ? 'attack' : BOSS_MELEE.has(e.mv.k) ? 'attack' : 'skill'; // 보스마다 그림에 맞춘 줄
     else if (art.mirrorSkill && e.mirrorT > 0) kind = 'skill'; // 반사 방패: 방패가 빛나는 그림
-    else if (e.windT > 0 || this.lunge.has(e.id) || e.exposedT > 0 && false) kind = 'attack';
-    else kind = e.moving ? 'run' : 'idle';
+    else if (e.windT > 0 || this.lunge.has(e.id)) kind = 'attack';
+    else kind = M.still < 0.15 ? 'run' : 'idle'; // 0.15초 넘게 멈춰야 선 자세
     const full = !!atlas[`${base}_hit_anim_f0`]; // 보내 주신 동작 시트가 있는 보스 (맞음 · 쓰러짐까지)
     if (full && !e.mv && !(e.introT > 0) && (e.exposedT > 0 || e.st?.stun > 0)) kind = 'hit'; // 기절 · 빈틈: 맞은 자세
-    const fr = frames(base, kind);
-    if (kind !== 'attack') e._aT = null;
-    if (kind !== 'skill') e._sT = null;
-    if (full && kind === 'attack') { // 준비 자세는 예고 동안 그대로 → 끝나면 내려치기 · 따라가기를 한 번 (초당 9장)
-      if (e.windT > 0 || fr.length < 2) { e._aT = null; return fr[0]; }
-      e._aT ??= w.t; return fr[Math.min(fr.length - 1, 1 + Math.floor((w.t - e._aT) * 9))];
-    }
-    if (full && kind === 'skill') { e._sT ??= w.t; return fr[Math.min(fr.length - 1, Math.floor((w.t - e._sT) * 6))]; } // 기술: 차례로 넘기고 마지막 장면을 기술이 끝날 때까지
-    if (kind === 'attack' && fr.length >= 3) return e.windT > 0 ? fr[0] : fr[1 + (Math.floor((w.t + e.phase) * 6) % (fr.length - 1))]; // 준비 → 내려치기 → 내려친 순간
-    const fps = kind === 'run' ? (fr.length > 2 ? 7 : 4) : kind === 'skill' ? 3 : fr.length > 2 ? 2.4 : 1.4; // 장면이 많은 보스는 그만큼 빨리 넘긴다
-    return fr[Math.floor((w.t + e.phase) * fps) % fr.length];
+    // 공격 · 기술이 막 끝났으면 마지막 장면을 0.15초 붙든다 (뚝 끊기지 않게)
+    if ((kind === 'idle' || kind === 'run') && (M.kind === 'attack' || M.kind === 'skill') && M.last) { if (M.endT < 0) M.endT = w.t; if (w.t - M.endT < 0.15) return M.last; }
+    if (kind !== M.kind) { M.kind = kind; M.kT = w.t; M.endT = -1; if (kind === 'run') M.dist = 0; }
+    const fr = frames(base, kind), since = w.t - M.kT;
+    let name;
+    if (kind === 'run') { const stride = Math.max(8, (e.r || 10) * 0.9) * (charging ? 1.6 : 1); name = fr[Math.floor(M.dist / stride) % fr.length]; } // 한 장면 = 몇 px 걸음
+    else if (kind === 'attack') name = full ? (e.windT > 0 || fr.length < 2 ? fr[0] : fr[Math.min(fr.length - 1, 1 + Math.floor(since * 9))]) // 준비 자세는 예고 동안 그대로 → 내려치기 · 따라가기 한 번
+      : fr.length >= 3 ? (e.windT > 0 ? fr[0] : fr[1 + (Math.floor(since * 6) % (fr.length - 1))]) : fr[Math.floor(since * 4) % fr.length];
+    else if (kind === 'skill') name = full ? fr[Math.min(fr.length - 1, Math.floor(since * 6))] : fr[Math.floor(since * 3) % fr.length]; // 기술: 차례로 넘기고 마지막 장면을 끝까지
+    else name = fr[Math.floor(since * (fr.length > 2 ? 2.4 : 1.4)) % fr.length]; // 서기 · 맞음: 자세가 바뀐 때부터 첫 장면
+    if (kind === 'attack' || kind === 'skill') M.last = name;
+    return name;
   }
   drawEnemy(w, e, dt) {
     const g = this.g, def = e.def;
@@ -1355,6 +1378,7 @@ export class Renderer {
     if (def.ai === 'target') return drawTrainTarget(this, w, e);
     if (e.bones > 0) return drawBonePile(this, w, e); // 수련: 쓰러진 해골이 뼈 무더기로 (곧 다시 일어선다)
     const art = this.enemyArt(w, e);
+    if (e.blinkAt != null && w.t - e.blinkAt < 0.16) { e._top = e.y - 40; return; } // 순간이동: 잠깐 비웠다가 도착 자리에 모인다 (blink 연출)
     if (e.passives && dt > 0) { // 보스 기운: 몸 둘레에서 피어오르는 독 방울 · 서리 알갱이 · 불티 (고리는 그리지 않는다)
       const au = e.passives.includes('burnAura') ? '#ff8a3a' : e.passives.includes('frostAura') ? '#cfefff' : e.passives.includes('poisonAura') ? '#9be15d' : null;
       if (au && Math.random() < 0.5) { const a = Math.random() * Math.PI * 2, rr = e.r + 10 + Math.random() * 50; this.parts.push({ x: e.x + Math.cos(a) * rr, y: e.y + Math.sin(a) * rr * 0.6, vx: 0, vy: -14 - Math.random() * 18, t: 0.9, max: 0.9, color: au, g: -4, glow: true, size: 1.5 }); }
@@ -1407,7 +1431,16 @@ export class Renderer {
         e.morphT > 0 && Math.floor(w.t * 24) % 2 ? 'rgba(255,255,255,0.45)' : flash === true ? 'rgba(255,255,255,0.32)' : flash ? 'rgba(255,60,40,0.26)' : false, e.dir < 0)
       : sprite(name, e.mirrorT > 0 ? 'grayscale(1) brightness(1.75) contrast(1.4)' : e.tintX || art.tint || '', e.morphT > 0 && Math.floor(w.t * 24) % 2 ? '#ffffff' : flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);
     if (!img) return;
-    let sq = this.squash.get(e.id) || 0;
+    if (art.sheet) { // 돌진: 지나온 자리에 옅은 잔상 셋 · 발밑에 이는 흙먼지 (순간이동처럼 보이지 않게)
+      const tr = (e._trail ||= []);
+      if (e.mv?.k === 'charge' && e.mv.t <= e.mv.run) {
+        if (!tr.length || w.t - tr[tr.length - 1].t > 0.05) { tr.push({ x: e.x, y: e.y, t: w.t, img }); if (tr.length > 3) tr.shift(); }
+        if (dt > 0 && Math.random() < 0.7) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 1.4, y: e.y + 3, vx: -Math.cos(e.mv.ang) * (30 + Math.random() * 30), vy: -6 - Math.random() * 10, t: 0.45, max: 0.45, color: '#b8a888', g: -2, puff: true, size: 2 });
+      }
+      for (const q of tr) { const a = 0.3 * (1 - (w.t - q.t) / 0.25); if (a > 0) { g.globalAlpha = a; g.drawImage(q.img, Math.round(q.x - q.img.width / 2), Math.round(q.y + 4 - q.img.height)); } }
+      g.globalAlpha = 1; e._trail = tr.filter((q) => w.t - q.t < 0.25);
+    }
+    let sq = art.sheet ? 0 : this.squash.get(e.id) || 0; // 보스 시트 그림은 찌그러뜨리지 않는다 (통째로 그린 그림이 늘어나 보이지 않게)
     if (sq > 0) { sq -= dt; this.squash.set(e.id, sq); }
     const k = Math.max(0, sq) / 0.14;
     const sx = 1 + 0.25 * k, sy = 1 - 0.2 * k;
@@ -2915,9 +2948,11 @@ export class Renderer {
     g.restore();
   }
 
-  drawFx(w, dt) {
+  // 이펙트는 두 층: 바닥에 붙는 것(예고 원 · 예고선 · 갈라짐 · 그을음 · 마법진)은 사람 · 보스 · 소품보다 아래, 나머지는 위
+  drawFx(w, dt, ground = false) {
     const g = this.g, p = w.player;
     for (const f of this.fx) {
+      if (GROUND_FX.has(f.k) !== ground) continue;
       f.t -= dt;
       const k = Math.max(0, f.t / f.max);
       if (f.k === 'ring') {
@@ -3388,7 +3423,7 @@ export class Renderer {
         }
       }
     }
-    this.fx = this.fx.filter((f) => f.t > 0);
+    if (!ground) this.fx = this.fx.filter((f) => f.t > 0);
   }
 
   drawDrop(w, dr) {
@@ -4370,7 +4405,7 @@ export class Renderer {
     for (const e of w.enemies) if (e.affix && !e.champion && e._top != null && ((this.hpShow.get(e.id) ?? 0) > w.t || Math.hypot(e.x - w.player.x, e.y - w.player.y) < 60)) { // 강화 개체 이름: 맞은 직후 · 가까이 왔을 때만
       this.text(`${AFFIXES[e.affix].name} ${e.def.name}`, this.sx(e.x), this.sy(e._top - 8), Math.max(1, u - 1), AFFIXES[e.affix].color, 'center', true);
     }
-    for (const e of w.enemies) if ((e.def.elite || e.champion) && e._top != null && Math.abs(e.x - w.player.x) < 260 && Math.abs(e.y - w.player.y) < 160) {
+    for (const e of w.enemies) if ((e.def.elite || e.champion) && e !== this.hudBoss && e._top != null && Math.abs(e.x - w.player.x) < 260 && Math.abs(e.y - w.player.y) < 160) {
       this.text(`${e.lv ? `Lv ${e.lv} ` : ''}${e.champion || e.def.name}`, this.sx(e.x), this.sy(e._top - 8), u, '#ff9a8a', 'center', true, true);
     }
     { // 몬스터 레벨: 내 레벨보다 5 넘게 높으면 빨강, 5 넘게 낮으면 회색
@@ -4607,7 +4642,8 @@ export class Renderer {
     }
     // 정예 체력바
     const tb = w.tower?.boss && !w.tower.boss.dead ? w.tower.boss : null;
-    const boss = w.climb?.intro ? null : tb || w.enemies.find((e) => (e.def.elite || e.champion) && e.state === 'chase' && !e.dead); // 탑: 진짜 보스 체력 (분신 · 가짜 거울이 아니라) · 등장 연출 동안은 감춘다
+    const boss = w.climb?.intro ? null : tb || w.enemies.find((e) => (e.def.elite || e.champion) && e.state === 'chase' && !e.dead);
+    this.hudBoss = boss; // 체력바에 이름이 나온 보스 (몸 위 이름은 숨긴다) // 탑: 진짜 보스 체력 (분신 · 가짜 거울이 아니라) · 등장 연출 동안은 감춘다
     if (boss) {
       const bw2 = Math.min(W * 0.5, 260 * u), bx2 = (W - bw2) / 2, by2 = topY + 28 * u; // 화면 위쪽 (아래 스킬 칸 · 위쪽 저장 안내를 가리지 않게)
       this.text(boss.champion || boss.def.name, W / 2, by2 - 9 * u, u, '#e8907c', 'center', true, true);

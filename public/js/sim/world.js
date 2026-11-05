@@ -322,7 +322,7 @@ export class World {
     const C = this.climb, run = C.run;
     C.phase = 'reward';
     for (const e of this.enemies) if (!e.dead && e.summoned) { e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: e.def.pal.a, defId: e.defId, dir: e.dir }); } // 남은 부하는 흩어진다
-    for (const e of this.enemies) if (!e.dead && !e.climb && e.def.treasure) { e.dead = true; this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '보물 고블린이 도망쳤다', color: '#ffcf3a' }); this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: e.x, y2: e.y - 30 }); }
+    for (const e of this.enemies) if (!e.dead && !e.climb && e.def.treasure) { e.dead = true; this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '보물 고블린이 도망쳤다', color: '#ffcf3a' }); e.blinkAt = this.t; this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: e.x, y2: e.y - 30 }); }
     for (const dr of this.drops) dr.magnet = true; // 떨어진 부산물을 놓치지 않게
     const big = C.kind === 'guardian' || C.kind === 'lord';
     if (big) this.heal(this.d.maxHp * BOSS_HEAL, 'spring');
@@ -409,6 +409,10 @@ export class World {
   }
 
   emit(e) {
+    if ((e.t === 'lineTele' || e.t === 'beamFx') && this.map && e.x2 != null) { // 예고선 · 광선 그림은 벽 앞에서 끊는다 (끊긴 자리에 부딪히는 불꽃)
+      const L = Math.hypot(e.x2 - e.x1, e.y2 - e.y1), a = Math.atan2(e.y2 - e.y1, e.x2 - e.x1), l2 = this.rayLen(e.x1, e.y1, a, L);
+      if (l2 < L - 2) { e.x2 = e.x1 + Math.cos(a) * l2; e.y2 = e.y1 + Math.sin(a) * l2; e.wall = true; }
+    }
     this.events.push(e);
     if (this.coRec && CO_EV.has(e.t)) this.coop.ev.push(e); // 파티 탑 (방장): 적이 낸 사건을 동료에게도
     if (this.map?.outdoor && (e.elem === 'fire' || e.elem === 'ice') && e.t && e.t.startsWith('skill')) this.elemReact(e);
@@ -544,6 +548,19 @@ export class World {
   wallAt(px, py) { const t = this.tileAt(px, py); return t === T_WALL || t === T_CRACK || t === T_BUILD || t === T_GATE; }
   // 싸울 상대인가: 살아 있고 보이며, 허수아비는 광장 · 연습장에서만 (바깥의 허수아비는 스킬이 노리지 않는다)
   targetable(e) { return !e.dead && !e.hidden && (e.def.ai !== 'dummy' || this.mode === 'plaza' || !!this.practice); }
+  // 기술이 떨어질 자리: 걸을 수 있는 바닥이면 그대로, 벽 · 물 · 맵 밖이면 가까운 바닥으로 (60px 안에 없으면 null)
+  floorNear(x, y, r = 10) {
+    if (!this.blocked(x, y, r)) return { x, y };
+    for (let d = 12; d <= 60; d += 12) for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2, tx = x + Math.cos(a) * d, ty = y + Math.sin(a) * d; if (!this.blocked(tx, ty, r)) return { x: tx, y: ty }; }
+    return null;
+  }
+  // (x, ang) 방향으로 max까지 가다가 벽에 닿는 거리 (광선 · 돌진 예고선이 벽을 뚫지 않게)
+  rayLen(x, y, ang, max) {
+    const c = Math.cos(ang), sn = Math.sin(ang);
+    const wall = (px, py) => { const t = this.tileAt(px, py); return t === T_WALL || t === T_CRACK || t === T_BUILD || t === T_GATE; }; // 물 · 허공 위로는 지나간다
+    for (let d = 8; d <= max; d += 6) if (wall(x + c * d, y + sn * d)) return Math.max(0, d - 6);
+    return max;
+  }
   // (x, y) 둘레의 탁 트인 땅: 벽 · 물건 · 사람과 떨어져 있고 걸어서 곧장 갈 수 있는 곳 (튜토리얼 허수아비 자리 등)
   openSpot(x, y) {
     for (const d of [48, 64, 36, 80]) for (let k = 0; k < 16; k++) {
@@ -4508,9 +4525,9 @@ export class World {
         for (let i = 0; i < 2; i++) {
           const c = this.makeEnemy(e.defId, spots[i].x, spots[i].y, { summoned: true }); // 보스와 똑같은 모습 (예전엔 구역 정예 모습이라 가짜가 바로 티 났다)
           c.hp = c.maxHp = e.maxHp * (e.kit?.awake ? 0.04 : 0.025); c.atk = e.atk * 0.45; c.scale = e.scale; c.champion = e.champion; c.decoyOf = e.id; c.tintX = e.tintX; c.mirrorRace = e.mirrorRace; c.summoner = e.id; c.state = 'chase'; c.home = { ...e.home }; c.noLoot = true; c.mvCd = 9;
-          this.enemies.push(c); this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: c.x, y2: c.y });
+          this.enemies.push(c); e.blinkAt = this.t; this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: c.x, y2: c.y });
         }
-        this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: spots[2].x, y2: spots[2].y }); e.x = spots[2].x; e.y = spots[2].y; return false;
+        e.blinkAt = this.t; this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: spots[2].x, y2: spots[2].y }); e.x = spots[2].x; e.y = spots[2].y; return false;
       }
       case 'meteorRain': // 운석 비: 내 자리에 세 번 떨어진다 (계속 움직여야 산다)
         say(nm || '운석 비'); e.mv = { k: 'meteorRain', boss: true, t: 2.2, n: 0 }; return false;
@@ -4530,7 +4547,7 @@ export class World {
         this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(aim) * 200, y2: e.y + Math.sin(aim) * 200, dur: 0.8, color: '#ffb03a', w: 12 }); return true;
       case 'spikeTrail': { // 가시 길: 보스에서 나를 향해 가시가 차례로 솟는다
         say(nm || '가시 길');
-        for (let i = 1; i <= 7; i++) { const x = e.x + Math.cos(aim) * i * 30, y = e.y + Math.sin(aim) * i * 30, dl = 0.45 + i * 0.1; this.emit({ t: 'telegraphCircle', x, y, r: 22, dur: dl }); this.delayed.push({ t: dl, run: () => { if (e.dead) return; this.enemyArea(e, x, y, 22, e.atk * 1.2, 'phys', 'bleed'); if (!this.bfx(e, 'trail', x, y, 22)) this.emit({ t: 'skillAoe', x, y, r: 22, fx: 'spikes' }); } }); }
+        for (let i = 1; i <= 7; i++) { const x = e.x + Math.cos(aim) * i * 30, y = e.y + Math.sin(aim) * i * 30, dl = 0.45 + i * 0.1; if (this.blocked(x, y, 6)) break; /* 가시 줄기는 벽에서 멈춘다 */ this.emit({ t: 'telegraphCircle', x, y, r: 22, dur: dl }); this.delayed.push({ t: dl, run: () => { if (e.dead) return; this.enemyArea(e, x, y, 22, e.atk * 1.2, 'phys', 'bleed'); if (!this.bfx(e, 'trail', x, y, 22)) this.emit({ t: 'skillAoe', x, y, r: 22, fx: 'spikes' }); } }); }
         return false;
       }
       case 'ripple': // 파문: 안 → 밖으로 고리 셋이 차례로 터진다 (터진 고리 안으로 들어가면 산다)
@@ -4551,6 +4568,7 @@ export class World {
     return bossPickX(this, e, p, pick) ?? false; // 51~100층 보스 기술 (towerzone.js)
   }
   bossLineHit(e, ang, len, w, dmg, status) {
+    len = this.rayLen(e.x, e.y, ang, len); // 벽에서 멈춘다
     const x2 = e.x + Math.cos(ang) * len, y2 = e.y + Math.sin(ang) * len, prev = this.coTgt;
     for (const q of this.coTargets()) { const vx = x2 - e.x, vy = y2 - e.y, l2 = vx * vx + vy * vy, k = Math.max(0, Math.min(1, ((q.x - e.x) * vx + (q.y - e.y) * vy) / l2)); if (Math.hypot(q.x - e.x - vx * k, q.y - e.y - vy * k) < w + (q.r || 5)) { this.coTgt = q === this.player ? null : q; this.hurtPlayer(dmg, 'mag', e, { status, fromX: e.x, fromY: e.y }); } }
     this.coTgt = prev; this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2, elem: BOSS_FX[e.defId]?.beam });
@@ -4598,7 +4616,7 @@ export class World {
       }
       case 'jumps3': {
         if (mv.t > 0) return true;
-        if (!this.blocked(mv.tx, mv.ty, e.r)) { this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: mv.tx, y2: mv.ty }); e.x = mv.tx; e.y = mv.ty; }
+        if (!this.blocked(mv.tx, mv.ty, e.r)) { e.blinkAt = this.t; this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: mv.tx, y2: mv.ty }); e.x = mv.tx; e.y = mv.ty; }
         this.enemyArea(e, e.x, e.y, 40, e.atk * 1.7, def.type, def.status); if (!this.bfx(e, 'slam', e.x, e.y, 40)) this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 40, fx: 'quake' });
         if (++mv.n >= 3) { e.mv = null; return true; }
         mv.t = 0.55; mv.tx = p.x; mv.ty = p.y; this.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: 40, dur: 0.55 }); return true;
@@ -4616,7 +4634,7 @@ export class World {
       case 'sweep': {
         if (mv.t > 2.2) return true; // 예고
         mv.ang += mv.dir * (Math.PI * 1.15 / 2.2) * DT;
-        const x2 = e.x + Math.cos(mv.ang) * 240, y2 = e.y + Math.sin(mv.ang) * 240;
+        const bl = this.rayLen(e.x, e.y, mv.ang, 240), x2 = e.x + Math.cos(mv.ang) * bl, y2 = e.y + Math.sin(mv.ang) * bl; // 벽에서 멈춘다
         if ((mv.fxT = (mv.fxT || 0) - DT) <= 0) { mv.fxT = 0.05; this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2, elem: BOSS_FX[e.defId]?.beam }); }
         mv.hitT -= DT;
         if (mv.hitT <= 0) {
@@ -4639,7 +4657,7 @@ export class World {
           mv.wave++;
           const spots = this.coTargets().map((q) => ({ x: q.x, y: q.y }));
           for (let i = 0; i < 4; i++) spots.push({ x: p.x + this.rng.range(-120, 120), y: p.y + this.rng.range(-90, 90) });
-          this.rainAt(e, spots, 0.9);
+          this.rainAt(e, spots.map((q) => this.floorNear(q.x, q.y)).filter(Boolean), 0.9);
         }
         if (mv.t > 0) return true;
         e.soaring = false; e.invulnT = 0;
@@ -4751,15 +4769,15 @@ export class World {
       if (pick === 'quake') { e.mv = { k: 'quake', t: 0.8, r: 0 }; this.tele(e, false, { t: 'telegraphCircle', x: e.x, y: e.y, r: 70, dur: 0.8 }); this.mobPose(e, 'rear', 0.8); e.windT = 0.8; e.windMax = 0.8; return true; }
       if (pick === 'rain') { // 비: 모든 사람 발밑과 둘레에 장판이 떨어진다
         const spots = this.coTargets().map((q) => ({ x: q.x, y: q.y }));
-        for (let i = 0; i < 3; i++) spots.push({ x: e.x + this.rng.range(-110, 110), y: e.y + this.rng.range(-80, 80) });
+        for (let i = 0; i < 3; i++) { const q = this.floorNear(e.x + this.rng.range(-110, 110), e.y + this.rng.range(-80, 80)); if (q) spots.push(q); } // 벽 위에는 떨어지지 않는다
         e.mv = { k: 'rain', t: 1.1, spots }; for (const q of spots) this.tele(e, true, { t: 'telegraphCircle', x: q.x, y: q.y, r: 30, dur: 1.1 }); this.mobPose(e, 'howl', 1.1); return true;
       }
       if (pick === 'adds') { // 부하를 깨운다
         for (let i = 0; i < 2; i++) { const a = this.rng.range(0, Math.PI * 2); let x = e.x + Math.cos(a) * 40, y = e.y + Math.sin(a) * 40; if (this.blocked(x, y, 6)) { x = e.x; y = e.y; } const m = this.makeEnemy(def.adds || 'goblin', x, y, { summoned: true }); m.summoner = e.id; m.state = 'chase'; m.home = { ...e.home }; this.enemies.push(m); }
         this.emit({ t: 'summon', x: e.x, y: e.y }); this.emit({ t: 'text', x: e.x, y: e.y - 40, text: '부하를 깨운다', color: '#ffb07a' }); return false;
       }
-      if (pick === 'charge') { // 돌진: 굵은 예고선을 따라 끝까지
-        const a = Math.atan2(ty - e.y, tx - e.x); e.mv = { k: 'charge', t: 0.8, ang: a, run: 0.55 }; this.mobPose(e, 'crouch', 0.8);
+      if (pick === 'charge' && this.rayLen(e.x, e.y, Math.atan2(ty - e.y, tx - e.x), 260) > 70) { // 돌진: 굵은 예고선을 따라 끝까지 (앞이 벽에 막혀 있으면 고르지 않는다)
+        const a = Math.atan2(ty - e.y, tx - e.x); e.mv = { k: 'charge', t: 1.5, ang: a, run: 0.7, dist: Math.max(40, this.rayLen(e.x, e.y, a, 260) - e.r) }; /* 예고가 끝나면(0.8초) 예고선 끝(벽이면 벽 앞)까지 0.7초 */ this.mobPose(e, 'crouch', 0.8);
         this.tele(e, false, { t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 260, y2: e.y + Math.sin(a) * 260, dur: 0.8, color: '#ff3a3a', w: e.r * 2 }); e.windT = 0.8; e.windMax = 0.8; return true;
       }
       if (pick === 'mark') { // 표식: 한 사람을 따라다니는 원이 터진다 (동료에게서 떨어져야 한다)
@@ -4781,7 +4799,7 @@ export class World {
       }
       if (pick === 'blink' && dist > 60) {
         const a = this.rng.range(0, Math.PI * 2), nx = p.x + Math.cos(a) * 70, ny = p.y + Math.sin(a) * 70;
-        if (!this.blocked(nx, ny, e.r)) { this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: nx, y2: ny }); e.x = nx; e.y = ny; e.shotCd = Math.min(e.shotCd, 0.3); if (def.blinkInv) e.invulnT = def.blinkInv; }
+        if (!this.blocked(nx, ny, e.r)) { e.blinkAt = this.t; this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: nx, y2: ny }); e.x = nx; e.y = ny; e.shotCd = Math.min(e.shotCd, 0.3); if (def.blinkInv) e.invulnT = def.blinkInv; }
         return false;
       }
       return false;
@@ -4848,13 +4866,16 @@ export class World {
         e.mv = null; return false;
       case 'beam': {
         if (mv.t > 0) return true;
-        const x2 = e.x + Math.cos(mv.ang) * 230, y2 = e.y + Math.sin(mv.ang) * 230;
+        const bl = this.rayLen(e.x, e.y, mv.ang, 230), x2 = e.x + Math.cos(mv.ang) * bl, y2 = e.y + Math.sin(mv.ang) * bl; // 벽에서 멈춘다
         for (const q of this.coTargets()) { const vx = x2 - e.x, vy = y2 - e.y, l2 = vx * vx + vy * vy, k = Math.max(0, Math.min(1, ((q.x - e.x) * vx + (q.y - e.y) * vy) / l2)); if (Math.hypot(q.x - e.x - vx * k, q.y - e.y - vy * k) < 7 + (q.r || 5)) this.enemyArea(e, q.x, q.y, 2, e.atk * 1.5, def.type, def.status); }
         this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2, elem: BOSS_FX[e.defId]?.beam }); e.mv = null; return true;
       }
       case 'charge': {
         if (mv.t > mv.run) return true;
-        const sp = def.speed * 9 * DT, nx = e.x + Math.cos(mv.ang) * sp, ny = e.y + Math.sin(mv.ang) * sp;
+        // 출발은 붙고 · 끝은 늦춘다 (처음 20% 가속 · 마지막 25% 감속 — 순간이동처럼 튀어 나가지 않게, 가는 거리는 예전과 같다)
+        e.windT = 0; // 예고가 끝났다: 달리는 그림으로
+        const u = 1 - mv.t / mv.run, ease = Math.max(0.25, Math.min(1, u / 0.2, (1 - u) / 0.25));
+        const sp = ((mv.dist ?? def.speed * 5) / (mv.run * 0.775)) * ease * DT, nx = e.x + Math.cos(mv.ang) * sp, ny = e.y + Math.sin(mv.ang) * sp;
         if (this.blocked(nx, ny, e.r)) { mv.t = 0; if (e.kit?.wallStun) { e.mv = null; this.exposeBoss(e, 2.6, 1.6, '벽에 부딪혀 기절!'); return false; } } else { e.x = nx; e.y = ny; e.moving = true; }
         for (const q of this.coTargets()) if (!mv.hit?.has(q) && Math.hypot(q.x - e.x, q.y - e.y) < e.r + (q.r || 5) + 4) { (mv.hit ||= new Set()).add(q); this.enemyArea(e, q.x, q.y, 2, e.atk * 1.6, def.type, def.status); }
         if (mv.t > 0) return true;
