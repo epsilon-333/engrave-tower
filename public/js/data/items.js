@@ -22,7 +22,7 @@ export const WEAPON_SKILLS = {
   boomStorm: { name: '부메랑 폭풍', desc: '돌아오는 부메랑 여섯 개를 사방으로 던진다', cd: 7 },
 };
 
-export const ITEMS = {
+const ITEM_DEFS = {
   // ── 근접 무기 ──
   knightSword: { name: '기사의 검', slot: 'weapon', price: 0, starter: true, weapon: { kind: 'melee', dmg: 'phys', mul: 1.0, speed: 1.5, range: 30, arc: 1.9, skill: 'spin' }, stats: { pres: 3 }, tags: [] },
   rustySword: { name: '녹슨 검', slot: 'weapon', price: 0, weapon: { kind: 'melee', dmg: 'phys', mul: 0.9, speed: 1.6, range: 30, arc: 1.9, skill: 'spin' }, stats: {}, tags: [] },
@@ -114,6 +114,20 @@ export const ITEMS = {
   tokenDino: { name: '태고의 송곳니 목걸이', slot: 'acc', price: 0, treasure: 'dino', token: true, stats: { str: 4, agi: 4 }, tags: [] },
   tokenDragon: { name: '용왕의 비늘 목걸이', slot: 'acc', price: 0, treasure: 'dragon', token: true, stats: { str: 3, mag: 3, mres: 4 }, tags: ['fire'] },
 };
+// 같은 장비를 또 얻으면 낱개 번호를 붙여 따로 든다: 'scholarRing#2' — 생김새 · 능력치는 원래 장비(ITEMS.scholarRing) 그대로, 강화(save.reinforce)는 낱개마다 따로
+// ITEMS['scholarRing#2']는 원래 장비를 돌려준다. Object.keys(ITEMS)에는 원래 장비만 나온다 (상점 · 목록)
+export const baseId = (id) => (typeof id === 'string' && id.includes('#') ? id.slice(0, id.indexOf('#')) : id);
+export const ITEMS = new Proxy(ITEM_DEFS, {
+  get: (t, k) => (k in t ? t[k] : t[baseId(k)]),
+  has: (t, k) => k in t || baseId(k) in t,
+});
+// 장비 하나를 가방에 넣는다: 이미 같은 것이 있으면 낱개 번호를 붙인다. 넣은 아이디를 돌려준다
+export function addItem(s, id) {
+  s.items ||= []; id = baseId(id);
+  if (!s.items.includes(id)) { s.items.push(id); return id; }
+  let n = 2; while (s.items.includes(`${id}#${n}`)) n++;
+  s.items.push(`${id}#${n}`); return `${id}#${n}`;
+}
 
 // ── 대장간에서 만드는 장비 (상점에서 팔지 않는다: 캔 광석 · 벤 나무 · 바다의 산호로 만든다) ──
 const F = (name, slot, extra) => ({ name, slot, price: 0, forged: true, stats: {}, tags: [], ...extra });

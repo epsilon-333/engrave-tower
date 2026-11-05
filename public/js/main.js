@@ -30,7 +30,7 @@ import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, c
 import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
 import { RACES, RACE_MIGRATE, pointsAt } from './data/races.js';
 import { RACE_STORY, relation, allies, ALLY_AFF, REL_NAME, REL_COLOR } from './data/lore.js';
-import { ITEMS, WEAPON_SKILLS } from './data/items.js';
+import { ITEMS, WEAPON_SKILLS, addItem } from './data/items.js';
 import './data/weapons.js'; // 탑의 무기 100종을 장비 목록에 올린다
 import './data/towergear.js'; // 탑의 방어구 · 장신구 · 부적 30종
 import { CC_EXTRA, CLASSES, ENGRAVING_SKILLS, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc } from './data/skills.js';
@@ -354,13 +354,13 @@ onNet('tradeConfirm', (m) => { if (!trade) return; trade.theirOk = true; tradeCh
 onNet('tradeCancel', () => { if (!trade) return; trade = null; if (modal) { overlay.hidden = true; paused = false; modal = null; } renderer.banner = { text: '교환이 취소됐다', t: 2, color: '#c8b8a0' }; });
 onNet('tradeDone', () => {});
 const tradeable = () => ({ goods: Object.entries(save.bag || {}).filter(([id, n]) => n > 0 && GOODS[id]), items: (save.items || []).filter((id) => ITEMS[id] && !Object.values(save.gear || {}).includes(id) && id !== 'rustySword' && !ITEMS[id].starter && !save.bound?.[id]) }); // 운영자 보상은 교환할 수 없다
-const offerText = (o) => [o.gold ? `◆ ${o.gold} 골드` : '', ...Object.entries(o.goods || {}).filter(([, n]) => n > 0).map(([id, n]) => `${GOODS[id]?.name || id} ×${n}`), ...(o.items || []).map((id) => ITEMS[id]?.name || id)].filter(Boolean);
-function sendOffer() { trade.myOk = false; trade.theirOk = false; netSend({ t: 'tradeOffer', offer: trade.mine }); showTrade(); }
+const offerText = (o) => [o.gold ? `◆ ${o.gold} 골드` : '', ...Object.entries(o.goods || {}).filter(([, n]) => n > 0).map(([id, n]) => `${GOODS[id]?.name || id} ×${n}`), ...(o.items || []).map((id) => `${ITEMS[id]?.name || id}${o.rf?.[id] ? ` +${o.rf[id]}` : ''}`)].filter(Boolean);
+function sendOffer() { trade.myOk = false; trade.theirOk = false; trade.mine.rf = Object.fromEntries(trade.mine.items.map((id) => [id, save.reinforce?.[id] || 0])); netSend({ t: 'tradeOffer', offer: trade.mine }); showTrade(); } // 강화 단계도 함께 넘어간다
 function showTrade() {
   if (!trade) return;
   const T = trade, have = tradeable();
   const goodsRows = have.goods.map(([id, n]) => { const k = T.mine.goods[id] || 0; return `<div class="soc-row"><span class="nm">${esc(GOODS[id].name)} <small class="muted">${n}개</small></span><span class="btns"><button class="sm ghost" data-tg="${id}" data-d="-1" ${k ? '' : 'disabled'}>−</button><b>${k}</b><button class="sm ghost" data-tg="${id}" data-d="1" ${k < n ? '' : 'disabled'}>+</button></span></div>`; }).join('');
-  const itemRows = have.items.map((id) => { const on = T.mine.items.includes(id); return `<div class="soc-row ${on ? 'on' : ''}"><span class="nm">${esc(ITEMS[id].name)}</span><span class="btns"><button class="sm ${on ? '' : 'ghost'}" data-ti="${id}">${on ? '넣었다' : '넣기'}</button></span></div>`; }).join('');
+  const itemRows = have.items.map((id) => { const on = T.mine.items.includes(id); return `<div class="soc-row ${on ? 'on' : ''}"><span class="nm">${esc(ITEMS[id].name)}${save.reinforce?.[id] ? ` +${save.reinforce[id]}` : ''}</span><span class="btns"><button class="sm ${on ? '' : 'ghost'}" data-ti="${id}">${on ? '넣었다' : '넣기'}</button></span></div>`; }).join('');
   const theirs = offerText(T.theirs), mine = offerText(T.mine);
   showModal(`<div class="social" id="tradeBox"><h2>교환 · ${esc(T.name)}</h2>
     <div class="trade-cols"><div><h4>내가 줄 것 ${T.myOk ? '<span class="up">✔ 확정</span>' : ''}</h4><p>${mine.length ? mine.map(esc).join(' · ') : '<span class="muted">아직 없다</span>'}</p>
@@ -392,7 +392,8 @@ function tradeCheck() {
   for (const [id, n] of Object.entries(mine.goods)) { save.bag[id] -= n; if (save.bag[id] <= 0) delete save.bag[id]; }
   for (const [id, n] of Object.entries(theirs.goods || {})) if (n > 0 && GOODS[id]) save.bag[id] = (save.bag[id] || 0) + n;
   save.items = save.items.filter((id) => !mine.items.includes(id));
-  for (const id of theirs.items || []) if (ITEMS[id] && !save.items.includes(id)) save.items.push(id);
+  for (const id of mine.items) delete save.reinforce?.[id];
+  for (const id of theirs.items || []) if (ITEMS[id]) { const got = addItem(save, id), lv = Math.max(0, Math.min(10, Math.floor(+theirs.rf?.[id] || 0))); if (lv) (save.reinforce ||= {})[got] = lv; } // 같은 것을 이미 가졌어도 낱개로 받는다 (예전엔 사라졌다)
   writeSave(save); cloudSaveNow(save);
   netSend({ t: 'tradeDone' }); trade = null;
   overlay.hidden = true; paused = false; modal = null;
@@ -1087,6 +1088,12 @@ function migrateSave(sv) {
   sv.story ||= newStory(); sv.story.items ||= {}; sv.story.flags ||= {};
   sv.codex ||= {}; sv.codex.kills ||= {}; sv.codex.places ||= {}; sv.codex.journals ||= {}; sv.codex.lore ||= [];
   sv.sanctum ||= {}; sv.relics ||= {}; sv.relicSrc ||= {}; sv.shards ||= {}; sv.reinforce ||= {};
+  { // 장비 낱개: 같은 아이디가 여럿이면 둘째부터 'id#2' · 'id#3' (강화가 낱개마다 따로 붙는다) · 장신구 하나가 두 칸에 끼워져 있으면 둘째 낱개로, 없으면 뺀다
+    const list = sv.items || [], seen = new Set(); sv.items = [];
+    for (const id of list) { if (!seen.has(id)) { seen.add(id); sv.items.push(id); } else addItem(sv, id); }
+    const g = sv.gear || {};
+    if (g.acc1 && g.acc1 === g.acc2) { const two = `${g.acc1}#2`; if (sv.items.includes(two)) g.acc2 = two; else delete g.acc2; }
+  }
   for (const [k, v] of Object.entries(newLife())) sv[k] ||= v;
   sv.time ||= newClock(); sv.effects ||= []; sv.learned ||= []; sv.abilities ||= {}; sv.crafted ||= {}; sv.chest ||= {}; sv.bagCap ||= 30; sv.dishLog ||= {};
   syncLevel(sv);

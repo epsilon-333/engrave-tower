@@ -345,8 +345,8 @@ export const REINFORCE = [
   { mats: { manaCrystal: 8, obsidian: 6 }, echoes: { soul: 12, bone: 12, grave: 1 }, gold: 10000, rate: 0.1 },
 ];
 export const REINFORCE_MAX = 10;
-// 강화는 장비 하나하나에 따로 붙는다: 같은 장신구 둘을 끼면 둘째 칸은 따로 센다 (하나만 강화해도 둘 다 세지지 않게)
-export const rfKey = (gear, slot) => { const id = gear?.[slot]; return id && slot === 'acc2' && gear.acc1 === id ? id + '#2' : id; };
+// 강화는 장비 낱개마다 따로 붙는다 (save.reinforce[낱개 아이디] · 같은 장비 둘은 'id' · 'id#2', data/items.js addItem)
+export const rfKey = (gear, slot) => gear?.[slot];
 export const REINFORCE_STEP = 0.06, REINFORCE_ARMOR = 0.02, REINFORCE_GEAR = 0.1; // 무기 피해 · 갑옷 받는 피해 · 왼손 · 장신구 능력치 (단계마다)
 
 // ── 잡화점: 파는 것 · 시세 (1시간마다 종류별로 값이 오르내리고, 두 가지는 인기 상품 ×1.8) ──

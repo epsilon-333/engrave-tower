@@ -234,7 +234,7 @@ export const NPC_ART = {
 };
 
 // 무기 그림: 직접 만든 무기는 장비 정보(art)에 그림이 들어 있다
-export const weaponArt = (id, ITEMS) => WEAPON_ART[id] || ITEMS?.[id]?.art || WEAPON_ART.rustySword;
+export const weaponArt = (id, ITEMS) => WEAPON_ART[id] || WEAPON_ART[String(id).split('#')[0]] || ITEMS?.[id]?.art || WEAPON_ART.rustySword; // 'id#2': 같은 장비의 둘째 낱개
 export const WEAPON_ART = {
   boneKnuckle: { s: 'weapon_baton_with_spikes', tint: 'sepia(0.6) brightness(1.2)' },
   predatorFang: { s: 'weapon_saw_sword', tint: 'hue-rotate(-30deg) saturate(1.4)' },

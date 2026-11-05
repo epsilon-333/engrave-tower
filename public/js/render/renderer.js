@@ -1327,7 +1327,7 @@ export class Renderer {
     }
     if (!blink && admin) this.drawAdminFigure(bx, by + 2, p.dir, moving, p.walkT || w.t, p.swingT > 0, gs);
     else if (!blink && img) this.drawBody(img, bx, by, gs, pose, p.dir);
-    if (!blink && w.b.offItem && !hideW && OFF_LOOK[w.b.offId] === 'xbow') this.drawOffhand(w, p, pose, bx, by, gs, 'front'); // 손쇠뇌는 몸 앞에
+    if (!blink && w.b.offItem && !hideW && OFF_LOOK[String(w.b.offId).split('#')[0]] === 'xbow') this.drawOffhand(w, p, pose, bx, by, gs, 'front'); // 손쇠뇌는 몸 앞에
     if (sink != null) g.restore();
     if (p.swim) this.drawSwimLine(w, p, bx, by, dt);
     if (p.boat) this.drawBoat(w, p.x, p.y, p.dir, p.moving, 'front');
@@ -2034,7 +2034,7 @@ export class Renderer {
 
   // 왼손 도구: 둥근 작은 방패 · 매달린 부적 · 앞을 겨눈 손쇠뇌 · 허리춤 주머니
   drawOffhand(w, p, P, bx, by, gs, layer = 'back') {
-    const g = this.g, dir = p.dir, id = w.b.offId, look = OFF_LOOK[id], O = '#16121c';
+    const g = this.g, dir = p.dir, id = w.b.offId, look = OFF_LOOK[String(id).split('#')[0]], O = '#16121c';
     if ((look === 'xbow') !== (layer === 'front')) return;
     const x = Math.round(bx - dir * 5 * gs), y = Math.round(by - 8 * gs);
     if (look === 'buckler') {
