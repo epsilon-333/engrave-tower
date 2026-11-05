@@ -1970,6 +1970,7 @@ export class World {
 
   hitEnemy(e, base, type, heavy, proj = false, opt = {}) {
     const p = this.player, d = this.d, f = this.f, w = this.b.weapon;
+    if (proj && e.wardT > this.t) base *= 0.6; // 보스 「화살 막이」: 투사체 피해 -40%
     let crit = this.rng.chance(d.crit + this.modAdd('crit'));
     if (p.dashCritReady) { crit = true; p.dashCritReady = false; }
     if (p.buffs.nextCrit) { crit = true; delete p.buffs.nextCrit; }
@@ -2199,7 +2200,7 @@ export class World {
     e.lastHitT = this.t;
     if (e.def.veil) e.revealT = 4; // 지워진 기록: 맞으면 4초 동안 드러난다
     if (e.hiding && !opt.fromDot) shardHit(this, e); // 깨진 거울의 여왕: 진짜를 찾았다
-    if (e.passives?.includes('thorns') && !opt.fromDot && Math.hypot(p.x - e.x, p.y - e.y) < e.r + 44 && this.t - (e.thornT ?? -9) > 0.3) { e.thornT = this.t; this.hurtPlayer(Math.min(amount * 0.15, d.maxHp * 0.05), 'phys', e, { fromX: e.x, fromY: e.y }); this.emit({ t: 'text', x: p.x, y: p.y - 22, text: '가시!', color: '#ffb07a' }); }
+    if (e.thornsT > this.t && !opt.fromDot && this.t - (e.thornT ?? -9) > 0.3) { /* 가시 세움 중: 거리 상관없이 */ e.thornT = this.t; this.hurtPlayer(Math.min(amount * 0.15, d.maxHp * 0.05), 'phys', e, { fromX: e.x, fromY: e.y }); this.emit({ t: 'text', x: p.x, y: p.y - 22, text: '가시!', color: '#ffb07a' }); }
     let mult = d.dmgMul * ((e.remote ? CLASS_BAL : CLASS_BAL_PVE)[this.b.cls] ?? 1) * (this.balMul ?? 1); // 클래스 밸런스 보정 (결투는 따로)
     if (e.exposedT > 0) mult *= e.exposeMul || 2; // 수호자의 빈틈: 기절 · 과열 · 의식 실패
     if (this.climb?.gz) mult *= zoneTakeMul(this, e); // 빛의 정상: 빛 안 +25% · 그림자 -30% · 별자리 위에서 +20%
@@ -2883,10 +2884,25 @@ export class World {
         this.emit({ t: 'text', x: e.x, y: e.y - 36, text: '무리를 부른다', color: '#ffb07a' });
       }
       if (k === 'curseMark' && tick(k, 12)) { p.markT = 4; this.emit({ t: 'text', x: p.x, y: p.y - 30, text: '저주의 표식 · 받는 피해 +30%', color: '#c45cff' }); }
-      if ((k === 'poisonAura' || k === 'frostAura' || k === 'burnAura') && tick(k, 1) && near) {
-        const st = k === 'poisonAura' ? 'poison' : k === 'frostAura' ? 'chill' : 'burn';
-        this.hurtPlayer(e.atk * 0.12, 'mag', e, { status: st, fromX: e.x, fromY: e.y });
+      if ((k === 'poisonAura' || k === 'frostAura' || k === 'burnAura') && tick(k, 5) && !e.mv) { // 기운의 맥동: 5초마다 0.8초 예고 원 → 터질 때 안에 있으면 피해 + 상태이상 (가까이 있기만 해도 깎이던 것 대신)
+        const st = k === 'poisonAura' ? 'poison' : k === 'frostAura' ? 'chill' : 'burn', x = e.x, y = e.y, r = e.r + 34, atk = e.atk; // 한두 걸음이면 빠져나갈 크기
+        this.emit({ t: 'telegraphCircle', x, y, r, dur: 1.1 });
+        this.delayed.push({ t: 1.1, run: () => { if (e.dead) return; this.enemyArea(e, x, y, r, atk * 0.5, 'mag'); if (Math.hypot(p.x - x, p.y - y) < r + (p.r || 5)) this.applyPlayerStatus(st, atk * 0.25); /* 지속 피해는 큰 한 방이 아니라 예전 기운 세기로 */ this.emit({ t: 'skillAoe', x, y, r, elem: st === 'chill' ? 'ice' : st === 'burn' ? 'fire' : 'poison', fx: 'burst' }); } });
       }
+      if (k === 'thorns' && tick(k, 12)) { e.thornsT = this.t + 3; this.emit({ t: 'text', x: e.x, y: e.y - 40, text: '가시 세움! 3초 · 때리면 15% 되돌아온다', color: '#e8c8a0' }); } // 보이는 3초 동안만 · 거리 상관없이
+      if (k === 'hunt' && tick(k, 10) && !e.mv) { // 사냥 본능: 가장 멀리 있는 사람에게 뛰어든다
+        const far = this.coTargets().filter((q) => Math.hypot(q.x - e.x, q.y - e.y) > 130).sort((a, b) => Math.hypot(b.x - e.x, b.y - e.y) - Math.hypot(a.x - e.x, a.y - e.y))[0];
+        const at = far && this.floorNear(far.x, far.y, e.r);
+        if (at) { e.mv = { k: 'leap', t: 0.9, max: 0.9, x0: e.x, y0: e.y, x: at.x, y: at.y }; this.emit({ t: 'telegraphCircle', x: at.x, y: at.y, r: 38, dur: 0.9 }); this.emit({ t: 'text', x: e.x, y: e.y - 40, text: '사냥 본능!', color: '#ffb07a' }); }
+      }
+      if (k === 'pull' && tick(k, 12)) { // 끌어당김: 7칸 밖에 있으면 사슬 예고선(0.8초) → 끌려온다 (구르면 끊긴다)
+        const dd = Math.hypot(p.x - e.x, p.y - e.y);
+        if (dd > 7 * TILE && !p.down) {
+          this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: p.x, y2: p.y, dur: 0.8, color: '#c8a0ff', w: 8 }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '끌어당김 — 구르면 끊긴다', color: '#c8a0ff' });
+          this.delayed.push({ t: 0.8, run: () => { if (e.dead || p.invuln > 0 || p.dashT > 0) return; const d2 = Math.hypot(p.x - e.x, p.y - e.y); if (d2 > e.r + 50) { this.knockPlayer(e.x, e.y, d2 - e.r - 40, { ang: Math.atan2(e.y - p.y, e.x - p.x) }); this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2: p.x, y2: p.y, elem: 'dark' }); } } });
+        }
+      }
+      if (k === 'ward' && tick(k, 15)) { e.wardT = this.t + 4; this.emit({ t: 'text', x: e.x, y: e.y - 40, text: '화살 막이 · 4초 동안 투사체 피해 -40%', color: '#9fd8ff' }); }
       if (k === 'shieldPulse' && tick(k, 20)) { e.bshield = e.maxHp * 0.12; this.emit({ t: 'text', x: e.x, y: e.y - 34, text: `보호막 ${Math.round(e.bshield)}`, color: '#bfe8ff' }); }
     }
     // 체력 66% · 33% 아래로 내려가면 다음 단계로 변신한다 (한 번에 많이 깎여도 단계를 건너뛰지 않고 차례로)
