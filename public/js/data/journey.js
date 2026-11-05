@@ -30,9 +30,9 @@ export const JOURNEY = [
   { id: 'lord4', title: '40층 · 서리 회랑의 주인 쓰러뜨리기', hint: '서리 마녀의 표식은 끝날 때 구르면 피한다', to: { kind: 'towerDoor' }, check: (s) => lords(s, 4), reward: { gold: 2100 } },
   { id: 'open40', title: '서리 설원이나 그림자 묘지에 가 보기', hint: '탑 40층을 넘으면 열린다. 왕도 정치도 이때 열린다', check: (s) => ['서리 설원', '그림자 묘지'].some((n) => visited(s, n)), reward: { gold: 1200 } },
   { id: 'lv32', title: '레벨 37 되기', hint: '서리 설원 · 그림자 묘지. 레이드 · 탑 · 성지 의뢰 모두 도감을 채운다', check: (s) => (s.level || 1) >= 37, reward: { gold: 1500 } },
-  { id: 'lord5', title: '50층 · 각인의 왕 쓰러뜨리기', hint: '탑의 한가운데. 이제부터는 각성한 수호자들이 기다린다', to: { kind: 'towerDoor' }, check: (s) => lords(s, 5) || (C(s).wins || 0) > 0, reward: { gold: 4000 } },
+  { id: 'lord5', title: '50층 · 각인의 왕 쓰러뜨리기', hint: '탑의 한가운데. 쓰러뜨리면 51층부터 새 구역 다섯이 열리고, 서약 · 랭킹도 열린다', to: { kind: 'towerDoor' }, check: (s) => lords(s, 5) || (C(s).wins || 0) > 0, reward: { gold: 4000 } },
   { id: 'oath', title: '서약을 걸고 오르기', hint: '50층을 넘으면 열린다. 탑 문 앞 → 「서약」. 더 어렵게 오르고 기록에 서약 점수를 남긴다', to: { kind: 'towerDoor' }, check: (s) => (C(s).oathRuns || 0) > 0, reward: { gold: 100 } },
-  { id: 'top', title: '100층 · 각성한 각인의 왕 쓰러뜨리기', hint: '탑의 꼭대기. 꺼져 가는 빛을 되살리자', to: { kind: 'towerDoor' }, check: (s) => lords(s, 10), reward: { gold: 10000 } },
+  { id: 'top', title: '100층 · 빛의 정상의 마지막 왕 쓰러뜨리기', hint: '탑의 꼭대기. 꺼져 가는 빛을 되살리자', to: { kind: 'towerDoor' }, check: (s) => lords(s, 10), reward: { gold: 10000 } },
   { id: 'oath5', title: '서약 5 이상으로 꼭대기에 닿기', hint: '이제부터는 기록의 싸움. 친구와 서약 점수를 겨뤄 보자', to: { kind: 'towerDoor' }, check: (s) => (C(s).oathBest || 0) >= 5, reward: { gold: 800 } },
   { id: 'oath10', title: '서약 10 이상으로 꼭대기에 닿기', hint: '탑을 완전히 정복한 자만이 닿는 곳', to: { kind: 'towerDoor' }, check: (s) => (C(s).oathBest || 0) >= 10, reward: { gold: 6500 } },
 ];

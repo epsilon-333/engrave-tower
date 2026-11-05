@@ -4256,18 +4256,41 @@ export class Renderer {
   // 해방되지 않은 지역의 안개 (칸 하나 = 점 하나인 그림을 키워 그린다 · 부드럽게 번진 경계)
   sealCanvas(w) {
     if (this.sealC && !this.sealDirty && this.sealW === w) return this.sealC;
-    this.sealDirty = false; this.sealW = w;
+    this.sealDirty = false; this.sealW = w; this.sealFdirty = true;
     const c = (this.sealC ||= document.createElement('canvas')); c.width = w.tw; c.height = w.th;
     const L = w.locks?.regions, R = w.map.regions, gc = c.getContext('2d'), img = gc.createImageData(w.tw, w.th), d = img.data;
-    if (L?.size && R) for (let i = 0; i < R.length; i++) if (L.has(R[i])) { d[i * 4] = 30; d[i * 4 + 1] = 18; d[i * 4 + 2] = 48; d[i * 4 + 3] = 175; }
+    if (L?.size && R) { // 경계에서 안쪽으로 4칸에 걸쳐 점점 짙게 (열린 땅에서 몇 칸 떨어졌나)
+      const tw = w.tw, n = R.length, dist = new Uint8Array(n).fill(255), q = [];
+      for (let i = 0; i < n; i++) if (!L.has(R[i])) { dist[i] = 0; q.push(i); }
+      for (let h = 0; h < q.length; h++) { const i = q[h], x = i % tw; if (dist[i] >= 4) continue; for (const j of [x > 0 ? i - 1 : -1, x < tw - 1 ? i + 1 : -1, i - tw, i + tw]) if (j >= 0 && j < n && dist[j] === 255) { dist[j] = dist[i] + 1; q.push(j); } }
+      for (let i = 0; i < n; i++) if (dist[i]) { d[i * 4] = 30; d[i * 4 + 1] = 18; d[i * 4 + 2] = 48; d[i * 4 + 3] = Math.round(185 * Math.min(1, dist[i] / 4)); }
+    }
     for (const k of w.locks?.keep || []) { const r = k.r / TILE, cx = k.x / TILE, cy = k.y / TILE; for (let y = Math.max(0, Math.floor(cy - r)); y <= Math.min(w.th - 1, cy + r); y++) for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(w.tw - 1, cx + r); x++) if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) < r) d[(y * w.tw + x) * 4 + 3] = 0; } // 열어 둔 곳 (내 종족 성지 둘레)
     gc.putImageData(img, 0, 0);
     return c;
   }
+  // 세계에 덮는 안개: 칸(16px)보다 잘게(8px) — 칸 그림의 짙기를 이웃 칸과 섞어 경계가 계단처럼 보이지 않게
+  sealFine(w) {
+    const tile = this.sealCanvas(w);
+    if (this.sealF && this.sealFsrc === tile && !this.sealFdirty && this.sealFw === w) return this.sealF;
+    this.sealFsrc = tile; this.sealFw = w; this.sealFdirty = false;
+    const tw = w.tw, th = w.th, A = tile.getContext('2d').getImageData(0, 0, tw, th).data, W2 = tw * 2, H2 = th * 2;
+    const c = (this.sealF ||= document.createElement('canvas')); c.width = W2; c.height = H2;
+    const gc = c.getContext('2d'), img = gc.createImageData(W2, H2), d = img.data;
+    const a = (x, y) => A[((Math.max(0, Math.min(th - 1, y))) * tw + Math.max(0, Math.min(tw - 1, x))) * 4 + 3];
+    for (let y = 0; y < H2; y++) for (let x = 0; x < W2; x++) {
+      const fx = x / 2 - 0.25, fy = y / 2 - 0.25, x0 = Math.floor(fx), y0 = Math.floor(fy), u = fx - x0, v = fy - y0;
+      const al = (a(x0, y0) * (1 - u) + a(x0 + 1, y0) * u) * (1 - v) + (a(x0, y0 + 1) * (1 - u) + a(x0 + 1, y0 + 1) * u) * v;
+      if (al < 2) continue;
+      const i = (y * W2 + x) * 4; d[i] = 30; d[i + 1] = 18; d[i + 2] = 48; d[i + 3] = al;
+    }
+    gc.putImageData(img, 0, 0);
+    return c;
+  }
   drawSeals(w, dt) {
-    const g = this.g, c = this.sealCanvas(w), p = w.player;
+    const g = this.g, c = this.sealFine(w), p = w.player;
     this.worldTf(g);
-    g.imageSmoothingEnabled = true; g.drawImage(c, 0, 0, w.tw * TILE, w.th * TILE); g.imageSmoothingEnabled = false;
+    g.drawImage(c, 0, 0, w.tw * TILE, w.th * TILE);
     if (dt > 0 && Math.random() < 0.5) { // 안개 속을 떠도는 보랏빛 티끌 (가까운 경계에서만)
       const x = p.x + (Math.random() - 0.5) * 360, y = p.y + (Math.random() - 0.5) * 220;
       if (w.sealAt(x, y)) this.parts.push({ x, y, vx: (Math.random() - 0.5) * 6, vy: -8 - Math.random() * 8, t: 1.6, max: 1.6, color: Math.random() < 0.5 ? '#b89cff' : '#7a5ad8', g: -2 });
