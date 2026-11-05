@@ -215,12 +215,25 @@ const B = {
     P.e(22, by - 1, 3, 2.5, '#18141e'); P.e(22, by - 2, 2.2, 1.5, '#2a2434'); P.p(21, by - 4, '#2a2434'); P.p(23, by - 4, '#2a2434');
     P.p(23, by - 2, '#c070ff'); P.p(24, by - 1, '#e0b0ff'); P.p(25, by, '#141018');
   } },
+  // 날아다니는 마도서: 가죽 표지가 날개처럼 펄럭이고, 펼친 책장 위에 빛나는 문장 · 떨어지는 종잇조각
+  book: { W: 20, H: 16, draw(P, f, pose) {
+    const flap = [0, -2, -3, -1][f], cy = 9, glow = pose === 'wind' ? '#ff8ad8' : '#c8a8ff';
+    for (const s of [-1, 1]) { // 표지: 책등에서 바깥으로 들린다
+      for (let i = 0; i <= 7; i++) { const x = 10 + s * i, y = cy + 1 + Math.round(flap * i / 7); P.r(x, y - 1, 1, 3, i === 7 ? '#3a1a10' : '#6a3a22'); if (i > 1 && i < 7) P.p(x, y - 1, '#8a5232'); }
+      P.p(10 + s * 3, cy + 1 + Math.round(flap * 3 / 7), '#d8a840'); // 금박 모서리
+    }
+    for (const s of [-1, 1]) for (let i = 1; i <= 6; i++) { const x = 10 + s * i, y = cy - 1 + Math.round((flap + 2) * i / 9); P.r(x, y - 2, 1, 2, i % 2 ? '#f0e8d0' : '#e0d4b4'); } // 책장
+    P.r(10, cy - 3, 1, 5, '#4a2a18'); // 책등
+    P.p(7, cy - 3 + Math.round((flap + 2) * 3 / 9), glow); P.p(8, cy - 4 + Math.round((flap + 2) * 2 / 9), glow); P.p(12, cy - 4 + Math.round((flap + 2) * 2 / 9), glow); P.p(13, cy - 3 + Math.round((flap + 2) * 3 / 9), glow); // 문장
+    P.p(10, cy - 6 - (f % 2), '#ffffff'); P.p(9, cy - 5, glow); P.p(11, cy - 5, glow);
+    const fall = (f * 3) % 6; P.p(4 + f, cy + 4 + fall % 3, '#f0e8d0'); P.p(15 - f, cy + 5 + (fall + 1) % 3, '#e0d4b4'); // 떨어지는 종잇조각
+  } },
 };
 
 // 몬스터 그림 한 장 (뒤집기 · 맞을 때 번쩍임까지 캐시)
-export function beastImg(kind, pose, f, flip, flash) {
+export function beastImg(kind, pose, f, flip, flash, tint = '') {
   const def = B[kind]; if (!def) return null;
-  const key = `${kind}|${pose}|${f}|${flip ? 1 : 0}|${flash || ''}`;
+  const key = `${kind}|${pose}|${f}|${flip ? 1 : 0}|${flash || ''}|${tint}`;
   let c = cache.get(key); if (c) return c;
   const base = `${kind}|${pose}|${f}`;
   let src = cache.get(base);
@@ -228,7 +241,9 @@ export function beastImg(kind, pose, f, flip, flash) {
   if (def.faceLeft) flip = !flip; // 왼쪽을 보고 그린 그림
   c = document.createElement('canvas'); c.width = src.width; c.height = src.height; const g = c.getContext('2d');
   if (flip) { g.translate(c.width, 0); g.scale(-1, 1); }
+  if (tint) g.filter = tint; // 같은 그림에 색을 입힌 몬스터 (탑 51~100층)
   g.drawImage(src, 0, 0);
+  g.filter = 'none';
   if (flash) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = flash === true ? 'rgba(255,255,255,0.85)' : flash; g.globalAlpha = flash === true ? 1 : 0.6; g.fillRect(0, 0, c.width, c.height); }
   cache.set(key, c);
   return c;

@@ -1,7 +1,7 @@
 // 어디서 얻나: 모든 물건 · 장비가 어디서 나오는지 (몬스터 · 캐기 · 땅 파기 · 낚시 · 가게 · 성지 · 대장간)
 import { GOODS, MONSTER_DROPS, NODES, BIOME_NODES, DIG_BASE, DIG_BIOME, SHOP_STOCK, SCROLL_SHOP, FISH } from '../data/goods.js';
 import { ITEMS } from '../data/items.js';
-import { MONSTERS, ZONES } from '../data/monsters.js';
+import { MONSTERS, ZONES, ALL_ZONES } from '../data/monsters.js';
 import { ENTRANCES } from '../data/maps/overworld.js';
 import { RACE_SHOP, SANCTUMS } from '../data/sanctums.js';
 import { CLASSES } from '../data/skills.js';
@@ -12,7 +12,7 @@ const BIOME_NAME = { plains: '평원', meadow: '초원', forest: '숲', swamp: '
 // 몬스터가 사는 곳 (탑 · 던전의 몬스터 목록)
 function homesOf(mid) {
   const out = new Set();
-  for (const z of ZONES) if (z.pool.includes(mid) || z.elite === mid) out.add(`각인의 탑 · ${z.name}`);
+  for (const z of ALL_ZONES) if (z.pool.includes(mid) || z.elite === mid) out.add(`각인의 탑 · ${z.name}`);
   for (const en of Object.values(ENTRANCES)) {
     const base = ZONES.find((z) => z.id === en.theme);
     if ((en.pool || base?.pool || []).includes(mid) || (en.elite || base?.elite) === mid) out.add(en.name);

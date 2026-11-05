@@ -45,14 +45,14 @@ const L = [
   // ── 사령술사 ──
   ['eRaiseSouls', '망자의 명부', 'head', 3, ['undying'], { spi: 6, mag: 3 }, [on('kill', 0.15, { heal: 0.012 }, '처치하면 15% 확률로 체력 1.2% 회복')], { bone: 5, soul: 4 }, 'raiseSouls'],
   ['eDeathCall', '부름의 종', 'head', 2, ['undying', 'reflect'], { spi: 3, pres: 3 }, [mul('dmgTakenMul', 0.96, '받는 피해 -4%')], { bone: 4, soul: 3 }, 'deathCall'],
-  ['eSkeletons', '덜그럭 뼈 주머니', 'back', 2, ['undying'], { spi: 3, vit: 3 }, [add('regen', 0.001, '초당 최대 HP 0.1% 회복')], { bone: 5, rot: 2 }, 'skeletons'],
+  ['eSkeletons', '덜그럭 뼈 주머니', 'back', 2, ['undying'], { spi: 3, vit: 3 }, [add('regen', 0.0003, '초당 최대 HP 0.03% 회복')], { bone: 5, rot: 2 }, 'skeletons'],
   ['eWraiths', '망령의 실', 'back', 2, ['shadow'], { spi: 4, agi: 2 }, [add('dodge', 0.02, '회피 +2%')], { soul: 4, rot: 3 }, 'wraiths'],
   ['eSoulDrain', '영혼 빨대', 'arm', 2, ['drain'], { mag: 3, spi: 3, lifesteal: 2 }, [on('kill', 0.15, { res: 8 }, '처치하면 15% 확률로 자원 +8')], { soul: 4, blood: 3 }, 'soulDrain'],
   ['eBoneCage', '뼈 창살', 'leg', 2, ['undying', 'curse'], { pres: 3, spi: 3 }, [on('hurt', 0.15, st('curse'), '맞으면 15% 확률로 때린 적에게 저주')], { bone: 5, soul: 2 }, 'boneCage'],
   ['eCorpseBlast', '부푼 시체', 'heart', 3, ['poison', 'undying'], { mag: 5, toxicity: 3 }, [on('kill', 0.25, strike(36, 0.9, 'dark', 'corpse'), '처치하면 25% 확률로 적이 터진다')], { rot: 5, bone: 4 }, 'corpseBlast'],
   ['eGiantCorpse', '거인의 해골', 'heart', 3, ['giant', 'undying'], { vit: 6, spi: 3 }, [mul('maxHp', 1.06, '최대 HP +6%')], { bone: 6, queen: 1 }, 'giantCorpse'],
   ['eGraspWraith', '움켜쥐는 손', 'arm', 2, ['shadow', 'curse'], { spi: 4, mag: 2 }, [on('hit', 0.1, { stun: 0.3 }, '공격하면 10% 확률로 0.3초 기절')], { soul: 4, rot: 3 }, 'graspWraith'],
-  ['eLichLord', '리치의 성물함', 'heart', 5, ['undying', 'curse'], { mag: 12, spi: 10 }, [mul('magAtk', 1.08, '마법 공격력 +8%'), on('kill', 0.2, { heal: 0.016 }, '처치하면 20% 확률로 체력 4% 회복')], { soul: 6, bone: 6, grave: 2 }, 'lichLord'],
+  ['eLichLord', '리치의 성물함', 'heart', 5, ['undying', 'curse'], { mag: 12, spi: 10 }, [mul('magAtk', 1.08, '마법 공격력 +8%'), on('kill', 0.2, { heal: 0.016 }, '처치하면 20% 확률로 체력 1.6% 회복')], { soul: 6, bone: 6, grave: 2 }, 'lichLord'],
   ['eDeathNova', '죽음의 숨', 'head', 4, ['curse', 'undying'], { mag: 9, spi: 5 }, [on('hurt', 0.15, strike(44, 1.0, 'dark', 'doom'), '맞으면 15% 확률로 죽음의 기운이 터진다')], { soul: 5, rot: 5, grave: 1 }, 'deathNova'],
   // ── 저주술사 ──
   ['eContagion', '옮는 저주', 'head', 3, ['curse', 'poison'], { mag: 5, toxicity: 4 }, [mul('statusDmgMul', 1.1, '상태이상 피해 +10%')], { rot: 5, venom: 3 }, 'contagion'],

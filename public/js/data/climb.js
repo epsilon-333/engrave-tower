@@ -13,12 +13,12 @@ export const ACTS = [
   { n: 3, from: 21, to: 30, zone: 'rift', name: '화산 균열', guardian: 'demonCaptain', lord: 'climbRift', rec: 19, color: '#ff7a2a' },
   { n: 4, from: 31, to: 40, zone: 'frost', name: '서리 회랑', guardian: 'frostOgre', lord: 'climbWitch', rec: 28, color: '#9fe3ff' },
   { n: 5, from: 41, to: 50, zone: 'grave', name: '그림자 묘지', guardian: 'wraithLord', lord: 'engraveKing', rec: 37, color: '#c45cff' },
-  // 51~100층: 같은 풍경이 더 깊어지고, 수호자 · 주인이 각성해서 돌아온다
-  { n: 6, from: 51, to: 60, zone: 'cave', name: '잠식된 이끼 굴', guardian: 'climbChief', lord: 'mossLord', rec: 44, color: '#5fbf3a' },
-  { n: 7, from: 61, to: 70, zone: 'swamp', name: '썩어 가는 늪', guardian: 'bogHag', lord: 'climbQueen', rec: 49, color: '#7fc04a' },
-  { n: 8, from: 71, to: 80, zone: 'rift', name: '타오르는 심연', guardian: 'demonCaptain', lord: 'climbRift', rec: 54, color: '#ff5a1a' },
-  { n: 9, from: 81, to: 90, zone: 'frost', name: '영겁의 서리', guardian: 'frostOgre', lord: 'climbWitch', rec: 58, color: '#7fd0ff' },
-  { n: 10, from: 91, to: 100, zone: 'grave', name: '탑의 꼭대기', guardian: 'wraithLord', lord: 'engraveKing', rec: 62, color: '#e07aff' },
+  // 51~100층: 탑의 기억 — 50층의 왕을 쓰러뜨리면 깨어나는 위쪽 구역 다섯 (풍경 · 몬스터 · 보스 · 구역 장치가 모두 새것)
+  { n: 6, from: 51, to: 60, zone: 'sky', name: '하늘 정원', guardian: 'stormHarpy', lord: 'skyWhale', rec: 44, color: '#bfe8ff', gimmick: '돌풍이 분다 · 가장자리 밖은 하늘' },
+  { n: 7, from: 61, to: 70, zone: 'mirror', name: '거울 미궁', guardian: 'mirrorSelf', lord: 'shardQueen', rec: 49, color: '#e6f3ff', gimmick: '거울 벽이 투사체를 튕긴다 · 내 그림자가 나온다' },
+  { n: 8, from: 71, to: 80, zone: 'clock', name: '태엽 시계탑', guardian: 'foreman', lord: 'clockKeeper', rec: 54, color: '#d8a860', gimmick: '톱니 바닥이 실어 나른다 · 시간의 종' },
+  { n: 9, from: 81, to: 90, zone: 'library', name: '별의 서고', guardian: 'archivist', lord: 'starReader', rec: 58, color: '#c8d8ff', gimmick: '책장이 움직인다 · 별자리 위에서 더 세진다' },
+  { n: 10, from: 91, to: 100, zone: 'summit', name: '빛의 정상', guardian: 'highPriest', lord: 'lastKing', rec: 62, color: '#ffd84a', gimmick: '빛기둥을 깨워라(G) · 그림자 속 적은 단단하다' },
 ];
 export const actOf = (f) => ACTS[Math.max(0, Math.min(ACTS.length - 1, Math.floor((f - 1) / 10)))];
 export const floorKind = (f) => (f % 10 === 0 ? 'lord' : f % 5 === 0 ? 'guardian' : 'fight');
@@ -38,6 +38,9 @@ export const BOSS_STYLE = {
   mossLord: [1.2, 0.8], climbQueen: [1.2, 0.8], demonCaptain: [1.25, 0.75], frostOgre: [1.2, 0.8], // 단단함
   climbChief: [0.75, 1.25], bogHag: [0.75, 1.25], climbWitch: [0.75, 1.25], wraithLord: [0.7, 1.3], // 날카로움
   climbRift: [1, 1], engraveKing: [1, 1], // 균형
+  skyWhale: [1.2, 0.8], foreman: [1.25, 0.8], archivist: [1.1, 0.9], // 단단함
+  stormHarpy: [0.8, 1.2], mirrorSelf: [0.75, 1.25], clockKeeper: [0.85, 1.15], highPriest: [0.8, 1.2], // 날카로움
+  shardQueen: [1, 1], starReader: [1, 1], lastKing: [1, 1], // 균형
 };
 export const BOSS_ATK = { guardian: 1.4, lord: 1.3 }; // 수호자 · 주인은 레벨이 모자라면 벽이 된다 (권장 레벨에서 두 레벨 이상 낮으면 공격 배율을 다 받는다)
 const ZONE_REF = {}; // zone id → { hp, atk } 그 구역 몬스터의 평균

@@ -88,6 +88,7 @@ export function renderMap(world) {
   // 물·용암은 색조 없이 원래 색으로
   for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) if (at(x, y) === T_LIQUID) liquid(og, x * TILE, y * TILE, x, y, z, at);
   if (world.map.palace) palaceStatic(og, world.map.palace);
+  if (z.gimmick) towerStatic(og, world, at, z);
   if (world.map.ship) shipStatic(og, world, at);
   if (world.map.bridges) for (const b of world.map.bridges) { // 수로 위 돌다리
     const px = b.x * TILE, py = b.y * TILE, has = (dx) => world.map.bridges.some((q) => q.x === b.x + dx && q.y === b.y);
@@ -97,6 +98,31 @@ export function renderMap(world) {
     if (!has(1)) { og.fillStyle = '#2a221c'; og.fillRect(px + TILE - 3, py, 3, TILE); og.fillStyle = '#9a8e80'; og.fillRect(px + TILE - 2, py, 2, TILE); }
   }
   return out;
+}
+
+// 탑 51~100층: 책장(별의 서고) · 거울 벽의 빛(거울 미궁)
+function towerStatic(g, world, at, z) {
+  const P = (c, x, y, w = 1, h = 1) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+  if (z.gimmick === 'library') for (const sh of world.map.climb?.shelves || []) {
+    const books = ['#8a2a2a', '#2a4a8a', '#2a6a3a', '#6a4a8a', '#8a6a2a', '#3a5a6a'];
+    for (let x = sh.x0; x < sh.x0 + sh.len; x++) {
+      const px = x * TILE, py = sh.y * TILE - 8; // 책장은 한 칸 반 높이 (위 칸에 걸친다)
+      P('#120c08', px, py, TILE, TILE + 8); P('#5a3a22', px, py + 1, TILE, TILE + 6); P('#7a5232', px, py + 1, TILE, 1);
+      for (let row = 0; row < 3; row++) {
+        const ry = py + 3 + row * 7;
+        P('#2a1a10', px + 1, ry, TILE - 2, 6);
+        for (let i = 0; i < 4; i++) { const h = hash(x, sh.y * 7 + row, i), c = books[h % books.length], bw = 2 + (h >> 4) % 2, bx = px + 1 + i * 4 - (h >> 6) % 2; if (bx + bw > px + TILE - 1) continue; P(c, bx, ry + 1 + (h >> 8) % 2, bw, 5 - (h >> 8) % 2); P('#e8d8a8', bx, ry + 2, 1, 1); }
+        P('#3a2416', px, ry + 6, TILE, 1);
+      }
+    }
+  }
+  if (z.gimmick === 'mirror') for (let y = 1; y < world.th - 1; y++) for (let x = 0; x < world.tw; x++) { // 벽면마다 비스듬한 빛줄기 (거울)
+    const t = at(x, y); if (t !== T_WALL || at(x, y + 1) === T_WALL) continue;
+    const px = x * TILE, py = y * TILE, h = hash(x, y, 9);
+    g.fillStyle = 'rgba(200,225,255,0.22)'; g.fillRect(px, py + 2, TILE, TILE - 4);
+    g.fillStyle = 'rgba(255,255,255,0.55)'; for (let k = 0; k < 6; k++) g.fillRect(px + 3 + k + (h % 5), py + 3 + k, 1, 1);
+    if (h % 3 === 0) { g.fillStyle = 'rgba(255,255,255,0.4)'; for (let k = 0; k < 4; k++) g.fillRect(px + 9 + k, py + 4 + k, 1, 1); }
+  }
 }
 
 // 배 갑판: 길게 이어진 널빤지 · 못 · 나무 난간, 아래쪽 바다로 드러난 뱃전(선체)과 물 높이 선
@@ -176,6 +202,9 @@ const LIQ = {
   lava: ['rgba(230,80,20,0.92)', 'rgba(255,210,80,0.8)'],
   snow: ['rgba(225,240,255,0.85)', 'rgba(255,255,255,0.9)'],
   mist: ['rgba(90,70,130,0.55)', 'rgba(170,150,220,0.4)'],
+  void: ['rgba(104,168,232,0.97)', 'rgba(236,248,255,0.55)'], // 하늘 정원: 발밑이 하늘
+  oil: ['rgba(30,26,22,0.92)', 'rgba(150,128,92,0.45)'], // 태엽 시계탑: 기름 웅덩이
+  ink: ['rgba(24,16,40,0.92)', 'rgba(130,100,200,0.45)'], // 별의 서고: 쏟은 먹
 };
 function liquid(g, px, py, x, y, z, at) {
   const [c0, c1] = LIQ[z?.liquid || 'water'];
@@ -185,6 +214,11 @@ function liquid(g, px, py, x, y, z, at) {
     g.fillStyle = c1; g.fillRect(px + (hh % 10), py + 2 + ((hh >> 4) % 12), 3 + (hh >> 9) % 4, 1);
   }
   const edge = (t) => t === T_FLOOR || t === T_BUILD;
+  if (z?.liquid === 'void') { // 하늘: 아래로 갈수록 짙은 하늘빛 · 섬 가장자리에 흰 테 (절벽은 렌더러가 그린다)
+    g.fillStyle = 'rgba(70,130,210,0.35)'; g.fillRect(px, py + 8, TILE, 8);
+    g.fillStyle = 'rgba(255,255,255,0.5)'; if (edge(at(x, y + 1))) g.fillRect(px, py + TILE - 1, TILE, 1); if (edge(at(x - 1, y))) g.fillRect(px, py, 1, TILE); if (edge(at(x + 1, y))) g.fillRect(px + TILE - 1, py, 1, TILE);
+    return;
+  }
   g.fillStyle = 'rgba(0,0,0,0.3)';
   if (edge(at(x, y - 1))) g.fillRect(px, py, TILE, 2);
   g.fillStyle = 'rgba(255,255,255,0.18)';
@@ -220,6 +254,18 @@ export function drawDeco(g, d) {
   const { x, y, v } = d;
   const P = (c, dx, dy, w = 1, h = 1) => { g.fillStyle = c; g.fillRect(x + dx, y + dy, w, h); };
   switch (d.kind) {
+    // 탑 51~100층
+    case 'flower': { const c = ['#ff9ad8', '#fff0a0', '#a8d8ff', '#ffffff'][v]; P('#2a5a2a', 0, -3, 1, 3); P('#3a7a3a', 1, -2, 1, 1); P('#1a1410', -2, -6, 5, 3); P(c, -1, -6, 3, 1); P(c, -2, -5, 1, 1); P(c, 2, -5, 1, 1); P(c, -1, -4, 3, 1); P('#ffe060', 0, -5, 1, 1); break; }
+    case 'petal': P('#ffb0d8', -2, 0, 2, 1); P('#ffd0e8', 1, -1, 1, 1); P('#ff9ac8', 3, 1, 2, 1); break;
+    case 'cloudTuft': P('#1a2030', -3, -2, 7, 3); P('#ffffff', -2, -2, 5, 2); P('#e0ecf8', -3, -1, 1, 1); P('#c8d8e8', -1, 0, 4, 1); break;
+    case 'mirrorShard': P('#1a2030', -2, -4, 5, 5); P('#c8dcf0', -1, -3, 3, 3); P('#ffffff', -1, -3, 1, 1); P('#8aa0c0', 1, -1, 1, 1); P('#e8f4ff', 2, -4, 1, 1); break;
+    case 'gear': { P('#1a140e', -3, -3, 7, 7); P('#a88040', -2, -2, 5, 5); P('#d8b060', -2, -2, 5, 1); P('#1a140e', 0, 0, 1, 1); P('#a88040', -4, 0, 1, 1); P('#a88040', 4, 0, 1, 1); P('#a88040', 0, -4, 1, 1); P('#a88040', 0, 4, 1, 1); break; }
+    case 'bolt': P('#1a140e', -1, -2, 3, 3); P('#b8b0a0', 0, -1, 1, 1); P('#7a6a58', -1, -2, 1, 1); break;
+    case 'book': { const c = ['#8a2a2a', '#2a4a8a', '#2a6a3a', '#6a4a8a'][v]; P('#120e08', -3, -3, 7, 4); P(c, -2, -3, 5, 3); P('#e8dcc0', -2, -1, 5, 1); P('#d8a840', 2, -3, 1, 3); break; }
+    case 'scroll': P('#1a140e', -3, -2, 7, 3); P('#e8d8b0', -2, -2, 5, 2); P('#a88a5a', -3, -2, 1, 2); P('#a88a5a', 3, -2, 1, 2); P('#8a3a2a', 0, -2, 1, 2); break;
+    case 'starDust': P('#dce8ff', 0, -1, 1, 1); P('#9ab0ff', -3, 1, 1, 1); P('#ffffff', 2, 0, 1, 1); break;
+    case 'lightShard': P('#2a2010', -1, -5, 3, 6); P('#fff0b0', 0, -4, 1, 4); P('#ffffff', 0, -4, 1, 1); P('#d8b040', -1, -1, 1, 1); break;
+    case 'featherGold': P('#1a1410', -3, -1, 7, 2); P('#fff4d8', -2, -1, 5, 1); P('#e8c060', 2, 0, 2, 1); P('#c89a40', -3, 0, 1, 1); break;
     case 'moss': P('#4a7a3a', -2, 0, 4, 1); P('#5f9a48', -1, -1, 2, 1); P('#3a5a2a', 1, 1, 2, 1); break;
     // 바닷속
     case 'kelp': { const hgt = 9 + v * 3; for (let i = 0; i < hgt; i++) { const sx = Math.round(Math.sin(i * 0.5 + v) * 1.2); P('#1e3a1e', sx - 1, -i, 3, 1); P(i % 3 ? '#3a7a3a' : '#4e9a48', sx, -i, 1, 1); } for (let i = 2; i < hgt; i += 3) { const sx = Math.round(Math.sin(i * 0.5 + v) * 1.2); P('#5aaa50', sx + 1, -i, 2, 1); P('#5aaa50', sx - 2, -i - 1, 2, 1); } break; }

@@ -80,6 +80,30 @@ export const CLIMB_SIGS = {
     names: { donut: '심판의 고리', channel: '각인 흡수', sweep: '천벌 광선', clones: '거울 그림자', mirror: '반사의 율법', ritual: '마지막 의식', soar: '승천', crossBeam: '각인의 십자', ripple: '꺼져 가는 빛의 파문', meteorRain: '문양의 비', cleave: '왕의 대베기' },
     hint: '모든 수호자의 기술을 쓴다', passives: ['shieldPulse', 'thorns', 'deathRattle'], phase2: { text: '각인이 불타오른다', atk: 1.3, speed: 1.15, passives: ['burnAura'], add: ['cleave', 'meteorRain'] }, phase3: { text: '왕이 마지막 각인을 새긴다', atk: 1.3, speed: 1.2, passives: ['frenzy', 'curseMark'], add: ['ripple', 'crossBeam'] }, looks: ['sepia(1) saturate(3.4) hue-rotate(-20deg) brightness(1.25)', 'sepia(1) saturate(2) hue-rotate(-50deg) brightness(0.55) contrast(1.6)'] },
 };
+// 51~100층 새 구역의 수호자 · 주인 (fresh: 처음부터 제 기술을 다 쓴다 · 각성 없음)
+const NO_ADD = [[], [], []];
+Object.assign(CLIMB_SIGS, {
+  stormHarpy: { fresh: true, add: NO_ADD, names: { gust: '폭풍의 날갯짓', tornado: '회오리' }, hint: '돌풍 화살표를 보고 가장자리를 등지지 마라 — 하늘로 밀린다',
+    passives: ['frenzy'], phase2: { text: '여왕이 폭풍을 부른다', atk: 1.2, speed: 1.15, add: ['gust'] }, phase3: { text: '폭풍의 눈이 열렸다', atk: 1.25, speed: 1.15, passives: ['shieldPulse'], add: ['tornado'] }, looks: ['hue-rotate(200deg) saturate(2.2) brightness(1.2) contrast(1.2)', 'hue-rotate(230deg) saturate(2.6) brightness(0.8) contrast(1.5)'] },
+  skyWhale: { fresh: true, add: NO_ADD, names: { whalePass: '하늘 가르기', collapse: '구름 붕괴', gust: '고래의 숨' }, hint: '하늘을 가로지르는 그림자 길에서 벗어나라 · 3단계엔 바닥 절반이 꺼진다',
+    passives: ['summonTimer'], phase2: { text: '아에로가 노래한다', atk: 1.2, passives: ['shieldPulse'], add: ['gust'] }, phase3: { text: '구름 바다가 꺼져 간다', atk: 1.25, speed: 1.15, passives: ['frostAura'], add: ['collapse'] }, looks: ['hue-rotate(20deg) saturate(1.2) brightness(1.5)', 'hue-rotate(40deg) saturate(1.6) brightness(0.8) contrast(1.4)'] },
+  mirrorSelf: { fresh: true, add: NO_ADD, names: {}, hint: '내 기술을 똑같이 쓴다 — 머리 위 기술 이름을 보고 피하라',
+    passives: ['thorns'], phase2: { text: '거울 속 내가 웃는다', atk: 1.2, speed: 1.15, add: ['clones'] }, phase3: { text: '거울이 금 가며 진짜가 된다', atk: 1.3, speed: 1.2, passives: ['frenzy'], add: ['copy'] }, looks: ['grayscale(0.6) brightness(1.3) contrast(1.5)', 'grayscale(0.2) hue-rotate(180deg) brightness(0.7) contrast(1.7)'] },
+  shardQueen: { fresh: true, add: NO_ADD, names: { shardHide: '거울 숨바꼭질' }, hint: '거울 여섯 중 진짜를 때려라 — 가짜를 깨면 파편이 튄다',
+    passives: ['curseMark'], phase2: { text: '바닥의 거울이 깨어난다', atk: 1.2, passives: ['shieldPulse'], add: ['pool'] }, phase3: { text: '여왕의 거울이 산산이 부서진다', atk: 1.25, speed: 1.2, passives: ['frenzy'], add: ['meteorRain'] }, looks: ['grayscale(0.5) hue-rotate(190deg) saturate(1.6) brightness(1.5)', 'grayscale(0.3) hue-rotate(300deg) saturate(1.8) brightness(0.8) contrast(1.5)'] },
+  foreman: { fresh: true, wallStun: true, vent: 4, ventText: '증기를 빼는 중! 약점이 드러났다', add: NO_ADD, names: { beltFlip: '컨베이어 역회전' }, hint: '톱니 띠가 거꾸로 돌면 반대로 걸어라 · 돌진을 벽으로 유도하면 기절 · 기술을 네 번 쓰면 증기를 뺀다 (피해 2배)',
+    passives: ['burnAura'], phase2: { text: '감독이 기계를 최대로 돌린다', atk: 1.2, speed: 1.15, add: ['adds'] }, phase3: { text: '보일러가 붉게 달아올랐다', atk: 1.3, speed: 1.2, passives: ['frenzy'], add: ['nova'] }, looks: ['sepia(1) saturate(2.4) hue-rotate(-20deg) brightness(1.2)', 'sepia(1) saturate(3) hue-rotate(-40deg) brightness(0.75) contrast(1.5)'] },
+  clockKeeper: { fresh: true, add: NO_ADD, names: { timeStop: '멈춘 시간', rewind: '되감기' }, hint: '시간이 멈추면 칼날 원이 쌓인다 — 끝날 때 원 밖에 서라 · 되감기는 구르면 피한다',
+    passives: ['curseMark'], phase2: { text: '시계지기가 시간을 멈췄다', atk: 1.2, add: ['timeStop'] }, phase3: { text: '시간이 거꾸로 흐른다', atk: 1.25, speed: 1.2, passives: ['shieldPulse'], add: ['rewind'] }, looks: ['sepia(1) saturate(1.6) brightness(1.5)', 'sepia(1) hue-rotate(180deg) saturate(1.4) brightness(0.8) contrast(1.4)'] },
+  archivist: { fresh: true, add: NO_ADD, names: { shelfFall: '책장 쓰러뜨리기' }, hint: '책장이 쓰러지는 줄 사이로 피하라 · 별자리 위에서 싸우면 피해 +20% (보스도)',
+    passives: ['summonTimer'], phase2: { text: '금서고의 문이 열렸다', atk: 1.2, passives: ['curseMark'], add: ['adds'] }, phase3: { text: '대서고관이 서고를 무너뜨린다', atk: 1.25, speed: 1.2, passives: ['frenzy'], add: ['shelfFall'] }, looks: ['hue-rotate(240deg) saturate(1.8) brightness(1.3)', 'hue-rotate(280deg) saturate(2.2) brightness(0.7) contrast(1.5)'] },
+  starReader: { fresh: true, add: NO_ADD, names: { constellation: '별자리 긋기' }, hint: '별자리 선 위를 피하라 · 보스가 별자리 위에 서 있으면 더 세게 친다',
+    passives: ['burnAura'], phase2: { text: '별을 읽는 자가 하늘을 펼친다', atk: 1.2, passives: ['shieldPulse'], add: ['constellation'] }, phase3: { text: '하늘의 별이 하나씩 꺼진다', atk: 1.3, speed: 1.15, passives: ['curseMark'], add: ['meteorRain'], dark: 0.25 }, looks: ['hue-rotate(220deg) saturate(1.6) brightness(1.4)', 'hue-rotate(250deg) saturate(2) brightness(0.6) contrast(1.6)'] },
+  highPriest: { fresh: true, add: NO_ADD, names: { douse: '빛 끄기' }, hint: '꺼진 빛기둥을 다시 깨워라(G) — 빛 안의 대사제는 25% 더 아프게 맞는다',
+    passives: ['curseMark'], phase2: { text: '교단의 기도가 빛을 삼킨다', atk: 1.2, add: ['douse'] }, phase3: { text: '대사제가 어둠 그 자체가 되었다', atk: 1.25, speed: 1.2, passives: ['deathRattle'], add: ['nova'] }, looks: ['saturate(2) hue-rotate(260deg) brightness(0.9) contrast(1.3)', 'brightness(0.4) saturate(2.4) hue-rotate(280deg) contrast(1.8)'] },
+  lastKing: { fresh: true, wallStun: true, add: NO_ADD, names: { raceArt: '각인 빌리기', lightCore: '빛의 핵' }, hint: '1단계 왕의 검술 · 2단계 8종족의 각인 · 3단계 빛의 핵이 드러날 때 몰아쳐라',
+    passives: ['shieldPulse', 'thorns'], phase2: { text: '왕이 8종족의 각인을 깨운다', atk: 1.25, speed: 1.1, passives: ['curseMark'], add: ['raceArt'] }, phase3: { text: '꺼져 가는 빛의 핵이 드러났다', atk: 1.3, speed: 1.2, passives: ['frenzy', 'deathRattle'], add: ['lightCore', 'raceArt'] }, looks: ['sepia(0.6) saturate(2.2) brightness(1.6) contrast(1.1)', 'sepia(1) saturate(3) hue-rotate(-15deg) brightness(1.2) contrast(1.6)'] },
+});
 // 보스 패시브: 이름 · 설명 (보스가 나올 때 보여 준다)
 export const BOSS_PASSIVES = {
   frenzy: { name: '광분', text: '15초마다 공격 속도 +10%' },
@@ -92,4 +116,20 @@ export const BOSS_PASSIVES = {
   shieldPulse: { name: '보호막', text: '20초마다 최대 체력 12% 보호막' },
   thorns: { name: '가시 갑옷', text: '가까이서 때리면 피해의 15%를 돌려받는다' },
   deathRattle: { name: '최후의 발악', text: '쓰러지면 1.4초 뒤 둘레가 크게 터진다' },
+};
+
+// 1~50층 보스의 기술 이펙트: 보내 주신 그림에 맞춘 재질 [이펙트, 원소] (몸 둘레 고리 대신)
+// slam 내려찍기 · 도약 착지 · 땅 찍기 · nova 둘레 폭발 · rain 떨어지는 장판 · mark 표식 · pool 장판 · fall 하늘에서 떨어지는 것 · trail 가시 길 · donut 바깥 고리 · beam 광선 빛깔
+const FX = (slam, nova, rain, mark, pool, fall, trail, donut, beam) => ({ slam, nova, rain, mark, pool, fall, trail, donut, beam });
+export const BOSS_FX = {
+  climbChief: FX(['quake', 'phys'], ['quake', 'phys'], ['rocks', 'phys'], ['rocks', 'phys'], ['quake', 'phys'], ['rocks', 'phys'], ['spikes', 'phys'], ['quake', 'phys'], 'dark'), // 땅 갈라짐 · 흙먼지 · 돌
+  mossLord: FX(['quake', 'forest'], ['burst', 'forest'], ['vines', 'forest'], ['vines', 'forest'], ['vines', 'forest'], ['vines', 'forest'], ['vines', 'forest'], ['vines', 'forest'], 'forest'), // 뿌리 · 덩굴
+  bogHag: FX(['fog', 'poison'], ['burst', 'poison'], ['fog', 'poison'], ['burst', 'poison'], ['fog', 'poison'], ['fog', 'poison'], ['vines', 'poison'], ['fog', 'poison'], 'poison'), // 독 구름 · 초록 마법
+  climbQueen: FX(['quake', 'poison'], ['burst', 'poison'], ['fog', 'poison'], ['burst', 'poison'], ['fog', 'poison'], ['fog', 'poison'], ['fog', 'poison'], ['fog', 'poison'], 'poison'), // 독 늪 폭발
+  demonCaptain: FX(['burst', 'fire'], ['burst', 'fire'], ['meteor', 'fire'], ['burst', 'fire'], ['burst', 'fire'], ['meteor', 'fire'], ['burst', 'fire'], ['burst', 'fire'], 'fire'), // 불꽃 사슬 · 불타는 방패
+  climbRift: FX(['burst', 'fire'], ['burst', 'fire'], ['meteor', 'fire'], ['burst', 'fire'], ['burst', 'fire'], ['meteor', 'fire'], ['burst', 'fire'], ['burst', 'fire'], 'fire'), // 용암 폭발 · 핵 광선
+  frostOgre: FX(['ice', 'ice'], ['zero', 'ice'], ['rocks', 'ice'], ['ice', 'ice'], ['ice', 'ice'], ['shatter', 'ice'], ['ice', 'ice'], ['ice', 'ice'], 'ice'), // 얼음 가시 · 우박
+  climbWitch: FX(['ice', 'ice'], ['zero', 'ice'], ['shatter', 'ice'], ['crystal', 'ice'], ['ice', 'ice'], ['shatter', 'ice'], ['ice', 'ice'], ['ice', 'ice'], 'ice'), // 얼음 결정 · 서리 폭발
+  wraithLord: FX(['doom', 'dark'], ['doom', 'dark'], ['doom', 'dark'], ['doom', 'dark'], ['doom', 'dark'], ['doom', 'dark'], ['bones', 'phys'], ['doom', 'dark'], 'dark'), // 어둠의 문 · 뼈 가시
+  engraveKing: FX(['holy', 'holy'], ['holy', 'holy'], ['holy', 'holy'], ['holy', 'holy'], ['holy', 'holy'], ['holy', 'holy'], ['holy', 'holy'], ['holy', 'holy'], 'holy'), // 빛기둥 · 금빛 광선
 };

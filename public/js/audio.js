@@ -111,6 +111,24 @@ const MOODS = {
   forest: { root: 50, scale: 'dorian', bpm: 96, prog: [0, 6, 3, 4], lead: 'triangle', drums: 1, arp: 0.7, bright: 2400, seed: 59, vol: 0.85 },
   desert: { root: 45, scale: 'phryg', bpm: 110, prog: [0, 1, 0, 5], lead: 'square', drums: 2, arp: 0.6, bright: 1800, seed: 61, vol: 0.8 },
   boss: { root: 40, scale: 'harm', bpm: 144, prog: [0, 0, 5, 4, 0, 0, 6, 4], lead: 'sawtooth', drums: 4, arp: 1, bright: 1800, seed: 53, vol: 0.75 },
+  // 탑 51~100층 구역곡
+  sky: { root: 57, scale: 'lydian', bpm: 96, prog: [0, 4, 1, 5], lead: 'triangle', drums: 1, arp: 0.8, bright: 3600, seed: 71, vol: 0.85 },
+  mirror: { root: 49, scale: 'harm', bpm: 90, prog: [0, 5, 4, 1], lead: 'sine', drums: 2, arp: 0.7, bright: 2800, seed: 73, vol: 0.9 },
+  clock: { root: 47, scale: 'dorian', bpm: 120, prog: [0, 3, 0, 4], lead: 'square', drums: 3, arp: 0.9, bright: 2000, seed: 79, vol: 0.75 },
+  library: { root: 45, scale: 'minor', bpm: 80, prog: [0, 5, 2, 6], lead: 'sine', drums: 1, arp: 0.6, bright: 1800, seed: 83, vol: 0.95 },
+  summit: { root: 52, scale: 'major', bpm: 100, prog: [0, 5, 3, 4, 0, 3, 4, 4], lead: 'triangle', drums: 2, arp: 0.7, bright: 3000, seed: 89, vol: 0.85 },
+  // 보스곡: 구역마다 따로 (수호자 · 주인 층)
+  boss_cave: { root: 42, scale: 'dorian', bpm: 138, prog: [0, 0, 6, 4, 0, 0, 3, 4], lead: 'square', drums: 4, arp: 1, bright: 1700, seed: 101, vol: 0.75 },
+  boss_swamp: { root: 41, scale: 'phryg', bpm: 132, prog: [0, 1, 0, 6, 0, 1, 5, 6], lead: 'sawtooth', drums: 4, arp: 0.9, bright: 1300, seed: 103, vol: 0.75 },
+  boss_rift: { root: 40, scale: 'harm', bpm: 150, prog: [0, 0, 5, 4, 0, 0, 6, 4], lead: 'sawtooth', drums: 4, arp: 1, bright: 1800, seed: 107, vol: 0.72 },
+  boss_frost: { root: 47, scale: 'harm', bpm: 136, prog: [0, 5, 1, 4, 0, 5, 6, 4], lead: 'triangle', drums: 4, arp: 1, bright: 3000, seed: 109, vol: 0.8 },
+  boss_grave: { root: 38, scale: 'minor', bpm: 128, prog: [0, 5, 1, 4, 0, 5, 6, 4], lead: 'sawtooth', drums: 4, arp: 0.9, bright: 1200, seed: 113, vol: 0.78 },
+  boss_sky: { root: 50, scale: 'lydian', bpm: 140, prog: [0, 4, 1, 5, 0, 4, 6, 5], lead: 'square', drums: 4, arp: 1, bright: 3400, seed: 127, vol: 0.72 },
+  boss_mirror: { root: 44, scale: 'harm', bpm: 134, prog: [0, 5, 4, 1, 0, 5, 6, 4], lead: 'sawtooth', drums: 4, arp: 1, bright: 2600, seed: 131, vol: 0.74 },
+  boss_clock: { root: 45, scale: 'dorian', bpm: 152, prog: [0, 3, 0, 4, 0, 3, 6, 4], lead: 'square', drums: 4, arp: 1, bright: 2200, seed: 137, vol: 0.72 },
+  boss_library: { root: 43, scale: 'phryg', bpm: 130, prog: [0, 1, 5, 6, 0, 1, 3, 4], lead: 'sawtooth', drums: 4, arp: 0.9, bright: 1600, seed: 139, vol: 0.76 },
+  boss_summit: { root: 48, scale: 'harm', bpm: 144, prog: [0, 0, 5, 4, 3, 3, 6, 4], lead: 'sawtooth', drums: 4, arp: 1, bright: 2400, seed: 149, vol: 0.74 },
+  boss_final: { root: 38, scale: 'harm', bpm: 120, prog: [0, 5, 3, 4, 0, 5, 6, 4], lead: 'sawtooth', drums: 4, arp: 1, bright: 2000, seed: 151, vol: 0.8 }, // 50층 각인의 왕 · 100층 마지막 왕
 };
 let music = null, pendingMusic = null, noiseBuf = null;
 const mtof = (n) => 440 * Math.pow(2, (n - 69) / 12);

@@ -23,6 +23,21 @@ export const ECHOES = {
   soul: { name: '혼 잔향', color: '#8ad8ff' },
   rot: { name: '부패 잔향', color: '#8a9a4a' },
   grave: { name: '묘지기의 잔향', color: '#c45cff', rare: true },
+  // 탑 51~100층 (탑 안에서만 나온다)
+  gale: { name: '바람결 잔향', color: '#bfe8ff' },
+  feather: { name: '깃털 잔향', color: '#ffe8c8' },
+  storm: { name: '폭풍의 잔향', color: '#7ac8ff', rare: true },
+  glass: { name: '유리 잔향', color: '#d8ecff' },
+  shard: { name: '깨진 거울의 잔향', color: '#f0f8ff', rare: true },
+  gear: { name: '태엽 잔향', color: '#d8a860' },
+  steam: { name: '증기 잔향', color: '#e0d8c8' },
+  time: { name: '시간의 잔향', color: '#ffe0a0', rare: true },
+  ink: { name: '먹 잔향', color: '#8a7ab8' },
+  page: { name: '책장 잔향', color: '#e8d8b0' },
+  star: { name: '별빛 잔향', color: '#c8d8ff', rare: true },
+  dawn: { name: '새벽빛 잔향', color: '#fff0b0' },
+  halo: { name: '후광 잔향', color: '#ffe8f8' },
+  crown: { name: '마지막 왕의 잔향', color: '#ffd84a', rare: true },
 };
 
 // ai: chase | erratic | ranged | charge | boss | kamikaze(다가와 자폭) | summoner(부하 소환) | burrow(땅속 잠복) | flee(도망)
@@ -188,6 +203,81 @@ Object.assign(MONSTERS, {
   venomSpitter: { name: '독침 개구리', shape: 'blob', pal: { a: '#3ab05a', b: '#1a6a2a', c: '#c8f07a', e: '#ff3aa8' }, hp: 140, atk: 15, type: 'mag', speed: 44, ai: 'ranged', range: 130, proj: { speed: 160, color: '#9be15d', status: 'poison' }, moves: ['fan', 'pool', 'retreat'], r: 7, xp: 18, gold: 10, pres: 10, mres: 20, echo: { id: 'blood', rate: 0.4 } },
 });
 
+// ── 탑 51~100층: 새 구역 다섯의 몬스터 (탑 안에서만 나온다) ──
+// 체력 · 공격은 구역 평균에 맞춰 난이도 표(data/curve.js)대로 나뉘므로, 여기 값은 같은 구역 안에서의 차이만 뜻한다
+Object.assign(MONSTERS, {
+  // 51~60 하늘 정원
+  windSpirit: { name: '바람 정령', shape: 'flyer', pal: { a: '#cfefff' }, hp: 220, atk: 24, type: 'mag', speed: 84, ai: 'ranged', range: 140, proj: { speed: 190, color: '#d8f4ff' }, moves: ['retreat', 'fan'], r: 6, xp: 40, gold: 22, pres: 20, mres: 60, echo: { id: 'gale', rate: 0.4 } },
+  harpyWarrior: { name: '하피 전사', shape: 'flyer', pal: { a: '#e8c8a0' }, hp: 300, atk: 30, type: 'phys', speed: 98, ai: 'chase', status: 'bleed', moves: ['leap', 'combo'], r: 6, xp: 44, gold: 24, pres: 30, mres: 30, echo: { id: 'feather', rate: 0.4 } },
+  petalSprite: { name: '꽃잎 요정', shape: 'flyer', pal: { a: '#ffb0d8' }, hp: 180, atk: 22, type: 'mag', speed: 80, ai: 'ranged', range: 120, proj: { speed: 170, color: '#ffc0e0', spread: 3 }, moves: ['fan', 'retreat'], r: 5, xp: 38, gold: 20, pres: 10, mres: 50, echo: { id: 'feather', rate: 0.4 } },
+  cloudSheep: { name: '구름 양', shape: 'quad', pal: { a: '#f4f8ff' }, hp: 420, atk: 26, type: 'phys', speed: 58, ai: 'chase', moves: ['charge', 'shove'], r: 8, xp: 46, gold: 24, pres: 60, mres: 40, echo: { id: 'gale', rate: 0.4 } },
+  hawkRider: { name: '매 기수', shape: 'humanoid', pal: { a: '#8ab0d0' }, hp: 260, atk: 30, type: 'phys', speed: 70, ai: 'ranged', range: 150, proj: { speed: 230, color: '#e8f0ff' }, moves: ['retreat', 'fan'], r: 6, xp: 44, gold: 26, pres: 30, mres: 30, echo: { id: 'feather', rate: 0.4 } },
+  gargoyle: { name: '돌날개 가고일', shape: 'golem', pal: { a: '#8a94a8' }, hp: 520, atk: 32, type: 'phys', speed: 40, ai: 'chase', shield: 0.4, moves: ['leap', 'quake'], r: 9, xp: 56, gold: 30, pres: 120, mres: 40, echo: { id: 'gale', rate: 0.45 } },
+  // 61~70 거울 미궁
+  mirrorKnight: { name: '거울 기사', shape: 'humanoid', pal: { a: '#d8e0ec' }, hp: 460, atk: 32, type: 'phys', speed: 52, ai: 'chase', reflect: 0.2, moves: ['combo', 'shove'], r: 7, xp: 52, gold: 28, pres: 90, mres: 60, echo: { id: 'mirror', rate: 0.4 } },
+  glassCrawler: { name: '유리 거미', shape: 'quad', pal: { a: '#d8ecff' }, hp: 260, atk: 28, type: 'phys', speed: 92, ai: 'chase', status: 'bleed', moves: ['leap', 'combo'], r: 6, xp: 44, gold: 24, pres: 30, mres: 40, echo: { id: 'glass', rate: 0.4 } },
+  mirrorSlime: { name: '반사 슬라임', shape: 'blob', pal: { a: '#e0f0ff' }, hp: 340, atk: 26, type: 'mag', speed: 50, ai: 'chase', reflect: 0.35, r: 7, xp: 44, gold: 24, pres: 40, mres: 80, echo: { id: 'mirror', rate: 0.4 } },
+  shardBird: { name: '파편 새', shape: 'flyer', pal: { a: '#c8e0ff' }, hp: 200, atk: 26, type: 'phys', speed: 110, ai: 'erratic', status: 'bleed', proj: { speed: 200, color: '#e8f4ff', spread: 3 }, moves: ['fan', 'leap'], r: 5, xp: 40, gold: 22, pres: 20, mres: 30, echo: { id: 'glass', rate: 0.4 } },
+  phantomArcher: { name: '환영 궁수', shape: 'humanoid', ghost: true, pal: { a: '#b8d0f0' }, hp: 240, atk: 30, type: 'phys', speed: 66, ai: 'ranged', range: 160, proj: { speed: 240, color: '#d8e8ff' }, moves: ['retreat', 'blink'], blinkInv: 0.4, r: 6, xp: 44, gold: 26, pres: 20, mres: 40, echo: { id: 'glass', rate: 0.4 } },
+  mirrorWitch: { name: '거울 마녀', shape: 'humanoid', pal: { a: '#c8d8f0' }, hp: 300, atk: 28, type: 'mag', speed: 44, ai: 'summoner', summon: 'mirrorSlime', range: 140, proj: { speed: 170, color: '#e8f0ff' }, moves: ['beam', 'blink'], r: 6, xp: 48, gold: 28, pres: 20, mres: 90, echo: { id: 'mirror', rate: 0.45 } },
+  // 71~80 태엽 시계탑
+  clockSoldier: { name: '태엽 병정', shape: 'humanoid', pal: { a: '#c8a060' }, hp: 380, atk: 30, type: 'phys', speed: 54, ai: 'chase', shield: 0.3, moves: ['combo', 'charge'], r: 7, xp: 50, gold: 28, pres: 100, mres: 30, echo: { id: 'gear', rate: 0.4 } },
+  gearSpider: { name: '톱니 거미', shape: 'quad', pal: { a: '#c89a4a' }, hp: 240, atk: 28, type: 'phys', speed: 88, ai: 'chase', status: 'bleed', moves: ['leap', 'combo'], r: 6, xp: 44, gold: 24, pres: 50, mres: 20, echo: { id: 'gear', rate: 0.4 } },
+  timeBat: { name: '시간 박쥐', shape: 'flyer', pal: { a: '#e8c870' }, hp: 180, atk: 24, type: 'mag', speed: 112, ai: 'erratic', status: 'chill', r: 5, xp: 38, gold: 20, pres: 10, mres: 40, echo: { id: 'steam', rate: 0.4 } },
+  hourglassSpirit: { name: '모래시계 정령', shape: 'flyer', pal: { a: '#ffd88a' }, hp: 260, atk: 28, type: 'mag', speed: 56, ai: 'ranged', range: 150, status: 'chill', proj: { speed: 130, color: '#ffe0a0', status: 'chill' }, moves: ['spiral', 'split'], r: 6, xp: 46, gold: 26, pres: 20, mres: 70, echo: { id: 'steam', rate: 0.4 } },
+  steamGolem: { name: '증기 골렘', shape: 'golem', scale: 1.2, pal: { a: '#a89070' }, hp: 560, atk: 34, type: 'phys', speed: 34, ai: 'chase', moves: ['quake', 'combo'], onDeath: { blast: { r: 48, mul: 1.4, color: '#f0e8d8' } }, r: 9, xp: 60, gold: 32, pres: 110, mres: 40, echo: { id: 'steam', rate: 0.45 } },
+  clockmaker: { name: '시계공', shape: 'humanoid', pal: { a: '#9a7a4a' }, hp: 280, atk: 22, type: 'mag', speed: 46, ai: 'ranged', range: 130, proj: { speed: 160, color: '#ffd080' }, moves: ['heal', 'retreat'], r: 6, xp: 46, gold: 30, pres: 30, mres: 50, echo: { id: 'gear', rate: 0.45 } },
+  // 81~90 별의 서고
+  bookworm: { name: '책벌레 떼', shape: 'quad', pal: { a: '#a8906a' }, hp: 160, atk: 26, type: 'phys', speed: 96, ai: 'chase', status: 'bleed', moves: ['leap'], r: 5, xp: 36, gold: 18, pres: 30, mres: 20, echo: { id: 'page', rate: 0.4 } },
+  grimoire: { name: '날아다니는 마도서', shape: 'flyer', pal: { a: '#8a5a3a' }, hp: 240, atk: 30, type: 'mag', speed: 62, ai: 'ranged', range: 150, proj: { speed: 180, color: '#c8a8ff', status: 'burn' }, moves: ['fan', 'split'], r: 6, xp: 46, gold: 26, pres: 20, mres: 70, echo: { id: 'page', rate: 0.4 } },
+  inkWraith: { name: '잉크 망령', shape: 'flyer', ghost: true, pal: { a: '#3a2a5a' }, hp: 260, atk: 28, type: 'mag', speed: 70, ai: 'erratic', status: 'chill', moves: ['pool', 'blink'], blinkInv: 0.4, r: 6, xp: 46, gold: 24, pres: 20, mres: 60, echo: { id: 'ink', rate: 0.4 } },
+  stargazer: { name: '별 관측자', shape: 'humanoid', pal: { a: '#4a5aa8' }, hp: 260, atk: 30, type: 'mag', speed: 46, ai: 'ranged', range: 160, proj: { speed: 170, color: '#d8e0ff' }, moves: ['rain', 'beam'], r: 6, xp: 48, gold: 28, pres: 20, mres: 70, echo: { id: 'ink', rate: 0.4 } },
+  archiveKeeper: { name: '서고지기', shape: 'golem', scale: 1.2, pal: { a: '#6a5a8a' }, hp: 600, atk: 34, type: 'phys', speed: 36, ai: 'chase', shield: 0.5, moves: ['quake', 'shove'], r: 9, xp: 60, gold: 32, pres: 130, mres: 60, echo: { id: 'page', rate: 0.45 } },
+  erasedRecord: { name: '지워진 기록', shape: 'humanoid', pal: { a: '#d8d8e0' }, hp: 280, atk: 32, type: 'phys', speed: 74, ai: 'chase', status: 'bleed', veil: true, moves: ['combo', 'leap'], r: 6, xp: 50, gold: 28, pres: 40, mres: 40, echo: { id: 'ink', rate: 0.45 } },
+  // 91~100 빛의 정상
+  lightWarden: { name: '빛의 파수꾼', shape: 'golem', scale: 1.2, pal: { a: '#e8d8a0' }, hp: 560, atk: 34, type: 'phys', speed: 38, ai: 'chase', shield: 0.4, moves: ['charge', 'beam'], r: 9, xp: 64, gold: 34, pres: 120, mres: 80, echo: { id: 'dawn', rate: 0.45 } },
+  engravedShade: { name: '각인 망령', shape: 'humanoid', ghost: true, pal: { a: '#c8d8ff' }, hp: 320, atk: 32, type: 'phys', speed: 66, ai: 'chase', raceLook: true, moves: ['combo', 'leap'], r: 6, xp: 54, gold: 30, pres: 50, mres: 50, echo: { id: 'halo', rate: 0.4 } },
+  wingedApostle: { name: '날개 사도', shape: 'flyer', pal: { a: '#fff0c8' }, hp: 280, atk: 30, type: 'mag', speed: 96, ai: 'erratic', proj: { speed: 200, color: '#fff4c0' }, moves: ['leap', 'fan'], r: 6, xp: 50, gold: 28, pres: 30, mres: 60, echo: { id: 'halo', rate: 0.4 } },
+  starlightSpirit: { name: '별빛 정령', shape: 'flyer', pal: { a: '#fff0b0' }, hp: 220, atk: 28, type: 'mag', speed: 60, ai: 'ranged', range: 150, proj: { speed: 160, color: '#fff8d0' }, moves: ['spiral', 'retreat'], r: 6, xp: 46, gold: 26, pres: 20, mres: 80, echo: { id: 'dawn', rate: 0.4 } },
+  cultShade: { name: '교단 그림자 사도', shape: 'humanoid', pal: { a: '#2a2034' }, hp: 300, atk: 32, type: 'mag', speed: 60, ai: 'chase', status: 'curse', moves: ['blink', 'combo'], blinkInv: 0.4, r: 6, xp: 52, gold: 30, pres: 40, mres: 60, echo: { id: 'halo', rate: 0.4 } },
+  mirrorShade: { name: '거울 그림자', shape: 'humanoid', pal: { a: '#1a1a24' }, hp: 300, atk: 28, type: 'phys', speed: 80, ai: 'chase', r: 6, xp: 0, gold: 0, pres: 40, mres: 40, echo: { id: 'mirror', rate: 0 } }, // 거울 미궁: 20초 동안 내 평타를 따라 한다
+  lightEater: { name: '빛 먹는 자', shape: 'quad', pal: { a: '#1a1428' }, hp: 380, atk: 30, type: 'phys', speed: 84, ai: 'chase', eatsLight: true, moves: ['leap'], r: 7, xp: 54, gold: 30, pres: 50, mres: 50, echo: { id: 'dawn', rate: 0.45 } },
+});
+
+// ── 탑 51~100층: 수호자 · 구역의 주인 ──
+Object.assign(MONSTERS, {
+  stormHarpy: { name: '폭풍 하피 여왕', shape: 'flyer', scale: 1.8, elite: true, boss: true, pal: { a: '#7ac8ff' }, hp: 4400, atk: 42, type: 'phys', speed: 66, ai: 'boss', status: 'bleed', proj: { speed: 200, color: '#e0f4ff', spread: 7 }, r: 12, xp: 700, gold: 420, pres: 50, mres: 60, echo: { id: 'storm', rate: 1 },
+    phaseMoves: [['fan', 'leap', 'gust'], ['fan', 'soar', 'gust', 'adds'], ['soar', 'fan', 'gust', 'tornado', 'adds']], adds: 'harpyWarrior',
+    skillNames: { fan: '깃털 부채', leap: '내리꽂기', soar: '폭풍 비상', adds: '하피를 부른다' } },
+  skyWhale: { name: '하늘 고래 아에로', shape: 'blob', scale: 2.6, elite: true, boss: true, pal: { a: '#8ab8e8' }, hp: 8200, atk: 44, type: 'mag', speed: 30, ai: 'boss', status: 'chill', proj: { speed: 150, color: '#cfefff', status: 'chill', spread: 9 }, r: 17, xp: 1100, gold: 660, pres: 80, mres: 80, echo: { id: 'storm', rate: 1 },
+    phaseMoves: [['whalePass', 'nova', 'fan'], ['whalePass', 'rain', 'adds', 'gust'], ['whalePass', 'collapse', 'rain', 'gust', 'adds']], adds: 'windSpirit',
+    skillNames: { nova: '물기둥', fan: '물보라', rain: '구름 비', adds: '등의 정령을 떨어뜨린다' } },
+  mirrorSelf: { name: '거울에 비친 나', shape: 'humanoid', scale: 1.5, elite: true, boss: true, pal: { a: '#d8e0ec' }, hp: 4200, atk: 44, type: 'phys', speed: 62, ai: 'boss', proj: { speed: 220, color: '#e8f0ff', spread: 5 }, r: 10, xp: 720, gold: 440, pres: 60, mres: 60, echo: { id: 'shard', rate: 1 }, mirrorOfPlayer: true,
+    phaseMoves: [['copy', 'copy', 'blink'], ['copy', 'copy', 'clones', 'blink'], ['copy', 'copy', 'clones', 'mark', 'blink']], blinkInv: 0.3,
+    skillNames: { clones: '거울 속 나', mark: '나를 겨눈 나', blink: '거울 걸음' } },
+  shardQueen: { name: '깨진 거울의 여왕', shape: 'humanoid', scale: 2.0, elite: true, boss: true, pal: { a: '#e8f0ff' }, hp: 7800, atk: 46, type: 'mag', speed: 44, ai: 'boss', status: 'bleed', proj: { speed: 180, color: '#f0f8ff', status: 'bleed', spread: 9 }, r: 12, xp: 1150, gold: 690, pres: 70, mres: 90, echo: { id: 'shard', rate: 1 },
+    phaseMoves: [['shardHide', 'fan', 'split'], ['shardHide', 'pool', 'spiral', 'mark'], ['shardHide', 'meteorRain', 'pool', 'split', 'mark']], adds: 'mirrorSlime',
+    skillNames: { fan: '유리 부채', split: '갈라지는 파편', pool: '반사 장판', spiral: '거울 회오리', mark: '깨진 표식', meteorRain: '거울 조각 비' } },
+  foreman: { name: '공장 감독', shape: 'golem', scale: 2.0, elite: true, boss: true, pal: { a: '#b88a4a' }, hp: 4400, atk: 44, type: 'phys', speed: 38, ai: 'boss', status: 'burn', r: 14, xp: 760, gold: 460, pres: 120, mres: 40, echo: { id: 'time', rate: 1 },
+    phaseMoves: [['quake', 'combo', 'beltFlip'], ['jumps3', 'quake', 'beltFlip', 'adds'], ['jumps3', 'charge', 'beltFlip', 'adds', 'nova']], adds: 'clockSoldier',
+    skillNames: { quake: '망치 내려치기', combo: '렌치 휘두르기', adds: '병정 출근', charge: '증기 돌진', nova: '보일러 폭발' } },
+  clockKeeper: { name: '시간을 멈춘 시계지기', shape: 'humanoid', scale: 2.0, elite: true, boss: true, pal: { a: '#ffd88a' }, hp: 8000, atk: 46, type: 'mag', speed: 46, ai: 'boss', status: 'chill', proj: { speed: 160, color: '#ffe0a0', status: 'chill', spread: 7 }, r: 12, xp: 1200, gold: 720, pres: 70, mres: 90, echo: { id: 'time', rate: 1 },
+    phaseMoves: [['spiral', 'split', 'blink', 'sweep'], ['timeStop', 'spiral', 'blink', 'adds'], ['timeStop', 'rewind', 'sweep', 'split', 'adds']], adds: 'timeBat',
+    skillNames: { spiral: '초침 회오리', split: '갈라지는 분침', blink: '건너뛴 1초', sweep: '시곗바늘', adds: '박쥐 떼' } },
+  archivist: { name: '대서고관', shape: 'humanoid', scale: 1.9, elite: true, boss: true, pal: { a: '#6a5aa8' }, hp: 4400, atk: 44, type: 'mag', speed: 44, ai: 'boss', status: 'curse', proj: { speed: 170, color: '#c8b0ff', status: 'curse', spread: 7 }, r: 11, xp: 780, gold: 470, pres: 50, mres: 90, echo: { id: 'star', rate: 1 },
+    phaseMoves: [['shelfFall', 'fan', 'blink'], ['shelfFall', 'split', 'adds', 'pool'], ['shelfFall', 'shelfFall', 'rain', 'adds', 'mark']], adds: 'bookworm',
+    skillNames: { fan: '찢긴 책장', blink: '책 사이로', split: '금서의 문장', adds: '책벌레를 푼다', pool: '쏟은 잉크', rain: '떨어지는 책', mark: '열람 금지' } },
+  starReader: { name: '별을 읽는 자', shape: 'humanoid', scale: 2.1, elite: true, boss: true, pal: { a: '#a8b8ff' }, hp: 8400, atk: 48, type: 'mag', speed: 42, ai: 'boss', status: 'burn', proj: { speed: 170, color: '#e0e8ff', status: 'burn', spread: 9 }, r: 12, xp: 1250, gold: 750, pres: 60, mres: 100, echo: { id: 'star', rate: 1 },
+    phaseMoves: [['constellation', 'spiral', 'blink'], ['constellation', 'rain', 'beam', 'adds'], ['constellation', 'meteorRain', 'beam', 'nova', 'adds']], adds: 'stargazer', blinkInv: 0.4,
+    skillNames: { spiral: '별의 궤도', blink: '별 사이로', rain: '유성우', beam: '별빛 광선', adds: '관측자를 부른다', nova: '초신성', meteorRain: '떨어지는 별' } },
+  highPriest: { name: '교단 대사제', shape: 'humanoid', scale: 1.9, elite: true, boss: true, pal: { a: '#3a2a4a' }, hp: 4600, atk: 46, type: 'mag', speed: 46, ai: 'boss', status: 'curse', proj: { speed: 180, color: '#c45cff', status: 'curse', spread: 7 }, r: 11, xp: 820, gold: 500, pres: 60, mres: 90, echo: { id: 'crown', rate: 1 },
+    phaseMoves: [['douse', 'beam', 'fan', 'blink'], ['douse', 'mark', 'adds', 'spiral'], ['douse', 'douse', 'rain', 'mark', 'adds', 'nova']], adds: 'cultShade', blinkInv: 0.4,
+    skillNames: { beam: '어둠의 시선', fan: '검은 기도', blink: '그림자 걸음', mark: '배교자의 낙인', adds: '사도를 부른다', spiral: '어둠 소용돌이', rain: '검은 비', nova: '빛을 삼키는 어둠' } },
+  lastKing: { name: '마지막 왕', shape: 'humanoid', scale: 2.3, elite: true, boss: true, pal: { a: '#ffe8a0' }, hp: 13500, atk: 50, type: 'phys', speed: 50, ai: 'boss', status: 'curse', proj: { speed: 190, color: '#fff0b0', status: 'curse', spread: 7 }, r: 13, xp: 2500, gold: 1500, pres: 80, mres: 80, echo: { id: 'crown', rate: 1 },
+    phaseMoves: [['combo', 'cleave', 'leap', 'charge'], ['raceArt', 'raceArt', 'combo', 'cleave'], ['lightCore', 'raceArt', 'crossBeam', 'sweep', 'ripple']], adds: 'engravedShade',
+    skillNames: { combo: '왕의 검술', cleave: '왕의 대베기', leap: '왕의 도약', charge: '왕의 돌진', crossBeam: '빛의 십자', sweep: '꺼져 가는 빛', ripple: '마지막 빛의 파문' } },
+});
+
 // liquid: 밟을 수 있는 지형 효과 (water 감속, lava 화상, snow 감속, mist 없음)
 export const ZONES = [
   { id: 'cave', name: '이끼 동굴', floor: 1, rec: 1, pal: ['#2c3b2b', '#33452f', '#283626'], wall: ['#151d14', '#2a3826', '#3d5236'], liquid: 'water', liquidPal: ['#1d4a5a', '#2a6a7a'], dark: 0.62, deco: ['moss', 'moss', 'glowshroom', 'pebble', 'fern'], portal: '#7ed957', pool: ['slime', 'bat', 'goblin', 'mossSlug', 'goblinShaman', 'caveLurker'], regions: ['이끼 굴', '고블린 야영지', '물웅덩이 동굴', '버섯 숲'], elite: 'goblinChief' },
@@ -196,6 +286,17 @@ export const ZONES = [
   { id: 'frost', name: '서리 회랑', floor: 4, rec: 15, pal: ['#3a4656', '#435264', '#36404e'], wall: ['#141c26', '#3a4e66', '#6a88a8'], liquid: 'snow', liquidPal: ['#c8dcec', '#e8f4ff'], dark: 0.35, deco: ['crystalB', 'crystalB', 'pebble', 'icicle'], portal: '#9fe3ff', pool: ['frostWolf', 'glassSpider', 'iceGolem', 'frostSlug', 'iceShaman', 'snowLurker'], regions: ['얼어붙은 회랑', '거울 동굴', '눈보라 언덕', '빙하 감옥'], elite: 'frostWitch' },
   { id: 'grave', name: '그림자 묘지', floor: 5, rec: 20, pal: ['#2a2434', '#322a3e', '#241f2e'], wall: ['#0e0a14', '#2a2238', '#40345a'], liquid: 'mist', liquidPal: ['#3a3450', '#4a4466'], dark: 0.7, deco: ['tomb', 'candle', 'bone', 'bone', 'pebble'], portal: '#c45cff', pool: ['skeleton', 'wraith', 'ghoul', 'tinyCorpse', 'necroAcolyte', 'boneGuard'], regions: ['무너진 묘역', '사령의 탑', '뼈 무덤', '그림자 숲'], elite: 'graveKeeper' },
 ];
+
+// 탑 51~100층의 구역 (바깥 관문 · 의뢰에는 나오지 않는다 · 탑 안에서만)
+// liquid void: 발밑이 하늘 (떨어지면 체력 10%를 잃고 마지막에 선 자리로) · gimmick: 구역 장치 (sim/towerzone.js)
+export const TOWER_ZONES = [
+  { id: 'sky', name: '하늘 정원', floor: 6, rec: 44, tower: true, gimmick: 'gust', pal: ['#8a9cb0', '#94a8bc', '#8296aa'], wall: ['#2a3444', '#56687e', '#8aa0b8'], liquid: 'void', liquidPal: ['#6aa8e8', '#cfe8ff'], dark: 0.12, deco: ['flower', 'flower', 'petal', 'cloudTuft', 'pebble'], portal: '#bfe8ff', pool: ['windSpirit', 'harpyWarrior', 'petalSprite', 'cloudSheep', 'hawkRider', 'gargoyle'], regions: ['구름 다리', '떠 있는 꽃밭', '바람의 계단'], elite: 'stormHarpy' },
+  { id: 'mirror', name: '거울 미궁', floor: 7, rec: 49, tower: true, gimmick: 'mirror', pal: ['#4a5260', '#545e6e', '#444c5a'], wall: ['#1a2030', '#5a6a84', '#b8c8e0'], liquid: 'water', liquidPal: ['#8aa8c8', '#e8f4ff'], dark: 0.4, deco: ['mirrorShard', 'mirrorShard', 'crystalB', 'pebble'], portal: '#e6f3ff', pool: ['mirrorKnight', 'glassCrawler', 'mirrorSlime', 'shardBird', 'phantomArcher', 'mirrorWitch'], regions: ['거울 회랑', '깨진 방', '비추는 샘'], elite: 'shardQueen' },
+  { id: 'clock', name: '태엽 시계탑', floor: 8, rec: 54, tower: true, gimmick: 'clock', pal: ['#4a3e32', '#54463a', '#42382c'], wall: ['#1c140e', '#4a3a28', '#8a6a3a'], liquid: 'oil', liquidPal: ['#2a2420', '#5a4a3a'], dark: 0.35, deco: ['gear', 'gear', 'bolt', 'pebble'], portal: '#d8a860', pool: ['clockSoldier', 'gearSpider', 'timeBat', 'hourglassSpirit', 'steamGolem', 'clockmaker'], regions: ['톱니 회랑', '증기 기관실', '종탑'], elite: 'clockKeeper' },
+  { id: 'library', name: '별의 서고', floor: 9, rec: 58, tower: true, gimmick: 'library', pal: ['#3a3044', '#42384e', '#342c3e'], wall: ['#120e18', '#3a2a44', '#6a5a7a'], liquid: 'ink', liquidPal: ['#1a1428', '#4a3a6a'], dark: 0.55, deco: ['book', 'book', 'scroll', 'starDust', 'candle'], portal: '#c8d8ff', pool: ['bookworm', 'grimoire', 'inkWraith', 'stargazer', 'archiveKeeper', 'erasedRecord'], regions: ['끝없는 책장', '금서고', '천문대'], elite: 'starReader' },
+  { id: 'summit', name: '빛의 정상', floor: 10, rec: 62, tower: true, gimmick: 'light', pal: ['#6a6458', '#766e60', '#605a50'], wall: ['#2a2418', '#7a6a48', '#e8d8a0'], liquid: 'mist', liquidPal: ['#c8b880', '#fff0c0'], dark: 1.35, deco: ['lightShard', 'lightShard', 'featherGold', 'candle', 'pebble'], portal: '#ffd84a', pool: ['lightWarden', 'engravedShade', 'wingedApostle', 'starlightSpirit', 'cultShade', 'lightEater'], regions: ['빛의 계단', '그림자 회랑', '왕의 길'], elite: 'lastKing' },
+];
+export const ALL_ZONES = [...ZONES, ...TOWER_ZONES];
 
 // 강화 개체 접두어: 일반 몬스터가 가끔 달고 나온다 (잔향·경험치 2배)
 export const AFFIXES = {

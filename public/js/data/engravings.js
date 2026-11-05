@@ -682,6 +682,11 @@ export const TAGS = {
   brawl: { name: '투사', color: '#ffb347', tiers: [
     { n: 2, text: '근력 +10%, 넉백 강화', effects: [{ type: 'statPct', stat: 'str', v: 0.1 }, { type: 'add', key: 'knockback', v: 30 }] },
   ] },
+  // 빛: 빛의 정상(91~100층) 몬스터의 부산물에서만 나온다
+  light: { name: '빛', color: '#ffe8a0', tiers: [
+    { n: 2, text: '모든 피해 +6%, 받는 피해 -6%', effects: [{ type: 'mul', key: 'dmgMul', v: 1.06 }, { type: 'mul', key: 'dmgTakenMul', v: 0.94 }] },
+    { n: 3, text: '처치하면 그 자리에 빛기둥 (반경 3칸 · 공격력의 120% 마법 피해)', effects: [{ type: 'on', event: 'kill', chance: 1, action: { strike: { r: 48, mul: 1.2, elem: 'holy', fx: 'holy', type: 'mag' } }, text: '처치하면 빛기둥' }] },
+  ] },
 };
 
 // 원소 상쇄: 화염과 냉기가 둘 다 4개 이상이면 둘 다 꺼진다
