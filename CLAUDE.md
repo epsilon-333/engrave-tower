@@ -42,7 +42,9 @@
 ## 도구와 테스트
 - `tools/tests/*.mjs`: 2D 시뮬레이션 테스트. 예) `node tools/tests/simtest.mjs` → `ALL OK`, `node tools/tests/storytest.mjs`. 한꺼번에: `node tools/tests/all.mjs` (실패하면 종료 코드 1)
 - 밸런스: `node tools/tests/climbsim.mjs <클래스> <레벨> <등반 수> <최대 층> <시작 층>`. 몬스터 상대 클래스 배율은 `CLASS_BAL_PVE`(data/skills.js)
-- 디버그: 브라우저 콘솔의 `window.__game` (world · dbg.climb · dbg.save), `window.__bot = (input, w) => {...}` 로 자동 플레이
+- 디버그: 브라우저 콘솔의 `window.__game` (world · dbg.climb · dbg.save), `window.__bot = (input, w) => {...}` 로 자동 플레이. localhost 또는 주소에 `?debug`가 있을 때만 열린다(배포판에서는 없음)
+- 처음 시작 · 튜토리얼은 `tools/tests/starttest.mjs`(시작 자리 · 허수아비 · 상태이상 풀림 · 맵 밖 거리장). 튜토리얼 단계는 `public/js/ui/tutorial.js`
+- 키 바꾸기는 `public/js/settings.js`(KEY_ACTIONS · logicalKey): 게임 입력은 눌린 키를 「기본 키」로 바꿔 읽는다. 새 단축키를 넣으면 KEY_ACTIONS에도 넣는다
 - `tools/cut_sheet.py art/source/sheet_dragon_kings.webp public/assets/custom`: 사용자가 준 시트에서 용·정령왕 프레임을 만든다(Pillow·numpy·opencv 필요). 자른 뒤 반드시 `cd tools && python3 pixelfit.py king_fire` 처럼 그림체 맞추기(게임 크기 1:1 · 28색 · 외곽선)를 돌린다.
 - 그림체 기준은 플레이어(0x72 캐릭터): 키 약 20px · 큰 머리 · 한 그림 11색 안팎 · 짙은 외곽선. 사람(people.py)은 이 비율로 줄여 그리고, 모든 뼈대 도트는 11색으로 묶는다(pixelrig.reduce_colors).
 - 도트 그림 형식 (하나로 통일): 그림은 `public/assets/custom/*.png`, 칸 정보는 `tools/sprites/*.json`, 게임은 목록 하나 `public/assets/custom/sprites.json`만 읽는다. 그림 도구(people·creatures·raptor·dragonkin·cut_sheet)를 돌리면 목록이 다시 만들어진다. 손으로 고쳤으면 `python3 tools/sprites.py`.
