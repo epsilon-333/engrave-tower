@@ -470,7 +470,7 @@ export const EnemyAiMethods = {
         if ((mv.fx -= DT) <= 0) { mv.fx = 0.5; if (!this.bossThemed(e)) this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 18, color: '#7be38a' }); else this.emit({ t: 'spark', x: e.x, y: e.y - 10, color: '#7be38a' }); }
         if (mv.taken >= e.maxHp * 0.07) { this.exposeBoss(e, 3, 1.5, '의식이 끊겼다!'); return false; }
         if (mv.t > 0) return true;
-        e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.18); this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '회복 +18%', color: '#7be38a' }); if (!this.bfx(e, 'nova', e.x, e.y, 60)) this.emit({ t: 'ring', x: e.x, y: e.y, r: 90, color: '#7be38a' });
+        { const h0 = e.hp; e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.18); this.emit({ t: 'bossHeal', id: e.id, x: e.x, y: e.y, from: h0 / e.maxHp, to: e.hp / e.maxHp, big: true }); } this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '회복 +18%', color: '#7be38a' }); if (!this.bfx(e, 'nova', e.x, e.y, 60)) this.emit({ t: 'ring', x: e.x, y: e.y, r: 90, color: '#7be38a' });
         e.mv = null; return false;
       }
       case 'soar': {

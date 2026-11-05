@@ -114,6 +114,13 @@ export const EventMethods = {
         case 'strike': this.fx.push({ k: 'claw', ...ev, t: 0.16, max: 0.16 }); this.lunge.set(ev.id, { t: 0.14, ang: ev.ang }); break;
         case 'banner': this.banner = { text: ev.text, sub: ev.sub, t: ev.sub ? 3.5 : 2.5, color: ev.color }; sfx('levelup', { vol: 0.6 }); break;
         case 'hitstop': this.hitstop = Math.max(this.hitstop, ev.v); break;
+        case 'bossHeal': { // 보스 회복: 몸이 초록빛으로 번쩍 · 초록 빛알이 솟는다 · 체력바에 되찾은 몫 (회복 의식은 크게)
+          this.healFx.set(ev.id, { t: ev.big ? 1.2 : 0.6, max: ev.big ? 1.2 : 0.6, from: ev.from, to: ev.to });
+          const n = ev.big ? 34 : 5, rr = ev.big ? 44 : 22;
+          for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, r = Math.random() * rr; this.parts.push({ x: ev.x + Math.cos(a) * r, y: ev.y - 6 - Math.random() * 40, vx: Math.cos(a) * 8, vy: -30 - Math.random() * 40, t: 0.9 + Math.random() * 0.5, max: 1.4, color: Math.random() < 0.5 ? '#7be38a' : '#d8ffc0', g: -10, size: ev.big && Math.random() < 0.4 ? 3 : 2 }); }
+          if (ev.big) { this.fx.push({ k: 'glow', x: ev.x, y: ev.y - 20, r: 60, color: '#7be38a', t: 0.6, max: 0.6 }); sfx('levelup', { vol: 0.4, rate: 1.6 }); }
+          break;
+        }
         case 'alert': this.alerts.set(ev.id, -0.7); break;
         case 'spark': this.sparkBurst(ev.x, ev.y, ev.color, 4); break;
         case 'chest': this.chestOpen.set(`${ev.x},${ev.y}`, 0); this.burst(ev.x, ev.y - 6, ev.rich ? '#d8a8ff' : '#ffe08a', 30, 120); this.shake = 2; sfx('chest', { vol: 0.7 }); sfx('coin', { vol: 0.6 }); break;

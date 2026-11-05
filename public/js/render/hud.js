@@ -291,13 +291,22 @@ export const HudMethods = {
     const tb = w.tower?.boss && !w.tower.boss.dead ? w.tower.boss : null;
     const boss = w.climb?.intro ? null : tb || w.enemies.find((e) => (e.def.elite || e.champion) && e.state === 'chase' && !e.dead);
     this.hudBoss = boss; // 체력바에 이름이 나온 보스 (몸 위 이름은 숨긴다)
-    if (boss && w.climb && !boss.dead) this.edgeArrow(boss.x, (boss._top ?? boss.y - 60) + 20, '#ff7a5a', boss.champion || boss.def.name, false); // 보스가 화면 밖이면 가장자리에 화살표 (보일 때는 그리지 않는다) // 탑: 진짜 보스 체력 (분신 · 가짜 거울이 아니라) · 등장 연출 동안은 감춘다
+    if (boss && w.climb && !boss.dead) this.edgeArrow(boss.x, (boss._top ?? boss.y - 60) + 20, '#ff7a5a', boss.champion || boss.def.name, false); // 보스가 화면 밖이면 가장자리에 화살표 (보일 때는 그리지 않는다) · 탑: 진짜 보스 체력 (분신 · 가짜 거울이 아니라) · 등장 연출 동안은 감춘다
     if (boss) {
       const bw2 = Math.min(W * 0.5, 260 * u), bx2 = (W - bw2) / 2, by2 = topY + 28 * u; // 화면 위쪽 (아래 스킬 칸 · 위쪽 저장 안내를 가리지 않게)
       this.text(boss.champion || boss.def.name, W / 2, by2 - 9 * u, u, '#e8907c', 'center', true, true);
       this.panel(bx2, by2, bw2, 8 * u);
       g.fillStyle = '#3a1016'; g.fillRect(bx2 + u, by2 + u, bw2 - 2 * u, 6 * u);
       g.fillStyle = '#e8483a'; g.fillRect(bx2 + u, by2 + u, (bw2 - 2 * u) * boss.hp / boss.maxHp, 6 * u);
+      { // 회복: 되찾은 몫은 밝은 초록으로 · 회복 의식 중에는 회복될 몫을 깜빡이고, 끊으려면 얼마나 더 때려야 하는지
+        const bw = bw2 - 2 * u, hf = this.healFx.get(boss.id), k0 = boss.hp / boss.maxHp;
+        if (hf) { g.globalAlpha = Math.min(1, hf.t / hf.max * 1.5); g.fillStyle = '#9ff0a8'; g.fillRect(bx2 + u + bw * Math.max(0, hf.from), by2 + u, bw * Math.max(0, Math.min(k0, hf.to) - hf.from), 6 * u); g.globalAlpha = 1; }
+        if (boss.mv?.k === 'channel') {
+          if (Math.floor(w.t * 4) % 2) { g.fillStyle = 'rgba(123,227,138,0.55)'; g.fillRect(bx2 + u + bw * k0, by2 + u, bw * Math.max(0, Math.min(1, k0 + 0.18) - k0), 6 * u); }
+          const left = Math.max(0, Math.ceil(boss.maxHp * 0.07 - (boss.mv.taken || 0)));
+          this.text(`회복 의식 ${boss.mv.t.toFixed(1)}초 · ${left} 더 때리면 끊긴다`, W / 2, by2 + 22 * u, u, '#9ff0a8', 'center', true);
+        }
+      }
       if (boss.bshield > 0) { g.fillStyle = 'rgba(200,236,255,0.85)'; g.fillRect(bx2 + u, by2 + u, (bw2 - 2 * u) * Math.min(1, boss.bshield / boss.maxHp), 3 * u); } // 보호막: 체력바 위쪽 반에 흰빛
       // 패시브 · 변신까지 남은 시간
       const tags = (boss.passives || []).map((k) => PASSIVE_NAME[k]).filter(Boolean);

@@ -180,7 +180,7 @@ export class Renderer {
     canvas.addEventListener('mousemove', (e) => { const r = canvas.getBoundingClientRect(); this.mouse = { x: ((e.clientX - r.left) / r.width) * canvas.width, y: ((e.clientY - r.top) / r.height) * canvas.height }; });
     canvas.addEventListener('mouseleave', () => { this.mouse = null; });
     this.fx = []; this.texts = []; this.parts = []; this.corpses = []; this.ambient = [];
-    this.alerts = new Map(); this.hpShow = new Map(); this.squash = new Map(); this.chestOpen = new Map(); this.lunge = new Map();
+    this.alerts = new Map(); this.hpShow = new Map(); this.healFx = new Map(); this.squash = new Map(); this.chestOpen = new Map(); this.lunge = new Map();
     this.shake = 0; this.banner = null; this.hitstop = 0; this.fade = 1; this.hurtFlash = 0; this.flash = null; this.ultName = null;
     this.cam = { x: 0, y: 0 };
     this.anims = new SkillAnims(this); // 스킬 애니메이션 (render/skillanim.js)
@@ -231,7 +231,7 @@ export class Renderer {
       const hw = (this.VW || 640) / 2 + S, hh = (this.VH || 400) / 2 + S; // 처음 보이는 곳은 미리 다 그려 둔다
       for (let cy = Math.floor((w.player.y - hh) / S); cy <= Math.floor((w.player.y + hh) / S); cy++) for (let cx = Math.floor((w.player.x - hw) / S); cx <= Math.floor((w.player.x + hw) / S); cx++) this.chunkAt(w, cx, cy, true);
     } else { this.mapCanvas = w.map.indoor ? renderInterior(w) : renderMap(w); this.mapCanvasNight = w.map.indoor ? renderInterior(w, true) : null; }
-    this.fx = []; this.texts = []; this.parts = []; this.corpses = []; this.ambient = []; this.alerts.clear(); this.hpShow.clear(); this.squash.clear(); this.chestOpen.clear();
+    this.fx = []; this.texts = []; this.parts = []; this.corpses = []; this.ambient = []; this.alerts.clear(); this.hpShow.clear(); this.healFx.clear(); this.squash.clear(); this.chestOpen.clear();
     this.banner = null; this.fade = 1;
     this.cam.x = w.player.x - this.VW / 2; this.cam.y = w.player.y - this.VH / 2;
     this.fog = document.createElement('canvas'); this.fog.width = w.tw; this.fog.height = w.th;
@@ -1049,9 +1049,14 @@ export class Renderer {
     const img = art.beast ? beastImg(art.beast, pose, bf, e.dir < 0, flash, e.tintX || art.tint || '')
       : art.mimic ? sprite(e.dormant ? 'chest_full_open_anim_f0' : `chest_mimic_open_anim_f${e.moving || wind ? 1 + (Math.floor(w.t * 8) % 2) : 2}`, '', flash, e.dir < 0)
       : art.sheet ? sprite(name, e.mirrorT > 0 && !art.mirrorSkill ? 'grayscale(1) brightness(1.75) contrast(1.4)' : [art.tint || '', ...SHEET_LOOKS][(e.bphase || 0)] + (art.tint && e.bphase ? ' ' + art.tint : ''), // 큰 보스: 맞으면 살짝 밝아지기만 (몸 전체가 흰 덩어리가 되지 않게)
-        e.morphT > 0 && Math.floor(w.t * 24) % 2 ? 'rgba(255,255,255,0.45)' : flash === true ? 'rgba(255,255,255,0.32)' : flash ? 'rgba(255,60,40,0.26)' : false, e.dir < 0)
+        e.morphT > 0 && Math.floor(w.t * 24) % 2 ? 'rgba(255,255,255,0.45)' : (this.healFx.get(e.id)?.t > 0 || e.mv?.k === 'channel') && Math.floor(w.t * 8) % 2 ? 'rgba(120,255,140,0.34)' : flash === true ? 'rgba(255,255,255,0.32)' : flash ? 'rgba(255,60,40,0.26)' : false, e.dir < 0)
       : sprite(name, e.mirrorT > 0 ? 'grayscale(1) brightness(1.75) contrast(1.4)' : e.tintX || art.tint || '', e.morphT > 0 && Math.floor(w.t * 24) % 2 ? '#ffffff' : flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);
     if (!img) return;
+    { const hf = this.healFx.get(e.id); if (hf) { hf.t -= dt; if (hf.t <= 0) this.healFx.delete(e.id); } } // 회복 번쩍임 시간
+    if (e.mv?.k === 'channel' && dt > 0) { // 회복 의식: 둘레의 초록 기운이 보스에게 빨려 든다 · 발밑이 초록으로 밝다
+      for (let i = 0; i < 2; i++) { const a = Math.random() * Math.PI * 2, r = 70 + Math.random() * 30, x = e.x + Math.cos(a) * r, y = e.y - 10 + Math.sin(a) * r * 0.6, T = 0.55; this.parts.push({ x, y, vx: (e.x - x) / T, vy: (e.y - 16 - y) / T, t: T, max: T, color: i ? '#7be38a' : '#d8ffc0', g: 0, size: 2 }); }
+      g.fillStyle = `rgba(123,227,138,${0.16 + 0.08 * Math.sin(w.t * 8)})`; ellipse(g, e.x, e.y + 3, (e.r || 10) * 2.6, (e.r || 10) * 0.9);
+    }
     if (art.sheet) { // 돌진: 지나온 자리에 옅은 잔상 셋 · 발밑에 이는 흙먼지 (순간이동처럼 보이지 않게)
       const tr = (e._trail ||= []);
       if (e.mv?.k === 'charge' && e.mv.t <= e.mv.run) {
