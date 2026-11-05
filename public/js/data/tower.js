@@ -19,7 +19,6 @@ export function towerGrade({ time, hurt, maxHp, f }) {
   return s >= 6 ? 'S' : s >= 4 ? 'A' : s >= 2 ? 'B' : 'C';
 }
 export const GRADES = ['C', 'B', 'A', 'S'];
-export const GRADE_COLOR = { S: '#ffd84a', A: '#7ad8ff', B: '#9fe3a8', C: '#c8c0d0' };
 // 다시 시작할 수 있는 층: 1층, 그리고 지금까지 오른 층까지의 5층 단위 다음 층 (6 · 11 · 16 …)
 export const towerStarts = (maxCleared = 0) => [1, ...Array.from({ length: Math.floor(maxCleared / 5) }, (_, i) => (i + 1) * 5 + 1)].filter((f) => f <= TOWER_TOP);
 // 층 수호자: 5층마다 다른 수호자. 수호자마다 대처법이 분명한 대표 기술이 있다 (55층부터는 같은 수호자가 각성해서 더 자주 · 더 많이 쓴다)

@@ -29,7 +29,6 @@ export function glow(g, x, y, r, col, a = 1, add = true) {
 }
 // 점들을 (cx, cy) 둘레로 돌린다 · 옮기고 키운다
 export const rot = (pts, cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return pts.map(([x, y]) => [cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c]); };
-export const tf = (pts, ox, oy, s = 1, flip = 1) => pts.map(([x, y]) => [ox + x * s * flip, oy + y * s]);
 // 실루엣 + 테두리빛: 빛 쪽으로 한 칸 밝은 띠가 남는다 (dx, dy는 그림자 쪽)
 export function sil(g, pts, dark, rim, dx = 1, dy = 0) { if (rim) poly(g, pts, rim); poly(g, rim ? pts.map(([x, y]) => [x + dx, y + dy]) : pts, dark); }
 // 테두리빛 실루엣 (여러 도형): 한 번은 빛 색으로, (dx, dy)만큼 옮겨 어두운 색으로 다시 그린다

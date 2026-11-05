@@ -3,10 +3,8 @@ import { GOODS, GOOD_CATS, BAG_START, BAG_UPGRADES, bagUsed, bagFits } from '../
 import { FOOD, FOOD_EFFECTS, KIND_NAME, cookPreview, registerDish, parseDish, dishName, dishEffectText, eatInfo, RECIPES } from '../data/cooking.js';
 import { WTYPES, WMATS, PART_FX, SYNERGY, craftCost, craftItem } from '../data/crafting.js';
 import { ITEMS, WEAPON_SKILLS, WCAT_NAME } from '../data/items.js';
-import { SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, handFit, crossMul, crossReq, fitText, plainDesc, skillLoad } from '../data/skills.js';
-import { STAT_INFO } from '../data/stats.js';
-import { SPIRITS, SPIRIT_GRADES, spiritBuffText, spiritSpecialText } from '../data/spirits.js';
-import { spiritIconURL } from '../render/spirits.js';
+import { SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, handFit, fitText } from '../data/skills.js';
+import { SPIRITS } from '../data/spirits.js';
 import { LEARN, TABLET_BIOME_NAME } from '../data/learn.js';
 import { RACES } from '../data/races.js';
 import { iconURL } from '../render/icons.js';
@@ -132,41 +130,6 @@ export function learnTab(s, ui, b) {
     ${where === 'dojo' ? `<section class="panel"><h3>옛 기술 석판 </h3><div class="chips">${tablets}</div></section>` : ''}`;
 }
 
-// ───── 스킬 고르기 (캐릭터 창): 클래스 스킬 + 배운 기술 + 각인 스킬, 지금 무기와 맞는지 ─────
-export function skillPickHtml(s, b) {
-  const keys = ['Q', 'E', 'R', 'F'], resName = RACES[s.race].res.name;
-  const card = (id, locked) => {
-    const sk = SKILLS[id], i = b.skills.indexOf(id), on = i >= 0, hf = handFit(sk, b), fit = hf.fit;
-    const cost = sk.costAll ? `${resName} ${sk.costAll.min}+` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
-    const cm = crossMul(sk, b), cr = sk.race && sk.race !== s.race && !sk.scroll ? crossReq(sk) : null; // 다른 종족 기술
-    const note = [hf.hand === 'off' && fit > 0 ? `왼손 ${b.offItem.name}으로` : '', cr ? `다른 종족 기술 · ${STAT_INFO[cr.stat].name} ${cr.full} 이상이면 온전히 (지금 ${Math.round(cm * 100)}%)` : ''].filter(Boolean).join(' · ');
-    const btn = locked ? `<span class="muted">${sk.unlock}레벨에 배움</span>` : on ? `<button class="sm ghost" data-act="skillOff" data-id="${id}">빼기</button>${i > 0 ? `<button class="sm ghost" data-act="skillUp" data-id="${id}">앞으로</button>` : ''}` : `<button class="sm" data-act="skillOn" data-id="${id}">장착</button>`;
-    return `<div class="skc ${on ? 'on' : ''} ${locked ? 'locked' : ''} ${fit <= 0 ? 'cant' : ''}" style="--c:${ROLE_COLOR[sk.role]}"><div class="c-head"><b>${on ? `[${keys[i]}] ` : ''}${sk.name}</b><span class="role">${SKILL_KIND[sk.kind]}</span></div>
-      <div class="muted"><b class="sk-load">부하 ${skillLoad(id)}</b> · 재사용 ${sk.cd}초${cost ? ' · ' + cost : ''} · <b class="${fit <= 0 ? 'warn' : fit < 0.99 ? 'dim' : ''}">${fitText(fit)}</b>${note ? ` · ${note}` : ''}</div><div class="c-sum">${esc(cr ? plainDesc(sk) : sk.desc)}</div><div class="c-act">${btn}</div></div>`;
-  };
-  const cls = (b.available || []).filter((id) => SKILLS[id] && SKILLS[id].cls === b.cls);
-  const locked = Object.keys(SKILLS).filter((id) => SKILLS[id].cls === b.cls && !cls.includes(id));
-  const learned = (b.available || []).filter((id) => SKILLS[id] && (SKILLS[id].cls !== b.cls) && !SKILLS[id].engraving);
-  const eng = (b.available || []).filter((id) => SKILLS[id]?.engraving);
-  return `<section class="panel"><h3>스킬 <small>최대 4개 · Q / E / R / F · 무기: ${ITEMS[b.weaponId].name} (${WCAT_NAME[b.wcat] || b.wcat})</small></h3>
-      <p class="sk-cap">스킬 부하 <b>${b.skillLoad} / ${b.skillCap}</b> </p>
-
-      <div class="skill-row">${cls.map((id) => card(id, false)).join('')}${locked.map((id) => card(id, true)).join('')}</div>
-      <h4>배운 기술 </h4>
-      <div class="skill-row">${learned.map((id) => card(id, false)).join('') || '<p class="muted">없음</p>'}</div>
-      ${eng.length ? `<h4>각인 스킬</h4><div class="skill-row">${eng.map((id) => card(id, false)).join('')}</div>` : ''}
-      ${spiritPickHtml(s)}</section>`;
-}
-// 함께하는 정령 고르기 (계약은 세계수 성지에서)
-function spiritPickHtml(s) {
-  const own = Object.entries(s.spirits?.owned || {});
-  if (!own.length) return '';
-  own.sort((a, b) => SPIRITS[b[0]].grade - SPIRITS[a[0]].grade || b[1].star - a[1].star);
-  return `<h4>함께하는 정령 <small>「정령 부르기」로 꺼낸다 · 계약은 세계수 성지의 「정령 계약」</small></h4><div class="sp-grid">${own.map(([id, o]) => {
-    const sp = SPIRITS[id], G = SPIRIT_GRADES[sp.grade], on = s.spirits.main === id;
-    return `<div class="spc ${on ? 'main' : ''}" style="--c:${G.color}"><img src="${spiritIconURL(id)}" alt=""><b>${esc(sp.name)}</b><small style="color:${G.color}">${G.name} · ${'★'.repeat(o.star)}</small><small>${esc(spiritBuffText(id, o.star))}</small><small class="sp-sk">${esc(spiritSpecialText(id))}</small>${on ? '<em>함께하는 중</em>' : `<button class="sm" data-act="spiritMain" data-id="${id}">함께하기</button>`}</div>`;
-  }).join('')}</div>`;
-}
 
 // ───── 버튼 처리 (처리했으면 true) ─────
 export function homeClick(hub, act, t) {

@@ -8,7 +8,6 @@ const add = (key, v, text) => ({ type: 'add', key, v, text });
 const st = (status, stacks = 1) => ({ status, stacks });
 const strike = (r, m, elem, fx, extra = {}) => ({ strike: { r, mul: m, elem, fx, type: elem && elem !== 'phys' ? 'mag' : 'phys', ...extra } });
 const buff = (id, dur, mods, name, color) => ({ buff: { id: 's_' + id, dur, mods, name, color } });
-const ts = (stat, v, dur) => ({ tstat: { stat, v, dur } });
 
 // [각인 아이디, 이름, 부위, 등급, 태그, 능력치, 효과, 재료(잔향), 스킬]
 const L = [

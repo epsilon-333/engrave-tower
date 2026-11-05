@@ -110,9 +110,3 @@ export function drawEchoGem(g, x, y, color, size = 3) {
   g.fillRect(x - 1, y - size + 1, 1, 1);
 }
 
-export function drawCoin(g, x, y, t) {
-  const w = Math.max(1, Math.round(Math.abs(Math.cos(t * 6)) * 3));
-  g.fillStyle = '#0d0b10'; g.fillRect(x - w - 1, y - 3, w * 2 + 2, 6);
-  g.fillStyle = '#ffcf3a'; g.fillRect(x - w, y - 2, w * 2, 4);
-  g.fillStyle = '#fff2a0'; g.fillRect(x - w, y - 2, 1, 2);
-}

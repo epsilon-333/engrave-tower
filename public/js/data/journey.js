@@ -4,7 +4,6 @@
 // to: 바깥 세계에서 화살표가 가리킬 것 (오브젝트 종류 · 조건)
 
 const C = (s) => s.climb || {};
-const metaSum = (s) => Object.values(C(s).meta || {}).reduce((a, b) => a + b, 0);
 const lords = (s, n) => !!(C(s).lords || {})[n];
 
 export const JOURNEY = [

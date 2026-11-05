@@ -27,10 +27,6 @@ export function clockText(c) {
   const h = Math.floor(c.min / 60) % 24, m = Math.floor(c.min % 60);
   return `${h < 12 ? '오전' : '오후'} ${h % 12 === 0 ? 12 : h % 12}:${String(m - (m % 10)).padStart(2, '0')}`;
 }
-export function partOfDay(min) {
-  const h = min / 60;
-  return h < 5 ? '한밤' : h < 7 ? '새벽' : h < 11 ? '아침' : h < 14 ? '낮' : h < 17 ? '오후' : h < 19.5 ? '저녁' : '밤';
-}
 // 잠: 다음 아침 6시까지 (자정 전에 자면 다음 날)
 export function sleepUntilMorning(c) {
   const before = absMin(c);
