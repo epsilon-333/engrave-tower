@@ -109,7 +109,7 @@ export class Hub {
         <button class="sm" data-act="alloc" data-k="${k}" ${s.points ? '' : 'disabled'}>+</button>
       </div>`;
     };
-    const specials = Object.entries(SPECIAL_INFO).filter(([k]) => b.stats[k]).map(([k, i]) => `<span class="chip">${i.name} ${b.stats[k]}${i.unit}</span>`).join('') || '<span class="muted">없음</span>';
+    const specials = Object.entries(SPECIAL_INFO).filter(([k]) => b.stats[k]).map(([k, i]) => `<span class="chip"${i.desc ? ` title="${i.desc}"` : ''}>${i.name} ${b.stats[k]}${i.unit}</span>`).join('') || '<span class="muted">없음</span>';
     const pct = (v) => Math.round(v * 100) + '%';
     const awOn = b.awakenings.filter((a) => a.on);
     return `<div class="cols">

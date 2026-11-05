@@ -91,13 +91,13 @@ export const ITEMS = {
   starOrb: { name: '별의 보주', slot: 'acc', price: 0, treasure: 'wizard', stats: { mag: 6, spi: 6 }, tags: [],
     effects: [{ type: 'mul', key: 'resGain', v: 1.2, text: '얻는 종족 자원 +20%' }] },
   worldLeaf: { name: '세계수의 잎', slot: 'acc', price: 0, treasure: 'elf', stats: { mag: 5, agi: 5 }, tags: ['wind'],
-    effects: [{ type: 'add', key: 'regen', v: 0.004, text: '자연 회복 · 초당 최대 체력의 0.4%' }] },
+    effects: [{ type: 'add', key: 'regen', v: 0.0014, text: '자연 회복 · 초당 최대 체력의 0.14%' }] },
   royalCrest: { name: '왕가의 휘장', slot: 'acc', price: 0, treasure: 'knight', stats: { pres: 12, vit: 5 }, tags: [],
     effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.93, text: '받는 피해 -7%' }] },
   championHorn: { name: '투사의 뿔', slot: 'acc', price: 0, treasure: 'orc', stats: { str: 7, vit: 4 }, tags: ['brawl'],
     effects: [{ type: 'mul', key: 'dmgMul', v: 1.08, text: '모든 피해 +8%' }] },
   lichCrown: { name: '망자의 왕관', slot: 'acc', price: 0, treasure: 'undead', stats: { mag: 6, mres: 10 }, tags: ['drain'],
-    effects: [{ type: 'stat', stat: 'lifesteal', v: 4, text: '흡혈 +4%' }] },
+    effects: [{ type: 'stat', stat: 'lifesteal', v: 4, text: '흡혈 +4 (평타 피해의 1.2%를 체력으로)' }] },
   shadowSeal: { name: '그림자 인장 반지', slot: 'acc', price: 0, treasure: 'assassin', stats: { agi: 6, sen: 6 }, tags: ['shadow'],
     effects: [{ type: 'add', key: 'crit', v: 0.05, text: '치명타 확률 +5%' }] },
   primalFang: { name: '태고의 송곳니', slot: 'acc', price: 0, treasure: 'dino', stats: { str: 6, agi: 6 }, tags: ['bleed'],
@@ -133,7 +133,7 @@ Object.assign(ITEMS, {
   ironPlate: F('철 판금 갑옷', 'armor', { stats: { pres: 24, vit: 5, agi: -2 }, tags: ['giant'] }),
   rubyRing: F('루비 반지', 'acc', { stats: { fireAff: 4, mag: 3 }, tags: ['fire'] }),
   sapphireRing: F('사파이어 반지', 'acc', { stats: { iceAff: 4, spi: 3 }, tags: ['ice'] }),
-  emeraldAmulet: F('에메랄드 목걸이', 'acc', { stats: { agi: 4, vit: 3 }, effects: [{ type: 'add', key: 'regen', v: 0.002, text: '자연 회복 · 초당 최대 체력의 0.2%' }] }),
+  emeraldAmulet: F('에메랄드 목걸이', 'acc', { stats: { agi: 4, vit: 3 }, effects: [{ type: 'add', key: 'regen', v: 0.0007, text: '자연 회복 · 초당 최대 체력의 0.07%' }] }),
 });
 
 // ── 클래스 전용 무기: [시작 무기, 상위 무기]. 상위 무기의 boost는 자기 클래스일 때만 스킬 피해를 올린다 ──

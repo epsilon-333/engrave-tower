@@ -72,7 +72,7 @@ export const PART_FX = {
   serpentScale: { adj: '바다뱀', fx: [S('chill', 0.2), { k: 'aquatic', v: 1.25 }] },
   wispEssence: { adj: '도깨비불', fx: [S('burn', 0.25), { k: 'night', v: 1.15 }] },
   chiefMask: { adj: '족장의', fx: [{ k: 'crit', v: 0.08 }, { k: 'gold', v: 1.15 }] },
-  giantHeart: { adj: '늪 거인의', fx: [S('poison', 0.5), { k: 'regen', v: 0.003 }] },
+  giantHeart: { adj: '늪 거인의', fx: [S('poison', 0.5), { k: 'regen', v: 0.0011 }] },
   riftCore: { adj: '균열', fx: [{ k: 'boom', chance: 0.2, r: 44, mul: 0.9, status: 'burn' }] },
   witchCrown: { adj: '서리 마녀의', fx: [S('chill', 0.5), { k: 'cdr', v: 0.92 }] },
   graveLantern: { adj: '묘지기의', fx: [S('curse', 0.4), { k: 'stat', stat: 'lifesteal', v: 5 }] },
@@ -90,7 +90,7 @@ export const SYNERGY = [ // 원소가 맞물리는 둘은 이 무기가 일으�
   { id: 'frostShock', name: '얼음 전류', need: ['shock', 'chill'], react: true, text: '원소 반응 피해 +40% (냉기 + 감전 → 순간 빙결)' },
   { id: 'bloodIce', name: '혈빙', need: ['bleed', 'chill'], react: true, text: '원소 반응 피해 +40% (출혈 + 냉기 → 혈빙)' },
   { id: 'rot', name: '썩은 상처', need: ['poison', 'bleed'], text: '출혈 걸린 적을 때리면 독 1중첩이 더 걸린다 (독 + 출혈 → 패혈)' },
-  { id: 'thirst', name: '피의 갈증', need: ['bleed', 'lifesteal'], text: '출혈 걸린 적을 때리면 최대 체력의 1% 회복' },
+  { id: 'thirst', name: '피의 갈증', need: ['bleed', 'lifesteal'], text: '출혈 걸린 적을 때리면 최대 체력의 0.3% 회복' },
   { id: 'crush', name: '분쇄', need: ['break', 'dmg'], text: '갑옷 부수기가 한 번에 2중첩' },
   { id: 'inferno', name: '불바다', need: ['burn', 'boom'], text: '폭발 반경 +40%, 폭발에 맞은 적은 화상 2중첩' },
   { id: 'hunt', name: '급소 사냥', need: ['bleed', 'crit'], text: '치명타가 출혈 2중첩을 건다' },
@@ -108,7 +108,7 @@ function fxText(f) {
     case 'taken': return `받는 피해 -${pc(1 - f.v)}%`;
     case 'knock': return `밀쳐내기 +${pc(f.v - 1)}%`;
     case 'gold': return `골드 +${pc(f.v - 1)}%`;
-    case 'regen': return `초당 체력 ${(f.v * 100).toFixed(1)}% 회복`;
+    case 'regen': return `초당 체력 ${(f.v * 100).toFixed(2)}% 회복`;
     case 'cdr': return `스킬 재사용 대기 -${pc(1 - f.v)}%`;
     case 'break': return `공격 시 ${pc(f.chance)}% 확률로 갑옷 부수기 (방어 -5%)`;
     case 'boom': return `공격 시 ${pc(f.chance)}% 확률로 폭발 (반경 ${f.r} · 공격력 ${pc(f.mul)}%)`;
@@ -126,7 +126,8 @@ function deepen(f) {
   if (o.k === 'stat') o.v = Math.round(o.v * 1.6);
   else if (['speed', 'move', 'dmg', 'knock', 'gold', 'frozen', 'night', 'aquatic'].includes(o.k)) o.v = Math.round((1 + (o.v - 1) * 1.6) * 100) / 100;
   else if (['taken', 'cdr'].includes(o.k)) o.v = Math.round((1 - (1 - o.v) * 1.6) * 100) / 100;
-  else if (o.k === 'crit' || o.k === 'regen') o.v = Math.round(o.v * 1.6 * 1000) / 1000;
+  else if (o.k === 'crit') o.v = Math.round(o.v * 1.6 * 1000) / 1000;
+  else if (o.k === 'regen') o.v = Math.round(o.v * 1.6 * 10000) / 10000;
   return o;
 }
 const traits = (fx) => new Set(fx.flatMap((f) => (f.k === 'hit' ? [f.status] : f.k === 'stat' && f.stat === 'lifesteal' ? ['lifesteal'] : [f.k])));

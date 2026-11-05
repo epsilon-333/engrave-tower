@@ -10,7 +10,7 @@ export const FOOD_EFFECTS = {
   speed: { name: '날쌤', pre: '가뿐한', color: '#bfffd0', lv: [1.1, 1.17, 1.25], mods: (v) => ({ moveSpeed: v }), text: (v) => `이동 속도 +${pct(v - 1)}%` },
   haste: { name: '재빠름', pre: '재빠른', color: '#ffe080', lv: [1.1, 1.17, 1.25], mods: (v) => ({ atkSpeed: v }), text: (v) => `공격 속도 +${pct(v - 1)}%` },
   cdr: { name: '맑은 정신', pre: '머리가 맑아지는', color: '#c0a8ff', lv: [1.12, 1.22, 1.35], mods: (v) => ({ cdRate: v }), text: (v) => `스킬 재사용 대기 -${pct(1 - 1 / v)}%` },
-  regen: { name: '기운', pre: '기운 나는', color: '#8af08a', lv: [0.004, 0.007, 0.011], mods: (v) => ({ regen: v }), text: (v) => `초당 체력 ${(v * 100).toFixed(1)}% 회복` },
+  regen: { name: '기운', pre: '기운 나는', color: '#8af08a', lv: [0.0014, 0.0025, 0.0039], mods: (v) => ({ regen: v }), text: (v) => `초당 체력 ${(v * 100).toFixed(2)}% 회복` },
   crit: { name: '날카로움', pre: '눈이 밝아지는', color: '#ffcf5a', lv: [0.06, 0.1, 0.15], mods: (v) => ({ crit: v }), text: (v) => `치명타 확률 +${pct(v)}%` },
   breath: { name: '긴 숨', pre: '숨이 긴', color: '#7ad8ff', lv: [1.6, 2.4, 3.5], mods: (v) => ({ breath: v }), text: (v) => `물속 숨 ×${v}` },
   luck: { name: '행운', pre: '행운의', color: '#f0d060', lv: [0.2, 0.35, 0.6], mods: (v) => ({ luck: v }), text: (v) => `귀한 물고기 · 몬스터 부산물이 나올 확률 +${pct(v)}%` },

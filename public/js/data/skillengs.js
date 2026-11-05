@@ -43,7 +43,7 @@ const L = [
   ['eTomahawkRain', '하늘의 도끼', 'arm', 3, ['brawl'], { str: 5, sen: 4 }, [on('crit', 0.2, strike(30, 0.8, 'phys', 'rocks'), '치명타면 20% 확률로 도끼가 떨어진다')], { rust: 5, wing: 3 }, 'tomahawkRain'],
   ['eWhirlingAxe', '휘도는 도끼날', 'arm', 4, ['brawl', 'bleed'], { str: 9, agi: 5 }, [on('hit', 0.12, st('bleed', 2), '공격하면 12% 확률로 출혈 2중첩')], { rust: 6, blood: 5, chief: 1 }, 'whirlingAxe'],
   // ── 사령술사 ──
-  ['eRaiseSouls', '망자의 명부', 'head', 3, ['undying'], { spi: 6, mag: 3 }, [on('kill', 0.15, { heal: 0.03 }, '처치하면 15% 확률로 체력 3% 회복')], { bone: 5, soul: 4 }, 'raiseSouls'],
+  ['eRaiseSouls', '망자의 명부', 'head', 3, ['undying'], { spi: 6, mag: 3 }, [on('kill', 0.15, { heal: 0.012 }, '처치하면 15% 확률로 체력 1.2% 회복')], { bone: 5, soul: 4 }, 'raiseSouls'],
   ['eDeathCall', '부름의 종', 'head', 2, ['undying', 'reflect'], { spi: 3, pres: 3 }, [mul('dmgTakenMul', 0.96, '받는 피해 -4%')], { bone: 4, soul: 3 }, 'deathCall'],
   ['eSkeletons', '덜그럭 뼈 주머니', 'back', 2, ['undying'], { spi: 3, vit: 3 }, [add('regen', 0.001, '초당 최대 HP 0.1% 회복')], { bone: 5, rot: 2 }, 'skeletons'],
   ['eWraiths', '망령의 실', 'back', 2, ['shadow'], { spi: 4, agi: 2 }, [add('dodge', 0.02, '회피 +2%')], { soul: 4, rot: 3 }, 'wraiths'],
@@ -52,7 +52,7 @@ const L = [
   ['eCorpseBlast', '부푼 시체', 'heart', 3, ['poison', 'undying'], { mag: 5, toxicity: 3 }, [on('kill', 0.25, strike(36, 0.9, 'dark', 'corpse'), '처치하면 25% 확률로 적이 터진다')], { rot: 5, bone: 4 }, 'corpseBlast'],
   ['eGiantCorpse', '거인의 해골', 'heart', 3, ['giant', 'undying'], { vit: 6, spi: 3 }, [mul('maxHp', 1.06, '최대 HP +6%')], { bone: 6, queen: 1 }, 'giantCorpse'],
   ['eGraspWraith', '움켜쥐는 손', 'arm', 2, ['shadow', 'curse'], { spi: 4, mag: 2 }, [on('hit', 0.1, { stun: 0.3 }, '공격하면 10% 확률로 0.3초 기절')], { soul: 4, rot: 3 }, 'graspWraith'],
-  ['eLichLord', '리치의 성물함', 'heart', 5, ['undying', 'curse'], { mag: 12, spi: 10 }, [mul('magAtk', 1.08, '마법 공격력 +8%'), on('kill', 0.2, { heal: 0.04 }, '처치하면 20% 확률로 체력 4% 회복')], { soul: 6, bone: 6, grave: 2 }, 'lichLord'],
+  ['eLichLord', '리치의 성물함', 'heart', 5, ['undying', 'curse'], { mag: 12, spi: 10 }, [mul('magAtk', 1.08, '마법 공격력 +8%'), on('kill', 0.2, { heal: 0.016 }, '처치하면 20% 확률로 체력 4% 회복')], { soul: 6, bone: 6, grave: 2 }, 'lichLord'],
   ['eDeathNova', '죽음의 숨', 'head', 4, ['curse', 'undying'], { mag: 9, spi: 5 }, [on('hurt', 0.15, strike(44, 1.0, 'dark', 'doom'), '맞으면 15% 확률로 죽음의 기운이 터진다')], { soul: 5, rot: 5, grave: 1 }, 'deathNova'],
   // ── 저주술사 ──
   ['eContagion', '옮는 저주', 'head', 3, ['curse', 'poison'], { mag: 5, toxicity: 4 }, [mul('statusDmgMul', 1.1, '상태이상 피해 +10%')], { rot: 5, venom: 3 }, 'contagion'],
@@ -67,7 +67,7 @@ const L = [
   ['eSummonSpirit', '정령의 부름', 'head', 2, ['wind'], { spi: 4, mag: 2 }, [mul('resGain', 1.06, '자원 회복 +6%')], { wing: 3, goo: 3, ember: 2 }, 'summonSpirit'],
   ['eSpiritEmpower', '정령의 숨결', 'heart', 3, ['wind'], { spi: 6, mag: 3 }, [mul('magAtk', 1.05, '마법 공격력 +5%')], { wing: 4, frost: 3, ember: 3 }, 'spiritEmpower'],
   ['eSpiritGuard', '정령의 품', 'back', 3, ['reflect'], { spi: 5, mres: 4 }, [on('hurt', 0.15, { shield: 0.04 }, '맞으면 15% 확률로 보호막(최대 체력 4%)')], { goo: 4, mirror: 4 }, 'spiritGuard'],
-  ['eSpiritAbsorb', '생기 거두기', 'arm', 2, ['drain'], { spi: 3, vit: 3 }, [on('kill', 0.2, { heal: 0.02 }, '처치하면 20% 확률로 체력 2% 회복')], { goo: 4, spore: 3 }, 'spiritAbsorb'],
+  ['eSpiritAbsorb', '생기 거두기', 'arm', 2, ['drain'], { spi: 3, vit: 3 }, [on('kill', 0.2, { heal: 0.008 }, '처치하면 20% 확률로 체력 0.8% 회복')], { goo: 4, spore: 3 }, 'spiritAbsorb'],
   ['eSpiritArrow', '정령의 깃', 'arm', 3, ['wind'], { sen: 5, spi: 4 }, [add('crit', 0.04, '치명타 +4%')], { wing: 5, mirror: 3 }, 'spiritArrow'],
   ['eSpiritKing', '정령왕의 왕관', 'head', 5, ['wind', 'giant'], { spi: 12, mag: 8 }, [mul('magAtk', 1.07, '마법 공격력 +7%'), on('cast', 0.2, strike(40, 1.0, 'wind', 'gale'), '스킬을 쓰면 20% 확률로 정령의 바람이 몰아친다')], { wing: 6, goo: 5, queen: 1, core: 1 }, 'spiritKing'],
   ['eSpiritBurst', '터지는 정령석', 'heart', 3, ['wind'], { spi: 5, mag: 4 }, [on('crit', 0.2, strike(30, 0.8, 'wind', 'gale'), '치명타면 20% 확률로 바람이 터진다')], { wing: 4, mirror: 4 }, 'spiritBurst'],

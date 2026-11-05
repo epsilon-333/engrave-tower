@@ -23,7 +23,7 @@ export const SPIRIT_ELEMS = {
   ice: { name: '얼음', pal: ['#f0fbff', '#8ad8ff', '#3a7ab8'], buff: { dmgTakenMul: -0.06 }, buffText: (v) => `받는 피해 -${pct(-v.dmgTakenMul)}%`, status: 'chill', atk: 0.85 },
   lightning: { name: '번개', pal: ['#ffffe0', '#f8e050', '#b89020'], buff: { crit: 0.05 }, buffText: (v) => `치명타 확률 +${pct(v.crit)}%`, status: 'shock', atk: 0.95, chain: true },
   wind: { name: '바람', pal: ['#f0fff4', '#9ef0c0', '#3aa878'], buff: { moveSpeed: 0.08, atkSpeed: 0.06 }, buffText: (v) => `이동 속도 +${pct(v.moveSpeed)}% · 공격 속도 +${pct(v.atkSpeed)}%`, atk: 0.9, pierce: true },
-  forest: { name: '숲', pal: ['#e8ffc8', '#7be36a', '#3a8a3a'], buff: { regen: 0.006 }, buffText: (v) => `초당 체력 ${(v.regen * 100).toFixed(1)}% 회복`, status: 'poison', atk: 0.8 },
+  forest: { name: '숲', pal: ['#e8ffc8', '#7be36a', '#3a8a3a'], buff: { regen: 0.0021 }, buffText: (v) => `초당 체력 ${(v.regen * 100).toFixed(2)}% 회복`, status: 'poison', atk: 0.8 },
   dark: { name: '어둠', pal: ['#e8d8ff', '#9a6ad8', '#3a2058'], buff: { lifesteal: 4 }, buffText: (v) => `준 피해의 ${Math.round(v.lifesteal)}% 흡혈`, status: 'curse', atk: 0.95 },
 };
 const pct = (v) => Math.round(v * 100);

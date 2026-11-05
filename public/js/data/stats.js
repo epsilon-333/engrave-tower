@@ -13,8 +13,10 @@ export const STAT_INFO = {
   mres: { name: '마법 저항', short: '마저', desc: '받는 마법 피해 감소' },
 };
 
+// 흡혈 1 = 평타로 준 피해의 0.3%를 체력으로 되찾는다 (세계 계산과 화면 설명이 이 값 하나를 쓴다)
+export const LIFESTEAL_PER = 0.003;
 export const SPECIAL_INFO = {
-  lifesteal: { name: '흡혈', unit: '%' },
+  lifesteal: { name: '흡혈', unit: '', desc: `1마다 평타로 준 피해의 ${LIFESTEAL_PER * 100}%를 체력으로 (범위 공격은 그 35%, 한 번에 최대 체력 2.5%까지)` },
   reflect: { name: '반사', unit: '%' },
   toxicity: { name: '독성', unit: '' },
   fireAff: { name: '화염 친화', unit: '' },
@@ -72,14 +74,14 @@ export const AWAKENINGS = {
     { at: 300, name: '전설의 민첩', desc: '공격 속도 +15%, 회피 +5%', effects: [{ type: 'mul', key: 'atkSpeed', v: 1.15 }, { type: 'add', key: 'dodge', v: 0.05 }] },
   ],
   vit: [
-    { at: 30, name: '재생', desc: '초당 최대 HP 0.5% 회복', effects: [{ type: 'add', key: 'regen', v: 0.005 }] },
+    { at: 30, name: '재생', desc: '초당 최대 HP 0.18% 회복', effects: [{ type: 'add', key: 'regen', v: 0.0018 }] },
     { at: 50, name: '거구', desc: '최대 HP +20%', effects: [{ type: 'mul', key: 'maxHp', v: 1.2 }] },
     { at: 70, name: '철혈', desc: '받는 피해 -10%', effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.9 }] },
     { at: 90, name: '불굴', desc: '치명상을 1 HP로 버팀 (90초마다)', effects: [{ type: 'flag', flag: 'lastStand' }] },
     { at: 110, name: '단단한 몸', desc: '최대 HP +10%', effects: [{ type: 'mul', key: 'maxHp', v: 1.1 }] },
     { at: 150, name: '강철 피부', desc: '받는 피해 -7%', effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.93 }] },
     { at: 200, name: '거인의 몸', desc: '최대 HP +15%', effects: [{ type: 'mul', key: 'maxHp', v: 1.15 }] },
-    { at: 250, name: '끈질긴 생명', desc: '초당 최대 HP 0.3% 회복', effects: [{ type: 'add', key: 'regen', v: 0.003 }] },
+    { at: 250, name: '끈질긴 생명', desc: '초당 최대 HP 0.11% 회복', effects: [{ type: 'add', key: 'regen', v: 0.0011 }] },
     { at: 300, name: '전설의 체력', desc: '최대 HP +20%, 받는 피해 -5%', effects: [{ type: 'mul', key: 'maxHp', v: 1.2 }, { type: 'mul', key: 'dmgTakenMul', v: 0.95 }] },
   ],
   sen: [
@@ -119,7 +121,7 @@ export const AWAKENINGS = {
     { at: 110, name: '마력 피막', desc: '받는 피해 -5%', effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.95 }] },
     { at: 150, name: '평온', desc: '받는 상태이상 지속 -20%', effects: [{ type: 'add', key: 'statusRes', v: 0.2 }] },
     { at: 200, name: '마력 방벽', desc: '받는 피해 -8%', effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.92 }] },
-    { at: 250, name: '흡수', desc: '초당 최대 HP 0.2% 회복', effects: [{ type: 'add', key: 'regen', v: 0.002 }] },
+    { at: 250, name: '흡수', desc: '초당 최대 HP 0.07% 회복', effects: [{ type: 'add', key: 'regen', v: 0.0007 }] },
     { at: 300, name: '전설의 결계', desc: '받는 피해 -10%', effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.9 }] },
   ],
 };

@@ -81,7 +81,7 @@ const P = [
   // ── 묘지 ──
   ['skeleton', '해골 병사의 뼈', '덜그럭 뼈', 'leg', 1, ['undying'], { vit: 2, pres: 2 }, [on('kill', 0.2, strike(30, 0.6, 'phys', 'bones'), '처치하면 20% 확률로 뼈 가시')], 'boneSpear'],
   ['wraith', '망령술사의 혼 구슬', '혼 구슬', 'head', 2, ['shadow', 'curse'], { mag: 3, spi: 2 }, [on('hit', 0.1, st('curse'), '공격하면 10% 확률로 저주')], 'soulRend'],
-  ['ghoul', '구울의 썩은 손톱', '구울의 손톱', 'arm', 2, ['poison', 'drain'], { str: 3, toxicity: 2 }, [on('kill', 0.3, { heal: 0.02 }, '처치하면 30% 확률로 체력 2% 회복')], 'frenzyClaws'],
+  ['ghoul', '구울의 썩은 손톱', '구울의 손톱', 'arm', 2, ['poison', 'drain'], { str: 3, toxicity: 2 }, [on('kill', 0.3, { heal: 0.008 }, '처치하면 30% 확률로 체력 0.8% 회복')], 'frenzyClaws'],
   ['tinyCorpse', '꼬마 시체의 부푼 배', '터지는 시체', 'back', 1, ['poison', 'undying'], { vit: 2 }, [on('kill', 0.2, strike(32, 0.7, 'poison', 'miasma', { status: 'poison' }), '처치하면 20% 확률로 시체가 터진다')], 'acidRain'],
   ['necroAcolyte', '수련생의 금서 쪽지', '금지된 주문', 'head', 2, ['curse'], { mag: 3, spi: 2 }, [mul('statusDmgMul', 1.06, '상태이상 피해 +6%')], 'boneSpear'],
   ['boneGuard', '뼈 방패병의 방패', '뼈 방패', 'arm', 2, ['giant', 'undying'], { pres: 5, vit: 2 }, [mul('dmgTakenMul', 0.96, '받는 피해 -4%'), on('awaken', 1, { shield: 0.05 }, '싸우는 중 각성하면 보호막(최대 체력 5%)')], 'riposte'],
@@ -109,7 +109,7 @@ const P = [
   ['lizardWarrior', '도마뱀 전사의 비늘 방패', '비늘 전사', 'arm', 2, ['giant', 'bleed'], { str: 3, pres: 3 }, [on('hurt', 0.15, st('bleed'), '맞으면 15% 확률로 때린 적에게 출혈')], 'comboSlash'],
   ['darkArcher', '어둠 궁수의 검은 깃', '검은 화살', 'arm', 2, ['shadow'], { sen: 4, agi: 1 }, [add('critDmg', 0.12, '치명타 피해 +12%'), on('crit', 1, ts('sen', 2, 6), '치명타면 6초 동안 감각 +2')], 'aimedShot'],
   ['shadowPanther', '그림자 표범 수염', '그림자 도약', 'leg', 3, ['shadow', 'bleed'], { agi: 5, sen: 3 }, [on('dash', 1, buff('panther', 1.5, { crit: 1.6 }, '도약', '#a080ff'), '대시 뒤 1.5초 동안 치명타 확률 1.6배')], 'shadowStep'],
-  ['mimic', '미믹의 혀', '탐욕스러운 혀', 'head', 3, ['drain'], { vit: 4, str: 3 }, [mul('goldMul', 1.1, '얻는 금화 +10%'), on('kill', 0.2, { heal: 0.03 }, '처치하면 20% 확률로 체력 3% 회복'), conv('str', 3, 'vit', '근력 3마다 체력 +1')], 'devour'],
+  ['mimic', '미믹의 혀', '탐욕스러운 혀', 'head', 3, ['drain'], { vit: 4, str: 3 }, [mul('goldMul', 1.1, '얻는 금화 +10%'), on('kill', 0.2, { heal: 0.012 }, '처치하면 20% 확률로 체력 3% 회복'), conv('str', 3, 'vit', '근력 3마다 체력 +1')], 'devour'],
   ['raidGolem', '고대 골렘의 핵', '고대의 핵', 'heart', 5, ['giant', 'reflect'], { pres: 10, vit: 10 }, [mul('dmgTakenMul', 0.9, '받는 피해 -10%'), on('hurt', 0.2, strike(56, 1.5, 'phys', 'quake', { stun: 0.5 }), '맞으면 20% 확률로 땅이 울린다')], 'colossus'],
   ['forestArcher', '숲 도적의 깃털 화살', '숲의 사격', 'arm', 2, ['wind'], { sen: 3, agi: 2 }, [mul('atkSpeed', 1.04, '공격 속도 +4%')], 'galeShot'],
   ['ruinSentinel', '파수꾼의 금 간 눈', '폐허의 파수', 'head', 3, ['giant', 'brawl'], { pres: 5, str: 3 }, [on('dash', 1, buff('sentinel', 2, { dmgTakenMul: 0.75 }, '파수', '#c0b090'), '대시 뒤 2초 동안 받는 피해 -25%')], 'shieldCharge'],

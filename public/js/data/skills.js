@@ -85,9 +85,9 @@ export const SKILLS = {
   herdRoar: { name: '몰이 포효', role: '제어', cd: 12, cost: 20, scale: 'phys', fx: 'roar', mo: 'roar',
     desc: '가장 가까운 적 하나만 빼고 주변 적을 3초 동안 도망치게 한다. 본능 20.', do: [{ op: 'aoe', at: 'self', r: 110, mul: 0.2, flee: 3, spareNearest: true }] },
   devour: { name: '포식', role: '마무리', cd: 7, cost: 30, scale: 'phys', fx: 'bite', aim: 'stack', mo: 'bite',
-    desc: '크게 문다. 그 적의 출혈 중첩만큼 체력을 회복한다(중첩당 1.5%). 출혈은 그대로 남는다. 본능 30.', do: [{ op: 'single', range: 54, mul: 2.6, healPerBleed: 0.015, fx: 'bite' }] },
+    desc: '크게 문다. 그 적의 출혈 중첩만큼 체력을 회복한다(중첩당 0.6%). 출혈은 그대로 남는다. 본능 30.', do: [{ op: 'single', range: 54, mul: 2.6, healPerBleed: 0.006, fx: 'bite' }] },
   apexPredator: { name: '최상위 포식자', role: '궁극', cd: 30, costAll: { min: 60 }, scale: 'phys', fx: 'buff', ult: true, mo: 'roar',
-    desc: '12초 동안 이동 속도 +40%, 모든 공격에 출혈 2중첩, 흡혈 +15%. 본능이 많을수록 공격력도 오른다.',
+    desc: '12초 동안 이동 속도 +40%, 모든 공격에 출혈 2중첩, 흡혈 +15(평타 피해의 4.5%를 체력으로). 본능이 많을수록 공격력도 오른다.',
     do: [{ op: 'aoe', at: 'self', r: 90, mul: 1.0, status: 'bleed', stacks: 2, fx: 'roar' }, { op: 'buff', id: 'apex', dur: 12, mods: { moveSpeed: 1.4, lifesteal: 15, dmgMul: 1.1 }, color: '#e0445a', scaleRes: true }] },
 
   // ══════ 공룡 수인 · 대지 거수 ══════
@@ -221,7 +221,7 @@ export const SKILLS = {
   wraiths: { name: '망령 소환', role: '소환', cd: 14, cost: 20, scale: 'mag', fx: 'summon',
     desc: '10초 동안 적을 쫓는 망령 2마리를 부른다.', do: [{ op: 'summon', kind: 'ghost', n: 2, dur: 10, mul: 0.5 }] },
   soulDrain: { name: '영혼 흡수', role: '준비', cd: 3, scale: 'mag', elem: 'dark', fx: 'soul',
-    desc: '영혼을 빨아들이는 탄. 맞히면 영혼 +12, 체력 3% 회복.', do: [{ op: 'proj', n: 1, speed: 240, range: 210, mul: 1.5, kind: 'soul', onHitGain: 12, onHitHeal: 0.03 }] },
+    desc: '영혼을 빨아들이는 탄. 맞히면 영혼 +12, 체력 1.2% 회복.', do: [{ op: 'proj', n: 1, speed: 240, range: 210, mul: 1.5, kind: 'soul', onHitGain: 12, onHitHeal: 0.012 }] },
   boneCage: { name: '뼈 감옥', role: '제어', cd: 11, cost: 15, scale: 'mag', fx: 'bones', aim: 'tank',
     desc: '뼈 우리로 적을 2.5초 가둔다. 갇힌 적은 받는 피해 +30%.', do: [{ op: 'aoe', at: 'aim', r: 36, mul: 0.4, stun: 2.5, prison: true, fx: 'bones' }] },
   corpseBlast: { name: '시체 폭발', role: '마무리', cd: 8, cost: 25, scale: 'mag', elem: 'dark', fx: 'burst', aim: 'none',

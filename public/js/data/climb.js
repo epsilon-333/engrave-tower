@@ -59,7 +59,7 @@ export function climbMul(f, zoneId, oath = {}) {
 export const FLOOR_MODS = {
   dark: { name: '어둠의 층', text: '빛이 거의 없다', color: '#8a7aa8' },
   swift: { name: '광풍의 층', text: '적이 25% 빠르다', color: '#a8f0c8' },
-  bloodmoon: { name: '피의 달', text: '적 공격력 +15% · 처치마다 체력 2% 회복', color: '#e0445a' },
+  bloodmoon: { name: '피의 달', text: '적 공격력 +15% · 처치마다 체력 0.8% 회복', color: '#e0445a' },
   horde: { name: '무리의 층', text: '적이 40% 많다', color: '#ff9a5a' },
 };
 export function rollFloorMod(f, kind, rng) {

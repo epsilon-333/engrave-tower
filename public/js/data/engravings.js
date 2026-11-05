@@ -12,7 +12,7 @@ export const ENGRAVINGS = {
     stats: { vit: 6, pres: 4 },
     effects: [
       { type: 'flag', flag: 'slimeSlow', text: '나를 때린 적이 끈적해져 느려진다 (냉기 1중첩)' },
-      { type: 'add', key: 'regen', v: 0.004, text: '초당 HP 0.4% 회복' },
+      { type: 'add', key: 'regen', v: 0.0014, text: '초당 HP 0.14% 회복' },
     ],
     recipe: { goo: 4 },
   },
@@ -37,7 +37,7 @@ export const ENGRAVINGS = {
     name: '족장의 투지', slot: 'heart', grade: 3, load: 5, tags: ['brawl'],
     stats: { str: 10, vit: 6 },
     effects: [
-      { when: { stat: 'str', gte: 40 }, type: 'on', event: 'kill', chance: 1, action: { heal: 0.04 }, text: '처치 시 HP 4% 회복' },
+      { when: { stat: 'str', gte: 40 }, type: 'on', event: 'kill', chance: 1, action: { heal: 0.016 }, text: '처치 시 HP 1.6% 회복' },
       { when: { tag: 'brawl', gte: 2 }, type: 'mul', key: 'physAtk', v: 1.15, text: '물리 공격력 +15%' },
     ],
     recipe: { chief: 1, rust: 6 },
@@ -257,7 +257,7 @@ export const ENGRAVINGS = {
     name: '거머리 군주의 입', slot: 'head', grade: 4, load: 7, tags: ['drain', 'bleed'],
     stats: { lifesteal: 8, sen: 4 },
     effects: [
-      { type: 'on', event: 'crit', chance: 1, action: { heal: 0.02 }, text: '치명타 시 HP 2% 회복' },
+      { type: 'on', event: 'crit', chance: 1, action: { heal: 0.008 }, text: '치명타 시 HP 0.8% 회복' },
       { type: 'flag', flag: 'lowHpDrain', text: 'HP 50% 이하일 때 흡혈 2배' },
     ],
     recipe: { queen: 1, blood: 8 },
@@ -436,7 +436,7 @@ export const ENGRAVINGS = {
     stats: { str: 5 },
     effects: [
       { when: { race: 'orc' }, type: 'flag', flag: 'rageFast', text: '분노가 1.5배 빨리 참' },
-      { type: 'on', event: 'kill', chance: 0.5, action: { heal: 0.03 }, text: '처치 시 50% 확률로 HP 3% 회복' },
+      { type: 'on', event: 'kill', chance: 0.5, action: { heal: 0.012 }, text: '처치 시 50% 확률로 HP 1.2% 회복' },
     ],
     recipe: { rust: 4, blood: 4 },
   },
@@ -501,7 +501,7 @@ export const ENGRAVINGS = {
     stats: { lifesteal: 4, str: 4 },
     effects: [
       { type: 'flag', flag: 'lowHpDrain', text: 'HP 50% 이하일 때 흡혈 2배' },
-      { when: { race: 'orc' }, type: 'add', key: 'regen', v: 0.005, text: '초당 HP 0.5% 회복' },
+      { when: { race: 'orc' }, type: 'add', key: 'regen', v: 0.0018, text: '초당 HP 0.18% 회복' },
     ],
     recipe: { blood: 5, rust: 5 },
   },
@@ -549,7 +549,7 @@ export const ENGRAVINGS = {
   hungryBlade: {
     name: '굶주린 칼날', slot: 'arm', grade: 2, load: 3, tags: ['drain', 'bleed'],
     stats: { lifesteal: 4, str: 3 },
-    effects: [{ type: 'on', event: 'kill', chance: 1, action: { heal: 0.03 }, text: '처치 시 체력 3% 회복' }],
+    effects: [{ type: 'on', event: 'kill', chance: 1, action: { heal: 0.012 }, text: '처치 시 체력 1.2% 회복' }],
     recipe: { blood: 4, rust: 2 },
   },
   windStep: {
@@ -603,13 +603,13 @@ export const ENGRAVINGS = {
   bloodRitual: {
     name: '피의 의식', slot: 'heart', grade: 4, load: 7, tags: ['bleed', 'drain'],
     stats: { str: 6, lifesteal: 4 },
-    effects: [{ type: 'on', event: 'crit', chance: 1, action: { status: 'bleed', stacks: 2, heal: 0.015 }, text: '치명타면 출혈 2중첩 · 체력 1.5% 회복' }, { type: 'mul', key: 'bleedMul', v: 1.3, text: '출혈 피해 +30%' }],
+    effects: [{ type: 'on', event: 'crit', chance: 1, action: { status: 'bleed', stacks: 2, heal: 0.006 }, text: '치명타면 출혈 2중첩 · 체력 0.6% 회복' }, { type: 'mul', key: 'bleedMul', v: 1.3, text: '출혈 피해 +30%' }],
     recipe: { blood: 8, chief: 1 },
   },
   slimeRebirth: {
     name: '점액의 부활', slot: 'heart', grade: 4, load: 7, tags: ['slime', 'undying'],
     stats: { vit: 8, pres: 4 },
-    effects: [{ type: 'flag', flag: 'undying', text: '쓰러지면 한 번 체력 30%로 되살아난다' }, { type: 'add', key: 'regen', v: 0.002, text: '초당 체력 0.2% 회복' }],
+    effects: [{ type: 'flag', flag: 'undying', text: '쓰러지면 한 번 체력 30%로 되살아난다' }, { type: 'add', key: 'regen', v: 0.0007, text: '초당 체력 0.07% 회복' }],
     recipe: { goo: 10, queen: 1 },
   },
   stormHeart: {
@@ -651,7 +651,7 @@ export const TAGS = {
     { n: 3, text: '치명타가 출혈 2중첩', effects: [{ type: 'flag', flag: 'critBleed' }] },
   ] },
   drain: { name: '흡혈', color: '#c4304a', tiers: [
-    { n: 2, text: '흡혈 +4%', effects: [{ type: 'stat', stat: 'lifesteal', v: 4 }] },
+    { n: 2, text: '흡혈 +4 (평타 피해의 1.2%를 체력으로)', effects: [{ type: 'stat', stat: 'lifesteal', v: 4 }] },
     { n: 3, text: '넘친 회복량은 보호막으로', effects: [{ type: 'flag', flag: 'overhealShield' }] },
   ] },
   wind: { name: '바람', color: '#bfe8d0', tiers: [

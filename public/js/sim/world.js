@@ -9,6 +9,7 @@ import { LOOT_RARITY } from '../data/crafting.js';
 import { rollTowerWeapon, W_RARITY } from '../data/weapons.js';
 import { rollTowerGear } from '../data/towergear.js'; // 탑의 방어구 · 장신구 · 왼손 장비도 떨어진다
 import { ITEMS } from '../data/items.js';
+import { LIFESTEAL_PER } from '../data/stats.js';
 import { climbMul, setZoneRef, floorFoes, rollDoors, actOf, REWARDS, BOSS_HEAL, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, rollFloorMod } from '../data/climb.js';
 import { RAID_BOSS } from '../data/raid.js';
 import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
@@ -2398,7 +2399,7 @@ export class World {
     for (const s of gone) this.emit({ t: 'spiritOut', x: p.x, y: p.y, elem: s.elem });
     if (gone.length) p.spirits = p.spirits.filter((s) => s.t > 0);
     const forest = this.spiritCount('forest');
-    if (forest) this.heal(this.d.maxHp * 0.008 * forest * DT, 'regen');
+    if (forest) this.heal(this.d.maxHp * 0.0028 * forest * DT, 'regen');
   }
 
   // 계약한 정령: 불러내면 어깨 위를 떠다니며 버프를 주고, 가까운 적을 그 속성으로 공격한다
@@ -2987,7 +2988,7 @@ export class World {
         }
         continue;
       }
-      if (z.kind === 'sanctuary' && Math.hypot(p.x - z.x, p.y - z.y) < z.r) this.heal(this.d.maxHp * 0.03 * DT, 'skill');
+      if (z.kind === 'sanctuary' && Math.hypot(p.x - z.x, p.y - z.y) < z.r) this.heal(this.d.maxHp * 0.012 * DT, 'skill');
       if (z.tick > 0) continue;
       z.tick = 0.5;
       if (z.kind === 'sanctuary') continue;
@@ -3069,12 +3070,12 @@ export class World {
     }
     this.damageEnemy(e, base * (crit ? d.critDmg : 1) * charge + extra, type, { src: 'attack', crit, heavy, proj, dist: opt.dist, elem: opt.elem, pen: opt.pen });
     if (opt.weapon && !e.dead) this.weaponExtras(e, base, crit, bleeding);
-    if (this.b.cls === 'predator' && bleeding) this.heal(d.maxHp * 0.006, 'steal');
+    if (this.b.cls === 'predator' && bleeding) this.heal(d.maxHp * 0.0018, 'steal');
     if (p.buffs.apex && !e.dead) this.applyStatus(e, 'bleed', 2);
     if (p.spirits.length && !e.dead) {
       const fire = this.spiritCount('fire'), forest = this.spiritCount('forest'), wind = this.spiritCount('wind');
       if (fire && this.rng.chance(0.3 * fire)) this.applyStatus(e, 'burn', 1);
-      if (fire && forest && e.st.burn) this.heal(d.maxHp * 0.005, 'skill');
+      if (fire && forest && e.st.burn) this.heal(d.maxHp * 0.002, 'skill');
       if (fire && wind && proj && this.rng.chance(0.25)) this.zones.push({ kind: 'fire', x: e.x, y: e.y, r: 14, t: 2, max: 2, tick: 0, atk: this.skillAtk('best') });
     }
     if (opt.weapon && this.b.cls === 'elementalist' && !e.dead && ELEM[p.elem]?.status) this.applyStatus(e, ELEM[p.elem].status, 1);
@@ -3133,7 +3134,7 @@ export class World {
     if (sp.cloud && this.rng.chance(sp.cloud.chance)) this.addCloud(e.x, e.y, sp.cloud.r * (1 + d.cloudSize), 4 + d.physAtk * 0.25, sp.cloud.dur, 'p');
     switch (sp.synergy) {
       case 'rot': if (bleeding && !e.dead) this.applyStatus(e, 'poison', 1); break;
-      case 'thirst': if (bleeding) this.heal(d.maxHp * 0.01, 'steal'); break;
+      case 'thirst': if (bleeding) this.heal(d.maxHp * 0.003, 'steal'); break;
       case 'hunt': if (crit && !e.dead) this.applyStatus(e, 'bleed', 2); break;
     }
   }
@@ -3353,7 +3354,7 @@ export class World {
     if (opt.src === 'attack' || opt.src === 'aoe') {
       let ls = (this.s.lifesteal || 0) + this.modAdd('lifesteal');
       if (this.f.has('lowHpDrain') && p.hp < d.maxHp / 2) ls *= 2;
-      if (ls > 0) this.heal(Math.min((dmg * ls) / 100 * (opt.src === 'aoe' ? 0.35 : 1), d.maxHp * 0.025), 'steal'); // 범위 공격 흡혈은 약하게, 한 번에 최대 체력 2.5%까지
+      if (ls > 0) this.heal(Math.min(dmg * ls * LIFESTEAL_PER * (opt.src === 'aoe' ? 0.35 : 1), d.maxHp * 0.025), 'steal'); // 범위 공격 흡혈은 약하게, 한 번에 최대 체력 2.5%까지
     }
     if (opt.src === 'attack' && e.def.reflect) this.hurtPlayer(Math.min(dmg * e.def.reflect, d.maxHp * 0.08), 'phys', null, { direct: true });
     if (e.hp <= 0 && !e.puppet) this.killEnemy(e);
@@ -3548,9 +3549,8 @@ export class World {
     if (this.pvp) amount *= PVP.heal; // 대전: 회복 절반
     if (this.b.race === 'undead' && kind !== 'drain' && !(kind === 'steal' && this.f.has('undeadLifesteal'))) amount *= 0.5;
     amount *= d.healMul ?? 1; // 서약 「메마른 샘」
-    // 회복 너프: 흡혈 · 재생 · 스킬 회복은 크게 줄이고, 물약 · 샘 말고는 1초에 최대 체력 5%까지만 (쌓아 둘 수 있는 몫은 8%)
+    // 물약 · 샘 말고는 회복이 1초에 최대 체력 3%씩만 들어온다 (한꺼번에 쌓아 둘 수 있는 몫은 5%). 회복 수치는 적힌 그대로 (숨은 배율 없음)
     if (!this.pvp && kind !== 'potion' && kind !== 'spring' && kind !== 'room') {
-      amount *= kind === 'steal' ? 0.3 : kind === 'regen' ? 0.35 : 0.4;
       const bank = (p.healBank ??= d.maxHp * 0.05);
       amount = Math.min(amount, bank); p.healBank = bank - amount;
     }
@@ -4363,10 +4363,10 @@ export class World {
     if (st.poison && this.f.has('poisonSpread')) for (const o of this.enemiesNear(e.x, e.y, 60)) this.applyStatus(o, 'poison', Math.ceil(st.poison.n / 2));
     if (st.burn && this.f.has('burnSpread')) for (const o of this.enemiesNear(e.x, e.y, 60)) this.applyStatus(o, 'burn', 2);
     if (st.poison && this.f.has('poisonBurst')) this.addCloud(e.x, e.y, 34 * (1 + d.cloudSize), 4 + (this.s.toxicity || 0) * 0.8, 3, 'p');
-    if (this.b.race === 'undead') this.heal(d.maxHp * 0.06, 'drain');
+    if (this.b.race === 'undead') this.heal(d.maxHp * 0.024, 'drain');
     if (this.raceRes?.kill) this.addRes(this.raceRes.kill);
     this.lastKills = (this.lastKills || 0) + 1;
-    if (this.climb?.mod === 'bloodmoon' && e.climb) this.heal(d.maxHp * 0.02, 'drain'); // 피의 달
+    if (this.climb?.mod === 'bloodmoon' && e.climb) this.heal(d.maxHp * 0.008, 'drain'); // 피의 달
   }
 
   addRage() { /* 오크 분노는 종족 자원(res)으로 통합 */ }
