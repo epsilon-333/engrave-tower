@@ -1,5 +1,5 @@
 // 3막: 빛이 흐려지고 · 네 컷의 전쟁 · 재의 계절 · 마지막 왕 · 해돋이 · 삼백 년 뒤 · 제목
-import { IW, IH, H, clamp, lerp, seg, eOut, eIn, eIO, hexA, rect, px, poly, circ, ell, line, path, vgrad, glow, stars, cover, glyph, GLYPHS, RACE_COL, rimmed, rim2, bz2, shakeAt, big, bp, tongue } from './pix.js';
+import { IW, IH, H, clamp, lerp, seg, eOut, eIn, eIO, hexA, rect, px, poly, circ, ell, line, path, vgrad, glow, stars, cover, glyph, RACE_COL, rimmed, rim2, bz2, shakeAt, big, bp, tongue } from './pix.js';
 import { tower } from './act1.js';
 import { knightFig, undeadFig, undeadBones, flame } from './act2.js';
 import { knight, KNT, orc, ORC, axe, layered, lerpPose, mouthOf, ik } from './body.js';

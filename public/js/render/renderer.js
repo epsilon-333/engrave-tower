@@ -22,16 +22,15 @@ import { ECHOES, AFFIXES } from '../data/monsters.js';
 import { WEAPON_SKILLS, ITEMS, OFF_LOOK } from '../data/items.js';
 import { SKILLS, ELEM, ROLE_COLOR } from '../data/skills.js';
 import { RACES } from '../data/races.js';
-import { RACE_ART, MONSTER_ART, NPC_ART, WEAPON_ART, weaponArt } from '../data/art.js';
+import { RACE_ART, MONSTER_ART, NPC_ART, weaponArt } from '../data/art.js';
 import { BOSS_PASSIVES } from '../data/tower.js';
 import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
 const PASSIVE_NAME = Object.fromEntries(Object.entries(BOSS_PASSIVES).map(([k, v]) => [k, v.name]));
 import { STORY_ITEMS, storyObjective, pinoTalk } from '../data/story.js';
 import { sfx, tone } from '../audio.js';
-import { drawClimbObject, rewardIcon, drawClimbHud } from './climbfx.js';
-import { REWARDS as CLIMB_REWARDS, ACTS as CLIMB_ACTS, actOf as climbAct, recLevel as climbRec } from '../data/climb.js';
-import { ENGRAVINGS as ALL_ENG } from '../data/engravings.js';
-import { skyColor, darkness, clockText, partOfDay } from '../sim/time.js';
+import { drawClimbObject, drawClimbHud } from './climbfx.js';
+import { REWARDS as CLIMB_REWARDS } from '../data/climb.js';
+import { skyColor, darkness, clockText } from '../sim/time.js';
 
 const FONT = 'Galmuri11, "Malgun Gothic", sans-serif';
 const GLOW = { glowshroom: [26, '#5affd0'], candle: [30, '#ffb04a'], brazier: [46, '#ffa040'], ember: [18, '#ff7a2a'], crystalB: [22, '#7ad8ff'], crystalR: [22, '#ff5a2a'], glowPlant: [24, '#7af0ff'] };
@@ -4348,6 +4347,7 @@ export class Renderer {
     if (R) {
       this.panel(bx, ry, bw, gh);
       g.fillStyle = '#100d0e'; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u);
+      g.globalAlpha = 0.22; g.fillStyle = R.color; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u); g.globalAlpha = 1; // 비어 있어도 막대가 보이게 (자원이 있다는 것을 알 수 있게)
       const k = Math.max(0, Math.min(1, p.res / 100));
       g.fillStyle = R.color; g.fillRect(bx + u, ry + u, (bw - 2 * u) * k, gh - 2 * u);
       g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(bx + u, ry + u, (bw - 2 * u) * k, u);

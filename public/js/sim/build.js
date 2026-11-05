@@ -9,7 +9,7 @@ import { evalCond, condText } from './conditions.js';
 export const STAT_MAX = 300;
 import { GROWTH_MUL } from '../data/races.js';
 import { weaponScale, CLASS_STATS } from '../data/statscale.js';
-import { engravingSkillFor, SKILLS, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES } from '../data/skills.js';
+import { engravingSkillFor, SKILLS, CLASSES, RACE_CLASSES } from '../data/skills.js';
 
 export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back']; // 각인 칸 다섯: 앞 넷이 Q · E · R · F(스킬 + 패시브), 마지막은 패시브만 (부위 구분 없음 · 이름은 예전 저장 그대로)
 export const SKILL_SLOTS = SLOTS.slice(0, 4), SLOT_KEYS = ['Q', 'E', 'R', 'F', '패시브'];

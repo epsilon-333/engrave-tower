@@ -1,13 +1,13 @@
 // 집 · 생활 화면: 보관함(가방 ↔ 보관함) · 부엌(요리) · 작업대/대장간(무기 만들기) · 기술 배우기 · 먹기
 import { GOODS, GOOD_CATS, BAG_START, BAG_UPGRADES, bagUsed, bagFits } from '../data/goods.js';
-import { FOOD, FOOD_EFFECTS, KIND_NAME, cookPreview, registerDish, parseDish, dishName, dishEffectText, eatInfo, rawEdible, RECIPES } from '../data/cooking.js';
+import { FOOD, FOOD_EFFECTS, KIND_NAME, cookPreview, registerDish, parseDish, dishName, dishEffectText, eatInfo, RECIPES } from '../data/cooking.js';
 import { WTYPES, WMATS, PART_FX, SYNERGY, craftCost, craftItem } from '../data/crafting.js';
-import { ITEMS, WEAPON_SKILLS, WCAT_NAME, weaponCat } from '../data/items.js';
-import { SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, skillFit, handFit, crossMul, crossReq, fitText, plainDesc, skillLoad } from '../data/skills.js';
+import { ITEMS, WEAPON_SKILLS, WCAT_NAME } from '../data/items.js';
+import { SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, handFit, crossMul, crossReq, fitText, plainDesc, skillLoad } from '../data/skills.js';
 import { STAT_INFO } from '../data/stats.js';
 import { SPIRITS, SPIRIT_GRADES, spiritBuffText, spiritSpecialText } from '../data/spirits.js';
 import { spiritIconURL } from '../render/spirits.js';
-import { LEARN, WHERE_NAME, TABLET_BIOME_NAME } from '../data/learn.js';
+import { LEARN, TABLET_BIOME_NAME } from '../data/learn.js';
 import { RACES } from '../data/races.js';
 import { iconURL } from '../render/icons.js';
 

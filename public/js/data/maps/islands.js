@@ -1,6 +1,6 @@
 // 바다 건너 섬들: 섬마다 따로 된 바깥 지도 (항구 도시 + 들판 · 사냥터). 본섬과 같은 그림 · 같은 생활(캐기 · 나무 · 낚시)을 쓴다.
 // 섬: 황금 돛 섬(상인 공화국) · 서리왕관 섬(하얀 왕관 공국) · 붉은 모래 섬(모래바람 술탄국) · 해골 군도(해적 연합) · 안개 너머의 섬(교단의 땅)
-import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_BUILD, T_DEEP } from '../../sim/mapgen.js';
+import { TILE, T_FLOOR, T_LIQUID, T_BUILD, T_DEEP } from '../../sim/mapgen.js';
 import { createRng } from '../../sim/rng.js';
 import { G, BIOME_LIST } from './overworld.js';
 import { BIOME_NODES } from '../goods.js';

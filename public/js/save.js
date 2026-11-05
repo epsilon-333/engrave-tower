@@ -1,6 +1,6 @@
 // 저장 데이터 (지금은 브라우저 저장, 나중에 서버 계정으로 옮길 수 있게 순수 JSON)
 import { spiritLevel } from './data/spirits.js';
-import { pointsAt, RACES } from './data/races.js';
+import { pointsAt } from './data/races.js';
 import { codexPoints, levelFor } from './data/codex.js';
 import { newStory } from './data/story.js';
 import { ZONES, MONSTERS, ECHOES } from './data/monsters.js';

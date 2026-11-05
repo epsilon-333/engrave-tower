@@ -1,6 +1,6 @@
 // 마을 화면 (DOM). 캐릭터 / 공명 제단 / 상점 / 사냥터 / 도감
 import { KNACKS } from '../data/knacks.js';
-import { BASE_STATS, STAT_INFO, SPECIAL_INFO, SLOT_INFO, GRADES, TIERS } from '../data/stats.js';
+import { BASE_STATS, STAT_INFO, SPECIAL_INFO, GRADES, TIERS } from '../data/stats.js';
 import { RACES } from '../data/races.js';
 import { WORLD_HISTORY, relation, REL_NAME, REL_COLOR } from '../data/lore.js';
 import { SANCTUMS as SANCT_ALL } from '../data/sanctums.js';
@@ -19,10 +19,10 @@ import { toLoadout, writeSave, refreshQuests, claimQuest, grantClassEngravings }
 import { sfx } from '../audio.js';
 import { engravingSkillFor, KIND_NAME, SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS, skillLoad, skillCap } from '../data/skills.js';
 import { getAutoAim, setAutoAim } from '../settings.js';
-import { skillScale, weaponStat, SKILL_PERKS, WEAPON_PERKS, CLASS_STATS, statMul } from '../data/statscale.js';
+import { skillScale, weaponStat, SKILL_PERKS, WEAPON_PERKS, CLASS_STATS } from '../data/statscale.js';
 import { bagTab, tradeTab, forgeTab, lifeClick, fishCodex, artifactCodex } from './life.js';
 import { whereTab } from './where.js';
-import { storageTab, cookTab, craftTab, learnTab, skillPickHtml, homeClick } from './home.js';
+import { storageTab, cookTab, craftTab, learnTab, homeClick } from './home.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

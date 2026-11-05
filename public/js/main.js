@@ -10,7 +10,7 @@ import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
 import { padState, applyPad, padMenu } from './gamepad.js';
 import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, setStaleHook, onLocalSave, isStale } from './save.js';
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
-import { codexPoints, levelFor } from './data/codex.js';
+import { codexPoints } from './data/codex.js';
 import { TILE, generateField } from './sim/mapgen.js';
 import { ENTRANCES, BIOME_LIST } from './data/maps/overworld.js';
 import { LABY_ZONE, PALACE_ZONE, buildLabyrinth, buildPalace } from './data/maps/interiors.js';
@@ -18,7 +18,7 @@ import { HOUSES, buildHouse } from './data/maps/houses.js';
 import { cycleSeed, growPlot } from './sim/life.js';
 import { newClock, canSleep, sleepUntilMorning, absMin, clockText } from './sim/time.js';
 import { registerCrafted, craftItem, LOOT_RARITY } from './data/crafting.js';
-import { registerAllDishes, registerDish, eatInfo } from './data/cooking.js';
+import { registerAllDishes, eatInfo } from './data/cooking.js';
 import { LEARN, ABILITIES } from './data/learn.js';
 import { CROPS } from './data/goods.js';
 import { GOODS, SELL_BONUS } from './data/goods.js';
@@ -30,7 +30,7 @@ import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, c
 import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
 import { RACES, RACE_MIGRATE, pointsAt } from './data/races.js';
 import { RACE_STORY, relation, allies, ALLY_AFF, REL_NAME, REL_COLOR } from './data/lore.js';
-import { ITEMS, STYLES, WEAPON_SKILLS } from './data/items.js';
+import { ITEMS, WEAPON_SKILLS } from './data/items.js';
 import './data/weapons.js'; // 탑의 무기 100종을 장비 목록에 올린다
 import './data/towergear.js'; // 탑의 방어구 · 장신구 · 부적 30종
 import { CC_EXTRA, CLASSES, ENGRAVING_SKILLS, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc } from './data/skills.js';

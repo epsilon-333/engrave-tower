@@ -1,7 +1,7 @@
 // 성지 마을을 그린다: 우두머리(왕관 · 망토) · 하는 일이 보이는 주민 · 날아다니는 것들 · 수련 과녁 · 수련 화면 · 말풍선
 import { TILE } from '../sim/mapgen.js';
 import { sprite } from './assets.js';
-import { SANCTUMS, SANCT_LIFE, FIND_NAME } from '../data/sanctums.js';
+import { SANCTUMS, SANCT_LIFE } from '../data/sanctums.js';
 import { hash } from './tiles.js';
 import { flameSprite } from './pxfx.js';
 

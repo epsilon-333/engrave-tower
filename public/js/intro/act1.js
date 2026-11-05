@@ -1,5 +1,5 @@
 // 1막: 하늘이 갈라지고 · 별(아르케)이 떨어지고 · 탑이 솟는다
-import { IW, IH, H, clamp, lerp, seg, eOut, eIn, eIO, hexA, rect, px, poly, circ, ell, line, path, vgrad, glow, sil, stars, cover } from './pix.js';
+import { IW, IH, H, clamp, lerp, seg, eOut, eIO, hexA, rect, px, poly, circ, ell, line, path, vgrad, glow, sil, stars, cover } from './pix.js';
 
 // 탑 실루엣 (가운데 cx, 밑 base, 높이 h). 층마다 처마가 튀어나오고 꼭대기에 별 조각(아르케)
 const TL = [[-13, 0], [-11, -26], [-15, -28], [-15, -31], [-9, -34], [-8, -60], [-12, -62], [-12, -65], [-6, -68], [-5, -92], [-8, -94], [-8, -96], [-4, -98], [-3, -110], [-1, -116], [0, -119]];

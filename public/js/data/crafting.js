@@ -1,7 +1,6 @@
 // 무기 만들기: 종류(검 · 도끼 · 망치 · 창 · 낫 · 채찍 · 활 · 석궁 · 부메랑 · 지팡이 …) + 재료(나무 · 돌 · 뼈 · 구리 · 철 …) + 몬스터 부산물 2개까지.
 // 재료는 위력과 무게를, 부산물은 그 몬스터를 닮은 능력을 준다. 같은 부산물을 두 개 넣으면 능력이 깊어지고,
 // 서로 다른 둘이 맞물리면 조합 능력이 하나 더 붙는다. 집 작업대는 나무 · 돌 · 뼈만, 대장간은 모든 재료를 다룬다.
-import { GOODS } from './goods.js';
 
 // cat: 스킬과 맞는지 보는 무기 갈래 (skills.js FIT) · art: 그림 · weapon: 기본 성능 · mats: 쓸 수 있는 재료 · need: 주재료 수 · handle: 손잡이 나무 수
 const ALL = ['wood', 'stone', 'bone', 'hardwood', 'copper', 'iron', 'coral', 'silver', 'gold', 'crystal', 'obsidian'];
