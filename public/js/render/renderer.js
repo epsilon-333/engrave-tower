@@ -24,7 +24,7 @@ import { SKILLS, ELEM } from '../data/skills.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, weaponArt, RACE_LOOK } from '../data/art.js';
 import { BOSS_PASSIVES } from '../data/tower.js';
 import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
-export const GROUND_FX = new Set(['tcircle', 'tdonut', 'lineTele', 'cracks', 'scorch', 'scrape', 'castCircle', 'rune', 'glyphs', 'rageCracks', 'path']); // 바닥에 그리는 이펙트
+export const GROUND_FX = new Set(['ink', 'tcircle', 'tdonut', 'lineTele', 'cracks', 'scorch', 'scrape', 'castCircle', 'rune', 'glyphs', 'rageCracks', 'path']); // 바닥에 그리는 이펙트
 const BOSS_MELEE = new Set(['combo', 'cleave', 'whirl', 'shove', 'charge', 'leap', 'jumps3', 'quake', 'grab', 'retreat']);
 const SHEET_LOOKS = ['saturate(1.25) contrast(1.1) brightness(1.08)', 'saturate(1.5) contrast(1.3) brightness(0.92)']; // 보스 시트 2 · 3단계: 색을 돌리지 않고 진하게만
 export const PASSIVE_NAME = Object.fromEntries(Object.entries(BOSS_PASSIVES).map(([k, v]) => [k, v.name]));
@@ -634,7 +634,7 @@ export class Renderer {
     if (w.map.props) for (const pr of w.map.props) { const px = (pr.x + pr.w / 2) * TILE, py = (pr.y + pr.h) * TILE, big = pr.kind !== 'tree' && pr.kind !== 'well' && pr.kind !== 'house'; if (pr.big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 240 && py > cy - 40 && py < cy + VH + 460 : big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 140 && py > cy - 40 && py < cy + VH + 260 : vis(px, py - 40)) list.push({ prop: pr, y: py - 2 }); }
     if (w.map.plaza) for (const d of w.map.wallDeco) list.push({ wd: d, y: -1e9 + 1 });
     if (w.farmRect && w.life) for (const [key, pl] of Object.entries(w.life.farm)) if (pl.crop) { const [fx, fy] = key.split(',').map(Number); if (vis(fx * TILE + 8, fy * TILE + 8)) list.push({ crop: { x: fx, y: fy, pl }, y: fy * TILE + 13 }); }
-    this.anims.px.update(dt); for (const pe of this.anims.px.list) list.push({ pxe: pe, y: pe.y + 2 }); // 스킬 이펙트(pixelfx)도 같은 줄에: 앞에 선 건물이 가린다
+    this.anims.px.update(dt); for (const pe of this.anims.px.list) list.push({ pxe: pe, y: (pe.sortY ?? pe.y) + 2 }); // 스킬 이펙트(pixelfx)도 같은 줄에: 앞에 선 건물이 가린다
     list.sort((a, b) => a.y - b.y);
     for (const it of list) {
       if (it.pxe) this.anims.px.drawOne(g, it.pxe);
@@ -1107,6 +1107,7 @@ export class Renderer {
     if (e.st.poison && Math.random() < 0.15) this.parts.push({ x: e.x + (Math.random() - 0.5) * w0 * 0.6, y: e.y - h0 * 0.3, vx: 0, vy: -15, t: 0.5, max: 0.5, color: '#9be15d', g: -20 });
     if (e.st.bleed && Math.random() < 0.12) this.parts.push({ x: e.x + (Math.random() - 0.5) * w0 * 0.4, y: e.y - h0 * 0.5, vx: 0, vy: 10, t: 0.5, max: 0.5, color: '#c02030', g: 120 });
     e._top = e.y + 4 - h0;
+    if (e.def?.boss) e._vis = h0 * (1 - opaqueTop(img)); // 보스: 그림 속 몸의 실제 키 (광선이 가슴께에서 나가게)
     // 체력바: 맞은 뒤 3초 동안만 (무리일 때 막대가 화면을 덮지 않게)
     if (e.hp < e.maxHp && !def.elite && !e.champion && (this.hpShow.get(e.id) ?? 0) > w.t) {
       const bw = Math.max(16, Math.round(w0 * 0.9));
@@ -3196,6 +3197,19 @@ export function fogSprites() { // 네 모서리(0 밝음 · 1 어둠)를 이어 
   return out;
 }
 export function modLines(mods) { return Object.entries(mods || {}).filter(([k]) => MOD_TEXT[k]).map(([k, v]) => MOD_TEXT[k](v)); }
+// 그림 위쪽 빈칸을 뺀, 처음 칠해진 줄의 높이 비율 (그림마다 한 번만 잰다)
+const OPAQUE_TOP = new WeakMap();
+export function opaqueTop(img) {
+  if (!img || !img.width) return 0;
+  let v = OPAQUE_TOP.get(img); if (v != null) return v;
+  v = 0;
+  try {
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const cx = c.getContext('2d'); cx.drawImage(img, 0, 0);
+    const d = cx.getImageData(0, 0, c.width, c.height).data;
+    find: for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 40) { v = y / c.height; break find; }
+  } catch { v = 0; }
+  OPAQUE_TOP.set(img, v); return v;
+}
 export function ellipse(g, cx, cy, rx, ry) { g.beginPath(); g.ellipse(cx, cy, Math.max(0.5, rx), Math.max(0.5, ry), 0, 0, Math.PI * 2); g.fill(); }
 // 꼬리는 가늘고 머리(현재 칼끝)는 두꺼운 베기 잔상
 export function smear(g, x, y, R, thick, a0, a1) {

@@ -19,13 +19,13 @@ export class PxFx {
     const mod = mods[id] ?? load(id);
     if (!mod) return false; // 아직 못 불렀으면 이번에는 건너뛴다 (preload로 미리 불러 둔다)
     const [w, h] = mod.meta.size, [ox, oy] = mod.meta.origin;
-    const { scale = 1, sy = 1, speed = 1, max, floor = 46, rot = 0, ...opts } = o; // rot: 화면에 얹을 때 돌린다 (이펙트 틀 안에서 돌리면 틀 밖으로 나간 부분이 잘린다)
+    const { scale = 1, sy = 1, speed = 1, max, floor = 46, rot = 0, sortY, ...opts } = o; // rot: 화면에 얹을 때 돌린다 (이펙트 틀 안에서 돌리면 틀 밖으로 나간 부분이 잘린다)
     delete opts.angle; delete opts.flip;
     for (const k of Object.keys(opts)) if (opts[k] === undefined) delete opts[k]; // 빈 값이 이펙트의 기본값(팔레트 등)을 덮지 않게
     const fx = createFx(mod, { ...opts, x: ox, y: oy, seed: opts.seed ?? (seedN = (seedN * 1103515245 + 12345) >>> 0) % 100000 });
     const frame = createFrame(w, h), cv = document.createElement('canvas'); cv.width = w; cv.height = h;
     const ctx = cv.getContext('2d'), img = ctx.createImageData(w, h);
-    const e = { fx, frame, cv, ctx, img, x, y, ox, oy, w, h, scale, sy, speed, floor, rot, t: 0, max: max ?? mod.meta.duration ?? 2 };
+    const e = { fx, frame, cv, ctx, img, x, y, ox, oy, w, h, scale, sy, speed, floor, rot, sortY, t: 0, max: max ?? mod.meta.duration ?? 2 };
     this.list.push(e);
     if (this.list.length > 60) this.list.shift();
     return e;

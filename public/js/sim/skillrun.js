@@ -776,6 +776,10 @@ export const SkillMethods = {
     if (op.stun && !e.def.elite) { this.stunE(e, op.stun); e.windT = 0; if (op.prison) e.prison = true; }
     else if (op.stun && e.def.elite) { this.stunE(e, op.stun * 0.35); if (op.prison) e.prison = true; }
     if (op.fear) this.fearE(e, op.fear);
+    if (op.bind) { // 그림자 꿰기: 묶인 동안 받은 피해의 30%를 모았다가 끝날 때 터뜨린다
+      const b = (e.bind = { until: this.t + op.bind, acc: 0 }); this.emit({ t: 'inkBind', x: e.x, y: e.y, r: e.r, dur: op.bind });
+      this.delayed.push({ t: op.bind, run: () => { if (e.bind !== b) return; e.bind = null; if (e.dead || b.acc < 1) return; this.damageEnemy(e, b.acc, 'phys', { src: 'bind', pen: 1, heavy: true, color: '#c8a8ff' }); this.emit({ t: 'inkBurst', x: e.x, y: e.y, r: e.r }); } });
+    }
     if (op.mark) e.st.elemMark = Math.max(e.st.elemMark || 0, op.mark);
     if (op.weak) e.st.weak = Math.max(e.st.weak || 0, op.weak);
     if (op.armorBreak) { e.armorBreak = Math.min(5, (e.armorBreak || 0) + op.armorBreak); e.armorBreakT = 6; }

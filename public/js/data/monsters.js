@@ -179,7 +179,7 @@ Object.assign(MONSTERS, {
     phaseMoves: [['combo', 'leap', 'blink'], ['charge', 'combo', 'adds', 'blink', 'whirl'], ['charge', 'mark', 'adds', 'whirl', 'nova']], adds: 'skeleton', blinkInv: 0.6,
     skillNames: { charge: '망령 돌격', mark: '사형 선고', nova: '혼의 폭발' } },
   engraveKing: { name: '각인의 왕', shape: 'humanoid', scale: 2.3, elite: true, boss: true, pal: { a: '#ffc84a' }, hp: 11500, atk: 48, type: 'mag', speed: 46, ai: 'boss', status: 'curse', proj: { speed: 170, color: '#ffc84a', status: 'curse', spread: 7 }, r: 13, xp: 1500, gold: 900, pres: 60, mres: 60, echo: { id: 'grave', rate: 1 },
-    phaseMoves: [['fan', 'combo', 'leap', 'beam'], ['mark', 'rain', 'charge', 'adds', 'spiral', 'blink'], ['nova', 'mark', 'rain', 'beam', 'charge', 'adds', 'split']], adds: 'necroAcolyte', blinkInv: 0.5,
+    phaseMoves: [['fan', 'combo', 'leap', 'beam'], ['mark', 'rain', 'charge', 'adds', 'spiral', 'blink'], ['nova', 'mark', 'rain', 'beam', 'charge', 'adds', 'split']], adds: 'necroAcolyte', blinkInv: 0.5, beamHold: 2.2, /* 광선을 2.2초 동안 쏜다 */
     skillNames: { beam: '문양의 빛', mark: '각인 새기기', nova: '꺼져 가는 빛', rain: '문양의 비', charge: '왕의 돌진', adds: '각인된 자들' } },
 });
 

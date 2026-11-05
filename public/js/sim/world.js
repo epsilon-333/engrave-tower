@@ -2266,6 +2266,7 @@ export class World {
       if (dmg >= 0.5 && opt.src !== 'dot') this.emit({ t: 'dmg', x: e.x, y: e.y - e.r - 10, v: dmg, crit: opt.crit, heavy: opt.heavy, src: opt.src, id: e.id, color: opt.color || (type === 'mag' ? '#c9a8ff' : '#ffffff') });
     } else {
     if (e.bshield > 0) { const ab = Math.min(e.bshield, dmg); e.bshield -= ab; dmg -= ab; if (e.bshield <= 0) { this.emit({ t: 'text', x: e.x, y: e.y - 34, text: '보호막이 깨졌다!', color: '#bfe8ff' }); this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 40, elem: 'ice', fx: 'shatter' }); } }
+    if (e.bind && opt.src !== 'bind' && dmg > 0) e.bind.acc += dmg * 0.3; // 그림자 꿰기: 묶인 동안 받은 피해의 30%
     e.hp -= dmg;
     if (this.practice) (this.dmgLog ||= []).push([this.t, dmg]); // 연습: 초당 피해 재기
     if (e.training && this.training) this.trainDamage(e, dmg); // 수련: 허수아비에 넣은 피해 · 화로에 붙인 불

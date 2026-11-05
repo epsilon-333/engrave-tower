@@ -236,7 +236,9 @@ export const EventMethods = {
           sfx('swing', { vol: 0.7, rate: 1.5 }); sfx('hit', { vol: 0.6, rate: 1.3 });
           break;
         }
-        case 'skillAoe': this.aoeFx(ev); break;
+        case 'skillAoe': if (ev.fx === 'ink') { this.inkSplash(ev.x, ev.y, ev.r, 3.2); this.shake = Math.max(this.shake, 3); sfx('reaction', { vol: 0.5, rate: 0.7 }); break; } this.aoeFx(ev); break;
+        case 'inkBind': this.inkSplash(ev.x, ev.y, (ev.r || 6) + 10, ev.dur + 0.2, true); break; // 묶인 적의 발밑: 먹물 웅덩이
+        case 'inkBurst': this.inkSplash(ev.x, ev.y, (ev.r || 6) + 22, 0.7); this.sparkBurst(ev.x, ev.y - 6, '#c8a8ff', 8); sfx('hitArmor', { vol: 0.5, rate: 0.8 }); break;
         case 'skillCone': this.anims.onCone(ev); if (ev.fx === 'spellBlade') { // 근접 무기로 쓴 마법: 그 속성 빛의 초승달이 앞을 휩쓴다
             const col = ELEM[ev.elem]?.color || '#c9a8ff';
             this.fx.push({ k: 'spellBlade', x: ev.x, y: ev.y, ang: ev.ang, r: ev.range, angle: ev.angle, col, t: 0.26, max: 0.26 });
@@ -266,7 +268,9 @@ export const EventMethods = {
         case 'buff': this.rimFlash = { color: ev.color || '#ffffff', t: 0.35, max: 0.35 * 1.8 }; for (let i = 0; i < 7; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 14, y: ev.y, vx: 0, vy: -30 - Math.random() * 25, t: 0.55, max: 0.55, color: ev.color, g: -8 }); sfx('echo', { vol: 0.5 }); break;
         case 'elemShift': this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 24, color: ELEM[ev.elem].color, t: 0.4, max: 0.4, w: 3 }); this.burst(ev.x, ev.y - 6, ELEM[ev.elem].color, 16, 80); this.texts.push({ x: ev.x, y: ev.y - 24, text: `${ELEM[ev.elem].name}${ev.weak ? ' · 약점!' : ''}`, color: ELEM[ev.elem].color, t: 1, vy: -12, vx: 0, label: true }); sfx('open', { vol: 0.5, rate: 1.2 }); break;
         case 'beamFx': { if (ev.wall && Math.random() < 0.6) { this.sparkBurst(ev.x2, ev.y2, '#ffe0a0', 4); if (Math.random() < 0.4) this.parts.push({ x: ev.x2, y: ev.y2, vx: (Math.random() - 0.5) * 20, vy: -12, t: 0.5, max: 0.5, color: '#8a8070', g: -2, puff: true, size: 2 }); } // 광선이 벽에 부딪힌 자리
-          const len = Math.hypot(ev.x2 - ev.x1, ev.y2 - ev.y1); if (!this.anims.px.add('arcane/arcane-beam', ev.x1, ev.y1, { rot: Math.atan2(ev.y2 - ev.y1, ev.x2 - ev.x1), scale: Math.max(0.4, len / 238), palette: PAL[ev.elem] || PAL.dark, floor: 0, max: 0.16 })) this.fx.push({ k: 'beam', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.3, max: 0.3 }); sfx('dash', { vol: 0.5, rate: 1.6 }); break; } // 광선: pixelfx 빔 (실이 꼬이며 맥박치는 빛줄기)
+          { const b = ev.from != null && w.enemies.find((o) => o.id === ev.from); if (b && b._top != null) { const h = b._vis || b.y - b._top; ev.x1 = b.x; ev.y1 = b.y + 4 - h * 0.6; ev.y2 -= 8; ev.feet = b.y; } } // 보스 광선은 몸(가슴께)에서 나간다 · 끝은 맞는 사람 몸 높이
+          const len = Math.hypot(ev.x2 - ev.x1, ev.y2 - ev.y1), rot = Math.atan2(ev.y2 - ev.y1, ev.x2 - ev.x1), bs = Math.max(0.25, len / 183), c = Math.cos(rot), sn = Math.sin(rot); // 그림 속 광선은 기준점에서 (15, -24) 떨어진 손에서 나가 183칸 간다 → 시작점 · 끝점에 딱 맞게 옮기고 늘인다
+          if (!this.anims.px.add('arcane/arcane-beam', ev.x1 - (15 * c + 24 * sn) * bs, ev.y1 - (15 * sn - 24 * c) * bs, { rot, scale: bs, sortY: ev.feet != null ? Math.max(ev.feet, ev.y2) + 1 : undefined, /* 보스 광선은 보스 몸 앞에 */ palette: PAL[ev.elem] || PAL.dark, floor: 0, max: 0.16 })) this.fx.push({ k: 'beam', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.3, max: 0.3 }); if (!ev.quiet && !(this.beamSfxT > w.t - 0.25)) { this.beamSfxT = w.t; sfx('dash', { vol: 0.5, rate: 1.6 }); } break; } // 광선: pixelfx 빔 (실이 꼬이며 맥박치는 빛줄기)
         case 'seaSight': this.banner = { text: ev.id === 'pirates' ? '수평선에 검은 돛이 보인다' : ev.id === 'serpent' ? '물결 사이로 커다란 등지느러미가…' : ev.id === 'castaway' ? '저 멀리 뗏목이 떠 있다' : '저 멀리 상선이 보인다', sub: '점점 다가온다', t: 3, color: ev.id === 'pirates' ? '#ff9a7a' : '#bfe8ff' }; break;
         case 'graspArm': this.fx.push({ k: 'arm', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t: 0.55, max: 0.55 }); sfx('dash', { vol: 0.5, rate: 0.6 }); break;
         case 'summonFx': { const col = ev.elem ? ELEM[ev.elem].color : ev.kind === 'clone' ? '#8a6aff' : ev.kind === 'skeleton' ? '#e8e0d0' : '#c45cff';

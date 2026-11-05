@@ -6,6 +6,22 @@ import { RACE_ART } from '../data/art.js';
 import { GROUND_FX, easeOut, WORD_COLOR, hexA, disc, ellipse, smear } from './renderer.js';
 
 export const FxMethods = {
+  // 먹물 얼룩 하나: 가운데 울퉁불퉁한 웅덩이 + 사방으로 튄 줄기(점점 가늘어지다 끝에 방울) + 흩뿌린 작은 방울 (small = 발밑 웅덩이만)
+  inkSplash(x, y, R, dur, small = false) {
+    const blobs = [], rnd = (a, b) => a + Math.random() * (b - a);
+    for (let i = 0; i < (small ? 5 : 11); i++) { const a = rnd(0, 6.29), d = rnd(0, R * (small ? 0.35 : 0.28)); blobs.push({ a, d, r: R * rnd(small ? 0.3 : 0.12, small ? 0.45 : 0.22), core: true }); }
+    if (!small) {
+      const n = 9 + Math.floor(Math.random() * 4);
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * 6.29 + rnd(-0.25, 0.25), end = R * rnd(0.6, 1.05);
+        for (let d = R * 0.25; d < end; d += R * 0.07) { const u = (d - R * 0.25) / (end - R * 0.25); blobs.push({ a: a + rnd(-0.04, 0.04), d, r: R * (0.1 - u * 0.075) }); }
+        blobs.push({ a, d: end + R * 0.06, r: R * rnd(0.05, 0.08) }); // 줄기 끝의 방울
+      }
+      for (let i = 0; i < 16; i++) blobs.push({ a: rnd(0, 6.29), d: R * rnd(0.45, 1.15), r: rnd(1.2, 2.6) });
+    }
+    this.fx.push({ k: 'ink', x, y, blobs, t: dur, max: dur });
+    if (!small) for (let i = 0; i < 18; i++) { const a = Math.random() * Math.PI * 2, s = 90 + Math.random() * 120; this.parts.push({ x, y: y - 4, vx: Math.cos(a) * s, vy: Math.sin(a) * s * 0.6 - 40, t: 0.4, max: 0.4, color: i % 3 ? '#1a0f2a' : '#6a42a8', g: 260, floor: y + Math.sin(a) * R * 0.5, size: 2 }); } // 튀어 오르는 먹물 방울
+  },
   // 이펙트는 두 층: 바닥에 붙는 것(예고 원 · 예고선 · 갈라짐 · 그을음 · 마법진)은 사람 · 보스 · 소품보다 아래, 나머지는 위
   drawFx(w, dt, ground = false) {
     const g = this.g, p = w.player;
@@ -13,6 +29,20 @@ export const FxMethods = {
       if (GROUND_FX.has(f.k) !== ground) continue;
       f.t -= dt;
       const k = Math.max(0, f.t / f.max);
+      if (f.k === 'ink') { // 그림자 먹물: 물감을 끼얹은 듯 가운데서 둘레로 확 튀어 번지고, 바닥에 얼룩으로 남았다 마른다 (고리 없이 덩어리로)
+        const age = f.max - f.t, sp = easeOut(Math.min(1, age / 0.22)), fade = Math.min(1, f.t / 0.6);
+        for (const pass of [0, 1, 2]) { // 0: 짙은 먹 · 1: 가장자리보다 조금 밝은 속 · 2: 젖은 윤기 (가운데 덩어리에만)
+          g.fillStyle = hexA(['#120a1e', '#2a1844', '#7a52b8'][pass], [0.9, 0.85, 0.5][pass] * fade);
+          for (const b of f.blobs) {
+            if (pass === 2 && !b.core) continue;
+            const d = b.d * sp, r = b.r * (pass ? (pass === 1 ? 0.62 : 0.28) : 1) * (0.5 + 0.5 * sp);
+            if (r < 0.6) continue;
+            const ox = pass === 2 ? -r * 0.8 : 0, oy = pass === 2 ? -r * 0.9 : 0;
+            ellipse(g, Math.round(f.x + Math.cos(b.a) * d + ox), Math.round(f.y + Math.sin(b.a) * d * 0.62 + oy), r, r * 0.66);
+          }
+        }
+        continue;
+      }
       if (f.k === 'ring') {
         // 퍼지는 충격: 고리를 그리지 않고, 사방으로 흩어지는 빛 조각 · 흙먼지와 부드러운 빛으로
         const rr = f.r * (1 - k * 0.6), n = Math.max(10, Math.round(f.r / 3));

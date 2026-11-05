@@ -328,7 +328,7 @@ export const EnemyAiMethods = {
         this.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 190, inner: 46, dur: 1.4 }); this.emit({ t: 'text', x: e.x, y: e.y - 44, text: '안으로!', color: '#9fffb0' }); return true;
       case 'sweep': { // 회전 광선: 예고 뒤 한쪽으로 돌며 쓸고 지나간다
         const dir = this.rng.chance(0.5) ? 1 : -1; say(`${nm || '회전 광선'} ${dir > 0 ? '⟳' : '⟲'}`);
-        e.mv = { k: 'sweep', boss: true, t: 3.2, wind: 1.0, ang: aim - dir * 0.6, dir, hitT: 0 }; e.windT = 1.0; e.windMax = 1.0;
+        const sw = e.def.beamHold ? 3.6 : 2.2; e.mv = { k: 'sweep', boss: true, t: 1.0 + sw, sw, wind: 1.0, ang: aim - dir * 0.6, dir, hitT: 0 }; /* 쓸고 지나가는 시간 (각인의 왕은 길게 · 더 넓게) */ e.windT = 1.0; e.windMax = 1.0;
         this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(e.mv.ang) * 240, y2: e.y + Math.sin(e.mv.ang) * 240, dur: 1.0, color: '#ff3a3a', w: 10 }); return true;
       }
       case 'channel': // 회복 의식: 3초 동안 버티면 체력 18% 회복, 그동안 체력 7%만큼 맞으면 끊기고 기절
@@ -392,7 +392,7 @@ export const EnemyAiMethods = {
     len = this.rayLen(e.x, e.y, ang, len); // 벽에서 멈춘다
     const x2 = e.x + Math.cos(ang) * len, y2 = e.y + Math.sin(ang) * len, prev = this.coTgt;
     for (const q of this.coTargets()) { const vx = x2 - e.x, vy = y2 - e.y, l2 = vx * vx + vy * vy, k = Math.max(0, Math.min(1, ((q.x - e.x) * vx + (q.y - e.y) * vy) / l2)); if (Math.hypot(q.x - e.x - vx * k, q.y - e.y - vy * k) < w + (q.r || 5)) { this.coTgt = q === this.player ? null : q; this.hurtPlayer(dmg, 'mag', e, { status, fromX: e.x, fromY: e.y }); } }
-    this.coTgt = prev; this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2, elem: BOSS_FX[e.defId]?.beam });
+    this.coTgt = prev; this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2, elem: BOSS_FX[e.defId]?.beam, from: e.id });
   },
   bossMoveTick(e, p, mv) {
     const def = e.def;
@@ -406,6 +406,10 @@ export const EnemyAiMethods = {
         if (mv.stage === 0 && mv.t <= 1.4) { mv.stage = 1; for (let i = 0; i < 4; i++) this.bossLineHit(e, mv.a0 + (i * Math.PI) / 2, 260, 14, e.atk * 1.8); this.emit({ t: 'shake', v: 5 });
           for (let i = 0; i < 4; i++) { const a = mv.a0 + Math.PI / 4 + (i * Math.PI) / 2; this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * 260, y2: e.y + Math.sin(a) * 260, dur: 0.8, color: '#ff3a3a', w: 14 }); } }
         if (mv.stage === 1 && mv.t <= 0.6) { mv.stage = 2; for (let i = 0; i < 4; i++) this.bossLineHit(e, mv.a0 + Math.PI / 4 + (i * Math.PI) / 2, 260, 14, e.atk * 1.8); this.emit({ t: 'shake', v: 5 }); }
+        if (e.def.beamHold && mv.stage && (mv.fxT = (mv.fxT || 0) - DT) <= 0) { // 각인의 왕: 쏜 광선이 한동안 남는다 (보이기만)
+          mv.fxT = 0.05; const live = mv.stage === 1 ? mv.t > 0.9 : mv.t > 0;
+          if (live) for (let i = 0; i < 4; i++) { const a = mv.a0 + (mv.stage === 2 ? Math.PI / 4 : 0) + (i * Math.PI) / 2, bl = this.rayLen(e.x, e.y, a, 260); this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2: e.x + Math.cos(a) * bl, y2: e.y + Math.sin(a) * bl, elem: BOSS_FX[e.defId]?.beam, from: e.id, quiet: true }); }
+        }
         if (mv.t > 0) return true;
         e.mv = null; return true;
       }
@@ -453,10 +457,10 @@ export const EnemyAiMethods = {
         e.mv = null; return true;
       }
       case 'sweep': {
-        if (mv.t > 2.2) return true; // 예고
-        mv.ang += mv.dir * (Math.PI * 1.15 / 2.2) * DT;
+        if (mv.t > mv.sw) return true; // 예고
+        mv.ang += mv.dir * (Math.PI * (mv.sw > 2.2 ? 1.6 : 1.15) / mv.sw) * DT;
         const bl = this.rayLen(e.x, e.y, mv.ang, 240), x2 = e.x + Math.cos(mv.ang) * bl, y2 = e.y + Math.sin(mv.ang) * bl; // 벽에서 멈춘다
-        if ((mv.fxT = (mv.fxT || 0) - DT) <= 0) { mv.fxT = 0.05; this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2, elem: BOSS_FX[e.defId]?.beam }); }
+        if ((mv.fxT = (mv.fxT || 0) - DT) <= 0) { mv.fxT = 0.05; this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2, elem: BOSS_FX[e.defId]?.beam, from: e.id }); }
         mv.hitT -= DT;
         if (mv.hitT <= 0) {
           const prev = this.coTgt;
@@ -662,11 +666,18 @@ export const EnemyAiMethods = {
         if (mv.t > 0) return true;
         for (const q of mv.spots) { this.enemyArea(e, q.x, q.y, 30, e.atk * 0.9, def.type, def.status); if (!this.bfx(e, 'rain', q.x, q.y, 30)) this.emit({ t: 'ring', x: q.x, y: q.y, r: 30, color: def.proj?.color || '#ff5a5a' }); }
         e.mv = null; return false;
-      case 'beam': {
+      case 'beam': { // def.beamHold 초 동안 쏘아 댄다 (각인의 왕) — 처음 맞으면 1.5배, 그 뒤로 0.35초마다 0.5배
         if (mv.t > 0) return true;
+        if (mv.hold == null) { mv.hold = e.def.beamHold || 0; mv.hitT = 0; mv.first = true; }
         const bl = this.rayLen(e.x, e.y, mv.ang, 230), x2 = e.x + Math.cos(mv.ang) * bl, y2 = e.y + Math.sin(mv.ang) * bl; // 벽에서 멈춘다
-        for (const q of this.coTargets()) { const vx = x2 - e.x, vy = y2 - e.y, l2 = vx * vx + vy * vy, k = Math.max(0, Math.min(1, ((q.x - e.x) * vx + (q.y - e.y) * vy) / l2)); if (Math.hypot(q.x - e.x - vx * k, q.y - e.y - vy * k) < 7 + (q.r || 5)) this.enemyArea(e, q.x, q.y, 2, e.atk * 1.5, def.type, def.status); }
-        this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2, elem: BOSS_FX[e.defId]?.beam }); e.mv = null; return true;
+        if ((mv.hitT -= DT) <= 0) {
+          mv.hitT = 0.35;
+          for (const q of this.coTargets()) { const vx = x2 - e.x, vy = y2 - e.y, l2 = vx * vx + vy * vy, k = Math.max(0, Math.min(1, ((q.x - e.x) * vx + (q.y - e.y) * vy) / l2)); if (Math.hypot(q.x - e.x - vx * k, q.y - e.y - vy * k) < 7 + (q.r || 5)) this.enemyArea(e, q.x, q.y, 2, e.atk * (mv.first ? 1.5 : 0.5), def.type, def.status); }
+          mv.first = false;
+        }
+        if ((mv.fxT = (mv.fxT || 0) - DT) <= 0) { mv.fxT = 0.05; this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2, elem: BOSS_FX[e.defId]?.beam, from: e.id }); }
+        if ((mv.hold -= DT) > 0) { e.windT = 0; return true; }
+        e.mv = null; return true;
       }
       case 'charge': {
         if (mv.t > mv.run) return true;
