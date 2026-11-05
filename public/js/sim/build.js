@@ -4,6 +4,7 @@ import { BASE_STATS, SPECIAL_INFO, AWAKENINGS, EXTREME, eff } from '../data/stat
 import { allSanctums, trainStats } from '../data/sanctums.js';
 import { RACES, RACE_MIGRATE } from '../data/races.js';
 import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
+import { REINFORCE_STEP, REINFORCE_ARMOR, REINFORCE_GEAR } from '../data/goods.js';
 import { ITEMS, weaponCat, weaponHands } from '../data/items.js';
 import { evalCond, condText } from './conditions.js';
 export const STAT_MAX = 300;
@@ -56,7 +57,8 @@ export function computeBuild(lo) {
     const id = lo.gear?.[s];
     if (s === 'off' && (twoHand || !(ITEMS[id]?.slot === 'off' || offIsWeapon))) continue;
     // 능력치 배율: 양손 무기는 ×1.3, 왼손에 든 무기는 절반
-    if (id && ITEMS[id]) sources.push({ kind: 'item', id, def: ITEMS[id], mul: s === 'weapon' && twoHand ? 1.3 : s === 'off' && offIsWeapon ? 0.5 : 1 }); // 양손 무기 능력치 ×1.3 (예전 ×1.8 — 양손의 장점은 양손 보너스로)
+    const rfK = s === 'weapon' ? 1 : 1 + REINFORCE_GEAR * (lo.reinforce?.[id] || 0); // 강화한 왼손 · 장신구 · 갑옷: 능력치 +10%씩
+    if (id && ITEMS[id]) sources.push({ kind: 'item', id, def: ITEMS[id], mul: (s === 'weapon' && twoHand ? 1.3 : s === 'off' && offIsWeapon ? 0.5 : 1) * rfK }); // 양손 무기 능력치 ×1.3 (예전 ×1.8 — 양손의 장점은 양손 보너스로)
   }
 
   // 1) 고정 스탯
@@ -112,7 +114,9 @@ export function computeBuild(lo) {
   if (lo.extraEffects) effects.push(...lo.extraEffects); // 탑 등반의 축복 · 탑의 축복 · 제단의 대가
   // 강화한 무기: 단계마다 모든 피해 +6% (REINFORCE_STEP)
   const rf = lo.reinforce?.[lo.gear?.weapon] || 0;
-  if (rf) effects.push({ type: 'mul', key: 'dmgMul', v: 1 + 0.06 * rf });
+  if (rf) effects.push({ type: 'mul', key: 'dmgMul', v: 1 + REINFORCE_STEP * rf });
+  const ra = lo.gear?.armor ? lo.reinforce?.[lo.gear.armor] || 0 : 0; // 강화한 갑옷: 단계마다 받는 피해 -2%
+  if (ra) effects.push({ type: 'mul', key: 'dmgTakenMul', v: 1 - REINFORCE_ARMOR * ra });
 
   // 5) 태그 시너지 (+ 상쇄)
   const cancelled = new Set();

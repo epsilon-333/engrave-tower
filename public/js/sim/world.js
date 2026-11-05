@@ -10,6 +10,7 @@ import { rollTowerWeapon, W_RARITY } from '../data/weapons.js';
 import { rollTowerGear } from '../data/towergear.js'; // 탑의 방어구 · 장신구 · 왼손 장비도 떨어진다
 import { ITEMS } from '../data/items.js';
 import { LIFESTEAL_PER } from '../data/stats.js';
+export const POTION_CD = 8; // 물약 · 회복 요리 대기시간 (함께 쓴다)
 import { climbMul, setZoneRef, floorFoes, rollDoors, actOf, REWARDS, BOSS_HEAL, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, rollFloorMod } from '../data/climb.js';
 import { RAID_BOSS } from '../data/raid.js';
 import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
@@ -809,7 +810,7 @@ export class World {
     if (p.parryT > 0) p.parryT -= DT;
     const cdRate = this.mod('cdRate');
     for (const k of Object.keys(p.cds)) { p.cds[k] -= DT * cdRate; if (p.cds[k] <= 0) delete p.cds[k]; }
-    if (p.potionCd > 0) p.potionCd -= DT; // 물약은 한 번 마시면 8초 뒤에 다시
+    if (p.potionCd > 0) p.potionCd -= DT; // 물약 · 요리는 한 번 먹으면 POTION_CD초 뒤에 다시
     if (this.practice) { if (this.practice.infRes) p.res = 100; p.hp = d.maxHp; }
     if (p.dashCharges < 1) {
       p.dashRecharge -= DT;
@@ -2075,7 +2076,9 @@ export class World {
     registerDish(id);
     const info = eatInfo(id);
     if (!info) return false;
+    if (info.heal > 0 && p.potionCd > 0) { this.emit({ t: 'text', x: p.x, y: p.y - 26, text: `아직 먹을 수 없다 (${Math.ceil(p.potionCd)}초)`, color: '#c8b8a0' }); return false; } // 요리 · 물약은 회복 대기시간을 함께 쓴다
     life.bag[id]--;
+    if (info.heal > 0) p.potionCd = POTION_CD;
     p.hp = Math.min(this.d.maxHp, p.hp + this.d.maxHp * info.heal * (this.hasKnack('cook') ? 1.2 : 1)); // 숙련 「손맛」
     const eff = this.clock && mealEffect(info, absMin(this.clock));
     if (eff && this.persist) { const i = this.persist.findIndex((x) => x.id === 'meal'); if (i >= 0) this.persist.splice(i, 1); this.persist.push(eff); this.applyPersist(); }
@@ -2090,7 +2093,7 @@ export class World {
     if (u.kind === 'potion') {
       if (p.potionCd > 0) { say(`아직 마실 수 없다 (${Math.ceil(p.potionCd)}초)`); return false; }
       if (p.hp >= this.d.maxHp) { say('체력이 가득하다'); return false; }
-      this.heal(this.d.maxHp * u.heal, 'potion'); p.potionCd = 8;
+      this.heal(this.d.maxHp * u.heal, 'potion'); p.potionCd = POTION_CD;
       this.emit({ t: 'potion', x: p.x, y: p.y, color: g.icon.c[0] });
     } else if (u.kind === 'buff') {
       p.buffs[u.buff] = { t: u.t, max: u.t, mods: u.mods || {}, color: u.color, name: u.name };

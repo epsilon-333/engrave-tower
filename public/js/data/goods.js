@@ -329,23 +329,23 @@ export const FORGE = [
   { id: 'obsidianBlade', mats: { obsidian: 8, ironOre: 4, coal: 4 }, gold: 260 },
   { id: 'starTome', mats: { manaCrystal: 4, starflower: 2, hardwood: 2 }, gold: 300 },
 ];
-// 무기 강화 (단계마다 모든 피해 +6%, 최대 10단계). 인덱스 = 올릴 단계 - 1
-// rate: 성공 확률 (없으면 언제나 성공) · echoes: 몬스터 부산물(잔향) — 탑 구역마다의 몬스터에게서
-// 실패하면 단계는 그대로, 코인 · 광석은 잃고 몬스터 부산물은 반(올림)을 돌려받는다
+// 장비 강화 (최대 10단계). 인덱스 = 올릴 단계 - 1 · rate: 성공 확률 · echoes: 몬스터 부산물(잔향) — 탑 구역마다의 몬스터에게서
+// 실패하면 단계는 그대로, 코인은 잃고 광석 · 몬스터 부산물은 반(올림)을 돌려받는다
+// 무기: 단계마다 모든 피해 +6% · 갑옷: 그 장비의 능력치 +10% 와 받는 피해 -2% · 왼손 · 장신구: 그 장비의 능력치 +10%
 export const REINFORCE = [
-  { mats: { copperOre: 4, coal: 1 }, gold: 30 },
-  { mats: { ironOre: 5, coal: 2 }, gold: 80 },
-  { mats: { silverOre: 5, coal: 3 }, gold: 160 },
-  { mats: { goldOre: 4, coal: 4 }, gold: 280 },
-  { mats: { manaCrystal: 4, obsidian: 2 }, gold: 450 },
-  { mats: { obsidian: 3, coal: 6 }, echoes: { goo: 12, rust: 12 }, gold: 800, rate: 0.8 },
-  { mats: { obsidian: 4, coal: 8 }, echoes: { venom: 12, blood: 12 }, gold: 1500, rate: 0.65 },
-  { mats: { manaCrystal: 4, obsidian: 4 }, echoes: { ember: 12, magma: 12 }, gold: 2500, rate: 0.5 },
-  { mats: { manaCrystal: 6, obsidian: 5 }, echoes: { frost: 12, mirror: 12 }, gold: 4000, rate: 0.4 },
-  { mats: { manaCrystal: 8, obsidian: 6 }, echoes: { soul: 12, bone: 12, grave: 1 }, gold: 6000, rate: 0.3 },
+  { mats: { copperOre: 4, coal: 1 }, gold: 80, rate: 0.9 },
+  { mats: { ironOre: 5, coal: 2 }, gold: 280, rate: 0.85 },
+  { mats: { silverOre: 5, coal: 3 }, gold: 450, rate: 0.8 },
+  { mats: { goldOre: 4, coal: 4 }, gold: 1000, rate: 0.7 },
+  { mats: { manaCrystal: 4, obsidian: 2 }, gold: 1500, rate: 0.6 },
+  { mats: { obsidian: 3, coal: 6 }, echoes: { goo: 12, rust: 12 }, gold: 3000, rate: 0.5 },
+  { mats: { obsidian: 4, coal: 8 }, echoes: { venom: 12, blood: 12 }, gold: 4500, rate: 0.4 },
+  { mats: { manaCrystal: 4, obsidian: 4 }, echoes: { ember: 12, magma: 12 }, gold: 6000, rate: 0.3 },
+  { mats: { manaCrystal: 6, obsidian: 5 }, echoes: { frost: 12, mirror: 12 }, gold: 7500, rate: 0.2 },
+  { mats: { manaCrystal: 8, obsidian: 6 }, echoes: { soul: 12, bone: 12, grave: 1 }, gold: 10000, rate: 0.1 },
 ];
 export const REINFORCE_MAX = 10;
-export const REINFORCE_STEP = 0.06; // 단계마다 모든 피해
+export const REINFORCE_STEP = 0.06, REINFORCE_ARMOR = 0.02, REINFORCE_GEAR = 0.1; // 무기 피해 · 갑옷 받는 피해 · 왼손 · 장신구 능력치 (단계마다)
 
 // ── 잡화점: 파는 것 · 시세 (1시간마다 종류별로 값이 오르내리고, 두 가지는 인기 상품 ×1.8) ──
 export const SHOP_STOCK = ['potion1', 'potion2', 'potion3', 'turnipSeed', 'wheatSeed', 'carrotSeed', 'potatoSeed', 'strawberrySeed', 'pumpkinSeed', 'worm'];

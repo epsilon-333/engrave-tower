@@ -437,7 +437,7 @@ export const HudMethods = {
     const pots = ['potion1', 'potion2', 'potion3'].filter((id) => w.life?.bag?.[id] > 0);
     if (pots.length && !touch) {
       const px2 = x0 + n * (box + gap), cnt = pots.reduce((a, id) => a + w.life.bag[id], 0);
-      this.cooldownBox(px2, y0, box, p.potionCd > 0 ? 1 - p.potionCd / 8 : 1, 'Z', '', null, p.potionCd);
+      this.cooldownBox(px2, y0, box, p.potionCd > 0 ? 1 - p.potionCd / 8 /* POTION_CD */ : 1, 'Z', '', null, p.potionCd);
       g.imageSmoothingEnabled = false; const ic = iconCanvas(pots[0]), s2 = Math.max(1, Math.floor((box - 8 * u) / 16)); g.drawImage(ic, Math.round(px2 + (box - 16 * s2) / 2), Math.round(y0 + (box - 16 * s2) / 2 + 2 * u), 16 * s2, 16 * s2);
       this.text(String(cnt), px2 + box - 3 * v, y0 + box - 5 * v, Math.max(1, u - 1), '#ffffff', 'right');
       this.text('물약', px2 + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#dcd2c6', 'center');
