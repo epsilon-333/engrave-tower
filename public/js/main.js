@@ -1088,6 +1088,11 @@ function migrateSave(sv) {
   sv.story ||= newStory(); sv.story.items ||= {}; sv.story.flags ||= {};
   sv.codex ||= {}; sv.codex.kills ||= {}; sv.codex.places ||= {}; sv.codex.journals ||= {}; sv.codex.lore ||= [];
   sv.sanctum ||= {}; sv.relics ||= {}; sv.relicSrc ||= {}; sv.shards ||= {}; sv.reinforce ||= {};
+  { // 같은 각인은 하나만: 여러 개 가졌으면 하나만 남기고 나머지는 재료(잔향)로 돌려준다 · 두 칸에 끼워져 있으면 둘째 칸을 뺀다
+    sv.owned ||= {}; sv.echoes ||= {}; sv.slots ||= {};
+    for (const [id, n] of Object.entries(sv.owned)) if (n > 1 && ENGRAVINGS[id]) { for (const [eid, k] of Object.entries(ENGRAVINGS[id].recipe || {})) sv.echoes[eid] = (sv.echoes[eid] || 0) + k * (n - 1); sv.owned[id] = 1; }
+    const seenE = new Set(); for (const k of Object.keys(sv.slots)) { const id = sv.slots[k]; if (!id) continue; if (seenE.has(id)) delete sv.slots[k]; else seenE.add(id); }
+  }
   { // 장비 낱개: 같은 아이디가 여럿이면 둘째부터 'id#2' · 'id#3' (강화가 낱개마다 따로 붙는다) · 장신구 하나가 두 칸에 끼워져 있으면 둘째 낱개로, 없으면 뺀다
     const list = sv.items || [], seen = new Set(); sv.items = [];
     for (const id of list) { if (!seen.has(id)) { seen.add(id); sv.items.push(id); } else addItem(sv, id); }

@@ -122,7 +122,8 @@ export function grantClassEngravings(s) {
     if (!SKILLS[sk] || s.classEng[sk] || (SKILLS[sk].unlock || 1) > (s.level || 1)) continue;
     const eid = classEngravingFor(sk); if (!eid) continue;
     s.classEng[sk] = eid;
-    s.owned[eid] = (s.owned[eid] || 0) + 1;
+    if ((s.owned[eid] || 0) > 0) continue; // 이미 가진 각인은 또 주지 않는다 (같은 각인은 하나만)
+    s.owned[eid] = 1;
     got.push(eid);
   }
   if (got.length) (s.newEng ||= []).push(...got); // 화면에 알릴 것 (보여 주고 비운다)

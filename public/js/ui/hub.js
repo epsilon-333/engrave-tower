@@ -374,7 +374,7 @@ export class Hub {
     }
     const stats = Object.entries(e.stats).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k]).name} ${v > 0 ? '+' : ''}${v}`).join(', ');
     const effs = e.effects.map((x) => `<li>${x.when ? `<em>[${esc(condText(x.when))}]</em> ` : ''}${termify(esc(x.text))}</li>`).join('');
-    const canEquip = owned > equipped;
+    const canEquip = owned > 0 && !equipped; // 같은 각인은 한 칸에만
     const prev = canEquip || owned ? this.preview(s, (lo) => { const free = SLOTS.find((x) => !lo.engravings[x]) || SLOTS[0]; lo.engravings = { ...lo.engravings, [free]: id }; }) : '';
     const goal = (s.goals || []).includes(id);
     const summary = e.effects.map((x) => x.text).join(' · ');
@@ -398,7 +398,7 @@ export class Hub {
       <div class="recipe">${recipe}</div>
       ${prev}
       <div class="c-act">
-        <button class="sm" data-act="craft" data-id="${id}" ${can ? '' : 'disabled'}>새기기</button>
+        <button class="sm" data-act="craft" data-id="${id}" ${can && !owned ? '' : 'disabled'}>${owned ? '이미 있음' : '새기기'}</button>
         <button class="sm" data-act="equipE" data-id="${id}" ${canEquip ? '' : 'disabled'}>장착</button>
         <span class="muted">보유 ${owned}</span>
       </div>
@@ -612,6 +612,8 @@ export class Hub {
       case 'respec': for (const v of Object.values(s.alloc)) s.points += v; s.alloc = {}; this.toast('스탯 배분을 초기화했습니다'); break;
       case 'craft': {
         const e = ENGRAVINGS[id];
+        if ((s.owned[id] || 0) > 0) { this.toast('이미 가진 각인입니다 (같은 각인은 하나만)'); break; }
+        if (!Object.entries(e.recipe).every(([eid, n]) => (s.echoes[eid] || 0) >= n)) break;
         for (const [eid, n] of Object.entries(e.recipe)) s.echoes[eid] -= n;
         s.owned[id] = (s.owned[id] || 0) + 1;
         this.toast(`${e.name} 각인을 새겼습니다`);
@@ -619,6 +621,7 @@ export class Hub {
       }
       case 'equipE': {
         const e = ENGRAVINGS[id];
+        if (Object.values(s.slots).includes(id)) { this.toast('이미 끼운 각인입니다'); break; }
         const target = SLOTS.find((x) => !s.slots[x]);
         if (!target) { this.toast('빈 각인 칸이 없습니다. 먼저 하나를 빼세요'); break; }
         s.slots[target] = id;
