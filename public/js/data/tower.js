@@ -118,3 +118,19 @@ export const BOSS_PASSIVES = {
   thorns: { name: '가시 갑옷', text: '가까이서 때리면 피해의 15%를 돌려받는다' },
   deathRattle: { name: '최후의 발악', text: '쓰러지면 1.4초 뒤 둘레가 크게 터진다' },
 };
+
+// 1~50층 보스의 기술 이펙트: 보내 주신 그림에 맞춘 재질 [이펙트, 원소] (몸 둘레 고리 대신)
+// slam 내려찍기 · 도약 착지 · 땅 찍기 · nova 둘레 폭발 · rain 떨어지는 장판 · mark 표식 · pool 장판 · fall 하늘에서 떨어지는 것 · trail 가시 길 · donut 바깥 고리 · beam 광선 빛깔
+const FX = (slam, nova, rain, mark, pool, fall, trail, donut, beam) => ({ slam, nova, rain, mark, pool, fall, trail, donut, beam });
+export const BOSS_FX = {
+  climbChief: FX(['quake', 'phys'], ['quake', 'phys'], ['rocks', 'phys'], ['rocks', 'phys'], ['quake', 'phys'], ['rocks', 'phys'], ['spikes', 'phys'], ['quake', 'phys'], 'dark'), // 땅 갈라짐 · 흙먼지 · 돌
+  mossLord: FX(['quake', 'forest'], ['burst', 'forest'], ['vines', 'forest'], ['vines', 'forest'], ['vines', 'forest'], ['vines', 'forest'], ['vines', 'forest'], ['vines', 'forest'], 'forest'), // 뿌리 · 덩굴
+  bogHag: FX(['fog', 'poison'], ['burst', 'poison'], ['fog', 'poison'], ['burst', 'poison'], ['fog', 'poison'], ['fog', 'poison'], ['vines', 'poison'], ['fog', 'poison'], 'poison'), // 독 구름 · 초록 마법
+  climbQueen: FX(['quake', 'poison'], ['burst', 'poison'], ['fog', 'poison'], ['burst', 'poison'], ['fog', 'poison'], ['fog', 'poison'], ['fog', 'poison'], ['fog', 'poison'], 'poison'), // 독 늪 폭발
+  demonCaptain: FX(['burst', 'fire'], ['burst', 'fire'], ['meteor', 'fire'], ['burst', 'fire'], ['burst', 'fire'], ['meteor', 'fire'], ['burst', 'fire'], ['burst', 'fire'], 'fire'), // 불꽃 사슬 · 불타는 방패
+  climbRift: FX(['burst', 'fire'], ['burst', 'fire'], ['meteor', 'fire'], ['burst', 'fire'], ['burst', 'fire'], ['meteor', 'fire'], ['burst', 'fire'], ['burst', 'fire'], 'fire'), // 용암 폭발 · 핵 광선
+  frostOgre: FX(['ice', 'ice'], ['zero', 'ice'], ['rocks', 'ice'], ['ice', 'ice'], ['ice', 'ice'], ['shatter', 'ice'], ['ice', 'ice'], ['ice', 'ice'], 'ice'), // 얼음 가시 · 우박
+  climbWitch: FX(['ice', 'ice'], ['zero', 'ice'], ['shatter', 'ice'], ['crystal', 'ice'], ['ice', 'ice'], ['shatter', 'ice'], ['ice', 'ice'], ['ice', 'ice'], 'ice'), // 얼음 결정 · 서리 폭발
+  wraithLord: FX(['doom', 'dark'], ['doom', 'dark'], ['doom', 'dark'], ['doom', 'dark'], ['doom', 'dark'], ['doom', 'dark'], ['bones', 'phys'], ['doom', 'dark'], 'dark'), // 어둠의 문 · 뼈 가시
+  engraveKing: FX(['holy', 'holy'], ['holy', 'holy'], ['holy', 'holy'], ['holy', 'holy'], ['holy', 'holy'], ['holy', 'holy'], ['holy', 'holy'], ['holy', 'holy'], 'holy'), // 빛기둥 · 금빛 광선
+};

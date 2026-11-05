@@ -146,9 +146,21 @@ export const MONSTER_ART = {
 };
 // 탑 보스 20명: 사용자가 준 시트에서 자세마다 통째로 (tools/cut_bosses.py · 서기 두 자세 · 공격 · 기술) — 위 줄의 예전 그림을 덮는다
 const BOSS_SHEET = { climbChief: {}, mossLord: {}, bogHag: {}, climbQueen: {}, demonCaptain: {}, climbRift: {}, frostOgre: {}, climbWitch: {}, wraithLord: {}, engraveKing: {}, stormHarpy: {}, skyWhale: {}, mirrorSelf: {}, shardQueen: {}, foreman: {}, clockKeeper: {}, archivist: {}, starReader: {}, highPriest: {}, lastKing: {} };
-BOSS_SHEET.clockKeeper = { phase3: 'b_clockKeeper2' }; // 3단계: 검을 든 어두운 시계지기로 바뀐다
+BOSS_SHEET.clockKeeper = { phase3: 'b_clockKeeper2' };
+// 그림에 맞춘 동작: 기술마다 공격 줄 · 기술 줄 중 어느 그림을 쓸까 (적지 않은 기술은 근접이면 공격 · 나머지는 기술)
+Object.assign(BOSS_SHEET, {
+  climbChief: { atk: ['combo', 'leap', 'jumps3', 'quake', 'whirl', 'shove'], skl: ['charge'] }, // 몽둥이 내려치기 · 돌진은 기술 줄의 달려드는 그림
+  mossLord: { atk: ['combo', 'quake', 'leap', 'shove'], skl: ['spikeTrail', 'channel', 'pool', 'rain', 'nova', 'mark', 'fan', 'ripple', 'adds'] }, // 주먹 · 뿌리
+  bogHag: { atk: ['fan', 'pool', 'split'], skl: ['spiral', 'rain', 'mark', 'ripple', 'clones', 'meteorRain', 'adds'] }, // 지팡이 휘두르기 · 초록 마법진
+  climbQueen: { atk: ['leap', 'fan', 'combo', 'split'], skl: ['pool', 'rain', 'nova', 'mark', 'spiral', 'ritual', 'meteorRain', 'ripple', 'adds'] }, // 주먹 · 독 분출
+  demonCaptain: { atk: ['combo', 'shove', 'charge', 'whirl', 'cleave', 'grab', 'quake', 'jumps3'], skl: ['mirror', 'pool', 'adds'], mirrorSkill: true }, // 사슬 · 방패 치기 · 방패가 빛나는 반사
+  climbRift: { atk: ['quake', 'leap', 'combo', 'charge'], skl: ['fan', 'beam', 'sweep', 'crossBeam', 'nova', 'rain', 'pool', 'mark', 'meteorRain', 'ripple', 'adds'] }, // 주먹 · 가슴 핵 광선
+  frostOgre: { atk: ['combo', 'shove', 'grab', 'charge', 'cleave'], skl: ['leap', 'jumps3', 'quake', 'nova'] }, // 얼음 주먹 · 뛰어올라 내려찍기
+  climbWitch: { atk: ['fan', 'split', 'spiral'], skl: ['donut', 'nova', 'rain', 'mark', 'ripple', 'meteorRain', 'crossBeam', 'adds'] }, // 얼음 조각 던지기 · 서리 고리
+  wraithLord: { atk: ['combo', 'leap', 'charge', 'cleave', 'whirl', 'spikeTrail'], skl: ['soar', 'nova', 'mark', 'clones', 'adds'], ghostSoar: true, ghost: true }, // 대검 베기 · 혼령화
+  engraveKing: { atk: ['combo', 'leap', 'charge', 'cleave'], skl: ['fan', 'beam', 'sweep', 'crossBeam', 'rain', 'nova', 'mark', 'spiral', 'split', 'donut', 'ripple', 'channel', 'ritual', 'meteorRain', 'soar', 'mirror', 'clones', 'adds'] }, // 왕의 검 · 빛의 폭발
+}); // 3단계: 검을 든 어두운 시계지기로 바뀐다
 BOSS_SHEET.highPriest = { tint: 'brightness(0.78) saturate(1.25) contrast(1.15)' };
-BOSS_SHEET.wraithLord = { ghost: true };
 BOSS_SHEET.stormHarpy = { fly: true };
 BOSS_SHEET.skyWhale = { fly: true };
 for (const [id, o] of Object.entries(BOSS_SHEET)) MONSTER_ART[id] = { base: 'b_' + id, sheet: true, ...o };

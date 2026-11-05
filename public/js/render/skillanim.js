@@ -13,6 +13,8 @@ export const PAL = {
   arcane: ['#140a2e', '#33207a', '#5e45c0', '#9a80f0', '#d0c0ff', '#ffffff'],
   forest: ['#0e1e0a', '#24461a', '#3f7a2a', '#6fb84a', '#b8f08a', '#f0ffe0'],
   wind: ['#0e2a22', '#1e5a48', '#3f9a7a', '#7fd8b0', '#c8ffe8', '#ffffff'],
+  fire: ['#2a0804', '#6a1808', '#c8401a', '#ff7a2a', '#ffd060', '#fff6d8'], // 보스 광선 · 베기 빛깔 (균열 수호자 · 방패 악귀)
+  holy: ['#2a2008', '#6a5418', '#c8a030', '#ffd84a', '#fff0a0', '#ffffff'], // 각인의 왕
 };
 export const PX_USED = ['explosions/small-explosion', 'explosions/implosion', 'lightning/lightning-strike', 'ice/frost-nova', 'shadow/shadow-tendrils', 'shadow/dark-explosion',
   'nature/earth-spike', 'nature/poison-cloud', 'nature/quake', 'arcane/mana-burst', 'impacts/ground-slam', 'impacts/crit-hit', 'melee/sword-slash', 'melee/claw-swipe', 'melee/spin-slash', 'melee/heavy-cleave', 'fire/fireball', 'projectiles/plasma-shot', 'impacts/hit-spark', 'impacts/shield-block', 'impacts/parry', 'lightning/zap-hit', 'spawn/summon-rise', 'arcane/arcane-beam'];
@@ -112,7 +114,7 @@ export class SkillAnims {
   onCone(ev) {
     if (ev.fx === 'sweep' || ev.fx === 'slashX' || ev.fx === 'claws') { // 칼 · 발톱: pixelfx 베기 (오른쪽을 보고 그려진 것을 조준 방향으로 돌린다)
       const id = ev.fx === 'claws' ? 'melee/claw-swipe' : (ev.angle || 0) > 3.5 ? 'melee/spin-slash' : (ev.range || 0) > 70 ? 'melee/heavy-cleave' : 'melee/sword-slash';
-      if (this.px.add(id, ev.x, ev.y, id === 'melee/spin-slash' ? { floor: 0 } : { rot: ev.ang, floor: 0 })) return;
+      if (this.px.add(id, ev.x, ev.y, id === 'melee/spin-slash' ? { floor: 0, palette: PAL[ev.elem] } : { rot: ev.ang, floor: 0, palette: PAL[ev.elem] })) return;
     }
     if (ev.fx === 'sweep' || ev.fx === 'slashX' || ev.fx === 'claws') this.add('bladeArc', { x: ev.x, y: ev.y, ang: ev.ang, range: ev.range, angle: ev.angle, col: ELEM_COL[ev.elem] || '#f4f0ff', claws: ev.fx === 'claws' }); }
 

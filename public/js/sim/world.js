@@ -1,6 +1,7 @@
 // 전투·탐험 시뮬레이션. 고정 틱(60Hz) + 시드 난수 + 입력만으로 진행 → 서버 권한 방식으로 옮기기 쉽다.
 // 렌더러는 world 상태와 world.events 만 읽고, main 은 world.signals 로 화면 전환을 한다.
 import { MONSTERS, ZONES, ALL_ZONES, DUMMIES, ECHOES, LORES, AFFIXES } from '../data/monsters.js';
+import { BOSS_FX } from '../data/tower.js';
 import { zoneInit, zoneTick, zoneTakeMul, zoneHitMul, mirrorBounce, lightPillar, shiftShelves, arenaShift, bossCan, bossAlias, bossPickX, bossTickX, shardHit, shardFakeDie, startIntro, introTick } from './towerzone.js';
 import { REACTIONS } from '../data/engravings.js';
 import { WEAPON_SKILLS } from '../data/items.js';
@@ -4432,7 +4433,7 @@ export class World {
   exposeBoss(e, t, mul, text) { // 빈틈: 잠깐 멈추고 더 아프게 맞는다
     e.st.stun = Math.max(e.st.stun || 0, t); e.exposedT = t; e.exposeMul = mul; e.mv = null; e.windT = 0;
     this.emit({ t: 'text', x: e.x, y: e.y - 34, text, color: '#ffe066' }); this.emit({ t: 'text', x: e.x, y: e.y - 22, text: `받는 피해 ×${mul}`, color: '#ffd0a0' });
-    this.emit({ t: 'shake', v: 5 }); this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 20, color: '#ffe066' });
+    this.emit({ t: 'shake', v: 5 }); if (!this.bossThemed(e)) this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 20, color: '#ffe066' }); // 그림 보스는 맞은 자세 그림이 빈틈을 알린다
   }
   bossPick(e, p, pick) {
     const say = (txt, col = '#ffd0a0') => this.emit({ t: 'text', x: e.x, y: e.y - 30, text: txt, color: col });
@@ -4440,7 +4441,7 @@ export class World {
     const aim = Math.atan2(p.y - e.y, p.x - e.x);
     switch (pick) {
       case 'vent':
-        e.mv = null; this.exposeBoss(e, 4, 2, e.kit?.ventText || '과열! 핵이 드러났다'); this.emit({ t: 'ring', x: e.x, y: e.y, r: 60, color: '#ff8a3a' }); return true;
+        e.mv = null; this.exposeBoss(e, 4, 2, e.kit?.ventText || '과열! 핵이 드러났다'); if (!this.bossThemed(e)) this.emit({ t: 'ring', x: e.x, y: e.y, r: 60, color: '#ff8a3a' }); return true;
       case 'donut': // 바깥 고리가 터진다: 안쪽(수호자 곁)이 안전
         say(nm || '고리 폭발'); e.mv = { k: 'donut', boss: true, t: 1.4, r1: 46, r2: 190 }; e.windT = 1.4; e.windMax = 1.4;
         this.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 190, inner: 46, dur: 1.4 }); this.emit({ t: 'text', x: e.x, y: e.y - 44, text: '안으로!', color: '#9fffb0' }); return true;
@@ -4486,7 +4487,7 @@ export class World {
         this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: e.x + Math.cos(aim) * 200, y2: e.y + Math.sin(aim) * 200, dur: 0.8, color: '#ffb03a', w: 12 }); return true;
       case 'spikeTrail': { // 가시 길: 보스에서 나를 향해 가시가 차례로 솟는다
         say(nm || '가시 길');
-        for (let i = 1; i <= 7; i++) { const x = e.x + Math.cos(aim) * i * 30, y = e.y + Math.sin(aim) * i * 30, dl = 0.45 + i * 0.1; this.emit({ t: 'telegraphCircle', x, y, r: 22, dur: dl }); this.delayed.push({ t: dl, run: () => { if (e.dead) return; this.enemyArea(e, x, y, 22, e.atk * 1.2, 'phys', 'bleed'); this.emit({ t: 'skillAoe', x, y, r: 22, fx: 'spikes' }); } }); }
+        for (let i = 1; i <= 7; i++) { const x = e.x + Math.cos(aim) * i * 30, y = e.y + Math.sin(aim) * i * 30, dl = 0.45 + i * 0.1; this.emit({ t: 'telegraphCircle', x, y, r: 22, dur: dl }); this.delayed.push({ t: dl, run: () => { if (e.dead) return; this.enemyArea(e, x, y, 22, e.atk * 1.2, 'phys', 'bleed'); if (!this.bfx(e, 'trail', x, y, 22)) this.emit({ t: 'skillAoe', x, y, r: 22, fx: 'spikes' }); } }); }
         return false;
       }
       case 'ripple': // 파문: 안 → 밖으로 고리 셋이 차례로 터진다 (터진 고리 안으로 들어가면 산다)
@@ -4509,7 +4510,7 @@ export class World {
   bossLineHit(e, ang, len, w, dmg, status) {
     const x2 = e.x + Math.cos(ang) * len, y2 = e.y + Math.sin(ang) * len, prev = this.coTgt;
     for (const q of this.coTargets()) { const vx = x2 - e.x, vy = y2 - e.y, l2 = vx * vx + vy * vy, k = Math.max(0, Math.min(1, ((q.x - e.x) * vx + (q.y - e.y) * vy) / l2)); if (Math.hypot(q.x - e.x - vx * k, q.y - e.y - vy * k) < w + (q.r || 5)) { this.coTgt = q === this.player ? null : q; this.hurtPlayer(dmg, 'mag', e, { status, fromX: e.x, fromY: e.y }); } }
-    this.coTgt = prev; this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2 });
+    this.coTgt = prev; this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2, elem: BOSS_FX[e.defId]?.beam });
   }
   bossMoveTick(e, p, mv) {
     const def = e.def;
@@ -4530,7 +4531,7 @@ export class World {
         if (mv.t > 0) return true;
         const prev = this.coTgt;
         for (const q of this.coTargets()) { const dx = q.x - e.x, dy = q.y - e.y, d = Math.hypot(dx, dy); let da = Math.atan2(dy, dx) - mv.ang; da = Math.atan2(Math.sin(da), Math.cos(da)); if (d < 130 + (q.r || 5) && Math.abs(da) < 1.7) { this.coTgt = q === this.player ? null : q; this.hurtPlayer(e.atk * 2.6, def.type, e, { fromX: e.x, fromY: e.y }); } }
-        this.coTgt = prev; this.emit({ t: 'skillCone', x: e.x, y: e.y, ang: mv.ang, range: 130, angle: 3.4, fx: 'sweep' }); this.emit({ t: 'shake', v: 7 });
+        this.coTgt = prev; this.emit({ t: 'skillCone', x: e.x, y: e.y, ang: mv.ang, range: 130, angle: 3.4, fx: 'sweep', elem: BOSS_FX[e.defId]?.beam }); this.emit({ t: 'shake', v: 7 });
         e.mv = null; return true;
       }
       case 'grab': {
@@ -4541,21 +4542,21 @@ export class World {
           if (!this.blocked(nx, ny, p.r || 5)) { this.emit({ t: 'afterimage', x1: p.x, y1: p.y, x2: nx, y2: ny }); p.x = nx; p.y = ny; }
           this.hurtPlayer(e.atk * 0.8, def.type, e, { fromX: e.x, fromY: e.y }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '끌려갔다! 구르면 피한다', color: '#ffb03a' });
           const sx = e.x, sy = e.y; this.emit({ t: 'telegraphCircle', x: sx, y: sy, r: e.r + 40, dur: 0.7 });
-          this.delayed.push({ t: 0.7, run: () => { if (e.dead) return; this.enemyArea(e, sx, sy, e.r + 40, e.atk * 2.2, def.type, def.status); this.emit({ t: 'skillAoe', x: sx, y: sy, r: e.r + 40, fx: 'quake' }); } });
+          this.delayed.push({ t: 0.7, run: () => { if (e.dead) return; this.enemyArea(e, sx, sy, e.r + 40, e.atk * 2.2, def.type, def.status); if (!this.bfx(e, 'slam', sx, sy, e.r + 40)) this.emit({ t: 'skillAoe', x: sx, y: sy, r: e.r + 40, fx: 'quake' }); } });
         }
         e.mv = null; return true;
       }
       case 'ripple': {
         const R = [[0, 60], [60, 115], [115, 170]];
         if (mv.n < 3 && mv.t <= 2.6 - mv.n * 0.55) { const [r1, r2] = R[mv.n]; this.emit(r1 ? { t: 'telegraphCircle', x: e.x, y: e.y, r: r2, inner: r1, dur: 0.9 } : { t: 'telegraphCircle', x: e.x, y: e.y, r: r2, dur: 0.9 }); const ex = e.x, ey = e.y, n = mv.n; mv.n++;
-          this.delayed.push({ t: 0.9, run: () => { if (e.dead) return; const prev = this.coTgt; for (const q of this.coTargets()) { const d = Math.hypot(q.x - ex, q.y - ey); if (d >= R[n][0] && d < R[n][1] + (q.r || 5)) { this.coTgt = q === this.player ? null : q; this.hurtPlayer(e.atk * 1.6, 'mag', e, { status: def.status, fromX: ex, fromY: ey }); } } this.coTgt = prev; this.emit({ t: 'skillAoe', x: ex, y: ey, r: R[n][1], fx: n === 2 ? 'zero' : 'arcane' }); } }); }
+          this.delayed.push({ t: 0.9, run: () => { if (e.dead) return; const prev = this.coTgt; for (const q of this.coTargets()) { const d = Math.hypot(q.x - ex, q.y - ey); if (d >= R[n][0] && d < R[n][1] + (q.r || 5)) { this.coTgt = q === this.player ? null : q; this.hurtPlayer(e.atk * 1.6, 'mag', e, { status: def.status, fromX: ex, fromY: ey }); } } this.coTgt = prev; if (!this.bfx(e, 'nova', ex, ey, R[n][1])) this.emit({ t: 'skillAoe', x: ex, y: ey, r: R[n][1], fx: n === 2 ? 'zero' : 'arcane' }); } }); }
         if (mv.t > 0) return true;
         e.mv = null; return true;
       }
       case 'jumps3': {
         if (mv.t > 0) return true;
         if (!this.blocked(mv.tx, mv.ty, e.r)) { this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: mv.tx, y2: mv.ty }); e.x = mv.tx; e.y = mv.ty; }
-        this.enemyArea(e, e.x, e.y, 40, e.atk * 1.7, def.type, def.status); this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 40, fx: 'quake' });
+        this.enemyArea(e, e.x, e.y, 40, e.atk * 1.7, def.type, def.status); if (!this.bfx(e, 'slam', e.x, e.y, 40)) this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 40, fx: 'quake' });
         if (++mv.n >= 3) { e.mv = null; return true; }
         mv.t = 0.55; mv.tx = p.x; mv.ty = p.y; this.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: 40, dur: 0.55 }); return true;
       }
@@ -4564,14 +4565,16 @@ export class World {
         const prev = this.coTgt;
         for (const q of this.coTargets()) { const d = Math.hypot(q.x - e.x, q.y - e.y); if (d > mv.r1 && d < mv.r2 + (q.r || 5)) { this.coTgt = q === this.player ? null : q; this.hurtPlayer(e.atk * 2.2, 'mag', e, { status: 'chill', fromX: e.x, fromY: e.y }); } }
         this.coTgt = prev;
-        this.emit({ t: 'ring', x: e.x, y: e.y, r: mv.r2, color: '#9fe8ff' }); this.emit({ t: 'ring', x: e.x, y: e.y, r: (mv.r1 + mv.r2) / 2, color: '#e8fbff' }); this.emit({ t: 'shake', v: 6 });
+        if (this.bossThemed(e)) { for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2, rr = mv.r1 + (mv.r2 - mv.r1) * (i % 2 ? 0.75 : 0.45); this.bfx(e, 'donut', e.x + Math.cos(a) * rr, e.y + Math.sin(a) * rr * 0.8, 34); } } // 바깥 고리 자리마다 그 보스의 재질로 터진다
+        else { this.emit({ t: 'ring', x: e.x, y: e.y, r: mv.r2, color: '#9fe8ff' }); this.emit({ t: 'ring', x: e.x, y: e.y, r: (mv.r1 + mv.r2) / 2, color: '#e8fbff' }); }
+        this.emit({ t: 'shake', v: 6 });
         e.mv = null; return true;
       }
       case 'sweep': {
         if (mv.t > 2.2) return true; // 예고
         mv.ang += mv.dir * (Math.PI * 1.15 / 2.2) * DT;
         const x2 = e.x + Math.cos(mv.ang) * 240, y2 = e.y + Math.sin(mv.ang) * 240;
-        if ((mv.fxT = (mv.fxT || 0) - DT) <= 0) { mv.fxT = 0.05; this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2 }); }
+        if ((mv.fxT = (mv.fxT || 0) - DT) <= 0) { mv.fxT = 0.05; this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2, elem: BOSS_FX[e.defId]?.beam }); }
         mv.hitT -= DT;
         if (mv.hitT <= 0) {
           const prev = this.coTgt;
@@ -4582,10 +4585,10 @@ export class World {
         e.mv = null; return true;
       }
       case 'channel': {
-        if ((mv.fx -= DT) <= 0) { mv.fx = 0.5; this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 18, color: '#7be38a' }); }
+        if ((mv.fx -= DT) <= 0) { mv.fx = 0.5; if (!this.bossThemed(e)) this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 18, color: '#7be38a' }); else this.emit({ t: 'spark', x: e.x, y: e.y - 10, color: '#7be38a' }); }
         if (mv.taken >= e.maxHp * 0.07) { this.exposeBoss(e, 3, 1.5, '의식이 끊겼다!'); return false; }
         if (mv.t > 0) return true;
-        e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.18); this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '회복 +18%', color: '#7be38a' }); this.emit({ t: 'ring', x: e.x, y: e.y, r: 90, color: '#7be38a' });
+        e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.18); this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '회복 +18%', color: '#7be38a' }); if (!this.bfx(e, 'nova', e.x, e.y, 60)) this.emit({ t: 'ring', x: e.x, y: e.y, r: 90, color: '#7be38a' });
         e.mv = null; return false;
       }
       case 'soar': {
@@ -4606,7 +4609,7 @@ export class World {
         if (mv.t > 0) return true;
         for (const m of this.enemies) if (m.ritualOf === e.id && !m.dead) { m.dead = true; this.emit({ t: 'blink', x1: m.x, y1: m.y, x2: e.x, y2: e.y }); }
         this.enemyArea(e, e.x, e.y, 600, e.atk * (3 + alive.length), 'mag', def.status);
-        this.emit({ t: 'ring', x: e.x, y: e.y, r: 200, color: '#c8a8ff' }); this.emit({ t: 'shake', v: 9 }); this.emit({ t: 'banner', text: '의식 완성', color: '#c8a8ff' });
+        if (!this.bfx(e, 'nova', e.x, e.y, 130, { ult: true })) this.emit({ t: 'ring', x: e.x, y: e.y, r: 200, color: '#c8a8ff' }); this.emit({ t: 'shake', v: 9 }); this.emit({ t: 'banner', text: '의식 완성', color: '#c8a8ff' });
         e.mv = null; return true;
       }
     }
@@ -4614,9 +4617,16 @@ export class World {
     e.mv = null; return false;
   }
   rainAt(e, spots, dur) { // 떨어질 자리 예고 뒤 터진다 (기술 진행과 따로 돈다)
-    for (const q of spots) { this.emit({ t: 'telegraphCircle', x: q.x, y: q.y, r: 30, dur }); this.emit({ t: 'skillFall', x: q.x, y: q.y, r: 30, dur, fx: 'meteor', elem: 'fire' }); }
-    (this.delayed ||= []).push({ t: dur, run: () => { for (const q of spots) { this.enemyArea(e, q.x, q.y, 30, e.atk * 0.9, e.def.type, e.def.status); this.emit({ t: 'skillAoe', x: q.x, y: q.y, r: 30, elem: 'fire', fx: 'meteor' }); } } });
+    const [ffx, fel] = BOSS_FX[e?.defId]?.fall || ['meteor', 'fire']; // 그 보스의 재질로 떨어진다 (서리 마녀는 우박 · 왕은 빛 · 마녀는 독)
+    for (const q of spots) { this.emit({ t: 'telegraphCircle', x: q.x, y: q.y, r: 30, dur }); this.emit({ t: 'skillFall', x: q.x, y: q.y, r: 30, dur, fx: ffx, elem: fel }); }
+    (this.delayed ||= []).push({ t: dur, run: () => { for (const q of spots) { this.enemyArea(e, q.x, q.y, 30, e.atk * 0.9, e.def.type, e.def.status); this.emit({ t: 'skillAoe', x: q.x, y: q.y, r: 30, elem: fel, fx: ffx }); } } });
   }
+  // 보스 기술 이펙트: 그 보스 그림에 맞춘 재질로 (BOSS_FX · 없으면 예전 고리). true면 그렸다
+  bfx(e, kind, x, y, r, extra = {}) {
+    const th = BOSS_FX[e?.defId]?.[kind]; if (!th) return false;
+    this.emit({ t: 'skillAoe', x, y, r, fx: th[0], elem: th[1], ...extra }); return true;
+  }
+  bossThemed(e) { return !!BOSS_FX[e?.defId]; }
   enemyArea(e, x, y, r, dmg, type, status) {
     const prev = this.coTgt;
     for (const t of this.coTargets()) if (Math.hypot(t.x - x, t.y - y) < r + (t.r || 5)) { this.coTgt = t === this.player ? null : t; this.hurtPlayer(dmg, type, e, { status, fromX: x, fromY: y }); }
@@ -4749,7 +4759,7 @@ export class World {
         e.moving = true; e.jumpH = Math.sin(k * Math.PI) * 18;
         if (mv.t > 0) return true;
         e.jumpH = 0; this.enemyArea(e, e.x, e.y, 30, e.atk * 1.3, def.type, def.status);
-        this.emit({ t: 'ring', x: e.x, y: e.y, r: 30, color: '#ff8a5a' }); this.emit({ t: 'shake', v: 2.5 });
+        if (!this.bfx(e, 'slam', e.x, e.y, 36)) this.emit({ t: 'ring', x: e.x, y: e.y, r: 30, color: '#ff8a5a' }); this.emit({ t: 'shake', v: this.bossThemed(e) ? 5 : 2.5 });
         e.mv = null; return true;
       }
       case 'fan': { // 부채꼴: 다섯 발
@@ -4772,7 +4782,7 @@ export class World {
       }
       case 'whirl': // 회전베기: 둘레를 한 바퀴
         if (mv.t > 0) return true;
-        this.enemyArea(e, e.x, e.y, e.r + 26, e.atk * 1.2, def.type, def.status); this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 26, color: '#ffd0a0' });
+        this.enemyArea(e, e.x, e.y, e.r + 26, e.atk * 1.2, def.type, def.status); if (!this.bfx(e, 'slam', e.x, e.y, e.r + 26)) this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 26, color: '#ffd0a0' });
         e.mv = null; e.atkCd = 1; return true;
       case 'shove': { // 밀쳐내기: 세게 쳐서 멀리 날린다
         if (mv.t > 0) return true;
@@ -4787,17 +4797,17 @@ export class World {
       }
       case 'quake': // 땅 찍기: 퍼지는 충격파
         if (mv.t > 0) return true;
-        this.enemyArea(e, e.x, e.y, 70, e.atk * 1.1, def.type, def.status); this.emit({ t: 'ring', x: e.x, y: e.y, r: 70, color: '#c8a070' }); this.emit({ t: 'shake', v: 3 });
+        this.enemyArea(e, e.x, e.y, 70, e.atk * 1.1, def.type, def.status); if (!this.bfx(e, 'slam', e.x, e.y, 70)) this.emit({ t: 'ring', x: e.x, y: e.y, r: 70, color: '#c8a070' }); this.emit({ t: 'shake', v: this.bossThemed(e) ? 6 : 3 });
         e.mv = null; return true;
       case 'rain':
         if (mv.t > 0) return true;
-        for (const q of mv.spots) { this.enemyArea(e, q.x, q.y, 30, e.atk * 0.9, def.type, def.status); this.emit({ t: 'ring', x: q.x, y: q.y, r: 30, color: def.proj?.color || '#ff5a5a' }); }
+        for (const q of mv.spots) { this.enemyArea(e, q.x, q.y, 30, e.atk * 0.9, def.type, def.status); if (!this.bfx(e, 'rain', q.x, q.y, 30)) this.emit({ t: 'ring', x: q.x, y: q.y, r: 30, color: def.proj?.color || '#ff5a5a' }); }
         e.mv = null; return false;
       case 'beam': {
         if (mv.t > 0) return true;
         const x2 = e.x + Math.cos(mv.ang) * 230, y2 = e.y + Math.sin(mv.ang) * 230;
         for (const q of this.coTargets()) { const vx = x2 - e.x, vy = y2 - e.y, l2 = vx * vx + vy * vy, k = Math.max(0, Math.min(1, ((q.x - e.x) * vx + (q.y - e.y) * vy) / l2)); if (Math.hypot(q.x - e.x - vx * k, q.y - e.y - vy * k) < 7 + (q.r || 5)) this.enemyArea(e, q.x, q.y, 2, e.atk * 1.5, def.type, def.status); }
-        this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2 }); e.mv = null; return true;
+        this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2, y2, elem: BOSS_FX[e.defId]?.beam }); e.mv = null; return true;
       }
       case 'charge': {
         if (mv.t > mv.run) return true;
@@ -4809,16 +4819,16 @@ export class World {
       }
       case 'mark':
         if (mv.t > 0) return false; // 표식 동안 보스는 움직인다
-        this.enemyArea(e, mv.tg.x, mv.tg.y, 40, e.atk * 1.8, def.type, def.status); this.emit({ t: 'ring', x: mv.tg.x, y: mv.tg.y, r: 40, color: '#ff5a5a' }); this.emit({ t: 'shake', v: 3 });
+        this.enemyArea(e, mv.tg.x, mv.tg.y, 40, e.atk * 1.8, def.type, def.status); if (!this.bfx(e, 'mark', mv.tg.x, mv.tg.y, 40)) this.emit({ t: 'ring', x: mv.tg.x, y: mv.tg.y, r: 40, color: '#ff5a5a' }); this.emit({ t: 'shake', v: 3 });
         e.mv = null; return false;
       case 'nova':
         if (mv.t > 0) return true;
-        this.enemyArea(e, e.x, e.y, 110, e.atk * 1.5, def.type, def.status); this.emit({ t: 'ring', x: e.x, y: e.y, r: 110, color: '#ff8a3a' }); this.emit({ t: 'shake', v: 5 });
+        this.enemyArea(e, e.x, e.y, 110, e.atk * 1.5, def.type, def.status); if (!this.bfx(e, 'nova', e.x, e.y, 110, { ult: true })) this.emit({ t: 'ring', x: e.x, y: e.y, r: 110, color: '#ff8a3a' }); this.emit({ t: 'shake', v: 5 });
         e.mv = null; return true;
       case 'pool': // 장판: 예고 원이 터진다
         if (mv.t > 0) return true;
         this.enemyArea(e, mv.x, mv.y, 34, e.atk * 1.4, 'mag', def.status || (def.type === 'mag' ? 'burn' : null));
-        this.emit({ t: 'ring', x: mv.x, y: mv.y, r: 34, color: def.proj?.color || '#ff5a8a' });
+        if (!this.bfx(e, 'pool', mv.x, mv.y, 34)) this.emit({ t: 'ring', x: mv.x, y: mv.y, r: 34, color: def.proj?.color || '#ff5a8a' });
         e.mv = null; return false;
     }
     e.mv = null; return false;
