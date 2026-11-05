@@ -12,7 +12,7 @@ const KEY = 'engrave-tower-save-v1';
 
 export function newSave(race) {
   return {
-    v: 1, race, level: 1, xp: 0, points: 0, alloc: {}, gold: 30,
+    v: 1, gated: 1, race, level: 1, xp: 0, points: 0, alloc: {}, gold: 30, // gated: 탑을 올라 지역 · 체계를 해방한다 (data/unlocks.js)
     echoes: {}, owned: {}, slots: {}, items: ['rustySword'], gear: { weapon: 'rustySword' },
     codex: { kills: {}, echoes: {}, reactions: {}, condSeen: {}, places: {}, journals: {}, lore: [] },
     story: newStory(),

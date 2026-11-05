@@ -41,7 +41,7 @@ export function createClimb(ctx) {
       <div class="cl-acts">${acts}</div>
       <p>최고 기록 <b>${c.best}층</b> / ${CLIMB_TOP}${lordsDone ? ` · 서약 <b>${sc}</b>` : ''} · 내 레벨 <b>Lv ${S().level}</b></p>
       <div class="actions">${starts.map((f, i) => `<button data-clstart="${f}" class="${i === starts.length - 1 ? '' : 'ghost'}">${f}층부터</button>`).join('')}</div>
-      <div class="actions">${lordsDone ? '<button id="clOath" class="ghost">서약 (난이도)</button>' : ''}${c.runs ? '<button id="clRec" class="ghost">기록</button>' : ''}<button data-close class="ghost">돌아간다</button></div>
+      <div class="actions">${lordsDone && !ctx.locked?.('oath') ? '<button id="clOath" class="ghost">서약 (난이도)</button>' : ''}${c.runs ? '<button id="clRec" class="ghost">기록</button>' : ''}<button data-close class="ghost">돌아간다</button></div>
       ${ctx.partyLeader?.() ? `<div class="actions">${starts.map((f) => `<button data-clparty="${f}" class="ghost">${f}층부터 파티와 오르기</button>`).join('')}</div>` : ''}`);
     const go = (f) => { // 음식 없이 오르려 하면 한 번 묻는다 (탑 안의 회복은 보스 처치 · 음식 · 물약뿐)
       if (food) { close(); startClimb(f); return; }
@@ -111,7 +111,7 @@ export function createClimb(ctx) {
           <p>삼백 년 전 마지막 왕이 닫은 문 너머, 탑은 아직 끝나지 않았다. 쓰러뜨린 수호자들이 <b>각성해서</b> 51층부터 다시 기다린다.</p>
           <p class="muted">본편을 마쳤다 · 이제부터는 51~100층과 서약으로 기록에 도전한다</p>
           <div class="actions"><button data-close>계속</button></div>`), 1200); // 본편 끝 (50층)
-        if (s.f < CLIMB_TOP) ctx.banner({ text: '기록이 남았다', sub: first ? `다음부터 ${s.f + 1}층에서 시작할 수 있다${act.n === 1 ? ' · 서약이 열렸다' : ''}` : `${s.f + 1}층부터 시작할 수 있다`, t: 4, color: '#8ad8ff' });
+        if (s.f < CLIMB_TOP) ctx.banner({ text: '기록이 남았다', sub: first ? `다음부터 ${s.f + 1}층에서 시작할 수 있다${act.n === 1 && !ctx.locked?.('oath') ? ' · 서약이 열렸다' : ''}` : `${s.f + 1}층부터 시작할 수 있다`, t: 4, color: '#8ad8ff' });
       }
       if (s.kind === 'guardian' || s.kind === 'lord') r.bosses.push(w.climb.boss?.def.name || '');
       r.hpFrac = w.player.hp / w.d.maxHp;

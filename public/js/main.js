@@ -57,7 +57,14 @@ import { CLASS_STATS } from './data/statscale.js';
 import { JOURNEY, journeyNow, rewardText as journeyReward } from './data/journey.js';
 import { oathScore, newClimbSave } from './data/climb.js';
 import { createTutorial, tutFlags } from './ui/tutorial.js';
+import { lockText, SYSTEM_NAME, makeLocks, openedBetween, towerBest, isOpen } from './data/unlocks.js';
 // 디버그 핸들: 내 컴퓨터(localhost)나 주소에 ?debug 가 있을 때만 (배포판에서 콘솔 치트가 쉽지 않게)
+// 해방되지 않은 체계를 열려고 하면 안내하고 true (data/unlocks.js)
+function lockedMsg(kind, id) {
+  const t = lockText(save, kind, id); if (!t) return false;
+  renderer.banner = { text: `${SYSTEM_NAME[id] || id} · 아직 잠겨 있다`, sub: t, t: 2.6, color: '#c8b0ff' }; sfx('error', { vol: 0.4 });
+  return true;
+}
 const DEBUG = /^(localhost|127\.|192\.168\.|\[::1\])/.test(location.hostname) || new URLSearchParams(location.search).has('debug');
 
 let save = loadSave();
@@ -101,7 +108,7 @@ function rankSend() { if (!net.up || !save) return; netSend({ t: 'rankSet', gold
 onNet('up', () => setTimeout(rankSend, 800));
 setInterval(rankSend, 60000);
 let rankTab = 'gold';
-function showRank() { if (!net.up) { renderer.banner = { text: '랭킹', sub: '서버와 이어져 있을 때만 볼 수 있다', t: 2.2, color: '#c8b8a0' }; return; } rankSend(); netSend({ t: 'rankGet' }); }
+function showRank() { if (lockedMsg('systems', 'rank')) return; if (!net.up) { renderer.banner = { text: '랭킹', sub: '서버와 이어져 있을 때만 볼 수 있다', t: 2.2, color: '#c8b8a0' }; return; } rankSend(); netSend({ t: 'rankGet' }); }
 onNet('rank', (m) => {
   const tabs = [['gold', '돈'], ['tower', '각인의 탑'], ...Object.entries(RANK_RAID).map(([k, n]) => [k, `레이드 · ${n}`])];
   const list = rankTab === 'gold' ? m.gold : rankTab === 'tower' ? m.tower : m.raid[rankTab] || [];
@@ -322,6 +329,7 @@ onNet('down', () => { if (coRun?.role === 'member') coSolo('서버와 연결이 
 
 // 가까운 사람 앞에서 G: 결투 · 파티 · 길드
 function openMeet(rp) {
+  if (lockedMsg('systems', 'social')) return;
   if (rp.duel) { renderer.banner = { text: rp.name, sub: '결투 중이다', t: 1.6, color: '#c8b8a0' }; return; }
   const inParty = !!net.party?.members.some((x) => x.id === rp.id);
   const canParty = !inParty && !rp.party && (!net.party || (isPartyLeader() && net.party.members.length < 4));
@@ -420,6 +428,7 @@ function showSouls() {
 // 동료 창 (O): 파티 · 길드
 let socialTab = 'party', socialOpen = false;
 function showSocial(tab) {
+  if (lockedMsg('systems', 'social')) return;
   if (tab) socialTab = tab;
   if (!net.up) { renderer.banner = { text: '온라인이 아니다', sub: '서버와 이어져야 파티 · 길드를 쓸 수 있다', t: 2.2, color: '#c8b8a0' }; return; }
   showModal(`<div id="social" class="social">${socialHtml()}</div>`, () => { overlay.hidden = true; paused = false; modal = null; socialOpen = false; sfx('close', { vol: 0.4 }); });
@@ -531,7 +540,7 @@ function showRaid() {
   const R = (save.raid ||= { clears: {}, week: {} }), wk = raidWeek(), lead = isPartyLeader() && net.party.members.length > 1;
   const cards = Object.entries(RAIDS).map(([id, r]) => `<div class="skc"><div class="c-head"><b style="color:${r.color}">${r.name}</b><span class="role">권장 Lv ${r.rec}</span></div><div class="c-sum">${esc(r.desc)}</div>
     <div class="muted">깬 횟수 ${R.clears[id] || 0}${R.week[id] === wk ? ' · 이번 주 보물상자 받음' : ' · 이번 주 보물상자 남음'}</div>
-    <div class="c-act"><button class="sm" data-raid="${id}">${lead ? '파티와 들어가기' : '들어가기'}</button></div></div>`).join('');
+    <div class="c-act">${lockText(save, 'systems', 'raid:' + id) ? `<span class="muted">${lockText(save, 'systems', 'raid:' + id)}</span>` : `<button class="sm" data-raid="${id}">${lead ? '파티와 들어가기' : '들어가기'}</button>`}</div></div>`).join('');
   showModal(`<h2>레이드 제단</h2><p class="muted">거대한 보스와 싸우는 둥근 방. 체력이 셋으로 나뉘어 단계마다 패턴이 바뀐다 — 빨간 예고를 보고 피하고, 「표식」이 붙으면 동료에게서 떨어진다. 파티(최대 4명)로 오면 함께 싸운다 (인원수만큼 보스가 단단해진다).</p>
     ${net.party && !isPartyLeader() ? '<p class="muted">파티장이 들어가면 함께 간다.</p>' : ''}<div class="skill-row">${cards}</div><div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
   overlay.querySelectorAll('[data-raid]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; const id = b.dataset.raid; if (lead) startCoRaid(id); else enterRaid(id); }));
@@ -755,6 +764,7 @@ function journeyTick(dt) {
 }
 // 탑 등반 (본편): 화면과 흐름은 ui/climb.js
 const climbUi = createClimb({
+  locked: (sys) => !isOpen(save, 'systems', sys), // 해방되지 않은 체계 (서약)
   save: () => save, world: () => world,
   setWorld: (w, co) => {
     world = w; renderer.setWorld(w);
@@ -1263,8 +1273,11 @@ function showSanctum(race, tab = 'bless') {
   else if (tab === 'spirit') html += spiritHtml();
   else if (tab === 'shop') html += raceShopHtml(race, lv);
   else html += trainHtml(race, st, lv);
-  html += '<button data-close class="ghost">떠난다</button>';
+  const enclave = race === save.race && world.locks?.keep; // 잠긴 지역 안의 내 성지: 마을로 돌아가는 길
+  html += `${enclave ? '<button id="sanctHome" class="ghost">바람결 마을로 돌아간다</button>' : ''}<button data-close class="ghost">떠난다</button>`;
   showModal(html);
+  const sh = document.getElementById('sanctHome');
+  if (sh) sh.onclick = () => { overlay.hidden = true; paused = false; modal = null; const v = world.objects.find((o) => o.kind === 'waypoint' && o.start); if (v ? world.warpTo(v.x, v.y + 18, v) : world.warpTo(world.map.start.x * TILE + 8, world.map.start.y * TILE + 8)) renderer.banner = { text: '바람결 마을', sub: '성지에서 돌아왔다', t: 1.8, color: '#bfefff' }; };
   overlay.querySelectorAll('[data-st]').forEach((b) => (b.onclick = () => showSanctum(race, b.dataset.st)));
   const on = (id, fn) => { const b = document.getElementById(id); if (b) b.onclick = fn; };
   // 축복
@@ -1641,9 +1654,10 @@ function restAndSave() {
 function showWaypoints(here) {
   const all = world.objects.filter((o) => o.kind === 'waypoint'), open = all.filter((o) => o.active), shut = all.length - open.length;
   showModal(`<h2>이동 포탈</h2><p class="muted">깨운 포탈 ${open.length} / ${all.length}${shut ? ` · 아직 잠든 포탈 ${shut}곳이 섬 곳곳에 있다` : ''}</p>
-    <div class="wp-list">${open.map((o) => `<button class="wp ${o.id === here ? 'here' : ''}" data-wp="${o.id}" ${o.id === here ? 'disabled' : ''}>${esc(o.name)}${o.id === here ? '<small>지금 여기</small>' : ''}</button>`).join('')}</div>
+    <div class="wp-list">${open.map((o) => `<button class="wp ${o.id === here ? 'here' : ''}" data-wp="${o.id}" ${o.id === here ? 'disabled' : ''}>${esc(o.name)}${o.id === here ? '<small>지금 여기</small>' : ''}</button>`).join('')}${world.locks?.keep ? `<button class="wp" id="wpSanct">${esc(SANCTUMS[save.race].name)}<small>내 종족 성지 · 둘레만 열려 있다</small></button>` : ''}</div>
     <button data-close class="ghost">닫기</button>`);
   overlay.querySelectorAll('[data-wp]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; travelTo(b.dataset.wp); }));
+  const ws = document.getElementById('wpSanct'); if (ws) ws.onclick = () => { overlay.hidden = true; paused = false; modal = null; const k = world.locks.keep[0]; if (world.warpTo(k.x, k.y + 24)) renderer.banner = { text: SANCTUMS[save.race].name, sub: '성지로 가는 길을 건너왔다 · 돌아갈 때는 성지 수호자에게', t: 2.4, color: SANCTUMS[save.race].color }; };
 }
 // 귀환 · 이동 주문서: 실제로 옮겨 간 뒤에 한 장 쓴다
 function useScroll(kind, id) {
@@ -2152,7 +2166,7 @@ function handleSignals() {
     if (world.climb && climbUi.signal(s)) { if (s.t === 'climbCleared') continue; return; } // 탑 등반
     if (s.t === 'openPanel') openPanel(s.panel, true);
     if (s.t === 'tower') { showTower(); return; }
-    if (s.t === 'raid') { showRaid(); return; }
+    if (s.t === 'raid') { if (!lockedMsg('systems', 'raid:golem')) showRaid(); return; }
     if (s.t === 'raidClear') { raidClear(s); return; }
     if (s.t === 'coStairs') { if (coRun) netSend({ t: 'co', to: coRun.host, k: 'stairs' }); continue; }
     if (s.t === 'coDown') { renderer.banner = { text: '쓰러졌다', sub: '동료가 이 층을 깨면 다시 일어난다 · 모두 쓰러지면 탑 밖으로', t: 3.5, color: '#ff8a7a' }; sfx('error', { vol: 0.5 }); continue; }
@@ -2171,9 +2185,9 @@ function handleSignals() {
         document.getElementById('goAnyway').onclick = () => { overlay.hidden = true; paused = false; modal = null; go(); };
       } else go();
       return;
-    } else if (s.t === 'sanctum') { showSanctum(s.race); return; }
-    else if (s.t === 'sanctLeader') { showSanctum(s.race, 'quest'); return; }
-    else if (s.t === 'sanctTrain') { showSanctum(s.race, 'train'); return; }
+    } else if (s.t === 'sanctum') { if (!lockedMsg('systems', 'sanctum')) showSanctum(s.race); return; }
+    else if (s.t === 'sanctLeader') { if (!lockedMsg('systems', 'sanctum')) showSanctum(s.race, 'quest'); return; }
+    else if (s.t === 'sanctTrain') { if (!lockedMsg('systems', 'sanctum')) showSanctum(s.race, 'train'); return; }
     else if (s.t === 'sanctQuestDone') { const L = SANCT_LIFE[s.race], d = sanctQuestDef(s.race, sanctState(save.story, s.race).cur?.id); writeSave(save); renderer.banner = { text: `의뢰를 마쳤다 · ${d?.title || ''}`, sub: `${SANCTUMS[s.race].name}의 ${L.leader.name}에게 알리자`, t: 3.2, color: SANCTUMS[s.race].color }; sfx('levelup', { vol: 0.5, rate: 1.2 }); }
     else if (s.t === 'trainingDone') finishTraining(s);
     else if (s.t === 'rebuild') { world.setBuild(buildNow()); writeSave(save); }
@@ -2348,6 +2362,7 @@ function portTalk(id) {
   return true;
 }
 function portShowRoutes(pid) {
+  if (lockedMsg('systems', 'sailing')) return;
   const P = PORTS[pid];
   const clues = mistClues(save);
   const rows = P.routes.map((r, i) => r.hidden && clues < MIST_NEED
@@ -3465,6 +3480,7 @@ const CAP_LINES = {
   cap_guard_w: ['"서문 밖으로 가면 각인의 탑이오."'], cap_guard_e: ['"동문 밖은 원시림과 안개 부두로 가는 길이오."'],
 };
 function capitalTalk(id) {
+  if (id !== 'cap_gate' && lockedMsg('systems', 'politics')) return true;
   const P = polOf(), R = repOf(), done = () => { overlay.hidden = true; paused = false; modal = null; writeSave(save); };
   if (id === 'cap_gate') {
     const held = CONTRA.filter((k) => (save.bag[k] || 0) > 0);
@@ -3599,12 +3615,38 @@ function frame(ts) {
   try { padTick(); tick(ts); updateVoyBar(); const pnow = performance.now(); politicsTick(Math.min(0.1, (pnow - (frame.pt || pnow)) / 1000)); frame.pt = pnow; } catch (err) { reportError(err); } // 한 번의 오류로 게임이 멈추지 않게 (대신 알린다)
   requestAnimationFrame(frame);
 }
+// 내 종족 성지가 잠긴 지역 안에 있고 성지는 열렸으면 그 성지 (마을 포탈로 오간다)
+function mySanctumGate() {
+  if (!save.gated || world?.zone?.id !== 'world' || !isOpen(save, 'systems', 'sanctum')) return null;
+  const o = world.objects.find((q) => q.kind === 'sanctum' && q.race === save.race);
+  const r = o && world.map.regions?.[Math.floor(o.y / TILE) * world.tw + Math.floor(o.x / TILE)];
+  return o && world.locks?.regions.has(r) ? o : null;
+}
+// 해방: 세계에 잠금을 넘기고, 탑에서 새로 연 것이 있으면 바깥에서 알려 준다 (data/unlocks.js)
+function unlockTick() {
+  const key = save.gated ? towerBest(save) : -1;
+  if (world.locksKey !== key) {
+    world.locksKey = key; world.locks = makeLocks(save, BIOME_LIST); renderer.sealDirty = true;
+    const sc = mySanctumGate(); if (sc) world.locks.keep = [{ x: sc.x, y: sc.y, r: 18 * TILE }]; // 내 종족 성지 둘레는 성지가 열리면 함께 연다
+  }
+  if (!save.gated || world.climb || world.zone?.id !== 'world' || world.state !== 'play' || modal || paused) return;
+  const seen = save.unlockSeen ?? 0, best = towerBest(save);
+  if (best <= seen) return;
+  const list = openedBetween(seen, best);
+  save.unlockSeen = best; writeSave(save);
+  if (!list.length) return;
+  const name = (kind, id) => kind === 'regions' ? BIOME_LIST.find((b) => b.id === id)?.name : kind === 'entrances' ? ENTRANCES[id]?.name || (id === 'palace' ? '용궁' : id) : SYSTEM_NAME[id];
+  const rows = list.map((u) => `<li><b>${u.f}층</b> — ${['regions', 'entrances', 'systems'].flatMap((k) => (u[k] || []).map((id) => esc(name(k, id) || id))).join(' · ')}</li>`).join('');
+  sfx('levelup', { vol: 0.7 });
+  showModal(`<h2>탑의 빛이 섬으로 퍼진다</h2><p>탑을 올라 새로 열렸다. 지도(M)에서 밝아진 곳으로 가 보자.</p><ul class="unlock-list">${rows}</ul><div class="actions"><button data-close>좋다</button></div>`);
+}
 function tick(ts) {
   const dt = Math.min(0.1, (ts - last) / 1000 || 0);
   last = ts;
   if (world && !gameEl.hidden) {
     world.npcAttack = getNpcAttack(); world.econ = econOf(save);
     if (save.newEng?.length && world.state === 'play') announceClassEng();
+    unlockTick();
     if (renderer.hitstop > 0) renderer.hitstop -= dt;
     else if ((!paused || coRun) && world.state === 'play') { // 파티 탑: 창을 열어도 세계는 돈다 (동료가 기다리지 않게)
       acc += dt;

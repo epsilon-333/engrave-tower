@@ -4,11 +4,11 @@ import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_CRACK } from '../../sim/mapgen.js';
 import { createRng } from '../../sim/rng.js';
 
 export const LABY_ZONE = {
-  id: 'labyrinth', name: '잊힌 미궁', floor: 3, rec: 12, pal: ['#3a3440', '#443e4a', '#322c38'], wall: ['#16121c', '#2e2836', '#4a4256'], liquid: 'water', liquidPal: ['#1d3a4a', '#2a5a6a'],
+  id: 'labyrinth', name: '잊힌 미궁', floor: 3, rec: 22, pal: ['#3a3440', '#443e4a', '#322c38'], wall: ['#16121c', '#2e2836', '#4a4256'], liquid: 'water', liquidPal: ['#1d3a4a', '#2a5a6a'],
   dark: 0.66, deco: ['bone', 'candle', 'pebble', 'skullDeco'], portal: '#b58aff', pool: ['bandit', 'shieldDemon', 'chortShaman', 'skeleton'], regions: ['잊힌 미궁'], elite: 'labyrinthLord',
 };
 export const PALACE_ZONE = {
-  id: 'palace', name: '용궁', floor: 4, rec: 14, pal: ['#2a4656', '#30526a', '#26404e'], wall: ['#0e1e2a', '#24485e', '#3a7090'], liquid: 'water', liquidPal: ['#1a5a7a', '#2a8aaa'],
+  id: 'palace', name: '용궁', floor: 4, rec: 45, pal: ['#2a4656', '#30526a', '#26404e'], wall: ['#0e1e2a', '#24485e', '#3a7090'], liquid: 'water', liquidPal: ['#1a5a7a', '#2a8aaa'],
   dark: 0.3, deco: ['coral', 'coral', 'crystalB', 'lily', 'pebble'], portal: '#7ae8ff', pool: ['coralCrab', 'jellyfish', 'seaSerpent'], regions: ['용궁'], elite: 'dragonGuard',
 };
 

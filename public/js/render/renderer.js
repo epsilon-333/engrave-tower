@@ -1086,6 +1086,7 @@ export class Renderer {
     this.parts = this.parts.filter((q) => q.t > 0);
 
     if (w.zone?.id === 'palace' || w.zone?.id === 'labyrinth' || w.zone?.id === 'seabed') this.drawAmbience(w, cx, cy, dt);
+    if (w.locks?.regions.size && w.map.regions) this.drawSeals(w, dt); // 해방되지 않은 지역: 보랏빛 안개
     if (w.mode === 'field' && !w.map.outdoor && !w.map.ship) { this.drawLight(w, cx, cy); this.drawFog(w, cx, cy); } // 바깥 세계는 화면을 가리지 않는다 (안 가 본 곳은 지도에서만)
 
     // 1배 세계 판을 화면 배율로 키워 옮긴다 (도트 그대로). 글씨 · 화면 표시는 그 위에 실제 해상도로
@@ -4189,6 +4190,26 @@ export class Renderer {
 
   // 안 가 본 곳의 어둠: 칸 가운데 네 곳(가 봤나 · 안 가 봤나)으로 정해지는 16가지 모양을 미리 점묘로 찍어 두고, 보이는 칸마다 붙인다
   // (진하기 네 단계 + 바둑판 점묘 · 칸에 맞춰 있어 걸어도 무늬가 흔들리지 않는다)
+  // 해방되지 않은 지역의 안개 (칸 하나 = 점 하나인 그림을 키워 그린다 · 부드럽게 번진 경계)
+  sealCanvas(w) {
+    if (this.sealC && !this.sealDirty && this.sealW === w) return this.sealC;
+    this.sealDirty = false; this.sealW = w;
+    const c = (this.sealC ||= document.createElement('canvas')); c.width = w.tw; c.height = w.th;
+    const L = w.locks?.regions, R = w.map.regions, gc = c.getContext('2d'), img = gc.createImageData(w.tw, w.th), d = img.data;
+    if (L?.size && R) for (let i = 0; i < R.length; i++) if (L.has(R[i])) { d[i * 4] = 30; d[i * 4 + 1] = 18; d[i * 4 + 2] = 48; d[i * 4 + 3] = 175; }
+    for (const k of w.locks?.keep || []) { const r = k.r / TILE, cx = k.x / TILE, cy = k.y / TILE; for (let y = Math.max(0, Math.floor(cy - r)); y <= Math.min(w.th - 1, cy + r); y++) for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(w.tw - 1, cx + r); x++) if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) < r) d[(y * w.tw + x) * 4 + 3] = 0; } // 열어 둔 곳 (내 종족 성지 둘레)
+    gc.putImageData(img, 0, 0);
+    return c;
+  }
+  drawSeals(w, dt) {
+    const g = this.g, c = this.sealCanvas(w), p = w.player;
+    this.worldTf(g);
+    g.imageSmoothingEnabled = true; g.drawImage(c, 0, 0, w.tw * TILE, w.th * TILE); g.imageSmoothingEnabled = false;
+    if (dt > 0 && Math.random() < 0.5) { // 안개 속을 떠도는 보랏빛 티끌 (가까운 경계에서만)
+      const x = p.x + (Math.random() - 0.5) * 360, y = p.y + (Math.random() - 0.5) * 220;
+      if (w.sealAt(x, y)) this.parts.push({ x, y, vx: (Math.random() - 0.5) * 6, vy: -8 - Math.random() * 8, t: 1.6, max: 1.6, color: Math.random() < 0.5 ? '#b89cff' : '#7a5ad8', g: -2 });
+    }
+  }
   drawFog(w, cx, cy) {
     const g = this.g, VW = this.VW, VH = this.VH, ex = w.explored, tw = w.tw, th = w.th, spr = (this.fogSpr ||= fogSprites());
     const fog = (x, y) => (x < 0 || y < 0 || x >= tw || y >= th || !ex[y * tw + x] ? 1 : 0);
@@ -4715,6 +4736,7 @@ export class Renderer {
     g.fillStyle = '#05040a'; g.fillRect(mx, my, mw, mh);
     g.imageSmoothingEnabled = false;
     if (w.map.outdoor) g.drawImage(this.mini, ox, oy, mw / s, mh / s, mx, my, mw, mh); else g.drawImage(this.mini, mx, my, mw, mh);
+    if (w.locks?.regions.size && w.map.regions) g.drawImage(this.sealCanvas(w), ox, oy, mw / s, mh / s, mx, my, mw, mh); // 해방되지 않은 지역
     const dot = (x, y, c, r = 1.5) => { const tx = x / TILE - ox, ty = y / TILE - oy; if (tx < 0 || ty < 0 || tx * s > mw || ty * s > mh) return; g.fillStyle = c; g.fillRect(Math.round(mx + tx * s - r * u), Math.round(my + ty * s - r * u), r * 2 * u, r * 2 * u); };
     const seen = (x, y) => w.explored[Math.floor(y / TILE) * w.tw + Math.floor(x / TILE)];
     for (const o of w.objects) {
@@ -4782,6 +4804,10 @@ export class Renderer {
     for (let y = 40; y < w.th; y += 40) g.fillRect(mx, Math.round(my + y * s), mw, 1);
     g.imageSmoothingEnabled = false;
     g.drawImage(this.mini, mx, my, mw, mh);
+    if (w.locks?.regions.size && w.map.regions) { // 해방되지 않은 지역: 안개 + 「탑 N층」
+      g.drawImage(this.sealCanvas(w), mx, my, mw, mh);
+      BIOME_LIST.forEach((b, i) => { const L = w.locks.regions.get(i); if (L) { this.text(`${b.name} · 잠김`, mx + b.x * s, my + b.y * s - 6 * u, Math.max(1, u - 1), '#c8b0ff', 'center'); this.text(L.text.replace('을 쓰러뜨리면 열린다', ''), mx + b.x * s, my + b.y * s + 6 * u, Math.max(1, u - 1), '#9a88c8', 'center'); } });
+    }
     g.strokeStyle = 'rgba(232,220,192,0.6)'; g.lineWidth = 2; g.strokeRect(mx - 2, my - 2, mw + 4, mh + 4);
     // 가 본 지역의 이름
     for (const b of BIOME_LIST) if (b.id !== 'tower' && w.explored[b.y * w.tw + b.x]) { this.text(b.name, mx + b.x * s, my + b.y * s, Math.max(1, u - 1), 'rgba(255,244,214,0.75)', 'center'); if (b.lv) this.text(`Lv ${b.lv[0]}~${b.lv[1]}`, mx + b.x * s, my + b.y * s + 9 * u, Math.max(1, u - 1), 'rgba(255,214,150,0.7)', 'center'); }

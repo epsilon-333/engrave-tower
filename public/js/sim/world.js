@@ -556,8 +556,25 @@ export class World {
     const s = (px, py) => this.solid(px, py, mode);
     return s(x - r, y - r) || s(x + r, y - r) || s(x - r, y + r) || s(x + r, y + r) || s(x, y - r) || s(x, y + r) || s(x - r, y) || s(x + r, y);
   }
+  // 해방되지 않은 바깥 지역이면 그 안내 (main이 world.locks를 넣는다 · data/unlocks.js)
+  sealAt(x, y) {
+    const L = this.locks?.regions; if (!L?.size || !this.map.regions) return null;
+    if (this.locks.keep?.some((k) => Math.hypot(x - k.x, y - k.y) < k.r)) return null; // 잠긴 지역 안이라도 열어 둔 곳 (내 종족 성지 둘레)
+    const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE); if (tx < 0 || ty < 0 || tx >= this.tw || ty >= this.th) return null;
+    return L.get(this.map.regions[ty * this.tw + tx]) || null;
+  }
+  // 잠긴 것을 건드렸다: 머리 위에 안내 (1초에 한 번)
+  sealed(text) {
+    if (this.t - (this.sealT ?? -9) < 1) return; this.sealT = this.t;
+    const p = this.player; this.emit({ t: 'text', x: p.x, y: p.y - 26, text, color: '#c8b0ff' }); this.emit({ t: 'locked', x: p.x, y: p.y });
+  }
   move(ent, dx, dy) {
     const r = Math.max(3, ent.r - 1), p = this.player;
+    if (ent === p && this.locks?.regions.size && !this.sealAt(p.x, p.y)) { // 봉인된 지역으로는 걸어 들어갈 수 없다 (이미 안에 있으면 나올 수 있다)
+      const sx = this.sealAt(p.x + dx * 4, p.y), sy = this.sealAt(p.x, p.y + dy * 4);
+      if (sx) { dx = 0; this.sealed(`${sx.name} — ${sx.text}`); }
+      if (sy) { dy = 0; this.sealed(`${sy.name} — ${sy.text}`); }
+    }
     const mode = ent === p && this.map.outdoor && !this.map.underwater ? (p.boat ? 'boat' : this.canSwim ? 'swim' : null) : null;
     if (!this.blocked(ent.x + dx, ent.y, r, mode)) ent.x += dx;
     if (!this.blocked(ent.x, ent.y + dy, r, mode)) ent.y += dy;
@@ -1176,10 +1193,14 @@ export class World {
 
   // 이동 포탈로 건너간다: 도착한 포탈 바로 앞(남쪽)에 선다. 부하 · 소환수도 함께 온다
   teleportTo(id) {
-    const o = this.objects.find((q) => q.kind === 'waypoint' && q.id === id && q.active), p = this.player;
-    if (!o || p.boat || p.swim) return false;
+    const o = this.objects.find((q) => q.kind === 'waypoint' && q.id === id && q.active);
+    return !!o && this.warpTo(o.x, o.y + 18, o);
+  }
+  // (x, y) 근처의 빈 땅으로 건너간다 (포탈 · 성지 길). o: 도착 연출의 기준 (없으면 그 자리)
+  warpTo(x, y, o = { x, y }) {
+    const p = this.player;
+    if (p.boat || p.swim) return false;
     this.emit({ t: 'wpLeave', x: p.x, y: p.y });
-    let x = o.x, y = o.y + 18;
     if (this.blocked(x, y, p.r)) for (let a = 0; a < 16; a++) { const tx = o.x + Math.cos((a / 16) * Math.PI * 2) * 24, ty = o.y + 6 + Math.sin((a / 16) * Math.PI * 2) * 20; if (!this.blocked(tx, ty, p.r)) { x = tx; y = ty; break; } }
     p.x = x; p.y = y; p.dashT = 0; p.dvx = 0; p.dvy = 0; p.channel = null; p.motion = null; p.combo = null; p.dance = null; p.rush = null; p.leap = null; p.soar = null;
     for (const al of this.allies) { al.x = x + this.rng.range(-16, 16); al.y = y + 8 + this.rng.range(0, 10); }
@@ -1195,6 +1216,10 @@ export class World {
     return false;
   }
   interact(o) {
+    { // 해방되지 않은 체계 · 들어가는 곳
+      const lock = this.locks && (o.kind === 'boat' ? this.locks.text('systems', 'sailing') : o.kind === 'sanctum' ? this.locks.text('systems', 'sanctum') : o.kind === 'spirit' || o.kind === 'spiritKing' ? this.locks.text('systems', 'spirit') : o.kind === 'entrance' ? this.locks.text('entrances', o.id) : null);
+      if (lock) { this.sealed(lock); return; }
+    }
     if (o.kind === 'portal') { this.state = 'done'; return; }
     if (o.kind === 'boat') { const p = this.player; p.boat = o; o.riding = true; p.x = o.x; p.y = o.y; p.swim = false; this.emit({ t: 'boatOn', x: o.x, y: o.y }); return; }
     if (o.kind === 'palaceGate') { this.signals.push({ t: 'enterZone', entrance: 'palace', x: o.x, y: o.y }); return; }
@@ -1654,6 +1679,7 @@ export class World {
   toggleMount() {
     const p = this.player;
     if (p.riding) { this.dismount(); return; }
+    { const lock = this.locks?.text('systems', 'mount'); if (lock) { this.sealed(`탈것 — ${lock}`); return; } }
     if (!this.mountKind) { this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '탈것이 없다 (거대 둥지에서 길들인다)', color: '#a8b0c0' }); return; }
     if (!this.map.outdoor || this.map.underwater || p.swim || p.boat || p.castT > 0 || p.channel) { this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '여기서는 탈 수 없다', color: '#a8b0c0' }); return; }
     p.riding = this.mountKind; this.emit({ t: 'mountOn', x: p.x, y: p.y });
