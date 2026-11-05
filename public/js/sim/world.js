@@ -3222,7 +3222,7 @@ export class World {
           else if (pr.noTrigger) this.damageEnemy(e, pr.dmg, pr.type, { src: 'aoe' });
           else {
             const dist = pr.ox != null ? Math.hypot(e.x - pr.ox, e.y - pr.oy) : 100;
-            const range = pr.boomerang ? 1 : dist < 40 ? 0.7 : dist > 70 ? 1.1 : 1;
+            const range = pr.boomerang ? 1 : this.b.wcat === 'bow' ? 0.8 + 0.6 * Math.max(0, Math.min(1, (dist - 40) / 180)) /* 활: 멀리서 맞힐수록 세다 (40px 0.8배 → 220px 1.4배) */ : dist < 40 ? 0.7 : dist > 70 ? 1.1 : 1;
             this.hitEnemy(e, pr.dmg * range, pr.type, pr.heavy, true, { dist, weapon: pr.weaponHit });
           }
           if (pr.splash) { this.emit({ t: 'ring', x: pr.x, y: pr.y, r: pr.splash, color: pr.color }); for (const o of this.enemiesNear(pr.x, pr.y, pr.splash)) if (o !== e) this.damageEnemy(o, pr.dmg * 0.7, pr.type, { src: 'aoe' }); }

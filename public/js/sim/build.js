@@ -272,11 +272,12 @@ export function weaponFamily(it) {
   return c;
 }
 export const FAMILY_NAME = { magic: '마법 무기', dagger: '단검', sword: '검', axe: '도끼', blunt: '둔기', throw: '던지는 무기', whip: '채찍' };
-// 양손 무기: 쌍검은 빠르게, 무거운 것은 세게, 활 · 지팡이는 조금 세게
+// 양손 무기: 쌍검은 빠르게, 무거운 것은 세게, 활 · 지팡이는 조금 세게 (활은 멀리서 쏠수록 더: world.js 탄 맞음)
 export function twoHandBonus(id, it) {
   const c = weaponCat(it);
   if (/dual|twin/i.test(id) || it.weapon?.dual) return { atkSpeed: 1.15, text: '양손 쌍검: 공격 속도 +15%' };
-  if (['bow', 'tube', 'staff'].includes(c)) return { dmgMul: 1.08, text: '양손 원거리 무기: 피해 +8%' };
+  if (c === 'bow') return { dmgMul: 1.08, text: '활: 피해 +8% · 멀리서 맞힐수록 세다 (가까이 0.8배 → 멀리 1.4배)' };
+  if (['tube', 'staff'].includes(c)) return { dmgMul: 1.08, text: '양손 원거리 무기: 피해 +8%' };
   if (c === 'fist') return { atkSpeed: 1.08, dmgMul: 1.05, text: '양손 주먹: 공격 속도 +8% · 피해 +5%' };
   if (c === 'shield') return { dmgMul: 1.12, text: '검과 방패: 피해 +12%' }; // 왼손은 방패가 차지한다 (양손 무기는 아니다)
   return { dmgMul: 1.12, text: '양손 무기: 피해 +12%' };
