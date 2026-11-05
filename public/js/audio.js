@@ -50,6 +50,8 @@ export function unlockAudio() {
     fetch('assets/sfx/' + f).then((r) => r.arrayBuffer()).then((a) => ctx.decodeAudioData(a)).then((b) => buffers.set(f, b)).catch(() => {});
   }
   if (pendingMusic) startMusic(pendingMusic);
+  // 탭이 숨으면 소리 시계를 멈춘다: 브라우저가 타이머를 늦춰 음악이 끊기고 엇박이 나던 것 (돌아오면 그 자리부터 이어서)
+  document.addEventListener('visibilitychange', () => { if (document.hidden) ctx.suspend(); else ctx.resume(); });
 }
 
 // 합성 효과음: 시전(차오르는 소리) · 스킬(휘익) — 예전엔 창 열기 · 닫기 소리를 썼다
@@ -176,7 +178,7 @@ export function startMusic(id) {
     }
   };
   sched();
-  music = { id, bus, lp, delay, timer: setInterval(sched, 60) };
+  music = { id, bus, lp, delay, fb, timer: setInterval(sched, 60) };
 }
 
 export function stopMusic() {
@@ -184,5 +186,5 @@ export function stopMusic() {
   clearInterval(music.timer);
   const old = music; music = null;
   try { old.bus.gain.cancelScheduledValues(ctx.currentTime); old.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.25); } catch { /* 무시 */ }
-  setTimeout(() => { try { old.bus.disconnect(); old.delay.disconnect(); } catch { /* 무시 */ } }, 1500);
+  setTimeout(() => { try { old.bus.disconnect(); old.delay.disconnect(); old.fb.disconnect(); } catch { /* 무시 */ } }, 1500);
 }

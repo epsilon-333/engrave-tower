@@ -107,8 +107,8 @@ export function setupTouch({ input, getWorld, onMenu, onBag, onInteract }) {
         el.hidden = !id;
         if (!id) continue;
         const sk = SKILLS[id];
-        const nm = id === 'weapon' ? '무기' : sk.name.slice(0, 4);
-        if (el.textContent !== nm) el.textContent = nm;
+        const nm = id === 'weapon' ? '무기' : sk.name; // 이름을 자르지 않는다 (긴 이름은 글자를 줄여 두 줄로)
+        if (el.textContent !== nm) { el.textContent = nm; el.classList.toggle('long', nm.length > 4); }
         const cd = id === 'weapon' ? p.skillCd : p.cds[id] || 0;
         const need = sk ? (sk.costAll ? sk.costAll.min : sk.cost || 0) : 0;
         el.classList.toggle('cool', cd > 0 || need > p.res);

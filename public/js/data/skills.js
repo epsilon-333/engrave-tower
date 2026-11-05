@@ -33,7 +33,6 @@ export const CLASS_TAGS = {
   necromancer: ['curse', 'poison', 'undying'], hexer: ['curse', 'poison'],
   shadowblade: ['shadow', 'bleed'], venomHunter: ['poison', 'shadow'],
   spiritcaller: ['wind', 'fire'], ranger: ['wind', 'bleed'],
-  rockguard: ['reflect', 'giant', 'slime'], frostGolem: ['ice', 'giant'],
   dragoon: ['fire', 'brawl'], dragonSage: ['fire', 'curse'],
 };
 export const CLASSES = {
@@ -65,10 +64,6 @@ export const CLASSES = {
     skills: ['summonSpirit', 'spiritAbsorb', 'spiritEmpower', 'spiritArrow', 'spiritGuard', 'spiritKing'] },
   ranger: { race: 'elf', name: '숲의 사수', desc: '멈춰서 집중하고 멀리서 꿰뚫는다.', trait: '가만히 서 있으면 집중이 쌓인다(0.5초마다 1단계, 최대 3). 다음 사격 피해 단계당 +25%.', weapons: ['rangerBow', 'galeLongbow'], style: 'wind',
     skills: ['pierceArrow', 'windStep', 'vineSnare', 'pushArrow', 'aimedShot', 'skyPiercer'] },
-  rockguard: { race: 'golem', name: '바위 수호자', desc: '무엇이든 버티고 되돌려준다.', weapons: ['rockFist', 'mountainHeart'], style: 'mirror',
-    skills: ['stoneSkin', 'reflectCrystal', 'quake', 'crystalPrison', 'rockTremor', 'colossus'] },
-  frostGolem: { race: 'golem', name: '얼음 골렘', desc: '둔화시키고 얼린 뒤 깨부순다.', weapons: ['iceFist', 'permafrostCore'], style: 'frost',
-    skills: ['iceChunk', 'frostField', 'frostCharge', 'iceArmor', 'glacialSpikes', 'absoluteZero'] },
   dragoon: { race: 'dragon', name: '화룡 전사', desc: '날아올라 내리꽂고, 적을 낚아채 떨어뜨린다.', trait: '불타는 적에게 주는 피해 +15% (용족).', weapons: ['dragonSpear', 'wyrmFang'], style: 'fire',
     skills: ['breath', 'dragonClaw', 'soar', 'snatch', 'scales', 'dragonForm'] },
   dragonSage: { race: 'dragon', name: '용언 술사', desc: '용의 말을 이어 문장을 만든다.', trait: '용언 스킬을 쓸 때마다 단어가 쌓이고, 3개가 차면 문장이 발동한다. 첫 단어가 문장의 몸통이라 순서가 바뀌면 다른 문장이 된다. 마력 언령(불 · 하늘)은 마력으로, 정신 언령(비늘 · 대지 · 날개)은 정신으로 힘이 정해진다. 같은 단어는 강세, 같은 계열은 합성, 다른 계열을 아무렇게나 이으면 말이 엇갈려 약해진다. 용의 혀로만 말할 수 있어 다른 종족은 배우지 못한다.', weapons: ['dragonTome', 'elderHeartstone'], style: 'fire',
@@ -423,6 +418,9 @@ for (const [cid, c] of Object.entries(CLASSES)) {
     sk.cls = cid; sk.race = c.race; sk.unlock = UNLOCKS[i];
   });
 }
+// 야생 스킬: 어느 클래스에도 속하지 않고 몬스터 부산물 각인으로만 배운다 (예전 골렘족 클래스의 스킬)
+export const WILD_SKILLS = [...['stoneSkin', 'reflectCrystal', 'quake', 'crystalPrison', 'rockTremor', 'colossus'], ...['iceChunk', 'frostField', 'frostCharge', 'iceArmor', 'glacialSpikes', 'absoluteZero']];
+WILD_SKILLS.forEach((sid, i) => { const sk = SKILLS[sid]; if (!sk) throw new Error('missing skill ' + sid); sk.cls = 'wild'; sk.race = 'wild'; sk.unlock = UNLOCKS[i % 6]; });
 for (const sk of Object.values(SKILLS)) if (sk.engraving) sk.race = 'engraving';
 for (const sk of Object.values(SKILLS)) if (sk.general) sk.race = 'general';
 
@@ -720,13 +718,11 @@ const MORE_SKILLS = {
     galeShot: { name: '질풍 사격', role: '마무리', cd: 12, cost: 30, scale: 'phys', fx: 'arrow', mo: 'shoot', unlock: 30,
       desc: '모두 꿰뚫는 화살 다섯 발을 부채꼴로 쏜다. 정령력 30.', do: [{ op: 'proj', n: 5, spread: 0.08, speed: 440, range: 280, mul: 1.0, pierce: 99, kind: 'arrow' }] },
   },
-  rockguard: {
+  wild: { // 야생 스킬 (부산물 각인으로)
     stoneFist: { name: '바위 주먹', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'smash', unlock: 15,
       desc: '바위 주먹으로 앞을 내리친다. 0.5초 기절. 단단함 +12.', do: [{ op: 'cone', range: 52, angle: 1.6, mul: 1.9, stun: 0.5, fx: 'sweep' }] },
     meteorFall: { name: '운석 낙하', role: '마무리', cd: 15, cost: 35, scale: 'phys', fx: 'meteor', unlock: 30, aim: 'cluster',
       desc: '하늘에서 바위가 떨어져 넓은 범위에 큰 피해 · 0.8초 기절. 단단함 35.', do: [{ op: 'aoe', at: 'aim', r: 70, mul: 3.2, stun: 0.8, delay: 0.5, fx: 'quake' }] },
-  },
-  frostGolem: {
     iceShards: { name: '얼음 파편', role: '공격', cd: 5, gain: 12, elem: 'ice', scale: 'phys', fx: 'ice', unlock: 15,
       desc: '얼음 파편 다섯 개를 부채꼴로 쏜다. 냉기 1중첩. 냉기 +12.', do: [{ op: 'proj', n: 5, spread: 0.2, speed: 300, range: 190, mul: 0.7, stacks: 1, kind: 'ice' }] },
     blizzard: { name: '눈보라', role: '마무리', cd: 15, cost: 35, elem: 'ice', scale: 'phys', fx: 'zero', unlock: 30,
@@ -747,7 +743,8 @@ const MORE_SKILLS = {
 };
 for (const [cls, list] of Object.entries(MORE_SKILLS)) {
   Object.assign(SKILLS, list);
-  for (const [id, sk] of Object.entries(list)) { sk.cls = cls; sk.race = CLASSES[cls].race; sk.kind ||= ['wizard', 'undead'].includes(sk.race) || ['spiritcaller', 'dragonSage'].includes(cls) ? 'spell' : 'body'; if (!CLASSES[cls].skills.includes(id)) CLASSES[cls].skills.push(id); }
+  const c = CLASSES[cls]; // wild: 클래스 없음
+  for (const [id, sk] of Object.entries(list)) { sk.cls = cls; sk.race = c ? c.race : 'wild'; sk.kind ||= ['wizard', 'undead'].includes(sk.race) || ['spiritcaller', 'dragonSage'].includes(cls) ? 'spell' : 'body'; if (c && !c.skills.includes(id)) c.skills.push(id); if (!c) WILD_SKILLS.push(id); }
 }
 
 // ── 스킬 부하: 센 스킬일수록 무겁다. 장착한 스킬 부하의 합은 레벨에 따른 한도를 넘을 수 없다 ──

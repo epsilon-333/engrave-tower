@@ -564,7 +564,7 @@ export function buildOverworld(zone) {
     else if (BI[k] >= 0) regions[k] = gr[k] === G.SAND && BI[k] !== B.lake && t[k] === T_FLOOR && LV[k] === 0 && BI[k] !== B.wasteland ? R_COAST : BI[k];
     else regions[k] = R_COAST;
   }
-  const regionInfo = OW_PLACES.map((name, r) => ({ name, x: 0, y: 0, place: true, types: r < BIOMES.length ? BIOMES[r].pool : ['slime', 'toad'], lv: (r < BIOMES.length && BIOMES[r].lv) || [1, 3], lvShow: r < BIOMES.length && !!BIOMES[r].lv })); // lv: 권장 레벨 (몬스터 강함)
+  const regionInfo = OW_PLACES.map((name, r) => ({ name, x: 0, y: 0, place: true, types: r < BIOMES.length ? BIOMES[r].pool : ['slime', 'toad'], lv: (r < BIOMES.length && BIOMES[r].lv) || [1, 3], lvShow: r < BIOMES.length && !!BIOMES[r].lv, town: r === R_VILLAGE })); // lv: 권장 레벨 (몬스터 강함) · town: 마을 안은 불이 번지지 않는다
   const camps = [];
   for (let a = 0; a < 40000 && camps.length < 300; a++) {
     const x = rng.int(6, TW - 7), y = rng.int(6, TH - 7), k = I(x, y), r = regions[k];

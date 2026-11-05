@@ -27,7 +27,7 @@ const { LABY_ZONE, PALACE_ZONE } = await import(J('data/maps/interiors.js'));
 const { SEABED_ZONE } = await import(J('data/maps/seabed.js'));
 const { ARENA_SETS } = await import(J('data/maps/arena.js'));
 
-const RACE_IDS = Object.keys(RACES).filter((r) => r !== 'golem'); // 골렘족은 데이터에만 남아 있고 고를 수 없다
+const RACE_IDS = Object.keys(RACES);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const statName = (k) => ST.STAT_INFO[k]?.name || ST.SPECIAL_INFO[k]?.name || { pres: '물리 저항', mres: '마법 저항' }[k] || k;
 const stats = (o) => Object.entries(o || {}).filter(([, v]) => v).map(([k, v]) => `${statName(k)} ${v > 0 ? '+' : ''}${v}`).join(' · ');
@@ -301,7 +301,7 @@ html { scroll-behavior: smooth; }
   <main>
     <header class="top"><h1>각인의 탑 전체 내용</h1>
       <p>게임 데이터에서 그대로 뽑은 정리본입니다. 종족 · 클래스 · 스킬 · 장비 · 각인 · 몬스터 · 지역 · 성지 · 수련 · 생활 · 이야기를 모두 담았습니다.</p>
-      <p class="meta">${now} 기준 · 종족 ${RACE_IDS.length} · 클래스 ${Object.values(CLASSES).filter((c) => c.race !== 'golem').length} · 스킬 ${Object.keys(SKILLS).length} · 장비 ${Object.keys(ITEMS).length} · 각인 ${Object.keys(ENGRAVINGS).length} · 몬스터 ${Object.keys(MONSTERS).length} · 물고기 ${Object.keys(G.FISH).length} · 물건 ${Object.keys(G.GOODS).length}</p></header>
+      <p class="meta">${now} 기준 · 종족 ${RACE_IDS.length} · 클래스 ${Object.keys(CLASSES).length} · 스킬 ${Object.keys(SKILLS).length} · 장비 ${Object.keys(ITEMS).length} · 각인 ${Object.keys(ENGRAVINGS).length} · 몬스터 ${Object.keys(MONSTERS).length} · 물고기 ${Object.keys(G.FISH).length} · 물건 ${Object.keys(G.GOODS).length}</p></header>
     ${body}
   </main>
 </div>`;

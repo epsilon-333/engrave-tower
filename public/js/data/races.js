@@ -71,16 +71,6 @@ export const RACES = {
     passive: '정령의 벗',
     res: { key: 'spirit', name: '정령력', color: '#7be38a', regen: 5, hit: 3, kill: 5 },
   },
-  golem: {
-    name: '골렘족', origin: '산맥',
-    desc: '돌로 된 몸. 받는 물리 피해 -15%, 밀려나지 않는다. 맞을수록, 시간이 지날수록 암석 에너지가 쌓인다.',
-    strong: '체력 · 물리 저항 · 근력', weak: '아주 느림 · 회피 없음',
-    base: { str: 13, mag: 4, agi: 3, vit: 17, sen: 5, spi: 7, pres: 18, mres: 9 },
-    growth: { vit: 1 },
-    mult: {}, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
-    passive: '바위 몸',
-    res: { key: 'stone', name: '암석 에너지', color: '#c8b088', regen: 3, hit: 3, kill: 5, hurt: 100 },
-  },
   dragon: {
     name: '용족', origin: '화산',
     desc: '불을 다루는 고대 혈통. 화상에 면역이고, 불타는 적에게 주는 피해 +15%. 불타는 적이 있을 때 용기가 차오른다.',

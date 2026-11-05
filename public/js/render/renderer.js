@@ -1569,7 +1569,7 @@ export class Renderer {
       if (dt > 0 && Math.random() < 0.08) this.parts.push({ x: tx, y: ty + 1, vx: -p.dir * 4, vy: -1, t: 0.4, max: 0.4, color: '#8a7a66', g: 0, dust: true, v: (Math.random() * 4) | 0 });
       if (dt > 0 && Math.random() < 0.3) this.fx.push({ k: 'scrape', x: tx, y: ty + 1, t: 0.6, max: 0.6 });
     }
-    const busy = p.gather || p.fish, hideW = busy || p.swim || p.riding; // 헤엄칠 때는 무기를 들지 않는다
+    const busy = p.gather || p.fish, hideW = busy || p.swim || p.riding || blink; // 헤엄칠 때는 무기를 들지 않는다 · 무적 깜빡임은 무기 · 방패도 함께 (몸만 사라져 칼이 떠 보이지 않게)
     if (p.boat) this.drawBoat(w, p.x, p.y, p.dir, p.moving, 'back');
     if (w.map.underwater && dt > 0 && Math.random() < dt * 1.6) this.parts.push({ x: bx + p.dir * 3, y: by - 14, vx: (Math.random() - 0.5) * 6, vy: -26 - Math.random() * 14, t: 1.4, max: 1.4, color: '#e0f6ff', g: -6, bubble: true });
     const wart = weaponArt(w.b.weaponId, ITEMS);
@@ -4332,7 +4332,7 @@ export class Renderer {
     if (face) { g.imageSmoothingEnabled = false; const fs = Math.floor((pw - 4 * u) / 16); g.drawImage(face, Math.round((face.width - 16) / 2), face.height - 24, 16, 16, fx + (pw - 16 * fs) / 2, fy + (pw - 16 * fs) / 2, 16 * fs, 16 * fs); }
     const bx = fx + pw + 6 * u, m0 = fy;
     this.panel(bx, m0, bw, bh);
-    const hpK = Math.max(0, p.hp / d.maxHp);
+    const hpK = Math.max(0, Math.min(1, p.hp / d.maxHp));
     g.fillStyle = '#3a1016'; g.fillRect(bx + u, m0 + u, bw - 2 * u, bh - 2 * u);
     g.fillStyle = hpK < 0.3 && Math.floor(w.t * 3) % 2 ? '#e8404c' : '#c8303c'; g.fillRect(bx + u, m0 + u, (bw - 2 * u) * hpK, bh - 2 * u);
     g.fillStyle = '#ff6a6a'; g.fillRect(bx + u, m0 + u, (bw - 2 * u) * hpK, 2 * u);
@@ -4376,9 +4376,9 @@ export class Renderer {
     }
     if (Object.keys(p.buffs).length) ry += desk ? -10 * u : 10 * u;
     // 상태이상
-    const names = { burn: ['화상', '#ff7a2a', '불에 데어 잠깐 동안 계속 피해를 받는다. 물에 들어가면 꺼진다.'], poison: ['중독', '#9be15d', '독이 퍼져 잠깐 동안 계속 피해를 받는다.'], bleed: ['출혈', '#e0445a', '피를 흘려 잠깐 동안 계속 피해를 받는다. 겹칠수록 세다.'], chill: ['냉기', '#9fe3ff', '몸이 얼어 이동 · 공격이 느려진다.'] };
+    const names = { burn: ['화상', '#ff7a2a', '불에 데어 잠깐 동안 계속 피해를 받는다. 물에 들어가면 꺼진다.'], poison: ['중독', '#9be15d', '독이 퍼져 잠깐 동안 계속 피해를 받는다.'], bleed: ['출혈', '#e0445a', '피를 흘려 잠깐 동안 계속 피해를 받는다. 겹칠수록 세다.'], chill: ['냉기', '#9fe3ff', '몸이 얼어 이동 · 공격이 느려진다.'], curse: ['저주', '#c45cff', '저주가 몸을 갉아 잠깐 동안 계속 피해를 받는다.'], shock: ['감전', '#ffe14a', '몸이 저려 받는 피해가 15% 늘어난다.'] };
     let sxx = bx;
-    for (const k of Object.keys(p.st)) { const nm = names[k] || [k, '#ffffff', '']; this.text(nm[0], sxx, ry + 5 * u, u, nm[1]); tips.push({ x: sxx, y: ry, w: 26 * u, h: 10 * u, title: nm[0], color: nm[1], lines: [nm[2]].filter(Boolean), left: p.st[k]?.t }); sxx += 30 * u; }
+    for (const k of Object.keys(p.st)) { const nm = names[k] || ['상태이상', '#ffffff', '']; this.text(nm[0], sxx, ry + 5 * u, u, nm[1]); tips.push({ x: sxx, y: ry, w: 26 * u, h: 10 * u, title: nm[0], color: nm[1], lines: [nm[2]].filter(Boolean), left: p.st[k]?.t }); sxx += 30 * u; }
     this.drawSkillBar(w);
     // 데스크톱: 미니맵 아래 정보띠(시계 · 골드 · 지역)에 시계를 넣고, 여정은 그 밑 오른쪽 (퀘스트 추적 칸)
     if (desk && w.mode === 'field') { this.drawMinimap(w); this.hudRightY = this.hudRightBottom || 120 * u; }
@@ -4518,6 +4518,12 @@ export class Renderer {
       this.banner.t -= dt;
       g.globalAlpha = Math.min(1, this.banner.t * 1.5);
       const bY = Math.max(H * 0.22, boss ? topY + 64 * u : w.climb ? topY + 44 * u : 0); // 보스 체력바 · 등반 글 아래로
+      { // 뒤에 옅은 어둠 띠: 세계 위의 이름표 · 글과 겹쳐 읽히지 않게
+        g.font = `bold ${33 * u}px ${FONT}`; const tw = g.measureText(this.banner.text).width;
+        g.font = `${11 * u}px ${FONT}`; const sw = this.banner.sub ? g.measureText(this.banner.sub).width : 0;
+        const bw = Math.min(W - 8 * u, Math.max(tw, sw) + 40 * u), bh = (this.banner.sub ? 52 : 40) * u;
+        const a0 = g.globalAlpha; g.globalAlpha = a0 * 0.55; g.fillStyle = '#0c0a0b'; g.fillRect(Math.round(W / 2 - bw / 2), Math.round(bY - 22 * u), Math.round(bw), Math.round(bh)); g.globalAlpha = a0;
+      }
       this.text(this.banner.text, W / 2, bY, 3 * u, this.banner.color, 'center', true, true);
       if (this.banner.sub) this.text(this.banner.sub, W / 2, bY + 26 * u, u, '#dcd2c6', 'center');
       g.globalAlpha = 1;

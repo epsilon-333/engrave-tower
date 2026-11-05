@@ -186,7 +186,6 @@ export function computeBuild(lo) {
   if (lo.race === 'wizard') { d.reactionMul *= 1.5; d.skillCdMul *= 0.75; }
   if (lo.race === 'knight') d.moveSpeed *= 0.92;
   if (lo.race === 'undead') d.moveSpeed *= 0.95;
-  if (lo.race === 'golem') d.moveSpeed *= 0.85;
   const flags = new Set();
   const triggers = { hit: [], kill: [], hurt: [], hurtMag: [], dodge: [], crit: [], dash: [], shield: [], awaken: [], cast: [] };
   // 공격 %는 곱하지 않고 더한다: 각성 · 각인 · 장비의 「공격력 +N%」 「모든 피해 +N%」가 서로 곱해져 높은 층에서 폭발하던 것 (+10%와 +15% = +25%)
@@ -217,7 +216,6 @@ export function computeBuild(lo) {
   if (wpn.crit) d.crit = Math.min(0.9, d.crit + wpn.crit);
   if (wpn.critDmg) d.critDmg += wpn.critDmg;
   if (flags.has('noAimSlow')) d.aimSlow = 1;
-  if (lo.race === 'golem') d.dodge = 0;
 
   // 액티브 스킬: 각인 칸 Q · E · R · F에 장착한 각인의 스킬 (빈 칸은 비워 둔다). 탑 등반에서 새긴 각인의 스킬은 빈 칸을 채운다
   // allSkills(연습 · 시뮬레이션)일 때만 예전처럼 클래스 스킬에서 고른다
@@ -280,6 +278,7 @@ export function twoHandBonus(id, it) {
   if (/dual|twin/i.test(id) || it.weapon?.dual) return { atkSpeed: 1.15, text: '양손 쌍검: 공격 속도 +15%' };
   if (['bow', 'tube', 'staff'].includes(c)) return { dmgMul: 1.08, text: '양손 원거리 무기: 피해 +8%' };
   if (c === 'fist') return { atkSpeed: 1.08, dmgMul: 1.05, text: '양손 주먹: 공격 속도 +8% · 피해 +5%' };
+  if (c === 'shield') return { dmgMul: 1.12, text: '검과 방패: 피해 +12%' }; // 왼손은 방패가 차지한다 (양손 무기는 아니다)
   return { dmgMul: 1.12, text: '양손 무기: 피해 +12%' };
 }
 // 같은 계열 한손 무기 둘: 살짝만 강해진다

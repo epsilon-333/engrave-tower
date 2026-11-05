@@ -46,6 +46,8 @@ import { monsterStage, placeKey, STAGE_KILLS } from '../data/codex.js';
 
 export { TILE };
 export const DT = 1 / 60;
+// 플레이어에게 걸리는 상태이상의 길이(초)
+const PLAYER_STATUS_DUR = { burn: 3, poison: 4, bleed: 3, chill: 2, curse: 5, shock: 2 };
 // 스킬 예비 동작(초): 이만큼 몸을 움직인 뒤 효과가 나간다
 const WINDUP = { blow3: 0.08, throw: 0.12, throwBig: 0.2, shoot: 0.12, overhead: 0.3, sweep: 0.18, claw: 0.08, bite: 0.08, headbutt: 0.1, bash: 0.1, roar: 0.14, stomp: 0.2, point: 0.06, power: 0.15, stab: 0.06 };
 // 스킬 몸 동작 길이(초)
@@ -436,6 +438,7 @@ export class World {
   }
   igniteTile(k, direct = false) { // direct: 불꽃이 바로 닿았다 (낮은 풀도 반은 붙는다)
     const g = this.map.ground;
+    if (this.map.regionInfo?.[this.map.regions?.[k]]?.town) return; // 마을 안(밭 · 집 둘레)은 타지 않는다
     if (this.tiles[k] === T_FLOOR && (g[k] === G.ICE || g[k] === G.THIN) && this.frozen.has(k)) { this.thawTile(k); return; }
     if (this.tiles[k] !== T_FLOOR || this.burning.has(k) || !(g[k] === G.TALL || g[k] === G.FLOWER || g[k] === G.DEADGRASS || (g[k] === G.GRASS || g[k] === G.FOREST || g[k] === G.JUNGLE) && this.rng.chance(direct ? 0.55 : 0.25))) return;
     this.burnStart(k);
@@ -3555,6 +3558,7 @@ export class World {
     if (this.state !== 'play' || this.mode === 'plaza' || this.practice || p.down) return;
     if ((p.airT > 0 || p.leap) && !opt.direct) return;
     if (p.markT > 0 && !this.coTgt) amount *= 1.3; // 보스의 저주의 표식
+    if (p.st.shock) amount *= 1.15; // 감전: 받는 피해 +15% (적과 같은 규칙)
     if (p.riding && amount > this.d.maxHp * 0.08 && !opt.direct) { this.dismount(); this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '랩터에서 떨어졌다!', color: '#ffb0a0' }); }
     // 수호기사: 정면 공격은 25% 덜 받고 오러를 얻는다. 철벽 중에는 완전히 막는다
     let front = false;
@@ -3606,7 +3610,6 @@ export class World {
       if ((vx * p.aimX + vy * p.aimY) / l > 0.25) { dmg *= 1 - this.b.weapon.guard; this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
     }
     if (p.charging) dmg *= 0.75;
-    if (this.b.race === 'golem' && type === 'phys') dmg *= 0.85;
     if (p.buffs.stoneSkin && type === 'phys') dmg *= 1 - 60 / (60 + 100 + Math.max(0, this.s.pres));
     if (this.zones.some((z) => z.kind === 'sanctuary' && Math.hypot(p.x - z.x, p.y - z.y) < z.r)) dmg *= 0.6;
     dmg = Math.max(dmg, raw * 0.3); // 방어 · 감소를 아무리 쌓아도 받는 피해는 30% 밑으로 내려가지 않는다
@@ -3657,9 +3660,9 @@ export class World {
     if (this.f.has('statusImmune') || this.mode === 'plaza') return;
     if (this.b.race === 'undead' && (kind === 'poison' || kind === 'bleed')) return;
     if (this.b.race === 'dragon' && kind === 'burn') return;
-    const dur = { burn: 3, poison: 4, bleed: 3, chill: 2 }[kind] * (1 - this.d.statusRes);
-    if (dur <= 0.05) return;
-    const dps = kind === 'chill' ? 0 : power * 0.18 * (1 - this.d.statusRes * 0.5);
+    const dur = (PLAYER_STATUS_DUR[kind] ?? 3) * (1 - this.d.statusRes); // 표에 없는 상태도 끝이 있다 (예전: 저주 · 감전은 NaN이라 영영 안 풀렸다)
+    if (!(dur > 0.05)) return;
+    const dps = kind === 'chill' || kind === 'shock' ? 0 : power * 0.18 * (1 - this.d.statusRes * 0.5);
     this.player.st[kind] = { t: dur, dps };
   }
 
@@ -3874,6 +3877,7 @@ export class World {
     const f = this.flow, tw = this.tw, th = this.th;
     f.fill(-1);
     const px = Math.floor(this.player.x / TILE), py = Math.floor(this.player.y / TILE);
+    if (!(px >= 0 && py >= 0 && px < tw && py < th)) return; // 맵 밖 · NaN: 거리장을 비워 둔다 (큐가 끝없이 늘지 않게)
     const q = [py * tw + px]; f[q[0]] = 0;
     for (let h = 0; h < q.length; h++) {
       const i = q[h], x = i % tw, y = (i / tw) | 0, dv = f[i];
@@ -4256,7 +4260,7 @@ export class World {
       this.delayed.push({ t: 1.4, run: () => { this.enemyArea(e, x, y, 110, atk * 3, 'mag'); this.emit({ t: 'skillAoe', x, y, r: 110, elem: 'dark', fx: 'doom', ult: true }); } });
     }
     if (e.kit) for (const o of this.enemies) if ((o.decoyOf === e.id || o.ritualOf === e.id) && !o.dead) { o.dead = true; this.emit({ t: 'death', x: o.x, y: o.y, color: o.def.pal.a, defId: o.defId, dir: o.dir }); } // 수호자가 쓰러지면 분신 · 제물도 사라진다
-    if (e.npcRef) { e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: '#c8a888', defId: e.defId, dir: e.dir }); npcDown(this, e); this.loot.gold += 5 + Math.floor(Math.random() * 20); return; } // 공격한 NPC는 기절했다 돌아온다
+    if (e.npcRef) { e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: '#c8a888', defId: e.defId, dir: e.dir }); npcDown(this, e); this.loot.gold += 5 + Math.floor(this.rng.next() * 20); return; } // 공격한 NPC는 기절했다 돌아온다
     if (e.official && !e.finish) {
       e.hp = 1; e.begging = true; e.st = { stun: 9999 }; e.windT = 0; e.state = 'idle';
       if (!e.beggedSent) { e.beggedSent = true; this.signals.push({ t: 'officialDown', id: e.official, eid: e.id }); this.emit({ t: 'text', x: e.x, y: e.y - 24, text: '살려 주시오!', color: '#ffe8a8' }); }

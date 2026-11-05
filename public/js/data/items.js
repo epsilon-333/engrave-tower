@@ -165,12 +165,8 @@ Object.assign(ITEMS, {
   viperBlowgun: W('venomHunter', '독사 송곳 바람총', { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 0.5, speed: 2.8, projSpeed: 360, range: 200, count: 2, spread: 0.1, onHit: { status: 'poison', stacks: 1, chance: 1 }, skill: 'volley' }, { agi: 5, toxicity: 5 }, { price: 290, tags: ['poison'], boost: { venomBurst: 0.4, dartFan: 0.45 }, bdesc: '「맹독 폭발」 +40% · 「독침 난사」 +45%' }),
   spiritBow: W('spiritcaller', '정령의 활', { kind: 'proj', dmg: 'mag', mul: 1.0, speed: 1.6, projSpeed: 300, range: 200, projKind: 'arrow', skill: 'volley' }, { mag: 2, agi: 2 }),
   worldTreeBow: W('spiritcaller', '세계수 장궁', { kind: 'proj', dmg: 'mag', mul: 1.35, speed: 1.6, projSpeed: 330, range: 220, pierce: 1, projKind: 'arrow', skill: 'rain' }, { mag: 6, agi: 3 }, { price: 300, tags: ['wind'], boost: { spiritArrow: 0.45, spiritKing: 0.35 }, bdesc: '「정령의 화살」 +45% · 「정령왕 강림」 +35%' }),
-  rangerBow: W('ranger', '사냥 활', { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 1.3, speed: 1.6, projSpeed: 300, range: 200, pierce: 1, skill: 'volley' }, { sen: 3 }),
+  rangerBow: W('ranger', '숲 사수의 활', { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 1.3, speed: 1.6, projSpeed: 300, range: 200, pierce: 1, skill: 'volley' }, { sen: 3 }),
   galeLongbow: W('ranger', '바람결 장궁', { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 1.5, speed: 1.4, projSpeed: 380, range: 260, pierce: 2, skill: 'rain' }, { sen: 5, agi: 4 }, { price: 300, tags: ['wind'], boost: { pierceArrow: 0.45, skyPiercer: 0.35 }, bdesc: '「관통 화살」 +45% · 「천공의 한 발」 +35%' }),
-  rockFist: W('rockguard', '바위 주먹', { kind: 'melee', dmg: 'phys', mul: 1.15, speed: 1.2, range: 26, arc: 1.8, skill: 'slam' }, { pres: 4 }),
-  mountainHeart: W('rockguard', '산맥의 심장', { kind: 'melee', dmg: 'phys', mul: 1.45, speed: 1.2, range: 28, arc: 2.0, armorBreak: true, skill: 'slam' }, { pres: 10, vit: 4 }, { price: 280, tags: ['reflect', 'giant'], boost: { quake: 0.45, colossus: 0.35 }, bdesc: '「지진 강타」 +45% · 「거신화」 +35%' }),
-  iceFist: W('frostGolem', '얼음 주먹', { kind: 'melee', dmg: 'phys', mul: 1.1, speed: 1.2, range: 26, arc: 1.8, onHit: { status: 'chill', stacks: 1, chance: 0.4 }, skill: 'slam' }, { iceAff: 2 }),
-  permafrostCore: W('frostGolem', '영구 동토의 핵', { kind: 'melee', dmg: 'phys', mul: 1.4, speed: 1.25, range: 28, arc: 2.0, onHit: { status: 'chill', stacks: 1, chance: 0.6 }, skill: 'frostRing' }, { iceAff: 6, pres: 4 }, { price: 290, tags: ['ice'], boost: { glacialSpikes: 0.45, absoluteZero: 0.35 }, bdesc: '「빙하 가시」 +45% · 「절대 영도」 +35%' }),
   dragonSpear: W('dragoon', '용비늘 창', { kind: 'melee', dmg: 'phys', mul: 1.2, speed: 1.3, range: 46, shape: 'thrust', width: 10, onHit: { status: 'burn', stacks: 1, chance: 0.3 }, skill: 'dashStab' }, { str: 2, fireAff: 2 }),
   wyrmFang: W('dragoon', '화룡의 이빨', { kind: 'melee', dmg: 'phys', mul: 1.5, speed: 1.35, range: 50, shape: 'thrust', width: 12, onHit: { status: 'burn', stacks: 1, chance: 0.45 }, skill: 'dashStab' }, { str: 6, fireAff: 4 }, { price: 300, tags: ['fire'], boost: { breath: 0.4, soar: 0.4 }, bdesc: '「화염 숨결」·「비상」 피해 +40%' }),
   dragonTome: W('dragonSage', '용언 마도서', { kind: 'proj', dmg: 'mag', mul: 0.6, speed: 1.4, projSpeed: 230, range: 185, count: 2, spread: 0.18, splash: 20, mana: 6, onHit: { status: 'burn', stacks: 1, chance: 0.35 }, skill: 'nova' }, { mag: 3, fireAff: 2 }),
@@ -183,7 +179,7 @@ const WCAT = {
   blade: ['knightSword', 'rustySword', 'dagger', 'heavySword', 'dualBlades', 'katana', 'rotDagger', 'copperDagger', 'copperSword', 'ironSword', 'silverRapier', 'twinDaggers', 'nightPiercer'],
   great: ['riftGreatsword', 'steelGreatsword', 'mountainCleaver', 'obsidianBlade'],
   axe: ['handAxe', 'battleAxe', 'doubleAxe', 'ironWaraxe', 'twoHandAxe', 'bloodthirstAxe', 'throwHatchet', 'twinReturnAxe'],
-  blunt: ['mace', 'stoneClub', 'tectonicHammer', 'rockFist', 'mountainHeart', 'iceFist', 'permafrostCore'],
+  blunt: ['mace', 'stoneClub', 'tectonicHammer'],
   polearm: ['spear', 'coralTrident', 'dragonSpear', 'wyrmFang'],
   fist: ['boneKnuckle', 'predatorFang'],
   bow: ['huntBow', 'longbow', 'huntersBow', 'rangerBow', 'galeLongbow', 'spiritBow', 'worldTreeBow'],
@@ -197,7 +193,7 @@ for (const [cat, ids] of Object.entries(WCAT)) for (const id of ids) { const it 
 // 한손 · 양손: 한손 무기를 들면 왼손에 보조 도구(부적 · 손쇠뇌 · 작은 방패 · 투척 주머니)를 들 수 있다. 양손 무기는 두 손을 다 쓴다
 export const CAT_HANDS = { blade: 1, axe: 1, blunt: 1, whip: 1, throw: 1, tome: 1, great: 2, polearm: 2, bow: 2, tube: 2, staff: 2, scythe: 2, fist: 2, shield: 2 };
 const HANDS = { // 분류와 다른 것: 쌍검 · 큰 도끼 · 큰 곤봉은 양손, 완드 · 보주 · 홀 · 인형 · 시계추 · 심장석은 한손
-  dualBlades: 2, twinDaggers: 2, katana: 2, doubleAxe: 2, twoHandAxe: 2, bloodthirstAxe: 2, twinReturnAxe: 2, stoneClub: 2, tectonicHammer: 2, rockFist: 2, mountainHeart: 2, iceFist: 2, permafrostCore: 2,
+  dualBlades: 2, twinDaggers: 2, katana: 2, doubleAxe: 2, twoHandAxe: 2, bloodthirstAxe: 2, twinReturnAxe: 2, stoneClub: 2, tectonicHammer: 2,
   apprenticeWand: 1, frostWand: 1, triOrb: 1, cursedDoll: 1, deadScepter: 1, aeonPendulum: 1, elderHeartstone: 1,
 };
 for (const [id, it] of Object.entries(ITEMS)) if (it.weapon && !it.hands) it.hands = HANDS[id] || CAT_HANDS[it.cat] || 1;
@@ -210,7 +206,7 @@ Object.assign(ITEMS, {
   buckler: { name: '작은 방패', slot: 'off', price: 100, stats: { pres: 5 }, tags: [], off: { shield: 1, parry: 1 }, odesc: '방패 · 받아치기 스킬을 온전히 쓴다' },
   knightBuckler: { name: '기사단 원형 방패', slot: 'off', price: 550, stats: { pres: 12, vit: 3 }, tags: [], off: { shield: 1, parry: 1 }, odesc: '방패 · 받아치기 스킬을 온전히 쓴다' },
   throwPouch: { name: '투척 주머니', slot: 'off', price: 90, stats: { str: 1, agi: 1 }, tags: [], off: { throw: 0.85 }, odesc: '던지기 스킬을 85% 힘으로 쓴다' },
-  curseDoll: { name: '저주 인형', slot: 'off', price: 320, stats: { mag: 3, spi: 2 }, tags: ['curse'], off: { spell: 0.85 }, offCurse: { chance: 0.3, stacks: 1 }, odesc: '마법을 85% 힘으로 쓴다 · 내 공격에 맞은 적은 30% 확률로 저주 1중첩 (중첩마다 지속 피해, 받는 피해 +2%)' },
+  curseDoll: { name: '작은 저주 인형', slot: 'off', price: 320, stats: { mag: 3, spi: 2 }, tags: ['curse'], off: { spell: 0.85 }, offCurse: { chance: 0.3, stacks: 1 }, odesc: '마법을 85% 힘으로 쓴다 · 내 공격에 맞은 적은 30% 확률로 저주 1중첩 (중첩마다 지속 피해, 받는 피해 +2%)' },
   knifeBelt: { name: '투척 단검 띠', slot: 'off', price: 550, stats: { agi: 3, sen: 2 }, tags: [], off: { throw: 1 }, odesc: '던지기 스킬을 온전한 힘으로 쓴다' },
 });
 // 장비 값: 예전보다 두 배 (돈이 너무 쉽게 남지 않게)
@@ -227,8 +223,8 @@ export const STYLES = {
   poison: { name: '독살자', desc: '강적 하나에 독을 깊게 쌓아 녹인다', tags: ['poison', 'curse'], weapon: 'mossStaff', stats: ['mag', 'toxicity'], races: { undead: 2, wizard: 1 } },
   shadow: { name: '그림자 암살자', desc: '피하고 파고들어 치명타와 출혈로 벤다', tags: ['shadow', 'bleed'], weapon: 'dagger', stats: ['agi', 'sen'], races: { assassin: 2, dino: 1 } },
   wind: { name: '바람 사수', desc: '계속 움직이며 쏜다', tags: ['wind'], weapon: 'huntBow', stats: ['agi', 'sen'], races: { elf: 2, assassin: 1 } },
-  giant: { name: '거인 파쇄자', desc: '높은 체력으로 버티며 긴 쿨타임의 큰 한 방', tags: ['giant', 'brawl'], weapon: 'heavySword', stats: ['str', 'vit'], races: { golem: 2, orc: 1, knight: 1 } },
+  giant: { name: '거인 파쇄자', desc: '높은 체력으로 버티며 긴 쿨타임의 큰 한 방', tags: ['giant', 'brawl'], weapon: 'heavySword', stats: ['str', 'vit'], races: { orc: 1, knight: 1 } },
   blood: { name: '피의 광전사', desc: '맞으면서 흡혈로 버틴다', tags: ['drain', 'brawl'], weapon: 'handAxe', stats: ['str'], races: { orc: 2, dino: 2 } },
-  mirror: { name: '거울 수호자', desc: '맞을수록 적이 죽는 반사 탱커', tags: ['reflect', 'giant', 'slime'], weapon: 'knightSword', stats: ['pres', 'mres'], races: { knight: 2, golem: 1 } },
+  mirror: { name: '거울 수호자', desc: '맞을수록 적이 죽는 반사 탱커', tags: ['reflect', 'giant', 'slime'], weapon: 'knightSword', stats: ['pres', 'mres'], races: { knight: 2 } },
 };
 

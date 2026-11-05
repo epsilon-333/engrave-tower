@@ -7,7 +7,7 @@ const { World, DT } = await import(root + '/sim/world.js');
 const { computeBuild } = await import(root + '/sim/build.js');
 const { CLASSES, SKILLS } = await import(root + '/data/skills.js');
 const { ZONES } = await import(root + '/data/monsters.js');
-const SKIP = new Set(['golem']);
+const SKIP = new Set();
 const SECS = 30;
 
 function fight(cls, scen, seed, bal) {

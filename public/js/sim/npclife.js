@@ -50,7 +50,8 @@ export function initNpcLife(w) {
   });
   // 역마차: 바깥 세계에서 마을 ↔ 왕도 남문 (길을 따라 · 나무를 피해서)
   if (!w.coach && m.onPath && m.capital?.gates?.s && m.start && w.zone?.id === 'world') {
-    const path0 = roadPath(w, m.start, m.capital.gates.s), path = path0 && path0.slice(4);
+    const path0 = roadPath(w, m.start, m.capital.gates.s), sx = m.start.x * TILE + 8, sy = m.start.y * TILE + 8; // 마차는 시작 자리에서 6칸 넘게 떨어진 길에서 기다린다 (처음 서는 자리와 겹치지 않게)
+    const k0 = path0 ? path0.findIndex((q) => Math.hypot(q.x - sx, q.y - sy) > 6 * TILE) : -1, path = k0 >= 0 && path0.slice(k0);
     if (path && path.length > 20) {
       const coach = { kind: 'coach', x: path[0].x, y: path[0].y, path, i: 0, dirn: 1, dir: 1, vy: 0, wait: 0, label: '역마차 타기 (마을 ↔ 왕도 · ◆ 20)', reusable: true, riders: [] };
       w.objects.push(coach); w.coach = coach;
@@ -291,10 +292,10 @@ function huntTick(w, o, DT) {
   o.swingT = (o.swingT || 0) - DT;
   if (o.swingT <= 0) { // 한 대 (경비는 기술 이름도)
     o.swingT = o.role === 'guard' ? 0.9 : 1.2;
-    const dmg = Math.round((o.role === 'guard' ? 22 : 12) * (0.8 + Math.random() * 0.4));
+    const dmg = Math.round((o.role === 'guard' ? 22 : 12) * (0.8 + w.rng.next() * 0.4));
     e.hp -= dmg; e.hitFlash = 0.12; w.emit({ t: 'dmg', x: e.x, y: e.y - 12, v: dmg, small: true, color: '#e8d8c0' });
-    if (o.role === 'guard' && Math.random() < 0.3) w.emit({ t: 'text', x: o.x, y: o.y - 26, text: ['연속 베기', '돌진 찌르기', '회전 베기'][Math.floor(Math.random() * 3)], color: '#ffd0a0' });
-    if (e.hp <= 0) { e.dead = true; w.emit({ t: 'death', x: e.x, y: e.y, color: e.def.pal?.a || '#a89880', defId: e.defId, dir: e.dir }); o.coins += 4 + Math.floor(Math.random() * 6); o.need.fun = Math.max(0, o.need.fun - 0.3); w.emit({ t: 'text', x: o.x, y: o.y - 26, text: o.role === 'guard' ? '마을은 안전하다' : '잡았다!', color: '#ffe8a8' }); o.prey = null; o.doT = 999; return; }
+    if (o.role === 'guard' && w.rng.next() < 0.3) w.emit({ t: 'text', x: o.x, y: o.y - 26, text: ['연속 베기', '돌진 찌르기', '회전 베기'][Math.floor(w.rng.next() * 3)], color: '#ffd0a0' });
+    if (e.hp <= 0) { e.dead = true; w.emit({ t: 'death', x: e.x, y: e.y, color: e.def.pal?.a || '#a89880', defId: e.defId, dir: e.dir }); o.coins += 4 + Math.floor(w.rng.next() * 6); o.need.fun = Math.max(0, o.need.fun - 0.3); w.emit({ t: 'text', x: o.x, y: o.y - 26, text: o.role === 'guard' ? '마을은 안전하다' : '잡았다!', color: '#ffe8a8' }); o.prey = null; o.doT = 999; return; }
   }
   // 몬스터도 사람을 향해 덤빈다 (내가 멀리 있을 때) · 사람이 다친다
   if (Math.hypot(e.x - w.player.x, e.y - w.player.y) > 200) { e.dir = o.x < e.x ? -1 : 1; e.moving = false; if (d > 12) w.move(e, (o.x - e.x) / d * 40 * DT, (o.y - e.y) / d * 40 * DT); }
@@ -303,13 +304,13 @@ function huntTick(w, o, DT) {
 }
 function gatherTick(w, o, DT) {
   const q = o.patch; q.npcBusy = o; o.gatherT = (o.gatherT || 0) + DT;
-  if (Math.random() < DT * 1.2) w.emit({ t: 'gatherHit', x: q.x, y: q.y - 6, type: q.type, tool: 'hand' });
+  if (w.rng.next() < DT * 1.2) w.emit({ t: 'gatherHit', x: q.x, y: q.y - 6, type: q.type, tool: 'hand' });
   if (o.gatherT < 6) return;
   o.gatherT = 0; q.npcBusy = null;
   const def = NODES[q.type] || {}; q.depleted = true; q.respawnAt = Date.now() + (def.respawn || 120) * 1000; // 다 캤다 (다시 생기기까지는 플레이어가 캔 것과 같다)
   if (q.key && w.life?.nodes) w.life.nodes[q.key] = q.respawnAt;
   if (q.block) w.tiles[q.ty * w.tw + q.tx] = T_FLOOR;
-  o.coins += 3 + Math.floor(Math.random() * 5); o.patch = null; o.doT = 999;
+  o.coins += 3 + Math.floor(w.rng.next() * 5); o.patch = null; o.doT = 999;
 }
 
 // ───────── 공격: 맞으면 화가 나 싸운다 ─────────

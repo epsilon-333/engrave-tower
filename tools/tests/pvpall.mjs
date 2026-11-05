@@ -7,7 +7,7 @@ const { DUEL_ZONE, buildDuelArena } = await import(root + '/data/maps/arena.js')
 const COND = new Set(['rewind', 'deathCall', 'contagion', 'venomBurst', 'snare']); // 조건이 있어야 쓰는 스킬 (되감기 · 부하 · 상태이상 · 밟아야 하는 덫)
 const NO_HIT = new Set(['buff', 'shield', 'stealth', 'parry', 'summonSpirit', 'spiritEmpower', 'spiritGuard', 'teleport', 'dash', 'hpToRes', 'fillWords']);
 const fails = [];
-const list = [...Object.entries(CLASSES).filter(([, c]) => c.race !== 'golem').flatMap(([cls, c]) => c.skills.map((id) => [cls, id])), ...Object.keys(CC_EXTRA).map((id) => ['greatsword', id])];
+const list = [...Object.entries(CLASSES).flatMap(([cls, c]) => c.skills.map((id) => [cls, id])), ...Object.keys(CC_EXTRA).map((id) => ['greatsword', id])];
 for (const [cls, id] of list) {
   const sk = SKILLS[id], c = CLASSES[cls];
   if (!sk || COND.has(id) || sk.do.every((o) => NO_HIT.has(o.op))) continue;

@@ -696,16 +696,27 @@ function coWipe() {
 // ───── 튜토리얼: 마을 광장에서 조작을 하나씩 따라 한다 (건너뛸 수 있다) ─────
 const tutFlags = { interact: false, panel: false };
 const TUT = [
-  { text: 'WASD로 걸어 보세요', done: (w, t) => Math.hypot(w.player.x - t.x0, w.player.y - t.y0) > 70 },
-  { text: 'Space로 굴러 보세요 — 구르는 동안은 공격을 피한다', done: (w, t) => w.player.dashCharges < t.dash0 },
-  { text: '좌클릭으로 허수아비를 세 번 때리세요 (마우스 쪽으로 휘두른다)', setup: (w, t) => { const e = w.makeEnemy('dummy', w.player.x + 46, w.player.y); e.home = { x: e.x, y: e.y }; e.tut = true; w.enemies.push(e); t.dummy = e; t.hp = e.hp; t.hits = 0; },
+  { text: () => (touch ? '왼쪽 조이스틱으로 걸어 보세요' : 'WASD로 걸어 보세요'), done: (w, t) => Math.hypot(w.player.x - t.x0, w.player.y - t.y0) > 70 },
+  { text: () => `${touch ? '「대시」 버튼' : 'Space'}로 굴러 보세요 — 구르는 동안은 공격을 피한다`, done: (w, t) => w.player.dashCharges < t.dash0 },
+  { text: () => (touch ? '오른쪽 조이스틱을 눌러 허수아비를 세 번 때리세요' : '좌클릭으로 허수아비를 세 번 때리세요 (마우스 쪽으로 휘두른다)'), setup: (w, t) => { const at = openSpotNear(w, w.player.x, w.player.y), e = w.makeEnemy('dummy', at.x, at.y); e.home = { x: e.x, y: e.y }; e.tut = true; w.enemies.push(e); t.dummy = e; t.hp = e.hp; t.hits = 0; },
     done: (w, t) => { if (!t.dummy) return true; if (t.dummy.hp < t.hp) { t.hits++; t.hp = t.dummy.hp; } return t.hits >= 3; } },
-  { text: 'Q · E 스킬로 허수아비를 맞혀 보세요 — [차지]라고 적힌 스킬은 길게 눌렀다 놓으면 세진다', setup: (w, t) => { t.hp0 = t.dummy?.hp ?? 0; if (t.dummy && !t.dummy.dead) t.dummy.hp = t.dummy.maxHp; t.hp0 = t.dummy?.hp ?? 0; },
+  { text: () => `${touch ? '스킬 버튼' : 'Q · E 스킬'}로 허수아비를 맞혀 보세요 — [차지]라고 적힌 스킬은 길게 눌렀다 놓으면 세진다`, setup: (w, t) => { t.hp0 = t.dummy?.hp ?? 0; if (t.dummy && !t.dummy.dead) t.dummy.hp = t.dummy.maxHp; t.hp0 = t.dummy?.hp ?? 0; },
     done: (w, t) => Object.values(w.player.cds || {}).some((v) => v > 0.45) && (!t.dummy || t.dummy.dead || t.dummy.hp < t.hp0) },
-  { text: '우클릭으로 무기 기술을 써 보세요', done: (w) => w.player.skillCd > 0 || !!w.player.charging },
-  { text: '무언가 앞에서 G — 표지판을 읽고, 사람에게 말을 걸고, 모닥불에서 쉰다', done: () => tutFlags.interact },
-  { text: 'I 장비 · B 가방 · J 퀘스트 · C 캐릭터 — 하나를 열어 보세요', done: () => tutFlags.panel },
+  { text: () => `${touch ? '「무기」 버튼' : '우클릭'}으로 무기 기술을 써 보세요`, done: (w) => w.player.skillCd > 0 || !!w.player.charging },
+  { text: () => `무언가 앞에서 ${touch ? '나타나는 버튼' : 'G'} — 표지판을 읽고, 사람에게 말을 걸고, 모닥불에서 쉰다`, done: () => tutFlags.interact },
+  { text: () => (touch ? '「≡」 메뉴에서 캐릭터 · 장비 · 가방 창을 열어 보세요' : 'I 장비 · B 가방 · J 퀘스트 · C 캐릭터 — 하나를 열어 보세요'), done: () => tutFlags.panel },
 ];
+// 허수아비 자리: 내 둘레의 탁 트인 땅 (벽 · 물건 · 사람과 떨어져 있고, 걸어서 곧장 갈 수 있는 곳)
+function openSpotNear(w, x, y) {
+  for (const d of [48, 64, 36, 80]) for (let k = 0; k < 16; k++) {
+    const a = (k / 16) * Math.PI * 2, tx = x + Math.cos(a) * d, ty = y + Math.sin(a) * d * 0.7;
+    if (w.blocked(tx, ty, 12) || w.objects.some((o) => Math.hypot(o.x - tx, o.y - ty) < 28)) continue;
+    let clear = true;
+    for (let s = 0.25; s < 1 && clear; s += 0.25) clear = !w.blocked(x + (tx - x) * s, y + (ty - y) * s, 6);
+    if (clear) return { x: tx, y: ty };
+  }
+  return { x: x + 46, y };
+}
 let tutEl = null;
 function tutorialTick() {
   const T = save?.tutorial;
@@ -719,7 +730,7 @@ function tutorialTick() {
     tutEl.addEventListener('click', (e) => { if (e.target.dataset.tutskip != null) finishTutorial(false); });
   }
   tutEl.hidden = false;
-  tutEl.innerHTML = `<small>튜토리얼 ${T.step + 1} / ${TUT.length}</small><b>${step.text}</b><button data-tutskip>건너뛰기</button>`;
+  tutEl.innerHTML = `<small>튜토리얼 ${T.step + 1} / ${TUT.length}</small><b>${step.text()}</b><button data-tutskip>건너뛰기</button>`;
   if (step.done(world, rt)) { T.step++; sfx('open', { vol: 0.5, rate: 1.4 }); writeSave(save); }
 }
 function finishTutorial(done) {
@@ -815,10 +826,10 @@ function showRaceSelect() {
   renderRaceSelect(titleEl, (race) => { unlockAudio(); sfx('select'); showStyleSelect(race); }, () => playIntro(showRaceSelect));
   // 종족 카드 미리보기 애니메이션
   const cards = [...titleEl.querySelectorAll('canvas[data-race]')];
-  let t = 0;
+  const t0 = performance.now();
   const anim = () => {
     if (titleEl.hidden) return;
-    t += 1 / 60;
+    const t = (performance.now() - t0) / 1000; // 화면 주사율과 상관없이 같은 빠르기
     for (const c of cards) {
       const art = RACE_ART[c.dataset.race];
       const hover = c.closest('.race').matches(':hover');
@@ -854,7 +865,7 @@ function showStyleSelect(race) {
     const c = CLASSES[b.dataset.style];
     sfx('levelup');
     if (reGolem) { // 예전 골렘 저장: 종족 · 클래스만 바꾼다
-      reGolem = false; save.race = race; save.cls = b.dataset.style; save.style = c.style; grantClassEngravings(save);
+      reGolem = false; delete save.reRace; save.race = race; save.cls = b.dataset.style; save.style = c.style; grantClassEngravings(save);
       if (!(save.items ||= []).includes(c.weapons[0])) save.items.push(c.weapons[0]);
       (save.gear ||= {}).weapon = c.weapons[0];
       refreshQuests(save); writeSave(save); cloudSaveNow(save); titleEl.hidden = true; enterWorld();
@@ -901,6 +912,7 @@ function showTitle() {
   const go = () => {
     unlockAudio(); sfx('select');
     try { localStorage.setItem('et-guest', '1'); } catch { /* 무시 */ }
+    if (save?.reRace) { reGolem = true; showRaceSelect(); return; } // 예전 골렘족 저장
     if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else firstStart();
   };
   document.getElementById('tsGo').onclick = go;
@@ -1025,7 +1037,7 @@ function afterLogin(remote) {
   if (remote) save = migrateSave(remote);
   else if (save && save.acct && save.acct !== cloud.id) { try { localStorage.setItem(`engrave-tower-save-v1-${save.acct}`, JSON.stringify(save)); } catch { /* 무시 */ } save = null; } // 이 브라우저의 진행은 다른 계정 것: 새 계정으로 가져가지 않는다 (지우지 않고 따로 둔다)
   else if (save && cloud.mode !== 'local') cloudSaveNow(save);
-  if (save?.race === 'golem') { reGolem = true; titleEl.hidden = false; showRaceSelect(); return; } // 골렘족은 이제 몬스터: 다른 종족을 고른다 (레벨 · 장비 · 돈은 그대로)
+  if (save?.reRace) { reGolem = true; titleEl.hidden = false; showRaceSelect(); return; } // 예전 골렘족: 다른 종족을 고른다 (레벨 · 장비 · 돈은 그대로)
   if (save) { refreshQuests(save); writeSave(save); enterWorld(); } else firstStart();
 }
 let reGolem = false;
@@ -1046,6 +1058,7 @@ function migrateSave(sv) {
   registerCrafted(ITEMS, sv.crafted);
   registerAllDishes(sv.bag, sv.chest);
   if (RACE_MIGRATE[sv.race]) sv.race = RACE_MIGRATE[sv.race];
+  if (sv.race === 'golem') sv.reRace = 1; // 골렘족은 이제 몬스터: 타이틀에서 종족을 다시 고르게 한다
   if (!RACES[sv.race]) sv.race = 'knight';
   if (!sv.statFix2) { // 스탯을 새 규칙으로 다시 센다: 레벨마다 1점
     sv.statFix2 = true;
@@ -1838,22 +1851,21 @@ function startLoop() {
   requestAnimationFrame(fitCanvas);
 }
 
+// 조작 · 도움말 (일시정지 메뉴)
 function showTutorial() {
-  save.tutorial = 1; writeSave(save);
-  showModal(`<h2>각인의 탑에 온 것을 환영한다</h2>
+  showModal(`<h2>조작 · 도움말</h2>
     <div class="tut">
-      <p><b>1.</b> 북쪽 <b>관문</b>으로 들어가 필드를 탐험하고, 몬스터가 남기는 <b>잔향</b>을 모으세요.</p>
-      <p><b>2.</b> 어떤 몬스터가 어떤 잔향을 주는지는 지역마다 다릅니다. 원하는 각인이 있으면 그 몬스터를 찾아가세요.</p>
-      <p><b>3.</b> 광장의 <b>공명 제단</b>(왼쪽 위)에서 잔향으로 각인을 새기고, <b>수련 교관</b>(오른쪽 아래)에게 스탯을 배분하세요.</p>
-      <p><b>4.</b> 강한 각인보다 <b>맞물리는 조합</b>이 이깁니다. 스탯 하나를 높이 올리면 각성이 열려요.</p>
-      <p><b>5.</b> 뭘 할지 모르겠다면 가운데 <b>의뢰 게시판</b>을 확인하세요.</p>
-      <p><b>★</b> 종족마다 스킬 6개 중 <b>4개</b>를 공명 제단에서 골라 Q·E·R·F로 씁니다. 스킬마다 쓰는 자원이 다르니 계산하며 쓰세요. <b>준비 → 강화 → 마무리</b> 순서로 이으면 강해져요.</p>
-      <p><b>6.</b> 필드에는 <b>야영지</b>(잔향 맡기기), <b>떠돌이 상인</b>, <b>낡은 제단</b>(대가 없는 축복), 가장 깊은 곳의 <b>아래층 계단</b>이 있어요.</p>
-      <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · Q·E·R·F(1·2·3·4) 스킬 · T 자동 조준 · 우클릭 무기 기술 · Space 대시(무적) · G 상호작용 · C 캐릭터 · Esc 메뉴</p>
-      ${touch ? '<p class="keys">모바일: 왼쪽 조이스틱 이동 · 오른쪽 조이스틱을 누르면 공격(밀면 그 방향 조준, 그냥 누르면 가까운 적 자동 조준) · 버튼으로 스킬·대시·상호작용</p>' : ''}
-      <p class="muted">빨갛게 번쩍이면 곧 공격한다. 대시로 피한다.</p>
+      <p><b>1. 탐험</b> — 섬을 돌아다니며 몬스터 지대를 찾는다. 지역마다 권장 레벨 · 몬스터가 다르다.</p>
+      <p><b>2. 사냥</b> — 몬스터마다 고유한 <b>부산물</b>이 떨어진다. 무엇이 어디서 나는지는 캐릭터 창의 「어디서 얻나」.</p>
+      <p><b>3. 각인</b> — 바람결 마을의 <b>공명 제단</b>에서 부산물로 각인을 새긴다. 클래스 스킬 8개 중 4개를 Q · E · R · F에 끼운다. 강한 각인보다 <b>맞물리는 조합</b>이 이긴다.</p>
+      <p><b>4. 등반</b> — 각인의 탑은 층마다 몬스터, 5층마다 수호자, 10층마다 구역의 주인. 탑 안에는 각인 · 보상이 없다. 주인을 쓰러뜨리면 다음부터 그 위층에서 시작한다. 회복은 수호자 · 주인 처치(체력 40%) · 음식(H) · 물약(Z).</p>
+      <p><b>5. 수련 · 생활</b> — 종족 성지에서 수련 · 의뢰, 대장간에서 장비 강화. 농사 · 낚시 · 요리(요리 = 탑 안 회복).</p>
+      <p>무엇을 할지 모르겠다면 <b>여정(J)</b>과 화면 가장자리의 화살표를 따라가자.</p>
+      ${touch ? '<p class="keys">왼쪽 조이스틱 이동 · 오른쪽 조이스틱 공격(밀면 그 방향, 누르기만 하면 가까운 적) · 스킬 · 무기 · 대시 버튼 · 「≡」 메뉴</p>'
+    : '<p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 평타 · 우클릭 무기 기술 · Q·E·R·F 스킬(차지 스킬은 길게) · Space 구르기(무적) · G 상호작용 · H 음식 · Z 물약 · C 캐릭터 · I 장비 · B 가방 · J 퀘스트 · M 지도 · Esc 메뉴</p>'}
+      <p class="muted">큰 공격 앞에는 몸을 움츠리는 준비 동작이 있다. 보스의 읽기 어려운 기술은 바닥의 원 · 선으로 미리 보인다. 구르기로 피하자.</p>
     </div>
-    <button data-close>시작하기</button>`);
+    <button data-close>닫기</button>`);
 }
 
 // ───── 패널 (마을 시설) ─────
@@ -1943,7 +1955,7 @@ function showPause() {
   const field = world.mode === 'field' && !world.voyage;
   const leave = world.pvp ? '<button id="retreat" class="ghost">결투 포기 (패배로 기록)</button>'
     : world.practice ? '<button id="exitPractice" class="ghost">연습 끝내기</button>'
-    : field ? (world.climb ? '<button id="retreat" class="ghost">등반 포기 (주운 것은 모두 가져간다)</button>' : world.zone?.id === 'world' ? '' : '<button id="retreat" class="ghost">긴급 귀환 (잔향 70% 보존)</button>') : '';
+    : field ? (world.climb ? '<button id="retreat" class="ghost">등반 포기 (주운 것은 모두 가져간다)</button>' : world.zone?.id === 'world' ? '' : '<button id="retreat" class="ghost">긴급 귀환 (주운 것 70% 보존)</button>') : '';
   const canTitle = !world.climb && !world.pvp && !coRun;
   showModal(`<h2 class="pause-h">일시정지</h2>
     <button data-close class="primary">계속하기</button>
@@ -1951,7 +1963,7 @@ function showPause() {
     ${net.up && !world.practice ? '<button id="socialBtn" class="ghost">동료 (파티 · 길드) · O</button><button id="rankBtn" class="ghost">랭킹 · N</button>' : ''}
     ${net.admin ? '<button id="adminBtn" class="ghost">운영자 · 접속한 사람</button>' : ''}
     <button id="settingsBtn" class="ghost">설정</button>
-    ${field ? '' : '<button id="howto" class="ghost">조작 · 도움말</button>'}
+    <button id="howto" class="ghost">조작 · 도움말</button>
     ${leave}
     ${canTitle ? '<button id="titleBtn" class="ghost">저장하고 타이틀로</button>' : ''}`);
   const $ = (id) => document.getElementById(id);
@@ -3517,7 +3529,7 @@ function capitalTalk(id) {
 }
 function updateHappenPanel() {
   let el = document.getElementById('happenPanel');
-  const w = world, show = w?.map?.outdoor && !w.voyage && HAPPEN_LIST.length && !modal && panelEl.hidden && (save?.tutorial?.done || !save?.tutorial); // 창이 열리면 숨긴다 · 튜토리얼 중에는 안 보인다
+  const w = world, show = w?.map?.outdoor && !w.voyage && HAPPEN_LIST.length && !modal && panelEl.hidden && !renderer.bigMap && (save?.tutorial?.done || !save?.tutorial); // 창이 열리면 숨긴다 · 튜토리얼 중에는 안 보인다
   if (!show) { if (el) el.hidden = true; return; }
   if (!el) { el = document.createElement('div'); el.id = 'happenPanel'; gameEl.appendChild(el); el.onclick = (e) => { if (e.target.closest('b')) { if (el.dataset.open) delete el.dataset.open; else el.dataset.open = '1'; updateHappenPanel(); return; } const id = e.target.closest('[data-tr]')?.dataset.tr; if (!id) return; if (id === 'off') { world.track = null; return; } const h = HAPPEN_LIST.find((q) => q.id === id); if (h) world.track = { x: h.o.x, y: h.o.y, name: HAPPENINGS[h.type].name, hid: id }; }; }
   el.hidden = false;

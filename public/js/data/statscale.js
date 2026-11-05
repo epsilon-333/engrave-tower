@@ -11,7 +11,6 @@ export const CLASS_STATS = {
   necromancer: ['spi', 'mag'], hexer: ['mag', 'sen'],
   shadowblade: ['agi', 'sen'], venomHunter: ['sen', 'agi'],
   spiritcaller: ['spi', 'agi'], ranger: ['sen', 'agi'],
-  rockguard: ['pres', 'vit'], frostGolem: ['vit', 'mag'],
   dragoon: ['str', 'mres'], dragonSage: ['mag', 'vit'],
 };
 const SUPPORT = new Set(['방어', '준비', '강화', '제어', '소환']);

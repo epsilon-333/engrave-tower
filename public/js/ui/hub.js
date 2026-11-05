@@ -412,11 +412,11 @@ export class Hub {
   tab_shop(s, b, ownedOnly = false) {
     const gear = s.gear, twoHand = weaponHands(ITEMS[gear.weapon]) >= 2;
     const gearRow = [['weapon', '무기 (오른손)'], ['off', '왼손'], ['armor', '방어구'], ['acc1', '장신구 1'], ['acc2', '장신구 2']]
-      .map(([k, n]) => `<div class="slot ${gear[k] ? 'filled' : ''} ${k === 'off' && twoHand && gear.off ? 'resting' : ''}"><div class="sl-name">${n}</div>${gear[k] && ITEMS[gear[k]] ? `<div class="sl-e">${ITEMS[gear[k]].name}</div>${k === 'off' && twoHand ? '<div class="muted">양손 무기라 쉬는 중</div>' : ''}${k !== 'weapon' ? `<button class="sm ghost" data-act="unequipG" data-slot="${k}">빼기</button>` : ''}` : `<div class="muted">${k === 'off' && twoHand ? '양손 무기를 들었다' : '비어 있음'}</div>`}</div>`).join('');
+      .map(([k, n]) => `<div class="slot ${gear[k] ? 'filled' : ''} ${k === 'off' && twoHand && gear.off ? 'resting' : ''}"><div class="sl-name">${n}</div>${gear[k] && ITEMS[gear[k]] ? `<div class="sl-e">${ITEMS[gear[k]].name}</div>${k === 'off' && twoHand ? '<div class="muted">양손 무기라 쉬는 중</div>' : ''}${k !== 'weapon' ? `<button class="sm ghost" data-act="unequipG" data-slot="${k}">빼기</button>` : ''}` : `<div class="muted">${k === 'off' && twoHand ? (weaponCat(ITEMS[gear.weapon]) === 'shield' ? '방패를 들었다' : '양손 무기를 들었다') : '비어 있음'}</div>`}</div>`).join('');
     const card = (id) => {
       const it = ITEMS[id], has = s.items.includes(id);
       const stats = Object.entries(it.stats).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k]).name} ${v > 0 ? '+' : ''}${v}`).join(', ');
-      const w = it.weapon ? `<div class="c-meta"><b>${weaponHands(it) >= 2 ? `양손 · ${twoHandBonus(id, it).text.replace(/^[^:]+: /, '')}` : `한손 · 왼손에 도구나 ${FAMILY_NAME[weaponFamily(it)] || '무기'}를 함께 든다`}</b> · ${w2t(it.weapon, s.race)}</div>` : it.off ? `<div class="c-meta"><b>왼손</b> · ${esc(it.odesc || '')} · 한손 무기와 함께 들 때만</div>` : '';
+      const w = it.weapon ? `<div class="c-meta"><b>${weaponHands(it) >= 2 ? `${weaponCat(it) === 'shield' ? '검과 방패' : '양손'} · ${twoHandBonus(id, it).text.replace(/^[^:]+: /, '')}` : `한손 · 왼손에 도구나 ${FAMILY_NAME[weaponFamily(it)] || '무기'}를 함께 든다`}</b> · ${w2t(it.weapon, s.race)}</div>` : it.off ? `<div class="c-meta"><b>왼손</b> · ${esc(it.odesc || '')} · 한손 무기와 함께 들 때만</div>` : '';
       const req = it.req ? `<div class="c-meta warn">착용 조건: ${Object.entries(it.req).map(([k, v]) => `${STAT_INFO[k].name} ${v}`).join(', ')}</div>` : '';
       const effs = (it.effects || []).map((x) => `<li>${x.when ? `<em>[${esc(condText(x.when))}]</em> ` : ''}${esc(x.text)}</li>`).join('');
       const equipped = Object.values(gear).includes(id);
@@ -465,7 +465,7 @@ export class Hub {
           const ec = seen ? `<span style="color:${ECHOES[def.echo.id].color}">◆ ${ECHOES[def.echo.id].name}</span>` : '<span class="muted">◆ ???</span>';
           const cond = def.condEcho && seen ? `<div class="hint">숨겨진 잔향: ${def.condEcho.hint}하면 ${s.codex.echoes[def.condEcho.id] ? ECHOES[def.condEcho.id].name : '???'}</div>` : '';
           const res = seen ? `<span class="muted">물저 ${def.pres} · 마저 ${def.mres}${def.reflect ? ' · 반사' : ''}</span>` : '';
-          return `<div class="mon ${def.elite ? 'elite' : ''}"><b>${seen ? def.name : '???'}</b>${def.elite ? ' <span class="warn">정예</span>' : ''} ${ec} ${res}${cond}</div>`;
+          return `<div class="mon ${def.elite ? 'elite' : ''}"><b>${seen ? def.name : '???'}</b>${def.boss ? ' <span class="warn">탑의 주인</span>' : def.elite ? ' <span class="warn">정예</span>' : ''} ${ec} ${res}${cond}</div>`;
         }).join('');
         const lvWarn = s.level < z.rec ? 'warn' : '';
         return `<div class="zone" style="--z:${z.pal[1]}">
@@ -753,7 +753,6 @@ function w2t(w, race) {
 const RACE_ORDER = ['knight', 'orc', 'elf', 'dragon', 'dino', 'wizard', 'assassin', 'undead'];
 const RACE_DIFF = { knight: 1, orc: 1, elf: 2, dragon: 2, dino: 2, wizard: 3, assassin: 3, undead: 3 };
 export function renderRaceSelect(root, onPick, onIntro) {
-  // 골렘족은 새로 고를 수 없다 (예전 저장의 골렘은 그대로 쓸 수 있다)
   root.innerHTML = `<div class="race-select">
     <h1>각인의 탑</h1>
     ${onIntro ? '<button class="intro-again" id="introAgain">▶ 인트로 다시 보기</button>' : ''}
