@@ -1,6 +1,7 @@
 // 생활 화면: 가방 · 잡화점(사고팔기, 시세) · 대장간 제작(도구 강화 · 장비 만들기 · 무기 강화)
-import { GOODS, GOOD_CATS, TOOLS, FORGE, REINFORCE, REINFORCE_MAX, SHOP_STOCK, buyPrice, sellPrice, market, toolUpgradeCost, FISH, ARTIFACTS } from '../data/goods.js';
+import { GOODS, GOOD_CATS, TOOLS, FORGE, REINFORCE, REINFORCE_MAX, REINFORCE_STEP, SHOP_STOCK, buyPrice, sellPrice, market, toolUpgradeCost, FISH, ARTIFACTS } from '../data/goods.js';
 import { ITEMS, WEAPON_SKILLS } from '../data/items.js';
+import { ECHOES } from '../data/monsters.js';
 import { STAT_INFO, SPECIAL_INFO } from '../data/stats.js';
 import { iconURL, toolKey, toolName } from '../render/icons.js';
 import { registerDish } from '../data/cooking.js';
@@ -22,6 +23,10 @@ function matsHtml(s, mats, gold) {
   if (gold) parts.push(`<span class="mat ${s.gold >= gold ? 'ok' : 'no'}">◆ ${gold}</span>`);
   return parts.join('');
 }
+// 강화 비용: 광석(가방) · 몬스터 부산물(잔향) · 코인
+const echoHtml = (s, ech = {}) => Object.entries(ech).map(([id, n]) => { const have = s.echoes?.[id] || 0; return `<span class="mat ${have >= n ? 'ok' : 'no'}" title="몬스터 부산물"><em style="color:${ECHOES[id]?.color || '#ddd'}">${esc(ECHOES[id]?.name || id)}</em> ${have}/${n}</span>`; }).join('');
+const canPayR = (s, rc) => canPay(s, rc.mats, rc.gold) && Object.entries(rc.echoes || {}).every(([id, n]) => (s.echoes?.[id] || 0) >= n);
+const pc = (lv) => Math.round(lv * REINFORCE_STEP * 100);
 const canPay = (s, mats, gold) => s.gold >= (gold || 0) && Object.entries(mats).every(([id, n]) => (s.bag?.[id] || 0) >= n);
 function pay(s, mats, gold) { s.gold -= gold || 0; for (const [id, n] of Object.entries(mats)) s.bag[id] -= n; }
 
@@ -79,9 +84,9 @@ export function forgeTab(s) {
   }).join('');
   const wid = s.gear?.weapon, lv = s.reinforce?.[wid] || 0, rc = lv < REINFORCE_MAX ? REINFORCE[lv] : null;
   return `<section class="panel"><h3>도구 바꾸기 <small>"광석만 가져오면 뭐든 두드려 주지."</small></h3><div class="tlist">${tools}</div></section>
-    <section class="panel"><h3>무기 강화 <small>단계마다 모든 피해 +6% (최대 ${REINFORCE_MAX}단계)</small></h3>
-      <div class="trow r3"><span><b>${ITEMS[wid]?.name || '무기'} ${lv ? `+${lv}` : ''}</b><small>지금: 피해 +${lv * 6}% · 장착한 무기를 강화한다</small></span>
-      ${rc ? `<span class="mats">→ +${lv + 1} (피해 +${(lv + 1) * 6}%)<br>${matsHtml(s, rc.mats, rc.gold)}</span><button class="sm" data-act="reinforce" ${canPay(s, rc.mats, rc.gold) ? '' : 'disabled'}>강화</button>` : '<span class="muted">최고 단계</span>'}</div></section>
+    <section class="panel"><h3>무기 강화 <small>단계마다 모든 피해 +${pc(1)}% (최대 ${REINFORCE_MAX}단계 · 6단계부터는 실패할 수 있다)</small></h3>
+      <div class="trow r3"><span><b>${ITEMS[wid]?.name || '무기'} ${lv ? `+${lv}` : ''}</b><small>지금: 피해 +${pc(lv)}% · 장착한 무기를 강화한다</small></span>
+      ${rc ? `<span class="mats">→ +${lv + 1} (피해 +${pc(lv + 1)}%) · <b class="${rc.rate ? 'warn' : ''}">성공 ${Math.round((rc.rate ?? 1) * 100)}%</b>${rc.rate ? ' <small class="muted">실패: 단계 그대로 · 코인 · 광석은 잃고 몬스터 부산물은 반을 돌려받는다</small>' : ''}<br>${matsHtml(s, rc.mats, rc.gold)}${echoHtml(s, rc.echoes)}</span><button class="sm" data-act="reinforce" ${canPayR(s, rc) ? '' : 'disabled'}>강화</button>` : '<span class="muted">최고 단계</span>'}</div></section>
     <section class="panel"><h3>장비 만들기 </h3><div class="fcards">${gear}</div></section>`;
 }
 
@@ -119,7 +124,14 @@ export function lifeClick(hub, act, t) {
     }
     case 'reinforce': {
       const wid = s.gear?.weapon, lv = s.reinforce?.[wid] || 0, rc = REINFORCE[lv];
-      if (wid && lv < REINFORCE_MAX && canPay(s, rc.mats, rc.gold)) { pay(s, rc.mats, rc.gold); (s.reinforce ||= {})[wid] = lv + 1; hub.toast(`${ITEMS[wid].name} +${lv + 1} 강화 성공!`); }
+      if (!wid || lv >= REINFORCE_MAX || !canPayR(s, rc)) return true;
+      pay(s, rc.mats, rc.gold);
+      for (const [e, n] of Object.entries(rc.echoes || {})) s.echoes[e] -= n;
+      if (Math.random() < (rc.rate ?? 1)) { (s.reinforce ||= {})[wid] = lv + 1; hub.toast(`${ITEMS[wid].name} +${lv + 1} 강화 성공!`); }
+      else { // 실패: 단계 그대로 · 몬스터 부산물은 반(올림)을 돌려받는다
+        const back = Object.entries(rc.echoes || {}).map(([e, n]) => { const k = Math.ceil(n / 2); s.echoes[e] += k; return `${ECHOES[e]?.name || e} ${k}`; });
+        hub.toast(`강화 실패… +${lv} 그대로${back.length ? ` · 돌려받음: ${back.join(' · ')}` : ''}`);
+      }
       return true;
     }
   }

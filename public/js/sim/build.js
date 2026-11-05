@@ -110,7 +110,7 @@ export function computeBuild(lo) {
 
   effects.push(...sanct.effects); // 3단계 은총
   if (lo.extraEffects) effects.push(...lo.extraEffects); // 탑 등반의 축복 · 탑의 축복 · 제단의 대가
-  // 강화한 무기: 단계마다 모든 피해 +6%
+  // 강화한 무기: 단계마다 모든 피해 +6% (REINFORCE_STEP)
   const rf = lo.reinforce?.[lo.gear?.weapon] || 0;
   if (rf) effects.push({ type: 'mul', key: 'dmgMul', v: 1 + 0.06 * rf });
 
