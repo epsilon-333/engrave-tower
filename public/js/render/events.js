@@ -237,6 +237,9 @@ export const EventMethods = {
           break;
         }
         case 'skillAoe': if (ev.fx === 'ink') { this.inkSplash(ev.x, ev.y, ev.r, 3.2); this.shake = Math.max(this.shake, 3); sfx('reaction', { vol: 0.5, rate: 0.7 }); break; } this.aoeFx(ev); break;
+        case 'pipeRise': this.fx.push({ k: 'pipes', ...ev, t: ev.dur || 0.9, max: ev.dur || 0.9 }); sfx('hitArmor', { vol: 0.5, rate: 0.6 }); break; // 황금 관이 줄 따라 솟는다 (증기 거신)
+        case 'bossBit': this.fx.push({ k: 'bit', x: ev.x, y: ev.y, kind: ev.kind, r: ev.r, rot: ev.rot, t: 1 / 55, max: 1 / 55 }); break; // 날아다니는 톱니 · 책 · 바퀴 (한 틱 그림)
+        case 'waveFx': this.fx.push({ k: 'wave', ...ev, t: 0.09, max: 0.09 }); break; // 퍼지는 물결 (빈 틈은 비워 그린다)
         case 'inkBind': this.inkSplash(ev.x, ev.y, (ev.r || 6) + 10, ev.dur + 0.2, true); break; // 묶인 적의 발밑: 먹물 웅덩이
         case 'inkBurst': this.inkSplash(ev.x, ev.y, (ev.r || 6) + 22, 0.7); this.sparkBurst(ev.x, ev.y - 6, '#c8a8ff', 8); sfx('hitArmor', { vol: 0.5, rate: 0.8 }); break;
         case 'skillCone': this.anims.onCone(ev); if (ev.fx === 'spellBlade') { // 근접 무기로 쓴 마법: 그 속성 빛의 초승달이 앞을 휩쓴다

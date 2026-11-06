@@ -157,11 +157,22 @@ Object.assign(BOSS_SHEET, {
   frostOgre: { atk: ['combo', 'shove', 'grab', 'charge', 'cleave'], skl: ['leap', 'jumps3', 'quake', 'nova'] }, // 얼음 주먹 · 뛰어올라 내려찍기
   climbWitch: { atk: ['fan', 'split', 'spiral'], skl: ['donut', 'nova', 'rain', 'mark', 'ripple', 'meteorRain', 'crossBeam', 'adds'] }, // 얼음 조각 던지기 · 서리 고리
   wraithLord: { atk: ['combo', 'leap', 'charge', 'cleave', 'whirl', 'spikeTrail'], skl: ['soar', 'nova', 'mark', 'clones', 'adds'], ghostSoar: true, ghost: true }, // 대검 베기 · 혼령화
-  engraveKing: { atk: ['combo', 'leap', 'charge', 'cleave'], skl: ['fan', 'beam', 'sweep', 'crossBeam', 'rain', 'nova', 'mark', 'spiral', 'split', 'donut', 'ripple', 'channel', 'ritual', 'meteorRain', 'soar', 'mirror', 'clones', 'adds'] }, // 왕의 검 · 빛의 폭발
+  engraveKing: { atk: ['combo', 'leap', 'charge', 'cleave'], skl: ['spinBeam', 'fan', 'beam', 'sweep', 'crossBeam', 'rain', 'nova', 'mark', 'spiral', 'split', 'donut', 'ripple', 'channel', 'ritual', 'meteorRain', 'soar', 'mirror', 'clones', 'adds'] }, // 왕의 검 · 빛의 폭발
 }); // 3단계: 검을 든 어두운 시계지기로 바뀐다
 // 대사제: 보내 주신 흰 금빛 그림 그대로 (예전 어둡게 하던 색 보정은 뺀다)
-BOSS_SHEET.stormHarpy = { fly: true };
-BOSS_SHEET.skyWhale = { fly: true };
+// 51~100층: 기술마다 공격 줄(휘두르기) · 기술 줄(마법 · 큰 기술) 중 어느 그림을 쓸까
+Object.assign(BOSS_SHEET, {
+  stormHarpy: { fly: true, atk: ['fan', 'dive3', 'leap'], skl: ['featherStorm', 'galeLanes', 'gust', 'tornado', 'soar', 'adds'] },
+  skyWhale: { fly: true, atk: ['swallow'], skl: ['waterSpouts', 'songWave', 'whalePass', 'collapse', 'adds'] },
+  mirrorSelf: { atk: ['crystalBlades', 'charge'], skl: ['mirror', 'shardRing', 'spikeTrail', 'crystalCage'], mirrorSkill: true },
+  shardQueen: { atk: ['iceLance'], skl: ['crystalRain', 'iceCage', 'shardHide', 'donut'] },
+  foreman: { atk: ['quake', 'charge'], skl: ['pipesFloor', 'pipesWall', 'gearRoll', 'beltFlip'] },
+  clockKeeper: { atk: ['boneBreath', 'leap'], skl: ['boneSpikes', 'boneRain', 'roarWave', 'soar', 'adds'] },
+  archivist: { atk: ['split', 'spiral'], skl: ['tomeOrbs', 'sealCircle', 'shelfFall', 'adds'] },
+  starReader: { atk: ['beam', 'starFall'], skl: ['constellation', 'starGate', 'starSpin', 'meteorRain', 'adds'] },
+  highPriest: { atk: ['wheelThrow'], skl: ['judgePillars', 'douse', 'crossBeam', 'rain', 'adds'] },
+  lastKing: { atk: ['flameCrescent', 'combo', 'charge', 'leap'], skl: ['spinBeam', 'raceArt', 'lightCore', 'ripple', 'adds'] },
+});
 for (const [id, o] of Object.entries(BOSS_SHEET)) MONSTER_ART[id] = { base: 'b_' + id, sheet: true, ...o };
 // 각인 망령 · 마지막 왕이 빌려 쓰는 8종족의 옛 전사 그림
 export const RACE_LOOK = { wizard: 'p_keep_wizard', elf: 'p_keep_elf', knight: 'p_keep_knight', orc: 'p_keep_orc', undead: 'p_keep_undead', assassin: 'p_keep_assassin', dino: 'p_keep_dino', dragon: 'p_keep_dragon' };

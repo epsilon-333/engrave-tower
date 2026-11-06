@@ -6,6 +6,7 @@
 //  별의 서고  책장: 물결마다 옆으로 옮겨진다 (1초 예고) · 별자리 장판: 그 안에서 주는 피해 +20% (적도)
 //  빛의 정상  빛기둥(G): 30초 동안 둘레 6칸이 밝다 · 빛 안의 적은 받는 피해 +25%, 빛 밖(그림자)의 적은 -30% · 빛 먹는 자는 기둥을 끈다
 import { TILE, T_FLOOR, T_WALL, T_LIQUID } from './mapgen.js';
+import { bossScriptPick, bossScriptTick, SCRIPT_MOVES } from './bossmoves.js';
 
 const DT = 1 / 60;
 const GUST_EVERY = 8, GUST_TELE = 1, GUST_PUSH = 48; // 3칸
@@ -232,6 +233,8 @@ export function bossCan(w, e, p, dist) {
     gust: true, tornado: dist < 260 && (C?.gz?.hz.filter((h) => h.k === 'tornado').length || 0) < 2, whalePass: true, collapse: !C?.gz?.collapsed,
     copy: true, raceArt: true, shardHide: !w.enemies.some((o) => o.decoyOf === e.id && !o.dead), beltFlip: !!C?.belts?.length,
     timeStop: true, rewind: (C?.gz?.hist.length || 0) >= 20, shelfFall: true, constellation: dist < 260, douse: true, lightCore: true,
+    ...Object.fromEntries([...SCRIPT_MOVES].map((k) => [k, dist < 320])), // bossmoves.js: 가까우면 언제든
+    swallow: dist < 200, flameCrescent: dist < 140, dive3: true, gearRoll: true,
   };
 }
 // 거울에 비친 나 · 마지막 왕: 다른 기술을 빌려 쓴다 (이름은 그 기술의 주인 것으로)
@@ -262,6 +265,7 @@ export function bossAlias(w, e, p, pick, can, skillName) {
 
 // true: 이번 틱은 기술 중 · false: 쓰고 바로 움직인다 · undefined: 모르는 기술
 export function bossPickX(w, e, p, pick) {
+  { const r = bossScriptPick(w, e, p, pick); if (r !== undefined) return r; } // 51~100층 피하는 기술 (bossmoves.js)
   const say = (txt, col = '#ffd0a0') => w.emit({ t: 'text', x: e.x, y: e.y - 30, text: txt, color: col });
   const nm = e.skillNames?.[pick], C = w.climb, Z = C?.gz;
   const aim = Math.atan2(p.y - e.y, p.x - e.x);
@@ -364,6 +368,7 @@ export function bossPickX(w, e, p, pick) {
 }
 
 export function bossTickX(w, e, p, mv) {
+  { const r = bossScriptTick(w, e, p, mv); if (r !== undefined) return r; }
   switch (mv.k) {
     case 'whalePass': {
       if (!mv.hit && mv.t <= 1.2) {
@@ -456,10 +461,10 @@ export const BOSS_INTRO = {
   engraveKing: { title: '각인을 처음 새긴 왕', line: '「탑을 오른 자여, 네 각인을 내놓아라」', style: 'walk' },
   stormHarpy: { title: '하늘 정원의 폭풍', line: '「바람이 너를 떨어뜨릴 것이다!」', style: 'drop' },
   skyWhale: { title: '구름 바다를 헤엄치는 고래', line: '(아득한 고래의 노래가 들린다)', style: 'drop' },
-  mirrorSelf: { title: '거울에 비친 또 하나의 나', line: '「…나는 너다. 네 기술은 내 기술이다」', style: 'form' },
+  mirrorSelf: { title: '거울 미궁을 지키는 수정 기사', line: '「거울에 비친 것은 모두 베어진다」', style: 'form' },
   shardQueen: { title: '욕심이 깨뜨린 거울의 여왕', line: '「내 거울을 깬 값을 치러라」', style: 'form' },
-  foreman: { title: '태엽 공장의 감독', line: '「작업 시간이다! 아무도 쉬지 마라!」', style: 'walk' },
-  clockKeeper: { title: '멈춘 시계를 지키는 자', line: '「너의 시간은 여기서 멈춘다」', style: 'form' },
+  foreman: { title: '시계탑을 돌리는 증기 거신', line: '(쉬익— 황금 관에서 증기가 뿜어져 나온다)', style: 'drop' },
+  clockKeeper: { title: '시계탑 깊은 곳에 묶여 있던 용', line: '(사슬이 끊어지고, 보랏빛 숨이 새어 나온다)', style: 'rise' },
   archivist: { title: '별의 서고를 지키는 대서고관', line: '「열람 허가가 없군. 지워 주마」', style: 'walk' },
   starReader: { title: '마탑의 옛 대현자', line: '「별은 이미 네 끝을 알고 있다」', style: 'form' },
   highPriest: { title: '빛을 끄는 교단의 대사제', line: '「빛은 꺼져야 한다. 왕이 그랬듯이」', style: 'walk' },

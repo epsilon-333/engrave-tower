@@ -29,6 +29,46 @@ export const FxMethods = {
       if (GROUND_FX.has(f.k) !== ground) continue;
       f.t -= dt;
       const k = Math.max(0, f.t / f.max);
+      if (f.k === 'pipes') { // 황금 관: 줄을 따라 14px마다 관이 땅에서 솟았다 들어가며 끝에서 증기를 뿜는다
+        const age = f.max - f.t, up = Math.min(1, age / 0.14) * Math.min(1, f.t / 0.2), len = Math.hypot(f.x2 - f.x1, f.y2 - f.y1), n = Math.max(2, Math.floor(len / 16));
+        for (let i = 0; i <= n; i++) {
+          const u = i / n, x = Math.round(f.x1 + (f.x2 - f.x1) * u), y = Math.round(f.y1 + (f.y2 - f.y1) * u), h = Math.round((20 + (i % 3) * 5) * up);
+          if (h < 1) continue;
+          g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x - 6, y - 1, 13, 3); // 땅의 구멍
+          g.fillStyle = '#3a2410'; g.fillRect(x - 5, y - h, 10, h + 1); // 외곽
+          g.fillStyle = '#c8902a'; g.fillRect(x - 4, y - h, 8, h); g.fillStyle = '#ffe08a'; g.fillRect(x - 3, y - h, 2, h); g.fillStyle = '#8a5a1a'; g.fillRect(x + 2, y - h, 2, h); // 금빛 몸 · 빛 · 그늘
+          g.fillStyle = '#3a2410'; g.fillRect(x - 6, y - h - 1, 12, 4); g.fillStyle = '#e8b040'; g.fillRect(x - 5, y - h, 10, 2); // 관 머리 (테)
+          if (Math.random() < 0.35 * up) this.parts.push({ x: x + (Math.random() - 0.5) * 4, y: y - h - 2, vx: (Math.random() - 0.5) * 10, vy: -40 - Math.random() * 30, t: 0.45, max: 0.45, color: '#f0ece8', g: -10, puff: true, size: 3 });
+        }
+        continue;
+      }
+      if (f.k === 'bit') { // 톱니 · 책 · 바퀴: 도트로 직접 그린다 (한 틱)
+        const r = f.r || 10, x = Math.round(f.x), y = Math.round(f.y - 6);
+        g.save(); g.translate(x, y); g.rotate(f.rot || 0);
+        if (f.kind === 'gear' || f.kind === 'wheel') {
+          const gold = f.kind === 'gear' ? ['#3a2410', '#b8862a', '#ffe08a'] : ['#5a3a10', '#e8c050', '#fff6c8'];
+          g.fillStyle = gold[0]; for (let i = 0; i < 8; i++) { g.save(); g.rotate((i / 8) * Math.PI * 2); g.fillRect(-2, -r - 2, 4, 5); g.restore(); }
+          g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill(); g.fillStyle = gold[1]; g.beginPath(); g.arc(0, 0, r - 1.5, 0, Math.PI * 2); g.fill();
+          g.fillStyle = gold[2]; g.fillRect(-r + 3, -1, (r - 3) * 2, 2); g.fillRect(-1, -r + 3, 2, (r - 3) * 2); // 살
+          g.fillStyle = gold[0]; g.beginPath(); g.arc(0, 0, 3, 0, Math.PI * 2); g.fill();
+        } else { // 책: 날개처럼 펄럭이는 금서
+          const fl = Math.sin((f.rot || 0) * 1.7) * 3;
+          g.rotate(-(f.rot || 0)); g.fillStyle = '#1a1028'; g.fillRect(-8, -6 - fl, 7, 11); g.fillRect(1, -6 + fl, 7, 11);
+          g.fillStyle = '#6a3aa8'; g.fillRect(-7, -5 - fl, 5, 9); g.fillRect(2, -5 + fl, 5, 9); g.fillStyle = '#e8d8ff'; g.fillRect(-1, -5, 2, 10);
+          if (Math.random() < 0.3) this.parts.push({ x: f.x, y: f.y - 6, vx: (Math.random() - 0.5) * 20, vy: -10, t: 0.4, max: 0.4, color: '#c8a8ff', g: 0, size: 1 });
+        }
+        g.restore(); continue;
+      }
+      if (f.k === 'wave') { // 퍼지는 물결: 빛 알갱이 띠 (빈 틈은 비운다) — 몸 둘레 고리가 아니라 땅을 타고 퍼지는 충격
+        const n = Math.max(16, Math.round(f.r / 3)), k2 = f.t / f.max;
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2; if ((f.gaps || []).some((gp) => Math.abs(Math.atan2(Math.sin(a - gp), Math.cos(a - gp))) < 0.32)) continue;
+          const x = f.x + Math.cos(a) * f.r, y = f.y + Math.sin(a) * f.r * 0.62;
+          g.fillStyle = hexA(f.color || '#ffffff', 0.7 * k2); g.fillRect(Math.round(x) - 1, Math.round(y) - 2, 3, 3);
+          if (i % 3 === 0 && Math.random() < 0.5) this.parts.push({ x, y, vx: Math.cos(a) * 20, vy: -18, t: 0.3, max: 0.3, color: f.color || '#fff', g: 30, size: 1 });
+        }
+        continue;
+      }
       if (f.k === 'ink') { // 그림자 먹물: 물감을 끼얹은 듯 가운데서 둘레로 확 튀어 번지고, 바닥에 얼룩으로 남았다 마른다 (고리 없이 덩어리로)
         const age = f.max - f.t, sp = easeOut(Math.min(1, age / 0.22)), fade = Math.min(1, f.t / 0.6);
         for (const pass of [0, 1, 2]) { // 0: 짙은 먹 · 1: 가장자리보다 조금 밝은 속 · 2: 젖은 윤기 (가운데 덩어리에만)
