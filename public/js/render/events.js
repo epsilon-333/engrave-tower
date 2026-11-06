@@ -94,9 +94,11 @@ export const EventMethods = {
           this.anims.curSkid = { type: 'skid', pts: [{ x: ev.x, y: ev.y + 4 }], ux, uy, t: 0, max: 1.1 }; this.anims.ground.push(this.anims.curSkid);
           sfx('dash', { vol: 0.6 }); break;
         }
+        case 'skyFall': { if (ev.enemy) this.skyFallMark = { x: ev.x, y: ev.y }; for (let i = 0; i < 6; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 10, y: ev.y + 2, vx: (Math.random() - 0.5) * 30, vy: 10 + Math.random() * 20, t: 0.5, max: 0.5, color: '#9a8a72', g: 200 }); sfx('dash', { vol: 0.5, rate: 0.6 }); break; } // 하늘로 떨어짐: 가장자리 흙이 같이 떨어진다
         case 'death': {
           // 쓰러진다: 몸이 옆으로 넘어가 땅에 엎어지고(먼지) · 잠깐 누워 있다가 · 흙 속으로 가라앉는다 (반투명으로 흐려지지 않는다)
-          if (ev.defId) { const mx = ev.big ? 2.4 : 1.8; this.corpses.push({ defId: ev.defId, x: ev.x, y: ev.y, dir: ev.dir || 1, big: !!ev.big, t: mx, max: mx, landed: false }); }
+          const skyF = this.skyFallMark && Math.hypot(this.skyFallMark.x - ev.x, this.skyFallMark.y - ev.y) < 4; if (skyF) this.skyFallMark = null; // 하늘로 떨어진 몬스터: 넘어지지 않고 구름 아래로
+          if (ev.defId) { const mx = skyF ? 1.1 : ev.big ? 2.4 : 1.8; this.corpses.push({ defId: ev.defId, x: ev.x, y: ev.y, dir: ev.dir || 1, big: !!ev.big, t: mx, max: mx, landed: false, sky: skyF }); }
           else this.burst(ev.x, ev.y - 6, ev.color, ev.big ? 30 : 10, ev.big ? 140 : 80);
           if (ev.big) this.shake = 8;
           sfx('death', { vol: ev.big ? 1 : 0.6, rate: ev.big ? 0.7 : 1 });

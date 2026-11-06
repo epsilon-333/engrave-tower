@@ -43,8 +43,9 @@ export function zoneTick(w) {
   // 하늘: 떨어짐 · 돌풍
   if (w.voidZone) {
     const onVoid = isVoid(w, p.x, p.y + 3), air = p.airT > 0 || p.leap || p.dashT > 0 || p.down;
-    if (!onVoid && w.tileAt(p.x, p.y + 3) === T_FLOOR) { Z.safe.x = p.x; Z.safe.y = p.y; }
-    else if (onVoid && !air && !(Z.fallCd > 0)) playerFall(w);
+    if (p.skyFall) skyFallTick(w);
+    else if (!onVoid && w.tileAt(p.x, p.y + 3) === T_FLOOR) { Z.safe.x = p.x; Z.safe.y = p.y; }
+    else if (onVoid && !air) playerFall(w); // 구르기 · 도약 중에는 하늘을 건너갈 수 있다 (내려앉은 자리가 하늘이면 떨어진다)
     if (Z.fallCd > 0) Z.fallCd -= DT;
     for (const e of w.enemies) if (!e.dead && !e.def.boss && !flyer(e) && !e.summonedBoss && isVoid(w, e.x, e.y + 3) && !(e.mv?.k === 'leap')) enemyFall(w, e);
     if (fight && Z.g === 'gust') {
@@ -94,16 +95,20 @@ const beltAt = (C, x, y) => { const tx = Math.floor(x / TILE), ty = Math.floor(y
 export const inStar = (w, x, y) => (w.climb?.stars || []).some((s) => Math.hypot(x - (s.x * TILE + 8), y - (s.y * TILE + 8)) < s.r * TILE);
 export const litAt = (w, x, y) => w.objects.some((o) => o.kind === 'lightPillar' && o.litT > 0 && Math.hypot(x - o.x, y - o.y) < LIGHT_R);
 
+// 하늘로 걸어 나가면 떨어져 죽는다: 1.1초 동안 허우적대며 구름 아래로 작아지다가 쓰러짐 (붙잡을 수 없다)
 function playerFall(w) {
-  const p = w.player, Z = w.climb.gz;
-  Z.fallCd = 1.2;
-  w.emit({ t: 'fall', x: p.x, y: p.y });
-  w.hurtPlayer(w.d.maxHp * 0.1, 'true', null, { direct: true });
-  p.x = Z.safe.x; p.y = Z.safe.y; p.invuln = Math.max(p.invuln || 0, 1); p.dashT = 0;
-  w.emit({ t: 'text', x: p.x, y: p.y - 30, text: '떨어졌다! 체력 -10%', color: '#ffb0a0' }); w.emit({ t: 'blink', x1: p.x, y1: p.y - 60, x2: p.x, y2: p.y });
+  const p = w.player;
+  if (p.skyFall) return;
+  p.skyFall = { t: 0, dur: 1.1, x: p.x, y: p.y, spin: p.dir || 1 }; p.dashT = 0;
+  w.emit({ t: 'skyFall', x: p.x, y: p.y }); w.emit({ t: 'text', x: p.x, y: p.y - 30, text: '떨어진다…!', color: '#ffb0a0' });
+}
+function skyFallTick(w) {
+  const p = w.player, F = p.skyFall;
+  F.t += DT; p.x = F.x; p.y = F.y; p.dashT = 0; p.windupT = Math.max(p.windupT || 0, 0.05); p.moving = false; // 떨어지는 동안은 움직이거나 공격할 수 없다
+  if (F.t >= F.dur && w.state === 'play') { p.skyDead = true; p.hp = 0; w.checkDeath(); p.skyFall = null; }
 }
 function enemyFall(w, e) {
-  w.emit({ t: 'fall', x: e.x, y: e.y, enemy: true });
+  w.emit({ t: 'skyFall', x: e.x, y: e.y, enemy: true }); // 렌더러: 이 자리에서 쓰러지는 몬스터는 넘어지지 않고 구름 아래로 떨어진다
   w.emit({ t: 'text', x: e.x, y: e.y - 20, text: '추락!', color: '#bfe8ff' });
   w.killEnemy(e);
 }

@@ -858,7 +858,7 @@ export class Renderer {
   }
 
   drawLiquidAnim(w, cx, cy) {
-    if (!w.zone) return;
+    if (!w.zone || w.zone.liquid === 'void') return; // 하늘 정원의 하늘은 물결이 아니다 (towerfx의 drawSky가 그린다)
     const g = this.g, z = w.zone;
     const x0 = Math.max(0, Math.floor(cx / TILE)), y0 = Math.max(0, Math.floor(cy / TILE));
     const x1 = Math.min(w.tw - 1, x0 + Math.ceil(this.VW / TILE) + 1), y1 = Math.min(w.th - 1, y0 + Math.ceil(this.VH / TILE) + 1);
@@ -1218,6 +1218,7 @@ export class Renderer {
     const el = c.max - c.t, g = this.g, sc = (art.scale || 1) * (c.big ? 1.2 : 1);
     const img = art.beast ? beastImg(art.beast, 'idle', 0, c.dir < 0, false) : sprite(frames(art.base, 'idle')[0], art.tint || '', el < 0.08, c.dir < 0);
     if (!img) return;
+    if (c.sky) { this.drawSkyFall(img, c.x, c.y, el / c.max, c.dir, sc); return; } // 하늘로 떨어짐: 허우적대며 작아져 구름 아래로
     const W = img.width * sc, H = img.height * sc, fallT = 0.28, sinkT = c.max - 0.75;
     // 넘어지기: 발을 축으로 뒤쪽(맞은 반대편)으로 90도 · 끝에 살짝 튄다
     const fk = Math.min(1, el / fallT), bounce = fk < 1 ? fk * fk : 1 + Math.sin(Math.min(1, (el - fallT) / 0.18) * Math.PI) * 0.06 * (1 - Math.min(1, (el - fallT) / 0.18));
@@ -1238,8 +1239,18 @@ export class Renderer {
     if (sink > 0 && sink < 1 && Math.random() < 0.6) this.parts.push({ x: c.x - c.dir * H * 0.5 + (Math.random() - 0.5) * H, y: ground - 1, vx: (Math.random() - 0.5) * 20, vy: -20 - Math.random() * 20, t: 0.35, max: 0.35, color: Math.random() < 0.5 ? '#6a5640' : '#8a7458', g: 300, chunk: true, floor: ground });
   }
 
+  // 하늘로 떨어지는 몸: 발이 미끄러져 휘청 → 몸이 기울며 아래로 빨려 들 듯 작아지고 빙글 돈다 · 바람 줄기가 위로 스쳐 간다
+  drawSkyFall(img, x, y, k, dir, sc = 1) {
+    const g = this.g, slip = Math.min(1, k / 0.18), fall = Math.max(0, (k - 0.18) / 0.82), e = fall * fall;
+    const size = sc * (1 - 0.85 * e), drop = 4 * slip + e * 46, ang = dir * (slip * 0.5 + e * Math.PI * 2.6);
+    const W = img.width * size, H = img.height * size;
+    if (fall < 1) { g.fillStyle = `rgba(20,30,50,${0.3 * (1 - fall)})`; ellipse(g, x, y + 3, 6 * (1 - fall), 2 * (1 - fall)); } // 가장자리에 남는 그림자 (몸이 멀어지며 작아진다)
+    if (size > 0.06) { g.save(); g.translate(Math.round(x), Math.round(y + drop - H * 0.5)); g.rotate(ang); g.drawImage(img, Math.round(-W / 2), Math.round(-H / 2), Math.round(W), Math.round(H)); g.restore(); }
+    if (fall > 0 && fall < 0.9 && Math.random() < 0.7) this.parts.push({ x: x + (Math.random() - 0.5) * 20, y: y + drop + 6, vx: 0, vy: -160 - Math.random() * 80, t: 0.18, max: 0.18, color: '#eef8ff', g: 0, line: true });
+  }
   drawPlayer(w, p, dt) {
     const g = this.g;
+    if (p.skyFall) { const art0 = RACE_ART[w.b.race], im = sprite(this.animFrame(art0.base, 'run', w.t, 16), art0.tint || '', false, p.dir < 0); if (im) this.drawSkyFall(im, p.skyFall.x, p.skyFall.y, Math.min(1, p.skyFall.t / p.skyFall.dur), p.skyFall.spin); return; } // 하늘로 떨어지는 중 (허우적대는 달리기 그림)
     if (this.castGather && dt > 0) { // 시전 중: 둘레에서 손끝으로 빨려 드는 원소 알갱이 (끝으로 갈수록 빽빽하게)
       const cg = this.castGather; cg.t -= dt;
       if (cg.t <= 0 || !(p.castT > 0)) this.castGather = null;

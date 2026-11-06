@@ -119,23 +119,50 @@ export function drawTowerFloor(R, w, g, cx, cy) {
   for (const h of C.gz?.hz || []) if (h.k === 'tornado' && inView(h.x, h.y)) ditherDisc(g, h.x, h.y + 2, 16, 6, '#1a2430', 0.5);
 }
 
-// 하늘 정원: 발밑이 하늘인 칸 — 아래로 흘러가는 구름 · 섬 밑동(바위 절벽)
+// 하늘 정원: 발밑이 하늘인 칸 — 물이 아니라 아득한 아래 하늘: 위(화면 위)는 짙은 파랑 → 아래로 갈수록 밝아지고,
+// 멀리 구름 바다가 천천히(시차) 흐르고, 가까운 구름 자락이 더 빨리 스쳐 간다 · 섬 가장자리에는 흙 · 바위 밑동과 늘어진 뿌리
+const SKY = ['#3f78c8', '#4c88d4', '#5b98de', '#6ea8e6', '#86baee', '#a2ccf4'];
+function cloud(g, x, y, s, lit, mid, dark) { // 뭉게구름 하나 (도트 덩어리 셋)
+  px(g, dark, x - s * 2, y + 1, s * 4, Math.max(2, s >> 1) + 1);
+  px(g, mid, x - s * 2, y - s + 1, s * 4, s); px(g, mid, x - s, y - s * 2 + 2, s * 2, s);
+  px(g, lit, x - s * 2 + 1, y - s + 1, s * 2, 1); px(g, lit, x - s + 1, y - s * 2 + 2, s + 1, 1);
+}
 function drawSky(R, w, g, cx, cy) {
   const t = w.t, x0 = Math.max(0, Math.floor(cx / TILE) - 1), y0 = Math.max(0, Math.floor(cy / TILE) - 1);
   const x1 = Math.min(w.tw - 1, x0 + Math.ceil(R.VW / TILE) + 2), y1 = Math.min(w.th - 1, y0 + Math.ceil(R.VH / TILE) + 2);
-  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-    if (w.tiles[y * w.tw + x] !== T_LIQUID) continue;
-    const X = x * TILE, Y = y * TILE;
-    // 구름: 칸마다 두 조각이 천천히 흐른다 (세계 좌표에 맞춰 이어진다)
-    for (let k = 0; k < 2; k++) {
-      const ph = (X * 0.7 + Y * 1.3 + k * 37) % 61, cxp = ((ph + t * 6) % 22) - 3, cyp = (ph * 7 + k * 5) % 14;
-      g.fillStyle = k ? 'rgba(255,255,255,0.32)' : 'rgba(230,244,255,0.22)'; g.fillRect(X + Math.round(cxp), Y + Math.round(cyp), 7 - k * 2, 2); g.fillRect(X + Math.round(cxp) + 2, Y + Math.round(cyp) - 1, 3, 1);
+  const voids = [];
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (w.tiles[y * w.tw + x] === T_LIQUID) voids.push(x, y);
+  if (!voids.length) return;
+  g.save(); g.beginPath();
+  for (let i = 0; i < voids.length; i += 2) g.rect(voids[i] * TILE, voids[i + 1] * TILE, TILE, TILE);
+  g.clip();
+  // 하늘 띠 (화면에 붙어 있다 = 아주 멀다) · 띠 사이는 점묘로 섞는다
+  const VX = Math.floor(cx), VY = Math.floor(cy), bh = Math.ceil(R.VH / SKY.length) + 1;
+  for (let b = 0; b < SKY.length; b++) {
+    px(g, SKY[b], VX - 2, VY + b * bh, R.VW + 4, bh + 1);
+    if (b) { g.fillStyle = SKY[b - 1]; for (let xx = 0; xx < R.VW + 4; xx += 2) { g.fillRect(VX - 2 + xx, VY + b * bh, 1, 1); g.fillRect(VX - 1 + xx, VY + b * bh + 2, 1, 1); } }
+  }
+  // 먼 구름 바다 (시차 0.35)
+  const far = (lx, ly, sc, sp, cols, n, seed) => {
+    const ox = cx * sc - t * sp, oy = cy * sc, span = R.VW + 120, vspan = R.VH + 80;
+    for (let i = 0; i < n; i++) {
+      const hx = ((i * 97 + seed) * 7919) % span, hy = ((i * 61 + seed) * 4513) % vspan;
+      const X = VX + ((((hx - ox) % span) + span) % span) - 60, Y = VY + ((((hy - oy) % vspan) + vspan) % vspan) - 40;
+      cloud(g, Math.round(X), Math.round(Y), lx + (i % 3), ...cols);
     }
-    const above = w.tiles[(y - 1) * w.tw + x];
-    if (above !== T_LIQUID && y > 0) { // 섬 밑동: 위 칸이 땅이면 바위 절벽이 아래로 내려온다
-      px(g, '#3a3428', X, Y, TILE, 5); px(g, '#5a5040', X, Y, TILE, 2); px(g, '#2a2418', X + 3, Y + 5, 4, 2); px(g, '#2a2418', X + 10, Y + 5, 3, 3);
-      px(g, 'rgba(20,30,50,0.35)', X, Y + 8, TILE, 3);
-    }
+  };
+  far(3, 0, 0.35, 3, ['#f4faff', '#d6e8f8', '#a8c4e2'], 14, 11);
+  far(2, 0, 0.75, 9, ['#ffffff', '#e8f2fc', '#bcd4ec'], 8, 53); // 가까운 구름 자락
+  g.restore();
+  // 섬 밑동: 위 칸이 땅이면 흙 · 바위가 아래로 내려오고 끝이 들쭉날쭉 · 뿌리가 늘어진다 · 밑동 아래 옅은 안개
+  for (let i = 0; i < voids.length; i += 2) {
+    const x = voids[i], y = voids[i + 1];
+    if (y === 0 || w.tiles[(y - 1) * w.tw + x] === T_LIQUID) continue;
+    const X = x * TILE, Y = y * TILE, h = (x * 13 + y * 7) % 5;
+    px(g, '#6a5236', X, Y, TILE, 3); px(g, '#4e3c2a', X, Y + 3, TILE, 4); px(g, '#3a2e22', X, Y + 7, TILE, 2);
+    for (let k = 0; k < TILE; k += 4) { const d = (k * 3 + h * 5) % 5; px(g, '#3a2e22', X + k, Y + 9, 4 - (d & 1), d); px(g, '#2a2018', X + k + 1, Y + 9 + d, 2, 1); }
+    px(g, '#7c6446', X, Y, TILE, 1); px(g, '#8a8a80', X + h * 2, Y + 4, 3, 2); px(g, '#6a6a62', X + h * 2, Y + 5, 3, 1);
+    if (h < 2) { px(g, '#5a4228', X + 4 + h * 5, Y + 9, 1, 6); px(g, '#5a4228', X + 5 + h * 5, Y + 14, 1, 3); }
   }
 }
 

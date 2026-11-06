@@ -2582,12 +2582,12 @@ export class World {
   checkDeath() {
     const p = this.player;
     if (p.hp > 0 || this.state !== 'play') return;
-    if (this.f.has('undying') && !p.undyingUsed) {
+    if (!p.skyDead && this.f.has('undying') && !p.undyingUsed) { // 하늘로 떨어진 것은 불사 · 불굴로도 버틸 수 없다
       p.undyingUsed = true; p.hp = this.d.maxHp * 0.3; p.invuln = 1;
       this.emit({ t: 'text', x: p.x, y: p.y - 18, text: '불사!', color: '#fff' });
       return;
     }
-    if (this.f.has('lastStand') && p.lastStandCd <= 0) {
+    if (!p.skyDead && this.f.has('lastStand') && p.lastStandCd <= 0) {
       p.lastStandCd = 90; p.hp = 1; p.invuln = 1;
       this.emit({ t: 'text', x: p.x, y: p.y - 18, text: '불굴!', color: '#ffd060' });
       return;
