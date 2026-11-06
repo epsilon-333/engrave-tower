@@ -177,7 +177,7 @@ export function computeBuild(lo) {
     senseR: 30 + E.sen * 0.8,                            // 감각: 숨은 상자 · 함정을 알아채는 거리
     statusRes: E.spi / (E.spi + 90),
     cdr: E.spi / (E.spi + 160),
-    loadCap: 20 + Math.floor(stats.spi / 10), // 기본 20 · 정신 10마다 1 (넘치게는 장착할 수 없다)
+    loadCap: 25 + Math.floor(stats.spi / 10), // 기본 25 · 정신 10마다 1 (넘치게는 장착할 수 없다)
     physDR: Math.max(0, stats.pres) / (Math.max(0, stats.pres) + 160), // 방어 1점의 값을 낮췄다 (예전 +100)
     magDR: Math.max(0, stats.mres) / (Math.max(0, stats.mres) + 160),
     physPen: 0, magPen: 0, knockback: 30, regen: 0,

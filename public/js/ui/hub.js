@@ -227,7 +227,7 @@ export class Hub {
     return `
       ${this.skillPanel(s, b)}
       <section class="panel">
-        <h3>각인 <small>부하 <b>${b.load} / ${b.derived.loadCap}</b></small>${help('Q · E · R · F 칸: 그 각인의 스킬과 패시브. 마지막 칸: 패시브만. 부하 한도는 20 + 정신 10마다 1.')}</h3>
+        <h3>각인 <small>부하 <b>${b.load} / ${b.derived.loadCap}</b></small>${help('Q · E · R · F 칸: 그 각인의 스킬과 패시브. 마지막 칸: 패시브만. 부하 한도는 25 + 정신 10마다 1.')}</h3>
         <div class="slots">${slotHtml}</div>
         <h4>보유 잔향</h4><div class="echoes">${echoInv}</div>
       </section>

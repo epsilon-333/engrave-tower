@@ -1122,7 +1122,7 @@ function migrateSave(sv) {
   for (const [k, v] of Object.entries(newLife())) sv[k] ||= v;
   sv.time ||= newClock(); sv.effects ||= []; sv.learned ||= []; sv.abilities ||= {}; sv.crafted ||= {}; sv.chest ||= {}; sv.bagCap ||= 30; sv.dishLog ||= {};
   syncLevel(sv);
-  sv.slots ||= {}; fitEngravings(sv, toLoadout); // 각인 칸: 부하 한도(20 + 정신)를 넘으면 뒤 칸부터 뺀다
+  sv.slots ||= {}; fitEngravings(sv, toLoadout); // 각인 칸: 부하 한도(25 + 정신)를 넘으면 뒤 칸부터 뺀다
   return sv;
 }
 
