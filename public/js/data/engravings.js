@@ -2,7 +2,7 @@ import { registerPartEngravings } from './monsterparts.js';
 import { MONSTERS } from './monsters.js';
 import { registerSkillEngravings } from './skillengs.js';
 // 각인: 신체 부위에 새기는 고대 문양. 잔향을 모아 공명 제단에서 새긴다.
-// grade 1~5, load = 각인 부하. 고등급은 부하가 크고 태그가 적다 → 많이 끼우면 과부하.
+// grade 1~5 · load(옛 각인 부하)는 이제 쓰지 않는다 (부하 체계를 없앴다).
 // effects[].when = 발동 조건 (conditions.js 형식)
 
 export const ENGRAVINGS = {
@@ -515,7 +515,7 @@ export const ENGRAVINGS = {
     stats: { spi: 6, mag: 4 },
     effects: [
       { when: { tag: 'curse', gte: 2 }, type: 'mul', key: 'statusDmgMul', v: 1.2, text: '상태이상 피해 +20%' },
-      { when: { stat: 'spi', gte: 40 }, type: 'add', key: 'loadCap', v: 2, text: '각인 부하 한도 +2' },
+      { when: { stat: 'spi', gte: 40 }, type: 'mul', key: 'skillCdMul', v: 0.92, text: '스킬 재사용 대기 -8%' },
     ],
     recipe: { soul: 4, spore: 4, mirror: 2 },
   },

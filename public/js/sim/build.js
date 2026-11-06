@@ -177,7 +177,6 @@ export function computeBuild(lo) {
     senseR: 30 + E.sen * 0.8,                            // 감각: 숨은 상자 · 함정을 알아채는 거리
     statusRes: E.spi / (E.spi + 90),
     cdr: E.spi / (E.spi + 160),
-    loadCap: 20 + Math.floor(stats.spi / 10), // 기본 20 · 정신 10마다 1 (넘치게는 장착할 수 없다)
     physDR: Math.max(0, stats.pres) / (Math.max(0, stats.pres) + 160), // 방어 1점의 값을 낮췄다 (예전 +100)
     magDR: Math.max(0, stats.mres) / (Math.max(0, stats.mres) + 160),
     physPen: 0, magPen: 0, knockback: 30, regen: 0,
@@ -208,11 +207,8 @@ export function computeBuild(lo) {
   d.crit = Math.min(0.9, d.crit);
   d.statusRes = Math.min(0.85, d.statusRes);
 
-  // 9) 각인 부하
-  let load = 0;
-  for (const src of active) if (src.kind === 'engraving' && !src.run) load += src.def.load;
-  const overload = load > d.loadCap; // 장착할 때 막는다 (정신이 줄어 넘치면 뒤 칸부터 빠진다: fitEngravings)
-  if (overload) notes.push({ kind: 'warn', text: `부하 ${load}/${d.loadCap}: 한도를 넘었다 · 각인 하나를 빼야 한다` });
+  // 9) 각인 부하: 없앴다 (2026-11-06 · 각인은 칸만 있으면 끼운다)
+  const load = 0, overload = false;
 
   const wid = lo.gear?.weapon && ITEMS[lo.gear.weapon] ? lo.gear.weapon : 'rustySword';
   const weaponId = disabled.has(wid) ? 'rustySword' : wid;
@@ -315,14 +311,3 @@ export function decodeLoadout(code) {
   return { race: o.r, level: o.l, alloc: o.a || {}, engravings: o.e || {}, gear: o.g || {}, skills: o.k, cls: o.c, engLv: o.n || {} };
 }
 
-// 부하 한도를 넘으면(정신이 줄었을 때 · 예전 저장) 뒤 칸(패시브 → F → R …)부터 뺀다. 뺀 각인 이름들을 돌려준다
-export function fitEngravings(save, toLoadout) {
-  const out = [];
-  for (let i = SLOTS.length - 1; i >= 0; i--) {
-    const b = computeBuild(toLoadout(save));
-    if (b.load <= b.derived.loadCap) break;
-    const sl = SLOTS[i];
-    if (save.slots?.[sl]) { out.push(ENGRAVINGS[save.slots[sl]]?.name || save.slots[sl]); delete save.slots[sl]; }
-  }
-  return out;
-}
