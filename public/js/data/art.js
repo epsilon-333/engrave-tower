@@ -145,7 +145,7 @@ export const MONSTER_ART = {
 };
 // 탑 보스 20명: 사용자가 준 시트에서 자세마다 통째로 (tools/cut_bosses.py · 서기 두 자세 · 공격 · 기술) — 위 줄의 예전 그림을 덮는다
 const BOSS_SHEET = { climbChief: {}, mossLord: {}, bogHag: {}, climbQueen: {}, demonCaptain: {}, climbRift: {}, frostOgre: {}, climbWitch: {}, wraithLord: {}, engraveKing: {}, stormHarpy: {}, skyWhale: {}, mirrorSelf: {}, shardQueen: {}, foreman: {}, clockKeeper: {}, archivist: {}, starReader: {}, highPriest: {}, lastKing: {} };
-BOSS_SHEET.clockKeeper = { phase3: 'b_clockKeeper2' };
+// 80층(뼈 용)은 보내 주신 동작 시트 하나로 (예전 시계지기의 3단계 그림은 쓰지 않는다)
 // 그림에 맞춘 동작: 기술마다 공격 줄 · 기술 줄 중 어느 그림을 쓸까 (적지 않은 기술은 근접이면 공격 · 나머지는 기술)
 Object.assign(BOSS_SHEET, {
   climbChief: { atk: ['combo', 'leap', 'jumps3', 'quake', 'whirl', 'shove'], skl: ['charge'] }, // 몽둥이 내려치기 · 돌진은 기술 줄의 달려드는 그림
@@ -159,7 +159,7 @@ Object.assign(BOSS_SHEET, {
   wraithLord: { atk: ['combo', 'leap', 'charge', 'cleave', 'whirl', 'spikeTrail'], skl: ['soar', 'nova', 'mark', 'clones', 'adds'], ghostSoar: true, ghost: true }, // 대검 베기 · 혼령화
   engraveKing: { atk: ['combo', 'leap', 'charge', 'cleave'], skl: ['fan', 'beam', 'sweep', 'crossBeam', 'rain', 'nova', 'mark', 'spiral', 'split', 'donut', 'ripple', 'channel', 'ritual', 'meteorRain', 'soar', 'mirror', 'clones', 'adds'] }, // 왕의 검 · 빛의 폭발
 }); // 3단계: 검을 든 어두운 시계지기로 바뀐다
-BOSS_SHEET.highPriest = { tint: 'brightness(0.78) saturate(1.25) contrast(1.15)' };
+// 대사제: 보내 주신 흰 금빛 그림 그대로 (예전 어둡게 하던 색 보정은 뺀다)
 BOSS_SHEET.stormHarpy = { fly: true };
 BOSS_SHEET.skyWhale = { fly: true };
 for (const [id, o] of Object.entries(BOSS_SHEET)) MONSTER_ART[id] = { base: 'b_' + id, sheet: true, ...o };

@@ -11,6 +11,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 SRC = os.path.join(HERE, '..', 'art', 'source')
 
+GRID6 = {'idle': [0, 1, 2, 3], 'run': [4, 5, 6, 7], 'attack': [8, 9, 10, 11], 'skill': [12, 13, 14, 15], 'skill2': [16, 17, 18, 19], 'hit': [20, 21], 'death': [22, 23]} # 기술 줄이 둘인 시트 (여섯 줄)
 GRID = {'idle': [0, 1, 2, 3], 'run': [4, 5, 6, 7], 'attack': [8, 9, 10, 11], 'skill': [12, 13, 14, 15], 'hit': [16, 17], 'death': [18, 19]}
 # (파일, 줄 번호(None = 모든 줄을 차례로), 줄마다 장면 수, 보스, 동작 → 장면 번호, 게임 키(px))
 SHEETS = [
@@ -24,6 +25,17 @@ SHEETS = [
     ('boss_climbWitch.png', None, 4, 'climbWitch', GRID, 88),
     ('boss_wraithLord.png', None, 4, 'wraithLord', GRID, 84),
     ('boss_engraveKing.png', None, 4, 'engraveKing', GRID, 96),
+    # 51~100층 (2026-11-06 보내 주신 시트)
+    ('boss_stormHarpy.png', None, 4, 'stormHarpy', GRID, 84),
+    ('boss_skyWhale.png', None, 4, 'skyWhale', GRID, 74),
+    ('boss_mirrorSelf.png', None, 4, 'mirrorSelf', GRID, 90),
+    ('boss_shardQueen.png', None, 4, 'shardQueen', GRID, 90),
+    ('boss_foreman.png', None, 4, 'foreman', GRID, 98),
+    ('boss_clockKeeper.png', None, 4, 'clockKeeper', GRID, 84),
+    ('boss_archivist.png', 'even6', 4, 'archivist', GRID6, 92),
+    ('boss_starReader.png', None, 4, 'starReader', GRID, 96),
+    ('boss_highPriest.png', 'six', 4, 'highPriest', GRID6, 92),
+    ('boss_lastKing.png', None, 4, 'lastKing', GRID, 100),
 ]
 ROW9 = 'boss_row9_rift_ogre_witch_wraith_king.png'
 # 한 줄에 한 보스 (줄 번호, 보스, 동작 → 그 줄의 장면 번호, 게임 키)
@@ -54,15 +66,20 @@ def bands(v, minlen, gap):
     if s is not None: out.append((s, len(v)))
     return out
 
-def frames_of(fn, n_per_row, x_skip=0, n_rows=5, grid=None):
+def frames_of(fn, n_per_row, x_skip=0, n_rows=5, grid=None, even=False):
     grids = grid
     a, bg, d = load(fn); fg = d > 70
     rows = bands(fg[:, x_skip:].any(1), 30, 6)
+    if even: H = a.shape[0] / n_rows; rows = [(int(k * H), int((k + 1) * H)) for k in range(n_rows)]  # 떠 있는 것이 많아 줄이 엉킨다: 높이를 똑같이 다섯으로
     rp = fg[:, x_skip:].sum(1)
     while len(rows) < n_rows:  # 반짝이 · 연기로 줄이 붙었다: 가장 높은 띠를 그림이 가장 적은 가로줄에서 가른다
         i = max(range(len(rows)), key=lambda k: rows[k][1] - rows[k][0]); r0, r1 = rows[i]
         m = (r0 + r1) // 2; cut = min(range(m - (r1 - r0) // 3, m + (r1 - r0) // 3), key=lambda y: rp[y])
         rows[i:i + 1] = [(r0, cut), (cut, r1)]
+    while len(rows) > n_rows:  # 떠 있는 돌 · 불티 한 줄이 따로 잡혔다: 가장 낮은 띠를 가까운 이웃 띠에 붙인다
+        i = min(range(len(rows)), key=lambda k: rows[k][1] - rows[k][0])
+        j = i - 1 if i == len(rows) - 1 or (i > 0 and rows[i][0] - rows[i - 1][1] < rows[i + 1][0] - rows[i][1]) else i + 1
+        lo, hi = min(i, j), max(i, j); rows[lo:hi + 1] = [(rows[lo][0], rows[hi][1])]
     out = []
     for ri, (y0, y1) in enumerate(rows):
         prof = fg[y0:y1, x_skip:].sum(0)
@@ -139,7 +156,7 @@ def anchor(fr):
 
 def boss_sets():
     out = []
-    for fn, _, n, boss, anims, tall in SHEETS: out.append((boss, frames_of(fn, n), anims, tall))
+    for fn, mode, n, boss, anims, tall in SHEETS: out.append((boss, frames_of(fn, n, even=mode == 'even6', n_rows=6 if mode in ('even6', 'six') else 5), anims, tall))
     done = {b for _, _, _, b, _, _ in SHEETS}
     if any(b not in done for _, b, _, _ in ROW9_BOSSES):  # 한 줄 9장면 시트: 4칸 × 5줄 시트가 없는 보스만
         allf = frames_of(ROW9, [9, 9, 8, 8, 8])

@@ -56,7 +56,10 @@ def main():
             rows[k] = out
         plan[pre] = rows
     width = max(len(fr) * meta[pre]['w'] for pre, rows in plan.items() for fr in rows.values())
-    sheet = np.zeros((src.shape[0], max(width, src.shape[1]), 4), np.uint8)
+    # 쓰는 줄만 위에서부터 차곡차곡 (동작 시트가 덮어 이제 안 쓰는 예전 줄은 버린다)
+    y = 0
+    for pre, rows in plan.items(): meta[pre]['y0'] = y; y += meta[pre]['h'] * (max(a['row'] for a in meta[pre]['anims'].values()) + 1)
+    sheet = np.zeros((y, width, 4), np.uint8)
     n_new = 0
     for pre, rows in plan.items():
         m = meta[pre]; W, H, y0 = m['w'], m['h'], m['y0']
