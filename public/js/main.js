@@ -2,7 +2,7 @@
 import { World, DT, overworldBase } from './sim/world.js';
 import { SEABED_ZONE, seabedMap } from './data/maps/seabed.js';
 import { ARENA_ZONE, ARENA_SETS, buildArena, spawnArenaSet, DUEL_ZONE, buildDuelArena } from './data/maps/arena.js';
-import { computeBuild, SLOTS } from './sim/build.js';
+import { computeBuild, fitEngravings, SLOTS } from './sim/build.js';
 import { Renderer } from './render/renderer.js';
 import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
@@ -1122,7 +1122,7 @@ function migrateSave(sv) {
   for (const [k, v] of Object.entries(newLife())) sv[k] ||= v;
   sv.time ||= newClock(); sv.effects ||= []; sv.learned ||= []; sv.abilities ||= {}; sv.crafted ||= {}; sv.chest ||= {}; sv.bagCap ||= 30; sv.dishLog ||= {};
   syncLevel(sv);
-  sv.slots ||= {};
+  sv.slots ||= {}; fitEngravings(sv, toLoadout); // 각인 칸: 부하 한도(20 + 정신)를 넘으면 뒤 칸부터 뺀다
   return sv;
 }
 

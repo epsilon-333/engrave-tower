@@ -13,11 +13,11 @@ import { ITEMS, STYLES, WEAPON_SKILLS, weaponHands, WCAT_NAME, weaponCat, addIte
 import { MONSTERS, ECHOES, ZONES, TOWER_ZONES, ALL_ZONES } from '../data/monsters.js';
 import { WORLD_ZONE, ENTRANCES } from '../data/maps/overworld.js';
 import { LABY_ZONE, PALACE_ZONE } from '../data/maps/interiors.js';
-import { computeBuild, encodeLoadout, decodeLoadout, SLOTS, SLOT_KEYS, twoHandBonus, weaponFamily, FAMILY_NAME } from '../sim/build.js';
+import { computeBuild, encodeLoadout, decodeLoadout, SLOTS, SLOT_KEYS, fitEngravings, twoHandBonus, weaponFamily, FAMILY_NAME } from '../sim/build.js';
 import { condText, evalCond } from '../sim/conditions.js';
 import { toLoadout, writeSave, refreshQuests, claimQuest, grantClassEngravings } from '../save.js';
 import { sfx } from '../audio.js';
-import { engravingSkillFor, KIND_NAME, SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS } from '../data/skills.js';
+import { engravingSkillFor, KIND_NAME, SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS, skillLoad, skillCap } from '../data/skills.js';
 import { getAutoAim, setAutoAim } from '../settings.js';
 import { skillScale, weaponStat, SKILL_PERKS, WEAPON_PERKS, CLASS_STATS } from '../data/statscale.js';
 import { bagTab, tradeTab, forgeTab, lifeClick, fishCodex, artifactCodex } from './life.js';
@@ -45,7 +45,7 @@ export class Hub {
   }
 
   get s() { return this.getSave(); }
-  save() { writeSave(this.s); }
+  save() { const out = fitEngravings(this.s, toLoadout); if (out.length) this.toast(`부하 한도를 넘어 뺐다: ${out.join(' · ')}`); writeSave(this.s); } // 정신이 줄어 부하가 넘치면 뒤 칸부터 뺀다
 
   toast(msg) {
     const t = $('#toast');
@@ -140,6 +140,7 @@ export class Hub {
           <div>상태이상 저항 <b>${pct(d.statusRes)}</b></div><div>쿨타임 감소 <b>${pct(d.cdr)}</b></div>
           <div>모든 피해 <b>×${d.dmgMul.toFixed(2)}</b></div><div>받는 피해 <b>×${d.dmgTakenMul.toFixed(2)}</b></div>
         </div>
+        <div class="load ${b.overload ? 'over' : ''}">각인 부하 <b>${b.load} / ${d.loadCap}</b><span class="bar"><i style="width:${Math.min(100, (b.load / d.loadCap) * 100)}%"></i></span></div>
         ${b.extreme ? '<div class="badge extreme">극한 상태: 주력 스탯 +20%</div>' : ''}
         <h4>발동 중인 각성 (${awOn.length})</h4>
         <div class="list">${awOn.map((a) => `<div class="li on"><b>${STAT_INFO[a.stat].name} ${a.at}</b> ${a.name}: ${a.desc}</div>`).join('') || '<div class="muted">없음</div>'}</div>
@@ -166,7 +167,7 @@ export class Hub {
       const mv = e ? `${i > 0 ? `<button class="sm ghost" data-act="moveE" data-slot="${sl}" data-id="-1" title="앞 칸과 바꾸기">◀</button>` : ''}${i < 4 ? `<button class="sm ghost" data-act="moveE" data-slot="${sl}" data-id="1" title="뒤 칸과 바꾸기">▶</button>` : ''}` : '';
       return `<div class="slot ${e ? 'filled' : ''} ${passive ? 'passive' : ''}" ${e ? `style="--g:${GRADES[e.grade].color}"` : ''}>
         <div class="sl-name"><b class="sl-key">${SLOT_KEYS[i]}</b> ${passive ? '패시브만' : '스킬 + 패시브'}</div>
-        ${e ? `<div class="sl-e">${e.name}</div><div class="sl-meta">${sk ? `스킬 「${sk.name}」` : passive ? '스킬 없음' : ''}</div><div>${mv}<button class="sm ghost" data-act="unequipE" data-slot="${sl}">빼기</button></div>` : '<div class="muted">비어 있음</div>'}
+        ${e ? `<div class="sl-e">${e.name}</div><div class="sl-meta">부하 ${e.load}${sk ? ` · 스킬 「${sk.name}」` : passive ? ' · 스킬 없음' : ''}</div><div>${mv}<button class="sm ghost" data-act="unequipE" data-slot="${sl}">빼기</button></div>` : '<div class="muted">비어 있음</div>'}
       </div>`;
     }).join('');
 
@@ -226,7 +227,7 @@ export class Hub {
     return `
       ${this.skillPanel(s, b)}
       <section class="panel">
-        <h3>각인 ${help('Q · E · R · F 칸: 그 각인의 스킬과 패시브. 마지막 칸: 패시브만.')}</h3>
+        <h3>각인 <small>부하 <b>${b.load} / ${b.derived.loadCap}</b></small>${help('Q · E · R · F 칸: 그 각인의 스킬과 패시브. 마지막 칸: 패시브만. 부하 한도는 20 + 정신 10마다 1.')}</h3>
         <div class="slots">${slotHtml}</div>
         <h4>보유 잔향</h4><div class="echoes">${echoInv}</div>
       </section>
@@ -261,7 +262,7 @@ export class Hub {
         : `<button class="sm" data-act="skillOn" data-id="${id}">장착</button>`;
       return `<div class="skc ${on ? 'on' : ''} ${locked ? 'locked' : ''}" style="--c:${ROLE_COLOR[sk.role]}">
         <div class="c-head"><b>${on ? `[${keys[i]}] ` : ''}${sk.name}</b><span class="role">${sk.role}</span></div>
-        <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''}${sk.cast ? ` · 시전 ${sk.cast}초` : ''}</div>
+        <div class="muted"><b class="sk-load">부하 ${skillLoad(id)}</b> · 재사용 ${sk.cd}초${cost ? ' · ' + cost : ''}${sk.cast ? ` · 시전 ${sk.cast}초` : ''}</div>
         <div class="c-sum">${esc(sk.desc)}</div>
         ${scaleLine(id)}
         <div class="c-act">${btn}</div>
@@ -386,13 +387,13 @@ export class Hub {
     const skId = engravingSkillFor(id, s.race), SK = SKILLS[skId], orig = ENGRAVING_SKILLS[id];
     const skillBox = SK ? `<div class="c-skill" style="--c:${ROLE_COLOR[SK.role] || '#f0c878'}">
       <div class="cs-head"><b>${SK.ult ? '궁극 · ' : ''}${esc(SK.name)}</b><span>${SK.role}</span></div>
-      <div class="cs-meta">재사용 ${SK.cd}초${SK.cost ? ` · 자원 ${SK.cost}` : SK.costAll ? ` · 자원 전부(${SK.costAll.min} 이상)` : SK.mana ? ` · 마나 ${SK.mana}` : ''} · ${KIND_NAME[SK.kind || 'body'] || '몸'}으로 쓴다</div>
+      <div class="cs-meta">재사용 ${SK.cd}초${SK.cost ? ` · 자원 ${SK.cost}` : SK.costAll ? ` · 자원 전부(${SK.costAll.min} 이상)` : SK.mana ? ` · 마나 ${SK.mana}` : ''} · ${KIND_NAME[SK.kind || 'body'] || '몸'}으로 쓴다 · 부하 ${skillLoad(skId)}</div>
       <div class="cs-desc">${termify(esc(SK.desc || ''))}</div>
       ${skId !== orig ? `<div class="cs-meta muted">원래 스킬 「${esc(SKILLS[orig].name)}」(궁극)은 그 종족만 · 다른 종족은 이 기술을 쓴다</div>` : ''}</div>` : '';
     const fromLine = e.from && MONSTERS[e.from] ? `<div class="c-meta">${s.codex.kills?.[e.from] ? MONSTERS[e.from].name : '???'}의 부산물로 새긴다</div>` : '';
     return `<div class="card ${goal ? 'goal' : ''}" data-q="${esc(this.engSearchText(id, s))}" style="--g:${GRADES[e.grade].color}">
       <div class="c-head"><b>${e.name}</b><span><button class="star ${goal ? 'on' : ''}" data-act="goal" data-id="${id}" title="목표로 찜">★</button> <span class="grade">${GRADES[e.grade].name}</span></span></div>
-      <div class="c-meta">${(() => { const sk = engravingSkillFor(id, s.race), orig = ENGRAVING_SKILLS[id]; return sk ? `<b style="color:#f0c878">스킬: ${SKILLS[sk].name}</b>${sk !== orig ? ` <small class="muted">(궁극기 「${SKILLS[orig].name}」는 그 종족만)</small>` : ''} · ` : ''; })()}${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
+      <div class="c-meta">${(() => { const sk = engravingSkillFor(id, s.race), orig = ENGRAVING_SKILLS[id]; return sk ? `<b style="color:#f0c878">스킬: ${SKILLS[sk].name}</b>${sk !== orig ? ` <small class="muted">(궁극기 「${SKILLS[orig].name}」는 그 종족만)</small>` : ''} · ` : ''; })()}부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
       ${fromLine}
       ${weaponLine}
       ${skillBox}
@@ -577,6 +578,7 @@ export class Hub {
     if (synB !== synA) chips.push(`<span class="pv ${synB > synA ? 'up' : 'down'}">시너지 ${synB > synA ? '+' : ''}${synB - synA}</span>`);
     const awA = base.awakenings.filter((x) => x.on).length, awB = nb.awakenings.filter((x) => x.on).length;
     if (awB !== awA) chips.push(`<span class="pv ${awB > awA ? 'up' : 'down'}">각성 ${awB > awA ? '+' : ''}${awB - awA}</span>`);
+    if (nb.overload && !base.overload) chips.push('<span class="pv down">과부하!</span>');
     return chips.length ? `<div class="preview">장착 시 ${chips.join('')}</div>` : '<div class="preview muted">장착 시 변화 없음</div>';
   }
 
@@ -631,6 +633,8 @@ export class Hub {
         if (!target && dup) { this.toast(`「${SKILLS[engravingSkillFor(id, s.race)].name}」 스킬은 이미 ${SLOT_KEYS[SLOTS.indexOf(dup)]} 칸의 각인이 준다 · 패시브 칸이 비어야 끼울 수 있다`); break; }
         if (!target) { this.toast('빈 각인 칸이 없습니다. 먼저 하나를 빼세요'); break; }
         s.slots[target] = id;
+        const after = computeBuild(toLoadout(s));
+        if (after.load > after.derived.loadCap) { delete s.slots[target]; this.toast(`부하가 넘친다 (${after.load} / ${after.derived.loadCap}) · 다른 각인을 빼거나 정신을 올리자`); break; }
         const ti = SLOTS.indexOf(target);
         this.toast(`${e.name} → ${SLOT_KEYS[ti]} 칸${ti < 4 && engravingSkillFor(id, s.race) ? ` · 스킬 「${SKILLS[engravingSkillFor(id, s.race)].name}」` : ' · 패시브만'}`);
         break;
@@ -648,6 +652,8 @@ export class Hub {
         const cur = [...this.curSkills()];
         if (cur.includes(id)) break;
         if (cur.length >= 4) cur[3] = id; else cur.push(id);
+        const used = cur.reduce((a, k) => a + skillLoad(k), 0), cap = skillCap(s.level || 1);
+        if (used > cap) { this.toast(`스킬 부하가 넘친다 (${used} / ${cap}) · 다른 스킬을 빼거나 레벨을 올리자`); break; }
         s.skills = cur; break;
       }
       case 'setCls': {
