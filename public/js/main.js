@@ -21,7 +21,7 @@ import { registerCrafted, craftItem, LOOT_RARITY } from './data/crafting.js';
 import { registerAllDishes, eatInfo } from './data/cooking.js';
 import { LEARN, ABILITIES } from './data/learn.js';
 import { CROPS } from './data/goods.js';
-import { GOODS, SELL_BONUS } from './data/goods.js';
+import { GOODS, SELL_BONUS, GOOD_CATS } from './data/goods.js';
 import { KNACKS, knackTick, hasKnack, newKnack } from './data/knacks.js';
 import { net, onNet, netSend, netConnect, netMap, netPos, netLerp } from './net.js';
 import { RAIDS, raidWeek, buildRaidArena } from './data/raid.js';
@@ -358,23 +358,40 @@ const offerText = (o) => [o.gold ? `◆ ${o.gold} 골드` : '', ...Object.entrie
 function sendOffer() { trade.myOk = false; trade.theirOk = false; trade.mine.rf = Object.fromEntries(trade.mine.items.map((id) => [id, save.reinforce?.[id] || 0])); netSend({ t: 'tradeOffer', offer: trade.mine }); showTrade(); } // 강화 단계도 함께 넘어간다
 function showTrade() {
   if (!trade) return;
-  const T = trade, have = tradeable();
+  const T = trade, have0 = tradeable();
+  // 거르기: 가방은 물건 종류, 장비는 부위, 이름 찾기 (Enter)
+  T.fg ||= 'all'; T.fi ||= 'all'; T.q ||= '';
+  const q = T.q.trim().toLowerCase(), hit = (name) => !q || name.toLowerCase().includes(q);
+  const gCats = [...new Set(have0.goods.map(([id]) => GOODS[id].cat))], iSlots = [...new Set(have0.items.map((id) => ITEMS[id].slot))];
+  const have = {
+    goods: have0.goods.filter(([id]) => (T.fg === 'all' || GOODS[id].cat === T.fg) && hit(GOODS[id].name)),
+    items: have0.items.filter((id) => (T.fi === 'all' || ITEMS[id].slot === T.fi) && hit(ITEMS[id].name)),
+  };
+  const SLOT_NAME = { weapon: '무기', off: '왼손', armor: '방어구', acc: '장신구' };
+  const chip = (k, v, cur, label) => `<button class="sm ${cur === v ? 'on' : 'ghost'}" data-tf="${k}" data-v="${v}">${label}</button>`;
+  const gFilter = gCats.length > 1 ? `<div class="filters">${chip('fg', 'all', T.fg, '전체')}${gCats.map((c) => chip('fg', c, T.fg, GOOD_CATS[c] || c)).join('')}</div>` : '';
+  const iFilter = iSlots.length > 1 ? `<div class="filters">${chip('fi', 'all', T.fi, '전체')}${iSlots.map((c) => chip('fi', c, T.fi, SLOT_NAME[c] || c)).join('')}</div>` : '';
   const goodsRows = have.goods.map(([id, n]) => { const k = T.mine.goods[id] || 0; return `<div class="soc-row"><span class="nm">${esc(GOODS[id].name)} <small class="muted">${n}개</small></span><span class="btns"><button class="sm ghost" data-tg="${id}" data-d="-1" ${k ? '' : 'disabled'}>−</button><b>${k}</b><button class="sm ghost" data-tg="${id}" data-d="1" ${k < n ? '' : 'disabled'}>+</button></span></div>`; }).join('');
   const itemRows = have.items.map((id) => { const on = T.mine.items.includes(id); return `<div class="soc-row ${on ? 'on' : ''}"><span class="nm">${esc(ITEMS[id].name)}${save.reinforce?.[id] ? ` +${save.reinforce[id]}` : ''}</span><span class="btns"><button class="sm ${on ? '' : 'ghost'}" data-ti="${id}">${on ? '넣었다' : '넣기'}</button></span></div>`; }).join('');
   const theirs = offerText(T.theirs), mine = offerText(T.mine);
   showModal(`<div class="social" id="tradeBox"><h2>교환 · ${esc(T.name)}</h2>
     <div class="trade-cols"><div><h4>내가 줄 것 ${T.myOk ? '<span class="up">✔ 확정</span>' : ''}</h4><p>${mine.length ? mine.map(esc).join(' · ') : '<span class="muted">아직 없다</span>'}</p>
       <div class="soc-make"><input id="tgold" type="number" min="0" max="${save.gold}" value="${T.mine.gold}" placeholder="골드"><button class="sm" data-tgold>골드 정하기</button></div><small class="muted">가진 골드 ${save.gold}</small>
-      <h4>가방</h4><div class="soc-list trade-list">${goodsRows || '<p class="muted">없음</p>'}</div><h4>장비 (들고 있지 않은 것)</h4><div class="soc-list trade-list">${itemRows || '<p class="muted">없음</p>'}</div></div>
+      <div class="soc-make"><input id="tq" type="search" value="${esc(T.q)}" placeholder="이름으로 찾기 (Enter)"><button class="sm" data-tqgo>찾기</button>${T.q ? '<button class="sm ghost" data-tqx>지우기</button>' : ''}</div>
+      <h4>가방</h4>${gFilter}<div class="soc-list trade-list">${goodsRows || `<p class="muted">${have0.goods.length ? '맞는 것이 없다' : '없음'}</p>`}</div><h4>장비 (들고 있지 않은 것)</h4>${iFilter}<div class="soc-list trade-list">${itemRows || `<p class="muted">${have0.items.length ? '맞는 것이 없다' : '없음'}</p>`}</div></div>
     <div><h4>받을 것 ${T.theirOk ? '<span class="up">✔ 확정</span>' : ''}</h4><p>${theirs.length ? theirs.map(esc).join(' · ') : '<span class="muted">아직 없다</span>'}</p></div></div>
     <p class="muted">둘 다 확정하면 주고받는다.</p>
     <div class="actions"><button id="tOk" ${T.myOk ? 'disabled' : ''}>확정</button><button id="tNo" class="ghost">그만두기</button></div></div>`, () => tradeCancel());
   const box = document.getElementById('tradeBox');
   box.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => e.stopPropagation()));
+  const tq = document.getElementById('tq'); tq.addEventListener('keydown', (e) => { if (e.key === 'Enter') { trade.q = tq.value; showTrade(); document.getElementById('tq')?.focus(); } });
   box.onclick = (e) => {
     const b = e.target.closest('button'); if (!b || !trade) return;
     if (b.id === 'tOk') { trade.myOk = true; netSend({ t: 'tradeConfirm' }); tradeCheck(); return; }
     if (b.id === 'tNo') { tradeCancel(); return; }
+    if (b.dataset.tf) { trade[b.dataset.tf] = b.dataset.v; showTrade(); return; }
+    if (b.dataset.tqgo != null) { trade.q = document.getElementById('tq').value; showTrade(); return; }
+    if (b.dataset.tqx != null) { trade.q = ''; showTrade(); return; }
     if (b.dataset.tgold != null) { trade.mine.gold = Math.max(0, Math.min(save.gold, Math.floor(+document.getElementById('tgold').value || 0))); sendOffer(); return; }
     if (b.dataset.tg) { const id = b.dataset.tg; trade.mine.goods[id] = Math.max(0, Math.min(save.bag[id] || 0, (trade.mine.goods[id] || 0) + +b.dataset.d)); sendOffer(); return; }
     if (b.dataset.ti) { const id = b.dataset.ti, L = trade.mine.items; trade.mine.items = L.includes(id) ? L.filter((x) => x !== id) : [...L, id]; sendOffer(); }
