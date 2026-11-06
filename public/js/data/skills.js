@@ -750,14 +750,3 @@ for (const [cls, list] of Object.entries(MORE_SKILLS)) {
   for (const [id, sk] of Object.entries(list)) { sk.cls = cls; sk.race = c ? c.race : 'wild'; sk.kind ||= ['wizard', 'undead'].includes(sk.race) || ['spiritcaller', 'dragonSage'].includes(cls) ? 'spell' : 'body'; if (c && !c.skills.includes(id)) c.skills.push(id); if (!c) WILD_SKILLS.push(id); }
 }
 
-// ── 스킬 부하: 센 스킬일수록 무겁다. 장착한 스킬 부하의 합은 레벨에 따른 한도를 넘을 수 없다 ──
-// 궁극기 5 · 재사용이 길수록 무겁고 마무리는 +1 (스킬에 load를 적으면 그 값). 무기 기술은 0
-export function skillLoad(id) {
-  const sk = SKILLS[id]; if (!sk || id === 'weapon') return 0;
-  if (sk.load != null) return sk.load;
-  if (sk.ult) return 5;
-  const base = sk.cd <= 3 ? 1 : sk.cd <= 6 ? 2 : sk.cd <= 10 ? 3 : 4;
-  return Math.min(5, base + (sk.role === '마무리' ? 1 : 0));
-}
-// 한도: 1레벨 5 → 4레벨마다 +1 (20레벨 10 · 40레벨 15 · 60레벨 20)
-export const skillCap = (level = 1) => 5 + Math.floor(level / 4);
