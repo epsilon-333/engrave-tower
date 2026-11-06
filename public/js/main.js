@@ -2,7 +2,7 @@
 import { World, DT, overworldBase } from './sim/world.js';
 import { SEABED_ZONE, seabedMap } from './data/maps/seabed.js';
 import { ARENA_ZONE, ARENA_SETS, buildArena, spawnArenaSet, DUEL_ZONE, buildDuelArena } from './data/maps/arena.js';
-import { computeBuild, fitEngravings } from './sim/build.js';
+import { computeBuild, fitEngravings, SLOTS } from './sim/build.js';
 import { Renderer } from './render/renderer.js';
 import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
@@ -33,7 +33,7 @@ import { RACE_STORY, relation, allies, ALLY_AFF, REL_NAME, REL_COLOR } from './d
 import { ITEMS, WEAPON_SKILLS, addItem } from './data/items.js';
 import './data/weapons.js'; // 탑의 무기 100종을 장비 목록에 올린다
 import './data/towergear.js'; // 탑의 방어구 · 장신구 · 부적 30종
-import { CC_EXTRA, CLASSES, ENGRAVING_SKILLS, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc } from './data/skills.js';
+import { CC_EXTRA, CLASSES, ENGRAVING_SKILLS, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc, engravingSkillFor } from './data/skills.js';
 import { STAT_INFO } from './data/stats.js';
 import { bagAdd, SCROLL_SHOP, buyPrice } from './data/goods.js';
 import { SPIRITS, SPIRIT_GRADES, SPIRIT_ELEMS, SPIRIT_STAR_MAX, STONE_PRICE, rollSpirit, addSpirit, spiritBuffText, spiritSpecialText, STONE_PRICE_CALLER, CALLER_RATES, spiritLevel, SPIRIT_LV_XP } from './data/spirits.js';
@@ -1092,6 +1092,9 @@ function migrateSave(sv) {
     sv.owned ||= {}; sv.echoes ||= {}; sv.slots ||= {};
     for (const [id, n] of Object.entries(sv.owned)) if (n > 1 && ENGRAVINGS[id]) { for (const [eid, k] of Object.entries(ENGRAVINGS[id].recipe || {})) sv.echoes[eid] = (sv.echoes[eid] || 0) + k * (n - 1); sv.owned[id] = 1; }
     const seenE = new Set(); for (const k of Object.keys(sv.slots)) { const id = sv.slots[k]; if (!id) continue; if (seenE.has(id)) delete sv.slots[k]; else seenE.add(id); }
+    // 같은 스킬을 주는 각인은 스킬 칸에 하나만: 겹친 둘째는 패시브 칸으로(비어 있으면), 아니면 뺀다
+    const seenS = new Set();
+    for (const k of SLOTS.slice(0, 4)) { const id = sv.slots[k], sk = id && engravingSkillFor(id, sv.race); if (!sk) continue; if (!seenS.has(sk)) { seenS.add(sk); continue; } delete sv.slots[k]; if (!sv.slots[SLOTS[4]]) sv.slots[SLOTS[4]] = id; }
   }
   { // 장비 낱개: 같은 아이디가 여럿이면 둘째부터 'id#2' · 'id#3' (강화가 낱개마다 따로 붙는다) · 장신구 하나가 두 칸에 끼워져 있으면 둘째 낱개로, 없으면 뺀다
     const list = sv.items || [], seen = new Set(); sv.items = [];

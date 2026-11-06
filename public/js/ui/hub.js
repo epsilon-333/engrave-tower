@@ -27,6 +27,11 @@ import { storageTab, cookTab, craftTab, learnTab, homeClick } from './home.js';
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// 이 각인과 같은 스킬을 주는 각인이 끼워진 스킬 칸 (없으면 null) · skip: 견주지 않을 칸
+function sameSkillSlot(s, id, skip = []) {
+  const sk = engravingSkillFor(id, s.race); if (!sk) return null;
+  return SLOTS.slice(0, 4).find((k) => !skip.includes(k) && s.slots[k] && s.slots[k] !== id && engravingSkillFor(s.slots[k], s.race) === sk) || null;
+}
 export class Hub {
   constructor(root, getSave, onStartRun, onReset, onClose) {
     this.root = root; this.getSave = getSave; this.onStartRun = onStartRun; this.onReset = onReset; this.onClose = onClose;
@@ -622,7 +627,10 @@ export class Hub {
       case 'equipE': {
         const e = ENGRAVINGS[id];
         if (Object.values(s.slots).includes(id)) { this.toast('이미 끼운 각인입니다'); break; }
-        const target = SLOTS.find((x) => !s.slots[x]);
+        // 같은 스킬을 주는 각인은 스킬 칸(Q · E · R · F)에 하나만: 겹치면 패시브 칸으로, 거기도 차 있으면 못 끼운다
+        const dup = sameSkillSlot(s, id);
+        const target = dup ? (!s.slots[SLOTS[4]] ? SLOTS[4] : null) : SLOTS.find((x) => !s.slots[x]);
+        if (!target && dup) { this.toast(`「${SKILLS[engravingSkillFor(id, s.race)].name}」 스킬은 이미 ${SLOT_KEYS[SLOTS.indexOf(dup)]} 칸의 각인이 준다 · 패시브 칸이 비어야 끼울 수 있다`); break; }
         if (!target) { this.toast('빈 각인 칸이 없습니다. 먼저 하나를 빼세요'); break; }
         s.slots[target] = id;
         const after = computeBuild(toLoadout(s));
@@ -635,6 +643,7 @@ export class Hub {
       case 'moveE': { // 각인 칸 자리 바꾸기 (Q ↔ E …)
         const i = SLOTS.indexOf(slot), j = i + +id; if (j < 0 || j >= SLOTS.length) break;
         const a = s.slots[SLOTS[i]], c = s.slots[SLOTS[j]];
+        if ((j < 4 && a && sameSkillSlot(s, a, [SLOTS[i], SLOTS[j]])) || (i < 4 && c && sameSkillSlot(s, c, [SLOTS[i], SLOTS[j]]))) { this.toast('같은 스킬을 주는 각인은 스킬 칸에 하나만 둘 수 있다'); break; }
         if (c) s.slots[SLOTS[i]] = c; else delete s.slots[SLOTS[i]];
         if (a) s.slots[SLOTS[j]] = a; else delete s.slots[SLOTS[j]];
         break;

@@ -190,7 +190,7 @@ export const ENGRAVINGS = {
     name: '묘지기의 계약', slot: 'back', grade: 5, load: 10, tags: ['shadow'],
     stats: { str: 10, mag: 10, sen: 8 },
     effects: [
-      { type: 'mul', key: 'dmgMul', v: 1.3, text: '모든 피해 +30%' },
+      { type: 'add', key: 'crit', v: 0.3, text: '치명타 확률 +30%' },
     ],
     recipe: { grave: 1, bone: 10, soul: 5 },
   },
