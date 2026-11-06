@@ -983,11 +983,12 @@ export class Renderer {
     if (kind !== M.kind) { M.kind = kind; M.kT = w.t; M.endT = -1; if (kind === 'run') M.dist = 0; }
     const fr = frames(base, kind), since = w.t - M.kT;
     let name;
-    if (kind === 'run') { const stride = Math.max(8, (e.r || 10) * 0.9) * (charging ? 1.6 : 1); name = fr[Math.floor(M.dist / stride) % fr.length]; } // 한 장면 = 몇 px 걸음
-    else if (kind === 'attack') name = full ? (e.windT > 0 || fr.length < 2 ? fr[0] : fr[Math.min(fr.length - 1, 1 + Math.floor(since * 9))]) // 준비 자세는 예고 동안 그대로 → 내려치기 · 따라가기 한 번
-      : fr.length >= 3 ? (e.windT > 0 ? fr[0] : fr[1 + (Math.floor(since * 6) % (fr.length - 1))]) : fr[Math.floor(since * 4) % fr.length];
-    else if (kind === 'skill') name = full ? fr[Math.min(fr.length - 1, Math.floor(since * 6))] : fr[Math.floor(since * 3) % fr.length]; // 기술: 차례로 넘기고 마지막 장면을 끝까지
-    else name = fr[Math.floor(since * (fr.length > 2 ? 2.4 : 1.4)) % fr.length]; // 서기 · 맞음: 자세가 바뀐 때부터 첫 장면
+    if (kind === 'run') { const stride = Math.max(8, (e.r || 10) * 0.9) * (charging ? 1.6 : 1) / 2; name = fr[Math.floor(M.dist / stride) % fr.length]; } // 한 장면 = 몇 px 걸음 (사이 그림이 들어가 장면이 두 배: tools/boss_tween.py)
+    // 넘기는 빠르기는 사이 그림을 넣은 뒤의 장수 기준 (원래 장면 하나 = 두 장)
+    else if (kind === 'attack') name = full ? (e.windT > 0 || fr.length < 2 ? fr[0] : fr[Math.min(fr.length - 1, 1 + Math.floor(since * 18))]) // 준비 자세는 예고 동안 그대로 → 내려치기 · 따라가기 한 번
+      : fr.length >= 3 ? (e.windT > 0 ? fr[0] : fr[1 + (Math.floor(since * 12) % (fr.length - 1))]) : fr[Math.floor(since * 4) % fr.length];
+    else if (kind === 'skill') name = full ? fr[Math.min(fr.length - 1, Math.floor(since * 12))] : fr[Math.floor(since * 3) % fr.length]; // 기술: 차례로 넘기고 마지막 장면을 끝까지
+    else name = fr[Math.floor(since * (fr.length >= 8 ? 4.8 : 2.8)) % fr.length]; // 서기 · 맞음: 자세가 바뀐 때부터 첫 장면
     if (kind === 'attack' || kind === 'skill') M.last = name;
     return name;
   }
@@ -1207,7 +1208,7 @@ export class Renderer {
     const art = MONSTER_ART[c.defId]; if (!art) { c.t = 0; return; }
     if (art.sheet && atlas[`${art.base}_death_anim_f0`]) { // 보스: 시트의 쓰러지는 장면 → 누운 채 4초 → 흐려진다
       if (!c.sheet) { c.sheet = true; c.t = c.max = 5; this.shake = Math.max(this.shake, 8); }
-      c.t -= dt; const el = c.max - c.t, fr = frames(art.base, 'death'), img = sprite(fr[Math.min(fr.length - 1, Math.floor(el * 5))], '', false, c.dir < 0);
+      c.t -= dt; const el = c.max - c.t, fr = frames(art.base, 'death'), img = sprite(fr[Math.min(fr.length - 1, Math.floor(el * 10))], '', false, c.dir < 0);
       if (!img) return;
       this.shadow(c.x, c.y + 3, img.width * 0.32);
       this.g.globalAlpha = Math.min(1, c.t / 0.8); this.g.drawImage(img, Math.round(c.x - img.width / 2), Math.round(c.y + 4 - img.height)); this.g.globalAlpha = 1;
