@@ -22,9 +22,8 @@ const SFX = {
   lore: ['bookOpen.ogg'], select: ['select_002.ogg'], drop: ['drop_002.ogg'],
 };
 
-let ctx = null, master = null, sfxGain = null, musicGain = null, meter = null;
+let ctx = null, master = null, sfxGain = null, musicGain = null;
 // 지금 나오는 소리의 크기 { rms, peak } (0~1) — 시험에서 곡이 조용하거나 찢어지지 않는지 본다
-export function audioLevel() { if (!meter) return null; const a = new Float32Array(meter.fftSize); meter.getFloatTimeDomainData(a); let s = 0, pk = 0; for (const v of a) { s += v * v; pk = Math.max(pk, Math.abs(v)); } return { rms: Math.sqrt(s / a.length), peak: pk }; }
 const buffers = new Map();
 let vol = { sfx: 0.7, music: 0.35 };
 try { Object.assign(vol, JSON.parse(localStorage.getItem('et-vol') || '{}')); } catch { /* 무시 */ }
@@ -42,7 +41,6 @@ export function unlockAudio() {
   if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
   ctx = new AudioContext();
   master = ctx.createGain(); master.connect(ctx.destination);
-  meter = ctx.createAnalyser(); meter.fftSize = 2048; master.connect(meter); // 소리 크기 재기 (시험용)
   sfxGain = ctx.createGain(); sfxGain.gain.value = vol.sfx; sfxGain.connect(master);
   musicGain = ctx.createGain(); musicGain.gain.value = vol.music; musicGain.connect(master);
   const files = new Set(Object.values(SFX).flat());

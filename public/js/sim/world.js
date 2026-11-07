@@ -2674,7 +2674,6 @@ export class World {
   }
 
   // 연습 모드: 비어 있는 야영지를 바로 다시 채운다
-  respawnAll() { for (const c of this.camps) if (!c.members.some((m) => !m.dead)) this.spawnCamp(c); }
 
   updateCamps() {
     if (this.mode !== 'field') return;

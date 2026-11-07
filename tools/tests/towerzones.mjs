@@ -59,12 +59,12 @@ for (const f of [52, 63, 72, 83, 94]) {
   if (g === 'light') { const o = w.objects.find((q) => q.kind === 'lightPillar'); ok(!!o, `${f}층 빛기둥이 있다`); if (o) { w.interact(o); ok(o.litT > 0, '빛기둥을 깨운다'); } }
   if (g === 'mirror') ok(w.climb.gz.shadowDone || w.climb.waveI < 2, `${f}층 거울 그림자`);
 }
-// 하늘: 떨어지면 체력 -10% · 마지막 자리로
+// 하늘: 떨어지면 죽는다 (되살아나는 효과도 안 듣는다)
 {
   const { w } = mk(52); const p = w.player; let vi = -1;
   for (let i = 0; i < w.tiles.length; i++) if (w.tiles[i] === T_LIQUID) { vi = i; break; }
   ok(vi >= 0, '하늘 정원에 하늘(가장자리)이 있다');
-  if (vi >= 0) { for (let i = 0; i < 10; i++) { w.step({ moveX: 0, moveY: 0, aimX: p.x + 1, aimY: p.y }); } const sx = p.x, sy = p.y, hp0 = p.hp; p.x = (vi % w.tw) * TILE + 8; p.y = Math.floor(vi / w.tw) * TILE + 5; w.step({ moveX: 0, moveY: 0, aimX: p.x + 1, aimY: p.y }); ok(p.hp < hp0 && Math.hypot(p.x - sx, p.y - sy) < 4, `떨어지면 체력을 잃고 돌아온다 (${Math.round(hp0 - p.hp)})`); }
+  if (vi >= 0) { for (let i = 0; i < 10; i++) w.step({ moveX: 0, moveY: 0, aimX: p.x + 1, aimY: p.y }); p.x = (vi % w.tw) * TILE + 8; p.y = Math.floor(vi / w.tw) * TILE + 5; for (let i = 0; i < 90; i++) w.step({ moveX: 0, moveY: 0, aimX: p.x + 1, aimY: p.y }); ok(p.skyDead && p.hp <= 0, '떨어지면 죽는다'); }
 }
 
 // 5) 보스층: 등장 연출 → 모든 단계 · 모든 기술을 오류 없이

@@ -297,4 +297,3 @@ export function bossScriptTick(w, e, p, mv) {
   sc.end?.(); e.mv = null; return !!sc.hold;
 }
 // 보스가 죽거나 층을 나가면 남은 대본은 버린다 (delayed 에 걸린 터짐은 e.dead 로 막는다)
-export const scriptTile = TILE;
