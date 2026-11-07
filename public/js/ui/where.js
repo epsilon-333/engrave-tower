@@ -1,4 +1,5 @@
 // 어디서 얻나: 모든 물건 · 장비가 어디서 나오는지 (몬스터 · 캐기 · 땅 파기 · 낚시 · 가게 · 성지 · 대장간)
+import { esc } from '../text.js';
 import { GOODS, MONSTER_DROPS, NODES, BIOME_NODES, DIG_BASE, DIG_BIOME, SHOP_STOCK, SCROLL_SHOP, FISH } from '../data/goods.js';
 import { ITEMS } from '../data/items.js';
 import { MONSTERS, ZONES, ALL_ZONES } from '../data/monsters.js';
@@ -6,7 +7,6 @@ import { ENTRANCES } from '../data/maps/overworld.js';
 import { RACE_SHOP, SANCTUMS } from '../data/sanctums.js';
 import { CLASSES } from '../data/skills.js';
 
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const BIOME_NAME = { plains: '평원', meadow: '초원', forest: '숲', swamp: '늪', snow: '설원', volcano: '화산', coast: '해안', graveyard: '묘지', wasteland: '황야', jungle: '원시림', lake: '호수', mountain: '바위산', mountains: '바위산', desert: '사막', ruins: '폐허', river: '강', tower: '탑 근처', cave: '동굴', frost: '얼음 동굴', grave: '지하 묘지', rift: '균열 동굴', labyrinth: '잊힌 미궁', palace: '용궁' };
 
 // 몬스터가 사는 곳 (탑 · 던전의 몬스터 목록)

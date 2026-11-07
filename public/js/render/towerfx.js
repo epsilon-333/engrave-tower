@@ -1,12 +1,12 @@
 // 탑 51~100층 그리기: 구역 장치(톱니 띠 · 별자리 · 시계 문자판 · 빛기둥 · 회오리) · 돌풍 · 시간 · 보스 등장 연출
 // 모두 칸에 맞춘 도트로 그린다 (몸 둘레 고리 · 빛나는 막대 없이)
+import { hexA } from './color.js';
 import { TILE, T_LIQUID } from '../sim/mapgen.js';
 import { renderMap } from './tiles.js';
 import { sprite, frames } from './assets.js';
 import { RACE_ART } from '../data/art.js';
 import { sfx } from '../audio.js';
 
-const hexA = (hex, a) => { const n = parseInt((hex || '#ffffff').slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a))})`; };
 const px = (g, c, x, y, w = 1, h = 1) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); };
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 // 점묘 원 (바닥에 깔리는 장판)

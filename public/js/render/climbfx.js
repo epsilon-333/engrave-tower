@@ -1,7 +1,7 @@
 // 탑 등반의 것들 그리기: 다음 층으로 가는 문(위에 다음 층 그림) · 등반 HUD
+import { hexA } from './color.js';
 import { REWARDS, actOf, oathScore, recLevel, levelGap, FLOOR_MODS } from '../data/climb.js';
 
-const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
 const px = (g, c, x, y, w = 1, h = 1) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); };
 
 // 보상 그림 (가운데 x, y · 약 11×11 도트)

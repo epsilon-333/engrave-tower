@@ -1,4 +1,5 @@
 // 마을 화면 (DOM). 캐릭터 / 공명 제단 / 상점 / 사냥터 / 도감
+import { esc } from '../text.js';
 import { KNACKS } from '../data/knacks.js';
 import { BASE_STATS, STAT_INFO, SPECIAL_INFO, GRADES, TIERS } from '../data/stats.js';
 import { RACES } from '../data/races.js';
@@ -25,7 +26,6 @@ import { whereTab } from './where.js';
 import { storageTab, cookTab, craftTab, learnTab, homeClick } from './home.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // 이 각인과 같은 스킬을 주는 각인이 끼워진 스킬 칸 (없으면 null) · skip: 견주지 않을 칸
 function sameSkillSlot(s, id, skip = []) {

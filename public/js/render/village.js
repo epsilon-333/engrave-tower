@@ -1,4 +1,5 @@
 // 성지 마을을 그린다: 우두머리(왕관 · 망토) · 하는 일이 보이는 주민 · 날아다니는 것들 · 수련 과녁 · 수련 화면 · 말풍선
+import { hexA } from './color.js';
 import { TILE } from '../sim/mapgen.js';
 import { sprite } from './assets.js';
 import { SANCTUMS, SANCT_LIFE } from '../data/sanctums.js';
@@ -10,7 +11,6 @@ const R = (g, col, x, y, w, h) => { g.fillStyle = col; g.fillRect(Math.round(x),
 const disc = (g, x, y, r, col) => { g.fillStyle = col; g.beginPath(); g.arc(x, y, Math.max(0.5, r), 0, Math.PI * 2); g.fill(); };
 const glowAt = (g, x, y, r, col, a) => { const gr = g.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, col.replace('A', a)); gr.addColorStop(1, col.replace('A', 0)); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); };
 const poly = (g, col, pts) => { g.fillStyle = col; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill(); };
-const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a))})`; };
 
 // ───── 우두머리: 조금 크게, 망토 · 머리 장식, 의뢰가 있으면 ! (끝낸 의뢰는 ?) ─────
 export function drawLeader(r, w, o) {

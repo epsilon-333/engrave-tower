@@ -1,4 +1,5 @@
 // 진입점: 화면 전환(광장 ↔ 필드), 입력, 고정 틱 게임 루프
+import { esc, josa } from './text.js';
 import { World, DT, overworldBase } from './sim/world.js';
 import { SEABED_ZONE, seabedMap } from './data/maps/seabed.js';
 import { ARENA_ZONE, ARENA_SETS, buildArena, spawnArenaSet, DUEL_ZONE, buildDuelArena } from './data/maps/arena.js';
@@ -175,8 +176,8 @@ onNet('adminAsk', (m) => { // 운영자가 내 정보를 본다 (보여 주기�
   netSend({ t: 'adminReply', to: m.from, info: { level: save.level, race: save.race, cls: save.cls, gold: save.gold, stats: world?.b?.stats || null, gear: Object.fromEntries(Object.entries(save.gear || {}).map(([k, v]) => [k, ITEMS[v]?.name || v])), skills: (world?.b?.skills || []).map((id) => SKILLS[id]?.name || id), tower: save.tower?.max || 0, raid: save.raid?.best || {}, zone: world?.zone?.name || '' } });
 });
 onNet('adminInfo', (m) => {
-  const el = document.getElementById('adminInfo'); if (!el) return; const i = m.info || {};
-  el.innerHTML = `<div class="skc"><b>${RACES[i.race]?.name || ''} Lv ${i.level}</b> · ${esc(i.zone || '')} · ◆ ${(i.gold || 0).toLocaleString()} · 탑 ${i.tower}층<div class="muted">장비: ${esc(Object.entries(i.gear || {}).map(([k, v]) => `${k} ${v}`).join(' · ') || '-')}</div><div class="muted">스킬: ${esc((i.skills || []).join(' · ') || '-')}</div>${i.stats ? `<div class="muted">스탯: ${esc(Object.entries(i.stats).map(([k, v]) => `${k} ${Math.round(v)}`).join(' · '))}</div>` : ''}${Object.keys(i.raid || {}).length ? `<div class="muted">레이드: ${Object.entries(i.raid).map(([k, v]) => `${RANK_RAID[k]} ${fmtTime(v)}`).join(' · ')}</div>` : ''}</div>`;
+  const el = document.getElementById('adminInfo'); if (!el) return; const i = m.info || {}; const num = (v) => Math.round(+v || 0); // 상대 화면이 보낸 값: 숫자만 쓴다 (글자가 끼면 운영자 화면에 코드가 들어간다)
+  el.innerHTML = `<div class="skc"><b>${RACES[i.race]?.name || ''} Lv ${num(i.level)}</b> · ${esc(i.zone || '')} · ◆ ${num(i.gold).toLocaleString()} · 탑 ${num(i.tower)}층<div class="muted">장비: ${esc(Object.entries(i.gear || {}).map(([k, v]) => `${k} ${v}`).join(' · ') || '-')}</div><div class="muted">스킬: ${esc((i.skills || []).join(' · ') || '-')}</div>${i.stats ? `<div class="muted">스탯: ${esc(Object.entries(i.stats).map(([k, v]) => `${k} ${Math.round(v)}`).join(' · '))}</div>` : ''}${Object.keys(i.raid || {}).length ? `<div class="muted">레이드: ${Object.entries(i.raid).map(([k, v]) => `${esc(RANK_RAID[k] || '')} ${fmtTime(num(v))}`).join(' · ')}</div>` : ''}</div>`;
 });
 onNet('chat', (m) => {
   const el = document.createElement('p');
@@ -1656,7 +1657,6 @@ function gainShard(race) {
   }
   writeSave(save);
 }
-const josa = (word, a, b) => { const c = word.charCodeAt(word.length - 1) - 0xac00; return word + (c >= 0 && c < 11172 && c % 28 ? a : b); };
 function gainRelic(race, rid) {
   save.relicSrc ||= {}; save.relics ||= {};
   if (save.relicSrc[rid]) return;
@@ -3720,7 +3720,6 @@ function tick(ts) {
   }
 }
 
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 if (DEBUG) window.__game = { get world() { return world; }, get paused() { return paused; }, get coRun() { return coRun; }, get modal() { return !!modal; }, renderer, hub, dbg: { climb: climbUi, spawnHappening: () => spawnHappening(), enterIsland: (id) => enterIsland(id), save: () => save, talk: (id) => sanctTalk(id), talkId: (id) => arcTalk(id) || portTalk(id), capExec } }; // 디버그용
 
 // 로그인·저장 상태 표시

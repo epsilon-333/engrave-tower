@@ -1,5 +1,7 @@
 // 캔버스 렌더러: world 상태를 읽어서 그리기만 한다 (게임 로직 없음)
 // 화면 크기에 맞춰 정수 배율(S)로 도트를 키우고, 글씨는 실제 해상도로 따로 그린다.
+import { hexA } from './color.js';
+export { hexA };
 import { opts } from '../settings.js';
 import { TILE, T_LIQUID, T_WALL, T_CRACK, T_BUILD, T_DEEP } from '../sim/mapgen.js';
 import { paintTile, drawOutdoorProp, renderChunk, CHUNK, drawRelic, drawSign, drawTurtle } from './outdoor.js';
@@ -3178,11 +3180,6 @@ function drawStoryItem(g, id, x, y) {
   else if (id === 'glowMoss') { P('#0d0b10', -3, -3, 7, 6); P('#3a9a6a', -2, -2, 5, 4); P('#7affc8', -1, -2, 2, 2); P('#e8fff4', 1, 0, 1, 1); }
   else if (id === 'rustyKey') { P('#0d0b10', -4, -3, 9, 6); P('#d0a868', -3, -2, 3, 3); P('#d0a868', 0, -1, 4, 1); P('#d0a868', 3, 0, 1, 1); P('#3a2a18', -2, -1, 1, 1); }
   else { P('#0d0b10', -3, -4, 6, 8); P('#9affd8', -2, -3, 4, 6); P('#ffffff', -1, -2, 1, 2); }
-}
-export function hexA(hex, a) {
-  if (!hex) hex = '#ffffff';
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a))})`;
 }
 export function disc(g, cx, cy, r) { g.beginPath(); g.arc(cx, cy, Math.max(0.5, r), 0, Math.PI * 2); g.fill(); }
 // 효과(mods) → 사람이 읽는 글

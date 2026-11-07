@@ -178,6 +178,7 @@ const GRANT_FILE = path.join(DATA_DIR, 'grants.json');
 let grants = {};
 grants = readJson(GRANT_FILE, {});
 const saveGrants = () => writeJson(GRANT_FILE, grants);
+// shortcut: 계정 이름으로 맡긴 보상은 그 이름으로 먼저 접속한 사람이 받는다 (서버가 계정 로그인을 확인하지 않는다) — 서버가 로그인을 직접 확인하게 되면 그때 막는다
 const grantKeys = (c) => [c.uid, c.name && c.name !== '여행자' ? 'name:' + c.name.toLowerCase() : null].filter(Boolean);
 function grantDeliver(c) { for (const k of grantKeys(c)) for (const g of grants[k] || []) send(c, { t: 'grant', ...g }); }
 // 운영자: 서버 설정(ADMIN_KEY)의 열쇠를 아는 「운영자」만

@@ -1,4 +1,5 @@
 // 집 · 생활 화면: 보관함(가방 ↔ 보관함) · 부엌(요리) · 작업대/대장간(무기 만들기) · 기술 배우기 · 먹기
+import { esc, josa } from '../text.js';
 import { GOODS, GOOD_CATS, BAG_START, BAG_UPGRADES, bagUsed, bagFits } from '../data/goods.js';
 import { FOOD, FOOD_EFFECTS, KIND_NAME, cookPreview, registerDish, parseDish, dishName, dishEffectText, eatInfo, RECIPES } from '../data/cooking.js';
 import { WTYPES, WMATS, PART_FX, SYNERGY, craftCost, craftItem } from '../data/crafting.js';
@@ -9,8 +10,6 @@ import { LEARN, TABLET_BIOME_NAME } from '../data/learn.js';
 import { RACES } from '../data/races.js';
 import { iconURL } from '../render/icons.js';
 
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const josa = (word, a, b) => { const c = word.charCodeAt(word.length - 1) - 0xac00; return word + (c >= 0 && c < 11172 && c % 28 ? a : b); };
 const ico = (key, cls = '') => `<img class="gi ${cls}" src="${iconURL(key)}" alt="">`;
 const cap = (s) => s.bagCap || BAG_START;
 export const bagLine = (s) => { const u = bagUsed(s.bag || {}), c = cap(s); return `<span class="${u >= c ? 'warn' : ''}">가방 ${u}/${c}칸</span>`; };

@@ -3,6 +3,7 @@
 // 강해지는 것은 탑 밖(제단 각인 · 장비 · 성지 수련)에서. 탑에서는 몬스터 부산물을 얻는다.
 // 세이브는 10층마다: 구역의 주인을 쓰러뜨리면 다음 구역 첫 층부터 시작할 수 있다. 중간에 쓰러지거나 나가면 그 등반은 끝난다.
 // main.js 의 상태(저장 · 세계 · 창)는 ctx 로 받는다.
+import { esc } from '../text.js';
 import { World } from '../sim/world.js';
 import { computeBuild } from '../sim/build.js';
 import { buildClimbFloor } from '../sim/climbmap.js';
@@ -11,7 +12,6 @@ import { ALL_ZONES } from '../data/monsters.js';
 import { eatInfo } from '../data/cooking.js';
 import { CLIMB_TOP, ACTS, actOf, floorKind, recLevel, newRun, runEffects, OATHS, oathScore, climbStarts, newClimbSave, FLOOR_MODS } from '../data/climb.js';
 
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 export function createClimb(ctx) {

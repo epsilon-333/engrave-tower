@@ -1,4 +1,5 @@
 // 생활 화면: 가방 · 잡화점(사고팔기, 시세) · 대장간 제작(도구 강화 · 장비 만들기 · 무기 강화)
+import { esc, josa } from '../text.js';
 import { GOODS, GOOD_CATS, TOOLS, FORGE, REINFORCE, REINFORCE_MAX, rfKey, REINFORCE_STEP, REINFORCE_ARMOR, REINFORCE_GEAR, SHOP_STOCK, buyPrice, sellPrice, market, toolUpgradeCost, FISH, ARTIFACTS } from '../data/goods.js';
 import { ITEMS, WEAPON_SKILLS } from '../data/items.js';
 import { ECHOES } from '../data/monsters.js';
@@ -7,8 +8,6 @@ import { iconURL, toolKey, toolName } from '../render/icons.js';
 import { registerDish } from '../data/cooking.js';
 import { bagLine, foodButtons, goodTitle, bagUpgradeHtml } from './home.js';
 
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const josa = (word, a, b) => { const c = word.charCodeAt(word.length - 1) - 0xac00; return word + (c >= 0 && c < 11172 && c % 28 ? a : b); };
 const ico = (key, cls = '') => `<img class="gi ${cls}" src="${iconURL(key)}" alt="">`;
 const TOOL_ORDER = ['pickaxe', 'axe', 'shovel', 'hoe', 'can', 'rod'];
 const statText = (st) => Object.entries(st || {}).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k])?.name || k} ${v > 0 ? '+' : ''}${v}`).join(', ');
