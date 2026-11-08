@@ -1,6 +1,9 @@
-// 영어판: 게임 코드는 그대로 두고, 화면에 나가는 글자(캔버스 글자 · 페이지 글자 · 알림 창)만 영어로 바꾼다.
+// 언어 바꾸기(설정 → 언어): 영어면 게임 코드는 그대로 두고, 화면에 나가는 글자(캔버스 글자 · 페이지 글자 · 알림 창)만 영어로 바꾼다.
 // DICT(한국어 조각 → 영어)는 build.mjs가 이 파일 앞에 붙인다. 게임 안의 판단(이름 · 정규식 · 표의 열쇠)은 한국어 그대로라 놀이가 바뀌지 않는다.
 (() => {
+  let L = null; try { L = localStorage.getItem('lang'); } catch { /* 저장소 막힘 */ }
+  window.__lang = L || (/^ko/i.test(navigator.language || '') ? 'ko' : 'en'); // 고른 적이 없으면 브라우저 언어
+  if (window.__lang !== 'en') return;
   const HANGUL = /[가-힣]/;
   const byFirst = new Map(); // 첫 글자 → 그 글자로 시작하는 조각 (긴 것부터)
   for (const k of Object.keys(DICT)) { const c = k[0]; if (!byFirst.has(c)) byFirst.set(c, []); byFirst.get(c).push(k); }

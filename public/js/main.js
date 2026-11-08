@@ -1999,6 +1999,7 @@ function showSettings(back, openKeys = false) {
     <details class="keys-set"${openKeys ? ' open' : ''}><summary>키 바꾸기</summary><div class="key-grid">${KEY_ACTIONS.map(([def, name]) => `<span>${name}</span><button class="sm ghost" data-rebind="${def}">${keyLabel(keyFor(def))}</button>`).join('')}</div>
       <p class="muted">버튼을 누른 뒤 쓸 키를 누른다 (Esc: 그만두기). 다른 행동이 쓰던 키면 서로 바뀐다.</p><button id="keysReset" class="sm ghost">기본 키로</button></details>
     <h4>화면</h4>
+    <p class="set-row">언어 · Language ${sel('optLang', window.__lang || 'ko', [['ko', '한국어'], ['en', 'English']])}</p>
     <p class="set-row">화면 흔들림 ${sel('optShake', opts.shake, [[1, '보통'], [0.5, '약하게'], [0, '끔']])}</p>
     <p class="set-row">피해 숫자 ${sel('optDmg', opts.dmgNum, [['all', '모두'], ['crit', '치명타만'], ['off', '끔']])}</p>
     <label class="ck"><input type="checkbox" id="optBig" ${opts.bigText ? 'checked' : ''}> 창 글자 크게</label>
@@ -2011,13 +2012,14 @@ function showSettings(back, openKeys = false) {
   const $ = (id) => document.getElementById(id);
   $('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
   $('npcAtkCk').onchange = (e) => { setNpcAttack(e.target.checked); if (world) world.npcAttack = e.target.checked; };
+  $('optLang').onchange = (e) => { try { localStorage.setItem('lang', e.target.value); } catch { /* 저장소 막힘 */ } if (save) writeSave(save); location.reload(); }; // 글자를 처음부터 다시 그리도록 새로 연다
   $('optShake').onchange = (e) => setOpt('shake', +e.target.value);
   $('optDmg').onchange = (e) => setOpt('dmgNum', e.target.value);
   $('optBig').onchange = (e) => { setOpt('bigText', e.target.checked); document.body.classList.toggle('big-text', e.target.checked); };
   if ($('fsBtn')) $('fsBtn').onclick = () => { (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {}); setTimeout(() => showSettings(back), 300); };
   if ($('logoutBtn')) $('logoutBtn').onclick = async () => { await logout(); clearSave(); save = null; world = null; overlay.hidden = true; paused = false; modal = null; showTitle(); };
   if ($('loginBtn')) $('loginBtn').onclick = () => { writeSave(save); overlay.hidden = true; paused = false; modal = null; world = null; showLogin(afterLogin); };
-  $('resetGo').onclick = () => { if ($('resetIn').value.trim() !== '지운다') { $('resetIn').focus(); return; } overlay.hidden = true; paused = false; modal = null; resetGame(); };
+  $('resetGo').onclick = () => { if (!['지운다', 'erase'].includes($('resetIn').value.trim())) { $('resetIn').focus(); return; } overlay.hidden = true; paused = false; modal = null; resetGame(); };
   $('setBack').onclick = () => back();
   // 키 바꾸기: 다음에 누른 키를 그 행동에 준다 (게임 입력보다 먼저 받는다)
   overlay.querySelectorAll('[data-rebind]').forEach((bt) => (bt.onclick = () => {

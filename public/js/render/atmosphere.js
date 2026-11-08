@@ -121,7 +121,7 @@ export const AtmosMethods = {
     const g = this.g;
     g.save(); this.viewTf(g);
     g.globalCompositeOperation = 'multiply';
-    g.drawImage(this.light, 0, 0);
+    if (this.light.width) g.drawImage(this.light, 0, 0); // 창이 숨겨진 채 열려 크기가 0이면 건너뛴다
     g.restore(); g.imageSmoothingEnabled = false;
     this.worldTf(g);
     // 반딧불이 (밤의 풀숲 · 숲)
@@ -192,7 +192,7 @@ export const AtmosMethods = {
     lg.globalCompositeOperation = 'source-over';
     const g = this.g;
     this.viewTf(g);
-    g.drawImage(this.light, 0, 0);
+    if (this.light.width) g.drawImage(this.light, 0, 0); // 창이 숨겨진 채 열려 크기가 0이면 건너뛴다
     this.worldTf(g);
   },
 

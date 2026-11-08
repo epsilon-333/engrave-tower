@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 export const ROOT = fileURLToPath(new URL('../../public/', import.meta.url));
 export function files() {
   const out = [];
-  (function walk(d) { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); if (f === 'vendor' || f === 'compare-fx') continue; if (fs.statSync(p).isDirectory()) walk(p); else if (/\.(js|html)$/.test(f)) out.push(p); } })(ROOT);
+  (function walk(d) { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); if (f === 'vendor' || f === 'compare-fx' || f === 'i18n.js') continue; if (fs.statSync(p).isDirectory()) walk(p); else if (/\.(js|html)$/.test(f)) out.push(p); } })(ROOT);
   return out;
 }
 const HANGUL = /[가-힣]/;
