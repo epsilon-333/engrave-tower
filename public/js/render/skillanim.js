@@ -55,7 +55,7 @@ const ELEM_COL = { fire: '#ff7a2a', ice: '#9fe3ff', lightning: '#f8f070', poison
 
 export class SkillAnims {
   constructor(r) { this.r = r; this.list = []; this.ground = []; this.px = new PxFx(); }
-  add(type, o) { const max = o.max ?? DUR[type] ?? 0.8; this.list.push({ type, t: 0, max, seed: (Math.random() * 1e9) | 0, ...o, max }); if (this.list.length > 60) this.list.shift(); }
+  add(type, o) { const max = o.max ?? DUR[type] ?? 0.8; this.list.push({ type, t: 0, max, seed: (Math.random() * 1e9) | 0, ...o, max }); if (this.list.length > 60) this.list.shift(); return true; } // 그렸다고 알린다 (안 알리면 렌더러가 고리 · 등급 표식을 또 겹쳐 그렸다)
 
   // 사건 → 애니메이션 고르기 (범위 스킬이 터지는 자리)
   onAoe(ev) {

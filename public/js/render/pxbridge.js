@@ -27,15 +27,17 @@ export class PxFx {
     const ctx = cv.getContext('2d'), img = ctx.createImageData(w, h);
     const e = { fx, frame, cv, ctx, img, x, y, ox, oy, w, h, scale, sy, speed, floor, rot, sortY, t: 0, max: max ?? mod.meta.duration ?? 2 };
     this.list.push(e);
-    if (this.list.length > 60) this.list.shift();
+    if (this.list.length > 24) this.list.shift(); // 한꺼번에 너무 많으면 어지럽고 느리다 — 가장 오래된 것부터 뺀다
     return e;
   }
   // 매 프레임 한 번: 시간을 흘리고 그림을 만든다. 실제로 얹는 것은 drawOne (렌더러가 건물 · 사람과 함께 y 순서로 부른다)
   update(dt) {
     const every = this.list.length > 12 ? 1 / 15 : 1 / 30; // 그림은 초당 30장(이펙트가 많으면 15장)만 새로 그린다: 큰 폭발 하나가 그릴 때마다 4ms라 여럿 겹치면 화면이 끊겼다
-    for (const e of this.list) {
+    const t0 = performance.now(), n = this.list.length, first = (this.turn = ((this.turn || 0) + 1) % Math.max(1, n)); // 한 프레임에 2.5ms까지만 새로 그린다 (넘으면 지난 그림 그대로 · 차례를 돌려 모두 고르게)
+    for (let i = 0; i < n; i++) {
+      const e = this.list[(first + i) % n];
       e.t += dt * e.speed;
-      try { e.fx.update(dt * e.speed); if (e.drawnT != null && e.t - e.drawnT < every) continue; e.drawnT = e.t; clearFrame(e.frame); e.fx.draw(e.frame); } catch (err) { e.keep = -1; e.max = 0; console.warn('pixelfx', err?.message); continue; } // 이펙트 하나가 잘못돼도 게임은 멈추지 않는다
+      try { e.fx.update(dt * e.speed); if ((e.drawnT != null && e.t - e.drawnT < every) || (i > 0 && performance.now() - t0 > 2.5)) continue; /* 새 이펙트도 시간이 넘치면 다음 프레임에 처음 그린다 */ e.drawnT = e.t; clearFrame(e.frame); e.fx.draw(e.frame); } catch (err) { e.keep = -1; e.max = 0; console.warn('pixelfx', err?.message); continue; } // 이펙트 하나가 잘못돼도 게임은 멈추지 않는다
       composite(e.frame, e.img.data, null);
       if (e.floor) { // pixelfx는 옆에서 본 그림이라 땅(기준선)을 따라 먼지 · 그을음이 길게 깔린다 → 위에서 보는 이 게임에서는 막대처럼 보여서 기준선 근처의 멀리 뻗은 부분을 지운다
         const D = e.img.data, y0 = Math.max(0, e.oy - 10), y1 = Math.min(e.h, e.oy + 8), xl = e.ox - e.floor, xr = e.ox + e.floor;

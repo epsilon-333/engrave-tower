@@ -31,7 +31,6 @@ export function zoneInit(w) {
   C.gz = { g, gustT: 6, bellT: BELL_EVERY - 6, beltMul: 1, beltMulT: 0, safe: { x: w.player.x, y: w.player.y }, hist: [], shadowDone: false, hz: [] };
   C.belts = mc.belts || []; C.stars = mc.stars || []; C.shelves = mc.shelves || [];
   if (mc.pillars) for (const pl of mc.pillars) w.objects.push({ kind: 'lightPillar', x: pl.x * TILE + 8, y: pl.y * TILE + 12, litT: 0, label: '빛기둥 깨우기', reach: 24, reusable: true });
-  if (g && C.f % 10 === 1 && C.kind === 'fight' && ZONE_RULES[g]) w.emit({ t: 'note', text: ZONE_RULES[g], color: '#bfe8ff' });
 }
 
 // ───── 매 틱 ─────
@@ -68,7 +67,7 @@ export function zoneTick(w) {
   // 시간의 종
   if (fight && Z.g === 'clock') {
     Z.bellT -= DT;
-    if (Z.bellT <= 1.2 && !Z.bellTele) { Z.bellTele = true; w.emit({ t: 'text', x: p.x, y: p.y - 34, text: '종이 울리려 한다…', color: '#ffe0a0' }); }
+    if (Z.bellT <= 1.2 && !Z.bellTele) { Z.bellTele = true; }
     if (Z.bellT <= 0) {
       Z.bellT = BELL_EVERY; Z.bellTele = false; Z.bellOn = BELL_DUR;
       for (const e of w.enemies) if (!e.dead && !e.bellSlow) { e.bellSlow = true; e.speedMul *= 0.7; }
@@ -79,12 +78,12 @@ export function zoneTick(w) {
   }
   // 거울 그림자: 두 번째 물결에 한 번
   if (fight && Z.g === 'mirror' && !Z.shadowDone && C.kind === 'fight' && C.waveI >= 2) { Z.shadowDone = true; spawnShadows(w); }
-  for (const e of w.enemies) if (e.lifeT > 0 && (e.lifeT -= DT) <= 0 && !e.dead) { e.dead = true; w.emit({ t: 'death', x: e.x, y: e.y, color: '#1a1a24', defId: e.defId, dir: e.dir }); w.emit({ t: 'text', x: e.x, y: e.y - 20, text: '그림자가 흩어졌다', color: '#c8d0e0' }); }
+  for (const e of w.enemies) if (e.lifeT > 0 && (e.lifeT -= DT) <= 0 && !e.dead) { e.dead = true; w.emit({ t: 'death', x: e.x, y: e.y, color: '#1a1a24', defId: e.defId, dir: e.dir }); }
   // 빛기둥
   for (const o of w.objects) if (o.kind === 'lightPillar' && o.litT > 0) {
     o.litT -= DT;
     if (o.litT <= 0) { o.label = '빛기둥 깨우기'; w.emit({ t: 'text', x: o.x, y: o.y - 30, text: '빛기둥이 꺼졌다', color: '#c8b880' }); }
-    for (const e of w.enemies) if (!e.dead && e.def.eatsLight && Math.hypot(e.x - o.x, e.y - o.y) < 30 && o.litT > 0) { o.litT = 0; o.label = '빛기둥 깨우기'; w.emit({ t: 'text', x: o.x, y: o.y - 30, text: '빛을 삼켰다!', color: '#a890c0' }); }
+    for (const e of w.enemies) if (!e.dead && e.def.eatsLight && Math.hypot(e.x - o.x, e.y - o.y) < 30 && o.litT > 0) { o.litT = 0; o.label = '빛기둥 깨우기'; }
   }
   // 지워진 기록: 맞으면 4초 동안 드러난다
   for (const e of w.enemies) if (e.revealT > 0) e.revealT -= DT;
@@ -100,7 +99,7 @@ function playerFall(w) {
   const p = w.player;
   if (p.skyFall) return;
   p.skyFall = { t: 0, dur: 1.1, x: p.x, y: p.y, spin: p.dir || 1 }; p.dashT = 0;
-  w.emit({ t: 'skyFall', x: p.x, y: p.y }); w.emit({ t: 'text', x: p.x, y: p.y - 30, text: '떨어진다…!', color: '#ffb0a0' });
+  w.emit({ t: 'skyFall', x: p.x, y: p.y });
 }
 function skyFallTick(w) {
   const p = w.player, F = p.skyFall;
@@ -127,7 +126,6 @@ function spawnShadows(w) {
   const sh = w.makeEnemy('mirrorShade', sp.x, sp.y, { summoned: true });
   sh.atk = w.skillAtk('any') * 0.4; sh.lifeT = 20; sh.noLoot = true; sh.state = 'chase'; sh.home = { x: sp.x, y: sp.y }; sh.mirrorRace = w.b.race; sh.champion = '내 그림자';
   w.enemies.push(sh); w.aggro(sh);
-  w.emit({ t: 'banner', text: '거울에서 내 그림자가 걸어 나왔다', sub: '20초 동안 내 공격력의 40%로 따라 친다', color: '#c8d0e0' });
   const src = w.enemies.filter((e) => !e.dead && e.climb && !e.summoned && !e.def.boss);
   if (src.length) { // 적의 그림자: 체력 절반 · 20초
     const o = w.rng.pick(src), c = w.makeEnemy(o.defId, o.x + 14, o.y, { summoned: true });
@@ -154,7 +152,7 @@ export function shiftShelves(w) {
   }
   if (!plan.length) return;
   const warn = []; for (const { sh, nx } of plan) for (let x = nx; x < nx + sh.len; x++) warn.push(sh.y * tw + x);
-  w.emit({ t: 'tileWarn', tiles: warn, dur: 1, color: '#c8b0ff' }); w.emit({ t: 'text', x: w.player.x, y: w.player.y - 34, text: '책장이 움직인다', color: '#c8b0ff' });
+  w.emit({ t: 'tileWarn', tiles: warn, dur: 1, color: '#c8b0ff' });
   w.delayed.push({ t: 1, run: () => {
     for (const { sh, nx } of plan) {
       for (let x = sh.x0; x < sh.x0 + sh.len; x++) w.tiles[sh.y * tw + x] = T_FLOOR;
@@ -298,7 +296,7 @@ export function bossPickX(w, e, p, pick) {
       Z.collapsed = true; say(nm || '구름 붕괴', '#cfefff');
       const left = p.x < w.tw * TILE / 2, cx = w.map.climb.center.x, list = [];
       for (let y = 9; y < w.th - 3; y++) for (let x = 2; x < w.tw - 2; x++) { const i = y * w.tw + x; if (w.tiles[i] !== T_FLOOR || Math.abs(x - cx) <= 2) continue; if (left ? x < cx - 2 : x > cx + 2) list.push(i); }
-      w.emit({ t: 'tileWarn', tiles: list, dur: 2, color: '#cfefff' }); w.emit({ t: 'banner', text: '구름이 꺼진다', sub: '반대쪽으로 건너라 · 10초', color: '#cfefff' });
+      w.emit({ t: 'tileWarn', tiles: list, dur: 2, color: '#cfefff' });
       w.delayed.push({ t: 2, run: () => { for (const i of list) w.tiles[i] = T_LIQUID; w.emit({ t: 'mapChanged' }); w.emit({ t: 'shake', v: 6 }); } });
       w.delayed.push({ t: 12, run: () => { for (const i of list) if (w.tiles[i] === T_LIQUID) w.tiles[i] = T_FLOOR; w.emit({ t: 'mapChanged' }); if (Z) Z.collapsed = false; } });
       return false;
@@ -306,7 +304,7 @@ export function bossPickX(w, e, p, pick) {
     case 'shardHide': { // 거울 숨바꼭질: 여섯 거울 중 하나에 여왕이 숨는다 · 진짜를 때리면 드러나 기절 · 가짜를 깨면 파편이 나에게 튄다
       const spots = (w.map.climb?.shardSpots || []).map((s) => ({ x: s.x * TILE + 8, y: s.y * TILE + 8 })).filter((s) => !w.blocked(s.x, s.y, e.r));
       if (spots.length < 3) return false;
-      w.emit({ t: 'banner', text: `${nm || '거울 숨바꼭질'}`, sub: '진짜 여왕을 찾아 때려라 · 가짜를 깨면 파편이 튄다', color: '#e8f0ff' });
+      w.emit({ t: 'banner', text: nm || '거울 숨바꼭질', color: '#e8f0ff' });
       for (let i = spots.length - 1; i > 0; i--) { const j = w.rng.int(0, i); [spots[i], spots[j]] = [spots[j], spots[i]]; }
       w.emit({ t: 'blink', x1: e.x, y1: e.y, x2: spots[0].x, y2: spots[0].y }); e.x = spots[0].x; e.y = spots[0].y;
       for (const s of spots.slice(1)) {
@@ -320,11 +318,11 @@ export function bossPickX(w, e, p, pick) {
     case 'beltFlip': { // 컨베이어 역회전: 띠가 모두 거꾸로 · 6초 동안 두 배 빠르게
       for (const b of C.belts) { b.dx = -b.dx; b.dy = -b.dy; }
       Z.beltMul = 2; Z.beltMulT = 6;
-      w.emit({ t: 'banner', text: nm || '컨베이어 역회전', sub: '톱니 띠가 거꾸로 · 6초 동안 두 배 빠르게', color: '#d8a860' }); w.emit({ t: 'shake', v: 3 });
+      w.emit({ t: 'banner', text: nm || '컨베이어 역회전', color: '#d8a860' }); w.emit({ t: 'shake', v: 3 });
       return false;
     }
     case 'timeStop': { // 멈춘 시간: 3초 동안 나는 느려지고(-55%) 다른 적은 멈춘다 · 0.4초마다 내 자리에 칼날 · 끝나면 한꺼번에 떨어진다
-      w.emit({ t: 'banner', text: nm || '멈춘 시간', sub: '칼날이 쌓인다 — 끝날 때 원 밖에 서라', color: '#ffe0a0' }); w.emit({ t: 'timeStop', dur: 3.2 });
+      w.emit({ t: 'banner', text: nm || '멈춘 시간', color: '#ffe0a0' }); w.emit({ t: 'timeStop', dur: 3.2 });
       p.buffs.timeStopped = { t: 3.2, mods: { moveSpeed: 0.45 }, name: '멈춘 시간', color: '#ffe0a0' };
       for (const o of w.enemies) if (o !== e && !o.dead) o.st.stun = Math.max(o.st.stun || 0, 3.2);
       e.mv = { k: 'timeStop', boss: true, t: 3.2, spots: [], next: 0.2 };
@@ -358,11 +356,10 @@ export function bossPickX(w, e, p, pick) {
       const lit = w.objects.filter((o) => o.kind === 'lightPillar' && o.litT > 0).sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y));
       if (lit.length) { const o = lit[0]; o.litT = 0; o.label = '빛기둥 깨우기'; say(nm || '빛 끄기', '#c45cff'); w.emit({ t: 'beamFx', x1: e.x, y1: e.y - 8, x2: o.x, y2: o.y - 16 }); w.emit({ t: 'text', x: o.x, y: o.y - 34, text: '빛기둥이 꺼졌다 — 다시 깨워라(G)', color: '#c8b880' }); }
       else { say('어둠이 차오른다', '#c45cff'); e.mv = { k: 'nova', t: 1.2 }; w.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 110, dur: 1.2 }); e.windT = 1.2; e.windMax = 1.2; }
-      if (!w.objects.some((o) => o.kind === 'lightPillar' && o.litT > 0) && !e.douseRage) { e.douseRage = true; e.atk *= 1.2; w.emit({ t: 'banner', text: '빛이 모두 꺼졌다', sub: '대사제가 분노한다 · 공격 +20%', color: '#c45cff' }); }
+      if (!w.objects.some((o) => o.kind === 'lightPillar' && o.litT > 0) && !e.douseRage) { e.douseRage = true; e.atk *= 1.2; w.emit({ t: 'shake', v: 6 }); }
       return !lit.length;
     }
     case 'lightCore': { // 빛의 핵: 3.5초 동안 드러난다 (피해 2배) · 끝나기 0.9초 전부터 핵이 부풀어 둘레 7칸이 터진다
-      w.emit({ t: 'banner', text: '빛의 핵이 드러났다', sub: '3.5초 · 받는 피해 ×2 — 끝나기 전에 물러서라', color: '#fff0b0' });
       w.exposeBoss(e, 3.5, 2, '빛의 핵!');
       w.delayed.push({ t: 2.6, run: () => { if (!e.dead) w.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 110, dur: 0.9 }); } });
       w.delayed.push({ t: 3.5, run: () => { if (e.dead) return; w.enemyArea(e, e.x, e.y, 110, e.atk * 2.2, 'mag'); w.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 110, elem: 'holy', fx: 'holy', ult: true }); w.emit({ t: 'shake', v: 8 }); } });
@@ -448,7 +445,7 @@ export function shardHit(w, e) {
 export function shardFakeDie(w, e) {
   if (!e.shardFake) return;
   const p = w.player, boss = w.enemies.find((o) => o.id === e.decoyOf);
-  w.emit({ t: 'text', x: e.x, y: e.y - 24, text: '가짜! 파편이 튄다', color: '#e8f0ff' });
+  w.emit({ t: 'text', x: e.x, y: e.y - 24, text: '가짜!', color: '#e8f0ff' });
   for (let i = 0; i < 5; i++) { const a = Math.atan2(p.y - e.y, p.x - e.x) + (i - 2) * 0.22; w.projs.push({ owner: 'e', src: boss || e, x: e.x, y: e.y, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 1.6, dmg: (boss || e).atk * 0.5, type: 'phys', status: 'bleed', color: '#f0f8ff' }); }
 }
 
@@ -457,19 +454,19 @@ export const BOSS_INTRO = {
   climbChief: { title: '고블린의 우두머리', line: '「누가 감히 우리 야영지를!」', style: 'drop' },
   mossLord: { title: '고목에 깃든 이끼의 왕', line: '…뿌리가… 깨어난다…', style: 'rise' },
   bogHag: { title: '가라앉은 사원의 마녀', line: '「늪이 네 이름을 기억하게 해 주마」', style: 'form' },
-  climbQueen: { title: '늪 그 자체', line: '(늪이 부글부글 끓어오른다)', style: 'rise' },
+  climbQueen: { title: '늪 그 자체', line: '', style: 'rise' },
   demonCaptain: { title: '불타는 방패의 대장', line: '「투기장에 온 걸 환영한다」', style: 'walk' },
-  climbRift: { title: '균열을 지키는 자', line: '(균열 속에서 붉은 눈이 떠진다)', style: 'rise' },
+  climbRift: { title: '균열을 지키는 자', line: '', style: 'rise' },
   frostOgre: { title: '빙하를 부수는 왕', line: '「크르르… 작다. 부서진다.」', style: 'drop' },
   climbWitch: { title: '서리 궁전의 주인', line: '「추위에 떨며 잠들어라」', style: 'form' },
   wraithLord: { title: '죽지 못한 기사단의 장', line: '「기사단이여, 다시 칼을 들어라」', style: 'rise' },
   engraveKing: { title: '각인을 처음 새긴 왕', line: '「탑을 오른 자여, 네 각인을 내놓아라」', style: 'walk' },
   stormHarpy: { title: '하늘 정원의 폭풍', line: '「바람이 너를 떨어뜨릴 것이다!」', style: 'drop' },
-  skyWhale: { title: '구름 바다를 헤엄치는 고래', line: '(아득한 고래의 노래가 들린다)', style: 'drop' },
+  skyWhale: { title: '구름 바다를 헤엄치는 고래', line: '', style: 'drop' },
   mirrorSelf: { title: '거울 미궁을 지키는 수정 기사', line: '「거울에 비친 것은 모두 베어진다」', style: 'form' },
   shardQueen: { title: '욕심이 깨뜨린 거울의 여왕', line: '「내 거울을 깬 값을 치러라」', style: 'form' },
-  foreman: { title: '시계탑을 돌리는 증기 거신', line: '(쉬익— 황금 관에서 증기가 뿜어져 나온다)', style: 'drop' },
-  clockKeeper: { title: '시계탑 깊은 곳에 묶여 있던 용', line: '(사슬이 끊어지고, 보랏빛 숨이 새어 나온다)', style: 'rise' },
+  foreman: { title: '시계탑을 돌리는 증기 거신', line: '', style: 'drop' },
+  clockKeeper: { title: '시계탑 깊은 곳에 묶여 있던 용', line: '', style: 'rise' },
   archivist: { title: '별의 서고를 지키는 대서고관', line: '「열람 허가가 없군. 지워 주마」', style: 'walk' },
   starReader: { title: '마탑의 옛 대현자', line: '「별은 이미 네 끝을 알고 있다」', style: 'form' },
   highPriest: { title: '빛을 끄는 교단의 대사제', line: '「빛은 꺼져야 한다. 왕이 그랬듯이」', style: 'walk' },

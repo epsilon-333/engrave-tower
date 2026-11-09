@@ -313,7 +313,7 @@ export const EnemyAiMethods = {
 
   exposeBoss(e, t, mul, text) { // 빈틈: 잠깐 멈추고 더 아프게 맞는다
     e.st.stun = Math.max(e.st.stun || 0, t); e.exposedT = t; e.exposeMul = mul; e.mv = null; e.windT = 0;
-    this.emit({ t: 'text', x: e.x, y: e.y - 34, text, color: '#ffe066' }); this.emit({ t: 'text', x: e.x, y: e.y - 22, text: `받는 피해 ×${mul}`, color: '#ffd0a0' });
+    this.emit({ t: 'text', x: e.x, y: e.y - 34, text: '약점!', color: '#ffe066' }); // 설명 문장 대신 한마디 (text는 예전 호출 그대로 받기만 한다)
     this.emit({ t: 'shake', v: 5 }); if (!this.bossThemed(e)) this.emit({ t: 'ring', x: e.x, y: e.y, r: e.r + 20, color: '#ffe066' }); // 그림 보스는 맞은 자세 그림이 빈틈을 알린다
   },
   bossPick(e, p, pick) {
@@ -376,7 +376,7 @@ export const EnemyAiMethods = {
       case 'jumps3': // 세 번 뛰기: 내 자리로 세 번 연달아 뛰어내린다
         say(nm || '세 번 뛰기'); e.mv = { k: 'jumps3', boss: true, t: 0.7, n: 0 }; this.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: 40, dur: 0.7 }); e.mv.tx = p.x; e.mv.ty = p.y; return true;
       case 'ritual': { // 제물 셋: 7초 안에 다 쓰러뜨리면 수호자가 무너진다, 아니면 큰 폭발
-        this.emit({ t: 'banner', text: `${nm || '제물 의식'} — 제물을 쓰러뜨려라`, color: '#c8a8ff' });
+        this.emit({ t: 'banner', text: nm || '제물 의식', color: '#c8a8ff' });
         const ids = [];
         for (let i = 0; i < 3; i++) {
           const a = (i / 3) * Math.PI * 2 + this.rng.range(0, 1); let x = e.x + Math.cos(a) * 90, y = e.y + Math.sin(a) * 90; if (this.blocked(x, y, 7)) { x = e.x + Math.cos(a) * 40; y = e.y + Math.sin(a) * 40; }
@@ -426,7 +426,7 @@ export const EnemyAiMethods = {
         if (distToSeg(p.x, p.y, e.x, e.y, x2, y2) < 12 + (p.r || 5) && !(p.invuln > 0)) {
           const nx = e.x + Math.cos(mv.ang) * (e.r + 14), ny = e.y + Math.sin(mv.ang) * (e.r + 14);
           if (!this.blocked(nx, ny, p.r || 5)) { this.emit({ t: 'afterimage', x1: p.x, y1: p.y, x2: nx, y2: ny }); p.x = nx; p.y = ny; }
-          this.hurtPlayer(e.atk * 0.8, def.type, e, { fromX: e.x, fromY: e.y }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '끌려갔다! 구르면 피한다', color: '#ffb03a' });
+          this.hurtPlayer(e.atk * 0.8, def.type, e, { fromX: e.x, fromY: e.y }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '끌려갔다!', color: '#ffb03a' });
           const sx = e.x, sy = e.y; this.emit({ t: 'telegraphCircle', x: sx, y: sy, r: e.r + 40, dur: 0.7 });
           this.delayed.push({ t: 0.7, run: () => { if (e.dead) return; this.enemyArea(e, sx, sy, e.r + 40, e.atk * 2.2, def.type, def.status); if (!this.bfx(e, 'slam', sx, sy, e.r + 40)) this.emit({ t: 'skillAoe', x: sx, y: sy, r: e.r + 40, fx: 'quake' }); } });
         }
@@ -540,7 +540,7 @@ export const EnemyAiMethods = {
         heal: this.enemies.some((o) => !o.dead && !o.remote && Math.hypot(o.x - e.x, o.y - e.y) < 100 && o.hp < o.maxHp * 0.7) };
       const phm = e.phaseMoves || def.phaseMoves;
       const phase = phm ? (e.hp > e.maxHp * 0.66 ? 0 : e.hp > e.maxHp * 0.33 ? 1 : 2) : 0;
-      if (phm && !e.forms && phase !== (e.raidPhase ?? 0)) { e.raidPhase = phase; this.emit({ t: 'banner', text: `${e.kit ? e.kit.title : def.name} · ${phase + 1}단계`, color: '#ff8a5a' }); this.emit({ t: 'shake', v: 4 }); }
+      if (phm && !e.forms && phase !== (e.raidPhase ?? 0)) { e.raidPhase = phase; this.emit({ t: 'shake', v: 6 }); this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 80, elem: 'fire', fx: 'burst', ult: true }); }
       Object.assign(can, { beam: dist < 230, spiral: dist < 200, split: dist < 220, whirl: dist < melee + 22, shove: dist < melee + 10, quake: dist < 70,
         rain: dist < 260, adds: this.enemies.filter((o) => o.summoner === e.id && !o.dead).length < 3, charge: dist > 50 && dist < 260, mark: true, nova: dist < 120,
         donut: dist < 200, sweep: dist < 230, channel: true, soar: true, mirror: !(e.mirrorT > 0), clones: !this.enemies.some((o) => o.decoyOf === e.id && !o.dead),
@@ -576,7 +576,7 @@ export const EnemyAiMethods = {
       }
       if (pick === 'adds') { // 부하를 깨운다
         for (let i = 0; i < 2; i++) { const a = this.rng.range(0, Math.PI * 2); let x = e.x + Math.cos(a) * 40, y = e.y + Math.sin(a) * 40; if (this.blocked(x, y, 6)) { x = e.x; y = e.y; } const m = this.makeEnemy(def.adds || 'goblin', x, y, { summoned: true }); m.summoner = e.id; m.state = 'chase'; m.home = { ...e.home }; this.enemies.push(m); }
-        this.emit({ t: 'summon', x: e.x, y: e.y }); this.emit({ t: 'text', x: e.x, y: e.y - 40, text: '부하를 깨운다', color: '#ffb07a' }); return false;
+        this.emit({ t: 'summon', x: e.x, y: e.y }); return false;
       }
       if (pick === 'charge' && this.rayLen(e.x, e.y, Math.atan2(ty - e.y, tx - e.x), 260) > 70) { // 돌진: 굵은 예고선을 따라 끝까지 (앞이 벽에 막혀 있으면 고르지 않는다)
         const a = Math.atan2(ty - e.y, tx - e.x); e.mv = { k: 'charge', t: 1.5, ang: a, run: 0.7, dist: Math.max(40, this.rayLen(e.x, e.y, a, 260) - e.r) }; /* 예고가 끝나면(0.8초) 예고선 끝(벽이면 벽 앞)까지 0.7초 */ this.mobPose(e, 'crouch', 0.8);

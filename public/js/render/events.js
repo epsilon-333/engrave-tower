@@ -342,10 +342,12 @@ export const EventMethods = {
   },
 
   aoeFxFull(ev) {
-    if (ev.wcat && !ev.ult) this.weaponSig(ev);
     const col = ELEM[ev.elem]?.color || '#ffe8a0';
     const fx = ev.fx;
     this.juice(ev.x, ev.y, col, ev.ult ? 'ult' : ev.fromProj ? 'pop' : 'skill', ev.r || 30);
+    // 무기 기술은 연출 하나만: 무기 계열 연출이 있으면 그것, 없으면 무기 종류 표식 하나 (등급 표식 · 겹친 고리 · 두 번째 표식은 쌓지 않는다)
+    if (ev.wcat && !ev.ult && !this.anims.onAoe(ev)) { this.weaponSig({ ...ev, rar: 0 }); sfx('hitHeavy', { vol: 0.5 }); return; }
+    if (ev.wcat && !ev.ult) { sfx('reaction', { vol: 0.6 }); return; }
     if (this.anims.onAoe(ev)) { // pixelfx가 그렸다: 소리 · 흔들림만
       const f2 = ev.fx; sfx(f2 === 'ice' || f2 === 'shatter' || f2 === 'zero' ? 'freeze' : f2 === 'quake' || f2 === 'smash' ? 'hitHeavy' : 'reaction', { vol: ev.ult ? 0.9 : 0.6, rate: ev.ult ? 0.7 : 1 });
       if (ev.ult) this.shake = Math.max(this.shake, 10);

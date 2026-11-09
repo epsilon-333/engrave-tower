@@ -191,7 +191,8 @@ export class Renderer {
   }
 
   resize(cssW, cssH, dpr) {
-    const W = Math.round(cssW * dpr), H = Math.round(cssH * dpr);
+    const k = Math.min(dpr, Math.sqrt((1920 * 1080) / Math.max(1, cssW * cssH))); // 화면 그림은 1920×1080칸까지 (고해상도 · 전체 화면에서 큰 판을 매 프레임 칠하느라 느렸다 · 브라우저가 늘려 보여 준다)
+    const W = Math.round(cssW * k), H = Math.round(cssH * k);
     this.c.width = W; this.c.height = H;
     this.baseS = Math.max(2, Math.round(Math.min(W, H) / 270)); // 짧은 변 기준: 어느 화면비든 짧은 쪽으로 약 270칸이 보인다 (긴 변 기준이면 휴대폰 세로 · 21:9에서 시야가 좁아졌다)
     this.u = Math.max(1, Math.round(this.baseS / 2)); // 글씨 배율 (Galmuri11 × u)
@@ -406,14 +407,14 @@ export class Renderer {
     if (rar >= 4) { this.flash = { color: '255,220,230', t: 0.16, max: 0.16 }; this.rimFlash = { color: '#ff5a7a', t: 0.5, max: 0.5 }; this.hitstop = Math.max(this.hitstop, 0.06); this.shockwave(x, y, r * 1.5, '#ffffff', 44); }
     switch (c) {
       case 'blade': A.add('bladeArc', { x, y, ang: -0.7, range: r, angle: 2.4, col }); A.add('bladeArc', { x, y, ang: Math.PI + 0.7, range: r, angle: 2.4, col, max: 0.34 }); break;
-      case 'great': A.add('bladeArc', { x, y, ang: Math.PI / 2, range: r * 1.15, angle: 3.4, col }); A.add('cracks', { x, y, r: r * 0.8, col }); break;
+      case 'great': A.add('bladeArc', { x, y, ang: Math.PI / 2, range: r * 1.15, angle: 3.4, col }); break;
       case 'axe': A.add('cracks', { x, y, r, col }); this.burst(x, y, '#a89880', 14, 120); break;
-      case 'blunt': A.add('cracks', { x, y, r: r * 1.1, col }); this.shockwave(x, y, r, col, 28); break;
+      case 'blunt': A.add('cracks', { x, y, r: r * 1.1, col }); break;
       case 'scythe': A.add('bladeArc', { x, y, ang: 0, range: r, angle: 6.1, col }); break;
       case 'polearm': A.add('shardBurst', { x, y, r: r * 0.8, col }); break;
       case 'whip': A.add('gale', { x, y, r: r * 0.8, col }); break;
-      case 'fist': this.shockwave(x, y, r * 0.7, col, 22); this.shockwave(x, y, r * 1.05, '#ffffff', 18); break;
-      case 'shield': this.shockwave(x, y, r * 0.9, col, 26); A.add('glint', { x, y, r: r * 0.6, col }); break;
+      case 'fist': this.shockwave(x, y, r * 0.9, col, 22); break;
+      case 'shield': this.shockwave(x, y, r * 0.9, col, 26); break;
       case 'bow': case 'tube': A.add('arrowRain', { x, y, r: r * 0.8 }); break;
       case 'throw': A.add('rockRain', { x, y, r: r * 0.7, col: '#c8c0b0' }); break;
       case 'staff': A.add('runeBurst', { x, y, r, col }); break;
@@ -471,7 +472,7 @@ export class Renderer {
   }
   hitPop(x, y, col, lv) { // 맞는 자리: 평타 · 보통 스킬은 작은 타격 불꽃(절반 크기), 치명타는 큰 불꽃
     if (lv === 2) { this.anims.px.add('impacts/hit-spark', x, y + 4, { scale: 0.95, max: 0.5, floor: 0, rot: (Math.random() - 0.5) * 0.6 }); this.sparkBurst(x, y - 4, '#fff09a', 5); } // 치명타: 큰 타격 불꽃 (예전 crit-hit은 둘레에 큰 고리가 퍼져 싸울 때마다 내 둘레에 원이 생겼다)
-    else if (this.anims.px.list.length < 40) this.anims.px.add('impacts/hit-spark', x, y + 4, { scale: lv ? 0.7 : 0.5, max: 0.45, floor: 0, rot: (Math.random() - 0.5) * 0.6 });
+    else if (this.anims.px.list.length < 10) this.anims.px.add('impacts/hit-spark', x, y + 4, { scale: lv ? 0.7 : 0.5, max: 0.45, floor: 0, rot: (Math.random() - 0.5) * 0.6 });
   }
   burst(x, y, color, n, speed = 90) {
     for (let i = 0; i < n; i++) {

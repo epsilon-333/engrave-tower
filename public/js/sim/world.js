@@ -315,7 +315,7 @@ export class World {
         }
       } else if (!this.enemies.some((e) => !e.dead && e.climb && !e.summoned)) this.climbCleared();
       // 조급한 탑: 한 층에 90초가 넘으면 초마다 최대 체력 2%
-      if (C.oath.haste && this.tower.t > 90 && (C.hasteT -= DT) <= 0) { C.hasteT = 1; this.hurtPlayer(this.d.maxHp * 0.02, 'true', null, { direct: true }); this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '탑이 재촉한다', color: '#ff8a7a' }); }
+      if (C.oath.haste && this.tower.t > 90 && (C.hasteT -= DT) <= 0) { C.hasteT = 1; this.hurtPlayer(this.d.maxHp * 0.02, 'true', null, { direct: true }); }
     }
   }
   climbCleared() {
@@ -326,7 +326,7 @@ export class World {
     for (const dr of this.drops) dr.magnet = true; // 떨어진 부산물을 놓치지 않게
     const big = C.kind === 'guardian' || C.kind === 'lord';
     if (big) this.heal(this.d.maxHp * BOSS_HEAL, 'spring');
-    this.emit({ t: 'banner', text: big ? `${C.boss?.def.name || '수호자'} 처치!` : `${C.f}층 돌파`, sub: big ? `체력 ${Math.round(BOSS_HEAL * 100)}% 회복 · 문이 열렸다` : '문이 열렸다 · 떨어진 것을 모두 주웠다', color: big ? '#ffcf5a' : '#e8d8a8' });
+    this.emit({ t: 'banner', text: big ? `${C.boss?.def.name || '수호자'} 처치!` : `${C.f}층 돌파`, sub: big ? `체력 +${Math.round(BOSS_HEAL * 100)}%` : '', color: big ? '#ffcf5a' : '#e8d8a8' });
     this.emit({ t: 'climbClear', x: C.center.x, y: C.center.y });
     this.openClimbDoors();
     this.signals.push({ t: 'climbCleared', f: C.f, kind: C.kind });
@@ -2864,7 +2864,6 @@ export class World {
     if (awake) e.champion = `각성한 ${e.def.name}`;
     e.passives = [...(sig.passives || [])]; e.pv = {}; e.bornT = this.t;
     e.bphase = 0; e.forms = [null, sig.phase2, sig.phase3]; e.looks = sig.looks || [];
-    if (e.passives.length) this.emit({ t: 'text', x: e.x, y: e.y - 46, text: '패시브 · ' + e.passives.map((k) => BOSS_PASSIVES[k].name).join(' · '), color: '#ffb07a' });
   }
   // 보스 변신: 더 세지고 · 새 패시브 · 새 기술 · 모습이 바뀐다. 변신하는 동안(0.9초) 잠깐 무적
   bossTransform(e, n) {
@@ -2877,8 +2876,7 @@ export class World {
     if (this.climb) arenaShift(this, n); // 결투장이 바뀐다 (용암 균열이 넓어지고 · 물이 차오른다)
     if (v.dark && this.zone) this.zone.dark = Math.min(0.85, (this.zone.dark || 0.3) + v.dark); // 별을 읽는 자: 하늘의 별이 꺼진다
     e.invulnT = Math.max(e.invulnT || 0, 0.9); e.mv = null; e.windT = 0.9; e.windMax = 0.9; e.mvCd = Math.max(e.mvCd || 0, 1.2);
-    const added = v.passives ? ' · ' + v.passives.map((k) => BOSS_PASSIVES[k].name).join(' · ') : '';
-    this.emit({ t: 'banner', text: `${n + 1}단계 · ${v.text}`, sub: `체력 ${n === 1 ? 66 : 33}% · 공격 +${Math.round(((v.atk || 1) - 1) * 100)}%${added}`, color: n === 2 ? '#ff3a2a' : '#ff8a5a' });
+    // 설명 글 없이: 터지는 연출 · 흔들림 · 모습(색 · 크기)이 바뀌는 것으로만 보여 준다
     this.emit({ t: 'shake', v: n === 2 ? 10 : 7 }); this.emit({ t: 'hitstop', v: 0.12 });
     this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 70 + n * 20, elem: n === 2 ? 'dark' : 'fire', fx: 'burst', ult: true });
     // 변신 충격파: 가까이 붙어 있으면 밀려난다
@@ -2977,7 +2975,6 @@ export class World {
     const hk = (1 + 0.6 * (n - 1)) / (1 + 0.6 * ((c.scale || 1) - 1)), ak = (1 + 0.1 * (n - 1)) / (1 + 0.1 * ((c.scale || 1) - 1));
     c.scale = n;
     for (const e of this.enemies) { if (e.dead || e.training) continue; e.maxHp *= hk; e.hp *= hk; e.atk *= ak; }
-    this.emit({ t: 'text', x: this.player.x, y: this.player.y - 30, text: `${n}명 · 몬스터가 ${n > 1 ? '강해졌다' : '돌아왔다'}`, color: '#9fe6ff' });
   }
   // 방장: 동료가 맞았다 → 그 동료의 세계가 자기 방어로 다시 셈한다
   coHurtMate(m, amount, type, attacker, opt = {}) {
