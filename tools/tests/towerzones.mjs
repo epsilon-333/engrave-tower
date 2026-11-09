@@ -75,6 +75,7 @@ for (const a of C.ACTS) for (const k of ['guardian', 'lord']) {
   for (let i = 0; i < 60 * 150; i++) {
     const B = w.climb.boss;
     w.player.hp = w.d.maxHp; w.player.invuln = 1;
+    if (w.player.skyFall) { w.player.skyFall = null; Object.assign(w.player, w.climb.gz.safe); } // 보스만 보는 시험: 자동 조작이 보스를 쫓다 하늘로 걸어 나가면 마지막 땅으로 (하늘 정원은 떨어지면 죽는다)
     if (B && !B.dead) { if (i % 180 === 0 && !w.climb.intro) { B.hp = Math.max(1, B.hp - B.maxHp * 0.1); B.lastHitT = w.t; } maxPh = Math.max(maxPh, B.bphase || 0); if (B.mv?.k) used.add(B.mv.k); }
     w.step({ ...bot(w), attack: false });
     for (const ev of w.events) { if (ev.t === 'bossIntro') intro = true; if (ev.t === 'text' && B && Math.hypot(ev.x - B.x, ev.y - B.y) < 80) used.add('t:' + ev.text); }

@@ -14,7 +14,7 @@ const BELT_SPEED = 16; // 1초에 1칸
 const BELL_EVERY = 20, BELL_DUR = 3;
 const LIGHT_R = 96, LIGHT_DUR = 30; // 6칸 · 30초
 export const ZONE_RULES = {
-  gust: '돌풍: 8초마다 화살표 방향으로 3칸 밀린다 · 하늘에 떨어지면 체력 -10%',
+  gust: '돌풍: 8초마다 화살표 방향으로 3칸 밀린다 (가장자리에서 멈춘다) · 제 발로 하늘에 걸어 나가면 떨어져 죽는다',
   mirror: '거울 벽: 투사체가 한 번 튕긴다 (피해 70%) · 내 그림자가 20초 동안 나온다',
   clock: '톱니 바닥이 1초에 1칸 실어 간다 · 20초마다 시간의 종 (3초 동안 적 -30% 속도 · 내 쿨타임 2배 빠르게)',
   library: '책장이 물결마다 옮겨진다 · 별자리 위에서 주는 피해 +20% (적도)',
@@ -115,7 +115,7 @@ function enemyFall(w, e) {
 export function gustPush(w, ang, mul = 1) {
   const p = w.player, v = GUST_PUSH * mul / 0.3;
   w.emit({ t: 'gust', ang });
-  if (!p.down && !(p.airT > 0)) { p.dashT = 0.3; p.dvx = Math.cos(ang) * v; p.dvy = Math.sin(ang) * v; }
+  w.knockPlayer(p.x - Math.cos(ang), p.y - Math.sin(ang), GUST_PUSH * mul, { ang }); // 밀려나는 것(넉백)이라 가장자리에서 멈춘다 — 떨어지는 건 제 발로 걸어 나갔을 때만
   for (const e of w.enemies) if (!e.dead && !e.def.boss && !flyer(e)) { e.pushT = 0.3; e.pvx = Math.cos(ang) * v; e.pvy = Math.sin(ang) * v; }
 }
 

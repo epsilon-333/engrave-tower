@@ -2881,7 +2881,7 @@ export class World {
     this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 70 + n * 20, elem: n === 2 ? 'dark' : 'fire', fx: 'burst', ult: true });
     // 변신 충격파: 가까이 붙어 있으면 밀려난다
     const p = this.player, dx = p.x - e.x, dy = p.y - e.y, l = Math.hypot(dx, dy) || 1;
-    if (l < e.r + 50) { p.dashT = 0.18; p.dvx = (dx / l) * 260; p.dvy = (dy / l) * 260; }
+    if (l < e.r + 50) this.knockPlayer(e.x, e.y, 47);
   }
   // 보스 패시브
   bossPassiveTick(e) {
@@ -2935,6 +2935,7 @@ export class World {
     const p = this.player, k = p.kb; if (!k) return;
     const x0 = p.x, y0 = p.y, dx = k.vx * DT, dy = k.vy * DT;
     this.move(p, dx, dy);
+    if (this.voidZone && this.tileAt(p.x, p.y + 3) === T_LIQUID) { p.x = x0; p.y = y0; p.kb = null; return; } // 하늘 정원: 맞아서 밀려날 때는 가장자리에서 멈춘다 (떨어져 죽는 건 제 발로 걸어 나갔을 때만)
     const moved = Math.hypot(p.x - x0, p.y - y0), want = Math.hypot(dx, dy);
     if (want > 0.5 && moved < want * 0.3) {
       if (k.wall > 0) { p.ccT = Math.max(p.ccT || 0, k.wall); this.emit({ t: 'collide', x: p.x, y: p.y, wall: true }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '벽에 부딪혔다!', color: '#ffd060' }); this.hurtPlayer(this.d.maxHp * 0.04, 'phys', null, { direct: true }); }
