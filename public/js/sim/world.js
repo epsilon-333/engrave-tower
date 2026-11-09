@@ -2646,6 +2646,7 @@ export class World {
       if (af.speed) e.speedMul = af.speed;
       if (af.atkRate) e.atkRate = af.atkRate;
     }
+    if (id === 'royalGuard' && this.infamy > 0) { const k = Math.min(100, this.infamy); e.hp = e.maxHp = Math.round(e.maxHp * (1 + 0.02 * k)); e.atk *= 1 + 0.01 * k; } // 악명이 높을수록 경비병이 강해진다 (악명 1마다 체력 +2% · 공격 +1%, 100까지)
     return e;
   }
 

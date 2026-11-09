@@ -1879,7 +1879,6 @@ function showTutorial() {
 const ALWAYS_TABS = ['char', 'gear', 'where', 'bag', 'codex'];
 const STATION_TABS = { altar: ['altar'], shop: ['shop', 'forge', 'craft'], forge: ['forge', 'shop', 'craft'], codex: ['codex', 'learn'], char: ['char', 'learn'], quest: ['quest'], trade: ['trade'], hunt: ['hunt'], cook: ['cook', 'storage'], storage: ['storage', 'cook'], craft: ['craft', 'storage'] };
 function openPanel(tab, fromStation = false) {
-  { const hp = document.getElementById('happenPanel'); if (hp) hp.hidden = true; } // 큰 창 위에 떠 있지 않게
   touch?.reset();
   tutFlags.panel = true;
   hub.station = fromStation ? tab : null;
@@ -1897,7 +1896,6 @@ function closePanel() {
 }
 
 function showModal(html, onClose) {
-  { const hp = document.getElementById('happenPanel'); if (hp) hp.hidden = true; }
   touch?.reset();
   const giver = talkNpc && !html.includes('data-give') ? talkNpc : null;
   overlay.innerHTML = `<div class="modal">${html}${giver ? `<div class="give-row">${giver.mem ? `<span class="muted">${esc(giver.label0 || giver.label || '').split(' ')[0]}은(는) ${opinionText(giver.mem.op)}${Object.keys(giver.mem.knows).length ? ` · 들은 소문: ${Object.keys(giver.mem.knows).slice(0, 3).map((d) => ({ assault: '사람을 때림', beatDown: '사람을 때려눕힘', raid: '상단 습격', rob: '세금 마차 약탈', escort: '상단 호위', guard: '마차 호위', donate: '기부', bribe: '뇌물', stop: '싸움 말림', official: '관리 살해', gift: '선물' })[d] || d).join(' · ')}` : ''}</span>` : ''}<span class="muted">돈을 건넨다 — ${esc(giveHint(giver))}</span><span>${[10, 50, 200].map((n) => `<button class="sm ghost" data-give="${n}">◆ ${n}</button>`).join('')}</span></div>` : ''}</div>`;
@@ -3363,7 +3361,11 @@ function happeningTalk(hid) {
 }
 function happeningDone(h, c, aligned) {
   const r = { ...c.reward }, P = polOf();
-  if (r.cargo) { for (let i = 0; i < r.cargo; i++) bagAdd(lifeOf(), ['windWheat', 'woolBale', 'mistSalt', 'driedFish'][Math.floor(Math.random() * 4)], 1); }
+  let loot = '';
+  if (c.id === 'raid' && h.cv) { // 상단을 털면: 그 상단이 실제로 싣고 가던 물건을 짐이 허락하는 만큼 가져온다
+    let n = 0; while (n < h.cv.n && cargoCount(save.bag) < cargoCap(save) && bagAdd(lifeOf(), h.cv.good, 1)) n++;
+    loot = n ? `${CARGO[h.cv.good]?.name || h.cv.good} +${n}${n < h.cv.n ? ` (짐 가득 · ${h.cv.n - n} 남김)` : ''}` : '짐 가득';
+  } else if (r.cargo) { for (let i = 0; i < r.cargo; i++) bagAdd(lifeOf(), ['windWheat', 'woolBale', 'mistSalt', 'driedFish'][Math.floor(Math.random() * 4)], 1); }
   if (r.item) bagAdd(lifeOf(), r.item, 1);
   if (r.lore) { const t = CULT_LORE[Math.floor(Math.random() * CULT_LORE.length)]; save.codex.lore ||= []; if (!save.codex.lore.includes(t)) save.codex.lore.push(t); renderer.banner = { text: '교단의 기록을 엿들었다', sub: t.slice(0, 60) + '…', t: 4.5, color: '#b98aff' }; }
   if (!P.tested && P.faction !== 'noctaris' && ALIGN.aurelion[h.type] === c.id) P.tested = true;
@@ -3372,7 +3374,7 @@ function happeningDone(h, c, aligned) {
   witness(world, h.o.x, h.o.y, c.id, { raid: 25, rob: 20, escort: -20, guard: -15, stop: -10 }[c.id] || 0);
   polGain(r, aligned);
   if (c.id === 'raid' || c.id === 'rob') addChronicle(`${h.where}에서 ${h.type === 'taxWagon' ? '세금 마차' : '상단'}이(가) 털렸다 — ${heroName()}`);
-  if (!r.lore) renderer.banner = { text: c.label + (aligned ? ' · 세력 의뢰 완료' : ''), sub: rewardText(c.reward), t: 3.2, color: '#f6dfae' };
+  if (!r.lore) renderer.banner = { text: c.label + (aligned ? ' · 세력 의뢰 완료' : ''), sub: [loot, rewardText(c.reward)].filter(Boolean).join(' · '), t: 3.2, color: '#f6dfae' };
   h.o.gone = true; h.o.reusable = false; h.o.endT = world.t;
   HAPPEN_LIST = HAPPEN_LIST.filter((q) => q !== h);
   writeSave(save);
@@ -3446,7 +3448,6 @@ function politicsTick(dt) {
     const T = titleOf(save); w.title = T;
     if (lastTitle && T.text !== lastTitle) { renderer.banner = { text: T.text, sub: '지위가 바뀌었다', t: 4, color: T.color }; sfx('levelup', { vol: 0.6 }); addChronicle(`${heroName()}의 지위: ${T.text}`); writeSave(save); }
     lastTitle = T.text;
-    updateHappenPanel();
   }
 }
 // ── 왕도 아우렐리온: 성문 검문 · 수배범 단속 · 처형대 · 감옥 · 시장 사람들 ──
@@ -3549,19 +3550,6 @@ function capitalTalk(id) {
   const lines = CAP_LINES[id];
   const lbl = world.objects.find((o) => o.id === id)?.label?.replace(/[와과] 이야기.*/, '') || '왕도 사람';
   showModal(`<h2>${esc(lbl)}</h2><p>${lines ? lines[Math.floor(Math.random() * lines.length)] : '"…"'}</p><div class="actions"><button data-close>고맙다</button></div>`);
-}
-function updateHappenPanel() {
-  let el = document.getElementById('happenPanel');
-  const w = world, show = w?.map?.outdoor && !w.voyage && HAPPEN_LIST.length && !modal && panelEl.hidden && !renderer.bigMap && (save?.tutorial?.done || !save?.tutorial); // 창이 열리면 숨긴다 · 튜토리얼 중에는 안 보인다
-  if (!show) { if (el) el.hidden = true; return; }
-  if (!el) { el = document.createElement('div'); el.id = 'happenPanel'; gameEl.appendChild(el); el.onclick = (e) => { if (e.target.closest('b')) { if (el.dataset.open) delete el.dataset.open; else el.dataset.open = '1'; updateHappenPanel(); return; } const id = e.target.closest('[data-tr]')?.dataset.tr; if (!id) return; if (id === 'off') { world.track = null; return; } const h = HAPPEN_LIST.find((q) => q.id === id); if (h) world.track = { x: h.o.x, y: h.o.y, name: HAPPENINGS[h.type].name, hid: id }; }; }
-  el.hidden = false;
-  const touchUi = document.body.classList.contains('touch');
-  el.classList.toggle('mini', touchUi && !el.dataset.open); // 휴대폰: 제목만 (눌러서 펼친다) — 오른쪽 조이스틱 · 스킬 버튼을 가리지 않게
-  { const below = Math.max(renderer.hudRightBottom || 0, touchUi ? 0 : renderer.journeyBottom || 0); if (below) { const cr = canvas.getBoundingClientRect(); el.style.top = `${Math.round(cr.top + (below * cr.height) / canvas.height) + 8}px`; } } // 작은 지도 · 여정 상자 아래 (겹치지 않게)
-  const p = w.player;
-  if (w.track?.hid) { const h = HAPPEN_LIST.find((q) => q.id === w.track.hid); if (h) { w.track.x = h.o.x; w.track.y = h.o.y; } else w.track = null; }
-  el.innerHTML = `<b>근처에서 벌어지는 일</b>${HAPPEN_LIST.slice(0, 3).map((h) => { const d = Math.round(Math.hypot(h.o.x - p.x, h.o.y - p.y) / TILE), left = Math.max(0, Math.ceil((h.o.endT - w.t) / 60)); return `<div class="hp-row ${w.track?.hid === h.id ? 'on' : ''}" data-tr="${h.id}">${esc(HAPPENINGS[h.type].name)}<small>${esc(h.where)} · ${d}칸 · ${left}분</small><small class="deed">${esc(DEED_SHORT[h.type] || '')}</small></div>`; }).join('')}${w.track ? '<div class="hp-row off" data-tr="off">안내 끄기</div>' : ''}`;
 }
 function chronicleTalk() {
   const C = save.chronicle || [];
@@ -3680,7 +3668,7 @@ function tick(ts) {
   const dt = Math.min(0.1, (ts - last) / 1000 || 0);
   last = ts;
   if (world && !gameEl.hidden) {
-    world.npcAttack = getNpcAttack(); world.econ = econOf(save);
+    world.npcAttack = getNpcAttack(); world.econ = econOf(save); world.infamy = save.rep?.infamy || 0;
     if (save.newEng?.length && world.state === 'play') announceClassEng();
     unlockTick();
     if (renderer.hitstop > 0) renderer.hitstop -= dt;

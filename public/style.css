@@ -517,16 +517,6 @@ b.dim { color: #e8c890; }
 .price-board td:first-child { text-align: left; }
 
 /* 근처에서 벌어지는 일 */
-#happenPanel { position: fixed; right: calc(8px + env(safe-area-inset-right, 0px)); top: calc(210px + env(safe-area-inset-top, 0px)); z-index: 5; width: min(220px, 46vw); max-width: calc(100vw - 16px); box-sizing: border-box; overflow-wrap: anywhere; background: rgba(16, 12, 26, 0.82); border: 2px solid #4c4244; padding: 6px 8px; font-size: 13px; color: #ede4d8; }
-#happenPanel b { color: #f0c878; display: block; margin-bottom: 4px; cursor: pointer; }
-#happenPanel.mini { width: auto; padding: 4px 8px; }
-#happenPanel.mini b { margin: 0; }
-#happenPanel.mini b::after { content: ' ▸'; }
-#happenPanel.mini .hp-row { display: none; }
-#happenPanel .hp-row { padding: 4px 6px; margin: 2px 0; background: rgba(255,255,255,0.05); cursor: pointer; display: grid; }
-#happenPanel .hp-row small { color: #ab9f95; font-size: 11px; }
-#happenPanel .hp-row.on { background: rgba(255, 210, 122, 0.18); outline: 1px solid #f0c878; }
-#happenPanel .hp-row.off { color: #ab9f95; text-align: center; }
 .modal .warn { color: #e88a78; }
 
 #touch .mount { left: calc(50% - 96px); bottom: calc(10px + env(safe-area-inset-bottom, 0px)); width: auto; height: 46px; border-radius: 23px; padding: 0 14px; background: rgba(58, 126, 154, 0.9); }

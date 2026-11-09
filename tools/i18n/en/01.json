@@ -1,6 +1,4 @@
 [
-"Sunken Temple",
-"Witch of the Sunken Temple",
 "Garen",
 "3 tiles wide",
 "One big horizontal slash, then a long downward cut ahead. The second hit is stronger. Aura +12",
@@ -68,7 +66,6 @@
 "Gold held",
 "Money held",
 "Fake",
-"Fake! Shards fly",
 "T O W E R   O F   E N G R A V I N G",
 "Awakening",
 "When awakened",
@@ -169,7 +166,6 @@
 "Steel Dummy",
 "Blessing of Steel",
 "Smash",
-"Got stronger",
 "Enhance",
 "Empowered enemy chance",
 "Enhancement succeeded",
@@ -285,7 +281,6 @@
 "Mirror Corridor",
 "Mirror Sword",
 "Me in the Mirror (floor 65",
-"My shadow walked out of the mirror",
 "Hall of Mirrors",
 "Giant Crusher",
 "A bow made from a giant's rib. Each shot is heavy",
@@ -398,5 +393,10 @@
 "Nods",
 "Meat",
 "Meat skewer",
-"Meat rice bowl"
+"Meat rice bowl",
+"Stir-fried meat and veggies",
+"Throws meat. For 6 seconds nearby monsters rush to the bait — 50% for enemies chasing me, otherwise 75% (shorter for elites). If you've laid a trap, the bait goes on it. Shadow 15",
+"Give meat",
+"Ancient Golem",
+"Ancient Golem (raid"
 ]

@@ -141,7 +141,6 @@
 "Damage every second. Stronger with more stacks",
 "2. Hunt",
 "Deal damage to two royal guard dummies for 20 seconds (my attack ×",
-"Follows up at 40% of my attack for 20 seconds",
 "Shield of 12% max health every 20 seconds",
 "Floor 20 · Defeat the lord of the Poison Swamp",
 "2",
@@ -150,7 +149,6 @@
 "3 (hidden path",
 "3 — from goblins",
 "3. Engrave",
-"3.5s · damage taken ×2 — back off before it ends",
 "30 · out now",
 "30% chance shockwave",
 "30% chance to attack once more",
@@ -398,5 +396,7 @@
 "Flames burst on the nearest enemy (2 burn stacks",
 "Freezes the nearest enemy for 1 second (3 chill stacks",
 "Hide nearby and watch (10 seconds",
-"Worn out by poverty and taxes, they say they're joining Noctaris"
+"Worn out by poverty and taxes, they say they're joining Noctaris",
+"Sunken Temple",
+"Witch of the Sunken Temple"
 ]
