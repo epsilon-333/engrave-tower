@@ -1,5 +1,4 @@
 [
-"Garen",
 "3 tiles wide",
 "One big horizontal slash, then a long downward cut ahead. The second hit is stronger. Aura +12",
 "Standing still builds focus (1 stage per 0.5s, max 3). Next shot damage per stage +25",
@@ -197,7 +196,7 @@
 " to find (◆ on the minimap",
 " found",
 "! Collect the reward at the board",
-" stolen — prices will rise",
+" stolen. Prices will rise",
 " ignite at once. Braziers catch fire when hit and",
 "Frog legs",
 "Frog Tongue Whip",
@@ -231,7 +230,7 @@
 "Grand Fireball",
 "Giant",
 "A giant axe spins and cuts through every enemy in a line. Fighting spirit 30",
-"A round chamber where you fight a huge boss. Its health is split in three and patterns change each phase — dodge the red warnings, and step away from allies when 「Marked」. Come as a party (up to 4) to fight together (the boss gets tougher per member",
+"A round chamber where you fight a huge boss. Its health is split in three and patterns change each phase. Dodge the red warnings, and step away from allies when 「Marked」. Come as a party (up to 4) to fight together (the boss gets tougher per member",
 "A giant pillar of fire erupts (4 burn stacks",
 "Souls reaped",
 "Trade · Craft",
@@ -371,7 +370,7 @@
 "Rank",
 "Rank up",
 "Stairs",
-"Reached the stairs — everyone climbs together",
+"Reached the stairs. Everyone climbs together",
 "Continue",
 "Continue ▸",
 "Keeps moving while shooting",
@@ -395,8 +394,9 @@
 "Meat skewer",
 "Meat rice bowl",
 "Stir-fried meat and veggies",
-"Throws meat. For 6 seconds nearby monsters rush to the bait — 50% for enemies chasing me, otherwise 75% (shorter for elites). If you've laid a trap, the bait goes on it. Shadow 15",
+"Throws meat. For 6 seconds nearby monsters rush to the bait. 50% for enemies chasing me, otherwise 75% (shorter for elites). If you've laid a trap, the bait goes on it. Shadow 15",
 "Give meat",
 "Ancient Golem",
-"Ancient Golem (raid"
+"Ancient Golem (raid",
+"Ancient Golem's Chamber"
 ]

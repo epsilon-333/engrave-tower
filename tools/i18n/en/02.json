@@ -1,5 +1,4 @@
 [
-"Ancient Golem's Chamber",
 "Ancient Golem's Heart",
 "Ancient Golem's Core",
 "Ancient tablet",
@@ -14,8 +13,6 @@
 "Whale Song",
 "Whale's Breath",
 "Elder dragon heartstone",
-"There's no picking window — it happens if you do it",
-"There's no picking window — just do it",
 "Vines burst at the chosen spot, binding enemies in range for 2 seconds. Spirit power 15",
 "Choose",
 "Ring Burst",
@@ -56,7 +53,7 @@
 "Gold gain +10",
 "Gold gain +20",
 "Not enough gold",
-"Golems are monsters now. Please choose a new race and class — level, gear, money and codex stay the same",
+"Golems are monsters now. Please choose a new race and class. Level, gear, money and codex stay the same",
 " places",
 "Glowing all over",
 "places are all over the island",
@@ -398,5 +395,8 @@
 "Shadow Cloak",
 "Shadow Graveyard",
 "Shadow Bat",
-"Shadow Bell"
+"Shadow Bell",
+"Shadow Hunter",
+"Shadow Apostle",
+"Shadow Forest"
 ]

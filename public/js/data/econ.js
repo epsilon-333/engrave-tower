@@ -63,7 +63,7 @@ export function planCaravan(save) {
   return { ...best, n };
 }
 export function deliver(save, cv) { const E = econOf(save); E.stock[cv.to][cv.good] = Math.min(400, E.stock[cv.to][cv.good] + cv.n); }
-export function caravanLost(save, cv) { const E = econOf(save); E.banditry = (E.banditry || 0) + 2; news(E, `${TOWNS[cv.to].name}로 가던 ${CARGO[cv.good]?.name || cv.good} ${cv.n}개가 털렸다 — 값이 오를 것이다`); }
+export function caravanLost(save, cv) { const E = econOf(save); E.banditry = (E.banditry || 0) + 2; news(E, `${TOWNS[cv.to].name}로 가던 ${CARGO[cv.good]?.name || cv.good} ${cv.n}개가 털렸다. 값이 오를 것이다`); }
 export function taxArrived(save, n) { const E = econOf(save); E.treasury += n; }
 export function taxLost(save, n) { const E = econOf(save); E.treasury = Math.max(0, E.treasury - n * 0.5); news(E, '세금 마차가 털려 왕실 금고가 줄었다'); }
 // 사람들 이야기에 쓰는 시장 소식 (가장 비싼 · 싼 것)

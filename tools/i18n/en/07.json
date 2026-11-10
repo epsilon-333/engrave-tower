@@ -1,7 +1,4 @@
 [
-"Seal",
-"Items",
-"Search an item or gear name to see where it comes from",
 "One slot per item kind (any amount of the same item is one slot). When the bag is full you can't pick up new items. Expand the bag at the general store",
 "Sell price +10",
 "A huge dorsal fin between the waves",
@@ -134,7 +131,7 @@
 "Sack of Windward wheat",
 "Windward echo",
 "Windward Longbow",
-"Windward field — anyone can farm it. Till with a hoe (G), plant seeds and water them to grow. Seeds are sold at the general store",
+"Windward field: anyone can farm it. Till with a hoe (G), plant seeds and water them to grow. Seeds are sold at the general store",
 "Windward Port",
 "Windward Isle",
 "Tale of the Windward Isle",
@@ -251,7 +248,7 @@
 "The people of the night will remember",
 "Night Awl",
 "Night Burst",
-"Night port — the underground city of the rebel faction Noctaris",
+"Night port: the underground city of the rebel faction Noctaris",
 "A robe embroidered with the night sky. The stars slowly turn",
 "An orb that calls shooting stars from the night sky",
 "Just now",
@@ -306,7 +303,7 @@
 "Fare ◆",
 "No fare · faster",
 "Traitor",
-"Traitor — your former group hunts you",
+"Traitor. Your former group hunts you",
 "Traitor hunters have arrived",
 "Betray and attack",
 "Betray and enter",
@@ -398,5 +395,8 @@
 "Star Gate",
 "Star Orb",
 "Star Archive",
-"The Grand Archivist guarding the Star Archive"
+"The Grand Archivist guarding the Star Archive",
+"The star map? …Pretend you don't know. That's how you live long",
+"Star book page",
+"Where the star fell, the tower rose, and its light became wind"
 ]

@@ -745,3 +745,5 @@ body.touch:has(#title:not([hidden])) #cloudChip { top: auto; bottom: calc(8px + 
 .keys-set summary { cursor: pointer; margin: 6px 0; }
 .key-grid { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 4px 10px; align-items: center; margin: 6px 0; }
 .key-grid button { min-width: 64px; }
+/* 타이틀: 저장 표시는 오른쪽 위 (아래 가운데의 출처 글과 겹치지 않게) */
+body:not(.touch):has(#title:not([hidden])) #cloudChip { bottom: auto; top: calc(10px + env(safe-area-inset-top, 0px)); }

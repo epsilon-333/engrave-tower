@@ -1,5 +1,4 @@
 [
-"Exit by the green path",
 "s lost",
 "s to move to another dummy",
 "s and it goes out",
@@ -212,7 +211,7 @@
 "Blazing Brazier",
 "Lit brazier",
 "Mount",
-"Mount: tamed raptor — ride with V (「Mount」 on mobile) to run 1.75x faster, and dash leaps far. Attacking or taking a heavy hit dismounts you",
+"Mount: tamed raptor, ride with V (「Mount」 on mobile) to run 1.75x faster, and dash leaps far. Attacking or taking a heavy hit dismounts you",
 "No mount (tame one at the Great Nest",
 "Deserter Bruno",
 "Search Scroll",
@@ -355,12 +354,12 @@
 "Enter with party",
 "Party leader",
 "Pass party leadership",
-"Lost contact with the party leader — climbing on alone",
+"Lost contact with the party leader. Climbing on alone",
 "When the party leader chooses 「Climb with party」 at the tower entrance, you climb the same floors together. Defeating monsters gives everyone loot · codex, and if you fall you get back up when a companion clears the floor. Party chat is /p",
 "Everyone goes down when the party leader goes down",
 "You go along when the party leader enters",
 "The party leader left the tower",
-"The party leader left the party — climbing on alone",
+"The party leader left the party. Climbing on alone",
 "Shard Wave",
 "Shard Bird",
 "Shard bird's glass feather",
@@ -380,7 +379,6 @@
 "The sky weeps every time it flutters",
 "Felik",
 "Unfold it and stars fall onto the map",
-"Buys at 1.8x the usual",
 "Calm",
 "Plains",
 "Composure",
@@ -398,5 +396,7 @@
 "Ruined City · Old Forest · Volcanic Zone. Quest board quests fill the codex too",
 "That collapsed well in the middle of the Ruined City — climb down the rope and they say it's a tunnel, not a bottom. The people of the night come and go",
 "A bowl from when the Ruined City flourished. The tower crest is stamped on the bottom",
-"Collapsed well of the Ruined City"
+"Collapsed well of the Ruined City",
+"There's nothing in the well north of the ruins. Really",
+"A stone giant sleeping beneath the ruins. Leaps and slams, shakes the ground to sweep the area, and wakes stone minions"
 ]

@@ -1,5 +1,4 @@
 [
-"Race shop technique book · 1500 gold",
 "Race shop technique book · 1800 gold",
 "Race sanctum",
 "Race sanctum · training",
@@ -14,7 +13,7 @@
 "Okay",
 "Good",
 "Give something they like",
-"Left-click to hit the dummy three times (swings toward the mouse",
+"Left-click to hit the dummy three times (you swing toward the mouse",
 "Break out the prisoner",
 "Break out the prisoner (fight four guards",
 "Weekly treasure chest: ◆",
@@ -27,7 +26,7 @@
 "Spell Amplify",
 "Scroll",
 "Chant spells again and again and",
-"Stuns nearby enemies 0.8s. Spirit word 「Earth」 — as the body, a wide quake and stun. Earth → Fire is 「Lava Land」. Courage 20",
+"Stuns nearby enemies 0.8s. Spirit word 「Earth」: as the body, a wide quake and stun. Earth → Fire is 「Lava Land」. Courage 20",
 "Pulls nearby enemies in, for 5s reflect +40",
 "Nearby enemies target only me for 6s. Ranged enemies close in too. Aura 10",
 "2 chill stacks and damage around you",
@@ -186,7 +185,7 @@
 "You can enter houses",
 "Executioner",
 "Short teleport and the next attack is a guaranteed crit",
-"Short teleport. Spirit word 「Wings」 — as the body, wind blades in all directions. Wings → Sky is 「Sky Step」. Courage +10",
+"Short teleport. Spirit word 「Wings」: as the body, wind blades in all directions. Wings → Sky is 「Sky Step」. Courage +10",
 "Split Anvil",
 "comes from",
 "A caravan is heading toward, they say. Lots of cargo",
@@ -378,7 +377,7 @@
 "s",
 "s (4/s + toxicity×0.8 + magic attack × 20",
 "s · sell cargo at a trading post",
-"s to get back up — hit once more before then to finish",
+"s to get back up. Hit once more before then to finish",
 "s then vanishes, and red eyes",
 "Shadow targets within s",
 "Fleeing training raptor within s",
@@ -398,5 +397,6 @@
 "Heal 0.1% max HP per second",
 "Heal 0.11% max HP per second",
 "Heal 0.18% max HP per second",
-"Green"
+"Green",
+"Exit by the green path"
 ]

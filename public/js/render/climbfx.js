@@ -67,7 +67,7 @@ export function drawClimbHud(R, w, topY) {
     if (C.phase === 'fight') {
       const alive = w.enemies.filter((e) => !e.dead && e.climb && !e.summoned).length + C.waves.slice(C.waveI).reduce((a, x) => a + x.filter((q) => !q.treasure).length, 0);
       sub = `남은 적 ${alive}`; col = alive <= 2 ? '#ffe8a8' : '#ff9a8a';
-    } else sub = '문이 열렸다 — 문 앞에서 G';
+    } else sub = '문이 열렸다. 문 앞에서 G';
     R.text(sub, W / 2, topY + 15 * u, tu, col, 'center', true, false);
     const M = FLOOR_MODS[C.mod]; if (M) R.text(`${M.name} · ${M.text}`, W / 2, topY + 28 * u, tu, M.color, 'center', true, false);
   }

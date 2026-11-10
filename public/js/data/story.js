@@ -68,10 +68,10 @@ export function storyObjective(st) {
   if (!st) return null;
   const f = st.flags, n = (id) => st.items[id] || 0;
   const list = [];
-  if (n('rustyKey') && !f['open:ironGate']) list.push('녹슨 열쇠 — 물웅덩이 동굴의 철창');
-  if (f.pinoMet && !f.pinoMap) list.push(`지도 조각 ${n('mapScrap')}/3 — 고블린에게서`);
-  else if (f.pinoMap && !f.pinoLantern) list.push(`빛나는 이끼 ${n('glowMoss')}/5 — 늪괴·민달팽이에게서`);
-  else if (f.pinoLantern && !f['open:thornGate']) list.push('이끼 등불 — 북쪽 가시덩굴로');
+  if (n('rustyKey') && !f['open:ironGate']) list.push('녹슨 열쇠: 물웅덩이 동굴의 철창');
+  if (f.pinoMet && !f.pinoMap) list.push(`지도 조각 ${n('mapScrap')}/3: 고블린에게서`);
+  else if (f.pinoMap && !f.pinoLantern) list.push(`빛나는 이끼 ${n('glowMoss')}/5: 늪괴·민달팽이에게서`);
+  else if (f.pinoLantern && !f['open:thornGate']) list.push('이끼 등불: 북쪽 가시덩굴로');
   else if (f.pinoLantern && !f.vistaSeen) list.push('가시덩굴 너머로');
   else if (f.vistaSeen && f.pinoLantern && !f.pinoDone) list.push('피노에게 하늘 이야기를');
   return list.length ? list : null;

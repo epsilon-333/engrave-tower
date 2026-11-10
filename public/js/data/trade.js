@@ -21,7 +21,7 @@ export const CARGO = {
 };
 for (const [id, c] of Object.entries(CARGO)) GOODS[id] = { name: c.name, cat: 'cargo', price: c.price, desc: c.desc, icon: c.icon };
 // 정치에 쓰는 물건 (증거)
-GOODS.taxLedger = { name: '세금 장부', cat: 'junk', price: 60, desc: '세금 마차에서 훔친 장부. 녹트 하벤의 중개인이 산다 — 녹타리스 가입 증거.', icon: { t: 'cloth', c: ['#6a4a8a', '#c8a0ff', '#3a2a5a'] } };
+GOODS.taxLedger = { name: '세금 장부', cat: 'junk', price: 60, desc: '세금 마차에서 훔친 장부. 녹트 하벤의 중개인이 산다. 녹타리스 가입 증거.', icon: { t: 'cloth', c: ['#6a4a8a', '#c8a0ff', '#3a2a5a'] } };
 GOODS.officialSeal = { name: '관리의 인장', cat: 'junk', price: 90, desc: '쓰러진 고위 관계자에게서 빼앗은 인장. 증거로도, 장물로도 쓴다.', icon: { t: 'crest', c: ['#ffd76a', '#c89a3a', '#6a4a1a'] } };
 export const CARGO_CAP = 20; // 몸에 지는 교역품
 // 내 배 (황금 돛 섬 조선소): 짐칸만큼 더 실을 수 있고, 배삯 없이 아는 항구 어디로든 빨리 간다

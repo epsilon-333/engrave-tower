@@ -102,7 +102,7 @@ export function startAction(w, act) {
   if (p.gather || p.fish) return;
   { // 해방되지 않은 생활 (data/unlocks.js)
     const sys = act.kind === 'fish' ? 'fishing' : ['till', 'plant', 'water', 'harvest'].includes(act.kind) ? 'farming' : null, lock = sys && w.locks?.text('systems', sys);
-    if (lock) { w.sealed(`${sys === 'fishing' ? '낚시' : '농사'} — ${lock}`); return; }
+    if (lock) { w.sealed(`${sys === 'fishing' ? '낚시' : '농사'}: ${lock}`); return; }
   }
   if (act.kind === 'node') {
     const def = NODES[act.type];

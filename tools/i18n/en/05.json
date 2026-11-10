@@ -1,7 +1,4 @@
 [
-"Poison Vortex",
-"Poison smoke",
-"Poison puddle",
 "Max poison stacks +10",
 "Max poison stacks +5",
 "Max poison stacks +8",
@@ -272,7 +269,7 @@
 "Level up!  Lv",
 "Level up! Lv",
 "Learned at level",
-"You level up through the codex — new monsters · new places · records · people. Explore the island",
+"You level up through the codex. New monsters · new places · records · people. Explore the island",
 "Raid",
 "Raid · Ancient Golem",
 "Raid · Frost Queen",
@@ -280,7 +277,7 @@
 "Defeat one raid boss",
 "Raid altar",
 "Raid altar · boss raid",
-"From entering the raid to defeating the boss — shorter ranks higher",
+"From entering the raid to defeating the boss: shorter ranks higher",
 "",
 "heading to",
 "enhanced to",
@@ -398,5 +395,8 @@
 "30% chance when hit by magic: 3 mirror shards",
 "30% chance when hit by magic: 3 beam shards",
 "30% chance when hit by magic: 3 shards",
-"35% chance when hit by magic: mirror shards fly"
+"35% chance when hit by magic: mirror shards fly",
+"40% chance when hit by magic: mirror shards",
+"Casts magic at 85% power · enemies I hit have a 30% chance of 1 curse stack (each stack deals damage over time, damage taken +2",
+"Casts magic at 90% power"
 ]

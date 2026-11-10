@@ -1,6 +1,4 @@
 [
-"There's nothing in the well north of the ruins. Really",
-"A stone giant sleeping beneath the ruins. Leaps and slams, shakes the ground to sweep the area, and wakes stone minions",
 "Ruin Watchman",
 "Ruin Watch",
 "Offer bundles and I'll give you a spirit stone. Up to twice a day.\"",
@@ -49,7 +47,7 @@
 "Sign",
 "Read the sign",
 "Blue Flame Sword Wave",
-"Blue flame sword waves: front → back half-circles — circle around the king · circle of light: follow behind the beam · in phase 3 strike hard when the core of light is exposed",
+"Blue flame sword waves: front → back half-circles: circle around the king · circle of light: follow behind the beam · in phase 3 strike hard when the core of light is exposed",
 "Blue flame burns cold",
 "Slept well · health restored · refreshed (until 6 PM move +8% · damage taken -5",
 "Frida",
@@ -64,7 +62,7 @@
 "The blade reddens the more blood it drinks",
 "Bloodsucking",
 "Bleeding, taking damage over time for a while. Stronger with stacks",
-"Murdered — culprit",
+"Murdered: culprit",
 "A flower said to make someone fall each time it blooms",
 "Blood Ice Blade",
 "Bloodthirsty Axe",
@@ -274,7 +272,7 @@
 "Circle of Bitter Cold",
 "Soul orb",
 "Soul echo",
-"Becoming a spirit makes it untouchable — dodge where it lands",
+"Becoming a spirit makes it untouchable. Dodge where it lands",
 "Spirit Form",
 "Spirit orb",
 "Spirit Swarm",
@@ -351,7 +349,7 @@
 "Fire Affinity",
 "Fire Explosion",
 "Collecting 4+ of both fire and cold cancels them out and turns both off",
-"Fires a fireball. Magic word 「Fire」 — as the sentence's body, the aimed spot explodes. After Sky it's 「Falling Sun」. Courage 10",
+"Fires a fireball. Magic word 「Fire」: as the sentence's body, the aimed spot explodes. After Sky it's 「Falling Sun」. Courage 10",
 "Pyromancer",
 "Fire Spirit King",
 "Chance",
@@ -398,5 +396,7 @@
 "The wasteland arena is crumbling under taxes",
 "From wastes and volcanoes. Requires an iron pickaxe",
 "Hole in the wastes",
-"The abandoned mine in the wastes isn't really abandoned. The dwarves' shafts run all the way to an underground city. Monsters live inside, they say"
+"The abandoned mine in the wastes isn't really abandoned. The dwarves' shafts run all the way to an underground city. Monsters live inside, they say",
+"Old Wasteland Mine",
+"Wasteland Arena"
 ]

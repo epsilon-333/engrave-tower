@@ -340,7 +340,7 @@ export class World {
     const spots = doors.length === 1 ? [C.doorSpots[1]] : doors.length === 2 ? [C.doorSpots[0], C.doorSpots[2]] : C.doorSpots;
     doors.forEach((d, i) => {
       const R = REWARDS[d.kind] || { name: d.kind, desc: '' }, sp = spots[i];
-      this.objects.push({ kind: 'climbDoor', next: d.kind, x: sp.x, y: sp.y, label: `${C.f + 1}층 · ${R.name} — ${R.desc}`, reach: 22, reusable: true, born: this.t });
+      this.objects.push({ kind: 'climbDoor', next: d.kind, x: sp.x, y: sp.y, label: `${C.f + 1}층 · ${R.name}: ${R.desc}`, reach: 22, reusable: true, born: this.t });
     });
     this.emit({ t: 'doorsOpen', x: C.doorSpots[1].x, y: C.doorSpots[1].y });
   }
@@ -592,8 +592,8 @@ export class World {
     const r = Math.max(3, ent.r - 1), p = this.player;
     if (ent === p && this.locks?.regions.size && !this.sealAt(p.x, p.y)) { // 봉인된 지역으로는 걸어 들어갈 수 없다 (이미 안에 있으면 나올 수 있다)
       const sx = this.sealAt(p.x + dx * 4, p.y), sy = this.sealAt(p.x, p.y + dy * 4);
-      if (sx) { dx = 0; this.sealed(`${sx.name} — ${sx.text}`); }
-      if (sy) { dy = 0; this.sealed(`${sy.name} — ${sy.text}`); }
+      if (sx) { dx = 0; this.sealed(`${sx.name}: ${sx.text}`); }
+      if (sy) { dy = 0; this.sealed(`${sy.name}: ${sy.text}`); }
     }
     const mode = ent === p && this.map.outdoor && !this.map.underwater ? (p.boat ? 'boat' : this.canSwim ? 'swim' : null) : null;
     const sky = this.voidZone && ent !== p && ent.def && ent.def.shape !== 'flyer' && !ent.pushT; // 하늘 정원: 걷는 적은 하늘(가장자리)로 스스로 걸어가지 않는다
@@ -1318,7 +1318,7 @@ export class World {
     if (o.kind === 'stairs') {
       if (this.tower) { // 탑: 수호자를 쓰러뜨려야 계단이 열린다
         if (this.tower.boss && !this.tower.boss.dead) { this.emit({ t: 'text', x: o.x, y: o.y - 22, text: '층 수호자를 쓰러뜨려야 계단이 열린다', color: '#ff9a7a' }); return; }
-        if (this.coop?.role === 'member') { this.signals.push({ t: 'coStairs' }); this.emit({ t: 'text', x: o.x, y: o.y - 22, text: '계단에 닿았다 — 다 같이 오른다', color: '#9fe6ff' }); return; } // 파티 탑: 층을 깨는 건 파티장의 세계
+        if (this.coop?.role === 'member') { this.signals.push({ t: 'coStairs' }); this.emit({ t: 'text', x: o.x, y: o.y - 22, text: '계단에 닿았다. 다 같이 오른다', color: '#9fe6ff' }); return; } // 파티 탑: 층을 깨는 건 파티장의 세계
         this.signals.push({ t: 'towerClear', f: this.tower.f, time: this.tower.t, hurt: this.tower.hurt, maxHp: this.d.maxHp }); return;
       }
       if (this.coop?.role === 'member') { this.emit({ t: 'text', x: o.x, y: o.y - 22, text: '파티장이 내려가면 다 같이 내려간다', color: '#9fe6ff' }); return; }
@@ -1576,7 +1576,7 @@ export class World {
   toggleMount() {
     const p = this.player;
     if (p.riding) { this.dismount(); return; }
-    { const lock = this.locks?.text('systems', 'mount'); if (lock) { this.sealed(`탈것 — ${lock}`); return; } }
+    { const lock = this.locks?.text('systems', 'mount'); if (lock) { this.sealed(`탈것: ${lock}`); return; } }
     if (!this.mountKind) { this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '탈것이 없다 (거대 둥지에서 길들인다)', color: '#a8b0c0' }); return; }
     if (!this.map.outdoor || this.map.underwater || p.swim || p.boat || p.castT > 0 || p.channel) { this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '여기서는 탈 수 없다', color: '#a8b0c0' }); return; }
     p.riding = this.mountKind; this.emit({ t: 'mountOn', x: p.x, y: p.y });
@@ -2910,7 +2910,7 @@ export class World {
       if (k === 'pull' && tick(k, 12)) { // 끌어당김: 7칸 밖에 있으면 사슬 예고선(0.8초) → 끌려온다 (구르면 끊긴다)
         const dd = Math.hypot(p.x - e.x, p.y - e.y);
         if (dd > 7 * TILE && !p.down) {
-          this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: p.x, y2: p.y, dur: 0.8, color: '#c8a0ff', w: 8 }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '끌어당김 — 구르면 끊긴다', color: '#c8a0ff' });
+          this.emit({ t: 'lineTele', x1: e.x, y1: e.y, x2: p.x, y2: p.y, dur: 0.8, color: '#c8a0ff', w: 8 }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '끌어당김: 구르면 끊긴다', color: '#c8a0ff' });
           this.delayed.push({ t: 0.8, run: () => { if (e.dead || p.invuln > 0 || p.dashT > 0) return; const d2 = Math.hypot(p.x - e.x, p.y - e.y); if (d2 > e.r + 50) { this.knockPlayer(e.x, e.y, d2 - e.r - 40, { ang: Math.atan2(e.y - p.y, e.x - p.x) }); this.emit({ t: 'beamFx', x1: e.x, y1: e.y - 6, x2: p.x, y2: p.y, elem: 'dark' }); } } });
         }
       }

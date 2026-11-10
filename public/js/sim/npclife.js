@@ -205,7 +205,7 @@ export function updateNpcLife(w, DT) {
     if (talkNear && o.act !== 'doze') { if (o.act === 'walk') o.act = 'idle'; o.face = p.x < o.x ? -1 : 1; continue; }
     if (o.goal) {
       o.goalT = (o.goalT || 0) + DT;
-      if (o.goal && o.goal.route === undefined) o.goal.route = gridPath(w, o.x, o.y, o.goal.x, o.goal.y); // 벽 · 건물을 돌아가는 길
+      if (o.goal && o.goal.route === undefined) { if (w.pathAt === w.t) continue; w.pathAt = w.t; o.goal.route = gridPath(w, o.x, o.y, o.goal.x, o.goal.y); } // 벽 · 건물을 돌아가는 길 (한 걸음에 한 사람만 길을 찾는다: 여럿이 한꺼번에 찾으면 1초마다 화면이 끊겼다)
       const R = o.goal?.route; let wp = o.goal;
       if (R && R.length) { wp = R[0]; if (Math.hypot(wp.x - o.x, wp.y - o.y) < 9) { R.shift(); wp = R[0] || o.goal; } }
       let arrived = step(w, o, wp?.x ?? o.x, wp?.y ?? o.y, o.goal?.run ? 46 : 26, DT) && (!R || !R.length);
@@ -224,15 +224,16 @@ export function updateNpcLife(w, DT) {
 }
 function goToBed(w, o) { o.asleep = true; o.away = true; o.act = 'sleep'; } // 문 안으로 들어간다
 function wakeUp(o) { o.asleep = false; o.away = false; o.doing = null; o.act = 'idle'; if (o.bed) { o.x = o.bed.x; o.y = o.bed.y; } }
+const DX4 = [1, -1, 0, 0], DY4 = [0, 0, 1, -1];
 // 가까운 거리(±28칸)의 길 찾기: 칸 단위 너비 우선 탐색 → 지나갈 점들
 export function gridPath(w, sx, sy, gx, gy) {
   const ax = Math.floor(sx / TILE), ay = Math.floor(sy / TILE), bx = Math.floor(gx / TILE), by = Math.floor(gy / TILE);
   if (Math.abs(ax - bx) + Math.abs(ay - by) < 2) return null;
   const R = 28, W = R * 2 + 1, ox = ax - R, oy = ay - R; if (Math.abs(bx - ax) > R || Math.abs(by - ay) > R) return null;
   const prev = new Int16Array(W * W).fill(-1), idx = (x, y) => (y - oy) * W + (x - ox), s = idx(ax, ay), e = idx(bx, by);
-  const ok = (x, y) => x >= ox && y >= oy && x < ox + W && y < oy + W && (x === bx && y === by || !w.blocked(x * TILE + 8, y * TILE + 8, 4));
+  const ok = (x, y) => x >= ox && y >= oy && x < ox + W && y < oy + W && (x === bx && y === by || !w.solid(x * TILE + 8, y * TILE + 8)); // 칸 한가운데 ±4는 같은 칸이라 blocked(…, 4)와 같다
   prev[s] = s; const q = [s];
-  for (let h = 0; h < q.length; h++) { const k = q[h]; if (k === e) break; const x = (k % W) + ox, y = ((k / W) | 0) + oy; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy; if (!ok(xx, yy)) continue; const n = idx(xx, yy); if (prev[n] >= 0) continue; prev[n] = k; q.push(n); } }
+  for (let h = 0; h < q.length; h++) { const k = q[h]; if (k === e) break; const x = (k % W) + ox, y = ((k / W) | 0) + oy; for (let d = 0; d < 4; d++) { const xx = x + DX4[d], yy = y + DY4[d], n = idx(xx, yy); if (!ok(xx, yy) || prev[n] >= 0) continue; prev[n] = k; q.push(n); } }
   if (prev[e] < 0) return null;
   const out = []; for (let k = e; k !== s; k = prev[k]) out.push({ x: ((k % W) + ox) * TILE + 8, y: (((k / W) | 0) + oy) * TILE + 8 });
   out.reverse(); out[out.length - 1] = { x: gx, y: gy }; return out;

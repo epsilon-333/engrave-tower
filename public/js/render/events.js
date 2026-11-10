@@ -434,7 +434,7 @@ export const EventMethods = {
         sfx(look === 'brazier' ? 'reaction' : look === 'rune' ? 'freeze' : 'hit', { vol: 0.6, rate: 1.3 }); return true;
       }
       case 'trainMiss': for (let i = 0; i < 6; i++) P({ x: ev.x + (rnd() - 0.5) * 8, y: ev.y - 12, vx: (rnd() - 0.5) * 30, vy: -20, t: 0.4, max: 0.4, color: '#ff8a7a', g: 60 }); sfx('error', { vol: 0.4 }); return true;
-      case 'trainBones': for (let i = 0; i < 10; i++) { const an = rnd() * Math.PI * 2; P({ x: ev.x, y: ev.y - 8, vx: Math.cos(an) * 50, vy: Math.sin(an) * 30 - 40, t: 0.4, max: 0.4, color: i % 2 ? '#e8e0c8' : '#a8a090', g: 260 }); } this.texts.push({ x: ev.x, y: ev.y - 26, text: '뼈 무더기 — 한 번 더!', color: '#e8e0c8', t: 1, vy: -14, vx: 0, label: true }); sfx('hitArmor', { vol: 0.5, rate: 1.4 }); return true;
+      case 'trainBones': for (let i = 0; i < 10; i++) { const an = rnd() * Math.PI * 2; P({ x: ev.x, y: ev.y - 8, vx: Math.cos(an) * 50, vy: Math.sin(an) * 30 - 40, t: 0.4, max: 0.4, color: i % 2 ? '#e8e0c8' : '#a8a090', g: 260 }); } this.texts.push({ x: ev.x, y: ev.y - 26, text: '뼈 무더기: 한 번 더!', color: '#e8e0c8', t: 1, vy: -14, vx: 0, label: true }); sfx('hitArmor', { vol: 0.5, rate: 1.4 }); return true;
       case 'trainRise': for (let i = 0; i < 8; i++) P({ x: ev.x + (rnd() - 0.5) * 12, y: ev.y + 2, vx: (rnd() - 0.5) * 20, vy: -12, t: 0.6, max: 0.6, color: '#8a8070', g: -4, dust: true, v: (rnd() * 4) | 0 }); this.texts.push({ x: ev.x, y: ev.y - 26, text: '다시 일어섰다', color: '#c8b8ff', t: 0.9, vy: -14, vx: 0, label: true }); sfx('death', { vol: 0.4, rate: 1.5 }); return true;
       case 'trainGuard': sfx('hitArmor', { vol: 0.35, rate: 1.2 }); for (let i = 0; i < 6; i++) P({ x: ev.x + (rnd() - 0.5) * 14, y: ev.y - 16, vx: 0, vy: -20, t: 0.4, max: 0.4, color: '#bfe0ff', g: 0, glow: true, size: 1 }); return true;
       case 'trainLight': for (let i = 0; i < 8; i++) P({ x: ev.x + (rnd() - 0.5) * 10, y: ev.y - 16, vx: (rnd() - 0.5) * 16, vy: -50 - rnd() * 40, t: 0.5, max: 0.5, g: -20, flame: true, size: 1, color: '#ffffff' }); sfx('reaction', { vol: 0.45, rate: 1.4 }); return true;
@@ -488,7 +488,7 @@ export const EventMethods = {
         this.caught = { id: ev.id, t: 2.2 };
         this.texts.push({ x: ev.x, y: ev.y - 40, text: f ? `${name} ${ev.size}cm!` : `${name}!`, color: f?.legend ? '#ffd040' : '#e8f8ff', t: 2, vy: -8, vx: 0, label: true });
         if (ev.first) { this.banner = { text: `새 물고기 · ${name}`, sub: `${ev.size}cm · 물고기 도감에 남겼다${f.legend ? ' · 전설의 물고기!' : ''}${ev.allPerfect ? ' · 완벽한 박자!' : ''}`, t: 3.4, color: f.legend ? '#ffd040' : '#9ad8ff' }; sfx('levelup', { vol: 0.5 }); }
-        else if (ev.allPerfect) this.banner = { text: '완벽한 박자!', sub: `${name} ${ev.size}cm — 박자를 다 맞추면 더 큰 물고기가 잡힌다`, t: 2.4, color: '#ffe070' };
+        else if (ev.allPerfect) this.banner = { text: '완벽한 박자!', sub: `${name} ${ev.size}cm: 박자를 다 맞추면 더 큰 물고기가 잡힌다`, t: 2.4, color: '#ffe070' };
         else if (ev.record) this.note(`${name} 최대 크기 경신 · ${ev.size}cm`, '#9ad8ff');
         for (const [k, fq] of [[0, 523.25], [1, 659.25], [2, 783.99], [3, 1046.5]]) tone(fq, { dur: 0.18, type: 'triangle', vol: 0.12, when: k * 0.07 });
         if (GOODS[ev.id]) this.goodNote(ev.id, 1);

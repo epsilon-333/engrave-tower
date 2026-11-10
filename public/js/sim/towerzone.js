@@ -354,7 +354,7 @@ export function bossPickX(w, e, p, pick) {
     }
     case 'douse': { // 빛 끄기: 켜진 빛기둥 하나를 끈다 · 다 꺼져 있으면 어둠이 차오른다(반경 8칸 · 1.2초 예고) · 처음 모두 꺼지면 분노
       const lit = w.objects.filter((o) => o.kind === 'lightPillar' && o.litT > 0).sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y));
-      if (lit.length) { const o = lit[0]; o.litT = 0; o.label = '빛기둥 깨우기'; say(nm || '빛 끄기', '#c45cff'); w.emit({ t: 'beamFx', x1: e.x, y1: e.y - 8, x2: o.x, y2: o.y - 16 }); w.emit({ t: 'text', x: o.x, y: o.y - 34, text: '빛기둥이 꺼졌다 — 다시 깨워라(G)', color: '#c8b880' }); }
+      if (lit.length) { const o = lit[0]; o.litT = 0; o.label = '빛기둥 깨우기'; say(nm || '빛 끄기', '#c45cff'); w.emit({ t: 'beamFx', x1: e.x, y1: e.y - 8, x2: o.x, y2: o.y - 16 }); w.emit({ t: 'text', x: o.x, y: o.y - 34, text: '빛기둥이 꺼졌다. 다시 깨워라(G)', color: '#c8b880' }); }
       else { say('어둠이 차오른다', '#c45cff'); e.mv = { k: 'nova', t: 1.2 }; w.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 110, dur: 1.2 }); e.windT = 1.2; e.windMax = 1.2; }
       if (!w.objects.some((o) => o.kind === 'lightPillar' && o.litT > 0) && !e.douseRage) { e.douseRage = true; e.atk *= 1.2; w.emit({ t: 'shake', v: 6 }); }
       return !lit.length;

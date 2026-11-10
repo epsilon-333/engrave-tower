@@ -250,7 +250,7 @@ export function buildOverworld(zone) {
   for (const [lx, ly] of [[V.x - 10, V.y - 3], [V.x + 10, V.y - 3], [V.x - 10, V.y + 4], [V.x + 10, V.y + 4], [FARM.x0 - 4, V.y + 2], [HOME.x - 1, HOME.y + HH.h + 1], [V.x - 1, V.y - 9], [V.x + 1, V.y + 9]]) {
     if (inb(lx, ly) && t[I(lx, ly)] === T_FLOOR && !occupied[I(lx, ly)] && gr[I(lx, ly)] !== G.COBBLE) prop('lampPost', lx, ly, 1, 1);
   }
-  objects.push({ kind: 'sign', ...at(FARM.x0 - 3, V.y - 2), text: '바람결 텃밭 — 누구나 일굴 수 있어요. 괭이로 밭을 갈고(G), 씨앗을 심고, 물을 주면 자랍니다. 씨앗은 잡화점에서 팔아요.', label: '표지판 읽기', reusable: true });
+  objects.push({ kind: 'sign', ...at(FARM.x0 - 3, V.y - 2), text: '바람결 텃밭: 누구나 일굴 수 있어요. 괭이로 밭을 갈고(G), 씨앗을 심고, 물을 주면 자랍니다. 씨앗은 잡화점에서 팔아요.', label: '표지판 읽기', reusable: true });
   safe.push({ x: V.x, y: V.y, r: 34 }, { x: (FARM.x0 + FARM.x1) >> 1, y: (FARM.y0 + FARM.y1) >> 1, r: 16 });
   // 각인의 탑
   const TWR = OW.TOWER;

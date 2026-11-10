@@ -44,7 +44,7 @@ export function bagTab(s) {
     || '<p class="muted">비어 있음</p>';
   const fishN = Object.keys(s.fishLog || {}).length, artN = Object.keys(s.artifacts || {}).length;
   return `<section class="panel"><h3>도구<span class="help" data-tip="대장간에서 더 좋은 도구로 바꾼다. 물건 가까이에서 G: 캐기 · 베기 · 파기 · 낚시 · 밭일. G를 누르고 있으면 계속 한다.">?</span></h3><div class="tools">${tools}</div></section>
-    <section class="panel"><h3>가방 <small>${bagLine(s)}</small><span class="help" data-tip="종류마다 한 칸. 먹을 것은 「먹기」, 빠른 칸(H)에 두면 싸우는 중에도 먹는다.">?</span></h3>${body}</section>`;
+    <section class="panel"><h3>가방 <small>${bagLine(s).replace('가방 ', '')}</small><span class="help" data-tip="종류마다 한 칸. 먹을 것은 「먹기」, 빠른 칸(H)에 두면 싸우는 중에도 먹는다.">?</span></h3>${body}</section>`;
 }
 
 // ───── 잡화점 ─────
@@ -55,13 +55,12 @@ export function tradeTab(s, ui) {
     <button class="sm" data-act="tbuy" data-id="${id}" data-n="1" ${s.gold >= p ? '' : 'disabled'}>1개</button><button class="sm" data-act="tbuy" data-id="${id}" data-n="5" ${s.gold >= p * 5 ? '' : 'disabled'}>5개</button></div>`; }).join('');
   for (const id of Object.keys(s.bag || {})) if (id.startsWith('dish:')) registerDish(id);
   const own = Object.entries(s.bag || {}).filter(([id, n]) => n > 0 && GOODS[id] && GOODS[id].price > 0).sort((a, b) => sellPrice(b[0], mk) - sellPrice(a[0], mk));
-  const sell = own.map(([id, n]) => { const p = sellPrice(id, mk), hot = mk.hot.includes(id); return `<div class="trow ${hot ? 'hot' : ''}">${ico(id)}<span><b>${GOODS[id].name}</b> <small>${n}개${hot ? ' · <em class="up">인기 상품 ×1.8</em>' : ''}</small></span><span class="price">◆ ${p} ${arrow(GOODS[id].cat)}</span>
+  const sell = own.map(([id, n]) => { const p = sellPrice(id, mk), hot = mk.hot.includes(id); return `<div class="trow ${hot ? 'hot' : ''}">${ico(id)}<span><b>${GOODS[id].name}</b> <small>${n}개${hot ? ' · <em class="up">×1.8</em>' : ''}</small></span><span class="price">◆ ${p} ${arrow(GOODS[id].cat)}</span>
     <button class="sm" data-act="tsell" data-id="${id}" data-n="1">1개</button><button class="sm" data-act="tsell" data-id="${id}" data-n="${n}">모두 (◆ ${p * n})</button></div>`; }).join('') || '<p class="muted">팔 물건이 없다.</p>';
   const quick = own.filter(([id]) => ['fish', 'crop', 'junk'].includes(GOODS[id].cat));
   const quickGold = quick.reduce((a, [id, n]) => a + sellPrice(id, mk) * n, 0);
   return `<section class="panel"><h3>잡화점 <small>◆ ${s.gold} 골드</small></h3>
-      <p class="muted">"어서 오세요! 씨앗이랑 미끼는 여기서, 캐고 잡고 키운 건 뭐든 사 드려요." · 시세는 1시간마다 바뀐다 (다음 변동까지 ${mins}분)</p>
-      <p>오늘의 인기 상품: ${mk.hot.map((id) => `${ico(id)}<b>${GOODS[id].name}</b>`).join(' · ')} — 평소의 1.8배에 산다</p>
+      <p>시세 변동 : ${mk.hot.map((id) => `${ico(id)}<b>${GOODS[id].name}</b> ◆ ${sellPrice(id, { mul: {}, hot: [] })} → <em class="up">◆ ${sellPrice(id, mk)}</em>`).join(' · ')} <small class="muted">${mins}분 뒤 변동</small></p>
       <h4>사기</h4><div class="tlist">${buy}</div></section>
     ${bagUpgradeHtml(s)}
     <section class="panel"><h3>팔기 ${quick.length ? `<button class="sm" data-act="tsellQuick">물고기 · 작물 · 잡동사니 모두 팔기 (◆ ${quickGold})</button>` : ''}</h3><div class="tlist">${sell}</div></section>`;

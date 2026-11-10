@@ -1,5 +1,4 @@
 [
-"Sapphire Ring",
 "Death sentence",
 "Execution",
 "Not enough for the fare (◆ 20",
@@ -125,7 +124,7 @@
 "Frost Spike",
 "Frost armor shard",
 "Frost Ring",
-"Frost rings are dangerous on the outside — stay close to the witch",
+"Frost rings are dangerous on the outside. Stay close to the witch",
 "Frost Palace",
 "Master of the Frost Palace",
 "Frost Wolf Forest",
@@ -191,7 +190,7 @@
 "Connecting to server · progress is kept",
 "Can't connect to the server. Try again later",
 "Saved on server",
-"Disconnected from the server — climbing on alone",
+"Disconnected from the server. Climbing on alone",
 "Only visible when connected to the server",
 "Connect to the server to use parties and guilds",
 "Oath",
@@ -287,7 +286,7 @@
 "The tax carriage was robbed and the royal treasury shrank",
 "A tax carriage",
 "Protect the tax carriage",
-"A ledger stolen from a tax carriage. The broker in Noct Haven buys it — proof for joining Noctaris",
+"A ledger stolen from a tax carriage. The broker in Noct Haven buys it. Proof for joining Noctaris",
 "Tax ledger",
 "Sell the tax ledger (◆ 120",
 "Defeat the tax guards for big money · struggle · infamy",
@@ -398,5 +397,6 @@
 "Pilgrim's Coat",
 "Turnip",
 "Order",
-"Patrol's side"
+"Patrol's side",
+"Side with the patrol"
 ]

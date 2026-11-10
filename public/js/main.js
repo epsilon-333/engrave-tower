@@ -116,7 +116,7 @@ onNet('rank', (m) => {
   const fmt = (v) => rankTab === 'gold' ? `◆ ${v.toLocaleString()}` : rankTab === 'tower' ? `${v}층` : fmtTime(v);
   const rows = list.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td class="muted">${RACES[r.race]?.name || ''}</td><td style="text-align:right">${fmt(r.v)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">아직 기록이 없다</td></tr>';
   showModal(`<h2>랭킹</h2><div class="actions">${tabs.map(([k, n]) => `<button class="sm ${k === rankTab ? '' : 'ghost'}" data-rk="${k}">${n}</button>`).join('')}</div>
-    <p class="muted">${rankTab in RANK_RAID ? '레이드에 들어간 때부터 보스를 쓰러뜨릴 때까지 — 짧을수록 위' : rankTab === 'tower' ? '혼자 · 파티로 오른 가장 높은 층' : '지금 가진 돈'} · 결투 점수는 나중에</p>
+    <p class="muted">${rankTab in RANK_RAID ? '레이드에 들어간 때부터 보스를 쓰러뜨릴 때까지: 짧을수록 위' : rankTab === 'tower' ? '혼자 · 파티로 오른 가장 높은 층' : '지금 가진 돈'} · 결투 점수는 나중에</p>
     <table style="width:100%">${rows}</table><div class="actions"><button data-close class="ghost">닫기</button></div>`);
   overlay.querySelectorAll('[data-rk]').forEach((b) => (b.onclick = () => { rankTab = b.dataset.rk; netSend({ t: 'rankGet' }); }));
 });
@@ -226,7 +226,7 @@ function inviteDuel(rp) {
 onNet('duelInvite', (m) => {
   if (!world || paused || world.pvp || world.zone?.id !== 'world' || world.state !== 'play') { netSend({ t: 'duelAnswer', to: m.from, ok: false }); return; }
   const close = () => { overlay.hidden = true; paused = false; modal = null; clearTimeout(t); };
-  showModal(`<h2>결투 신청</h2><p><b>${esc(m.name)}</b> (${RACES[m.race]?.name || '?'} · Lv ${m.lv || 1}) — 결투 신청이 왔다.</p>
+  showModal(`<h2>결투 신청</h2><p><b>${esc(m.name)}</b> (${RACES[m.race]?.name || '?'} · Lv ${m.lv || 1}): 결투 신청이 왔다.</p>
     <p class="muted">1:1 대전. 져도 잃는 것은 없다.</p>
     <div class="actions"><button id="dAcc">받아들인다</button><button id="dDec" class="ghost">거절한다</button></div>`, () => { close(); netSend({ t: 'duelAnswer', to: m.from, ok: false }); });
   const t = setTimeout(() => { if (document.getElementById('dDec')) { close(); netSend({ t: 'duelAnswer', to: m.from, ok: false }); } }, 15000);
@@ -311,13 +311,13 @@ const myRank = () => net.guild?.members.find((x) => x.me)?.rank;
 const isPartyLeader = () => !!net.party && net.party.leader === net.id;
 const seenText = (t) => { if (!t) return '오래전'; const m = (Date.now() - t) / 60000; return m < 60 ? `${Math.max(1, Math.round(m))}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
 onNet('partyInvite', (m) => inviteCard(`<b>파티 초대</b><p>${esc(m.name)} <small>${RACES[m.race]?.name || ''} · Lv ${m.lv || 1}</small></p>`, () => netSend({ t: 'partyAnswer', to: m.from, ok: true }), () => netSend({ t: 'partyAnswer', to: m.from, ok: false })));
-onNet('guildInvite', (m) => inviteCard(`<b>길드 초대</b><p>${esc(m.name)} — 길드 「${esc(m.guild)}」</p>`, () => netSend({ t: 'guildAnswer', to: m.from, ok: true }), () => netSend({ t: 'guildAnswer', to: m.from, ok: false })));
+onNet('guildInvite', (m) => inviteCard(`<b>길드 초대</b><p>${esc(m.name)}: 길드 「${esc(m.guild)}」</p>`, () => netSend({ t: 'guildAnswer', to: m.from, ok: true }), () => netSend({ t: 'guildAnswer', to: m.from, ok: false })));
 onNet('partyNo', (m) => { renderer.banner = { text: '파티', sub: m.reason, t: 2.2, color: '#c8b8a0' }; });
 onNet('guildNo', (m) => { renderer.banner = { text: '길드', sub: m.reason, t: 2.2, color: '#c8b8a0' }; });
 onNet('guildMade', (m) => { save.gold = Math.max(0, save.gold - GUILD_COST); writeSave(save); renderer.banner = { text: `길드 「${m.name}」`, sub: '길드를 세웠다 · O 창에서 근처 사람을 초대한다', t: 3, color: '#f0c878' }; sfx('levelup', { vol: 0.5 }); });
 onNet('party', (m) => {
   if (!m.id && m.why) renderer.banner = { text: '파티', sub: m.why, t: 2.2, color: '#c8b8a0' };
-  if (coRun?.role === 'member' && (!net.party || net.party.leader !== coRun.host)) coSolo('파티장이 파티를 떠났다 — 혼자 이어 오른다');
+  if (coRun?.role === 'member' && (!net.party || net.party.leader !== coRun.host)) coSolo('파티장이 파티를 떠났다. 혼자 이어 오른다');
   refreshSocial();
 });
 onNet('guild', (m) => {
@@ -326,7 +326,7 @@ onNet('guild', (m) => {
   if (!m.id && m.why) renderer.banner = { text: '길드', sub: m.why, t: 2.2, color: '#c8b8a0' };
   refreshSocial();
 });
-onNet('down', () => { if (coRun?.role === 'member') coSolo('서버와 연결이 끊겼다 — 혼자 이어 오른다'); });
+onNet('down', () => { if (coRun?.role === 'member') coSolo('서버와 연결이 끊겼다. 혼자 이어 오른다'); });
 
 // 가까운 사람 앞에서 G: 결투 · 파티 · 길드
 function openMeet(rp) {
@@ -560,7 +560,7 @@ function showRaid() {
   const cards = Object.entries(RAIDS).map(([id, r]) => `<div class="skc"><div class="c-head"><b style="color:${r.color}">${r.name}</b><span class="role">권장 Lv ${r.rec}</span></div><div class="c-sum">${esc(r.desc)}</div>
     <div class="muted">깬 횟수 ${R.clears[id] || 0}${R.week[id] === wk ? ' · 이번 주 보물상자 받음' : ' · 이번 주 보물상자 남음'}</div>
     <div class="c-act">${lockText(save, 'systems', 'raid:' + id) ? `<span class="muted">${lockText(save, 'systems', 'raid:' + id)}</span>` : `<button class="sm" data-raid="${id}">${lead ? '파티와 들어가기' : '들어가기'}</button>`}</div></div>`).join('');
-  showModal(`<h2>레이드 제단</h2><p class="muted">거대한 보스와 싸우는 둥근 방. 체력이 셋으로 나뉘어 단계마다 패턴이 바뀐다 — 빨간 예고를 보고 피하고, 「표식」이 붙으면 동료에게서 떨어진다. 파티(최대 4명)로 오면 함께 싸운다 (인원수만큼 보스가 단단해진다).</p>
+  showModal(`<h2>레이드 제단</h2><p class="muted">거대한 보스와 싸우는 둥근 방. 체력이 셋으로 나뉘어 단계마다 패턴이 바뀐다. 빨간 예고를 보고 피하고, 「표식」이 붙으면 동료에게서 떨어진다. 파티(최대 4명)로 오면 함께 싸운다 (인원수만큼 보스가 단단해진다).</p>
     ${net.party && !isPartyLeader() ? '<p class="muted">파티장이 들어가면 함께 간다.</p>' : ''}<div class="skill-row">${cards}</div><div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
   overlay.querySelectorAll('[data-raid]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; const id = b.dataset.raid; if (lead) startCoRaid(id); else enterRaid(id); }));
 }
@@ -657,7 +657,7 @@ onNet('co', (m) => {
         enterInterior(m.id, m.depth, { loot: world.loot, discovered: world.discovered, hp: Math.max(world.player.hp, world.d.maxHp * 0.3), codexStart: world.codexStart, rootMemory: world.rootMemory }, { role: 'member', seed: m.seed, host: m.from });
       }
       break;
-    case 'no': renderer.banner = { text: `${fromName} — 함께 오르지 않는다`, sub: m.why, t: 2.4, color: '#c8b8a0' }; break;
+    case 'no': renderer.banner = { text: `${fromName}: 함께 오르지 않는다`, sub: m.why, t: 2.4, color: '#c8b8a0' }; break;
     case 'me': coState.set(m.from, { hp: m.hp, maxHp: m.maxHp, down: !!m.down, f: m.f, t: performance.now() }); break;
     case 'snap':
       if (coRun && coF() === m.f && world.coop) { world.coApplySnap(m, m.from); if (m.from === coRun.host) coRun.lastSnap = performance.now(); }
@@ -699,7 +699,7 @@ function coTick(dt) {
   for (const o of w.coFlush()) { const to = o.to || coRun.host; if (!by.has(to)) by.set(to, []); by.get(to).push(o); }
   for (const [to, l] of by) netSend({ t: 'co', to, k: 'b', l });
   if (host && p.down && w.state === 'play' && [...mates.values()].every((mt) => mt.dead)) { netSend({ t: 'co', k: 'wipe', f: F }); coWipe(); } // 모두 쓰러졌다
-  if (!host && now - coRun.lastSnap > 6000 && w.state === 'play') coSolo('파티장의 소식이 끊겼다 — 혼자 이어 오른다');
+  if (!host && now - coRun.lastSnap > 6000 && w.state === 'play') coSolo('파티장의 소식이 끊겼다. 혼자 이어 오른다');
 }
 // 파티장을 잃은 동료: 꼭두각시였던 몬스터가 스스로 움직이고, 혼자 이어 오른다
 function coSolo(why) {
@@ -733,7 +733,7 @@ function showTower() { climbUi.showTowerMenu(); }
 // 숙련: 깨달은 순간 (전투 · 생활은 세계가, 요리 · 팔기는 창에서 알린다)
 function onKnackLearned(id) {
   const k = KNACKS[id]; if (!k) return;
-  if (k.kind === 'skill') learnSkill(k.skill, `문득 깨달았다 — ${k.hint}`);
+  if (k.kind === 'skill') learnSkill(k.skill, `문득 깨달았다. ${k.hint}`);
   else { renderer.calmBanner({ text: `생활 기술 「${k.name}」을 깨달았다`, sub: `${k.desc} · 따로 누르지 않아도 저절로`, t: 4.5, color: '#c8e8a0' }); sfx('levelup', { vol: 0.6 }); }
   SELL_BONUS.v = hasKnack(save.knack, 'haggler') ? 1.1 : 1;
   writeSave(save);
@@ -835,7 +835,7 @@ function showStyleSelect(race) {
   const R = RACES[race];
   titleEl.innerHTML = `<div class="race-select">
     <h1>${R.name}</h1>
-    ${reGolem ? '<p class="lvup">골렘족은 이제 몬스터가 되었어요. 새 종족과 클래스를 골라 주세요 — 레벨 · 장비 · 돈 · 도감은 그대로예요.</p>' : ''}<p class="muted">공명 제단에서 언제든 바꿀 수 있다.</p>
+    ${reGolem ? '<p class="lvup">골렘족은 이제 몬스터가 되었어요. 새 종족과 클래스를 골라 주세요. 레벨 · 장비 · 돈 · 도감은 그대로예요.</p>' : ''}<p class="muted">공명 제단에서 언제든 바꿀 수 있다.</p>
     <div class="styles">${RACE_CLASSES(race).map((id) => {
       const c = CLASSES[id];
       return `<button class="style" data-style="${id}">
@@ -881,7 +881,7 @@ function showTitle() {
       ${canLogin ? '<button id="tsLogin" class="ghost">계정으로 저장 · 로그인</button>' : ''}
       <button id="tsIntro" class="ghost">인트로 보기</button>
     </div>${who}
-    ${IN_APP ? '<p class="title-warn"><b>앱 안 브라우저에서 열었어요</b> — 이대로 하면 창을 닫을 때 진행이 지워질 수 있어요. 오른쪽 위 메뉴에서 「다른 브라우저로 열기」(크롬 · 사파리)를 눌러 주세요. 또는 로그인하면 서버에 저장돼요.</p>' : ''}
+    ${IN_APP ? '<p class="title-warn"><b>앱 안 브라우저에서 열었어요.</b> 이대로 하면 창을 닫을 때 진행이 지워질 수 있어요. 오른쪽 위 메뉴에서 「다른 브라우저로 열기」(크롬 · 사파리)를 눌러 주세요. 또는 로그인하면 서버에 저장돼요.</p>' : ''}
     <p class="title-foot">그래픽 0x72 (CC0) · 효과음 Kenney (CC0) · 글꼴 갈무리 (OFL) · 이펙트 pixelfx (MIT)</p></div></div>`;
   const cv = titleEl.querySelector('.title-bg'), st = makeStage(), t0 = performance.now();
   const T0 = INTRO_TOTAL - 6 - 3.6 - 6.2 + 0.6, LEN = 4.8; // 「그리고 삼백 년 뒤」 장면의 가운데 (어두워지기 전)
@@ -987,7 +987,7 @@ function setupSaveGuards(startStamp = 0) {
   setStaleHook(() => {
     if (cloud.state === 'stale') return;
     if (cloud.mode !== 'local') markStale(); // 게스트도 이 창의 브라우저 저장은 멈춘다 → 조용히 멈추지 않게 똑같이 알린다
-    saveWarn('<b>이 창은 저장이 멈췄어요</b> — 같은 브라우저의 다른 창에서 게임을 하고 있어요. 다른 창을 닫고 이 창을 새로 고치면 다시 저장돼요.');
+    saveWarn('<b>이 창은 저장이 멈췄어요.</b> 같은 브라우저의 다른 창에서 게임을 하고 있어요. 다른 창을 닫고 이 창을 새로 고치면 다시 저장돼요.');
     showModal(`<h2>다른 창에서 게임 중</h2><p>이 브라우저의 다른 창이 이 계정의 진행을 저장했어요. 이 창의 진행은 이제 저장되지 않아요 (옛 진행으로 덮어쓰지 않게).</p>
       <div class="row"><button id="stReload">이 창에서 이어 하기 (새로고침)</button><button data-close class="ghost">닫기</button></div>`);
     document.getElementById('stReload').onclick = () => location.reload();
@@ -1017,7 +1017,7 @@ function setupSaveGuards(startStamp = 0) {
   // 로그인이 풀리면 다시 로그인 창. 다른 창(대화 · 상점 등)이 그 창을 덮어도 위쪽 경고의 버튼으로 언제든 다시 연다
   onCloud(() => {
     if (cloud.state !== 'expired') { if (asked) { asked = false; saveWarn(''); } return; }
-    if (!document.getElementById('rlNow')) { saveWarn('<b>로그인이 풀려 서버에 저장이 안 되고 있어요</b> — 진행은 들고 있어요. <button class="sm" id="rlNow">다시 로그인</button>'); document.getElementById('rlNow').onclick = askRelogin; }
+    if (!document.getElementById('rlNow')) { saveWarn('<b>로그인이 풀려 서버에 저장이 안 되고 있어요.</b> 진행은 들고 있어요. <button class="sm" id="rlNow">다시 로그인</button>'); document.getElementById('rlNow').onclick = askRelogin; }
     if (!asked) askRelogin();
   });
 }
@@ -1372,7 +1372,7 @@ function ccBooksHtml() {
 const ccMissionProgress = (c) => c.mission === 'quests' ? save.questsDone || 0 : c.mission === 'tower' ? save.climb?.best || 0 : c.mission === 'duel' ? save.pvp?.win || 0 : 0;
 function checkCcMissions() {
   if (!save) return;
-  for (const [id, c] of Object.entries(CC_EXTRA)) if (c.mission && !(save.learned || []).includes(id) && ccMissionProgress(c) >= c.need) learnSkill(id, `미션 달성 — ${c.how}`);
+  for (const [id, c] of Object.entries(CC_EXTRA)) if (c.mission && !(save.learned || []).includes(id) && ccMissionProgress(c) >= c.need) learnSkill(id, `미션 달성: ${c.how}`);
 }
 function buyRaceGood(race, id, n) {
   if (!(RACE_SHOP[race] || []).includes(id)) return;
@@ -1404,7 +1404,7 @@ function sanctLearnHtml(race, lv) {
     }).join('');
     return cards ? `<h4>${esc(c.name)} <small>${esc(c.desc)}</small></h4><div class="skill-row">${cards}</div>` : '';
   }).join('');
-  return `<div class="talk"><p>${esc(RACES[race].name)}의 기술을 배운다. 배운 기술은 <b>내 종족의 자원(${resName})</b>으로 쓴다 — 쓰는 기술이면 ${josa(resName, '을', '를')} 쓰고, 모으는 기술이면 ${josa(resName, '이', '가')} 찬다.</p>
+  return `<div class="talk"><p>${esc(RACES[race].name)}의 기술을 배운다. 배운 기술은 <b>내 종족의 자원(${resName})</b>으로 쓴다. 쓰는 기술이면 ${josa(resName, '을', '를')} 쓰고, 모으는 기술이면 ${josa(resName, '이', '가')} 찬다.</p>
     <p class="muted">무기가 맞지 않으면 약해진다. 한손 무기라면 왼손 도구(마법 부적 · 손쇠뇌 · 작은 방패 · 투척 주머니)를 대장간에서 사서 들자.</p></div>${groups}`;
 }
 function learnCross(race, id) {
@@ -1501,7 +1501,7 @@ function blessHtml(race) {
       <p>${PERK_TIER}단계 은총: <b>${S.perk.text}</b>${tier >= PERK_TIER ? ' ✔' : ''}<br>${TREASURE_TIER}단계 보물: <b>${ITEMS[S.treasure].name}</b>${tier >= TREASURE_TIER ? ' ✔' : ''}</p>
       <p>가진 ${S.relic} <b>${have}</b>개 · 조각 <b>${shards}</b> / ${SHARDS_PER_RELIC}</p>
     </div>
-    <p class="muted">${S.relic} 조각은 <b>${S.place}</b>의 몬스터와 <b>${S.dungeon}</b>에서만 나온다. 단계가 오를수록 성물이 더 들지만 축복은 훨씬 크게 오른다 — 여러 성지를 조금씩보다 한 곳을 끝까지 파는 쪽이 강하다.</p>`;
+    <p class="muted">${S.relic} 조각은 <b>${S.place}</b>의 몬스터와 <b>${S.dungeon}</b>에서만 나온다. 단계가 오를수록 성물이 더 들지만 축복은 훨씬 크게 오른다. 여러 성지를 조금씩보다 한 곳을 끝까지 파는 쪽이 강하다.</p>`;
   if (!max) html += `<button id="offerRelic" ${have >= cost ? '' : 'disabled'}>${josa(S.relic, '을', '를')} ${cost}개 바친다 → ${tier + 1}단계</button>`;
   return html;
 }
@@ -1745,7 +1745,7 @@ function eatQuick() {
   if (!id || !(save.bag[id] > 0)) { // 빠른 칸이 비었으면 가방에서 가장 많이 회복하는 음식을 먹는다
     id = Object.keys(save.bag || {}).filter((k) => save.bag[k] > 0 && eatInfo(k)).sort((a, b) => (eatInfo(b).heal || 0) - (eatInfo(a).heal || 0))[0];
   }
-  if (!id) { renderer.banner = { text: '먹을 것이 없다', sub: '요리 · 낚시 · 농사로 음식을 만들자 — 탑 안에서 H로 먹으면 체력이 돌아온다', t: 2.4, color: '#c8b8a0' }; return; }
+  if (!id) { renderer.banner = { text: '먹을 것이 없다', sub: '요리 · 낚시 · 농사로 음식을 만들자. 탑 안에서 H로 먹으면 체력이 돌아온다', t: 2.4, color: '#c8b8a0' }; return; }
   world.eat(id);
 }
 // 옛 기술 석판 · 물의 정령 · 자라: 기술 배우기
@@ -1860,11 +1860,11 @@ function startLoop() {
 function showTutorial() {
   showModal(`<h2>조작 · 도움말</h2>
     <div class="tut">
-      <p><b>1. 탐험</b> — 섬을 돌아다니며 몬스터 지대를 찾는다. 지역마다 권장 레벨 · 몬스터가 다르다.</p>
-      <p><b>2. 사냥</b> — 몬스터마다 고유한 <b>부산물</b>이 떨어진다. 무엇이 어디서 나는지는 캐릭터 창의 「어디서 얻나」.</p>
-      <p><b>3. 각인</b> — 바람결 마을의 <b>공명 제단</b>에서 부산물로 각인을 새긴다. 클래스 스킬 8개 중 4개를 Q · E · R · F에 끼운다. 강한 각인보다 <b>맞물리는 조합</b>이 이긴다.</p>
-      <p><b>4. 등반</b> — 각인의 탑은 층마다 몬스터, 5층마다 수호자, 10층마다 구역의 주인. 탑 안에는 각인 · 보상이 없다. 주인을 쓰러뜨리면 다음부터 그 위층에서 시작한다. 회복은 수호자 · 주인 처치(체력 40%) · 음식(H) · 물약(Z).</p>
-      <p><b>5. 수련 · 생활</b> — 종족 성지에서 수련 · 의뢰, 대장간에서 장비 강화. 농사 · 낚시 · 요리(요리 = 탑 안 회복).</p>
+      <p><b>1. 탐험</b>: 섬을 돌아다니며 몬스터 지대를 찾는다. 지역마다 권장 레벨 · 몬스터가 다르다.</p>
+      <p><b>2. 사냥</b>, 몬스터마다 고유한 <b>부산물</b>이 떨어진다. 무엇이 어디서 나는지는 캐릭터 창의 「어디서 얻나」.</p>
+      <p><b>3. 각인</b>, 바람결 마을의 <b>공명 제단</b>에서 부산물로 각인을 새긴다. 클래스 스킬 8개 중 4개를 Q · E · R · F에 끼운다. 강한 각인보다 <b>맞물리는 조합</b>이 이긴다.</p>
+      <p><b>4. 등반</b>, 각인의 탑은 층마다 몬스터, 5층마다 수호자, 10층마다 구역의 주인. 탑 안에는 각인 · 보상이 없다. 주인을 쓰러뜨리면 다음부터 그 위층에서 시작한다. 회복은 수호자 · 주인 처치(체력 40%) · 음식(H) · 물약(Z).</p>
+      <p><b>5. 수련 · 생활</b>, 종족 성지에서 수련 · 의뢰, 대장간에서 장비 강화. 농사 · 낚시 · 요리(요리 = 탑 안 회복).</p>
       <p>무엇을 할지 모르겠다면 <b>여정(J)</b>과 화면 가장자리의 화살표를 따라가자.</p>
       ${touch ? '<p class="keys">왼쪽 조이스틱 이동 · 오른쪽 조이스틱 공격(밀면 그 방향, 누르기만 하면 가까운 적) · 스킬 · 무기 · 대시 버튼 · 「≡」 메뉴</p>'
     : '<p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 평타 · 우클릭 무기 기술 · Q·E·R·F 스킬(차지 스킬은 길게) · Space 구르기(무적) · G 상호작용 · H 음식 · Z 물약 · C 캐릭터 · I 장비 · B 가방 · J 퀘스트 · M 지도 · Esc 메뉴</p>'}
@@ -1898,7 +1898,7 @@ function closePanel() {
 function showModal(html, onClose) {
   touch?.reset();
   const giver = talkNpc && !html.includes('data-give') ? talkNpc : null;
-  overlay.innerHTML = `<div class="modal">${html}${giver ? `<div class="give-row">${giver.mem ? `<span class="muted">${esc(giver.label0 || giver.label || '').split(' ')[0]}은(는) ${opinionText(giver.mem.op)}${Object.keys(giver.mem.knows).length ? ` · 들은 소문: ${Object.keys(giver.mem.knows).slice(0, 3).map((d) => ({ assault: '사람을 때림', beatDown: '사람을 때려눕힘', raid: '상단 습격', rob: '세금 마차 약탈', escort: '상단 호위', guard: '마차 호위', donate: '기부', bribe: '뇌물', stop: '싸움 말림', official: '관리 살해', gift: '선물' })[d] || d).join(' · ')}` : ''}</span>` : ''}<span class="muted">돈을 건넨다 — ${esc(giveHint(giver))}</span><span>${[10, 50, 200].map((n) => `<button class="sm ghost" data-give="${n}">◆ ${n}</button>`).join('')}</span></div>` : ''}</div>`;
+  overlay.innerHTML = `<div class="modal">${html}${giver ? `<div class="give-row">${giver.mem ? `<span class="muted">${esc(giver.label0 || giver.label || '').split(' ')[0]}은(는) ${opinionText(giver.mem.op)}${Object.keys(giver.mem.knows).length ? ` · 들은 소문: ${Object.keys(giver.mem.knows).slice(0, 3).map((d) => ({ assault: '사람을 때림', beatDown: '사람을 때려눕힘', raid: '상단 습격', rob: '세금 마차 약탈', escort: '상단 호위', guard: '마차 호위', donate: '기부', bribe: '뇌물', stop: '싸움 말림', official: '관리 살해', gift: '선물' })[d] || d).join(' · ')}` : ''}</span>` : ''}<span class="muted">돈을 건넨다. ${esc(giveHint(giver))}</span><span>${[10, 50, 200].map((n) => `<button class="sm ghost" data-give="${n}">◆ ${n}</button>`).join('')}</span></div>` : ''}</div>`;
   overlay.hidden = false; paused = true;
   modal = onClose || (() => { overlay.hidden = true; paused = false; modal = null; talkNpc = null; sfx('close', { vol: 0.4 }); });
   if (giver) overlay.querySelectorAll('[data-give]').forEach((b) => (b.onclick = () => giveMoney(giver, +b.dataset.give)));
@@ -1992,7 +1992,7 @@ function showSettings(back, openKeys = false) {
   showModal(`<h2>설정</h2>
     <h4>소리</h4>${volumeHtml()}
     <h4>조작</h4>
-    <label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T) — 가까운 적을 저절로 겨눈다</label>
+    <label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T): 가까운 적을 저절로 겨눈다</label>
     <label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> 마을 사람도 때릴 수 있게 (끄면 사람에게 맞지 않는다)</label>
     <details class="keys-set"${openKeys ? ' open' : ''}><summary>키 바꾸기</summary><div class="key-grid">${KEY_ACTIONS.map(([def, name]) => `<span>${name}</span><button class="sm ghost" data-rebind="${def}">${keyLabel(keyFor(def))}</button>`).join('')}</div>
       <p class="muted">버튼을 누른 뒤 쓸 키를 누른다 (Esc: 그만두기). 다른 행동이 쓰던 키면 서로 바뀐다.</p><button id="keysReset" class="sm ghost">기본 키로</button></details>
@@ -2332,7 +2332,7 @@ function handleSignals() {
     } else if (s.t === 'npcEvent') { // NPC가 스스로 일으킨 일
       const near = Math.hypot(s.x - world.player.x, s.y - world.player.y) < 300, nm = String(s.name || '누군가').split(' ')[0];
       if (s.k === 'rebel') { const E = econOf(save); E.rebels = (E.rebels || 0) + 1; addChronicle(`${nm}이(가) 살림을 접고 녹타리스로 떠났다 (세금 ${Math.round(E.tax * 100)}%)`); if (near) renderer.banner = { text: `${nm}이(가) 마을을 떠난다`, sub: '가난과 세금에 지쳐 녹타리스에 들어간다고 한다', t: 3, color: '#c8a0ff' }; }
-      if (s.k === 'harass' && near) renderer.banner = { text: '경비가 세금을 다그친다', sub: `${nm}이(가) 돈을 뜯기는 중 — 경비를 때리면 말리기, 그 사람에게 돈을 건네면 기부`, t: 3, color: '#ffb0a0' };
+      if (s.k === 'harass' && near) renderer.banner = { text: '경비가 세금을 다그친다', sub: `${nm}이(가) 돈을 뜯기는 중: 경비를 때리면 말리기, 그 사람에게 돈을 건네면 기부`, t: 3, color: '#ffb0a0' };
     } else if (s.t === 'happeningGone') { // 아무 일 없이 도착했다
       const h = HAPPEN_LIST.find((q) => q.id === s.id); if (h?.cv && !h.o.engaged) deliver(save, h.cv); if (h?.type === 'taxWagon' && !h.o.engaged) taxArrived(save, 300);
     } else if (s.t === 'happeningHit') { // 벌어지는 일을 공격했다
@@ -2400,7 +2400,7 @@ function portShowRoutes(pid) {
   const P = PORTS[pid];
   const clues = mistClues(save);
   const rows = P.routes.map((r, i) => r.hidden && clues < MIST_NEED
-    ? `<div class="soc-row"><span class="nm"><b>??? (안개)</b></span><span class="muted">안개가 길을 감춘다 — 교단의 기록 ${clues} / ${MIST_NEED}</span><span class="btns"><button class="sm ghost" disabled>?</button></span></div>`
+    ? `<div class="soc-row"><span class="nm"><b>??? (안개)</b></span><span class="muted">안개가 길을 감춘다. 교단의 기록 ${clues} / ${MIST_NEED}</span><span class="btns"><button class="sm ghost" disabled>?</button></span></div>`
     : r.closed
     ? `<div class="soc-row"><span class="nm"><b>${esc(destName(r.to))}</b></span><span class="muted">아직 뱃길이 열리지 않았다 (준비 중)</span><span class="btns"><button class="sm ghost" disabled>배삯 ◆ ${r.fare}</button></span></div>`
     : `<div class="soc-row on"><span class="nm"><b>${esc(destName(r.to))}</b></span><span class="muted">${esc(r.desc)} · 배 위에서 약 1분</span><span class="btns"><button class="sm" data-route="${i}" ${save.gold >= r.fare ? '' : 'disabled'}>배 타기 · ◆ ${r.fare}</button></span></div>`).join('');
@@ -2517,7 +2517,7 @@ function showSeaEvent(id) {
   overlay.querySelectorAll('[data-ch]').forEach((b) => (b.onclick = () => {
     const c = b.dataset.ch, lv = save.level || 1;
     if (c === 'fight') { done({ text: id === 'serpent' ? '바다뱀이 갑판으로 기어오른다!' : '해적이 갑판에 올라탔다!', sub: '모두 쓰러뜨려야 배가 다시 나아간다' }, '#ff9a7a'); world.spawnBoarders(id === 'serpent' ? 'serpent' : 'pirates', lv); return; }
-    if (c === 'join') { const g = 40 + lv * 3; save.gold += g; repOf().infamy += 8; done({ text: `해적과 함께 승객들의 짐을 털었다 · ◆ ${g}`, sub: `악명 +8 (지금 ${repOf().infamy}) — 언젠가 이 일이 소문날지도 모른다` }, '#ff7a7a'); return; }
+    if (c === 'join') { const g = 40 + lv * 3; save.gold += g; repOf().infamy += 8; done({ text: `해적과 함께 승객들의 짐을 털었다 · ◆ ${g}`, sub: `악명 +8 (지금 ${repOf().infamy}): 언젠가 이 일이 소문날지도 모른다` }, '#ff7a7a'); return; }
     if (c === 'pay') { let lost = 0; for (const k of Object.keys(CARGO)) { const n = save.bag[k] || 0, l = Math.ceil(n / 2); if (l) { save.bag[k] = n - l; lost += l; if (!save.bag[k]) delete save.bag[k]; } } done({ text: lost ? `교역품 ${lost}개를 내주었다` : '내줄 짐이 없다는 걸 알자 해적이 침을 뱉고 떠났다', sub: '해적선이 멀어진다' }); return; }
     if (c === 'raid') { done({ text: '상선에 갈고리를 걸었다!', sub: '호위병을 모두 쓰러뜨리자' }, '#ff9a7a'); world.spawnBoarders('merchant', lv); return; }
     if (c === 'flee') { v.dur += 8; done({ text: '돛을 펴고 멀리 돌아갔다', sub: '뱃길이 8초 길어졌다' }); return; }
@@ -2534,7 +2534,7 @@ function showSeaEvent(id) {
 }
 function voyageResult(s) {
   const lv = save.level || 1;
-  if (s.t === 'voyageWon' && s.kind === 'merchant') { const g = 120 + lv * 6; let n = 0; for (let i = 0; i < 6; i++) if (cargoCount(save.bag) < cargoCap(save) && bagAdd(lifeOf(), ['goldSilk', 'redSpice', 'iceCrystal', 'windWheat'][Math.floor(Math.random() * 4)], 1)) n++; polGain({ gold: g, infamy: 10, raid: 1 }); addChronicle(`바다에서 황금 돛 상선이 털렸다 — ${heroName()}`); renderer.banner = { text: `상선을 털었다 · ◆ ${g}`, sub: `교역품 ${n}개 · 악명 +10`, t: 3.6, color: '#ff9a7a' }; writeSave(save); return; }
+  if (s.t === 'voyageWon' && s.kind === 'merchant') { const g = 120 + lv * 6; let n = 0; for (let i = 0; i < 6; i++) if (cargoCount(save.bag) < cargoCap(save) && bagAdd(lifeOf(), ['goldSilk', 'redSpice', 'iceCrystal', 'windWheat'][Math.floor(Math.random() * 4)], 1)) n++; polGain({ gold: g, infamy: 10, raid: 1 }); addChronicle(`바다에서 황금 돛 상선이 털렸다. ${heroName()}`); renderer.banner = { text: `상선을 털었다 · ◆ ${g}`, sub: `교역품 ${n}개 · 악명 +10`, t: 3.6, color: '#ff9a7a' }; writeSave(save); return; }
   if (s.t === 'voyageWon') {
     if (s.kind === 'serpent') { const g = 40 + lv * 3; save.gold += g; repOf().fame += 4; const sc = bagAdd(lifeOf(), 'serpentScale', 2); renderer.banner = { text: `거대 바다뱀을 물리쳤다 · ◆ ${g}`, sub: `명성 +4${sc ? ' · 바다뱀 비늘 2개' : ''} · 배가 다시 나아간다`, t: 3.6, color: '#9fe8b0' }; }
     else { const g = 50 + lv * 4; save.gold += g; repOf().fame += 5; const rum = cargoCount(save.bag) + 2 <= CARGO_CAP && bagAdd(lifeOf(), 'pirateRum', 2); renderer.banner = { text: `해적을 물리쳤다 · ◆ ${g}`, sub: `명성 +5${rum ? ' · 해적 럼주 2병' : ''} · 배가 다시 나아간다`, t: 3.6, color: '#9fe8b0' }; }
@@ -2578,7 +2578,7 @@ function updateVoyBar() {
   if (!v || gameEl.hidden) { if (el) el.hidden = true; return; }
   if (!el) { el = document.createElement('div'); el.id = 'voyBar'; gameEl.appendChild(el); }
   el.hidden = false;
-  const k = Math.min(1, v.t / v.dur), txt = v.fighting ? '⚓ 배가 멈췄다 — 갑판의 적을 모두 쓰러뜨리자' : `⛵ ${destName(v.to)}까지 약 ${Math.max(0, Math.ceil(v.dur - v.t))}초`;
+  const k = Math.min(1, v.t / v.dur), txt = v.fighting ? '⚓ 배가 멈췄다. 갑판의 적을 모두 쓰러뜨리자' : `⛵ ${destName(v.to)}까지 약 ${Math.max(0, Math.ceil(v.dur - v.t))}초`;
   if (el.dataset.txt !== txt) { el.dataset.txt = txt; el.innerHTML = `<span>${esc(txt)}</span><i style="width:${Math.round(k * 100)}%"></i>`; }
   else el.querySelector('i').style.width = `${Math.round(k * 100)}%`;
 }
@@ -2616,7 +2616,7 @@ function noktTalk(id) {
       save.gold -= 15; sfx('coin', { vol: 0.5 });
       const k = learnNoktWay();
       const text = k ? NOKT_WAYS[k].rumor : SEA_RUMORS[Math.floor(Math.random() * SEA_RUMORS.length)];
-      showModal(`<h2>소문</h2><p>"${esc(text)}"</p>${k ? `<p class="muted">새로 안 곳: ${esc(NOKT_WAYS[k].name)} — 지도에서 찾아가 보자</p>` : ''}<div class="actions"><button data-close>고개를 끄덕인다</button></div>`);
+      showModal(`<h2>소문</h2><p>"${esc(text)}"</p>${k ? `<p class="muted">새로 안 곳: ${esc(NOKT_WAYS[k].name)}: 지도에서 찾아가 보자</p>` : ''}<div class="actions"><button data-close>고개를 끄덕인다</button></div>`);
       writeSave(save);
     };
     return true;
@@ -2627,7 +2627,7 @@ function noktTalk(id) {
   if (role.startsWith('exit_')) { exitNokt(role.slice(5)); return true; }
   if (role === 'broker') {
     const k = learnNoktWay();
-    say('중개인 벡', `녹타리스? 그런 이름은 처음 듣는군… 하고 시치미를 떼야 하는데, 여기까지 내려온 걸 보니 눈치는 있는 사람이구려. 아직 당신을 믿을 수는 없소. 밖에서 무슨 일을 하고 다니는지 지켜보겠소.${k ? ` 아, 그리고 — ${NOKT_WAYS[k].rumor}` : ''}`, k ? `<p class="muted">새로 안 곳: ${esc(NOKT_WAYS[k].name)}</p>` : '');
+    say('중개인 벡', `녹타리스? 그런 이름은 처음 듣는군… 하고 시치미를 떼야 하는데, 여기까지 내려온 걸 보니 눈치는 있는 사람이구려. 아직 당신을 믿을 수는 없소. 밖에서 무슨 일을 하고 다니는지 지켜보겠소.${k ? ` 아, 그리고: ${NOKT_WAYS[k].rumor}` : ''}`, k ? `<p class="muted">새로 안 곳: ${esc(NOKT_WAYS[k].name)}</p>` : '');
     return true;
   }
   if (role === 'black') { portShowTrade('noktBlack'); return true; }
@@ -2636,7 +2636,7 @@ function noktTalk(id) {
     say('녹타리스 반란군', lines[Math.floor(Math.random() * lines.length)]);
     return true;
   }
-  if (role === 'guard') { say('갱도 파수꾼', '이 너머가 깊은 갱도요. 들어갈수록 험하오 — 무너진 갱 Lv 15~22, 버려진 채굴장 Lv 22~30, 맨 안쪽 교단의 흔적은 Lv 32~40. 거기서 나는 소리는 들은 척도 하지 마시오.'); return true; }
+  if (role === 'guard') { say('갱도 파수꾼', '이 너머가 깊은 갱도요. 들어갈수록 험하오: 무너진 갱 Lv 15~22, 버려진 채굴장 Lv 22~30, 맨 안쪽 교단의 흔적은 Lv 32~40. 거기서 나는 소리는 들은 척도 하지 마시오.'); return true; }
   if (role === 'healer') {
     world.player.hp = world.d.maxHp; world.player.st = {};
     save.zoneMemory ||= {}; save.zoneMemory.nokt = world.exportMemory(); writeSave(save);
@@ -2663,7 +2663,7 @@ const PIT_TIERS = [
 ];
 function showPit() {
   if (world.pit) { showModal('<h2>지하 투기장</h2><p>"싸움 중이오! 구경꾼들이 소리를 지른다."</p><div class="actions"><button data-close>알겠다</button></div>'); return; }
-  showModal(`<h2>지하 투기장 · 주인 그롬</h2><p>"돈을 걸고 모래판에 들어가시오. 이기면 두 배, 지면 그 돈은 내 거요. 죽진 않소 — 쓰러지면 끌어내 주지."</p>${portGoldRow()}
+  showModal(`<h2>지하 투기장 · 주인 그롬</h2><p>"돈을 걸고 모래판에 들어가시오. 이기면 두 배, 지면 그 돈은 내 거요. 죽진 않소: 쓰러지면 끌어내 주지."</p>${portGoldRow()}
     <div class="soc-list">${PIT_TIERS.map((T, i) => `<div class="soc-row"><span class="nm"><b>${esc(T.name)}</b></span><span class="muted">상대 Lv ${T.lv} · 이기면 ◆ ${T.bet * 2}</span><span class="btns"><button class="sm" data-pit="${i}" ${save.gold >= T.bet ? '' : 'disabled'}>◆ ${T.bet} 건다</button></span></div>`).join('')}</div>
     <div class="actions"><button data-close class="ghost">됐다</button></div>`);
   overlay.querySelectorAll('[data-pit]').forEach((b) => (b.onclick = () => {
@@ -2700,7 +2700,7 @@ function enterNokt(way) {
   world.loot = ow.loot; world.discovered = ow.discovered; world.codexStart = ow.codexStart;
   world.reveal(true);
   renderer.setWorld(world);
-  renderer.banner = { text: '녹트 하벤', sub: '밤의 항구 — 반란 세력 녹타리스의 지하 도시', t: 3.6, color: '#c8a0ff' };
+  renderer.banner = { text: '녹트 하벤', sub: '밤의 항구: 반란 세력 녹타리스의 지하 도시', t: 3.6, color: '#c8a0ff' };
   noktOf().visited = true;
   worldExtras(world);
   startMusic('cave'); sfx('drop', { vol: 0.6, rate: 0.7 });
@@ -2833,9 +2833,9 @@ function killQuest(key, def) { // def: { types, n, title, reward:{gold, fame, in
     if (got >= q.n) {
       delete Q[key]; save.gold += q.reward.gold || 0; const R = repOf(); R.fame += q.reward.fame || 0; R.infamy += q.reward.infamy || 0; if (q.reward.cult) polOf().cult += q.reward.cult;
       writeSave(save); sfx('levelup', { vol: 0.6 });
-      return `<p><b>의뢰 완료: ${esc(q.title)}</b> — ◆ ${q.reward.gold || 0}${q.reward.fame ? ` · 명성 +${q.reward.fame}` : ''}${q.reward.infamy ? ` · 악명 +${q.reward.infamy}` : ''}</p>`;
+      return `<p><b>의뢰 완료: ${esc(q.title)}</b>: ◆ ${q.reward.gold || 0}${q.reward.fame ? ` · 명성 +${q.reward.fame}` : ''}${q.reward.infamy ? ` · 악명 +${q.reward.infamy}` : ''}</p>`;
     }
-    return `<p class="muted">맡은 의뢰: ${esc(q.title)} — ${Math.max(0, got)} / ${q.n}</p>`;
+    return `<p class="muted">맡은 의뢰: ${esc(q.title)}: ${Math.max(0, got)} / ${q.n}</p>`;
   }
   return null;
 }
@@ -2900,7 +2900,7 @@ function sanctTalk(id) {
   }
   if (race === 'assassin') {
     const C = save.contract;
-    if (C && !C.done) { showModal(`<h2>그림자 길드 · 비밀 의뢰</h2><p>"표적은 아직 살아 있다. ${esc(C.name)} — ${esc(C.where)}. 화살표를 따라가라."</p><div class="actions"><button id="dropC" class="ghost">의뢰를 포기한다</button><button data-close>알겠다</button></div>`); document.getElementById('dropC').onclick = () => { save.contract = null; world.track = null; writeSave(save); overlay.hidden = true; paused = false; modal = null; }; return; }
+    if (C && !C.done) { showModal(`<h2>그림자 길드 · 비밀 의뢰</h2><p>"표적은 아직 살아 있다. ${esc(C.name)}: ${esc(C.where)}. 화살표를 따라가라."</p><div class="actions"><button id="dropC" class="ghost">의뢰를 포기한다</button><button data-close>알겠다</button></div>`); document.getElementById('dropC').onclick = () => { save.contract = null; world.track = null; writeSave(save); overlay.hidden = true; paused = false; modal = null; }; return; }
     showModal(`<h2>그림자 길드 · 비밀 의뢰</h2><p>"무소속 일감이 하나 있다. 섬 어딘가 숨어 있는 현상금 붙은 도적 두목. 죽여서 오면 넉넉히 주지. 왕국은 모르는 일이다."</p><div class="actions"><button id="takeC">받는다 (◆ ${150 + save.level * 6})</button><button data-close class="ghost">됐다</button></div>`);
     document.getElementById('takeC').onclick = () => {
       const ow = overworldBase(), regs = ow.regionInfo.filter((r) => r.lv && r.lv[0] <= save.level + 5), r = regs[Math.floor(Math.random() * regs.length)] || ow.regionInfo[0];
@@ -2915,7 +2915,7 @@ function sanctTalk(id) {
   }
   if (race === 'dino') {
     const need = own ? 6 : 10;
-    if (save.mount) { showModal(`<h2>공룡 길들이기</h2><p>"네 랩터는 잘 지내지? 등에 올라타면 바람처럼 달린다."</p><p class="muted">탈것: 길들인 랩터 — V(모바일 「탈것」)로 올라타면 1.75배 빠르게 달리고, 대시는 멀리 뛰어오른다. 공격하거나 세게 맞으면 내린다.</p><div class="actions"><button data-close>고맙다</button></div>`); return; }
+    if (save.mount) { showModal(`<h2>공룡 길들이기</h2><p>"네 랩터는 잘 지내지? 등에 올라타면 바람처럼 달린다."</p><p class="muted">탈것: 길들인 랩터, V(모바일 「탈것」)로 올라타면 1.75배 빠르게 달리고, 대시는 멀리 뛰어오른다. 공격하거나 세게 맞으면 내린다.</p><div class="actions"><button data-close>고맙다</button></div>`); return; }
     showModal(`<h2>공룡 길들이기</h2><p>"새끼 랩터 한 마리가 사람을 잘 따른다. 짐승 고기 ${need}덩이로 배를 채워 주면 너를 태워 줄 거다."</p><p class="muted">짐승 고기 ${save.bag.beastMeat || 0}개</p><div class="actions"><button id="tame" ${(save.bag.beastMeat || 0) >= need ? '' : 'disabled'}>고기를 준다</button><button data-close class="ghost">됐다</button></div>`);
     document.getElementById('tame').onclick = () => { save.bag.beastMeat -= need; if (!save.bag.beastMeat) delete save.bag.beastMeat; save.mount = true; world.mountKind = 'raptor'; overlay.hidden = true; paused = false; modal = null; done('랩터를 길들였다 · V(모바일은 「탈것」 버튼)로 타고 내린다'); };
     return;
@@ -3061,7 +3061,7 @@ function islandTalk(id) {
   if (id === 'skull_bounty') {
     const b = bounty(save), def = { types: ['bandit', 'darkArcher', 'orcRaider'], n: 10, title: '수배된 도적 사냥', reward: { gold: 300, fame: 2 } };
     const st = killQuest('bountyHunt', def);
-    showModal(`<h2>현상금 게시판 · 사냥꾼 브래그</h2><p>"${b ? `여기 네 얼굴도 붙어 있군 — ◆ ${b}. 걱정 마, 해골 군도에선 아무도 안 잡아.` : '깨끗한 얼굴이네. 그럼 남의 현상금을 따 보겠나?'}"</p>${st || ''}<p class="muted">다른 사람의 현상금은 서버가 이어질 때 이곳에 붙는다.</p><div class="actions">${st ? '' : questBtn('bountyHunt', def)}<button data-close class="ghost">돌아선다</button></div>`);
+    showModal(`<h2>현상금 게시판 · 사냥꾼 브래그</h2><p>"${b ? `여기 네 얼굴도 붙어 있군. ◆ ${b}. 걱정 마, 해골 군도에선 아무도 안 잡아.` : '깨끗한 얼굴이네. 그럼 남의 현상금을 따 보겠나?'}"</p>${st || ''}<p class="muted">다른 사람의 현상금은 서버가 이어질 때 이곳에 붙는다.</p><div class="actions">${st ? '' : questBtn('bountyHunt', def)}<button data-close class="ghost">돌아선다</button></div>`);
     bindQuest('bountyHunt', def, () => { overlay.hidden = true; paused = false; modal = null; });
     return true;
   }
@@ -3153,7 +3153,7 @@ function rankInfo(P) {
 }
 function factionPanel(P) {
   const F = FACTIONS[P.faction], { cur, nx, pts, can } = rankInfo(P);
-  const acts = HAPPEN_LIST.filter((h) => !h.o.gone && !h.o.engaged).map((h) => `<li>${esc(HAPPENINGS[h.type].name)} — ${esc(h.where)} <small class="muted">(${P.faction === 'aurelion' ? (h.type === 'caravan' ? '호위' : h.type === 'taxWagon' ? '지키기' : h.type === 'cult' ? '막기' : '순찰대 편') : (h.type === 'caravan' ? '습격' : h.type === 'taxWagon' ? '털기 · 장부' : h.type === 'patrol' ? '말리기' : '막기')}하면 ${F.pointName} 1.5배)</small></li>`).join('');
+  const acts = HAPPEN_LIST.filter((h) => !h.o.gone && !h.o.engaged).map((h) => `<li>${esc(HAPPENINGS[h.type].name)}: ${esc(h.where)} <small class="muted">(${P.faction === 'aurelion' ? (h.type === 'caravan' ? '호위' : h.type === 'taxWagon' ? '지키기' : h.type === 'cult' ? '막기' : '순찰대 편') : (h.type === 'caravan' ? '습격' : h.type === 'taxWagon' ? '털기 · 장부' : h.type === 'patrol' ? '말리기' : '막기')}하면 ${F.pointName} 1.5배)</small></li>`).join('');
   return `<p class="muted">${F.name} <b>${cur.name}</b> · ${F.pointName} ${pts}${nx ? ` · 다음 「${nx.name}」: ${F.pointName} ${nx.need}${nx.cond ? ` + ${nx.condText}${P.kills[nx.cond] ? ' ✔' : ''}` : ''}` : ' · 가장 높은 계급'}</p>
     <h4>세력 의뢰 게시판</h4>${acts ? `<ul>${acts}</ul>` : '<p class="muted">지금 섬에 벌어지는 일이 없다. 조금 뒤 다시 보자.</p>'}
     <div class="actions">${can ? '<button id="promote">승진한다</button>' : ''}<button id="leaveF" class="ghost">${F.name}을(를) 떠난다</button><button data-close class="ghost">돌아간다</button></div>`;
@@ -3170,13 +3170,13 @@ function joinFaction(fid) {
   P.faction = fid; P.rank = was && was !== fid && P.rank >= 2 ? Math.min(2, RANKS[fid].length - 1) : 0;
   addChronicle(`${heroName()}이(가) ${FACTIONS[fid].name}에 들어갔다`);
   writeSave(save); sfx('levelup', { vol: 0.7 });
-  renderer.banner = { text: `${FACTIONS[fid].name} ${RANKS[fid][P.rank].name}`, sub: P.traitor && Date.now() - P.traitor < 1e4 ? '배신자 — 원래 집단이 쫓는다' : FACTIONS[fid].desc, t: 4, color: FACTIONS[fid].color };
+  renderer.banner = { text: `${FACTIONS[fid].name} ${RANKS[fid][P.rank].name}`, sub: P.traitor && Date.now() - P.traitor < 1e4 ? '배신자. 원래 집단이 쫓는다' : FACTIONS[fid].desc, t: 4, color: FACTIONS[fid].color };
 }
 function recruiterTalk() {
   const P = polOf(), L = LOYALTY[save.race] || LOYALTY.elf, R = repOf();
   if (P.faction === 'aurelion') { showModal(`<h2>아우렐리온 모병관</h2>${factionPanel(P)}`); bindFaction(P, recruiterTalk); return; }
   const tone = L.lv >= 1 ? '"오, 왕성의 피를 이은 분이군요! 아우렐리온은 당신 같은 분을 기다려 왔습니다."' : L.lv >= 0 ? '"입단을 원하시오? 맹세만 지킨다면 출신은 묻지 않소."' : L.lv >= -1 ? `"${RACES[save.race].name}이라… 솔직히 말하지. 위에선 당신네를 좋게 보지 않소. 시험 임무 하나는 해 내야 하오."` : '"언데드가 왕의 기사가 되겠다고? …농담이 아니라면, 남보다 두 배는 증명해야 할 거요."';
-  const block = R.infamy >= 20 || bounty(save) ? '악명이 너무 높다 — 입단을 거절당한다' : P.faction === 'noctaris' ? '녹타리스에 몸담고 있다 — 넘어오면 배신자가 된다' : '';
+  const block = R.infamy >= 20 || bounty(save) ? '악명이 너무 높다. 입단을 거절당한다' : P.faction === 'noctaris' ? '녹타리스에 몸담고 있다. 넘어오면 배신자가 된다' : '';
   const test = !P.tested ? '<p class="muted">시험 임무: 섬에서 벌어지는 일 하나를 왕국 편으로 해결한다 (상단 호위 · 세금 마차 지키기 · 교단 의식 막기 · 순찰대 편들기)</p>' : '';
   showModal(`<h2>아우렐리온 모병관</h2><p>${tone}</p><p class="muted">${esc(RACES[save.race].name)}의 왕실 충성도: <b>${L.name}</b> (${esc(L.why)}) · 명성 ${R.fame} · 악명 ${R.infamy}</p>${test}${block ? `<p class="warn">${block}</p>` : ''}
     <div class="actions"><button id="joinA" ${R.infamy >= 20 || bounty(save) || !P.tested ? 'disabled' : ''}>${P.faction === 'noctaris' ? '배신하고 입단한다' : '입단한다'}</button><button data-close class="ghost">돌아간다</button></div>`);
@@ -3186,7 +3186,7 @@ function brokerJoin() {
   const P = polOf();
   if (P.faction === 'noctaris') { showModal(`<h2>중개인 벡</h2>${factionPanel(P)}`); bindFaction(P, brokerJoin); return; }
   const wary = P.merit >= 100, hasProof = (save.bag.taxLedger || 0) > 0 || (save.bag.officialSeal || 0) > 0;
-  showModal(`<h2>중개인 벡</h2><p>"${wary ? '당신 이름은 왕국 장부에서 많이 봤소. 그냥은 못 믿지. 왕국 물건 — 세금 장부나 관리의 인장 — 을 가져오면 믿어 주겠소.' : '여기까지 내려와 날 찾았으면 쓸 만한 사람이오. 녹타리스에 들겠소? 밤에 움직이고, 왕의 마차를 털고, 언젠가는 왕좌를 엎는 일이오.'}"</p>
+  showModal(`<h2>중개인 벡</h2><p>"${wary ? '당신 이름은 왕국 장부에서 많이 봤소. 그냥은 못 믿지. 왕국 물건: 세금 장부나 관리의 인장, 을 가져오면 믿어 주겠소.' : '여기까지 내려와 날 찾았으면 쓸 만한 사람이오. 녹타리스에 들겠소? 밤에 움직이고, 왕의 마차를 털고, 언젠가는 왕좌를 엎는 일이오.'}"</p>
     <p class="muted">녹타리스 계급: ${RANKS.noctaris.map((r) => r.name).join(' → ')}</p>
     <div class="actions"><button id="joinN" ${wary && !hasProof ? 'disabled' : ''}>${P.faction === 'aurelion' ? '배신하고 들어간다' : '들어간다'}${wary ? ' (증거를 넘긴다)' : ''}</button>${(save.bag.taxLedger || 0) > 0 && !wary ? '<button id="sellLedger">세금 장부를 판다 (◆ 120)</button>' : ''}<button data-close class="ghost">돌아간다</button></div>`);
   document.getElementById('joinN').onclick = () => { if (wary) { const k = (save.bag.taxLedger || 0) > 0 ? 'taxLedger' : 'officialSeal'; save.bag[k]--; if (!save.bag[k]) delete save.bag[k]; } joinFaction('noctaris'); overlay.hidden = true; paused = false; modal = null; };
@@ -3250,7 +3250,7 @@ function officialDown(s) {
       P.kills[now.cond] = true; if (now.cond === 'aurCore') P.kills.aurOfficer = true;
       const big = now.king ? 1000 : now.cond === 'aurCore' || now.cond === 'nocOfficer' ? 300 : 120;
       polGain(now.side === 'aurelion' ? { struggle: big, infamy: now.king ? 40 : 15, gold: big } : { merit: big, fame: now.king ? 20 : 5, infamy: 5, gold: big });
-      addChronicle(`${now.gen}대째 ${now.title} ${now.name} 피살 — 범인 ${heroName()}${now.side === 'aurelion' ? ', 현상금 걸림' : ''}`);
+      addChronicle(`${now.gen}대째 ${now.title} ${now.name} 피살: 범인 ${heroName()}${now.side === 'aurelion' ? ', 현상금 걸림' : ''}`);
       if (now.king) { addChronicle(now.side === 'aurelion' ? '에드릭 왕이 쓰러졌다. 하루 뒤 새 왕이 즉위한다' : '녹타리스의 수장이 쓰러졌다. 봉기군이 흩어진다'); renderer.banner = { text: now.side === 'aurelion' ? '왕이 쓰러졌다' : '녹타리스의 수장이 쓰러졌다', sub: '섬이 술렁인다 · 하루 뒤 새 사람이 자리에 앉는다', t: 5, color: '#ff5a5a' }; }
       else renderer.banner = { text: `${label} 처형`, sub: `자리가 비었다 · ${OFFICIALS[s.id].respawnH}시간 뒤 후임이 온다`, t: 4, color: '#ff7a5a' };
       // 군단장 · 공작 · 왕 시해자 같은 큰 지위는 계급 조건과 함께 열린다
@@ -3288,10 +3288,10 @@ function spawnHappening() {
 const ALIGN = { aurelion: { caravan: 'escort', taxWagon: 'guard', cult: 'stop', patrol: 'side' }, noctaris: { caravan: 'raid', taxWagon: 'rob', patrol: 'stop', cult: 'stop' } };
 // 벌어지는 일은 고르는 창이 없다: 공격하면 싸움 · 곁에 머물면 호위/엿듣기 · 돈을 건네면 뇌물 · 기부 · 헌금
 const DEED = { // [하는 일, 그러면 되는 것]
-  caravan: [['⚔ 상단을 공격한다', '습격 — 호위병과 싸우고, 이기면 교역품 · 돈 (악명 · 투쟁 +)'], ['곁에서 같이 간다', '근처 도적 무리가 상단을 보고 덮치면 호위 — 물리치면 수고비 (명성 · 공훈 +) · 아무도 안 지키면 털린다'], ['그냥 지나간다', '아무 일도 없다']],
-  taxWagon: [['⚔ 마차를 공격한다', '약탈 — 세금 호위병과 싸우고, 이기면 큰돈 (투쟁 · 악명 +)'], ['곁에서 같이 간다', '근처 도적이 덮치면 호위 — 물리치면 공훈 · 명성'], ['그냥 지나간다', '아무 일도 없다']],
-  patrol: [['⚔ 순찰대를 공격한다', '말리기 — 이기면 명성 (공훈 -)'], ['◆ 순찰대에게 돈을 건넨다', '뇌물 — 순찰대가 물러간다 (공훈 + · 악명 +)'], ['◆ 농부에게 돈을 건넨다', '기부 — 명성 +'], ['그냥 지나간다', '아무 일도 없다']],
-  cult: [['⚔ 신도를 공격한다', '막기 — 이기면 명성'], ['가까이 숨어 지켜본다 (10초)', '엿듣기 — 교단의 기록 (안개 너머 뱃길의 단서)'], ['◆ 돈을 바친다 (50 이상)', '교단의 신뢰 (숨겨진 길)'], ['그냥 지나간다', '아무 일도 없다']],
+  caravan: [['⚔ 상단을 공격한다', '습격: 호위병과 싸우고, 이기면 교역품 · 돈 (악명 · 투쟁 +)'], ['곁에서 같이 간다', '근처 도적 무리가 상단을 보고 덮치면 호위: 물리치면 수고비 (명성 · 공훈 +) · 아무도 안 지키면 털린다'], ['그냥 지나간다', '아무 일도 없다']],
+  taxWagon: [['⚔ 마차를 공격한다', '약탈: 세금 호위병과 싸우고, 이기면 큰돈 (투쟁 · 악명 +)'], ['곁에서 같이 간다', '근처 도적이 덮치면 호위: 물리치면 공훈 · 명성'], ['그냥 지나간다', '아무 일도 없다']],
+  patrol: [['⚔ 순찰대를 공격한다', '말리기: 이기면 명성 (공훈 -)'], ['◆ 순찰대에게 돈을 건넨다', '뇌물: 순찰대가 물러간다 (공훈 + · 악명 +)'], ['◆ 농부에게 돈을 건넨다', '기부: 명성 +'], ['그냥 지나간다', '아무 일도 없다']],
+  cult: [['⚔ 신도를 공격한다', '막기: 이기면 명성'], ['가까이 숨어 지켜본다 (10초)', '엿듣기: 교단의 기록 (안개 너머 뱃길의 단서)'], ['◆ 돈을 바친다 (50 이상)', '교단의 신뢰 (숨겨진 길)'], ['그냥 지나간다', '아무 일도 없다']],
 };
 const DEED_SHORT = { caravan: '공격=습격 · 도적이 덮치면 호위', taxWagon: '공격=약탈 · 도적이 덮치면 호위', patrol: '공격=말리기 · 돈=뇌물/기부', cult: '공격=막기 · 숨어서=엿듣기 · 돈=헌금' };
 // 도적은 땅에서 솟지 않는다: 길 근처 도적 무리(실제 몬스터)가 지나가는 상단을 보면 걸어와서 덮친다.
@@ -3304,7 +3304,7 @@ function ambushTick(h, dt) {
     const foes = w.enemies.filter((e) => !e.dead && !e.npcRef && !e.ambushing && AMBUSHERS.has(e.defId) && e.state !== 'chase' && Math.hypot(e.x - o.x, e.y - o.y) < 26 * TILE).slice(0, 3);
     if (!foes.length) return;
     h.ambush = { foes, t: 0 }; for (const e of foes) { e.ambushing = h.id; w.emit({ t: 'text', x: e.x, y: e.y - 22, text: h.type === 'taxWagon' ? '세금 마차다!' : '상단이다!', color: '#ff9a7a' }); }
-    if (Math.hypot(p.x - o.x, p.y - o.y) < 260) renderer.banner = { text: '도적들이 상단을 노린다', sub: '저쪽에서 다가오고 있다 — 지키거나, 지켜보거나', t: 3, color: '#ffb07a' };
+    if (Math.hypot(p.x - o.x, p.y - o.y) < 260) renderer.banner = { text: '도적들이 상단을 노린다', sub: '저쪽에서 다가오고 있다. 지키거나, 지켜보거나', t: 3, color: '#ffb07a' };
     return;
   }
   const A = h.ambush, alive = A.foes.filter((e) => !e.dead);
@@ -3348,7 +3348,7 @@ function happeningTalk(hid) {
   const h = HAPPEN_LIST.find((q) => q.id === hid); if (!h || h.o.engaged || h.o.gone) return;
   const H = HAPPENINGS[h.type], D = DEED[h.type] || [];
   const gives = h.type === 'patrol' ? [['patrolBribe', '순찰대에게 ◆ 60'], ['farmerGive', '농부에게 ◆ 40']] : h.type === 'cult' ? [['cultGive', '교단에 ◆ 50']] : [];
-  showModal(`<h2>${esc(H.name)}</h2><p>${esc(H.text)}</p><p class="muted">고르는 창은 없다 — 직접 하면 그렇게 된다.</p><div class="soc-list">${D.map(([a, b]) => `<div class="soc-row"><span class="nm"><b>${esc(a)}</b></span><span class="muted">${esc(b)}</span></div>`).join('')}</div>
+  showModal(`<h2>${esc(H.name)}</h2><p>${esc(H.text)}</p><p class="muted">아래 일을 직접 하면 된다.</p><div class="soc-list">${D.map(([a, b]) => `<div class="soc-row"><span class="nm"><b>${esc(a)}</b></span><span class="muted">${esc(b)}</span></div>`).join('')}</div>
     <div class="actions">${gives.map(([k, l]) => `<button class="sm" data-hg="${k}">${esc(l)}</button>`).join('')}<button data-close class="ghost">닫기</button></div>`);
   overlay.querySelectorAll('[data-hg]').forEach((b) => (b.onclick = () => {
     const k = b.dataset.hg, cost = k === 'patrolBribe' ? 60 : k === 'farmerGive' ? 40 : 50;
@@ -3373,7 +3373,7 @@ function happeningDone(h, c, aligned) {
   if (h.type === 'taxWagon') { if (c.id === 'rob') taxLost(save, 300); else if (c.id === 'guard') taxArrived(save, 300); }
   witness(world, h.o.x, h.o.y, c.id, { raid: 25, rob: 20, escort: -20, guard: -15, stop: -10 }[c.id] || 0);
   polGain(r, aligned);
-  if (c.id === 'raid' || c.id === 'rob') addChronicle(`${h.where}에서 ${h.type === 'taxWagon' ? '세금 마차' : '상단'}이(가) 털렸다 — ${heroName()}`);
+  if (c.id === 'raid' || c.id === 'rob') addChronicle(`${h.where}에서 ${h.type === 'taxWagon' ? '세금 마차' : '상단'}이(가) 털렸다. ${heroName()}`);
   if (!r.lore) renderer.banner = { text: c.label + (aligned ? ' · 세력 의뢰 완료' : ''), sub: [loot, rewardText(c.reward)].filter(Boolean).join(' · '), t: 3.2, color: '#f6dfae' };
   h.o.gone = true; h.o.reusable = false; h.o.endT = world.t;
   HAPPEN_LIST = HAPPEN_LIST.filter((q) => q !== h);
@@ -3413,7 +3413,7 @@ function politicsTick(dt) {
   const w = world;
   if (save.time) econTick(save, absMin(save.time)); // 마을마다 만들고 쓴다
   if (w.map.outdoor || w.objects.some((q) => q.kind === 'npc')) barkTick(dt);
-  if (!save.flags?.deedTip && w.state === 'play' && w.zone?.id === 'world' && save.tutorial?.done && save.journey?.f1) { (save.flags ||= {}).deedTip = true; renderer.banner = { text: '고르는 창은 없다 — 직접 하면 된다', sub: '때리면 싸움 · 돈을 건네면 뇌물 · 기부 · 후원 · 곁에 머물면 호위 (설정에서 NPC 공격 끄기)', t: 7, color: '#f6dfae' }; }
+  if (!save.flags?.deedTip && w.state === 'play' && w.zone?.id === 'world' && save.tutorial?.done && save.journey?.f1) { (save.flags ||= {}).deedTip = true; renderer.banner = { text: '사람들은 내가 한 일을 기억한다', sub: '때리면 싸움 · 돈을 건네면 뇌물 · 기부 · 후원 · 곁에 머물면 호위 (설정에서 NPC 공격 끄기)', t: 7, color: '#f6dfae' }; }
   if (w.map.outdoor && !w.voyage && w.state === 'play') {
     happenClock -= dt;
     HAPPEN_LIST = HAPPEN_LIST.filter((h) => w.objects.includes(h.o) && !h.o.gone);
@@ -3433,7 +3433,7 @@ function politicsTick(dt) {
       if ((wanted || hunted) && !w.skirmish?.foes?.some((e) => !e.dead) && w.zoneId === 'world') {
         const foes = w.spawnGroup([['royalGuard', 2, wanted ? '왕국 경비병' : '추격자']], w.player.x + 120, w.player.y + 40, Math.max(5, save.level + 2), {});
         w.skirmish = { id: 'hunt', foes };
-        renderer.banner = { text: wanted ? `현상금 ◆ ${bounty(save)} — 경비병이 쫓아온다!` : '배신자를 쫓는 자들이 왔다!', t: 3, color: '#ff7a5a' };
+        renderer.banner = { text: wanted ? `현상금 ◆ ${bounty(save)}: 경비병이 쫓아온다!` : '배신자를 쫓는 자들이 왔다!', t: 3, color: '#ff7a5a' };
       }
     }
   }
@@ -3522,8 +3522,8 @@ function capitalTalk(id) {
   if (id === 'cap_gate') {
     const held = CONTRA.filter((k) => (save.bag[k] || 0) > 0);
     showModal(`<h2>성문 대장 로웰</h2><p>"왕도 아우렐리온이오. 규칙은 셋. 밀수품은 성문에서 빼앗고, 수배지에 오른 자는 잡아들이며, 왕의 사람에게 칼을 뽑으면 목이 처형대에 오르오."</p>
-      <ul><li>북서쪽: 귀족 거리 — 고위 관계자들의 저택</li><li>북동쪽: 감옥 — 간수장 그롬 (벌금)</li><li>남서쪽: 처형장 — 전령 피에르 (포고문)</li><li>남동쪽: 시장 — 교역소 · 빵집 · 갑옷 장인</li></ul>
-      <p class="muted">${bounty(save) ? `당신 현상금: ◆ ${bounty(save)} — 성 안에서 경비대가 달려든다` : '당신은 수배지에 없다'}${held.length ? ' · 짐에 밀수품이 있다' : ''}</p><div class="actions"><button data-close>알겠다</button></div>`);
+      <ul><li>북서쪽: 귀족 거리, 고위 관계자들의 저택</li><li>북동쪽: 감옥, 간수장 그롬 (벌금)</li><li>남서쪽: 처형장, 전령 피에르 (포고문)</li><li>남동쪽: 시장, 교역소 · 빵집 · 갑옷 장인</li></ul>
+      <p class="muted">${bounty(save) ? `당신 현상금: ◆ ${bounty(save)}: 성 안에서 경비대가 달려든다` : '당신은 수배지에 없다'}${held.length ? ' · 짐에 밀수품이 있다' : ''}</p><div class="actions"><button data-close>알겠다</button></div>`);
     return;
   }
   if (id === 'cap_jailer') {
@@ -3531,16 +3531,16 @@ function capitalTalk(id) {
     showModal(`<h2>간수장 그롬</h2><p>"갇힌 놈은 지금 ${3 + Math.floor((Date.now() / 36e5) % 4)}명. 반란군 둘, 밀수꾼 하나… 면회? 그런 건 없소. 벌금이라면 받지."</p>
       <p class="muted">당신 악명 ${R.infamy}${bounty(save) ? ` · 현상금 ◆ ${bounty(save)}` : ''} · 악명 1마다 벌금 ◆ ${fineEach}</p>${portGoldRow()}
       <div class="actions">${R.infamy ? `<button id="jFine" ${save.gold >= fine ? '' : 'disabled'}>벌금을 내고 악명을 지운다 (◆ ${fine})</button><button id="jHalf" ${save.gold >= Math.ceil(fine / 2) ? '' : 'disabled'}>절반만 낸다 (◆ ${Math.ceil(fine / 2)} · 악명 절반)</button>` : ''}
-      ${canRaid ? `<button id="jRaid" ${raidCool ? 'disabled' : ''}>감옥을 습격한다 (경비 다섯 · 투쟁 +35)${raidCool ? ' — 아직 경비가 삼엄하다' : ''}</button>` : ''}<button data-close class="ghost">됐다</button></div>`);
+      ${canRaid ? `<button id="jRaid" ${raidCool ? 'disabled' : ''}>감옥을 습격한다 (경비 다섯 · 투쟁 +35)${raidCool ? ': 아직 경비가 삼엄하다' : ''}</button>` : ''}<button data-close class="ghost">됐다</button></div>`);
     document.getElementById('jFine')?.addEventListener('click', () => { save.gold -= fine; R.infamy = 0; done(); sfx('coin', { vol: 0.5 }); renderer.banner = { text: '벌금을 냈다', sub: '악명이 지워졌다 · 수배지에서 이름이 내려갔다', t: 3, color: '#9fe8b0' }; });
     document.getElementById('jHalf')?.addEventListener('click', () => { save.gold -= Math.ceil(fine / 2); R.infamy = Math.floor(R.infamy / 2); done(); sfx('coin', { vol: 0.5 }); renderer.banner = { text: '벌금 절반을 냈다', sub: `악명 ${R.infamy}`, t: 3, color: '#f0c878' }; });
     document.getElementById('jRaid')?.addEventListener('click', () => { done(); world.skirmish = { id: 'capRaid', foes: capGuards(5, '감옥 경비병', { x: 350 * TILE, y: 236 * TILE }) }; renderer.banner = { text: '감옥 습격!', sub: '경비병 다섯을 쓰러뜨려라', t: 3, color: '#c8a0ff' }; });
     return;
   }
   if (id === 'cap_herald' || id === 'cap_exec' || id === 'cap_prisoner') {
-    const wanted = Object.keys(OFFICIALS).filter((k) => OFFICIALS[k].side === 'noctaris' && officialNow(save, k)).map((k) => { const O = OFFICIALS[k], n = officialNow(save, k); return `<li>${esc(O.title)} ${esc(n.name)} — 현상금 ◆ ${O.lv * 40}</li>`; }).join('');
+    const wanted = Object.keys(OFFICIALS).filter((k) => OFFICIALS[k].side === 'noctaris' && officialNow(save, k)).map((k) => { const O = OFFICIALS[k], n = officialNow(save, k); return `<li>${esc(O.title)} ${esc(n.name)}: 현상금 ◆ ${O.lv * 40}</li>`; }).join('');
     const ex = capExec.active ? `<h4>오늘의 처형</h4><p>"죄수 <b>${esc(capExec.name)}</b>, 왕국에 맞선 죄로 형을 집행한다!" <small class="muted">(${Math.max(1, Math.ceil((capExec.end - Date.now()) / 60e3))}분 뒤)</small></p>` : `<p class="muted">지금은 처형이 없다. 다음 처형까지 약 ${Math.max(1, Math.ceil((capExec.next - Date.now()) / 60e3))}분.</p>`;
-    showModal(`<h2>전령 피에르 · 포고문</h2><p>"에드릭 국왕 폐하의 이름으로 알린다!"</p><h4>현상 수배</h4><ul>${wanted || '<li>지금은 수배된 녹타리스 간부가 없다</li>'}${bounty(save) ? `<li><b>${esc(heroName())}</b> — 현상금 ◆ ${bounty(save)}</li>` : ''}</ul>${ex}
+    showModal(`<h2>전령 피에르 · 포고문</h2><p>"에드릭 국왕 폐하의 이름으로 알린다!"</p><h4>현상 수배</h4><ul>${wanted || '<li>지금은 수배된 녹타리스 간부가 없다</li>'}${bounty(save) ? `<li><b>${esc(heroName())}</b>: 현상금 ◆ ${bounty(save)}</li>` : ''}</ul>${ex}
       <div class="actions">${capExec.active ? `<button id="eWatch">지켜본다</button><button id="ePlea" ${save.gold >= 300 ? '' : 'disabled'}>사면을 청한다 (◆ 300)</button><button id="eFree" class="ghost">죄수를 빼낸다 (경비 넷과 싸움)</button>` : ''}<button data-close class="ghost">돌아선다</button></div>`);
     document.getElementById('eWatch')?.addEventListener('click', () => { capExec.active = false; capExec.next = Date.now() + 6 * 60e3; capStageSync(); if (P.faction === 'aurelion') polGain({ merit: 2 }); addChronicle(`왕도 처형대에서 ${capExec.name}이(가) 처형됐다`); done(); renderer.banner = { text: '형이 집행됐다', sub: P.faction === 'aurelion' ? '공훈 +2' : '군중이 흩어진다', t: 2.8, color: '#a8b0c0' }; });
     document.getElementById('ePlea')?.addEventListener('click', () => { save.gold -= 300; capExec.active = false; capExec.next = Date.now() + 6 * 60e3; capStageSync(); polGain({ fame: 5 }); addChronicle(`${heroName()}이(가) 돈을 내고 ${capExec.name}의 사면을 받아 냈다`); done(); sfx('coin', { vol: 0.5 }); renderer.banner = { text: `${capExec.name}이(가) 사면됐다`, sub: '명성 +5', t: 3, color: '#9fe8b0' }; });
@@ -3586,7 +3586,7 @@ function reportError(err) {
   seenErr.add(key); console.error(err);
   let el = document.getElementById('errToast');
   if (!el) { el = document.createElement('div'); el.id = 'errToast'; document.body.appendChild(el); el.onclick = () => { el.hidden = true; }; }
-  el.hidden = false; el.textContent = `오류가 났어요 (게임은 계속돼요): ${key} — 눌러서 닫기`;
+  el.hidden = false; el.textContent = `오류가 났어요 (게임은 계속돼요): ${key} (눌러서 닫기)`;
   clearTimeout(reportError.t); reportError.t = setTimeout(() => { el.hidden = true; }, 12000);
 }
 addEventListener('error', (e) => reportError(e.error || e.message));
@@ -3613,8 +3613,8 @@ function saveWarn(text) {
   el.hidden = !text; if (text) el.innerHTML = text;
 }
 onLocalSave((err) => {
-  if (err && cloud.mode === 'local') saveWarn(`<b>저장이 안 되고 있어요</b> — 브라우저가 저장을 막았어요 (${esc(err)}). 시크릿 창 · 앱 안 브라우저(카카오톡 등)라면 크롬 · 사파리로 열어 주세요. 일시정지 → 설정 → 로그인하면 서버에 저장돼요.`);
-  else if (err) saveWarn(`<b>이 기기에는 저장이 안 되고 있어요</b> (${esc(err)}) — 서버 저장은 계속돼요.`);
+  if (err && cloud.mode === 'local') saveWarn(`<b>저장이 안 되고 있어요.</b> 브라우저가 저장을 막았어요 (${esc(err)}). 시크릿 창 · 앱 안 브라우저(카카오톡 등)라면 크롬 · 사파리로 열어 주세요. 일시정지 → 설정 → 로그인하면 서버에 저장돼요.`);
+  else if (err) saveWarn(`<b>이 기기에는 저장이 안 되고 있어요</b> (${esc(err)}): 서버 저장은 계속돼요.`);
   else if (!isStale()) saveWarn('');
 });
 // 앱 안 브라우저(카카오톡 · 네이버 · 인스타그램 · 페이스북 · 라인): 창을 닫으면 저장이 지워지는 일이 많다
@@ -3660,7 +3660,7 @@ function unlockTick() {
   save.unlockSeen = best; writeSave(save);
   if (!list.length) return;
   const name = (kind, id) => kind === 'regions' ? BIOME_LIST.find((b) => b.id === id)?.name : kind === 'entrances' ? ENTRANCES[id]?.name || (id === 'palace' ? '용궁' : id) : SYSTEM_NAME[id];
-  const rows = list.map((u) => `<li><b>${u.f}층</b> — ${['regions', 'entrances', 'systems'].flatMap((k) => (u[k] || []).map((id) => esc(name(k, id) || id))).join(' · ')}</li>`).join('');
+  const rows = list.map((u) => `<li><b>${u.f}층</b>: ${['regions', 'entrances', 'systems'].flatMap((k) => (u[k] || []).map((id) => esc(name(k, id) || id))).join(' · ')}</li>`).join('');
   sfx('levelup', { vol: 0.7 });
   showModal(`<h2>탑의 빛이 섬으로 퍼진다</h2><p>탑을 올라 새로 열렸다. 지도(M)에서 밝아진 곳으로 가 보자.</p><ul class="unlock-list">${rows}</ul><div class="actions"><button data-close>좋다</button></div>`);
 }

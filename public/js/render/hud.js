@@ -325,13 +325,15 @@ export const HudMethods = {
       this.banner.t -= dt;
       g.globalAlpha = Math.min(1, this.banner.t * 1.5);
       const bY = Math.max(H * 0.22, boss ? topY + 64 * u : w.climb ? topY + 44 * u : 0); // 보스 체력바 · 등반 글 아래로
+      let ts = 3 * u; // 긴 제목은 화면 안에 들어올 때까지 글씨를 줄인다 (좁은 창에서 양옆이 잘렸다)
       { // 뒤에 옅은 어둠 띠: 세계 위의 이름표 · 글과 겹쳐 읽히지 않게
-        g.font = `bold ${33 * u}px ${FONT}`; const tw = g.measureText(this.banner.text).width;
+        g.font = `bold ${33 * u}px ${FONT}`; let tw = g.measureText(this.banner.text).width;
+        while (ts > 1 && tw > W - 24 * u) { tw *= (ts - 1) / ts; ts--; }
         g.font = `${11 * u}px ${FONT}`; const sw = this.banner.sub ? g.measureText(this.banner.sub).width : 0;
         const bw = Math.min(W - 8 * u, Math.max(tw, sw) + 40 * u), bh = (this.banner.sub ? 52 : 40) * u;
         const a0 = g.globalAlpha; g.globalAlpha = a0 * 0.55; g.fillStyle = '#0c0a0b'; g.fillRect(Math.round(W / 2 - bw / 2), Math.round(bY - 22 * u), Math.round(bw), Math.round(bh)); g.globalAlpha = a0;
       }
-      this.text(this.banner.text, W / 2, bY, 3 * u, this.banner.color, 'center', true, true);
+      this.text(this.banner.text, W / 2, bY, ts, this.banner.color, 'center', true, true);
       if (this.banner.sub) this.text(this.banner.sub, W / 2, bY + 26 * u, u, '#dcd2c6', 'center');
       g.globalAlpha = 1;
       if (this.banner.t <= 0) this.banner = null;
@@ -420,7 +422,7 @@ export const HudMethods = {
     const keys = [...['KeyQ', 'KeyE', 'KeyR', 'KeyF'].map((k) => keyLabel(keyFor(k))), touch ? '무기' : '우클릭']; // 키 바꾸기를 따른다
     const n = slots.length + 1;
     const total = n * box + (n - 1) * gap;
-    const x0 = touch ? W - total - 8 * u : (W - total) / 2, y0 = touch ? Math.round(H * 0.2) : H - box - 12 * v; // 모바일: 오른쪽 작은 지도 아래 (체력 · 저장 안내와 겹치지 않게)
+    const x0 = touch ? W - total - 8 * u : Math.max((W - total) / 2, 168 * u + (w.life?.quickFood ? box + gap : 0)), y0 = touch ? Math.round(H * 0.2) : H - box - 12 * v; // 모바일: 오른쪽 작은 지도 아래 (체력 · 저장 안내와 겹치지 않게)
     // 대시
     const dashMax = d.dashCd * (1 - d.cdr), dashK = p.dashCharges > 0 ? 1 : Math.min(1, 1 - p.dashRecharge / dashMax);
     this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : keyLabel(keyFor('Space')), '', null, p.dashCharges > 0 ? 0 : p.dashRecharge);
@@ -509,7 +511,7 @@ export const HudMethods = {
     const g = this.g, u = this.u, W = this.c.width;
     let s = u * 0.75, mw = Math.round(w.tw * s), mh = Math.round(w.th * s), ox = 0, oy = 0;
     if (w.map.outdoor) { // 넓은 세계: 나를 가운데 둔 110×80칸 창
-      const vw = 110, vh = 80; s = u * 1.3; mw = Math.round(vw * s); mh = Math.round(vh * s);
+      const vw = 110, vh = 80; s = Math.min(u * 1.3, (W * 0.22) / vw); mw = Math.round(vw * s); mh = Math.round(vh * s);
       ox = Math.max(0, Math.min(w.tw - vw, Math.floor(w.player.x / TILE) - vw / 2)); oy = Math.max(0, Math.min(w.th - vh, Math.floor(w.player.y / TILE) - vh / 2));
     }
     const mx = W - mw - 10 * u, my = 10 * u;

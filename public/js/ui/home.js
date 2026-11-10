@@ -18,7 +18,7 @@ const lifeOfSave = (s) => ({ bag: s.bag, cap: cap(s) });
 export function goodTitle(id) {
   const g = GOODS[id] || registerDish(id);
   if (!g) return id;
-  let t = `${g.name} — ${g.desc || ''}`;
+  let t = `${g.name}: ${g.desc || ''}`;
   if (PART_FX[id]) t += '\n무기에 넣으면: ' + craftItem({ type: 'sword', mat: 'iron', parts: [id] }).lines.join(' · ');
   if (FOOD[id]) { const f = FOOD[id]; t += `\n요리 재료: ${KIND_NAME[f.kind]} · 회복 ${f.heal}%${f.eff ? ` · ${FOOD_EFFECTS[f.eff].name} ${'★'.repeat(f.p)}` : ''}`; }
   return t;

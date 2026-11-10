@@ -1,5 +1,4 @@
 [
-"Eclipse",
 "Eclipse Orb",
 "Rising Skeleton",
 "Volley",
@@ -38,7 +37,7 @@
 "Your magic isn't ripe yet. Still, the light is straight",
 "Auto-aim",
 "Auto-aim (T",
-"Auto-aim (T) — automatically targets the nearest enemy",
+"Auto-aim (T): automatically targets the nearest enemy",
 "Auto-aim off",
 "Auto-aim on",
 "Growing",
@@ -66,7 +65,7 @@
 "Small Sailboat",
 "Scatters five small fireballs in a fan",
 "Many small islands · pirate den",
-"Drops a small meteor. Magic word 「Sky」 — as the body, several meteors fall. After Fire it's 「Fire Rain」. Courage 16",
+"Drops a small meteor. Magic word 「Sky」: as the body, several meteors fall. After Fire it's 「Fire Rain」. Courage 16",
 "Small Round Shield",
 "Small curse doll",
 "A necklace strung with small beast bones",
@@ -149,7 +148,7 @@
 "Ember Gloves",
 "Ember Bow",
 "Ashen Season",
-"At the end of the Ashen Season, the knight commander and the orc Khan fought a sacred duel on the red sands. The knight commander won, but black blood flowed from the fallen Khan's mouth — poison. Since that day the orcs don't believe in knightly honor, and the knights believe it was someone's frame-up",
+"At the end of the Ashen Season, the knight commander and the orc Khan fought a sacred duel on the red sands. The knight commander won, but black blood flowed from the fallen Khan's mouth. Poison. Since that day the orcs don't believe in knightly honor, and the knights believe it was someone's frame-up",
 "At the end of the Ashen Season, the orc Khan Grash fell on these sands spitting black blood in a duel with the knight commander. The orcs never forget that poison. His broken axe still stands in the center of the arena",
 "Ashen Mausoleum",
 "The Ashen Mausoleum is home to those whose death never ended. The tower's light lingers in their bodies, so they can't sleep and rise again",
@@ -185,7 +184,7 @@
 "Curse Ripple",
 "Curse Mark",
 "Curse mark · damage taken +30",
-"It's approaching from over there — protect it, or watch",
+"It's approaching from over there. Protect it, or watch",
 "Talk to Emma, the mansion maid",
 "Enemy attack",
 "Enemy attack",
@@ -398,5 +397,6 @@
 "Race modifier ×",
 "Between races",
 "Race shop",
-"Race shop technique book · 1200 gold"
+"Race shop technique book · 1200 gold",
+"Race shop technique book · 1500 gold"
 ]

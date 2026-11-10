@@ -69,7 +69,7 @@ export class Hub {
     this.root.innerHTML = `
       <header class="hub-top">
         <div class="title">각인의 탑</div>
-        <div class="who">${RACES[s.race].name} · Lv ${s.level} ${(() => { const lv = levelFor(codexPoints(s)); return `<span class="xp" title="도감 점수 ${lv.into}/${lv.need} — 다음 레벨까지"><i style="width:${(lv.into / lv.need) * 100}%"></i></span>`; })()} <span class="gold">◆ ${s.gold} 골드</span></div>
+        <div class="who">${RACES[s.race].name} · Lv ${s.level} ${(() => { const lv = levelFor(codexPoints(s)); return `<span class="xp" title="도감 점수 ${lv.into}/${lv.need}: 다음 레벨까지"><i style="width:${(lv.into / lv.need) * 100}%"></i></span>`; })()} <span class="gold">◆ ${s.gold} 골드</span></div>
         <h2 class="hub-now">${tabName[this.tab] || ''}</h2>
         <button class="close icon" data-act="close" title="닫기 (Esc)">✕</button>
       </header>
@@ -530,7 +530,7 @@ export class Hub {
         const E = ECHOES[eid], srcs = echoSources(eid), known = s.codex.echoes?.[eid] || srcs.some(seenM);
         const uses = Object.keys(ENGRAVINGS).filter((k) => ENGRAVINGS[k].recipe[eid]);
         if (!known) return `<div class="li off">??? <small>아직 모르는 재료 · 각인 ${uses.length}개에 쓰인다</small></div>`;
-        const where = srcs.map((id) => seenM(id) ? `<b>${MONSTERS[id].name}</b> — ${whereText(id, 4)}${towerOnly(id) ? ' <b style="color:#f0c878">(탑 전용)</b>' : ''}` : `??? <small class="muted">(${whereText(id, 2)})</small>`);
+        const where = srcs.map((id) => seenM(id) ? `<b>${MONSTERS[id].name}</b>: ${whereText(id, 4)}${towerOnly(id) ? ' <b style="color:#f0c878">(탑 전용)</b>' : ''}` : `??? <small class="muted">(${whereText(id, 2)})</small>`);
         return `<div class="li ${s.echoes?.[eid] ? 'on' : ''}"><b style="color:${E.color}">◆ ${E.name}</b> <small>가진 것 ${s.echoes?.[eid] || 0}</small><br><small>${where.join('<br>')}</small><br><small class="muted">쓰는 각인: ${uses.slice(0, 8).map((k) => ENGRAVINGS[k].name).join(' · ')}${uses.length > 8 ? ` 외 ${uses.length - 8}개` : ''}</small></div>`;
       };
       const fams = Object.keys(ECHOES).filter((k) => !ECHOES[k].part), parts = Object.keys(ECHOES).filter((k) => ECHOES[k].part);

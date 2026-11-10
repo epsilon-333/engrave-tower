@@ -27,12 +27,12 @@ export function sourcesOf(id) {
     const mons = Object.entries(MONSTER_DROPS).filter(([, l]) => l.some(([gid]) => gid === id)).map(([mid, l]) => {
       const ch = l.find(([gid]) => gid === id)[1], m = MONSTERS[mid];
       const home = homesOf(mid);
-      return `${m?.name || mid} (${Math.round(ch * 100)}%)${home.length ? ' — ' + home.join(', ') : ' — 바깥 세계'}`;
+      return `${m?.name || mid} (${Math.round(ch * 100)}%)${home.length ? ': ' + home.join(', ') : ': 바깥 세계'}`;
     });
     if (mons.length) out.push(['몬스터', mons]);
     const nodes = Object.entries(NODES).filter(([, n]) => n.drops.some(([gid]) => gid === id) || (n.extra || []).some(([gid]) => gid === id)).map(([nid, n]) => {
       const where = Object.entries(BIOME_NODES).filter(([, l]) => l.some(([k]) => k === nid)).map(([b]) => BIOME_NAME[b] || b);
-      return `${n.name}${n.tool ? ` (곡괭이${n.tier > 1 ? ` ${n.tier}단계` : ''})` : ''}${where.length ? ' — ' + where.slice(0, 4).join(', ') : ''}`;
+      return `${n.name}${n.tool ? ` (곡괭이${n.tier > 1 ? ` ${n.tier}단계` : ''})` : ''}${where.length ? ': ' + where.slice(0, 4).join(', ') : ''}`;
     });
     if (nodes.length) out.push(['캐기 · 채집', nodes]);
     const digs = [...(DIG_BASE.some(([k]) => k === id) ? ['어디서나 반짝이는 흙'] : []), ...Object.entries(DIG_BIOME).filter(([, l]) => l.some(([k]) => k === id)).map(([b]) => `${BIOME_NAME[b] || b}의 반짝이는 흙`)];

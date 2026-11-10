@@ -1,7 +1,4 @@
 [
-"Rusty Key",
-"Rusty Key — the cell in the puddle cave",
-"The rusty key creaked and turned",
 "Rust echo",
 "Rusty cell",
 "A rusty cell is locked. Beyond it is a small room and a chest. There's a keyhole",
@@ -24,7 +21,7 @@
 "Noctaris? Never heard of it… is what I should say, but if you came all the way down here you've got sense. I can't trust you yet. I'll watch what you do out there",
 "Gunpowder Noctaris brews in secret. The back alleys of the Misty Docks pay for it",
 "Ever heard the name Noctaris? They say a broker hides in the capital's back alleys. Moves every day",
-"You belong to Noctaris — switching sides makes you a traitor",
+"You belong to Noctaris. Switching sides makes you a traitor",
 "Give it to Noctaris as support: struggle rises",
 "Leader of Noctaris",
 "Defeat Kayla, leader of Noctaris",
@@ -45,7 +42,7 @@
 "Missed… press G when the bobber sinks",
 "Missed",
 "Bribe",
-"Bribe — the patrol backs off (merit + · infamy",
+"Bribe: the patrol backs off (merit + · infamy",
 "Pay a bribe (◆ 100",
 "Took the bribe",
 "Took the bribe · infamy",
@@ -221,7 +218,7 @@
 "Achieved",
 "Carrot",
 "Your infamy",
-"I've seen your name in the kingdom's ledgers a lot. I can't just trust you. Bring kingdom goods — a tax ledger or an official's seal — and I'll trust you",
+"I've seen your name in the kingdom's ledgers a lot. I can't just trust you. Bring kingdom goods: a tax ledger or an official's seal, and I'll trust you",
 "Your bounty: ◆",
 "You're not on any wanted poster",
 "Friendly to you",
@@ -398,5 +395,8 @@
 "Scatters nine poison daggers forward",
 "Poison Cloak",
 "Poison Imbue",
-"Poison Spout"
+"Poison Spout",
+"Poison Vortex",
+"Poison smoke",
+"Poison puddle"
 ]

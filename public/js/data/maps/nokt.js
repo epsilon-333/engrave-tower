@@ -132,7 +132,7 @@ export function buildNoktHaven() {
     camps, champions: [{ x: 120, y: 30, type: 'goblinChief', region: ROOMS.findIndex((r) => r.id === 'cave1') }],
     chests: [{ x: 118, y: 26, rich: false }, { x: 124, y: 82, rich: true, trap: true }, { x: 134, y: 48, rich: true }, { x: 104, y: 76, rich: false }],
     lores: [
-      { ...P(128, 58), text: '…빛은 여덟 조각으로 나뉘어 있다. 조각이 모두 꺼지는 날, 섬은 처음으로 돌아가 다시 태어나리라. 왕은 조각을 모으고 있다. 좋다. 한곳에 모인 불은 끄기 쉬우니. — 안개 너머에서 온 자의 글' },
+      { ...P(128, 58), text: '…빛은 여덟 조각으로 나뉘어 있다. 조각이 모두 꺼지는 날, 섬은 처음으로 돌아가 다시 태어나리라. 왕은 조각을 모으고 있다. 좋다. 한곳에 모인 불은 끄기 쉬우니.: 안개 너머에서 온 자의 글' },
       { ...P(114, 64), text: '갱도 일지: 밤마다 깊은 갱 쪽에서 노랫소리가 들린다. 반장은 바람 소리라 했지만, 어제 그쪽으로 간 광부 둘이 돌아오지 않았다. 벽에 그려진 눈 모양 표식이 늘어간다.' },
     ], secrets: [], deco, regions, regionInfo,
     camp: [], merchant: [], shrines: [], goblins: [], objects, pit: { x: 74, y: 72 },

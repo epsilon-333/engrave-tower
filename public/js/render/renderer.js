@@ -306,7 +306,7 @@ export class Renderer {
     this.chunkFresh = 0;
     const x0 = Math.floor(cx / S), y0 = Math.floor(cy / S), x1 = Math.floor((cx + this.VW) / S), y1 = Math.floor((cy + this.VH) / S);
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const c = this.chunkAt(w, x, y, true); if (c) g.drawImage(c, x * S, y * S); }
-    if (!this.chunkFresh) {
+    if (!this.chunkFresh && (this.chunkTurn = ((this.chunkTurn || 0) + 1) % 3) === 0) { // 미리 그리기는 세 프레임에 한 조각 (조각 하나가 5~7ms라 연달아 그리면 걷는 내내 버벅였다)
       pre: for (let r = 1; r <= 2; r++) for (let y = y0 - r; y <= y1 + r; y++) for (let x = x0 - r; x <= x1 + r; x++) {
         if (x >= x0 - r + 1 && x <= x1 + r - 1 && y >= y0 - r + 1 && y <= y1 + r - 1) continue; // 이번 고리만
         if (!this.chunks.has(`${x},${y}`) && this.chunkAt(w, x, y, true)) break pre;

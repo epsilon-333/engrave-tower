@@ -106,11 +106,11 @@ export function trainSpec(race, rank, own = false) {
     }
     case 'revive': { // 납골당: 쓰러진 해골이 뼈 무더기가 되었다가 다시 일어난다
       S.n = 8 + e; S.live = Math.min(5, 2 + Math.floor(e / 4)); S.time = Math.max(30, Math.round(S.n * 4.4 - e * 0.5)); S.revive = Math.min(0.9, 0.3 + e * 0.06); S.boneT = r1(Math.max(1.4, 3 - e * 0.1)); S.hpMul = r1(2 + e * 0.22); S.atkMul = 0.06 + e * 0.01;
-      S.desc = `${S.time}초 안에 수련 해골 ${S.n}구를 완전히 쓰러뜨린다. 쓰러진 해골의 ${Math.round(S.revive * 100)}%는 뼈 무더기가 되어 ${S.boneT}초 뒤 다시 일어난다 — 그 전에 한 번 더 치면 끝난다.`; break;
+      S.desc = `${S.time}초 안에 수련 해골 ${S.n}구를 완전히 쓰러뜨린다. 쓰러진 해골의 ${Math.round(S.revive * 100)}%는 뼈 무더기가 되어 ${S.boneT}초 뒤 다시 일어난다. 그 전에 한 번 더 치면 끝난다.`; break;
     }
     case 'decoy': { // 그림자 길드: 금방 사라지는 과녁 · 붉은 눈은 가짜
       S.n = 10 + e; S.time = Math.max(18, Math.round(S.n * 2.6 - e * 0.5)); S.life = r1(Math.max(1.6, 4 - e * 0.18)); S.decoy = Math.min(0.45, 0.12 + e * 0.03); S.penalty = 2;
-      S.desc = `${S.time}초 안에 그림자 과녁 ${S.n}개를 맞힌다. 과녁은 ${S.life}초 뒤 사라지고, 붉은 눈(${Math.round(S.decoy * 100)}%)은 가짜다 — 치면 ${S.penalty}초를 잃는다.`; break;
+      S.desc = `${S.time}초 안에 그림자 과녁 ${S.n}개를 맞힌다. 과녁은 ${S.life}초 뒤 사라지고, 붉은 눈(${Math.round(S.decoy * 100)}%)은 가짜다. 치면 ${S.penalty}초를 잃는다.`; break;
     }
     case 'flee': { // 거대 둥지: 달아나는 랩터를 쫓아 잡는다
       S.n = 6 + e; S.live = Math.min(4, 2 + Math.floor(e / 4)); S.time = Math.max(28, Math.round(S.n * 5.2 - e * 0.8)); S.speed = 44 + e * 5; S.hpMul = r1(1.6 + e * 0.2);
