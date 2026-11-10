@@ -1,8 +1,11 @@
 [
+"Hand money to people in need and everyone notices",
+"Hard",
+"Dusk Sprite",
 "I lost yesterday. Not today",
 "Dizzy",
 "Undead",
-"Undead can heal with lifesteal too",
+"Undead: lifesteal +3",
 "Undead engraving · wave of death",
 "Language · 언어",
 "Change anytime for free. Changing gives that class's starting weapon",
@@ -211,7 +214,7 @@
 "Soul Harvest",
 "Soul Rend",
 "Soul Drain",
-"Reaps souls and detonates curses. Immune to poison and bleed, magic damage +12%. Normal healing is halved, but each kill absorbs 2.4% life",
+"Reaps souls to unleash curses. Physical attack evasion +20%. Immune to poison, curse, bleed",
 "A soul-draining bolt. On hit, souls +12, recover 1.2% health",
 "Sideways",
 "Show respect",
@@ -395,8 +398,5 @@
 "Queen of the mirror broken by greed",
 "Dragon claw",
 "Dragon scale fossil",
-"Dragon Palace",
-"Near the Dragon Palace",
-"Dragon Palace scale",
-"Dragon Palace Gatekeeper"
+"Dragon Palace"
 ]

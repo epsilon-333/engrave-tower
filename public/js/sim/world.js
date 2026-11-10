@@ -18,7 +18,7 @@ import { SKILLS, ELEM, ZONE_ELEM, aimRule, PVP, WORD_FAMILY, WORD_COMBO, CLASS_B
 import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower } from '../data/spirits.js';
 export const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
 export const SPIRIT_DMG_ELEM = { fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' };
-import { RACES } from '../data/races.js';
+import { RACES, RACE_FX, RACE_IMMUNE } from '../data/races.js';
 import { computeBuild } from './build.js';
 const TEMP_MAX = 60; // 잠깐 오르는 스탯: 한 스탯에 합쳐서 +60까지
 const STAT_SHORT = { str: '근력', mag: '마력', agi: '민첩', vit: '체력', sen: '감각', spi: '정신', pres: '물리 저항', mres: '마법 저항' };
@@ -860,7 +860,10 @@ export class World {
       else if (inp.dash && (p.boat || p.swim)) { /* 물 위에서는 대시가 없다 */ }
       else if (inp.dash && p.dashCharges > 0 && p.dashCd <= 0) {
         const dx = ml > 0 ? mx : p.aimX, dy = ml > 0 ? my : p.aimY;
-        p.dashT = 0.16; p.dvx = dx * 400 * (p.riding ? 1.5 : 1); p.dvy = dy * 400 * (p.riding ? 1.5 : 1); p.invuln = Math.max(p.invuln, 0.22);
+        const blink = this.b.race === 'assassin' && !p.riding, bx = p.x, by = p.y;
+        if (blink) this.blinkDash(dx, dy); // 암살자: 대시가 순간이동
+        else { p.dashT = 0.16; p.dvx = dx * 400 * (p.riding ? 1.5 : 1); p.dvy = dy * 400 * (p.riding ? 1.5 : 1); }
+        p.invuln = Math.max(p.invuln, 0.22);
         if (p.riding) this.emit({ t: 'raptorLeap', x: p.x, y: p.y });
         p.dashCharges--; if (p.dashRecharge <= 0) p.dashRecharge = d.dashCd * (1 - d.cdr);
         this.knack('dash');
@@ -868,12 +871,14 @@ export class World {
         if (this.raceRes?.dash) this.addRes(this.raceRes.dash);
         p.dashCd = 0.25;
         if (f.has('dashCrit')) p.dashCritReady = true;
-        this.emit({ t: 'dash', x: p.x, y: p.y, dx, dy });
-        if (f.has('dashAfterimage')) this.afterimage(p.x, p.y, p.x + dx * 64, p.y + dy * 64);
-        for (const tr of this.b.triggers.dash) if (this.trig(tr)) this.doAction(tr.action, null, { x: p.x, y: p.y, dir: Math.atan2(dy, dx) }); // 대시 방향을 함께 넘긴다
+        if (blink) this.emit({ t: 'blink', x1: bx, y1: by, x2: p.x, y2: p.y });
+        else this.emit({ t: 'dash', x: p.x, y: p.y, dx, dy });
+        if (f.has('dashAfterimage')) this.afterimage(bx, by, bx + dx * 64, by + dy * 64);
+        for (const tr of this.b.triggers.dash) if (this.trig(tr)) this.doAction(tr.action, null, { x: bx, y: by, dir: Math.atan2(dy, dx) }); // 대시 방향을 함께 넘긴다
       }
     }
 
+    p.stillT = p.moving || p.dashT > 0 || special ? 0 : (p.stillT || 0) + DT; // 가만히 서 있은 시간 (각인 「바위의 인내」)
     // 숲의 사수: 가만히 서 있으면 집중
     if (this.b.cls === 'ranger') {
       if (p.moving && p.dashT <= 0) { p.focusT = 0; if (!p.focusKeep) p.focus = 0; }
@@ -1551,11 +1556,27 @@ export class World {
     p.res = Math.max(0, Math.min(100, p.res + (n > 0 ? n * this.d.resGain : n)));
     if (!passive && n > 0) p.lastFight = this.t;
   }
+  blinkDash(dx, dy) { // 암살자 대시: 그 거리만큼 곧바로 옮겨 간다. 조금씩 나아가며 벽 · 막힌 칸 · 하늘 낭떠러지 앞에서 멈춘다
+    const p = this.player, step = 4;
+    for (let d = 0; d < RACE_FX.assassinBlink; d += step) {
+      if (this.voidZone && this.tileAt(p.x + dx * step, p.y + dy * step + 3) === T_LIQUID) break;
+      const ox = p.x, oy = p.y; this.move(p, dx * step, dy * step); // 걷기와 같은 충돌 (봉인된 지역 · 물 · 벽)
+      if (Math.hypot(p.x - ox, p.y - oy) < step * 0.5) break;
+    }
+    p.dashT = 0; p.dvx = 0; p.dvy = 0;
+  }
+  raceDmgMul(type, opt) { // 종족 특성: 주는 피해 (data/races.js RACE_FX)
+    const p = this.player, R = RACE_FX, race = this.b.race;
+    if (race === 'wizard' && type === 'mag') return R.wizardMag;
+    if (race === 'dragon' && opt.elem === 'fire') return R.dragonFire;
+    if (race === 'elf') { const dist = opt.proj ? opt.dist : this.projHitDist; if (dist != null) return 1 + R.elfFar * Math.max(0, Math.min(1, dist / R.elfFarRange)); }
+    if (race === 'orc' && type !== 'true') return 1 + R.orcLow * Math.max(0, Math.min(1, (1 - p.hp / this.d.maxHp) / (1 - R.orcLowAt)));
+    return 1;
+  }
   mod(key) {
     const p = this.player;
     let m = 1;
     for (const bf of Object.values(p.buffs)) if (bf.mods[key] && key !== 'lifesteal' && key !== 'reflect' && key !== 'pres') m *= bf.mods[key];
-    if (this.b.race === 'dino' && p.res >= 50 && (key === 'atkSpeed' || key === 'moveSpeed')) m *= 1.1;
     if (key === 'moveSpeed' && p.riding) m *= 1.75;
     return m;
   }
@@ -2248,14 +2269,10 @@ export class World {
     }
     if (opt.pen) mult *= 1 + opt.pen * 0.5;
     if (opt.src === 'reaction' && e.st.elemMark > 0) mult *= 1.5;
-    if (this.b.cls === 'berserker' && type !== 'true') mult *= 1 + p.res * 0.004;
     if (this.b.cls === 'chronomancer' && (e.st.slowZ > 0 || e.st.chill || e.st.frozen > 0)) mult *= 1.2;
     mult *= this.mod('dmgMul');
     { const lh = this.modAdd('lowHpDmg'); if (lh) mult *= 1 + lh * (1 - p.hp / d.maxHp); }
-    if (this.b.race === 'dragon' && e.st.burn) mult *= 1.15;
-    if (this.b.race === 'assassin' && opt.src === 'attack' && Math.sign(p.x - e.x) !== e.dir) mult *= 1.3;
-    if (this.b.race === 'undead' && type === 'mag') mult *= 1.12;
-    if (this.b.race === 'elf' && opt.proj) mult *= 1 + 0.3 * Math.max(0, Math.min(1, ((opt.dist ?? 80) - 40) / 120));
+    mult *= this.raceDmgMul(type, opt);
     let dmg = amount * mult;
     if (e.remote) { // 결투 상대: 피해는 상대 쪽에서 상대의 방어로 다시 셈한다 (여기서는 숫자만 보인다)
       if (dmg > 0) this.pvp?.out.push({ t: 'dhit', dmg: Math.round(dmg * 10) / 10, type: type === 'mag' ? 'mag' : 'phys' });
@@ -2446,7 +2463,6 @@ export class World {
     const p = this.player, d = this.d;
     if (amount <= 0 || this.state === 'dead' || this.f.has('noHeal') || this.player.down) return;
     if (this.pvp) amount *= PVP.heal; // 대전: 회복 절반
-    if (this.b.race === 'undead' && kind !== 'drain' && !(kind === 'steal' && this.f.has('undeadLifesteal'))) amount *= 0.5;
     amount *= d.healMul ?? 1; // 서약 「메마른 샘」
     // 물약 · 샘 말고는 회복이 1초에 최대 체력 3%씩만 들어온다 (한꺼번에 쌓아 둘 수 있는 몫은 5%). 회복 수치는 적힌 그대로 (숨은 배율 없음)
     if (!this.pvp && kind !== 'potion' && kind !== 'spring' && kind !== 'room') {
@@ -2501,7 +2517,7 @@ export class World {
     }
     if (!opt.direct) {
       if (p.invuln > 0) return;
-      if (this.rng.chance(d.dodge + this.modAdd('dodge'))) {
+      if (this.rng.chance(d.dodge + this.modAdd('dodge') + (this.b.race === 'undead' && type === 'phys' ? RACE_FX.undeadPhysDodge : 0))) {
         if (this.raceRes?.dodge) this.addRes(this.raceRes.dodge);
         this.emit({ t: 'dodgeFx', x: p.x, y: p.y, fx: fx ?? attacker?.x ?? p.x - p.dir }); // 회피: 크게 보이게 (글씨 · 비켜서는 잔영)
         p.invuln = 0.15;
@@ -2515,7 +2531,8 @@ export class World {
     }
     const dr = type === 'phys' ? d.physDR : d.magDR, raw = amount;
     let dmg = amount * (1 - dr) * d.dmgTakenMul * this.mod('dmgTakenMul') * (1 + 0.05 * (p.ab || 0)); // 갑옷 부수기(결투)
-    if (this.b.race === 'knight') dmg *= 0.9;
+    if (this.b.race === 'knight' && type === 'phys') dmg *= RACE_FX.knightPhys;
+    if (p.stillT >= 1 && this.f.has('stillGuard')) dmg *= 0.5; // 각인 「바위의 인내」: 1초 동안 가만히 있으면 다시 움직일 때까지 받는 피해 -50%
     if (this.f.has('resGuard') && p.res >= 50) dmg *= 0.9;
     if (front) { dmg *= 0.75; this.addRes(4); this.knack('block'); if (attacker && !attacker.dead) this.damageEnemy(attacker, raw * 0.25, 'phys', { src: 'reflect', color: '#a8c8ff' }); /* 수호기사: 정면으로 막으면 25%를 되갚는다 */ this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
     else if (this.b.weapon.guard && fx != null && !opt.direct) { // 방패를 든 무기: 앞에서 오는 피해를 줄인다
@@ -2537,7 +2554,7 @@ export class World {
     if (p.buffs.undying && p.hp < 1) { p.hp = 1; this.emit({ t: 'text', x: p.x, y: p.y - 22, text: '불굴', color: '#ffd84a' }); }
     if (p.buffs.undying) this.addRes((dmg / d.maxHp) * 100);
     if (attacker && attacker.affix === 'vampiric' && !attacker.dead) attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg * 0.25);
-    if (this.b.race === 'orc') this.addRage((dmg / d.maxHp) * 160 * (f.has('rageFast') ? 1.5 : 1));
+    if (this.b.race === 'orc') { this.addRage((dmg / d.maxHp) * 160 * (f.has('rageFast') ? 1.5 : 1)); if (dmg > 0) p.buffs.orcRage = { t: RACE_FX.orcHurtT, max: RACE_FX.orcHurtT, mods: { dmgMul: RACE_FX.orcHurtMul }, color: '#ff4a3a', name: '분노' }; } // 오크: 맞으면 2초 동안 분노 (피해 +10%)
     p.lastFight = this.t;
     if (!opt.direct) p.invuln = 0.3;
     this.hurtLanded = true;
@@ -2571,8 +2588,7 @@ export class World {
 
   applyPlayerStatus(kind, power) {
     if (this.f.has('statusImmune') || this.mode === 'plaza') return;
-    if (this.b.race === 'undead' && (kind === 'poison' || kind === 'bleed')) return;
-    if (this.b.race === 'dragon' && kind === 'burn') return;
+    if (RACE_IMMUNE[this.b.race]?.includes(kind)) return; // 언데드: 독 · 저주 · 출혈 · 용족: 화상 · 냉기
     const dur = (PLAYER_STATUS_DUR[kind] ?? 3) * (1 - this.d.statusRes); // 표에 없는 상태도 끝이 있다 (예전: 저주 · 감전은 NaN이라 영영 안 풀렸다)
     if (!(dur > 0.05)) return;
     const dps = kind === 'chill' || kind === 'shock' ? 0 : power * 0.18 * (1 - this.d.statusRes * 0.5);
@@ -2837,7 +2853,7 @@ export class World {
     if (st.poison && this.f.has('poisonSpread')) for (const o of this.enemiesNear(e.x, e.y, 60)) this.applyStatus(o, 'poison', Math.ceil(st.poison.n / 2));
     if (st.burn && this.f.has('burnSpread')) for (const o of this.enemiesNear(e.x, e.y, 60)) this.applyStatus(o, 'burn', 2);
     if (st.poison && this.f.has('poisonBurst')) this.addCloud(e.x, e.y, 34 * (1 + d.cloudSize), 4 + (this.s.toxicity || 0) * 0.8, 3, 'p');
-    if (this.b.race === 'undead') this.heal(d.maxHp * 0.024, 'drain');
+    if (this.b.race === 'dino') this.heal(d.maxHp * RACE_FX.dinoKillHeal, 'drain'); // 공룡 수인: 처치마다 최대 체력 2%
     if (this.raceRes?.kill) this.addRes(this.raceRes.kill);
     this.lastKills = (this.lastKills || 0) + 1;
     if (this.climb?.mod === 'bloodmoon' && e.climb) this.heal(d.maxHp * 0.008, 'drain'); // 피의 달
@@ -3179,6 +3195,15 @@ export class World {
           pr.vx += (Math.cos(a) * sp - pr.vx) * 0.12; pr.vy += (Math.sin(a) * sp - pr.vy) * 0.12;
         }
       }
+      else if (pr.owner === 'p' && !pr.boomerang && !pr.ghost && this.f.has('aimAssist')) { // 각인 「바람 읽기」: 앞쪽 3.5칸 안의 적에게 살짝 휜다 (초당 최대 2.5라디안)
+        const sp = Math.hypot(pr.vx, pr.vy) || 1, ux = pr.vx / sp, uy = pr.vy / sp;
+        let best = null, bd = 56;
+        for (const e of this.enemies) { if (e.dead || e.hidden || pr.hit.has(e.id)) continue; const ex = e.x - pr.x, ey = e.y - 4 - pr.y, dd = Math.hypot(ex, ey); if (dd < bd && (ex * ux + ey * uy) > dd * 0.5) { bd = dd; best = e; } }
+        if (best) {
+          const a0 = Math.atan2(pr.vy, pr.vx); let da = Math.atan2(best.y - 4 - pr.y, best.x - pr.x) - a0; da = Math.atan2(Math.sin(da), Math.cos(da));
+          const a1 = a0 + Math.max(-2.5 * DT, Math.min(2.5 * DT, da)); pr.vx = Math.cos(a1) * sp; pr.vy = Math.sin(a1) * sp; pr.rot = a1;
+        }
+      }
       if (pr.boomerang && !pr.returning && pr.life < pr.maxLife * 0.5) { pr.returning = true; pr.hit.clear(); }
       if (pr.returning) {
         const bx = this.player.x - pr.x, by = this.player.y - pr.y, bl = Math.hypot(bx, by) || 1, sp = Math.hypot(pr.vx, pr.vy) || 200;
@@ -3224,7 +3249,7 @@ export class World {
           else if (pr.noTrigger) this.damageEnemy(e, pr.dmg, pr.type, { src: 'aoe' });
           else {
             const dist = pr.ox != null ? Math.hypot(e.x - pr.ox, e.y - pr.oy) : 100;
-            const range = pr.boomerang ? 1 : this.b.wcat === 'bow' ? 0.8 + 0.6 * Math.max(0, Math.min(1, (dist - 40) / 180)) /* 활: 멀리서 맞힐수록 세다 (40px 0.8배 → 220px 1.4배) */ : dist < 40 ? 0.7 : dist > 70 ? 1.1 : 1;
+            const range = pr.boomerang || this.b.wcat === 'bow' ? 1 : dist < 40 ? 0.7 : dist > 70 ? 1.1 : 1; // 활은 거리와 상관없이 같다 (멀리서 세지는 것은 엘프의 특성)
             this.hitEnemy(e, pr.dmg * range, pr.type, pr.heavy, true, { dist, weapon: pr.weaponHit });
           }
           if (pr.splash) { this.emit({ t: 'ring', x: pr.x, y: pr.y, r: pr.splash, color: pr.color }); for (const o of this.enemiesNear(pr.x, pr.y, pr.splash)) if (o !== e) this.damageEnemy(o, pr.dmg * 0.7, pr.type, { src: 'aoe' }); }

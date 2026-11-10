@@ -2,7 +2,7 @@
 // DOM을 쓰지 않는 순수 함수라 서버에서도 그대로 돌릴 수 있다.
 import { BASE_STATS, SPECIAL_INFO, AWAKENINGS, EXTREME, eff } from '../data/stats.js';
 import { allSanctums, trainStats } from '../data/sanctums.js';
-import { RACES, RACE_MIGRATE } from '../data/races.js';
+import { RACES, RACE_MIGRATE, RACE_FX } from '../data/races.js';
 import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
 import { REINFORCE_STEP, REINFORCE_ARMOR, REINFORCE_GEAR, rfKey } from '../data/goods.js';
 import { ITEMS, weaponCat, weaponHands } from '../data/items.js';
@@ -182,14 +182,14 @@ export function computeBuild(lo) {
     magDR: Math.max(0, stats.mres) / (Math.max(0, stats.mres) + 160),
     physPen: 0, magPen: 0, knockback: 30, regen: 0,
     dmgMul: 1, dmgTakenMul: 1, burnMul: 1, bleedMul: 1, chillMul: 1, reactionMul: 1, statusDmgMul: 1, reflectMul: 1,
-    poisonCap: 10, freezeReduce: 0, cloudSize: 0, dashCd: 1.2, goldMul: 1, projMul: lo.race === 'elf' ? 1.3 : 1,
-    resGain: 1, hurtRes: 0, lowHunt: 0, skillCdMul: 1, aimSlow: lo.race === 'elf' ? 0.82 : 0.65,
+    poisonCap: 10, freezeReduce: 0, cloudSize: 0, dashCd: 1.2, goldMul: 1, projMul: 1,
+    resGain: 1, hurtRes: 0, lowHunt: 0, skillCdMul: 1, aimSlow: 0.65,
     freezeTime: 1.6, castMul: 1, costMul: 1, healMul: 1,
   };
   // 종족 고유 수치
-  if (lo.race === 'wizard') { d.reactionMul *= 1.5; d.skillCdMul *= 0.75; }
-  if (lo.race === 'knight') d.moveSpeed *= 0.92;
-  if (lo.race === 'undead') d.moveSpeed *= 0.95;
+  if (lo.race === 'wizard') d.maxHp *= RACE_FX.wizardHp;
+  if (lo.race === 'knight') d.maxHp *= RACE_FX.knightHp;
+  if (lo.race === 'assassin') d.dodge += RACE_FX.assassinDodge;
   const flags = new Set();
   const triggers = { hit: [], kill: [], hurt: [], hurtMag: [], dodge: [], crit: [], dash: [], shield: [], awaken: [], cast: [] };
   // 공격 %는 곱하지 않고 더한다: 각성 · 각인 · 장비의 「공격력 +N%」 「모든 피해 +N%」가 서로 곱해져 높은 층에서 폭발하던 것 (+10%와 +15% = +25%)
@@ -276,11 +276,11 @@ export function weaponFamily(it) {
   return c;
 }
 export const FAMILY_NAME = { magic: '마법 무기', dagger: '단검', sword: '검', axe: '도끼', blunt: '둔기', throw: '던지는 무기', whip: '채찍' };
-// 양손 무기: 쌍검은 빠르게, 무거운 것은 세게, 활 · 지팡이는 조금 세게 (활은 멀리서 쏠수록 더: world.js 탄 맞음)
+// 양손 무기: 쌍검은 빠르게, 무거운 것은 세게, 활 · 지팡이는 조금 세게
 export function twoHandBonus(id, it) {
   const c = weaponCat(it);
   if (/dual|twin/i.test(id) || it.weapon?.dual) return { atkSpeed: 1.15, text: '양손 쌍검: 공격 속도 +15%' };
-  if (c === 'bow') return { dmgMul: 1.08, text: '활: 피해 +8% · 멀리서 맞힐수록 세다 (가까이 0.8배 → 멀리 1.4배)' };
+  if (c === 'bow') return { dmgMul: 1.08, text: '활: 피해 +8%' };
   if (['tube', 'staff'].includes(c)) return { dmgMul: 1.08, text: '양손 원거리 무기: 피해 +8%' };
   if (c === 'fist') return { atkSpeed: 1.08, dmgMul: 1.05, text: '양손 주먹: 공격 속도 +8% · 피해 +5%' };
   if (c === 'shield') return { dmgMul: 1.12, text: '검과 방패: 피해 +12%' }; // 왼손은 방패가 차지한다 (양손 무기는 아니다)

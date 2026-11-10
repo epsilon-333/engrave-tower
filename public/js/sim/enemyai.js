@@ -2,6 +2,7 @@
 // World.prototype 에 그대로 붙는다 (sim/world.js 끝). 메서드 안의 this 는 World
 
 import { AFFIXES } from '../data/monsters.js';
+import { RACE_FX } from '../data/races.js';
 import { BOSS_FX } from '../data/tower.js';
 import { bossCan, bossAlias, bossPickX, bossTickX } from './towerzone.js';
 import { SKILLS } from '../data/skills.js';
@@ -43,7 +44,7 @@ export const EnemyAiMethods = {
 
       // 지속 피해
       let burn = 0, poison = 0, bleed = 0;
-      if (st.burn) { burn = st.burn.n * (2 + d.magAtk * 0.12) * (1 + (s.fireAff || 0) * 0.04) * d.burnMul; if ((st.burn.t -= DT) <= 0) st.burn = null; }
+      if (st.burn) { burn = st.burn.n * (2 + d.magAtk * 0.12) * (1 + (s.fireAff || 0) * 0.04) * d.burnMul * (this.b.race === 'dragon' ? RACE_FX.dragonFire : 1); if ((st.burn.t -= DT) <= 0) st.burn = null; } // 용족: 화염 피해 (화상도)
       if (st.poison) {
         const deep = this.f.has('poisonDeep') ? 1 + Math.max(0, st.poison.n - 5) * 0.08 : 1;
         poison = st.poison.n * (1.5 + (s.toxicity || 0) * 0.6) * (st.septic > 0 ? 2 : 1) * deep;
@@ -53,7 +54,7 @@ export const EnemyAiMethods = {
       if (st.bleed) { bleed = st.bleed.n * (1.5 + d.physAtk * 0.1) * d.bleedMul; if ((st.bleed.t -= DT) <= 0) st.bleed = null; }
       if (st.chill && (st.chill.t -= DT) <= 0) st.chill = null;
       let curse = 0;
-      if (st.curse) { curse = st.curse.n * (2 + d.magAtk * 0.12) * (this.b.race === 'undead' ? 1.12 : 1); if ((st.curse.t -= DT) <= 0) st.curse = null; }
+      if (st.curse) { curse = st.curse.n * (2 + d.magAtk * 0.12); if ((st.curse.t -= DT) <= 0) st.curse = null; }
       for (const k of ['shock', 'weak', 'elemMark', 'fear', 'stun']) if (st[k] > 0) { st[k] -= DT; if (st[k] <= 0 && k === 'stun') e.prison = false; }
       if (this.b.race === 'dragon' && st.burn) this.addRes(DT * (this.raceRes.burnTick || 1), true);
       for (const k of ['frozen', 'mark', 'septic', 'slowZ']) if (st[k] > 0) st[k] -= DT;

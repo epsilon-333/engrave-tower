@@ -30,6 +30,8 @@
 "Max HP, natural regen",
 "Max health",
 "Max health +20%, fully restore health",
+"Max HP +40% · Physical damage -15",
+"Max HP -20% · Lowest physical resistance",
 "of max health",
 "New size record",
 "Supreme Health Potion",
@@ -396,7 +398,5 @@
 "Ruined City · Old Forest · Volcanic Zone. Quest board quests fill the codex too",
 "That collapsed well in the middle of the Ruined City — climb down the rope and they say it's a tunnel, not a bottom. The people of the night come and go",
 "A bowl from when the Ruined City flourished. The tower crest is stamped on the bottom",
-"Collapsed well of the Ruined City",
-"There's nothing in the well north of the ruins. Really",
-"A stone giant sleeping beneath the ruins. Leaps and slams, shakes the ground to sweep the area, and wakes stone minions"
+"Collapsed well of the Ruined City"
 ]

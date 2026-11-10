@@ -3,18 +3,18 @@
 export const RACES = {
   dino: {
     name: '공룡 수인', origin: '원시림',
-    desc: '사냥할수록 본능이 끓어오른다. 본능 50 이상이면 이동·공격 속도 +10%.',
+    desc: '사냥으로 살아남는다. 적을 쓰러뜨릴 때마다 최대 체력 2% 회복.',
     strong: '근력 · 민첩', weak: '마법 저항 낮음',
     base: { str: 15, mag: 3, agi: 15, vit: 12, sen: 10, spi: 5, pres: 6, mres: 4 },
     growth: { str: 1 },
     mult: { str: 1.1, agi: 1.1, mag: 0.7, spi: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
-    passive: '원시 본능',
+    passive: '사냥의 피',
     res: { key: 'instinct', name: '본능', color: '#ff9a3a', hit: 3, kill: 6, decay: 4 },
   },
   wizard: {
     name: '마법사', origin: '인간',
-    desc: '마력으로 주문을 시전한다. 시전 중에는 움직일 수 없고, 강한 주문일수록 오래 걸린다. 원소 반응 피해 +50%.',
-    strong: '마력 · 정신', weak: '체력과 물리 저항이 가장 낮음',
+    desc: '마력으로 주문을 시전한다. 시전 중에는 움직일 수 없다. 마법 피해 +50%, 최대 체력 -20%.',
+    strong: '마력 · 정신 · 마법 피해 +50%', weak: '최대 체력 -20% · 물리 저항이 가장 낮음',
     base: { str: 3, mag: 18, agi: 8, vit: 6, sen: 9, spi: 15, pres: 3, mres: 9 },
     growth: { mag: 1 },
     mult: { mag: 1.2, spi: 1.1, str: 0.7, vit: 0.85, pres: 0.8 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
@@ -23,8 +23,8 @@ export const RACES = {
   },
   knight: {
     name: '기사', origin: '인간',
-    desc: '맞을수록 오러가 쌓이고, 오러를 실어 강타한다. 받는 피해 -10%.',
-    strong: '체력 · 물리 저항', weak: '느림 · 마력 낮음',
+    desc: '맞을수록 오러가 쌓이고, 오러를 실어 강타한다. 최대 체력 +40%, 받는 물리 피해 -15%.',
+    strong: '최대 체력 +40% · 물리 피해 -15%', weak: '마력 낮음 · 마법 저항 낮음',
     base: { str: 13, mag: 3, agi: 6, vit: 16, sen: 6, spi: 7, pres: 15, mres: 7 },
     growth: { str: 1 },
     mult: { pres: 1.15, vit: 1.1, agi: 0.85, mag: 0.75 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
@@ -33,7 +33,7 @@ export const RACES = {
   },
   orc: {
     name: '오크', origin: '황야',
-    desc: '때리고 맞으며 분노가 차오른다. 분노로 광전사가 되거나 최후의 일격을 날린다.',
+    desc: '체력이 낮을수록 피해가 커진다(체력 10% 이하에서 +100%). 맞으면 2초 동안 분노: 피해 +10%.',
     strong: '근력 · 체력', weak: '마력 거의 없음 · 마법 저항 낮음',
     base: { str: 18, mag: 2, agi: 9, vit: 15, sen: 7, spi: 5, pres: 6, mres: 3 },
     growth: { vit: 1 },
@@ -43,8 +43,8 @@ export const RACES = {
   },
   undead: {
     name: '언데드', origin: '묘지',
-    desc: '영혼을 거둬 저주를 터뜨린다. 독과 출혈에 면역, 마법 피해 +12%. 일반 회복은 절반이지만 처치마다 생명력 2.4% 흡수.',
-    strong: '마력 · 물리 저항 · 독 면역', weak: '마법 저항 낮음 · 회복이 처치에 묶임 · 느림',
+    desc: '영혼을 거둬 저주를 터뜨린다. 물리 공격 회피 +20%. 독 · 저주 · 출혈에 면역.',
+    strong: '물리 회피 +20% · 독 · 저주 · 출혈 면역', weak: '마법 저항 낮음 · 느림',
     base: { str: 6, mag: 15, agi: 6, vit: 11, sen: 6, spi: 10, pres: 15, mres: 6 },
     growth: { pres: 1 },
     mult: { pres: 1.15, mag: 1.1, agi: 0.85, vit: 0.9 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
@@ -53,7 +53,7 @@ export const RACES = {
   },
   assassin: {
     name: '암살자', origin: '뒷골목',
-    desc: '피하고 파고들며 그림자를 모은다. 회피·치명타·대시로 그림자가 쌓이고, 적의 등 뒤를 치면 피해 +30%.',
+    desc: '피하고 파고들며 그림자를 모은다. 모든 공격 회피 +10%. 대시가 순간이동이다(벽은 넘지 못한다).',
     strong: '민첩 · 감각', weak: '체력 낮음 · 저항 낮음',
     base: { str: 9, mag: 4, agi: 17, vit: 8, sen: 16, spi: 6, pres: 4, mres: 5 },
     growth: { sen: 1 },
@@ -63,18 +63,18 @@ export const RACES = {
   },
   elf: {
     name: '엘프', origin: '숲',
-    desc: '정령과 함께 싸운다. 정령력이 저절로 차오르고, 멀리서 맞힐수록 투사체 피해 증가(최대 +30%).',
+    desc: '정령과 함께 싸운다. 멀리서 맞힐수록 투사체 피해가 커진다(거리 260에서 +100%, 그 사이는 고르게).',
     strong: '민첩 · 마력', weak: '체력 낮음 · 가까이에서 약함',
     base: { str: 5, mag: 14, agi: 15, vit: 7, sen: 12, spi: 11, pres: 4, mres: 8 },
     growth: { agi: 1 },
     mult: { agi: 1.1, sen: 1.1, mag: 1.05, str: 0.75, vit: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
-    passive: '정령의 벗',
+    passive: '먼 사격',
     res: { key: 'spirit', name: '정령력', color: '#7be38a', regen: 5, hit: 3, kill: 5 },
   },
   dragon: {
     name: '용족', origin: '화산',
-    desc: '불을 다루는 고대 혈통. 화상에 면역이고, 불타는 적에게 주는 피해 +15%. 불타는 적이 있을 때 용기가 차오른다.',
-    strong: '근력 · 마력 · 마법 저항', weak: '냉기에 약함 (받는 냉기 피해·둔화 증가)',
+    desc: '불을 다루는 고대 혈통. 화염 피해 +30%(화상 포함). 화상 · 냉기에 면역.',
+    strong: '화염 피해 +30% · 화상 · 냉기 면역', weak: '느림 · 회피 낮음',
     base: { str: 13, mag: 13, agi: 7, vit: 11, sen: 6, spi: 7, pres: 7, mres: 9 },
     growth: { mres: 1 },
     mult: { str: 1.05, mag: 1.05, mres: 1.1, agi: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
@@ -82,6 +82,27 @@ export const RACES = {
     res: { key: 'dragon', name: '용기', color: '#ff6a2a', hit: 3, kill: 6, burnTick: 1, decay: 1 },
   },
 };
+
+// 종족 특성 수치 (2026-11-10 개편: 종족마다 특성 하나 · 둘을 숫자로 분명하게, 예전 특성은 모두 뺐다)
+export const RACE_FX = {
+  assassinDodge: 0.10,   // 암살자: 모든 공격 회피 +10%
+  assassinBlink: 64,     // 암살자: 대시 = 순간이동 (거리 · 벽과 하늘 낭떠러지는 넘지 않는다)
+  undeadPhysDodge: 0.20, // 언데드: 물리 공격 회피 +20%
+  wizardMag: 1.5,        // 마법사: 마법 피해 +50%
+  wizardHp: 0.8,         //        최대 체력 -20%
+  dragonFire: 1.3,       // 용족: 화염 피해 +30% (화상 포함)
+  knightPhys: 0.85,      // 기사: 받는 물리 피해 -15%
+  knightHp: 1.4,         //      최대 체력 +40%
+  dinoKillHeal: 0.02,    // 공룡 수인: 처치마다 최대 체력 2% 회복
+  elfFar: 1.0,           // 엘프: 맞힌 거리에 따라 투사체 피해 +0~100%
+  elfFarRange: 260,      //      가장 긴 무기 사거리에서 최대
+  orcLow: 1.0,           // 오크: 체력이 낮을수록 피해 +0~100% (체력 100% → 0 · 10% 이하 → 최대)
+  orcLowAt: 0.1,
+  orcHurtT: 2,           //      맞으면 2초 동안 분노: 피해 +10%
+  orcHurtMul: 1.1,
+};
+// 종족 면역 상태이상
+export const RACE_IMMUNE = { undead: ['poison', 'curse', 'bleed'], dragon: ['burn', 'chill'] };
 
 // 예전 저장 데이터의 종족 이름 변환
 export const RACE_MIGRATE = { human: 'knight', dwarf: 'knight', beast: 'dino' };

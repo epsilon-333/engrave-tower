@@ -1,4 +1,5 @@
 [
+"Shadow Forest",
 "Shadow Assassin",
 "Shadow Queen Seryl",
 "Shadow Garb",
@@ -32,7 +33,6 @@
 "Strength",
 "Strength +10%, stronger knockback",
 "Per 3 Strength, health +1",
-"Strength · Magic · Magic resist",
 "Strength · Agility",
 "Strength · Health",
 "The royal guard armor has rusted. Five iron ores and it can be reforged",
@@ -378,7 +378,6 @@
 "Chill effect +20",
 "Chill effect +25",
 "Stacks chill to slow, then freezes to bind",
-"Weak to cold (more cold damage and slow taken",
 "Frosty",
 "Yum",
 "Knuckles",
@@ -398,5 +397,6 @@
 "Rusty chain",
 "Rusty Key",
 "Rusty Key: the cell in the puddle cave",
-"The rusty key creaked and turned"
+"The rusty key creaked and turned",
+"Rust echo"
 ]

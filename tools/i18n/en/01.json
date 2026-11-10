@@ -1,4 +1,5 @@
 [
+"Garen",
 "3 tiles wide",
 "One big horizontal slash, then a long downward cut ahead. The second hit is stronger. Aura +12",
 "Standing still builds focus (1 stage per 0.5s, max 3). Next shot damage per stage +25",
@@ -397,6 +398,5 @@
 "Throws meat. For 6 seconds nearby monsters rush to the bait. 50% for enemies chasing me, otherwise 75% (shorter for elites). If you've laid a trap, the bait goes on it. Shadow 15",
 "Give meat",
 "Ancient Golem",
-"Ancient Golem (raid",
-"Ancient Golem's Chamber"
+"Ancient Golem (raid"
 ]

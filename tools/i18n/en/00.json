@@ -136,6 +136,7 @@
 "Fires ten bolts in 1 second",
 "Rains fire punches for 1 second, then a big blast",
 "Hits ten times in 1 second, then blasts everything around",
+"After standing still for 1s, damage taken -50 until you move again",
 "Aims for 1 second, then fires a giant arrow that pierces everything. Stronger with more spirit power",
 "Damage every second. Stronger with more stacks",
 "2. Hunt",
@@ -397,6 +398,5 @@
 "Hide nearby and watch (10 seconds",
 "Worn out by poverty and taxes, they say they're joining Noctaris",
 "Sunken Temple",
-"Witch of the Sunken Temple",
-"Garen"
+"Witch of the Sunken Temple"
 ]

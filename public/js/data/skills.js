@@ -48,7 +48,7 @@ export const CLASSES = {
     skills: ['riposte', 'shieldCharge', 'provoke', 'ironWall', 'shieldBash', 'undying'] },
   greatsword: { race: 'knight', name: '대검술사', desc: '느리지만 묵직하다. 힘을 모을수록 강해진다.', trait: '「차지」 스킬은 길게 누르면 1~3단계로 힘을 모은다. 모으는 동안 받는 피해 -25%.', weapons: ['steelGreatsword', 'mountainCleaver'], style: 'giant',
     skills: ['comboSlash', 'dashSlash', 'swordWave', 'steadfast', 'crushBlow', 'skyfall'] },
-  berserker: { race: 'orc', name: '광전사', desc: '맞을수록 분노가 차오르고, 분노가 높을수록 세진다.', trait: '분노 1당 공격력 +0.4% (분노 100이면 +40%). 분노를 쓰면 그만큼 약해진다.', weapons: ['twoHandAxe', 'bloodthirstAxe'], style: 'blood',
+  berserker: { race: 'orc', name: '광전사', desc: '맞을수록 분노가 차오르고, 분노로 큰 도끼 기술을 쓴다.', trait: '분노가 연료다. 오크 특성(체력이 낮을수록 피해 최대 +100%)을 가장 잘 살린다.', weapons: ['twoHandAxe', 'bloodthirstAxe'], style: 'blood',
     skills: ['warCry', 'chargeSmash', 'crushingBlows', 'braceForIt', 'berserkSkill', 'rageBurst'] },
   thrower: { race: 'orc', name: '투척 전사', desc: '도끼를 휘두르고, 던지고, 작살로 끌어와 제압한다.', trait: '평타로 도끼를 휘두른다. 우클릭은 사방으로 도끼를 던지는 도끼 폭풍.', weapons: ['throwHatchet', 'twinReturnAxe'], style: 'giant',
     skills: ['harpoon', 'rapidThrow', 'greatAxe', 'groundSmash', 'leap', 'axeLegion'] },
@@ -64,7 +64,7 @@ export const CLASSES = {
     skills: ['summonSpirit', 'spiritAbsorb', 'spiritEmpower', 'spiritArrow', 'spiritGuard', 'spiritKing'] },
   ranger: { race: 'elf', name: '숲의 사수', desc: '멈춰서 집중하고 멀리서 꿰뚫는다.', trait: '가만히 서 있으면 집중이 쌓인다(0.5초마다 1단계, 최대 3). 다음 사격 피해 단계당 +25%.', weapons: ['rangerBow', 'galeLongbow'], style: 'wind',
     skills: ['pierceArrow', 'windStep', 'vineSnare', 'pushArrow', 'aimedShot', 'skyPiercer'] },
-  dragoon: { race: 'dragon', name: '화룡 전사', desc: '날아올라 내리꽂고, 적을 낚아채 떨어뜨린다.', trait: '불타는 적에게 주는 피해 +15% (용족).', weapons: ['dragonSpear', 'wyrmFang'], style: 'fire',
+  dragoon: { race: 'dragon', name: '화룡 전사', desc: '날아올라 내리꽂고, 적을 낚아채 떨어뜨린다.', trait: '화염 피해 +30% (용족).', weapons: ['dragonSpear', 'wyrmFang'], style: 'fire',
     skills: ['breath', 'dragonClaw', 'soar', 'snatch', 'scales', 'dragonForm'] },
   dragonSage: { race: 'dragon', name: '용언 술사', desc: '용의 말을 이어 문장을 만든다.', trait: '용언 스킬을 쓸 때마다 단어가 쌓이고, 3개가 차면 문장이 발동한다. 첫 단어가 문장의 몸통이라 순서가 바뀌면 다른 문장이 된다. 마력 언령(불 · 하늘)은 마력으로, 정신 언령(비늘 · 대지 · 날개)은 정신으로 힘이 정해진다. 같은 단어는 강세, 같은 계열은 합성, 다른 계열을 아무렇게나 이으면 말이 엇갈려 약해진다. 용의 혀로만 말할 수 있어 다른 종족은 배우지 못한다.', weapons: ['dragonTome', 'elderHeartstone'], style: 'fire',
     skills: ['wordFire', 'wordWing', 'wordSky', 'wordScale', 'wordEarth', 'wordSilence'] },
@@ -435,7 +435,7 @@ export const SKILL_BAL = {}; // 스킬 하나씩은 보정하지 않는다 (한 
 // ── 클래스 밸런스 보정 (tools/balance.mjs: 30초 실제 싸움 · 무리 / 단단한 적) ──
 export const CLASS_BAL = {"predator": 1, "behemoth": 0.92, "elementalist": 1.07, "chronomancer": 0.9, "guardian": 1.6, "greatsword": 1.6, "berserker": 0.8, "thrower": 1.08, "necromancer": 0.71, "hexer": 0.96, "shadowblade": 0.97, "venomHunter": 1.6, "spiritcaller": 1.5, "ranger": 1.04, "dragoon": 0.68, "dragonSage": 1.09}; // 결투(사람 대 사람)
 // 몬스터를 상대할 때의 클래스 보정 (tools/tests/climbsim.mjs 로 클래스마다 오른 층을 비교해 맞춤)
-export const CLASS_BAL_PVE = {"predator":  0.75, "behemoth":  1.03, "elementalist":  1.15, "chronomancer":  1.45, "guardian":  2.6, "greatsword":  1.72, "berserker":  0.8, "thrower":  1.3, "necromancer":  1.7, "hexer":  1.25, "shadowblade":  1.05, "venomHunter":  1.65, "spiritcaller":  2.2, "ranger":  1.28, "dragoon":  1.05, "dragonSage":  0.9};
+export const CLASS_BAL_PVE = {"predator":  0.75, "behemoth":  1.03, "elementalist":  1.15, "chronomancer":  1.45, "guardian":  2.6, "greatsword":  1.72, "berserker":  0.8, "thrower":  1.1, "necromancer":  2.5, "hexer":  2.0, "shadowblade":  1.05, "venomHunter":  1.65, "spiritcaller":  2.2, "ranger":  1.28, "dragoon":  1.05, "dragonSage":  0.9};
 
 // ── 돈 · 미션으로 얻는 CC기 (누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다) ──
 export const CC_EXTRA = {
@@ -572,7 +572,7 @@ export const PVP = { dmg: 0.4, heal: 0.5, shield: 0.6, cc: 0.6 }; // 대전: 너
 // 모든 각인은 패시브 + 액티브 스킬 하나. 액티브는 이미 있는 스킬을 쓴다 (다른 클래스의 스킬도 각인으로 얻는다)
 // 전설(5등급) 각인은 궁극기. 클래스의 장치(소환 · 정령 · 분노 · 이미 걸린 독)가 먼저 있어야 하는 스킬은 쓰지 않는다
 export const ENGRAVING_SKILLS = {
-  slimeSkin: 'hardenShell', batWing: 'shadowEvade', goblinGreed: 'rakeRetreat', chiefWill: 'warCry', toadGland: 'ePoisonBurst', leechFang: 'devour', sporeSac: 'toxicArrow', queenCrown: 'deathFog',
+  slimeSkin: 'hardenShell', stillStone: 'stoneSkin', windRead: 'aimedShot', batWing: 'shadowEvade', goblinGreed: 'rakeRetreat', chiefWill: 'warCry', toadGland: 'ePoisonBurst', leechFang: 'devour', sporeSac: 'toxicArrow', queenCrown: 'deathFog',
   emberHeart: 'eFirePillar', magmaHide: 'scales', impTrick: 'blinkBlast', frostFang: 'eFrostNova', mirrorShell: 'eMirrorWall', iceCore: 'iceArmor', meltCore: 'iceComet',
   witchEye: 'frostChain', boneFrame: 'steadfast', wraithWhisper: 'curse', ghoulHunger: 'frenzyClaws', slimeArmor: 'braceForIt', wogolEye: 'weakMark', goblinThrow: 'shurikenFan',
   rustChain: 'chainHook', chiefRoar: 'eWarHorn', mudShell: 'snare', stingTail: 'retreatShot', bloodOath: 'eBloodPact', rotSporeHeart: 'acidRain', leechLordMaw: 'maul',

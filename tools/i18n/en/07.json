@@ -32,6 +32,7 @@
 "Per 4 physical resist, health +1",
 "Dummies with different physical · magic resist",
 "Physical damage reduction",
+"Physical evasion +20% · Immune to poison, curse, bleed",
 "Physical · magic resist +6, slows attackers",
 "Watering can",
 "You need a watering can",
@@ -116,6 +117,7 @@
 "Wind Stride",
 "Wind Archer",
 "Wind Sprite",
+"Wind Reading",
 "Wind Spirit",
 "Wind spirit's breath",
 "Windwalk",
@@ -163,6 +165,7 @@
 "Crag Cave",
 "From crags and caves. Requires a copper pickaxe",
 "In front of rocks, veins, trees and glittering soil",
+"Patience of Stone",
 "Press G · Space · Click when the beat reaches the circle",
 "Beat",
 "Rhythm game",
@@ -395,8 +398,5 @@
 "Star Gate",
 "Star Orb",
 "Star Archive",
-"The Grand Archivist guarding the Star Archive",
-"The star map? …Pretend you don't know. That's how you live long",
-"Star book page",
-"Where the star fell, the tower rose, and its light became wind"
+"The Grand Archivist guarding the Star Archive"
 ]

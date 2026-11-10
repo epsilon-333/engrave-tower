@@ -157,8 +157,11 @@ export const SkillMethods = {
             owner: 'p', x: mz.x, y: mz.y, vx: Math.cos(a) * op.speed, vy: Math.sin(a) * op.speed,
             life: op.range / op.speed, maxLife: op.range / op.speed, boomerang: !!op.boomerang, dmg: 0, type: 'mag', pierce: op.pierce || 0, hit: new Set(), splash: 0,
             color: ELEM[ctx.elem]?.color || '#e8e0f4', kind: op.kind === 'rock' ? 'rock' : 'skill', skind: op.kind, elem: ctx.elem, big: true, homing: op.homing, rot: a,
+            ox: mz.x, oy: mz.y,
             skillHit: (e, pr) => {
+              this.projHitDist = Math.hypot(e.x - pr.ox, e.y - pr.oy); // 엘프: 맞힌 거리 (스킬 투사체도)
               this.skillHit(e, op, ctx);
+              this.projHitDist = null;
               if (op.onHitGain) this.addRes(op.onHitGain);
               if (op.onHitHeal) this.heal(this.d.maxHp * op.onHitHeal, 'skill');
               if (op.splash) {

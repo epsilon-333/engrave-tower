@@ -57,7 +57,7 @@ export const ENGRAVINGS = {
     stats: { lifesteal: 6 },
     effects: [
       { type: 'on', event: 'hit', chance: 0.3, action: { status: 'bleed', stacks: 1 }, text: '공격 시 30% 출혈' },
-      { when: { race: 'undead' }, type: 'flag', flag: 'undeadLifesteal', text: '언데드도 흡혈로 회복 가능' },
+      { when: { race: 'undead' }, type: 'stat', stat: 'lifesteal', v: 3, text: '언데드면 흡혈 +3' },
     ],
     recipe: { blood: 5 },
   },
@@ -623,6 +623,18 @@ export const ENGRAVINGS = {
     effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.85, text: '받는 피해 -15%' }, { type: 'flag', flag: 'frozenVuln', text: '얼어붙은 적에게 주는 피해 +50%' }, { type: 'on', event: 'hurt', chance: 1, action: { status: 'chill', stacks: 2 }, text: '나를 때린 적에게 냉기 2중첩' }],
     recipe: { icecore: 6, witch: 1 },
   },
+  stillStone: {
+    name: '바위의 인내', slot: 'leg', grade: 4, load: 7, tags: ['giant'],
+    stats: { vit: 6, pres: 4 },
+    effects: [{ type: 'flag', flag: 'stillGuard', text: '1초 동안 움직이지 않으면 다시 움직일 때까지 받는 피해 -50%' }],
+    recipe: { bone: 8, queen: 1 },
+  },
+  windRead: {
+    name: '바람 읽기', slot: 'head', grade: 3, load: 5, tags: ['wind'],
+    stats: { sen: 4, agi: 3 },
+    effects: [{ type: 'flag', flag: 'aimAssist', text: '명중 보정: 내 투사체가 앞쪽 3.5칸 안의 적에게 살짝 휜다 (초당 최대 143°)' }],
+    recipe: { wing: 6, rust: 4 },
+  },
   plagueKing: {
     name: '역병의 군주', slot: 'head', grade: 5, load: 10, tags: ['poison', 'curse'],
     stats: { toxicity: 10, mag: 6 },
@@ -725,7 +737,6 @@ const FLAG_DETAIL = {
   poisonSpread: '반경 3.8칸 안의 적에게 중독 중첩의 절반',
   poisonBurst: '반경 2.1칸 독 구름 3초 (초당 4 + 독성×0.8)',
   noHeal: '체력 회복 0%',
-  undeadLifesteal: '흡혈 100% 적용',
 };
 for (const e of Object.values(ENGRAVINGS)) for (const x of e.effects || []) {
   const t = x.text || '';

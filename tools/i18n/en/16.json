@@ -1,4 +1,6 @@
 [
+"There's nothing in the well north of the ruins. Really",
+"A stone giant sleeping beneath the ruins. Leaps and slams, shakes the ground to sweep the area, and wakes stone minions",
 "Ruin Watchman",
 "Ruin Watch",
 "Offer bundles and I'll give you a spirit stone. Up to twice a day.\"",
@@ -79,7 +81,7 @@
 "Blessing of Blood",
 "Blood Plate",
 "Blood Spin",
-"Dodge and dive in to gather shadow. Shadow builds from evasion · crits · dashes, and striking enemies from behind: damage +30",
+"Gathers shadow by dodging and striking. Evasion +10% against all attacks. Dash is a teleport (cannot pass walls",
 "Dodge and dive in to slash with crits and bleeds",
 "Dodging triggers a mirror counter around you",
 "Reflects dodged attacks back",
@@ -348,6 +350,8 @@
 "Fire Whip",
 "Fire Affinity",
 "Fire Explosion",
+"Fire damage +30% (Dragonkin",
+"Fire damage +30% · Immune to burn and chill",
 "Collecting 4+ of both fire and cold cancels them out and turns both off",
 "Fires a fireball. Magic word 「Fire」: as the sentence's body, the aimed spot explodes. After Sky it's 「Falling Sun」. Courage 10",
 "Pyromancer",
@@ -371,7 +375,7 @@
 "Bow · crossbow",
 "Requires a bow · crossbow · blowgun to shoot",
 "There's a beehive in the bow. A bee rides every arrow",
-"Bow: damage +8% · stronger from farther away (0.8x close → 1.4x far",
+"Bow: damage +8",
 "Gliding Charge",
 "Release the bowstring as you breathe out",
 "Golden Pipes Rise",
@@ -394,9 +398,5 @@
 "An abandoned mine entrance in the wasteland rocks. Fresh footprints lead past the 「Danger · No Entry」 sign",
 "Wasteland combat tournament · this week's ranked matches",
 "The wasteland arena is crumbling under taxes",
-"From wastes and volcanoes. Requires an iron pickaxe",
-"Hole in the wastes",
-"The abandoned mine in the wastes isn't really abandoned. The dwarves' shafts run all the way to an underground city. Monsters live inside, they say",
-"Old Wasteland Mine",
-"Wasteland Arena"
+"From wastes and volcanoes. Requires an iron pickaxe"
 ]

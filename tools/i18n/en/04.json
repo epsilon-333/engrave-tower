@@ -1,5 +1,4 @@
 [
-"Rust echo",
 "Rusty cell",
 "A rusty cell is locked. Beyond it is a small room and a chest. There's a keyhole",
 "Rusty Helmet",
@@ -89,7 +88,7 @@
 "Slow but heavy. Stronger the more you charge",
 "Slow Wingbeat",
 "Slow Sand",
-"Slow · low mana",
+"Slow · Low evasion",
 "Wolf fang",
 "becomes a bone pile and",
 "can now bless any race (your own race gets 1.5x), up to stage 5. Higher stages need more relics but are much stronger",
@@ -398,5 +397,6 @@
 "Poison Spout",
 "Poison Vortex",
 "Poison smoke",
-"Poison puddle"
+"Poison puddle",
+"Max poison stacks +10"
 ]

@@ -1,4 +1,7 @@
 [
+"Order",
+"Patrol's side",
+"Side with the patrol",
 "The patrol is harassing a farmer",
 "To the patrol ◆ 60",
 "Fight the patrol · lose fame · merit",
@@ -395,8 +398,5 @@
 "Where to get",
 "Stone found everywhere",
 "Glittering soil found everywhere",
-"Give it to someone in need as a donation: fame rises",
-"Hand money to people in need and everyone notices",
-"Hard",
-"Dusk Sprite"
+"Give it to someone in need as a donation: fame rises"
 ]

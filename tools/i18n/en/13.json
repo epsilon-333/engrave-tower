@@ -1,4 +1,6 @@
 [
+"Pause",
+"Eclipse",
 "Eclipse Orb",
 "Rising Skeleton",
 "Volley",
@@ -276,7 +278,7 @@
 "Spirit Drain",
 "Forms pacts with spirits to fight together. The called spirit buffs you and attacks enemies",
 "Elves bonded to spirits",
-"Fights alongside spirits. Spirit power fills on its own, and projectile damage rises the farther the hit (max +30",
+"Fights alongside spirits. Projectile damage grows with hit distance (+100% at 260, scaling evenly",
 "The spirits welcome you. That's rare",
 "Spirit power",
 "Spiritcaller",
@@ -291,7 +293,6 @@
 "Spirit King's Crown",
 "Brings up to three spirits along (second and third give 70% buff). Offer coins at the World Tree sanctum's 「Spirit Pact」 to form pacts (6 elements · 4 grades, chance-based · elves only). Pacting with the same spirit again raises the bond and strengthens it. 「Call Spirit」 brings out your bonded spirit",
 "Spirit Feather",
-"Spirit's Friend",
 "Call of Spirits",
 "Spirit Flame",
 "Spirit's Breath",
@@ -397,6 +398,5 @@
 "Race modifier ×",
 "Between races",
 "Race shop",
-"Race shop technique book · 1200 gold",
-"Race shop technique book · 1500 gold"
+"Race shop technique book · 1200 gold"
 ]
