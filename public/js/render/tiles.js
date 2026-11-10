@@ -2,6 +2,7 @@
 import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD } from '../sim/mapgen.js';
 import { sprite } from './assets.js';
 import { ZONE_TINT } from '../data/art.js';
+import { hasGroundTheme, paintTowerGround } from './towerground.js';
 
 export function hash(x, y, s = 0) {
   let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 1442695041)) | 0;
@@ -26,6 +27,11 @@ export function renderMap(world) {
   const put = (name, x, y) => { const s = sprite(name); if (s) g.drawImage(s, x, y); };
 
   g.fillStyle = VOID; g.fillRect(0, 0, raw.width, raw.height);
+  const themed = hasGroundTheme(world); // 탑 · 굴: 땅 · 이끼 · 옛 돌바닥 · 벽을 픽셀로 직접 (render/towerground.js)
+  if (themed) {
+    paintTowerGround(world, g);
+    for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) if (at(x, y) === T_CRACK) crackLines(g, x * TILE, y * TILE);
+  } else {
   for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
     const t = at(x, y), px = x * TILE, py = y * TILE;
     if (open(t)) {
@@ -74,6 +80,7 @@ export function renderMap(world) {
     if (open(at(x + 1, y))) g.fillRect(px + TILE - 3, py, 1, TILE);
     if (open(at(x - 1, y))) g.fillRect(px + 2, py, 1, TILE);
   }
+  }
 
   if (world.map.plaza) plazaStatic(g, world.map);
   for (const d of world.map.deco) drawDeco(g, d);
@@ -82,7 +89,7 @@ export function renderMap(world) {
   const out = document.createElement('canvas');
   out.width = raw.width; out.height = raw.height;
   const og = out.getContext('2d');
-  og.filter = ZONE_TINT[z.id] || 'none';
+  og.filter = (!themed && ZONE_TINT[z.id]) || 'none';
   og.drawImage(raw, 0, 0);
   og.filter = 'none';
   // 물·용암은 색조 없이 원래 색으로
