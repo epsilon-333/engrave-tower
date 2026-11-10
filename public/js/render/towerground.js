@@ -24,61 +24,51 @@ const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((b) => 
 const THEMES = {
   cave: { // 이끼 굴: 축축한 흙 · 짙은 이끼 · 무너진 옛 판석
     base: ['#4b4536', '#5a523f', '#3a352a'], patch: { cols: ['#3a5a29', '#4a7034', '#2c4422'], cover: 0.36, wall: 0.35, sc: 30 },
-    slab: { cols: ['#55503f', '#615b49', '#46412f', '#2c271f'], amt: 0.3, sc: 11 },
     face: { cols: ['#221e19', '#3e382f', '#544c3f', '#6a6150'], kind: 'rock' }, mass: ['#16130f', '#1f1b16', '#3c4a2c'],
-    drip: 'moss', bits: [['pebble', 0.22], ['crack', 0.12], ['tuft', 0.18], ['shroom', 0.04], ['root', 0.06], ['leaf', 0.06]],
+    rock: { cols: ['#57513f', '#655e4a', '#3a3528'], amt: 0.2, sc: 34 }, drip: 'moss', bits: [['pebble', 0.22], ['crack', 0.12], ['tuft', 0.18], ['shroom', 0.04], ['root', 0.06], ['leaf', 0.06]],
   },
   swamp: { // 독늪: 진흙 · 물이끼 · 갈대
     base: ['#3f3a26', '#4b4630', '#2f2b1c'], patch: { cols: ['#4d5a22', '#67782e', '#363f19'], cover: 0.5, wall: 0.3, sc: 26 },
-    slab: { cols: ['#53503c', '#625e48', '#423f2f', '#221f15'], amt: 0.12, sc: 12 },
     face: { cols: ['#1c1a10', '#36331f', '#4a462c', '#5e6a2c'], kind: 'rock' }, mass: ['#121108', '#1a190e', '#3e4a1e'],
-    drip: 'slime', bits: [['reed', 0.22], ['bubble', 0.12], ['pebble', 0.12], ['tuft', 0.2], ['crack', 0.06]],
+    rock: { cols: ['#4a4632', '#56523a', '#2e2b1c'], amt: 0.12, sc: 30 }, drip: 'slime', bits: [['reed', 0.22], ['bubble', 0.12], ['pebble', 0.12], ['tuft', 0.2], ['crack', 0.06]],
   },
   rift: { // 화산 균열: 현무암 · 재 · 빛나는 금
     base: ['#3a2c29', '#47362f', '#2a1f1d'], patch: { cols: ['#56504d', '#6c6461', '#433c3a'], cover: 0.3, wall: 0.15, sc: 28 },
-    slab: { cols: ['#4c3b35', '#5c4840', '#3a2c28', '#1a1210'], amt: 0.28, sc: 12 },
     face: { cols: ['#1a1212', '#3a2826', '#523834', '#7a4a34'], kind: 'rock' }, mass: ['#120c0c', '#1c1414', '#6a3020'],
-    drip: 'glow', bits: [['ember', 0.16], ['pebbleDark', 0.2], ['crack', 0.14], ['ash', 0.14]],
+    rock: { cols: ['#2c2222', '#3a2c2a', '#140e0e'], amt: 0.3, sc: 26 }, veins: { col: '#9a3a18', sc: 56, w: 0.006 }, drip: 'glow', bits: [['ember', 0.16], ['pebbleDark', 0.2], ['crack', 0.14], ['ash', 0.14]],
   },
   frost: { // 서리 회랑: 푸른 돌 · 쌓인 눈 · 얼음 조각
     base: ['#6d8193', '#7b90a2', '#5a6c7e'], patch: { cols: ['#d8e4ee', '#f2f7fb', '#b8c8d8'], cover: 0.36, wall: 0.4, sc: 24 },
-    slab: { cols: ['#7a8ea0', '#8a9eb0', '#687c8e', '#4a5a6c'], amt: 0.4, sc: 13 },
     face: { cols: ['#2a3442', '#4a5a6c', '#6a7c90', '#c8dcec'], kind: 'rock' }, mass: ['#141a22', '#1c2430', '#8aa6be'],
-    drip: 'ice', bits: [['sparkle', 0.2], ['iceShard', 0.08], ['crack', 0.1], ['pebble', 0.1]],
+    rock: { cols: ['#a8cce0', '#c4e2f2', '#7aa0b8'], amt: 0.3, sc: 30 }, drip: 'ice', bits: [['sparkle', 0.2], ['iceShard', 0.08], ['crack', 0.1], ['pebble', 0.1]],
   },
   grave: { // 그림자 묘지: 검은 흙 · 마른 풀 · 무덤 돌바닥 · 뼈
     base: ['#2f2a33', '#3a3440', '#231f28'], patch: { cols: ['#47402f', '#59503b', '#352f24'], cover: 0.3, wall: 0.2, sc: 26 },
-    slab: { cols: ['#45404c', '#544e5c', '#36323c', '#18151c'], amt: 0.45, sc: 12 },
     face: { cols: ['#16131a', '#2e2a34', '#423c4a', '#5a5266'], kind: 'brick' }, mass: ['#0e0c12', '#16131a', '#4a3e5a'],
-    drip: 'web', bits: [['bone', 0.08], ['crack', 0.14], ['tuftDead', 0.18], ['pebble', 0.12], ['fungus', 0.05]],
+    rock: { cols: ['#3e3844', '#4a4452', '#26222c'], amt: 0.18, sc: 30 }, drip: 'web', bits: [['bone', 0.08], ['crack', 0.14], ['tuftDead', 0.18], ['pebble', 0.12], ['fungus', 0.05]],
   },
   sky: { // 하늘 정원: 풀밭 · 흰 돌길 · 꽃
     base: ['#5a9a48', '#6aaa52', '#4a863c'], patch: { cols: ['#7ab85a', '#90cc6c', '#5c9a46'], cover: 0.4, wall: 0, sc: 22 },
-    slab: { cols: ['#c9ccd2', '#dcdfe4', '#a9adb5', '#7a7e88'], amt: 0.3, sc: 12 },
     face: { cols: ['#5a5e68', '#9aa0aa', '#c4c8d0', '#e8ecf2'], kind: 'brick' }, mass: ['#3a3e48', '#4a4e58', '#dce2ea'],
-    drip: 'vine', bits: [['flower', 0.16], ['tuft', 0.3], ['pebble', 0.06]],
+    rock: { cols: ['#a8a090', '#bab2a2', '#7e7868'], amt: 0.1, sc: 28 }, drip: 'vine', bits: [['flower', 0.16], ['tuft', 0.3], ['pebble', 0.06]],
   },
-  mirror: { // 거울 미궁: 은빛 판석 · 반짝이는 조각
-    base: ['#848fa2', '#94a0b2', '#717c90'], patch: null,
-    slab: { cols: ['#8e9aae', '#a6b2c6', '#7a869a', '#566076'], ashlar: 21 },
+  mirror: { // 거울 미궁: 은빛 수정 바위 · 빛나는 결 · 반짝이는 조각
+    base: ['#7a8598', '#8a96a8', '#667086'], patch: null, rock: { cols: ['#a4b4cc', '#c8d6ea', '#7a88a0'], amt: 0.26, sc: 26 }, veins: { col: '#c8dcf4', sc: 48, w: 0.006 },
     face: { cols: ['#2a3040', '#58627a', '#8a96ae', '#d8e4f4'], kind: 'brick' }, mass: ['#141824', '#1c2230', '#aab8d0'],
     drip: null, bits: [['sparkle', 0.18], ['shard', 0.06], ['crack', 0.06]],
   },
-  clock: { // 태엽 시계탑: 구리 판 · 리벳 · 기름 얼룩
-    base: ['#5c4430', '#6c5038', '#4a3626'], patch: { cols: ['#3a2e24', '#45372a', '#2e241c'], cover: 0.22, wall: 0.1, sc: 20 },
-    slab: { cols: ['#7a5a38', '#8e6c46', '#64482e', '#3a2818'], ashlar: 22, rivet: '#b89058' },
+  clock: { // 태엽 시계탑: 낡은 나무 마루(결만, 이음매 없이) · 기름 얼룩 · 톱니
+    base: ['#5c4430', '#6c5038', '#4a3626'], grain: true, patch: { cols: ['#3a2e24', '#45372a', '#2e241c'], cover: 0.22, wall: 0.1, sc: 20 },
     face: { cols: ['#24180e', '#4e3622', '#6e4e30', '#c89a50'], kind: 'brick' }, mass: ['#140e08', '#1e150c', '#8a6a3a'],
     drip: null, bits: [['gear', 0.06], ['bolt', 0.1], ['crack', 0.06]],
   },
-  library: { // 별의 서고: 남보랏빛 판석 · 종이 · 먹 얼룩
-    base: ['#2f2d45', '#39374f', '#25233a'], patch: { cols: ['#3e2a3a', '#4c3446', '#30202c'], cover: 0.18, wall: 0.05, sc: 30 },
-    slab: { cols: ['#3a3854', '#46446a', '#2e2c44', '#1e1c34'], ashlar: 19 },
+  library: { // 별의 서고: 어두운 나무 마루 · 쏟은 먹 · 종이 · 별가루
+    base: ['#3a2e3a', '#463846', '#2c222c'], grain: true, patch: { cols: ['#1a1428', '#221a32', '#140e1e'], cover: 0.14, wall: 0.05, sc: 22 },
     face: { cols: ['#14122a', '#2e2c48', '#44426a', '#8a86c0'], kind: 'brick' }, mass: ['#0c0a1a', '#141228', '#6a66a0'],
     drip: null, bits: [['paper', 0.12], ['inkDot', 0.08], ['starDust', 0.12], ['crack', 0.05]],
   },
-  summit: { // 빛의 정상: 금빛 흰 대리석 · 금 상감
-    base: ['#c8b892', '#d8c8a2', '#b0a07c'], patch: null,
-    slab: { cols: ['#d4c6a2', '#e4d7b6', '#c0b28e', '#9a8a66'], ashlar: 23, inlay: '#e0b850' },
+  summit: { // 빛의 정상: 결이 흐르는 금빛 흰 대리석 (이음매 없이)
+    base: ['#c8b892', '#d8c8a2', '#b8a882'], patch: null, veins: { col: '#a08a5a', sc: 38, w: 0.009 },
     face: { cols: ['#6a5a3a', '#a8946a', '#cdbb90', '#fff0c0'], kind: 'brick' }, mass: ['#3a3020', '#4a3e2a', '#f0dca0'],
     drip: null, bits: [['lightShard', 0.08], ['featherGold', 0.05], ['sparkle', 0.14]],
   },
@@ -96,35 +86,23 @@ function groundLayer(world, T, W, H) {
   const near = new Float32Array(tw * th);
   for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) { let n = 0; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= tw || yy >= th || world.tiles[yy * tw + xx] === T_WALL) n++; } near[y * tw + x] = n / 25; }
   const nearAt = (x, y) => { const fx = Math.max(0, Math.min(tw - 1.001, x / TILE - 0.5)), fy = Math.max(0, Math.min(th - 1.001, y / TILE - 0.5)), x0 = fx | 0, y0 = fy | 0, u = fx - x0, v = fy - y0, x1 = Math.min(tw - 1, x0 + 1), y1 = Math.min(th - 1, y0 + 1); const a = near[y0 * tw + x0], b = near[y0 * tw + x1], c2 = near[y1 * tw + x0], d = near[y1 * tw + x1]; return a + (b - a) * u + (c2 - a) * v + (a - b - c2 + d) * u * v; };
-  const sc = T.slab?.sc || 12;
+  const R = T.rock && T.rock.cols.map(hex), V = T.veins && hex(T.veins.col);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const dz = BAYER[(y & 3) * 4 + (x & 3)];
     let n = noise(x, y, 40, 11) * 0.62 + noise(x, y, 11, 12) * 0.28 + noise(x, y, 4, 13) * 0.1 + dz;
+    if (T.grain) n = n * 0.55 + noise(x, y * 7, 18, 14) * 0.45; // 나뭇결 · 얼음결: 한쪽으로 길게 늘어난 무늬 (이음매 없이)
     let col = n < 0.4 ? B[2] : n < 0.62 ? B[0] : B[1];
-    // 옛 돌바닥: 흩어진 점에서 가장 가까운 점 둘의 거리 차가 작으면 틈 (불규칙한 판석)
-    if (S && T.slab.ashlar) { // 지어진 바닥: 줄마다 길이가 다른 직사각형 판석을 엇갈려 깐다 (칸 격자와 크기가 달라 모눈으로 보이지 않는다)
-      const rh = T.slab.ashlar, row = Math.floor(y / rh), iy = y - row * rh, off = (hash(row, 0, 81) % 61);
-      let sx = -off, w0 = 0, sid = 0; for (let k = 0; ; k++) { w0 = Math.round(rh * 0.9) + hash(row, k, 82) % Math.round(rh * 1.1); if (sx + w0 > x) { sid = hash(row, k, 83); break; } sx += w0; }
-      const ix = x - sx, sh = (sid & 255) / 255 + noise(x, y, 7, 22) * 0.3 + dz - 0.15;
-      col = iy === rh - 1 || ix === w0 - 1 ? S[3] : iy === 0 || ix === 0 ? S[1] : iy === rh - 2 || ix === w0 - 2 ? S[2] : sh < 0.3 ? S[2] : sh > 0.88 ? S[1] : S[0];
-      if (T.slab.rivet && (iy === 2 || iy === rh - 3) && (ix === 2 || ix === w0 - 3)) col = hex(T.slab.rivet);
-      if (T.slab.inlay && (sid >>> 9) % 5 === 0 && iy > 1 && iy < rh - 2 && ix > 1 && ix < w0 - 2 && (iy === 2 || iy === rh - 3 || ix === 2 || ix === w0 - 3)) col = hex(T.slab.inlay);
-    } else if (S && noise(x, y, 54, 21) + (T.slab.amt - 0.5) * 1.1 > 0.5) {
-      const gx = Math.floor(x / sc), gy = Math.floor(y / sc); let d1 = 1e9, d2 = 1e9, id = 0;
-      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
-        const cx = gx + i, cy = gy + j, h = hash(cx, cy, 31), ox = (cx + 0.15 + ((h & 255) / 255) * 0.7) * sc, oy = (cy + 0.15 + (((h >>> 8) & 255) / 255) * 0.7) * sc;
-        const d = (x - ox) * (x - ox) + (y - oy) * (y - oy) * 1.15;
-        if (d < d1) { d2 = d1; d1 = d; id = h; } else if (d < d2) d2 = d;
-      }
-      const edge = Math.sqrt(d2) - Math.sqrt(d1);
-      if (edge < 1.1) col = S[3];
-      else {
-        const shade = ((id >>> 16) & 255) / 255 + noise(x, y, 6, 22) * 0.35 + dz - 0.17;
-        col = edge < 2.1 && ((id >>> 3) & 1) ? S[2] : shade < 0.38 ? S[2] : shade > 0.86 ? S[1] : S[0];
-        if (T.slab.rivet && edge > 2.6 && edge < 3.6 && ((x + y) % 5 === 0)) col = hex(T.slab.rivet);
-        if (T.slab.inlay && edge >= 1.1 && edge < 1.8 && ((id >>> 20) % 3 === 0)) col = hex(T.slab.inlay);
+    // 드러난 바위 · 얼음판: 땅에서 자연스럽게 솟은 덩어리 (모서리는 디더링, 아래쪽 가장자리만 살짝 그늘)
+    if (R) {
+      const r = noise(x, y, T.rock.sc, 21) * 0.8 + noise(x, y, 6, 22) * 0.2 + dz * 0.6, th0 = 1 - T.rock.amt;
+      if (r > th0) {
+        const below = noise(x, y + 2, T.rock.sc, 21) * 0.8 + noise(x, y + 2, 6, 22) * 0.2 + dz * 0.6;
+        const tone = noise(x, y, 5, 23) + dz;
+        col = below <= th0 ? R[2] : r < th0 + 0.03 ? R[2] : tone > 0.7 ? R[1] : R[0];
       }
     }
+    // 결 (대리석 · 수정): 가는 선이 구불구불 지나간다
+    if (V && Math.abs(noise(x, y, T.veins.sc, 31) * 0.8 + noise(x, y, 9, 32) * 0.2 - 0.5) < T.veins.w) col = V;
     // 덮개 (이끼 · 눈 …): 벽 가까이 더 덮인다 · 가장자리는 디더링
     if (P) {
       const m = noise(x, y, T.patch.sc, 41) * 0.75 + noise(x, y, 7, 42) * 0.25 + nearAt(x, y) * T.patch.wall + dz * 0.8;
