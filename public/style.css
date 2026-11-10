@@ -12,10 +12,13 @@ html, body { user-select: none; margin: 0; height: 100%; background: var(--bg); 
 h1, h2, h3, .hub-top .title, .modal h2, .race b { font-family: Galmuri11, Galmuri11, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; -webkit-font-smoothing: none; }
 .panel h3 { font-size: 22px !important; } .hub-top .title { font-size: 22px !important; } .modal h2 { font-size: 22px !important; }
 [hidden] { display: none !important; }
+/* 모바일: 탭 반짝임 · 두 번 탭 확대 지연 없애기 (누를 때 · 뗄 때 두 번 눌리는 것처럼 보이던 문제) */
+* { -webkit-tap-highlight-color: transparent; }
+button, summary, select, input, label, a, [data-act] { touch-action: manipulation; }
 button { font: inherit; color: var(--text); background: #3a3032; border: 0; padding: 7px 14px; cursor: pointer;
   box-shadow: inset 0 -3px 0 #221b1c, inset 0 2px 0 #5c4c4a, 0 0 0 2px #0c0a0b; }
 button:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 -1px 0 #221b1c, 0 0 0 2px #0c0a0b; }
-button:hover:not(:disabled) { background: #4a3e40; }
+@media (hover: hover) { button:hover:not(:disabled) { background: #4a3e40; } }
 button:disabled { opacity: 0.4; cursor: default; }
 button.sm { padding: 3px 8px; font-size: 14px; }
 button.ghost { background: transparent; }
@@ -43,12 +46,12 @@ nav { margin-left: 0 !important; }
 .intro-wrap { position: fixed; inset: 0; z-index: 9999; background: #000; }
 .intro-wrap canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 .race-select .intro-again { display: block; margin: 0 auto 10px; font: 13px Galmuri11, sans-serif; padding: 5px 14px; background: #1a1424; color: #e8dcc8; border: 1px solid #5e5253; border-radius: 4px; cursor: pointer; }
-.race-select .intro-again:hover { border-color: var(--accent); color: var(--accent); }
+@media (hover: hover) { .race-select .intro-again:hover { border-color: var(--accent); color: var(--accent); } }
 .race-select h1 { font-family: Galmuri14, Galmuri11, sans-serif; font-size: 56px; color: var(--accent); margin: 0 0 6px; letter-spacing: 4px; text-shadow: 3px 3px 0 #5a2a00; }
 .races { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 20px; }
 .race { display: grid; gap: 6px; justify-items: center; text-align: center; padding: 14px; background: var(--panel); }
 .race canvas { image-rendering: pixelated; }
-.race:hover canvas { transform: translateY(-3px); }
+@media (hover: hover) { .race:hover canvas { transform: translateY(-3px); } }
 .race b { font-size: 18px; }
 .race p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.5; }
 .mini-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; font-size: 14px; width: 100%; }
@@ -391,7 +394,7 @@ em.up { color: #8fcf7a; font-style: normal; } em.down { color: #e2725e; font-sty
 .cookres b { font-size: 17px; }
 .gi.big { width: 48px; height: 48px; }
 button.good { cursor: pointer; color: var(--text); box-shadow: none; }
-button.good:hover:not(:disabled) { background: #37302e; box-shadow: inset 0 0 0 1px var(--accent); }
+@media (hover: hover) { button.good:hover:not(:disabled) { background: #37302e; box-shadow: inset 0 0 0 1px var(--accent); } }
 .good em { font-style: normal; font-size: 12px; color: var(--muted); }
 .good em i { font-style: normal; }
 .good.quick { box-shadow: inset 0 0 0 2px var(--accent); }
@@ -537,7 +540,7 @@ b.dim { color: #e8c890; }
 .cl-resume { background: #1e1a19; padding: 10px; box-shadow: inset 0 0 0 2px #5e5253; }
 .cl-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; text-align: left; }
 .cl-card { position: relative; display: grid; align-content: start; gap: 5px; padding: 12px 12px 10px; background: linear-gradient(180deg, #241f1e, #16121f); color: #e8e0f0; border: 0; box-shadow: inset 0 0 0 2px var(--g), 0 0 0 2px #0c0a0b; cursor: pointer; font: inherit; text-align: left; transition: transform .08s, box-shadow .08s; }
-.cl-card:hover:not([disabled]) { transform: translateY(-3px); box-shadow: inset 0 0 0 2px var(--g), 0 0 0 2px #0c0a0b, 0 6px 18px rgba(0,0,0,.5), 0 0 16px color-mix(in srgb, var(--g) 45%, transparent); }
+@media (hover: hover) { .cl-card:hover:not([disabled]) { transform: translateY(-3px); box-shadow: inset 0 0 0 2px var(--g), 0 0 0 2px #0c0a0b, 0 6px 18px rgba(0,0,0,.5), 0 0 16px color-mix(in srgb, var(--g) 45%, transparent); } }
 .cl-card[disabled] { opacity: .45; cursor: default; }
 .cl-card b { font-size: 17px; color: var(--g); font-family: Galmuri11, Galmuri11, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
 .cl-card .cl-grade { font-size: 12px; color: var(--g); opacity: .85; }
@@ -614,9 +617,9 @@ small { font-size: var(--fs-s); }
 .muted { color: var(--muted); }
 /* 버튼: 기본 · 강조(.on / .primary) · 흐림(.ghost) */
 button.primary { background: var(--accent); color: var(--accent-dk); box-shadow: inset 0 -3px 0 #b8862a, inset 0 2px 0 #ffe9a8, 0 0 0 2px #0c0a0b; }
-button.primary:hover:not(:disabled) { background: #ffdc80; }
+@media (hover: hover) { button.primary:hover:not(:disabled) { background: #ffdc80; } }
 button.ghost { box-shadow: inset 0 0 0 1px var(--line), 0 0 0 1px #0c0a0b; }
-button.ghost:hover:not(:disabled) { background: var(--bg3); box-shadow: inset 0 0 0 1px var(--line-hi), 0 0 0 1px #0c0a0b; }
+@media (hover: hover) { button.ghost:hover:not(:disabled) { background: var(--bg3); box-shadow: inset 0 0 0 1px var(--line-hi), 0 0 0 1px #0c0a0b; } }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* 토글 (체크박스): 브라우저 기본 대신 도트 상자 */
 input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 18px; height: 18px; margin: 0 8px 0 0; vertical-align: -4px; cursor: pointer;
@@ -647,7 +650,7 @@ body.touch #cloudChip { right: auto; bottom: auto; }
 .rail-g { display: grid; gap: 4px; }
 .rail-h { font: 11px Galmuri11, sans-serif; color: var(--muted); letter-spacing: 2px; padding: 0 4px 2px; border-bottom: 1px solid var(--line); margin-bottom: 2px; }
 .rail button { text-align: left; padding: 7px 10px; background: transparent; box-shadow: none; font-size: var(--fs-m); }
-.rail button:hover:not(:disabled) { background: var(--bg3); }
+@media (hover: hover) { .rail button:hover:not(:disabled) { background: var(--bg3); } }
 .rail button.on { background: var(--bg3); color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
 .hub-body { max-width: 1180px; margin: 0; width: 100%; }
 @media (max-width: 760px) {
@@ -664,7 +667,7 @@ body.touch #cloudChip { right: auto; bottom: auto; }
 .eng-rows { display: grid !important; grid-template-columns: 1fr !important; gap: 2px !important; }
 .eng-row { display: grid; grid-template-columns: minmax(8em, 1.4fr) minmax(0, 1fr) minmax(5em, 0.9fr) 6.5em; align-items: center; gap: 8px; text-align: left;
   padding: 6px 10px; background: var(--bg1); box-shadow: inset 3px 0 0 var(--g, var(--line)); font-size: var(--fs-s); }
-.eng-row:hover:not(:disabled) { background: var(--bg3); }
+@media (hover: hover) { .eng-row:hover:not(:disabled) { background: var(--bg3); } }
 .eng-row.on { background: var(--bg3); box-shadow: inset 3px 0 0 var(--g), inset 0 0 0 1px var(--accent); }
 .eng-row.unknown { color: var(--muted); }
 .er-name { font-weight: 600; color: var(--g, var(--text)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -699,7 +702,7 @@ body.touch #cloudChip { right: auto; bottom: auto; }
 .cs-meta { font-size: var(--fs-xs); color: var(--muted); } .cs-desc { font-size: var(--fs-s); line-height: 1.55; }
 /* ? 말풍선: 긴 설명은 여기 */
 .help { display: inline-grid; place-items: center; width: 17px; height: 17px; margin-left: 6px; font: 700 11px Galmuri11, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; color: var(--muted); background: var(--bg0); box-shadow: inset 0 0 0 1px var(--line-hi); cursor: help; position: relative; vertical-align: 3px; }
-.help:hover { color: var(--accent); }
+@media (hover: hover) { .help:hover { color: var(--accent); } }
 .help:hover::after { content: attr(data-tip); position: absolute; left: 0; top: calc(100% + 6px); z-index: 20; width: max-content; max-width: 300px; white-space: normal; text-align: left;
   padding: 7px 10px; font: 400 var(--fs-s)/1.55 Galmuri11, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; color: var(--text); background: var(--bg0); box-shadow: 0 0 0 2px #0c0a0b, inset 0 0 0 1px var(--line-hi); pointer-events: none; letter-spacing: 0; }
 /* 도감: 아직 모르는 칸은 작은 ??? 타일로 (긴 「아직 만나지 못했다」 줄이 늘어서지 않게) */
