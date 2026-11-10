@@ -1422,7 +1422,7 @@ export class Renderer {
     const g = this.g, u = this.u, v = Math.max(1.5, u * 1.3), p = w.player, f = p.fish, Wc = this.c.width;
     this.beatPulse = Math.max(0, (this.beatPulse || 0) - dt * 4);
     const px = this.sx(p.x), py = this.sy(p.y - 34);
-    if (f.phase === 'wait') { g.globalAlpha = 0.75; this.text('찌를 지켜보세요 · 가라앉으면 G', px, py - 8 * u, Math.max(1, u - 1), '#d8e8f4', 'center'); g.globalAlpha = 1; return; }
+    if (f.phase === 'wait') { g.globalAlpha = 0.75; this.text('찌가 가라앉으면 G', px, py - 8 * u, Math.max(1, u - 1), '#d8e8f4', 'center'); g.globalAlpha = 1; return; }
     if (f.phase === 'bite') {
       const s2 = 1 + 0.12 * Math.sin(w.t * 18), bw = 92 * u * s2, bh = 22 * u * s2;
       this.panel(px - bw / 2, py - 30 * u - bh / 2, bw, bh);

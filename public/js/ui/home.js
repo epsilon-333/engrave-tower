@@ -40,7 +40,7 @@ export function storageTab(s) {
   };
   const quick = Object.entries(GOOD_CATS).filter(([c]) => Object.entries(s.bag || {}).some(([id, n]) => n > 0 && GOODS[id]?.cat === c));
   return `<section class="panel"><h3>보관함 </h3>
-      <p class="muted">${bagLine(s)} · 물건 종류마다 한 칸 (같은 물건은 몇 개든 한 칸). 가방이 가득 차면 새 물건을 주울 수 없다. 잡화점에서 가방을 늘릴 수 있다.</p>
+      <p class="muted">${bagLine(s)} · 종류마다 한 칸 · 늘리기: 잡화점</p>
       <div class="qbtns">${quick.map(([c, n]) => `<button class="sm ghost" data-act="storeCat" data-id="${c}">${n} 모두 넣기</button>`).join('')}</div></section>
     <div class="cols"><section class="panel"><h3>가방</h3>${list(s.bag || {}, 'bag')}</section>
     <section class="panel"><h3>보관함</h3>${list(s.chest, 'chest')}</section></div>`;
@@ -55,7 +55,7 @@ export function cookTab(s, ui) {
   const slots = Array.from({ length: 5 }, (_, i) => pot[i]
     ? `<button class="potslot on" data-act="potOut" data-n="${i}" title="${esc(GOODS[pot[i]].name)}">${ico(pot[i])}</button>`
     : '<span class="potslot"></span>').join('');
-  let result = '<p class="muted">재료를 넣으세요</p>';
+  let result = '<p class="muted">재료를 넣는다</p>';
   if (pv) {
     const d = { recipe: pv.recipe, eff: pv.eff, lvl: pv.lvl, heal: pv.heal };
     result = `<div class="cookres">${ico(pv.key, 'big')}<div><b>${dishName(d)}${pv.lvl ? ' ' + '★'.repeat(pv.lvl) : ''}</b><br>

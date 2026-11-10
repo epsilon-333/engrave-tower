@@ -174,7 +174,7 @@ export class Hub {
     const echoSpan = ([id, n]) => `<span class="echo" style="--c:${ECHOES[id].color}">◇ ${ECHOES[id].name} <b>${n}</b></span>`;
     const haveE = Object.entries(s.echoes).filter(([id, n]) => n > 0 && ECHOES[id]);
     const echoInv = haveE.length ? `${haveE.filter(([id]) => !ECHOES[id].part).map(echoSpan).join('') || '<span class="muted">계열 잔향 없음</span>'}
-      <div class="muted" style="margin-top:4px">몬스터 부산물</div>${haveE.filter(([id]) => ECHOES[id].part).map(echoSpan).join('') || '<span class="muted">없음</span>'}` : '<span class="muted">잔향이 없습니다. 사냥터에서 몬스터를 사냥하세요.</span>';
+      <div class="muted" style="margin-top:4px">몬스터 부산물</div>${haveE.filter(([id]) => ECHOES[id].part).map(echoSpan).join('') || '<span class="muted">없음</span>'}` : '<span class="muted">잔향 없음</span>';
 
     const zonesOf = (id) => [...new Set(Object.keys(ENGRAVINGS[id].recipe).map(zoneOfEcho))];
     // 그 계열의 잔향을 주는 몬스터가 사는 바깥 세계의 던전들
@@ -241,7 +241,7 @@ export class Hub {
         </details>
         ${goalHtml}
         <div class="eng-split"><div id="engList">${groups || '<p class="muted">없음</p>'}</div>
-        <aside class="eng-detail">${this.altarSel && ENGRAVINGS[this.altarSel] ? this.engravingCard(this.altarSel, s, b) : '<p class="muted">각인을 고르세요</p>'}</aside></div>
+        <aside class="eng-detail">${this.altarSel && ENGRAVINGS[this.altarSel] ? this.engravingCard(this.altarSel, s, b) : '<p class="muted">각인을 고른다</p>'}</aside></div>
       </section>`;
   }
 
@@ -460,7 +460,7 @@ export class Hub {
       <section class="panel"><h3>${ownedOnly ? '내 장비' : '대장간'}</h3>
         ${gearFilters}
         <div class="eng-split"><div class="cards eng-rows">${all.map(gearRowItem).join('') || '<p class="muted">없음</p>'}</div>
-        <aside class="eng-detail">${sel ? card(sel) : '<p class="muted">장비를 고르세요</p>'}</aside></div></section>`;
+        <aside class="eng-detail">${sel ? card(sel) : '<p class="muted">장비를 고른다</p>'}</aside></div></section>`;
   }
 
   // ───── 사냥터 ─────
@@ -481,8 +481,7 @@ export class Hub {
           <button data-act="hunt" data-id="${z.id}">바로 들어가기</button>
         </div>`;
       }).join('')}</div>
-      <p class="muted">광장 북쪽의 관문으로도 들어갈 수 있습니다. 필드는 넓은 동굴 지형이며, 몬스터는 지역마다 무리지어 삽니다.<br>
-      시작 지점의 귀환 포탈로 돌아오면 잔향 전부 · 긴급 귀환(Esc) 70% · 사망 50%</p></section>`;
+      <p class="muted">가져오는 잔향: 귀환 포탈 100% · 긴급 귀환 70% · 사망 50%</p></section>`;
   }
 
   // ───── 도감 ─────
@@ -521,7 +520,7 @@ export class Hub {
       const story = `<h4>바람결의 섬 이야기</h4><div class="list">${WORLD_HISTORY.map((h) => `<details class="li on"><summary><b>${h.title}</b></summary><p>${esc(h.text)}</p></details>`).join('')}</div>
         <h4>종족 사이 <small>성지 창의 「이야기」에서 더 자세히</small></h4><div class="list">${relRows.map(([a2, b2, r]) => `<div class="li"><b style="color:${SANCT_ALL[a2].color}">${RACES[a2]?.name || a2}</b> · <b style="color:${SANCT_ALL[b2].color}">${RACES[b2]?.name || b2}</b> <span class="rel-tag" style="--c:${REL_COLOR[r.v]}">${REL_NAME[r.v]}</span><br><small>${esc(r.why)}</small></div>`).join('')}</div>`;
       body = story + `<h4>등반가 세린의 일지</h4><div class="list">${Object.entries(JOURNALS).map(([id, j]) => c.journals?.[id] ? `<details class="li on"><summary><b>${j.title}</b> <small>${j.where}</small></summary><p class="journal">${esc(j.text).replace(/\n/g, '<br>')}</p></details>` : '<div class="li off">??? <small>찢겨 나간 일지 한 장</small></div>').join('')}</div>
-        <h4>고대 석판</h4><div class="list">${(c.lore || []).map((t) => `<div class="li lore">${esc(t)}</div>`).join('') || '<div class="li off">필드의 고대 석판을 찾아 읽어 보세요.</div>'}</div>
+        <h4>고대 석판</h4><div class="list">${(c.lore || []).map((t) => `<div class="li lore">${esc(t)}</div>`).join('') || '<div class="li off">아직 읽은 석판이 없다</div>'}</div>
         <h4>가지고 있는 이야기 물건</h4><div class="list">${Object.entries(items).filter(([, n]) => n > 0).map(([id, n]) => `<div class="li"><b style="color:${STORY_ITEMS[id].color}">${STORY_ITEMS[id].name}</b>${n > 1 ? ` ×${n}` : ''} <small>${STORY_ITEMS[id].desc}</small></div>`).join('') || '<div class="li off">없음</div>'}</div>`;
     } else if (sec === 'mats') {
       // 각인 재료: 계열 잔향 · 몬스터 부산물마다 어느 몬스터가 · 어디서 남기는지, 어느 각인에 쓰이는지 (만난 몬스터만 이름이 보인다)
@@ -552,8 +551,8 @@ export class Hub {
         ? `<div class="li on"><b>${r.name}</b> (${r.recipe}) ${r.desc}</div>`
         : '<div class="li off">??? 아직 발견하지 못한 원소 반응</div>').join('');
       const tags = Object.values(TAGS).map((t) => `<div class="li"><span class="tag" style="--c:${t.color}">${t.name}</span> ${t.tiers.map((x) => `${x.n}개: ${x.text}`).join(' / ')}</div>`).join('');
-      body = `<h4>원소 반응</h4><div class="list">${reactions}</div><p class="muted">상태이상이 겹치면 반응이 일어납니다. 지속 피해(화상·중독·출혈)는 적의 저항을 무시합니다.</p>
-        <h4>태그 시너지</h4><div class="list">${tags}</div><p class="muted">화염과 냉기를 둘 다 4개 이상 모으면 서로 상쇄되어 둘 다 꺼집니다.</p>`;
+      body = `<h4>원소 반응</h4><div class="list">${reactions}</div><p class="muted">상태이상이 겹치면 반응 · 지속 피해는 저항 무시</p>
+        <h4>태그 시너지</h4><div class="list">${tags}</div><p class="muted">화염 · 냉기가 둘 다 4개 이상이면 둘 다 꺼진다</p>`;
     }
     return `<section class="panel codex">${head}${body}</section>`;
   }
@@ -614,24 +613,24 @@ export class Hub {
       case 'claim': { const r = claimQuest(s, id); if (r) { this.toast(`보상: 골드 ${r.q.reward.gold}`); this.onQuest?.(); } break; }
       case 'alloc': if (s.points > 0) { s.alloc[k] = (s.alloc[k] || 0) + (ev.shiftKey ? Math.min(5, s.points) : 1); s.points -= ev.shiftKey ? Math.min(5, s.points) : 1; } break;
       case 'unalloc': if (s.alloc[k]) { s.alloc[k]--; s.points++; } break;
-      case 'respec': for (const v of Object.values(s.alloc)) s.points += v; s.alloc = {}; this.toast('스탯 배분을 초기화했습니다'); break;
+      case 'respec': for (const v of Object.values(s.alloc)) s.points += v; s.alloc = {}; this.toast('스탯 배분을 되돌렸다'); break;
       case 'craft': {
         const e = ENGRAVINGS[id];
-        if ((s.owned[id] || 0) > 0) { this.toast('이미 가진 각인입니다 (같은 각인은 하나만)'); break; }
+        if ((s.owned[id] || 0) > 0) { this.toast('이미 가진 각인 (같은 각인은 하나만)'); break; }
         if (!Object.entries(e.recipe).every(([eid, n]) => (s.echoes[eid] || 0) >= n)) break;
         for (const [eid, n] of Object.entries(e.recipe)) s.echoes[eid] -= n;
         s.owned[id] = (s.owned[id] || 0) + 1;
-        this.toast(`${e.name} 각인을 새겼습니다`);
+        this.toast(`${e.name} 각인을 새겼다`);
         break;
       }
       case 'equipE': {
         const e = ENGRAVINGS[id];
-        if (Object.values(s.slots).includes(id)) { this.toast('이미 끼운 각인입니다'); break; }
+        if (Object.values(s.slots).includes(id)) { this.toast('이미 끼운 각인'); break; }
         // 같은 스킬을 주는 각인은 스킬 칸(Q · E · R · F)에 하나만: 겹치면 패시브 칸으로, 거기도 차 있으면 못 끼운다
         const dup = sameSkillSlot(s, id);
         const target = dup ? (!s.slots[SLOTS[4]] ? SLOTS[4] : null) : SLOTS.find((x) => !s.slots[x]);
         if (!target && dup) { this.toast(`「${SKILLS[engravingSkillFor(id, s.race)].name}」 스킬은 이미 ${SLOT_KEYS[SLOTS.indexOf(dup)]} 칸의 각인이 준다 · 패시브 칸이 비어야 끼울 수 있다`); break; }
-        if (!target) { this.toast('빈 각인 칸이 없습니다. 먼저 하나를 빼세요'); break; }
+        if (!target) { this.toast('빈 각인 칸이 없다 · 먼저 하나를 뺀다'); break; }
         s.slots[target] = id;
         const after = computeBuild(toLoadout(s));
         if (after.load > after.derived.loadCap) { delete s.slots[target]; this.toast(`부하가 넘친다 (${after.load} / ${after.derived.loadCap}) · 다른 각인을 빼거나 정신을 올리자`); break; }
@@ -660,8 +659,8 @@ export class Hub {
         s.cls = id; s.skills = undefined; s.style = c.style;
         grantClassEngravings(s); // 이 클래스의 스킬 각인 (지금 레벨까지 열린 것)
         const starter = c.weapons[0];
-        if (!s.items.includes(starter)) { s.items.push(starter); this.toast(`${c.name} · 시작 무기 「${ITEMS[starter].name}」를 받았습니다`); }
-        else this.toast(`${c.name}(으)로 바꿨습니다`);
+        if (!s.items.includes(starter)) { s.items.push(starter); this.toast(`${c.name} · 시작 무기 「${ITEMS[starter].name}」를 받았다`); }
+        else this.toast(`${c.name}(으)로 바꿨다`);
         if (ITEMS[s.gear.weapon]?.cls && ITEMS[s.gear.weapon].cls !== id) s.gear.weapon = starter;
         break;
       }
@@ -693,19 +692,19 @@ export class Hub {
       case 'goal': {
         s.goals ||= [];
         const i = s.goals.indexOf(id);
-        if (i >= 0) s.goals.splice(i, 1); else { s.goals.push(id); this.toast(`${ENGRAVINGS[id].name}을(를) 목표로 찜했습니다`); }
+        if (i >= 0) s.goals.splice(i, 1); else { s.goals.push(id); this.toast(`${ENGRAVINGS[id].name}을(를) 목표로 찜했다`); }
         break;
       }
       case 'hunt': return this.onStartRun(id);
       case 'close': return this.onClose();
-      case 'copyCode': $('#buildCode').select(); try { navigator.clipboard.writeText($('#buildCode').value); } catch { /* 무시 */ } this.toast('빌드 코드를 복사했습니다'); return;
+      case 'copyCode': $('#buildCode').select(); try { navigator.clipboard.writeText($('#buildCode').value); } catch { /* 무시 */ } this.toast('빌드 코드를 복사했다'); return;
       case 'peek': {
         try {
           const lo = decodeLoadout($('#peekCode').value);
           const pb = computeBuild(lo), d = pb.derived;
           $('#peekOut').innerHTML = `<div class="peek">${RACES[lo.race].name} Lv${lo.level} · HP ${d.maxHp} · 물공 ${Math.round(d.physAtk)} · 마공 ${Math.round(d.magAtk)} · 각성 ${pb.awakenings.filter((a) => a.on).length}개 · 시너지 ${pb.synergies.filter((x) => x.on).length}개<br>
             각인: ${Object.values(lo.engravings).map((x) => ENGRAVINGS[x]?.name).join(', ') || '없음'}</div>`;
-        } catch { this.toast('잘못된 빌드 코드입니다'); }
+        } catch { this.toast('잘못된 빌드 코드'); }
         return;
       }
       case 'reset':
@@ -770,7 +769,7 @@ export function renderRaceSelect(root, onPick, onIntro) {
   root.innerHTML = `<div class="race-select">
     <h1>각인의 탑</h1>
     ${onIntro ? '<button class="intro-again" id="introAgain">▶ 인트로 다시 보기</button>' : ''}
-    <p class="muted">몬스터를 사냥해 얻은 부산물로 <b>각인</b>을 새기고, 탑을 오른다. 처음이라면 <b>기사</b>를 추천해요.</p>
+    <p class="muted">몬스터를 사냥해 얻은 부산물로 <b>각인</b>을 새기고, 탑을 오른다. 처음이라면 <b>기사</b>.</p>
     <div class="races">${RACE_ORDER.filter((id) => RACES[id]).map((id) => { const r = RACES[id], d = RACE_DIFF[id] || 2; return `
       <button class="race" data-race="${id}">
         ${id === 'knight' ? '<span class="rec">추천</span>' : ''}
@@ -781,7 +780,7 @@ export function renderRaceSelect(root, onPick, onIntro) {
         <p class="sw"><span class="up">강점 ${r.strong}</span><span class="down">약점 ${r.weak}</span></p>
         <details class="mini-wrap" onclick="event.stopPropagation()"><summary>시작 스탯</summary><div class="mini-stats">${BASE_STATS.map((k) => `<span><i>${STAT_INFO[k].short}</i><em style="width:${r.base[k] * 4}px"></em>${r.base[k]}</span>`).join('')}</div></details>
       </button>`; }).join('')}</div>
-      <p class="more-hint" aria-hidden="true">▼ 아래로 내리면 종족이 더 있어요</p>
+      <p class="more-hint" aria-hidden="true">▼ 아래에 종족이 더 있다</p>
     </div>`;
   { // 카드가 화면 아래로 넘칠 때만 안내, 조금이라도 내리면 사라진다
     const hint = root.querySelector('.more-hint'), sc = document.scrollingElement;

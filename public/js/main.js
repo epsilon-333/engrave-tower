@@ -125,7 +125,7 @@ function showAdmin() { if (net.admin) netSend({ t: 'adminList' }); }
 onNet('adminList', (m) => {
   const rows = m.list.map((o) => `<tr><td>${esc(o.name)}${o.admin ? ' ★' : ''}</td><td>${RACES[o.race]?.name || ''} Lv ${o.lv || 1}</td><td class="muted">${esc(o.map || '-')}${o.map ? ` (${Math.round((o.x || 0) / 16)}, ${Math.round((o.y || 0) / 16)})` : ''}</td><td class="muted">${esc(o.guild)}${o.partyN ? ` · 파티 ${o.partyN}` : ''}</td><td>${o.rank ? `◆${(o.rank.gold || 0).toLocaleString()} · 탑 ${o.rank.tower || 0}` : ''}</td><td><button class="sm ghost" data-ai="${o.id}">자세히</button> <button class="sm" data-ag="${o.id}" data-agn="${esc(o.name)}">무기 주기</button></td></tr>`).join('');
   showModal(`<h2>운영자 · 접속한 사람</h2><p class="muted">지금 ${m.online}명 · 길드 ${m.guilds} · 랭킹 기록 ${m.ranked}</p><table style="width:100%;font-size:0.9em">${rows}</table><div id="adminInfo"></div>
-    <p class="muted">접속하지 않은 사람에게도 줄 수 있다: <input id="agName" placeholder="계정 이름" maxlength="16" style="width:9em"> <button class="sm" id="agByName">무기 주기</button></p>
+    <p class="muted">접속하지 않은 사람: <input id="agName" placeholder="계정 이름" maxlength="16" style="width:9em"> <button class="sm" id="agByName">무기 주기</button></p>
     <div class="actions"><button id="adRe" class="ghost">새로고침</button><button data-close class="ghost">닫기</button></div>`);
   document.getElementById('adRe').onclick = showAdmin;
   overlay.querySelectorAll('[data-ai]').forEach((b) => (b.onclick = () => netSend({ t: 'adminInfo', id: +b.dataset.ai })));
@@ -136,7 +136,7 @@ onNet('adminList', (m) => {
 function showGrant(who) {
   const ids = Object.keys(ITEMS).filter((id) => ITEMS[id].towerWeapon || ITEMS[id].towerGear).sort((a, b) => (ITEMS[a].tier || 0) - (ITEMS[b].tier || 0) || (ITEMS[b].rarity || 0) - (ITEMS[a].rarity || 0));
   const opts = ids.map((id) => { const it = ITEMS[id]; return `<option value="${id}">${it.towerWeapon ? '무기' : '장비'} · ${it.tier || '-'}단계 · ${['일반', '희귀', '영웅', '전설', '신화'][it.rarity || 0]} · ${esc(it.name)}</option>`; }).join('');
-  showModal(`<h2>보상 주기 · ${esc(who.label)}</h2><p class="muted">교환이 아니라 운영자 보상이다. 받은 물건은 교환할 수 없다. 접속해 있지 않으면 다음 접속 때 받는다.</p>
+  showModal(`<h2>보상 주기 · ${esc(who.label)}</h2><p class="muted">운영자 보상 · 교환 불가 · 접속하지 않았으면 다음 접속 때</p>
     <p><input id="agFind" placeholder="이름으로 찾기" style="width:100%"></p><p><select id="agItem" size="10" style="width:100%">${opts}</select></p>
     <p><input id="agNote" placeholder="한마디 (예: 이벤트 1등 보상)" maxlength="80" style="width:100%"></p><p id="agRes" class="muted"></p>
     <div class="actions"><button id="agSend">주기</button><button id="agBack" class="ghost">뒤로</button><button data-close class="ghost">닫기</button></div>`);
@@ -430,8 +430,8 @@ function showSouls() {
   }).join('');
   const upN = S.filter((s) => s.up).length;
   showModal(`<div class="social" id="soulBox"><h2>거둔 영혼 <small>${S.length} / 30 · 나와 있음 ${upN}/10</small></h2>
-    <p class="muted">「영혼 소환」은 소환 목록에 넣은 영혼부터, 남으면 강한 영혼 순으로 10마리까지 되살린다. 되살린 영혼은 공격력 그대로 · 체력 절반 · 첫 한 대는 막고, 쓰러질 때까지 다른 곳에도 따라온다. 영혼은 30개까지 모이고 저절로 줄지 않는다.</p>
-    <div class="soc-list">${rows || '<p class="muted">아직 거둔 영혼이 없다. 쓰러뜨린 몬스터에게서 절반쯤 영혼을 거둔다.</p>'}</div>
+    <p class="muted">영혼 소환: 목록 → 강한 순으로 10마리 · 공격력 그대로 · 체력 50% · 첫 한 대 막음 · 최대 30개</p>
+    <div class="soc-list">${rows || '<p class="muted">거둔 영혼 없음 (처치의 절반쯤에서 거둔다)</p>'}</div>
     <div class="actions"><button id="soulAll" class="ghost">목록 비우기</button><button data-close>닫기</button></div></div>`);
   const box = document.getElementById('soulBox');
   box.onclick = (e) => {
@@ -474,20 +474,20 @@ function nearHtml(near, kind) {
 function partyHtml(near) {
   const pt = net.party, lead = isPartyLeader();
   let h = '';
-  if (!pt) h += '<p class="muted">파티가 없다. 바깥 세계에서 다른 사람에게 다가가 G를 누르거나 아래 근처 사람에게 초대를 보낸다. 파티는 4명까지.</p>';
+  if (!pt) h += '<p class="muted">파티 없음 · 다른 사람에게 G 또는 아래에서 초대 (4명까지)</p>';
   else {
     h += `<div class="soc-list">${pt.members.map((x) => {
       const me = x.id === net.id;
       const btn = me ? '<button class="sm ghost" data-pact="leave">나가기</button>' : lead ? `<button class="sm ghost" data-pact="lead" data-id="${x.id}">파티장 넘기기</button><button class="sm ghost" data-pact="kick" data-id="${x.id}">내보내기</button>` : '';
       return `<div class="soc-row on"><span class="nm">${x.id === pt.leader ? '<em class="lead">파티장</em> ' : ''}<b>${esc(x.name)}</b>${me ? ' (나)' : ''}</span><span class="muted">${RACES[x.race]?.name || ''} · Lv ${x.lv || 1} · ${MAP_NAME(x.map)}</span><span class="btns">${btn}</span></div>`;
     }).join('')}</div>
-      <p class="muted">파티장이 각인의 탑 입구에서 「파티와 함께 오르기」를 고르면 같은 층을 함께 오른다. 몬스터를 쓰러뜨리면 모두가 전리품 · 도감을 얻고, 쓰러져도 동료가 층을 깨면 다시 일어난다. 파티 채팅은 /p.</p>`;
+      <p class="muted">탑 입구 「파티와 함께 오르기」 · 전리품 · 도감은 모두 · 쓰러져도 층을 깨면 일어난다 · 채팅 /p</p>`;
   }
   return h + nearHtml(near, !pt || (lead && pt.members.length < 4) ? 'party' : null);
 }
 function guildHtml(near) {
   const g = net.guild;
-  if (!g) return `<p class="muted">길드에 들지 않았다. 길드를 세우면 길드원끼리 채팅(/g)하고 이름 앞에 길드 이름이 붙는다. 길드는 서버에 남는다.</p>
+  if (!g) return `<p class="muted">길드 없음 · 길드 채팅 /g</p>
     <div class="soc-make"><input id="gname" maxlength="12" placeholder="길드 이름 (2~12글자)"><button data-gact="create" ${save.gold >= GUILD_COST ? '' : 'disabled'}>세우기 · ${GUILD_COST} 골드</button></div>
     `;
   const r = myRank(), mng = r === 'leader' || r === 'officer';
@@ -560,7 +560,7 @@ function showRaid() {
   const cards = Object.entries(RAIDS).map(([id, r]) => `<div class="skc"><div class="c-head"><b style="color:${r.color}">${r.name}</b><span class="role">권장 Lv ${r.rec}</span></div><div class="c-sum">${esc(r.desc)}</div>
     <div class="muted">깬 횟수 ${R.clears[id] || 0}${R.week[id] === wk ? ' · 이번 주 보물상자 받음' : ' · 이번 주 보물상자 남음'}</div>
     <div class="c-act">${lockText(save, 'systems', 'raid:' + id) ? `<span class="muted">${lockText(save, 'systems', 'raid:' + id)}</span>` : `<button class="sm" data-raid="${id}">${lead ? '파티와 들어가기' : '들어가기'}</button>`}</div></div>`).join('');
-  showModal(`<h2>레이드 제단</h2><p class="muted">거대한 보스와 싸우는 둥근 방. 체력이 셋으로 나뉘어 단계마다 패턴이 바뀐다. 빨간 예고를 보고 피하고, 「표식」이 붙으면 동료에게서 떨어진다. 파티(최대 4명)로 오면 함께 싸운다 (인원수만큼 보스가 단단해진다).</p>
+  showModal(`<h2>레이드 제단</h2><p class="muted">보스 3단계 · 빨간 예고는 피하고 「표식」이 붙으면 동료에게서 떨어진다 · 파티 4명까지 (인원만큼 보스 체력 증가)</p>
     ${net.party && !isPartyLeader() ? '<p class="muted">파티장이 들어가면 함께 간다.</p>' : ''}<div class="skill-row">${cards}</div><div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
   overlay.querySelectorAll('[data-raid]').forEach((b) => (b.onclick = () => { overlay.hidden = true; paused = false; modal = null; const id = b.dataset.raid; if (lead) startCoRaid(id); else enterRaid(id); }));
 }
@@ -835,7 +835,7 @@ function showStyleSelect(race) {
   const R = RACES[race];
   titleEl.innerHTML = `<div class="race-select">
     <h1>${R.name}</h1>
-    ${reGolem ? '<p class="lvup">골렘족은 이제 몬스터가 되었어요. 새 종족과 클래스를 골라 주세요. 레벨 · 장비 · 돈 · 도감은 그대로예요.</p>' : ''}<p class="muted">공명 제단에서 언제든 바꿀 수 있다.</p>
+    ${reGolem ? '<p class="lvup">골렘족은 이제 몬스터다. 새 종족과 클래스를 고른다 (레벨 · 장비 · 돈 · 도감은 그대로).</p>' : ''}<p class="muted">공명 제단에서 언제든 바꿀 수 있다.</p>
     <div class="styles">${RACE_CLASSES(race).map((id) => {
       const c = CLASSES[id];
       return `<button class="style" data-style="${id}">
@@ -881,7 +881,7 @@ function showTitle() {
       ${canLogin ? '<button id="tsLogin" class="ghost">계정으로 저장 · 로그인</button>' : ''}
       <button id="tsIntro" class="ghost">인트로 보기</button>
     </div>${who}
-    ${IN_APP ? '<p class="title-warn"><b>앱 안 브라우저에서 열었어요.</b> 이대로 하면 창을 닫을 때 진행이 지워질 수 있어요. 오른쪽 위 메뉴에서 「다른 브라우저로 열기」(크롬 · 사파리)를 눌러 주세요. 또는 로그인하면 서버에 저장돼요.</p>' : ''}
+    ${IN_APP ? '<p class="title-warn"><b>앱 안 브라우저</b>: 창을 닫으면 진행이 지워질 수 있다. 「다른 브라우저로 열기」(크롬 · 사파리)나 로그인하면 안전하다.</p>' : ''}
     <p class="title-foot">그래픽 0x72 (CC0) · 효과음 Kenney (CC0) · 글꼴 갈무리 (OFL) · 이펙트 pixelfx (MIT)</p></div></div>`;
   const cv = titleEl.querySelector('.title-bg'), st = makeStage(), t0 = performance.now();
   const T0 = INTRO_TOTAL - 6 - 3.6 - 6.2 + 0.6, LEN = 4.8; // 「그리고 삼백 년 뒤」 장면의 가운데 (어두워지기 전)
@@ -912,7 +912,7 @@ function showLogin(onDone) {
   gameEl.hidden = true; titleEl.hidden = false;
   titleEl.innerHTML = `<div class="login">
     <h1>각인의 탑</h1>
-    <p class="muted">계정이 있으면 어느 기기에서든 이어서 할 수 있어요.</p>
+    <p class="muted">계정으로 어느 기기에서든 이어서</p>
     <form id="loginForm" class="login-box" autocomplete="on">
       <label for="lgId">아이디</label>
       <input id="lgId" name="username" autocomplete="username" maxlength="16" placeholder="2~16자 한글·영문·숫자" required>
@@ -925,7 +925,7 @@ function showLogin(onDone) {
   const $ = (id) => document.getElementById(id);
   const go = async (fn) => {
     const u = $('lgId').value, p = $('lgPw').value;
-    if (!u || !p) { $('lgErr').textContent = '아이디와 비밀번호를 입력하세요.'; return; }
+    if (!u || !p) { $('lgErr').textContent = '아이디와 비밀번호를 넣는다.'; return; }
     $('lgErr').textContent = ''; $('lgLogin').disabled = $('lgReg').disabled = true;
     try {
       unlockAudio();
@@ -987,8 +987,8 @@ function setupSaveGuards(startStamp = 0) {
   setStaleHook(() => {
     if (cloud.state === 'stale') return;
     if (cloud.mode !== 'local') markStale(); // 게스트도 이 창의 브라우저 저장은 멈춘다 → 조용히 멈추지 않게 똑같이 알린다
-    saveWarn('<b>이 창은 저장이 멈췄어요.</b> 같은 브라우저의 다른 창에서 게임을 하고 있어요. 다른 창을 닫고 이 창을 새로 고치면 다시 저장돼요.');
-    showModal(`<h2>다른 창에서 게임 중</h2><p>이 브라우저의 다른 창이 이 계정의 진행을 저장했어요. 이 창의 진행은 이제 저장되지 않아요 (옛 진행으로 덮어쓰지 않게).</p>
+    saveWarn('<b>이 창은 저장이 멈췄다.</b> 다른 창에서 게임 중 · 그 창을 닫고 새로 고치면 다시 저장된다.');
+    showModal(`<h2>다른 창에서 게임 중</h2><p>다른 창이 이 계정의 진행을 저장했다. 이 창은 더 저장하지 않는다 (옛 진행으로 덮어쓰지 않게).</p>
       <div class="row"><button id="stReload">이 창에서 이어 하기 (새로고침)</button><button data-close class="ghost">닫기</button></div>`);
     document.getElementById('stReload').onclick = () => location.reload();
   });
@@ -997,7 +997,7 @@ function setupSaveGuards(startStamp = 0) {
     // 서버 저장이 이 판이 시작한 저장과 같으면(이어서 한 것) 그대로 올린다. 다르면 덮어쓰기 전에 꼭 묻는다
     if (!remote || (remote.updatedAt || 0) === startStamp || (remote.updatedAt || 0) === cloud.syncedAt) { cloudSaveNow(save); return; }
     const when = (t) => new Date(t || 0).toLocaleString('ko-KR');
-    showModal(`<h2>서버에 다른 진행이 있어요</h2><p>서버: Lv ${remote.level || 1} · ${when(remote.updatedAt)}<br>이 기기: Lv ${save.level || 1} · ${when(save.updatedAt)}</p>
+    showModal(`<h2>서버에 다른 진행이 있다</h2><p>서버: Lv ${remote.level || 1} · ${when(remote.updatedAt)}<br>이 기기: Lv ${save.level || 1} · ${when(save.updatedAt)}</p>
       <div class="row"><button id="svRemote">서버 진행 불러오기</button><button id="svLocal" class="ghost">이 기기 진행으로 서버 덮기</button></div>`);
     document.getElementById('svRemote').onclick = () => { try { localStorage.setItem('engrave-tower-save-v1', JSON.stringify(remote)); } catch { /* 무시 */ } location.reload(); };
     document.getElementById('svLocal').onclick = () => { modal?.(); writeSave(save); cloudSaveNow(save); };
@@ -1006,7 +1006,7 @@ function setupSaveGuards(startStamp = 0) {
   let asked = false;
   const askRelogin = () => {
     asked = true;
-    showModal(`<h2>로그인이 풀렸어요</h2><p>다른 기기에서 로그인했거나 로그인이 만료됐어요. 지금 진행은 들고 있으니 다시 로그인하면 바로 저장돼요.</p>
+    showModal(`<h2>로그인이 풀렸다</h2><p>다른 기기에서 로그인했거나 만료됐다. 진행은 그대로 · 다시 로그인하면 바로 저장된다.</p>
       <form id="rlForm" class="login-box"><label>아이디</label><input id="rlId" value="${esc(cloud.name || '')}" maxlength="16" required><label>비밀번호</label><input id="rlPw" type="password" minlength="4" required><p id="rlErr" class="err"></p><button type="submit">다시 로그인</button></form>`);
     document.getElementById('rlForm').onsubmit = async (e) => {
       e.preventDefault();
@@ -1017,7 +1017,7 @@ function setupSaveGuards(startStamp = 0) {
   // 로그인이 풀리면 다시 로그인 창. 다른 창(대화 · 상점 등)이 그 창을 덮어도 위쪽 경고의 버튼으로 언제든 다시 연다
   onCloud(() => {
     if (cloud.state !== 'expired') { if (asked) { asked = false; saveWarn(''); } return; }
-    if (!document.getElementById('rlNow')) { saveWarn('<b>로그인이 풀려 서버에 저장이 안 되고 있어요.</b> 진행은 들고 있어요. <button class="sm" id="rlNow">다시 로그인</button>'); document.getElementById('rlNow').onclick = askRelogin; }
+    if (!document.getElementById('rlNow')) { saveWarn('<b>로그인이 풀려 서버에 저장되지 않는다.</b> 진행은 그대로. <button class="sm" id="rlNow">다시 로그인</button>'); document.getElementById('rlNow').onclick = askRelogin; }
     if (!asked) askRelogin();
   });
 }
@@ -1223,18 +1223,9 @@ function showWorldIntro() {
   showModal(`<h2>각인의 탑</h2>
     <div class="tut intro-short">
       <p class="big">섬 한가운데, <b>각인의 탑</b> 꼭대기의 빛이 꺼져 간다.</p>
-      <p>섬을 탐험해 <b>몬스터 지대</b>를 찾고, 사냥으로 얻은 <b>부산물</b>로 <b>각인</b>을 새겨 강해진 뒤 탑을 오른다.<br>구역의 주인을 쓰러뜨릴 때마다(10층마다) 다음엔 그 위층부터 시작할 수 있다.</p>
-      <p>무엇을 할지 모르겠다면 <b>화면의 여정</b>(데스크톱은 작은 지도 아래)과 화면 가장자리의 <b>화살표</b>를 따라가자. (J: 여정 전체)</p>
-      <p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 공격 · 우클릭 무기 기술 · Q·E·R·F 스킬 · Space 구르기(무적) · G 상호작용 · C 캐릭터 · M 지도 · Esc 메뉴</p>
-      <details><summary class="muted">섬에서 할 수 있는 것 더 보기</summary>
-      <p>섬은 <b>하나로 이어진 넓은 땅</b>이다. 레벨은 도감(처음 보는 몬스터 · 장소 · 기록 · 사람)으로 오르고, 탑의 권장 레벨에 맞춰 섬을 돌아다니면 된다.</p>
-      <p><b>바람결 마을</b>에 각인사 · 대장장이 · 사서 · 교관 · 의뢰 게시판이 있어요. <b>마을 모닥불</b>에서 쉬면 모은 잔향과 골드가 저장됩니다.</p>
-      <p>숲 · 늪 · 폐허 도시 · 묘지 · 설원 · 바위산 · 화산 · 황야 · 원시림… 어디로든 가 보세요. 동굴 · 구멍 · 던전 · 미궁, 그리고 바다 밑 <b>용궁</b>도 있어요.</p>
-      <p>섬 곳곳에 <b>종족 성지</b>가 8곳 있어요. 그 땅에서 성물(조각 5개 = 성물 1개)을 모아 바치면 축복이 쌓여요. 어느 성지든 받을 수 있고, 내 종족의 성지는 1.5배예요. 한 곳에 집중할수록 강해집니다. <b>M</b>으로 지도를 볼 수 있어요.</p>
-      <p><b>불</b> 스킬은 키 큰 풀을 태우고, <b>얼음</b> 스킬은 물을 얼려 길을 만듭니다. 호수 가운데 섬에는 어떻게 갈까요?</p>
-      <p><b>마을의 집</b>에 들어가 각인사 · 대장장이 · 사서 · 교관 · 의뢰인 · 잡화점 주인을 만나요. 바위를 캐고, 나무를 베고, 반짝이는 흙을 파고, 물가에서 <b>낚시</b>하고, 마을 동쪽 <b>텃밭</b>에서 농사를 지을 수 있어요. 캔 것은 잡화점에서 팔고, 대장간에서 도구와 장비를 만들어요.</p>
-      </details>
-      <p class="keys" hidden>WASD 이동 · 좌클릭 공격 · Q·E·R·F 스킬 · Space 대시 · G 상호작용(누르고 있으면 계속 캐기) · I 장비 · B 가방 · J 퀘스트 · X 씨앗 바꾸기 · C 캐릭터 · M 지도 · O 파티 · 길드 · Enter 채팅 · Esc 메뉴</p>
+      <p><b>사냥</b> → <b>부산물</b> → 공명 제단에서 <b>각인</b> → <b>탑</b>을 오른다.</p>
+      <p>할 일은 <b>여정</b>(J)과 화면 가장자리의 <b>화살표</b>가 알려 준다.</p>
+      <p class="keys">WASD 이동 · 좌클릭 공격 · 우클릭 무기 기술 · Q·E·R·F 스킬 · Space 구르기 · G 상호작용 · M 지도 · Esc 메뉴</p>
     </div>
     <button data-close>모험 시작</button>`);
   save.lifeIntro = 1;
@@ -1244,15 +1235,13 @@ function showLifeIntro() {
   save.lifeIntro = 1; writeSave(save);
   showModal(`<h2>바람결 마을의 새 소식</h2>
     <div class="tut">
-      <p><b>집에 들어갈 수 있어요.</b> 각인사 · 대장장이 · 사서 · 교관 · 의뢰인은 이제 자기 집 안에 있어요. 마을 왼쪽 아래에는 <b>잡화점</b>이 새로 생겼어요.</p>
-      <p><b>캐고 · 베고 · 파기</b>: 바위와 광맥, 나무, 반짝이는 흙 앞에서 <b>G</b> (누르고 있으면 계속). 처음부터 낡은 도구 한 벌을 가지고 있어요.</p>
-      <p><b>낚시</b>: 물가에서 물을 바라보고 G → 찌가 가라앉으면 G → <b>박자 게임</b>: 흘러오는 박이 원에 닿을 때 G · Space · 클릭. 물고기마다 박자가 달라요(51종). 박을 잘 맞출수록 큰 물고기가 잡혀요.</p>
-      <p><b>농사</b>: 마을 동쪽 텃밭에서 괭이로 갈고 → 씨앗 심고 → 물 주기. 단계마다 물을 주면 자라요. X로 심을 씨앗을 바꿔요.</p>
-      <p><b>거래 · 제작</b>: 잡화점에서 씨앗 · 미끼를 사고 캔 것을 팔아요 (시세가 1시간마다 바뀌어요). 대장간에서 도구를 바꾸고, 장비를 만들고, 무기를 강화해요.</p>
-      <p><b>성지</b>는 이제 어느 종족이든 축복을 받을 수 있고(내 종족은 1.5배), 5단계까지 올라요. 단계가 높을수록 성물이 많이 들지만 훨씬 강해져요. <b>낡은 제단</b>의 축복에는 더 이상 대가가 없어요.</p>
-      <p class="keys">I 장비 · B 가방 · J 퀘스트 · X 씨앗 바꾸기 · 새 물고기와 땅속 유물도 도감에 남아요</p>
+      <p><b>집</b>에 들어갈 수 있다 · 마을 왼쪽 아래에 <b>잡화점</b></p>
+      <p><b>캐기 · 베기 · 파기</b>: 바위 · 나무 · 반짝이는 흙 앞에서 G (누르고 있으면 계속)</p>
+      <p><b>낚시</b>: 물가에서 G → 찌가 가라앉으면 G → 박이 원에 닿을 때 G</p>
+      <p><b>농사</b>: 마을 동쪽 텃밭 · 갈고 → 심고 → 물 주기 (X: 씨앗 바꾸기)</p>
+      <p><b>성지</b>: 어느 종족이든 축복 (내 종족 1.5배) · 5단계</p>
     </div>
-    <button data-close>좋아요</button>`);
+    <button data-close>확인</button>`);
 }
 
 const memKeyOf = (id) => (id === 'mossCave' ? 'cave' : id); // 이끼 동굴은 탑의 1층과 같은 곳 (기억을 함께 쓴다)
@@ -1356,7 +1345,7 @@ function raceShopHtml(race, lv) {
     return `<div class="skc"><div class="c-head"><b>${it.name}</b><span class="role">${CLASSES[it.cls].name}</span></div><div class="c-sum">${esc(it.bdesc || '')}${it.cls !== save.cls ? ' <span class="muted">(그 클래스가 아니면 무기의 특별한 힘은 없다)</span>' : ''}</div>
       <div class="c-act">${has ? '<span class="muted">가지고 있다 · 장비 창(I)에서 바꾼다</span>' : `<button class="sm" data-ritem="${id}" ${canW && save.gold >= p ? '' : 'disabled'}>◆ ${p}</button>`}</div></div>`;
   }).join('');
-  return `<div class="talk"><p>「${S.name}의 물건이오. 이 땅에서만 구할 수 있지.」</p>${own ? '' : `<p class="muted">무기는 친밀도 「${AFF_NAME[2]}」부터 살 수 있고, 다른 종족에게는 30% 비싸다.</p>`}</div>
+  return `<div class="talk"><p>「${S.name}의 물건이오. 이 땅에서만 구할 수 있지.」</p>${own ? '' : `<p class="muted">무기: 친밀도 「${AFF_NAME[2]}」부터 · 다른 종족 +30%</p>`}</div>
     <h4>이 땅의 물건</h4><div class="skill-row">${goods}</div>
     <h4>${S.name}의 무기</h4><div class="skill-row">${weapons || '<p class="muted">없음</p>'}</div>
     <h4>CC 기술서 <small>누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다</small></h4><div class="skill-row">${ccBooksHtml()}</div>`;
@@ -1405,7 +1394,7 @@ function sanctLearnHtml(race, lv) {
     return cards ? `<h4>${esc(c.name)} <small>${esc(c.desc)}</small></h4><div class="skill-row">${cards}</div>` : '';
   }).join('');
   return `<div class="talk"><p>${esc(RACES[race].name)}의 기술을 배운다. 배운 기술은 <b>내 종족의 자원(${resName})</b>으로 쓴다. 쓰는 기술이면 ${josa(resName, '을', '를')} 쓰고, 모으는 기술이면 ${josa(resName, '이', '가')} 찬다.</p>
-    <p class="muted">무기가 맞지 않으면 약해진다. 한손 무기라면 왼손 도구(마법 부적 · 손쇠뇌 · 작은 방패 · 투척 주머니)를 대장간에서 사서 들자.</p></div>${groups}`;
+    <p class="muted">맞지 않는 무기는 약하다 · 한손 무기면 왼손 도구는 대장간에서</p></div>${groups}`;
 }
 function learnCross(race, id) {
   const sk = SKILLS[id], r = crossReq(sk), b = buildNow(), st = sanctState(save.story, race);
@@ -1448,7 +1437,7 @@ function spiritHtml() {
   const all = Object.keys(SPIRITS).sort((a, b) => SPIRITS[b].grade - SPIRITS[a].grade);
   if (save.race !== 'elf') return `<div class="talk"><p>「정령은 세계수 아래에서 태어난 이에게만 손을 내밀어.」</p><p class="muted">정령 계약은 엘프만 할 수 있다.</p></div>`;
   return `<div class="talk"><p>「정령은 부른다고 오지 않아. 마음이 맞는 정령이 스스로 손을 내밀지.」</p>
-    <p class="muted">코인을 바치면 정령 하나와 계약한다 (남은 정령석이 있으면 그것부터). 같은 정령과 또 계약하면 결속(★)이 올라 힘이 15%씩 세진다 (최대 ★${SPIRIT_STAR_MAX}). 싸울 때는 「정령 부르기」 스킬로 함께하는 정령을 꺼낸다 (엘프만 계약할 수 있다).</p>
+    <p class="muted">코인(정령석 먼저) → 정령 하나 · 같은 정령이면 결속 ★ +1 (힘 +15% · 최대 ★${SPIRIT_STAR_MAX}) · 엘프만</p>
     <p class="muted">${save.cls === 'spiritcaller' ? '<b class="up">정령사: 계약이 싸고 좋은 정령이 더 잘 온다 · 함께 싸우면 정령 레벨이 1.5배 빨리 오른다</b><br>' : ''}확률: ${SPIRIT_GRADES.map((G, i) => `<b style="color:${G.color}">${G.name} ${Math.round((save.cls === 'spiritcaller' ? CALLER_RATES[i] : G.rate) * 100)}%</b>`).join(' · ')} · 10회 계약은 희귀 이상 하나 보장 · 정령석은 몬스터가 가끔 떨어뜨린다 (이끼 숲 · 원시림 · 이끼 동굴에서 더 자주, 우두머리는 꼭)</p></div>
     <div class="sp-bar"><span>◆ ${save.gold}${stones ? ` · 남은 정령석 <b>${stones}</b>개 (먼저 쓴다)` : ''}</span>
       <button data-pull="1" ${canPull(1) ? '' : 'disabled'}>계약 1회 ${stones >= 1 ? '· 정령석 1' : `◆ ${stonePrice()}`}</button><button data-pull="10" ${canPull(10) ? '' : 'disabled'}>계약 10회 ${stones >= 10 ? '· 정령석 10' : `◆ ${pullCost(10)}`}</button></div>
@@ -1486,7 +1475,7 @@ function storyHtml(race) {
   return `<div class="talk">${RS.history.map((p) => `<p>${esc(p)}</p>`).join('')}</div>
     <h4>다른 종족과의 사이</h4>
     <div class="rel-list">${rel.map(({ r, v, why }) => `<div class="rel"><b style="color:${SANCTUMS[r].color}">${RACES[r]?.name || r}</b> <span class="rel-tag" style="--c:${REL_COLOR[v]}">${REL_NAME[v]}</span><small>${esc(why)}</small></div>`).join('')}</div>
-    ${al.length ? `<p class="muted">이곳의 의뢰를 끝내면 동맹인 ${al.map((r) => SANCTUMS[r].name).join(' · ')}에도 소문이 퍼져 친밀도가 +${ALLY_AFF} 오른다.</p>` : ''}`;
+    ${al.length ? `<p class="muted">동맹 ${al.map((r) => SANCTUMS[r].name).join(' · ')}: 의뢰마다 친밀도 +${ALLY_AFF}</p>` : ''}`;
 }
 function blessHtml(race) {
   const S = SANCTUMS[race], own = save.race === race;
@@ -1501,7 +1490,7 @@ function blessHtml(race) {
       <p>${PERK_TIER}단계 은총: <b>${S.perk.text}</b>${tier >= PERK_TIER ? ' ✔' : ''}<br>${TREASURE_TIER}단계 보물: <b>${ITEMS[S.treasure].name}</b>${tier >= TREASURE_TIER ? ' ✔' : ''}</p>
       <p>가진 ${S.relic} <b>${have}</b>개 · 조각 <b>${shards}</b> / ${SHARDS_PER_RELIC}</p>
     </div>
-    <p class="muted">${S.relic} 조각은 <b>${S.place}</b>의 몬스터와 <b>${S.dungeon}</b>에서만 나온다. 단계가 오를수록 성물이 더 들지만 축복은 훨씬 크게 오른다. 여러 성지를 조금씩보다 한 곳을 끝까지 파는 쪽이 강하다.</p>`;
+    <p class="muted">${S.relic} 조각: <b>${S.place}</b>의 몬스터 · <b>${S.dungeon}</b></p>`;
   if (!max) html += `<button id="offerRelic" ${have >= cost ? '' : 'disabled'}>${josa(S.relic, '을', '를')} ${cost}개 바친다 → ${tier + 1}단계</button>`;
   return html;
 }
@@ -1535,7 +1524,7 @@ function questHtml(race, st, q, def) {
   if (q && def) {
     const ready = q.done || (def.kind === 'bring' && (save.bag[def.item] || 0) >= def.n);
     return `${say}<div class="sq ${ready ? 'ready' : ''}" style="--c:${S.color}"><b>${esc(def.title)}</b><p>${esc(def.text)}</p><p class="muted">진행: <b>${prog(def, q)}</b> · 보상: ${rew(def)}</p>
-      ${def.kind === 'find' ? `<p class="muted">${S.place} 곳곳에 빛나는 ${josa(FIND_NAME[def.look], '이', '가')} 있다. 작은 지도(오른쪽 위)에 ◆로 보인다.</p>` : ''}</div>
+      ${def.kind === 'find' ? `<p class="muted">${S.place}의 빛나는 ${FIND_NAME[def.look]} · 작은 지도의 ◆</p>` : ''}</div>
       ${ready ? `<button id="sqClaim">${def.kind === 'bring' ? '건네고 보고하기' : '보고하기'}</button>` : '<button id="sqDrop" class="ghost">의뢰 그만두기</button>'}`;
   }
   if (st.step < L.quests.length) {
@@ -1600,7 +1589,7 @@ function affHtml(race, st, lv) {
   return `<div class="aff"><div class="aff-bar" style="--c:${S.color}"><i style="width:${pct}%"></i></div>
       <p><b style="color:${S.color}">${AFF_NAME[lv]}</b> · ${st.aff}${next ? ` / ${next} (다음: ${AFF_NAME[lv + 1]})` : ' (가장 높은 단계)'}</p></div>
     <ul class="c-eff" style="text-align:left">${AFF_REWARD.slice(1).map((r, i) => `<li class="${lv >= i + 1 ? 'got' : ''}">${AFF_NAME[i + 1]}: ${i + 1 === 4 ? `종족의 증표 「${ITEMS[L.token].name}」` : r}${lv >= i + 1 ? ' ✔' : ''}</li>`).join('')}</ul>
-    <p class="muted">친밀도는 의뢰(+15~20) · 매일 의뢰(+8) · 수련(+${TRAIN_AFF}, 하루 ${TRAINS_PER_DAY}번까지) · 성물 바치기(+10) · 선물(+${GIFT_AFF})로 오른다.</p>
+    <p class="muted">친밀도: 의뢰 +15~20 · 매일 의뢰 +8 · 수련 +${TRAIN_AFF} (하루 ${TRAINS_PER_DAY}번) · 성물 +10 · 선물 +${GIFT_AFF}</p>
     <h4>좋아하는 것을 선물한다 <small>오늘 ${Math.max(0, giftsLeft)}번 남음</small></h4><div class="gift-row">${gifts}</div>
     ${lv >= 3 ? (st.shardDay === today() ? '<p class="muted">오늘의 성물 조각은 받았다.</p>' : `<button id="dailyShard">${L.leader.name}에게 오늘의 성물 조각 받기</button>`) : ''}`;
 }
@@ -1796,7 +1785,7 @@ function enterPractice() {
   world.explored.fill(1);
   spawnArena(practice.arena);
   renderer.setWorld(world);
-  renderer.banner = { text: '연습 실험장', sub: '왼쪽 위에서 클래스 · 스킬 · 상대를 고르세요. 죽지 않고, 기록도 남지 않아요.', t: 3.5, color: '#7ad8ff' };
+  renderer.banner = { text: '연습 실험장', sub: '왼쪽 위: 클래스 · 스킬 · 상대 · 죽지 않고 기록도 남지 않는다', t: 3.5, color: '#7ad8ff' };
   startMusic('cave');
   showPracticePanel();
   startLoop();
@@ -1868,8 +1857,8 @@ function showTutorial() {
       <p>무엇을 할지 모르겠다면 <b>여정(J)</b>과 화면 가장자리의 화살표를 따라가자.</p>
       ${touch ? '<p class="keys">왼쪽 조이스틱 이동 · 오른쪽 조이스틱 공격(밀면 그 방향, 누르기만 하면 가까운 적) · 스킬 · 무기 · 대시 버튼 · 「≡」 메뉴</p>'
     : '<p class="keys">WASD 이동 · 마우스 조준 · 좌클릭 평타 · 우클릭 무기 기술 · Q·E·R·F 스킬(차지 스킬은 길게) · Space 구르기(무적) · G 상호작용 · H 음식 · Z 물약 · C 캐릭터 · I 장비 · B 가방 · J 퀘스트 · M 지도 · Esc 메뉴</p>'}
-      <p class="muted">회복은 적힌 숫자 그대로다. 다만 물약 · 샘 말고는 1초에 최대 체력 3%씩 들어오고, 싸우는 중에는 자연 회복이 40%로 준다.</p>
-      <p class="muted">큰 공격 앞에는 몸을 움츠리는 준비 동작이 있다. 보스의 읽기 어려운 기술은 바닥의 원 · 선으로 미리 보인다. 구르기로 피하자.</p>
+      <p class="muted">회복: 물약 · 샘 말고는 초당 최대 체력 3%까지 · 싸우는 중 자연 회복 40%</p>
+      <p class="muted">큰 공격은 준비 동작 · 바닥의 원과 선 → 구르기</p>
     </div>
     <button data-close>닫기</button>`);
 }
@@ -1941,8 +1930,8 @@ function endRun(kind) {
     <div class="echoes">${echoes}</div>
     <p>골드 +${res.gold} · 도감 +${Math.max(0, codexPoints(save) - (world.codexStart ?? codexPoints(save)))}점 · 상자 ${world.loot.chests}개 · 탐험 ${Math.round(world.exploredPct() * 100)}%</p>
     ${res.ups ? `<p class="lvup">레벨 업! Lv ${save.level} · 스탯 포인트 +${res.ups}</p>` : ''}
-    ${world.discovered.size ? '<p class="lvup">새로 발견한 원소 반응이 서고에 기록되었습니다.</p>' : ''}
-    ${done ? `<p class="lvup">완료한 의뢰 ${done}개! 게시판에서 보상을 받으세요.</p>` : ''}
+    ${world.discovered.size ? '<p class="lvup">새 원소 반응을 서고에 기록했다.</p>' : ''}
+    ${done ? `<p class="lvup">끝낸 의뢰 ${done}개 · 게시판에서 보상</p>` : ''}
     <button data-close>${world.zone.id === 'world' ? '마을에서 다시 일어난다' : '밖으로 나간다'}</button>`, () => { overlay.hidden = true; const back = world.zone.id === 'world' || kind === 'dead' ? null : curInterior ? { x: curInterior.x, y: curInterior.y } : returnTo || 'tower'; enterWorld(back); });
 }
 
@@ -1995,7 +1984,7 @@ function showSettings(back, openKeys = false) {
     <label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T): 가까운 적을 저절로 겨눈다</label>
     <label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> 마을 사람도 때릴 수 있게 (끄면 사람에게 맞지 않는다)</label>
     <details class="keys-set"${openKeys ? ' open' : ''}><summary>키 바꾸기</summary><div class="key-grid">${KEY_ACTIONS.map(([def, name]) => `<span>${name}</span><button class="sm ghost" data-rebind="${def}">${keyLabel(keyFor(def))}</button>`).join('')}</div>
-      <p class="muted">버튼을 누른 뒤 쓸 키를 누른다 (Esc: 그만두기). 다른 행동이 쓰던 키면 서로 바뀐다.</p><button id="keysReset" class="sm ghost">기본 키로</button></details>
+      <p class="muted">버튼 → 키 (Esc 그만두기) · 겹치면 서로 바뀐다</p><button id="keysReset" class="sm ghost">기본 키로</button></details>
     <h4>화면</h4>
     <p class="set-row">언어 · Language ${sel('optLang', window.__lang || 'ko', [['ko', '한국어'], ['en', 'English']])}</p>
     <p class="set-row">화면 흔들림 ${sel('optShake', opts.shake, [[1, '보통'], [0.5, '약하게'], [0, '끔']])}</p>
@@ -2004,7 +1993,7 @@ function showSettings(back, openKeys = false) {
     ${document.fullscreenEnabled ? `<button id="fsBtn" class="ghost">${document.fullscreenElement ? '창 모드로' : '전체 화면'}</button>` : ''}
     <h4>계정 · 저장</h4>
     ${isClaudePage() ? '<p class="muted">이 페이지의 Claude 계정에 저장된다</p>' : cloud.mode === 'account' ? `<p class="muted">${esc(cloud.name)} 계정으로 로그인 중</p><button id="logoutBtn" class="ghost">로그아웃</button>` : '<button id="loginBtn" class="ghost">로그인 / 회원가입 (어느 기기에서든 이어서)</button>'}
-    <details class="danger-zone"><summary class="muted">처음부터 다시 시작</summary><p class="muted">레벨 · 장비 · 각인 · 도감이 모두 지워지고 되돌릴 수 없어요${cloud.mode !== 'local' ? ' (서버 저장도 지워져요)' : ''}. 지우려면 아래에 <b>지운다</b>를 적으세요.</p><input id="resetIn" placeholder="지운다"> <button id="resetGo" class="sm ghost">지우기</button></details>
+    <details class="danger-zone"><summary class="muted">처음부터 다시 시작</summary><p class="muted">모두 지워지고 되돌릴 수 없다${cloud.mode !== 'local' ? ' (서버 저장도)' : ''}. 아래에 <b>지운다</b>를 적는다.</p><input id="resetIn" placeholder="지운다"> <button id="resetGo" class="sm ghost">지우기</button></details>
     <div class="actions"><button id="setBack">돌아간다</button></div>`, () => back());
   bindVolume();
   const $ = (id) => document.getElementById(id);
@@ -2214,7 +2203,7 @@ function handleSignals() {
       if (world.zone?.id === 'seabed') { save.zoneMemory.seabed = world.exportMemory(); seaStash = null; }
       const { base } = interiorZone(s.entrance), go = () => { curInterior = { id: s.entrance, x: s.x, y: s.y }; if (isPartyLeader() && net.party.members.length > 1 && ENTRANCES[s.entrance]?.theme !== 'palace') startCoZone(s.entrance); else enterInterior(s.entrance); if (ENTRANCES[s.entrance]?.prop === 'hole') world.player.drop = { h: 170, v: 0 }; }; // 구멍: 위에서 떨어져 내린다
       if (save.level < base.rec - 2) {
-        showModal(`<h2>${ENTRANCES[s.entrance].name}</h2><p>권장 레벨은 ${base.rec}입니다. (현재 Lv ${save.level})</p><p class="muted">위험하지만 들어갈 수 있습니다.</p>
+        showModal(`<h2>${ENTRANCES[s.entrance].name}</h2><p>권장 Lv ${base.rec} · 지금 Lv ${save.level}</p>
           <button id="goAnyway">그래도 들어간다</button><button data-close class="ghost">돌아간다</button>`);
         document.getElementById('goAnyway').onclick = () => { overlay.hidden = true; paused = false; modal = null; go(); };
       } else go();
@@ -2281,7 +2270,7 @@ function handleSignals() {
       if (world.zone?.id === 'world') { returnTo = s.from || 'tower'; save.zoneMemory.world = world.exportMemory(); }
       const z = ZONES.find((x) => x.id === s.zone);
       if (save.level < z.rec - 2) {
-        showModal(`<h2>${z.name}</h2><p>권장 레벨은 ${z.rec}입니다. (현재 Lv ${save.level})</p><p class="muted">위험하지만 들어갈 수 있습니다.</p>
+        showModal(`<h2>${z.name}</h2><p>권장 Lv ${z.rec} · 지금 Lv ${save.level}</p>
           <button id="goAnyway">그래도 들어간다</button><button data-close class="ghost">돌아간다</button>`);
         document.getElementById('goAnyway').onclick = () => { overlay.hidden = true; enterZone(z.id); };
       } else enterZone(z.id);
@@ -2289,7 +2278,7 @@ function handleSignals() {
     } else if (s.t === 'descend') {
       showModal(`<h2>아래층으로 내려갈까요?</h2>
         <p>지하 ${world.depth + 2}층: 적이 더 강하고, 경험치·골드·잔향이 더 많이 나옵니다.</p>
-        <p class="muted">지금까지 모은 잔향은 그대로 가지고 갑니다. 귀환하려면 아래층의 귀환 포탈이나 긴급 귀환을 쓰세요.</p>
+        <p class="muted">모은 잔향은 그대로 · 귀환: 귀환 포탈 · 긴급 귀환</p>
         <button id="goDown">내려간다</button><button data-close class="ghost">아직 아니다</button>`);
       document.getElementById('goDown').onclick = () => {
         overlay.hidden = true;
@@ -2408,7 +2397,7 @@ function portShowRoutes(pid) {
     <p>"어디로 가시오? 배삯만 내면 바로 띄우오. 바다에선 무슨 일이 생길지 모르니 각오는 하고."</p>
     ${portGoldRow()}<div class="soc-list">${rows}</div>
     ${save.ship ? `<h4>내 배 「${SHIPS[save.ship.tier].name}」로 출항 <small class="muted">배삯 없이 · 더 빨리</small></h4><div class="soc-list">${Object.keys(PORTS).filter((k) => k !== pid && PORTS[k].routes.length && ((save.visitedPorts || {})[k] || k === 'portS' || k === 'portE') && (k !== 'mist' || clues >= MIST_NEED)).map((k) => `<div class="soc-row on"><span class="nm"><b>${esc(PORTS[k].name)}</b></span><span class="btns"><button class="sm" data-own="${k}">출항</button></span></div>`).join('')}</div>` : ''}
-    <p class="muted">배 위에서는 걸어 다니며 선장 · 선원 · 상인 정보원과 이야기할 수 있다. 해적이 올라타면 싸우는 동안 배가 멈춘다.</p>
+    <p class="muted">배 위: 선장 · 선원 · 상인 정보원 · 해적이 오르면 배가 멈춘다</p>
     <div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
   overlay.querySelectorAll('[data-route]').forEach((b) => (b.onclick = () => {
     const r = P.routes[+b.dataset.route];
@@ -2432,7 +2421,7 @@ function portShowTrade(pid) {
     showModal(`<h2>${esc(P.name)} 교역소 · ${esc(P.trader)}</h2>
       <p>"${P.inland ? '왕도에서' : '이 항구에서'} 나는 건 싸게 팔고, 다른 데서 나는 건 비싸게 사 주지. 많이 사 가면 값이 오르고, 많이 팔면 내려가오. 시간이 지나면 제자리로 돌아오고."</p>
       ${portGoldRow()}<div class="soc-list">${rows}</div>
-      <p class="muted">몸에 지고 다닐 수 있는 교역품은 ${CARGO_CAP}개까지. 짐수레 · 내 배는 나중에 생긴다.</p>
+      <p class="muted">지고 다닐 수 있는 교역품 ${CARGO_CAP}개</p>
       <div class="actions"><button data-close class="ghost">돌아간다</button></div>`);
     overlay.querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => {
       const id = b.dataset.buy; let n = +b.dataset.n, got = 0;
@@ -2466,7 +2455,7 @@ function portBoardHtml(pid) {
 }
 function portShowBoard(pid) {
   rememberPrices(save, pid);
-  showModal(`<h2>${esc(PORTS[pid].name)} 시세판</h2><p class="muted">다른 항구 값은 마지막으로 거기 갔을 때 본 값이다. 배 위의 상인 정보원에게 돈을 내면 지금 값을 들을 수 있다.</p>${portBoardHtml(pid)}<div class="actions"><button data-close>닫는다</button></div>`);
+  showModal(`<h2>${esc(PORTS[pid].name)} 시세판</h2><p class="muted">다른 항구 값은 마지막으로 본 값 · 지금 값은 배 위 상인 정보원</p>${portBoardHtml(pid)}<div class="actions"><button data-close>닫는다</button></div>`);
 }
 // ── 항해: 배 갑판 위를 걸어 다니며 간다 (약 1분, 사건이 나면 길어진다) ──
 let voyStash = null;
@@ -2603,7 +2592,7 @@ let noktStash = null;
 function noktTalk(id) {
   if (id.startsWith('noktIn_')) {
     const k = id.slice(7), W = NOKT_WAYS[k];
-    if (!noktOf().known[k]) { showModal(`<h2>${esc(W.name)}</h2><p>${esc(W.look)}</p><p class="muted">무엇인가 있는 것 같지만, 어떻게 들어가는지 모른다. 소문을 들어 보자.</p><div class="actions"><button data-close>돌아선다</button></div>`); return true; }
+    if (!noktOf().known[k]) { showModal(`<h2>${esc(W.name)}</h2><p>${esc(W.look)}</p><p class="muted">들어가는 길을 모른다 · 소문을 듣자</p><div class="actions"><button data-close>돌아선다</button></div>`); return true; }
     showModal(`<h2>${esc(W.name)}</h2><p>${esc(W.look)}</p><p>소문대로라면 이 아래가 녹트 하벤이다.</p><div class="actions"><button id="noktGo">내려간다</button><button data-close class="ghost">그만둔다</button></div>`);
     document.getElementById('noktGo').onclick = () => { overlay.hidden = true; paused = false; modal = null; enterNokt(k); };
     return true;
@@ -2915,7 +2904,7 @@ function sanctTalk(id) {
   }
   if (race === 'dino') {
     const need = own ? 6 : 10;
-    if (save.mount) { showModal(`<h2>공룡 길들이기</h2><p>"네 랩터는 잘 지내지? 등에 올라타면 바람처럼 달린다."</p><p class="muted">탈것: 길들인 랩터, V(모바일 「탈것」)로 올라타면 1.75배 빠르게 달리고, 대시는 멀리 뛰어오른다. 공격하거나 세게 맞으면 내린다.</p><div class="actions"><button data-close>고맙다</button></div>`); return; }
+    if (save.mount) { showModal(`<h2>공룡 길들이기</h2><p>"네 랩터는 잘 지내지? 등에 올라타면 바람처럼 달린다."</p><p class="muted">탈것: 랩터 · V · 이동 1.75배 · 공격하거나 세게 맞으면 내린다</p><div class="actions"><button data-close>고맙다</button></div>`); return; }
     showModal(`<h2>공룡 길들이기</h2><p>"새끼 랩터 한 마리가 사람을 잘 따른다. 짐승 고기 ${need}덩이로 배를 채워 주면 너를 태워 줄 거다."</p><p class="muted">짐승 고기 ${save.bag.beastMeat || 0}개</p><div class="actions"><button id="tame" ${(save.bag.beastMeat || 0) >= need ? '' : 'disabled'}>고기를 준다</button><button data-close class="ghost">됐다</button></div>`);
     document.getElementById('tame').onclick = () => { save.bag.beastMeat -= need; if (!save.bag.beastMeat) delete save.bag.beastMeat; save.mount = true; world.mountKind = 'raptor'; overlay.hidden = true; paused = false; modal = null; done('랩터를 길들였다 · V(모바일은 「탈것」 버튼)로 타고 내린다'); };
     return;
@@ -2994,7 +2983,7 @@ function auctionTalk() {
   const msgs = auctionState(), A = save.auction, now = Date.now();
   const lots = A.lots.map((L, i) => `<div class="soc-row ${L.lead === 'me' ? 'on' : ''}"><span class="nm"><b>${esc(GOODS[L.good].name)} ×${L.n}</b> <small class="muted">${L.lead === 'me' ? '내가 최고가' : '다른 사람이 최고가'} · ${Math.ceil((L.ends - now) / 60000)}분 남음</small></span><span class="btns"><button class="sm" data-bid="${i}" ${save.gold >= Math.ceil(L.price * 1.1) ? '' : 'disabled'}>◆ ${Math.ceil(L.price * 1.1)} 부른다</button></span></div>`).join('');
   const sellable = Object.entries(save.bag).filter(([id, n]) => n > 0 && GOODS[id] && GOODS[id].cat !== 'cargo' && GOODS[id].price >= 20).slice(0, 12);
-  showModal(`<h2>황금 돛 경매장</h2>${msgs.map((m) => `<p><b>${esc(m)}</b></p>`).join('')}<p class="muted">경매가 끝날 때 최고가를 부른 사람이 가져간다. 다른 상인들도 값을 올린다. 끝난 뒤 여기 다시 오면 정산된다.</p>
+  showModal(`<h2>황금 돛 경매장</h2>${msgs.map((m) => `<p><b>${esc(m)}</b></p>`).join('')}<p class="muted">끝날 때 최고가 · 정산은 다시 와서</p>
     <h4>지금 경매 중</h4><div class="soc-list">${lots}</div>
     <h4>내 물건 내놓기 <small class="muted">10분 뒤 시세의 0.9~1.7배 사이로 팔린다 (최저가 아래면 돌아온다)</small></h4>
     <div class="soc-list">${A.sales.map((S) => `<div class="soc-row"><span class="nm">${esc(GOODS[S.good].name)} ×${S.n}</span><span class="muted">${Math.ceil((S.ends - now) / 60000)}분 남음</span></div>`).join('')}${sellable.map(([id, n]) => `<div class="soc-row"><span class="nm">${esc(GOODS[id].name)} <small class="muted">${n}개 · 시세 ◆ ${GOODS[id].price}</small></span><span class="btns"><button class="sm ghost" data-list="${id}">1개 내놓기</button></span></div>`).join('')}</div>
@@ -3020,7 +3009,7 @@ function shopTalk() {
   const rented = S.rentUntil > now;
   const stock = Object.entries(S.items).filter(([, n]) => n > 0).map(([id, n]) => `${GOODS[id].name} ×${n}`).join(' · ') || '비어 있다';
   const can = Object.entries(save.bag).filter(([id, n]) => n > 0 && GOODS[id] && GOODS[id].price >= 5).slice(0, 12);
-  showModal(`<h2>내 가게</h2><p class="muted">${rented ? `빌린 기간 ${Math.ceil((S.rentUntil - now) / 864e5)}일 남음 · 10분마다 하나씩 시세의 1.15배로 팔린다 (접속하지 않아도)` : '7일 빌리는 데 ◆ 300'}</p>
+  showModal(`<h2>내 가게</h2><p class="muted">${rented ? `${Math.ceil((S.rentUntil - now) / 864e5)}일 남음 · 10분마다 하나씩 시세 ×1.15 (접속하지 않아도)` : '7일 ◆ 300'}</p>
     <p>진열: ${esc(stock)}</p><p>모인 돈: ◆ ${S.earned}</p>
     <div class="actions">${rented ? `<button id="collect" ${S.earned ? '' : 'disabled'}>돈을 걷는다</button>` : `<button id="rent" ${save.gold >= 300 ? '' : 'disabled'}>빌린다 (◆ 300)</button>`}<button data-close class="ghost">돌아간다</button></div>
     ${rented ? `<h4>가방에서 진열하기</h4><div class="soc-list">${can.map(([id, n]) => `<div class="soc-row"><span class="nm">${esc(GOODS[id].name)} <small class="muted">${n}개</small></span><span class="btns"><button class="sm ghost" data-stock="${id}">1개</button></span></div>`).join('')}</div>` : ''}`);
@@ -3177,7 +3166,7 @@ function recruiterTalk() {
   if (P.faction === 'aurelion') { showModal(`<h2>아우렐리온 모병관</h2>${factionPanel(P)}`); bindFaction(P, recruiterTalk); return; }
   const tone = L.lv >= 1 ? '"오, 왕성의 피를 이은 분이군요! 아우렐리온은 당신 같은 분을 기다려 왔습니다."' : L.lv >= 0 ? '"입단을 원하시오? 맹세만 지킨다면 출신은 묻지 않소."' : L.lv >= -1 ? `"${RACES[save.race].name}이라… 솔직히 말하지. 위에선 당신네를 좋게 보지 않소. 시험 임무 하나는 해 내야 하오."` : '"언데드가 왕의 기사가 되겠다고? …농담이 아니라면, 남보다 두 배는 증명해야 할 거요."';
   const block = R.infamy >= 20 || bounty(save) ? '악명이 너무 높다. 입단을 거절당한다' : P.faction === 'noctaris' ? '녹타리스에 몸담고 있다. 넘어오면 배신자가 된다' : '';
-  const test = !P.tested ? '<p class="muted">시험 임무: 섬에서 벌어지는 일 하나를 왕국 편으로 해결한다 (상단 호위 · 세금 마차 지키기 · 교단 의식 막기 · 순찰대 편들기)</p>' : '';
+  const test = !P.tested ? '<p class="muted">시험 임무: 섬의 사건 하나를 왕국 편으로 (호위 · 세금 마차 · 교단 의식 · 순찰대)</p>' : '';
   showModal(`<h2>아우렐리온 모병관</h2><p>${tone}</p><p class="muted">${esc(RACES[save.race].name)}의 왕실 충성도: <b>${L.name}</b> (${esc(L.why)}) · 명성 ${R.fame} · 악명 ${R.infamy}</p>${test}${block ? `<p class="warn">${block}</p>` : ''}
     <div class="actions"><button id="joinA" ${R.infamy >= 20 || bounty(save) || !P.tested ? 'disabled' : ''}>${P.faction === 'noctaris' ? '배신하고 입단한다' : '입단한다'}</button><button data-close class="ghost">돌아간다</button></div>`);
   document.getElementById('joinA').onclick = () => { joinFaction('aurelion'); overlay.hidden = true; paused = false; modal = null; };
@@ -3555,7 +3544,7 @@ function chronicleTalk() {
   const C = save.chronicle || [];
   const fmt = (t) => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
   const offs = Object.keys(OFFICIALS).map((id) => { const n = officialNow(save, id), O = OFFICIALS[id]; return `<li>${esc(O.title)}: ${n ? `${esc(n.name)}${n.gen > 1 ? ` (${n.gen}대째)` : ''}` : '<b>공석</b>'}</li>`; }).join('');
-  showModal(`<h2>연대기 비석</h2><p class="muted">누가 무엇을 했는지 섬의 역사가 새겨진다. (서버가 이어지면 친구들의 일도 함께 새겨진다)</p>
+  showModal(`<h2>연대기 비석</h2><p class="muted">섬의 역사 (서버에 이어지면 친구들의 일도)</p>
     <h4>지금 자리에 있는 사람</h4><ul>${offs}</ul><h4>최근 일</h4>${C.length ? `<ul>${C.slice(0, 20).map((e) => `<li><small class="muted">${fmt(e.t)}</small> ${esc(e.text)}</li>`).join('')}</ul>` : '<p class="muted">아직 새겨진 일이 없다.</p>'}
     <div class="actions"><button data-close>돌아선다</button></div>`);
 }
@@ -3586,7 +3575,7 @@ function reportError(err) {
   seenErr.add(key); console.error(err);
   let el = document.getElementById('errToast');
   if (!el) { el = document.createElement('div'); el.id = 'errToast'; document.body.appendChild(el); el.onclick = () => { el.hidden = true; }; }
-  el.hidden = false; el.textContent = `오류가 났어요 (게임은 계속돼요): ${key} (눌러서 닫기)`;
+  el.hidden = false; el.textContent = `오류 (게임은 계속된다): ${key} · 눌러서 닫기`;
   clearTimeout(reportError.t); reportError.t = setTimeout(() => { el.hidden = true; }, 12000);
 }
 addEventListener('error', (e) => reportError(e.error || e.message));
@@ -3613,8 +3602,8 @@ function saveWarn(text) {
   el.hidden = !text; if (text) el.innerHTML = text;
 }
 onLocalSave((err) => {
-  if (err && cloud.mode === 'local') saveWarn(`<b>저장이 안 되고 있어요.</b> 브라우저가 저장을 막았어요 (${esc(err)}). 시크릿 창 · 앱 안 브라우저(카카오톡 등)라면 크롬 · 사파리로 열어 주세요. 일시정지 → 설정 → 로그인하면 서버에 저장돼요.`);
-  else if (err) saveWarn(`<b>이 기기에는 저장이 안 되고 있어요</b> (${esc(err)}): 서버 저장은 계속돼요.`);
+  if (err && cloud.mode === 'local') saveWarn(`<b>저장되지 않는다.</b> 브라우저가 막았다 (${esc(err)}). 크롬 · 사파리로 열거나 설정에서 로그인하면 서버에 저장된다.`);
+  else if (err) saveWarn(`<b>이 기기에는 저장되지 않는다</b> (${esc(err)}) · 서버 저장은 계속된다`);
   else if (!isStale()) saveWarn('');
 });
 // 앱 안 브라우저(카카오톡 · 네이버 · 인스타그램 · 페이스북 · 라인): 창을 닫으면 저장이 지워지는 일이 많다

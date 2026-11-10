@@ -36,8 +36,7 @@ export function createClimb(ctx) {
     const acts = ACTS.map((a) => { const st = c.lords?.[a.n] ? 'done' : c.best >= a.from - 1 ? 'now' : 'locked'; return `<span class="cl-act ${st}" style="--c:${a.color}"><b>${a.from}~${a.to}층</b>${a.name}<small>${st === 'done' ? '돌파' : st === 'locked' ? '잠김' : `권장 Lv ${a.rec}+`}</small></span>`; }).join('');
     const food = Object.entries(S().bag || {}).filter(([k, n]) => n > 0 && eatInfo(k)).reduce((a, [, n]) => a + n, 0);
     ctx.showModal(`<h2>각인의 탑</h2>
-      <p class="muted">층마다 몬스터 · 5층마다 수호자 · 10층마다 구역의 주인. 주인을 쓰러뜨리면 다음 구역부터 시작할 수 있다.</p>
-      <p class="muted">탑 안에서 크게 회복하는 길은 수호자 · 주인 처치(체력 40%)뿐이다. <b>음식(H)</b> · <b>물약(Z)</b>을 챙기자. 가방의 음식 ${food || '없음'}</p>
+      <p class="muted">5층 수호자 · 10층 주인 (쓰러뜨리면 체력 40% · 다음엔 그 위 구역부터) · 가방의 음식 ${food || '없음'}</p>
       <div class="cl-acts">${acts}</div>
       <p>최고 기록 <b>${c.best}층</b> / ${CLIMB_TOP}${lordsDone ? ` · 서약 <b>${sc}</b>` : ''} · 내 레벨 <b>Lv ${S().level}</b></p>
       <div class="actions">${starts.map((f, i) => `<button data-clstart="${f}" class="${i === starts.length - 1 ? '' : 'ghost'}">${f}층부터</button>`).join('')}</div>
@@ -110,7 +109,7 @@ export function createClimb(ctx) {
         if (first && act.n === 5) setTimeout(() => ctx.showModal(`<h2>각인의 왕이 쓰러졌다</h2>
           <p class="lvup">탑 한가운데의 빛이 다시 타오른다.</p>
           <p>삼백 년 전 마지막 왕이 닫은 문 너머, 잠들어 있던 <b>탑의 기억</b>이 깨어난다. 하늘 정원 · 거울 미궁 · 태엽 시계탑 · 별의 서고 · 빛의 정상: 오를수록 그날의 진실에 다가간다.</p>
-          <p class="muted">본편을 마쳤다 · 51층부터는 새 구역 다섯 (구역마다 장치가 있다) · 100층 꼭대기에서 마지막 왕이 기다린다</p>
+          <p class="muted">본편 끝 · 51~100층 새 구역 다섯 · 꼭대기에 마지막 왕</p>
           <div class="actions"><button data-close>계속</button></div>`), 1200); // 본편 끝 (50층)
         if (s.f < CLIMB_TOP) ctx.banner({ text: '기록이 남았다', sub: first ? `다음부터 ${s.f + 1}층에서 시작할 수 있다${act.n === 1 && !ctx.locked?.('oath') ? ' · 서약이 열렸다' : ''}` : `${s.f + 1}층부터 시작할 수 있다`, t: 4, color: '#8ad8ff' });
       }
@@ -159,7 +158,7 @@ export function createClimb(ctx) {
       <div class="cl-sum"><div><small>오른 층</small><b>${reached}층</b></div><div><small>걸린 시간</small><b>${fmtT(rec.time)}</b></div><div><small>가져온 부산물</small><b>${keptN}개</b></div><div><small>골드</small><b class="cl-gold">◆ ${res.gold || 0}</b></div></div>
       ${kind === 'dead' ? '<p class="muted">쓰러져도 주운 것은 모두 가져온다.</p>' : ''}${sc ? `<p class="muted">서약 ${sc}</p>` : ''}
       ${res.ups ? `<p class="lvup">레벨 업! Lv ${s.level}</p>` : ''}
-      <p class="muted">다음 등반은 <b>${next}층</b>부터 시작할 수 있다. 부산물로 공명 제단에서 각인을 새겨 강해지자.</p>
+      <p class="muted">다음 등반: <b>${next}층</b>부터</p>
       <div class="actions"><button id="clAgain">${next}층부터 다시 오르기</button><button data-close class="ghost">탑 밖으로</button></div>`, () => { close(); ctx.leave(); });
     const ab = document.getElementById('clAgain'); if (ab) ab.onclick = () => { close(); startClimb(next); };
   }
