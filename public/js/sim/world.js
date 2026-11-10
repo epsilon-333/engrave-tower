@@ -885,14 +885,19 @@ export class World {
       else { p.focusT += DT; if (p.focusT >= 0.5) { p.focusT = 0; if (p.focus < 3) { p.focus++; this.emit({ t: 'focus', x: p.x, y: p.y, n: p.focus }); } } }
       if (p.dashT <= 0 && p.moving) p.focusKeep = false;
     }
+    // 한 번 누름 = 한 번 공격. 누른 채로 0.25초가 넘어야 이어서 친다(짧은 클릭이 두 번 나가던 문제)
+    if (inp.attack && !p.attackHeld) { p.atkPressT = 0; p.atkPressFired = false; }
+    else if (inp.attack) p.atkPressT = (p.atkPressT || 0) + DT;
     p.attackHeld = !!inp.attack;
+    const atkWant = inp.attack && (!p.atkPressFired || p.atkPressT >= 0.25);
     if (p.pendingDouble >= 0) { p.pendingDouble -= DT; if (p.pendingDouble < 0) this.attack(0.12); }
     if (inp.attack && p.riding) { this.dismount(); p.atkCd = Math.max(p.atkCd, 0.25); }
-    if (inp.attack && p.atkCd <= 0 && p.castT <= 0 && !p.channel && !p.charging && !p.rush && !p.leap && !(p.windupT > 0) && !p.swim && !p.combo && !p.fallInto && !p.drop && !p.hop) {
+    if (atkWant && p.atkCd <= 0 && p.castT <= 0 && !p.channel && !p.charging && !p.rush && !p.leap && !(p.windupT > 0) && !p.swim && !p.combo && !p.fallInto && !p.drop && !p.hop) {
       const mom = this.mod('atkSpeed');
       p.atkCd = 1 / (this.b.weapon.speed * d.atkSpeed * mom);
       p.atkPeriod = p.atkCd;
       this.attack(0);
+      p.atkPressFired = true;
       if (f.has('doubleAttack') && this.rng.chance(0.3)) p.pendingDouble = 0.08;
     }
 
