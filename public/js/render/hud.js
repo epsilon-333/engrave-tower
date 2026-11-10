@@ -111,6 +111,7 @@ export const HudMethods = {
     const W = this.c.width, H = this.c.height;
     g.setTransform(1, 0, 0, 1, 0, 0);
     const m = 10 * u;
+    this.rightCol = null; // 오른쪽 위 기둥 (작은 지도 · 정보띠 · 여정): 지역 배너가 피해 간다
     // 데스크톱: 내 상태는 왼쪽 아래 한 덩어리 (Hades · Dead Cells처럼 화면 가운데를 비운다). 모바일: 예전처럼 왼쪽 위 (아래는 조이스틱)
     const desk = !document.body.classList.contains('touch');
     const R = RACES[w.b.race]?.res;
@@ -325,16 +326,20 @@ export const HudMethods = {
       this.banner.t -= dt;
       g.globalAlpha = Math.min(1, this.banner.t * 1.5);
       const bY = Math.max(H * 0.22, boss ? topY + 64 * u : w.climb ? topY + 44 * u : 0); // 보스 체력바 · 등반 글 아래로
-      let ts = 3 * u; // 긴 제목은 화면 안에 들어올 때까지 글씨를 줄인다 (좁은 창에서 양옆이 잘렸다)
+      let ts = 3 * u, bx = W / 2; // 긴 제목은 화면 안에 들어올 때까지 글씨를 줄인다 (좁은 창에서 양옆이 잘렸다)
       { // 뒤에 옅은 어둠 띠: 세계 위의 이름표 · 글과 겹쳐 읽히지 않게
-        g.font = `bold ${33 * u}px ${FONT}`; let tw = g.measureText(this.banner.text).width;
-        while (ts > 1 && tw > W - 24 * u) { tw *= (ts - 1) / ts; ts--; }
+        g.font = `bold ${33 * u}px ${FONT}`; const tw0 = g.measureText(this.banner.text).width;
         g.font = `${11 * u}px ${FONT}`; const sw = this.banner.sub ? g.measureText(this.banner.sub).width : 0;
-        const bw = Math.min(W - 8 * u, Math.max(tw, sw) + 40 * u), bh = (this.banner.sub ? 52 : 40) * u;
-        const a0 = g.globalAlpha; g.globalAlpha = a0 * 0.55; g.fillStyle = '#0c0a0b'; g.fillRect(Math.round(W / 2 - bw / 2), Math.round(bY - 22 * u), Math.round(bw), Math.round(bh)); g.globalAlpha = a0;
+        const bh = (this.banner.sub ? 52 : 40) * u, fit = (room) => { let t = 3 * u, tw = tw0; while (t > 1 && tw > room - 24 * u) { tw *= (t - 1) / t; t--; } return [t, Math.min(room - 8 * u, Math.max(tw, sw) + 40 * u)]; };
+        let [t1, bw] = fit(W);
+        // 오른쪽 기둥(작은 지도 · 여정)과 겹치면: 기둥 왼쪽 빈 곳 가운데로 옮기고 그 폭에 맞춰 줄인다 (좁은 창 · itch 임베드)
+        const rc = this.rightCol, top = bY - 22 * u;
+        if (rc && top < rc.bottom + 6 * u && W / 2 + bw / 2 > rc.x - 28 * u) { const room = rc.x - 20 * u; [t1, bw] = fit(room); bx = room / 2 + 4 * u; }
+        ts = t1;
+        const a0 = g.globalAlpha; g.globalAlpha = a0 * 0.55; g.fillStyle = '#0c0a0b'; g.fillRect(Math.round(bx - bw / 2), Math.round(top), Math.round(bw), Math.round(bh)); g.globalAlpha = a0;
       }
-      this.text(this.banner.text, W / 2, bY, ts, this.banner.color, 'center', true, true);
-      if (this.banner.sub) this.text(this.banner.sub, W / 2, bY + 26 * u, u, '#dcd2c6', 'center');
+      this.text(this.banner.text, bx, bY, ts, this.banner.color, 'center', true, true);
+      if (this.banner.sub) this.text(this.banner.sub, bx, bY + 26 * u, u, '#dcd2c6', 'center');
       g.globalAlpha = 1;
       if (this.banner.t <= 0) this.banner = null;
     }
@@ -355,6 +360,7 @@ export const HudMethods = {
     const show = lines.slice(0, 3), h = 30 * u + show.length * 12 * tu;
     this.panel(x, y, tw, h);
     this.journeyBottom = y + h;
+    if (right != null) this.rightCol = { x: Math.min(this.rightCol?.x ?? x, x), bottom: y + h };
     g.fillStyle = J.done ? '#8fcf7a' : '#e9b85c'; g.fillRect(x, y, 2 * u, h);
     this.text(`여정 ${J.n} / ${J.total}${J.done ? ' · 완료!' : ''}`, x + 7 * u, y + 7 * u, tu, J.done ? '#8fcf7a' : '#c8b88a', 'left', false);
     this.text(J.title, x + 7 * u, y + 19 * u, u, '#f6dfae', 'left', true, true);
@@ -422,7 +428,10 @@ export const HudMethods = {
     const keys = [...['KeyQ', 'KeyE', 'KeyR', 'KeyF'].map((k) => keyLabel(keyFor(k))), touch ? '무기' : '우클릭']; // 키 바꾸기를 따른다
     const n = slots.length + 1;
     const total = n * box + (n - 1) * gap;
-    const x0 = touch ? W - total - 8 * u : Math.max((W - total) / 2, 168 * u + (w.life?.quickFood ? box + gap : 0)), y0 = touch ? Math.round(H * 0.2) : H - box - 12 * v; // 모바일: 오른쪽 작은 지도 아래 (체력 · 저장 안내와 겹치지 않게)
+    // 데스크톱: 체력 · 자원 글자(왼쪽 아래 약 210) 오른쪽에. 좁은 창이라 거기에 다 들어가지 않으면 가운데 · 체력 덩어리 위로 올린다
+    const leftMin = 210 * u + (w.life?.quickFood ? box + gap : 0), narrow = !touch && leftMin + total > W - 8 * u;
+    const x0 = touch ? W - total - 8 * u : narrow ? Math.max(8 * u + (w.life?.quickFood ? box + gap : 0), (W - total) / 2) : Math.max((W - total) / 2, leftMin);
+    const y0 = touch ? Math.round(H * 0.2) : narrow ? Math.round((this.hudFrameTop ?? H) - box - 16 * v) : H - box - 12 * v; // 모바일: 오른쪽 작은 지도 아래 (체력 · 저장 안내와 겹치지 않게)
     // 대시
     const dashMax = d.dashCd * (1 - d.cdr), dashK = p.dashCharges > 0 ? 1 : Math.min(1, 1 - p.dashRecharge / dashMax);
     this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : keyLabel(keyFor('Space')), '', null, p.dashCharges > 0 ? 0 : p.dashRecharge);
@@ -543,6 +552,7 @@ export const HudMethods = {
     for (const e of w.enemies) if ((e.def.elite || e.champion) && seen(e.x, e.y)) dot(e.x, e.y, '#ff4040', 2);
     if (Math.floor(w.t * 4) % 2 === 0) dot(w.player.x, w.player.y, '#ffffff', 1.5);
     this.minimapBottom = my + mh;
+    this.rightCol = { x: mx - 2 * u, bottom: my + mh + 30 * u };
     if (w.climb) { this.hudRightBottom = my + mh + 8 * this.u; for (const o of w.objects) if (o.kind === 'climbDoor') dot(o.x, o.y, CLIMB_REWARDS[o.next]?.color || '#fff', 2); else if (o.kind === 'climbReward' && !o.opened) dot(o.x, o.y, '#f6dfae', 2.2); return; } // 탑 등반: 아래 글은 등반 HUD 가 그린다
     if (!this.pctT || this.pctT < w.t) { this.pctT = w.t + 0.5; this.pctV = Math.round(w.exploredPct() * 100); }
     // 정보띠: 미니맵 바로 아래 한 상자에 시계 · 골드 / 지역 · 탐험 (따로 떠 있던 글자를 모은다)
