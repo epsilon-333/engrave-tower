@@ -751,6 +751,7 @@ function journeyEvent(k, d) {
 }
 let journeyT = 0;
 function journeyTick(dt) {
+  renderer.tutActive = !!(save?.tutorial && !save.tutorial.done && world?.zone?.id === 'world'); // 튜토리얼 중에는 작은 지도도 숨긴다 (조작에만 집중)
   if (!save || !world) { renderer.journey = null; return; }
   if (save.tutorial && !save.tutorial.done) { renderer.journey = null; return; } // 튜토리얼 중에는 여정을 숨긴다 (할 일 안내가 한 화면에 여럿 뜨지 않게)
   if ((journeyT -= dt) > 0) return;

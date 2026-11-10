@@ -42,7 +42,7 @@ export function createTutorial(ctx) {
     if (rt?.dummy && w) { rt.dummy.dead = true; w.enemies = w.enemies.filter((e) => e !== rt.dummy); }
     rt = null;
     if (el) el.hidden = true;
-    if (done) ctx.banner({ text: '튜토리얼 끝!', sub: '이제 화면의 여정과 화살표를 따라 각인의 탑으로!', t: 4.5, color: '#f6dfae' });
+    if (done) ctx.banner({ text: '튜토리얼 끝!', sub: '오른쪽 위의 여정을 따라가자 · 먼저 사냥부터', t: 4.5, color: '#f6dfae' });
     ctx.writeSave();
   }
 

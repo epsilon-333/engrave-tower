@@ -1,4 +1,5 @@
 [
+"Bleed",
 "Bleed + Cold",
 "Move speed +25% when approaching bleeding enemies. Hitting bleeding enemies heals a little",
 "Hitting bleeding enemies adds 1 poison stack (poison + bleed → sepsis",
@@ -397,6 +398,5 @@
 "Castaway",
 "Rescued the castaway",
 "Mark",
-"Enemies in the marked area take +40% elemental damage and +50% elemental reaction damage for 8s. Mana 8",
-"Target"
+"Enemies in the marked area take +40% elemental damage and +50% elemental reaction damage for 8s. Mana 8"
 ]

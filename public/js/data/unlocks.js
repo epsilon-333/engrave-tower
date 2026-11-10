@@ -5,7 +5,7 @@
 // f: 이 층을 깨면 열린다 · regions: 바깥 지역(BIOMES id) · systems: 체계 · entrances: 들어가는 곳(ENTRANCES id)
 export const UNLOCKS = [
   { f: 5, systems: ['fishing'] },
-  { f: 10, regions: ['forest', 'mistcoast', 'swamp'], systems: ['sanctum', 'spirit'] },
+  { f: 10, regions: ['forest', 'mistcoast', 'swamp'], systems: ['sanctum', 'spirit', 'coach'] },
   { f: 15, entrances: ['mossCave'] },
   { f: 20, regions: ['ruins', 'jungle', 'volcano'], systems: ['farming', 'social'] },
   { f: 30, regions: ['wasteland', 'mountains'], systems: ['mount', 'sailing', 'raid:golem'] },
@@ -14,7 +14,7 @@ export const UNLOCKS = [
 ];
 
 export const SYSTEM_NAME = {
-  fishing: '낚시', sanctum: '종족 성지 · 수련', spirit: '정령 계약', farming: '농사', social: '동료 (파티 · 결투 · 길드)',
+  fishing: '낚시', sanctum: '종족 성지 · 수련', spirit: '정령 계약', farming: '농사', social: '동료 (파티 · 결투 · 길드)', coach: '역마차 (왕도행)',
   mount: '탈것', sailing: '항해 · 섬', 'raid:golem': '레이드 · 고대 골렘', politics: '왕도 정치', 'raid:queen': '레이드 · 서리 여왕',
   oath: '서약', rank: '랭킹', 'raid:dragon': '레이드 · 화룡왕',
 };

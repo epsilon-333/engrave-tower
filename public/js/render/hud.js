@@ -177,7 +177,7 @@ export const HudMethods = {
     for (const k of Object.keys(p.st)) { const nm = names[k] || ['상태이상', '#ffffff', '']; this.text(nm[0], sxx, ry + 5 * u, u, nm[1]); tips.push({ x: sxx, y: ry, w: 26 * u, h: 10 * u, title: nm[0], color: nm[1], lines: [nm[2]].filter(Boolean), left: p.st[k]?.t }); sxx += 30 * u; }
     this.drawSkillBar(w);
     // 데스크톱: 미니맵 아래 정보띠(시계 · 골드 · 지역)에 시계를 넣고, 여정은 그 밑 오른쪽 (퀘스트 추적 칸)
-    if (desk && w.mode === 'field') { this.drawMinimap(w); this.hudRightY = this.hudRightBottom || 120 * u; }
+    if (desk && w.mode === 'field' && !this.tutActive) { this.drawMinimap(w); this.hudRightY = this.hudRightBottom || 120 * u; }
     else if (w.mode !== 'field') this.drawClock(w); // 바깥(미니맵이 있는 곳)은 미니맵 아래 정보띠에 시계가 있다
     this.journeyBottom = 0;
     if (this.journey && !w.climb && !w.pvp && !w.practice) {
@@ -186,7 +186,7 @@ export const HudMethods = {
     }
     this.drawTip();
 
-    if (w.mode === 'field' && !desk) this.drawMinimap(w);
+    if (w.mode === 'field' && !desk && !this.tutActive) this.drawMinimap(w);
     else if (!document.body.classList.contains('touch') && w.t < 8 && !w.climb && !w.pvp && w.map?.indoor) { // 안내 띠: 집 · 실내에 들어온 뒤 8초만 (탑 · 보스전에는 띄우지 않는다)
       const hint = 'G 상호작용 · I 장비 · B 가방 · C 캐릭터 · 아래쪽 문으로 나가기';
       g.font = `${11 * u}px ${FONT}`;

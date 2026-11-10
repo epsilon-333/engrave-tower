@@ -1245,7 +1245,7 @@ export class World {
   }
   interact(o) {
     { // 해방되지 않은 체계 · 들어가는 곳
-      const lock = this.locks && (o.kind === 'boat' ? this.locks.text('systems', 'sailing') : o.kind === 'sanctum' ? this.locks.text('systems', 'sanctum') : o.kind === 'spirit' || o.kind === 'spiritKing' ? this.locks.text('systems', 'spirit') : o.kind === 'entrance' ? this.locks.text('entrances', o.id) : null);
+      const lock = this.locks && (o.kind === 'boat' ? this.locks.text('systems', 'sailing') : o.kind === 'sanctum' ? this.locks.text('systems', 'sanctum') : o.kind === 'spirit' || o.kind === 'spiritKing' ? this.locks.text('systems', 'spirit') : o.kind === 'coach' ? this.locks.text('systems', 'coach') : o.kind === 'entrance' ? this.locks.text('entrances', o.id) : null);
       if (lock) { this.sealed(lock); return; }
     }
     if (o.kind === 'portal') { this.state = 'done'; return; }

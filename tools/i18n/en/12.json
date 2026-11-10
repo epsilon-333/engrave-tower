@@ -1,4 +1,6 @@
 [
+"Stepping in lava pools burns. Dodge beams beside the warning line",
+"Lava Curtain",
 "Lava eel",
 "Lava Skin",
 "Lava needs a fire fishing rod",
@@ -346,7 +348,6 @@
 "Not enough enemies to chain",
 "Now unaffiliated",
 "Now you can climb again under an oath",
-"Now follow the journey and arrows on screen to the Tower of Engraving",
 "From here it's a battle of records. Compete with friends on oath scores",
 "or less",
 "Human",
@@ -397,6 +398,5 @@
 "Auto-aim",
 "Auto-aim (T",
 "Auto-aim (T): automatically targets the nearest enemy",
-"Auto-aim off",
-"Auto-aim on"
+"Auto-aim off"
 ]

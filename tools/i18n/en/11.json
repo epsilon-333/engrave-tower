@@ -127,6 +127,7 @@
 "Traveler",
 "Backflow",
 "Stagecoach",
+"Coach (to the capital",
 "Ride the stagecoach (village ↔ capital · ◆ 20",
 "Take the stagecoach and you're at the capital's south gate in no time. Fare ◆ 20",
 "Plague Lord's Staff",
@@ -235,6 +236,7 @@
 "Floors climbed",
 "Times climbed",
 "Right hand",
+"Follow the journey at the top right · Start with a hunt",
 "Press the right stick to hit the dummy three times",
 "Move right",
 "Osric",
@@ -396,7 +398,5 @@
 "Lava Tablet",
 "Lava Heart Hammer",
 "Lava Ogre",
-"Lava ogre's hardened lava",
-"Stepping in lava pools burns. Dodge beams beside the warning line",
-"Lava Curtain"
+"Lava ogre's hardened lava"
 ]
