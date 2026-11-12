@@ -54,7 +54,7 @@ export const EnemyAiMethods = {
       if (st.bleed) { bleed = st.bleed.n * (1.5 + d.physAtk * 0.1) * d.bleedMul; if ((st.bleed.t -= DT) <= 0) st.bleed = null; }
       if (st.chill && (st.chill.t -= DT) <= 0) st.chill = null;
       let curse = 0;
-      if (st.curse) { curse = st.curse.n * (2 + d.magAtk * 0.12); if ((st.curse.t -= DT) <= 0) st.curse = null; }
+      if (st.curse && (st.curse.t -= DT) <= 0) st.curse = null; // 저주: 피해는 없다 · 약하게 만든다 (CURSE)
       for (const k of ['shock', 'weak', 'elemMark', 'fear', 'stun']) if (st[k] > 0) { st[k] -= DT; if (st[k] <= 0 && k === 'stun') e.prison = false; }
       if (this.b.race === 'dragon' && st.burn) this.addRes(DT * (this.raceRes.burnTick || 1), true);
       for (const k of ['frozen', 'mark', 'septic', 'slowZ']) if (st[k] > 0) st[k] -= DT;

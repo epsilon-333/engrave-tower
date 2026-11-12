@@ -685,7 +685,7 @@ export const TAGS = {
     { n: 3, text: '회피 +8%', effects: [{ type: 'add', key: 'dodge', v: 0.08 }] },
   ] },
   curse: { name: '저주', color: '#b7a4ff', tiers: [
-    { n: 2, text: '상태이상 피해 +25%', effects: [{ type: 'mul', key: 'statusDmgMul', v: 1.25 }] },
+    { n: 2, text: '저주의 약화 +50% (중첩마다 받는 피해 +3% · 주는 피해 -4.5%)', effects: [{ type: 'mul', key: 'curseMul', v: 1.5 }] },
   ] },
   undying: { name: '불사', color: '#e8e2cf', tiers: [
     { n: 2, text: '사냥마다 1번, 죽으면 HP 30%로 부활', effects: [{ type: 'flag', flag: 'undying' }] },

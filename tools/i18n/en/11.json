@@ -1,5 +1,4 @@
 [
-"Frozen Corridor",
 "Frozen, briefly unable to move or attack",
 "Ice",
 "Ice Prison",
@@ -398,5 +397,6 @@
 "Lava Tablet",
 "Lava Heart Hammer",
 "Lava Ogre",
-"Lava ogre's hardened lava"
+"Lava ogre's hardened lava",
+"Stepping in lava pools burns. Dodge beams beside the warning line"
 ]

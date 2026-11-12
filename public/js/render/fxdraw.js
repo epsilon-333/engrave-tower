@@ -3,7 +3,7 @@
 
 import { sprite, frames } from './assets.js';
 import { RACE_ART } from '../data/art.js';
-import { GROUND_FX, easeOut, WORD_COLOR, hexA, disc, ellipse, smear } from './renderer.js';
+import { GROUND_FX, GROUND_MARKS, easeOut, WORD_COLOR, hexA, disc, ellipse, smear } from './renderer.js';
 
 export const FxMethods = {
   // 먹물 얼룩 하나: 가운데 울퉁불퉁한 웅덩이 + 사방으로 튄 줄기(점점 가늘어지다 끝에 방울) + 흩뿌린 작은 방울 (small = 발밑 웅덩이만)
@@ -23,10 +23,24 @@ export const FxMethods = {
     if (!small) for (let i = 0; i < 18; i++) { const a = Math.random() * Math.PI * 2, s = 90 + Math.random() * 120; this.parts.push({ x, y: y - 4, vx: Math.cos(a) * s, vy: Math.sin(a) * s * 0.6 - 40, t: 0.4, max: 0.4, color: i % 3 ? '#1a0f2a' : '#6a42a8', g: 260, floor: y + Math.sin(a) * R * 0.5, size: 2 }); } // 튀어 오르는 먹물 방울
   },
   // 이펙트는 두 층: 바닥에 붙는 것(예고 원 · 예고선 · 갈라짐 · 그을음 · 마법진)은 사람 · 보스 · 소품보다 아래, 나머지는 위
-  drawFx(w, dt, ground = false) {
+  // 화면에 보이는 칸 가운데 그릴 수 있는 칸만 남기고 자른다 (g.save 상태로 돌려준다 → 다 그린 뒤 g.restore)
+  // landOnly: 걸을 수 있는 땅만 (벽 · 건물 · 물 · 깊은 곳 빼고) · 아니면 벽 · 건물만 뺀다
+  clipTiles(w, cx, cy, landOnly) {
+    const g = this.g, T = this.TILE || 16, x0 = Math.max(0, Math.floor(cx / T) - 1), y0 = Math.max(0, Math.floor(cy / T) - 1), x1 = Math.min(w.tw - 1, Math.ceil((cx + this.VW) / T) + 1), y1 = Math.min(w.th - 1, Math.ceil((cy + this.VH) / T) + 1);
+    const ok = (tx, ty) => { const t = w.tiles[ty * w.tw + tx]; return landOnly ? t === 0 && !w.isWaterAt(tx * T + 8, ty * T + 8) : !(t === 1 || t === 3 || t === 4 || t === 5); };
+    g.save(); g.beginPath();
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      if (!ok(tx, ty)) continue;
+      let e = tx; while (e + 1 <= x1 && ok(e + 1, ty)) e++; // 가로로 이어진 칸은 한 덩어리로
+      g.rect(tx * T, ty * T, (e - tx + 1) * T, T); tx = e;
+    }
+    g.clip();
+  },
+  drawFx(w, dt, ground = false, marks = null) {
     const g = this.g, p = w.player;
     for (const f of this.fx) {
       if (GROUND_FX.has(f.k) !== ground) continue;
+      if (marks !== null && GROUND_MARKS.has(f.k) !== marks) continue;
       f.t -= dt;
       const k = Math.max(0, f.t / f.max);
       if (f.k === 'pipes') { // 황금 관: 줄을 따라 14px마다 관이 땅에서 솟았다 들어가며 끝에서 증기를 뿜는다
@@ -485,7 +499,7 @@ export const FxMethods = {
         const age = f.max - f.t, fade = Math.min(1, f.t / 1.2);
         for (const pc of f.pieces) {
           const q = Math.min(1, age / pc.fly), x = pc.x0 + (pc.x1 - pc.x0) * q, y = pc.y0 + (pc.y1 - pc.y0) * q - Math.sin(q * Math.PI) * pc.h;
-          const s = pc.s, heat = Math.max(0, 1 - age / 2.6);
+          const s = pc.s, heat = f.cold ? 0 : Math.max(0, 1 - age / 2.6); // cold: 달아오르지 않은 그냥 돌 조각 (등급 높은 스킬이 튀긴 것)
           g.globalAlpha = fade;
           if (q >= 1) { g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, x, y + s * 0.5, s, s * 0.35); }
           g.fillStyle = '#1a1210'; g.beginPath(); for (let i = 0; i < 6; i++) { const a = pc.rot + i * Math.PI / 3, rr = s * (0.75 + ((i * 37) % 5) / 10); g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.8); } g.closePath(); g.fill();

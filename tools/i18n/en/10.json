@@ -1,6 +1,4 @@
 [
-"Forest",
-"Forest Bandit Archer",
 "Forest bandit's feathered arrow",
 "Forest Archer's Bow",
 "Forest Sprite",
@@ -340,6 +338,7 @@
 "Raider's Charge",
 "Weak",
 "Weak monster horde",
+"Weakened. Each stack: damage taken +2% · damage dealt -3",
 "Double Axe",
 "Both hands",
 "Two-handed weapon: damage +12",
@@ -398,5 +397,6 @@
 "Damage to frozen enemies +50",
 "Damage to frozen enemies",
 "More damage to frozen enemies",
-"Defeat frozen enemies and"
+"Defeat frozen enemies and",
+"Frozen Corridor"
 ]

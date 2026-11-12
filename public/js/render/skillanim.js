@@ -55,7 +55,7 @@ const ELEM_COL = { fire: '#ff7a2a', ice: '#9fe3ff', lightning: '#f8f070', poison
 
 export class SkillAnims {
   constructor(r) { this.r = r; this.list = []; this.ground = []; this.px = new PxFx(); }
-  add(type, o) { const max = o.max ?? DUR[type] ?? 0.8; this.list.push({ type, t: 0, max, seed: (Math.random() * 1e9) | 0, ...o, max }); if (this.list.length > 60) this.list.shift(); return true; } // 그렸다고 알린다 (안 알리면 렌더러가 고리 · 등급 표식을 또 겹쳐 그렸다)
+  add(type, o) { const max = o.max ?? DUR[type] ?? 0.8; const L = GROUND_TYPES.has(type) ? this.ground : this.list; L.push({ type, t: 0, max, seed: (Math.random() * 1e9) | 0, ...o, max }); if (L.length > 60) L.shift(); return true; } // 그렸다고 알린다 (안 알리면 렌더러가 고리 · 등급 표식을 또 겹쳐 그렸다)
 
   // 사건 → 애니메이션 고르기 (범위 스킬이 터지는 자리)
   onAoe(ev) {
@@ -430,7 +430,9 @@ const DRAW = {
 
 // ── 땅 갈라짐: 도트로 바닥에 직접 판다 (매끈한 그라데이션 없이 · 사라질 때는 도트를 듬성듬성 지워 간다) ──
 const SPLIT_GLOW = { fire: ['#ffe080', '#ff8a2a', '#c8401a'], ice: ['#ffffff', '#9fe3ff', '#3f86c0'], dark: ['#e8b8ff', '#9a4ad8', '#4a1a78'], arcane: ['#ffffff', '#b98aff', '#5e45c0'], lightning: ['#ffffff', '#f8f070', '#b8a020'] };
+const GROUND_TYPES = new Set(['cracks', 'fissure']); // 땅에 새기는 것: 사람 · 건물 아래에 그리고, 벽 · 물 · 허공에서는 잘린다
 const GROUND_DRAW = {
+  cracks: (R, g, a, k) => DRAW.cracks(R, g, a, k), fissure: (R, g, a, k) => DRAW.fissure(R, g, a, k),
   skid(R, g, a, k) { // 미끄러진 자국: 두 줄의 패인 흙 자국 → 시작점부터 끝 쪽으로 메워진다 (도트 · 반투명 없음)
     const P = a.pts; if (P.length < 2) return;
     const fill = k > 0.45 ? (k - 0.45) / 0.55 : 0, from = Math.floor(fill * (P.length - 1));

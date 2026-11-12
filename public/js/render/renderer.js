@@ -26,6 +26,7 @@ import { SKILLS, ELEM } from '../data/skills.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, weaponArt, RACE_LOOK } from '../data/art.js';
 import { BOSS_PASSIVES } from '../data/tower.js';
 import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
+export const GROUND_MARKS = new Set(['ink', 'cracks', 'scorch', 'scrape', 'rageCracks']); // 그 가운데 땅에 새겨지는 것 (벽 · 물 · 허공에는 안 생긴다)
 export const GROUND_FX = new Set(['ink', 'tcircle', 'tdonut', 'lineTele', 'cracks', 'scorch', 'scrape', 'castCircle', 'rune', 'glyphs', 'rageCracks', 'path']); // 바닥에 그리는 이펙트
 const BOSS_MELEE = new Set(['combo', 'cleave', 'whirl', 'shove', 'charge', 'leap', 'jumps3', 'quake', 'grab', 'retreat']);
 const SHEET_LOOKS = ['saturate(1.25) contrast(1.1) brightness(1.08)', 'saturate(1.5) contrast(1.3) brightness(0.92)']; // 보스 시트 2 · 3단계: 색을 돌리지 않고 진하게만
@@ -622,8 +623,9 @@ export class Renderer {
         }
       }
     }
-    this.anims.drawGround(g, dt); // 바닥에 새기는 것 (땅 갈라짐): 사람 · 건물 아래
-    this.drawFx(w, dt, true); // 바닥 이펙트: 예고 원 · 예고선 · 갈라짐 (몸 아래로)
+    // 바닥 이펙트는 지형을 따른다: 땅에 새기는 것(갈라짐 · 그을음 · 먹물 · 긁힌 자국)은 걸을 수 있는 땅에만, 예고 원 · 마법진은 벽 위로만 안 보이게
+    this.clipTiles(w, cx, cy, true); this.anims.drawGround(g, dt); this.drawFx(w, dt, true, true); g.restore();
+    this.clipTiles(w, cx, cy, false); this.drawFx(w, dt, true, false); g.restore();
     // 엔티티 (y 정렬)
     const vis = (x, y) => x > cx - 48 && x < cx + VW + 48 && y > cy - 48 && y < cy + VH + 64;
     const list = [];

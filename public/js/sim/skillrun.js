@@ -2,7 +2,8 @@
 // World.prototype 에 그대로 붙는다 (sim/world.js 끝). 메서드 안의 this 는 World
 
 import { WEAPON_SKILLS } from '../data/items.js';
-import { SKILLS, ELEM, ELEM_CYCLE, handFit, crossMul, CANT_TEXT, SKILL_BAL } from '../data/skills.js';
+import { SKILLS, ELEM, ELEM_CYCLE, handFit, crossMul, CANT_TEXT, SKILL_BAL, engravingSkillFor } from '../data/skills.js';
+import { ENGRAVINGS } from '../data/engravings.js';
 import { SPIRITS, SPIRIT_GRADES } from '../data/spirits.js';
 import { skillScale } from '../data/statscale.js';
 import { absMin } from './time.js';
@@ -88,6 +89,7 @@ export const SkillMethods = {
       case 'aoe': {
         const c = op.at === 'aim' ? (ctx.auto && ctx.point ? { ...ctx.point } : this.aimPoint(op.range || 200)) : op.at === 'front' ? { x: p.x + p.aimX * (op.dist || 26), y: p.y + p.aimY * (op.dist || 26) } : { x: p.x, y: p.y };
         if (op.at === 'aim' && ctx.auto && ctx.target && !ctx.point) { c.x = ctx.target.x; c.y = ctx.target.y; }
+        if (op.at === 'aim') Object.assign(c, this.groundPoint(c.x, c.y)); // 벽 속 · 허공에는 떨어지지 않는다
         if (op.jitter) { c.x += this.rng.range(-op.jitter, op.jitter); c.y += this.rng.range(-op.jitter, op.jitter); }
         const follow = op.at === 'self';
         const run = () => {
@@ -113,6 +115,7 @@ export const SkillMethods = {
           if (dd > 0 && dd < 60) { let st = dd; while (st > 0 && this.blocked(p.x + p.aimX * st, p.y + p.aimY * st, 5)) st -= 6; if (st > 0) { const x1 = p.x, y1 = p.y; p.x += p.aimX * st; p.y += p.aimY * st; this.emit({ t: 'skillDash', x1, y1, x2: p.x, y2: p.y, elem: ctx.elem }); } }
         }
         if (p.buffs.dragonForm) op = { ...op, range: op.range * 1.4, angle: op.angle * 1.2 }; // 용의 몸집만큼 넓게
+        if (op._form !== 'melee' && !op.delay) this.meleeStep(ctx, op.range);
         const list = this.enemies.filter((e) => {
           if (e.dead || e.hidden) return false;
           const dx = e.x - p.x, dy = e.y - p.y, dist = Math.hypot(dx, dy);
@@ -129,6 +132,7 @@ export const SkillMethods = {
       case 'single': {
         const e = ctx.target && !ctx.target.dead && Math.hypot(ctx.target.x - p.x, ctx.target.y - p.y) < op.range + 40 ? ctx.target : this.nearestEnemy(op.range);
         if (!e) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '대상 없음', color: '#a8b0c0' }); break; }
+        if (!op.teleportTo && op.range <= 70) this.meleeStep(ctx, op.range, e);
         if (op.teleportTo) { const side = e.dir > 0 ? -1 : 1; let tx = e.x + side * (e.r + 8); if (this.blocked(tx, e.y, 5)) tx = e.x - side * (e.r + 8); this.emit({ t: 'blink', x1: p.x, y1: p.y, x2: tx, y2: e.y }); p.x = tx; p.y = e.y; }
         this.emit({ t: 'skillSingle', x: e.x, y: e.y, fx: op.fx || ctx.def.fx, elem: ctx.elem, big: !!op.scaleRes || ctx.def.ult });
         const bleedN = e.st.bleed?.n || 0;
@@ -243,6 +247,7 @@ export const SkillMethods = {
       case 'zone': {
         let c = op.at === 'aim' ? (ctx.auto && ctx.point ? { ...ctx.point } : ctx.auto && ctx.target ? { x: ctx.target.x, y: ctx.target.y } : this.aimPoint(200)) : { x: p.x, y: p.y + 2 };
         if (op.kind === 'bait') { const traps = this.zones.filter((z) => z.kind === 'trap' && z.t > 0); if (traps.length) { const tr = traps.reduce((a, b) => (Math.hypot(b.x - c.x, b.y - c.y) < Math.hypot(a.x - c.x, a.y - c.y) ? b : a)); c = { x: tr.x, y: tr.y }; this.emit({ t: 'text', x: c.x, y: c.y - 18, text: '덫 위에 미끼', color: '#ffcf8a' }); } }
+        if (op.at === 'aim') c = this.groundPoint(c.x, c.y); // 장판도 벽 속 · 허공에는 깔리지 않는다
         const atk = ctx.atk * ctx.bonus * (op.scaleRes ? ctx.resMul : 1);
         if (op.max) { const mine = this.zones.filter((z) => z.kind === op.kind); while (mine.length >= op.max) { const old = mine.shift(); old.t = 0; } }
         if (op.wall) {
@@ -307,7 +312,7 @@ export const SkillMethods = {
       }
       case 'line': {
         const x1 = p.x, y1 = p.y, ax = p.aimX, ay = p.aimY;
-        let len = op.len;
+        let len = this.rayLen(x1, y1, Math.atan2(ay, ax), op.len); // 땅 가르기는 벽 앞에서 멈춘다 (벽 너머 · 벽 위로 이어지지 않는다)
         const run = () => {
           const x2 = x1 + ax * len, y2 = y1 + ay * len;
           this.emit({ t: 'skillLine', x1, y1, x2, y2, w: op.w, elem: ctx.elem, fx: op.fx || ctx.def.fx, ult: ctx.def.ult });
@@ -727,7 +732,7 @@ export const SkillMethods = {
     const boost = opt.weapon ? this.b.weapon.mul : this.weaponBoost(id), hf = opt.weapon ? { fit: 1, hand: 'main' } : handFit(def, this.b), fit = hf.fit, cross = opt.weapon ? 1 : crossMul(def, this.b); // 다른 종족 스킬: 능력치가 모자라면 85%
     const sc = opt.weapon ? this.b.wScale : skillScale(id, this.b); // 스탯 계수 (이 스킬 · 무기가 따라가는 스탯)
     const ctx = { def, id, spent, elem, bonus: bonus * boost * fit * cross * (SKILL_BAL[id] ?? 1) * (sc?.dmg ?? 1), // SKILL_BAL: 종족 스킬 밸런스 보정
-      fit, hand: hf.hand, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot };
+      fit, hand: hf.hand, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot, tier: this._tier };
     if (fit < 0.95 && fit > 0) this.emit({ t: 'text', x: p.x, y: p.y - 26, text: `무기가 맞지 않다 · 피해 ${Math.round(fit * 100)}%`, color: '#c8b8a0' });
     if (this.autoAim) {
       const tg = this.pickTarget(def);
@@ -962,3 +967,54 @@ export const SkillMethods = {
   },
 
 };
+
+// ───────────── 연출 등급 · 지형 ─────────────
+// 스킬을 준 각인의 등급(1~5)을 그 스킬이 내는 사건(ev.tier)에 적어 둔다. 그림 쪽(render/events.js)이 등급만큼 화려하게 · 수수하게 그린다
+Object.assign(SkillMethods, {
+  skillTier(id, opt) {
+    if (opt?.weapon) return null;
+    const lo = this.b.lo || {}, race = this.b.race; let g = 0;
+    const see = (eid) => { const E = eid && ENGRAVINGS[eid]; if (E && engravingSkillFor(eid, race) === id) g = Math.max(g, E.grade || 1); };
+    for (const eid of Object.values(lo.engravings || {})) see(eid);
+    for (const re of lo.runEng || []) see(re.id);
+    if (g) return g;
+    const d = SKILLS[id]; if (!d) return null;
+    return d.ult ? 5 : d.role === '마무리' ? 4 : (d.unlock || 1) >= 6 ? 3 : 2; // 각인 없이 쓰는 스킬: 궁극 5 · 마무리 4 · 나머지 2~3
+  },
+  // 땅에 닿는 스킬의 자리: 벽 속 · 깊은 물 · 맵 밖이면 내 쪽으로 당겨 가장 가까운 땅에 둔다
+  groundPoint(x, y) {
+    const p = this.player;
+    if (!this.map || !this.solid(x, y)) return { x, y };
+    const dx = p.x - x, dy = p.y - y, L = Math.hypot(dx, dy) || 1;
+    for (let d = 6; d < L; d += 6) { const nx = x + (dx / L) * d, ny = y + (dy / L) * d; if (!this.solid(nx, ny)) return { x: nx, y: ny }; }
+    return { x: p.x, y: p.y };
+  },
+  // 근접 스킬의 내딛기: 등급이 높을수록 멀리 · 빠르게 파고든다 (1등급은 제자리 · 벽과 적 앞에서 멈춘다)
+  meleeStep(ctx, range, target = null) {
+    const p = this.player, T = ctx.tier;
+    if (!T || T < 2 || ctx.def.scale === 'mag' || ctx.def.kind === 'spell' || p.dashT > 0 || p.swim || ctx.stepped) return;
+    ctx.stepped = true; // 한 스킬에 한 번 (연타는 첫 타만)
+    let st = [0, 0, 8, 14, 22, 30][T] || 0;
+    const tg = target || (ctx.target && !ctx.target.dead ? ctx.target : this.nearestEnemy(range + st + 20));
+    let dx = p.aimX, dy = p.aimY;
+    if (tg) { const vx = tg.x - p.x, vy = tg.y - p.y, l = Math.hypot(vx, vy) || 1; if ((vx * dx + vy * dy) / l > 0.3) { dx = vx / l; dy = vy / l; st = Math.min(st, Math.max(0, l - tg.r - 10)); } }
+    while (st > 0 && this.blocked(p.x + dx * st, p.y + dy * st, 5)) st -= 4;
+    if (st < 4) return;
+    const x1 = p.x, y1 = p.y; p.x += dx * st; p.y += dy * st;
+    this.emit({ t: 'meleeStep', x1, y1, x2: p.x, y2: p.y, elem: ctx.elem });
+  },
+});
+// 등급을 적어 두는 범위: 이 함수들이 도는 동안 낸 사건과 미뤄 둔 일(delayed)에 등급이 붙는다
+const scoped = (name, tierOf) => {
+  const f = SkillMethods[name];
+  SkillMethods[name] = function (...a) {
+    const prev = this._tier, n0 = this.delayed.length, t = tierOf.apply(this, a);
+    if (t != null) this._tier = t;
+    try { return f.apply(this, a); }
+    finally { for (let i = n0; i < this.delayed.length; i++) if (this.delayed[i].tier == null) this.delayed[i].tier = this._tier; this._tier = prev; }
+  };
+};
+scoped('execSkill', function (def, spent, id, opt) { return this.skillTier(id, opt); });
+scoped('runOp', function (op, ctx) { return ctx?.tier; });
+scoped('updateSpecialMove', function () { const p = this.player; return (p.combo || p.leap || p.rush)?.ctx?.tier; });
+

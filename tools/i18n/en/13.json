@@ -1,5 +1,4 @@
 [
-"Auto-aim on",
 "Growing",
 "Seat is vacant",
 "The seat is vacant, they say. Someone took him out",
@@ -141,6 +140,7 @@
 "No cursed enemies",
 "Hexer",
 "Cursed Gold Coin",
+"Curse weakening +50% (each stack: damage taken +3% · damage dealt -4.5",
 "Curse Ripple",
 "Curse Mark",
 "Curse mark · damage taken +30",
@@ -171,7 +171,7 @@
 "Enemies are 25% faster",
 "40% more enemies",
 "Enemies are stronger",
-"3 curse stacks (damage over time, stronger as it stacks) where enemies gather. Soul +8",
+"3 curse stacks where enemies gather (each stack: damage taken +2% · damage dealt -3%). Soul +8",
 "Poison spreads around when an enemy falls",
 "Retreat toward where there are no enemies with 0.8s invulnerability. Shadow +25",
 "Slide toward where there are no enemies. Instantly gain 1 focus stage. Spirit power +10",

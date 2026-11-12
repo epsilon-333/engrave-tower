@@ -378,7 +378,7 @@
 "30% chance when hit by magic: 3 shards",
 "35% chance when hit by magic: mirror shards fly",
 "40% chance when hit by magic: mirror shards",
-"Casts magic at 85% power · enemies I hit have a 30% chance of 1 curse stack (each stack deals damage over time, damage taken +2",
+"Casts magic at 85% power · enemies I hit have a 30% chance of 1 curse stack (each stack: damage taken +2% · damage dealt -3",
 "Casts magic at 90% power",
 "Casts magic at full power",
 "Jousting Grounds",

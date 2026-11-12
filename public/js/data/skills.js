@@ -21,6 +21,8 @@ export const ELEM = {
   wind: { name: '바람', color: '#bfffd0' },
   forest: { name: '숲', color: '#7be38a' },
 };
+// 저주: 피해를 주지 않고 약하게 만든다 — 중첩마다 그 적이 받는 피해 +2% · 주는 피해 -3% (최대 12중첩 · 8초)
+export const CURSE = { take: 0.02, deal: 0.03 };
 export const ELEM_CYCLE = ['fire', 'ice', 'lightning'];
 
 // 클래스: 종족마다 2개. weapons = [시작 무기, 상위 무기], style = 각인 추천 필터, trait = 클래스 특성(평타·상시 효과)
@@ -238,13 +240,13 @@ export const SKILLS = {
 
   // ══════ 언데드 · 저주술사 ══════
   curse: { name: '저주', role: '준비', cd: 4, gain: 8, scale: 'mag', elem: 'dark', fx: 'rune', aim: 'cluster', mo: 'cast',
-    desc: '적이 모인 곳에 저주(지속 피해, 쌓일수록 강함)를 3중첩. 영혼 +8.', do: [{ op: 'aoe', at: 'aim', r: 50, mul: 0.3, stacks: 3 }] },
+    desc: '적이 모인 곳에 저주 3중첩(중첩마다 받는 피해 +2% · 주는 피해 -3%). 영혼 +8.', do: [{ op: 'aoe', at: 'aim', r: 50, mul: 0.3, stacks: 3 }] },
   painLink: { name: '고통 연결', role: '제어', cd: 12, cost: 15, scale: 'mag', elem: 'dark', fx: 'rune', aim: 'cluster', mo: 'cast',
     desc: '조준한 곳의 적 최대 3마리를 6초 동안 사슬로 잇는다. 한 마리가 받은 피해의 50%를 나머지도 받는다. 영혼 15.', do: [{ op: 'link', r: 80, n: 3, dur: 6, share: 0.5 }] },
   retribution: { name: '응보의 저주', role: '제어', cd: 10, cost: 12, scale: 'mag', elem: 'dark', fx: 'rune', aim: 'cluster', mo: 'cast',
     desc: '6초 동안 걸린 적이 나를 공격하면 그 공격력의 2배 피해를 자기가 받는다. 영혼 12.', do: [{ op: 'aoe', at: 'aim', r: 60, mul: 0.2, retrib: 6, stacks: 1 }] },
   deathFog: { name: '죽음의 안개', role: '장판', cd: 12, cost: 20, scale: 'mag', elem: 'dark', fx: 'fog', aim: 'cluster', mo: 'castBig',
-    desc: '6초 안개. 안의 적은 지속 피해, 받는 피해 +20%, 저주가 저절로 쌓인다. 영혼 20.', do: [{ op: 'zone', kind: 'fog', r: 66, dur: 6, at: 'aim' }] },
+    desc: '6초 안개. 안의 적은 지속 피해, 받는 피해 +20%, 0.5초마다 저주 1중첩. 영혼 20.', do: [{ op: 'zone', kind: 'fog', r: 66, dur: 6, at: 'aim' }] },
   contagion: { name: '전염', role: '마무리', cd: 8, cost: 25, scale: 'mag', elem: 'dark', fx: 'burst', aim: 'none', mo: 'castBig',
     desc: '저주받은 모든 적의 저주가 주변 적에게 번진다. 번질 때 중첩이 2배가 된다. 영혼 25.', do: [{ op: 'spread', what: 'curse', r: 70, mul: 0.4 }] },
   doomBrand: { name: '파멸의 낙인', role: '궁극', cd: 28, costAll: { min: 50 }, scale: 'mag', elem: 'dark', fx: 'doom', ult: true, aim: 'tank', mo: 'castBig',
@@ -435,7 +437,7 @@ export const SKILL_BAL = {}; // 스킬 하나씩은 보정하지 않는다 (한 
 // ── 클래스 밸런스 보정 (tools/balance.mjs: 30초 실제 싸움 · 무리 / 단단한 적) ──
 export const CLASS_BAL = {"predator": 1, "behemoth": 0.92, "elementalist": 1.07, "chronomancer": 0.9, "guardian": 1.6, "greatsword": 1.6, "berserker": 0.8, "thrower": 1.08, "necromancer": 0.71, "hexer": 0.96, "shadowblade": 0.97, "venomHunter": 1.6, "spiritcaller": 1.5, "ranger": 1.04, "dragoon": 0.68, "dragonSage": 1.09}; // 결투(사람 대 사람)
 // 몬스터를 상대할 때의 클래스 보정 (tools/tests/climbsim.mjs 로 클래스마다 오른 층을 비교해 맞춤)
-export const CLASS_BAL_PVE = {"predator":  0.75, "behemoth":  1.03, "elementalist":  1.15, "chronomancer":  1.45, "guardian":  2.6, "greatsword":  1.72, "berserker":  0.8, "thrower":  1.1, "necromancer":  2.5, "hexer":  2.0, "shadowblade":  1.05, "venomHunter":  1.65, "spiritcaller":  2.2, "ranger":  1.28, "dragoon":  1.05, "dragonSage":  0.9};
+export const CLASS_BAL_PVE = {"predator":  0.75, "behemoth":  1.03, "elementalist":  1.15, "chronomancer":  1.45, "guardian":  2.6, "greatsword":  1.72, "berserker":  0.8, "thrower":  1.1, "necromancer":  2.5, "hexer":  2.2, "shadowblade":  1.05, "venomHunter":  1.65, "spiritcaller":  2.2, "ranger":  1.28, "dragoon":  1.05, "dragonSage":  0.9};
 
 // ── 돈 · 미션으로 얻는 CC기 (누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다) ──
 export const CC_EXTRA = {

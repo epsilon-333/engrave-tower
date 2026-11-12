@@ -209,7 +209,7 @@
 "Range +50%, crit chance +25%, but move speed -30% for 6 seconds. Spirit power 20",
 "A frost field for 6 seconds. Enemies on it slow down and then freeze",
 "A time-slowing field for 6 seconds. Enemies and enemy projectiles inside are 60% slower and take +20% damage. Mana 20",
-"Fog for 6 seconds. Enemies inside take damage over time, +20% damage taken, and curses stack on their own. Soul 20",
+"Fog for 6 seconds. Enemies inside take damage over time, +20% damage taken, and gain 1 curse stack every 0.5s. Soul 20",
 "7 days ◆ 300",
 "Volcanic eruption every 8th hit",
 "For 8 seconds six axes circle me slashing enemies, and three axes fly out with every basic attack. Stronger with more rage",

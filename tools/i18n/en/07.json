@@ -199,7 +199,6 @@
 "Damage taken -6",
 "Damage taken -7",
 "Damage taken -8",
-"More damage taken and damage over time",
 "Receive",
 "Receive (◆",
 "Accept",
@@ -398,5 +397,6 @@
 "Treasure chest",
 "Reward",
 "Reward ◆",
-"Claim reward"
+"Claim reward",
+"Give reward"
 ]

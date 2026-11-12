@@ -1,5 +1,4 @@
 [
-"Can't buy",
 "Sp-spare me! Anything you want",
 "Spare me",
 "Spare me",
@@ -54,7 +53,6 @@
 "Status damage +12",
 "Status damage +15",
 "Status damage +20",
-"Status damage +25",
 "Status damage +6",
 "Status damage +8",
 "Stacked statuses react · Damage over time ignores resistance",
@@ -398,5 +396,7 @@
 "Surface with G before breath runs out · refill at bubble vents",
 "Suffocating",
 "Out of breath, came up to the surface",
-"Out of breath! The weakness is exposed"
+"Out of breath! The weakness is exposed",
+"Forest",
+"Forest Bandit Archer"
 ]

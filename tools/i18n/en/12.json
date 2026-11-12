@@ -1,5 +1,4 @@
 [
-"Stepping in lava pools burns. Dodge beams beside the warning line",
 "Lava Curtain",
 "Lava eel",
 "Lava Skin",
@@ -398,5 +397,6 @@
 "Auto-aim",
 "Auto-aim (T",
 "Auto-aim (T): automatically targets the nearest enemy",
-"Auto-aim off"
+"Auto-aim off",
+"Auto-aim on"
 ]

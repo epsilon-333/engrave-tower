@@ -15,9 +15,14 @@ import { sfx, tone } from '../audio.js';
 import { towerEvent } from './towerfx.js';
 import { CLASS_MAGIC, WORD_NAME, sentenceLine, WORD_COLOR, fmt } from './renderer.js';
 
+const TIER_EV = new Set(['skillAoe', 'skillCone', 'skillLine', 'skillSingle', 'skillDash', 'meleeStep', 'skillFx', 'slam', 'land']); // 등급에 맞춰 다듬는 사건
+
 export const EventMethods = {
   consume(w) {
+    let pend = null; // 등급 다듬기: 사건 하나가 만든 이펙트를 다음 사건으로 넘어가기 전에 등급에 맞춘다
     for (const ev of w.events) {
+      if (pend) { this.tierPolish(w, pend); pend = null; }
+      if (ev.tier != null && TIER_EV.has(ev.t)) pend = { ev, parts: this.parts.length, fx: this.fx.length, al: this.anims.list.length, ag: this.anims.ground.length, px: this.anims.px.list.length, shake: this.shake, hitstop: this.hitstop, flash: this.flash };
       if (this.lifeEvent(w, ev)) continue;
       if (w.climb && towerEvent(this, w, ev)) continue; // 탑 51~100층 장치 · 보스 등장
       switch (ev.t) {
@@ -87,6 +92,13 @@ export const EventMethods = {
         case 'nova': this.fx.push({ k: 'nova', ...ev, t: 0.4, max: 0.4 }); this.burst(ev.x, ev.y, '#c9a8ff', 30, 160); this.shake = 4; sfx('skill', { vol: 0.6 }); sfx('reaction', { vol: 0.4, rate: 1.4 }); break;
         case 'volley': sfx('skill', { vol: 0.5 }); sfx('shoot', { vol: 0.6 }); break;
         case 'afterimage': this.fx.push({ k: 'line', ...ev, t: 0.3, max: 0.3 }); break;
+        case 'meleeStep': { // 근접 스킬의 내딛기: 박찬 자리에 흙이 차이고 몸의 잔상이 따라온다 (등급만큼 늘어난다: tierPolish)
+          const dx = ev.x2 - ev.x1, dy = ev.y2 - ev.y1, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+          this.fx.push({ k: 'ghost', x: ev.x1 + dx * 0.35, y: ev.y1 + dy * 0.35, t: 0.16, max: 0.22, dir: dx > 0 ? 1 : -1 });
+          for (let i = 0; i < 4; i++) this.parts.push({ x: ev.x1 - ux * 2, y: ev.y1 + 4, vx: -ux * (26 + Math.random() * 30) + (Math.random() - 0.5) * 16, vy: -uy * 14 - 8 - Math.random() * 12, t: 0.4, max: 0.4, color: '#a89880', g: 60, puff: true, size: 2 });
+          this.shake = Math.max(this.shake, 1.5); sfx('dash', { vol: 0.35, rate: 1.3 });
+          break;
+        }
         case 'dash': { // 구르기: 박차는 발밑에서 흙이 뒤로 차이고, 지나간 길에 미끄러진 자국이 남았다가 메워진다
           const l = Math.hypot(ev.dx || 0, ev.dy || 0) || 1, ux = (ev.dx || 0) / l, uy = (ev.dy || 0) / l;
           for (let i = 0; i < 6; i++) this.parts.push({ x: ev.x - ux * 3, y: ev.y + 4, vx: -ux * (30 + Math.random() * 40) + (Math.random() - 0.5) * 20, vy: -uy * 20 - 10 - Math.random() * 15, t: 0.5, max: 0.5, color: '#a89880', g: 60, puff: true, size: 2.5 });
@@ -337,8 +349,65 @@ export const EventMethods = {
         case 'treeBurn': this.burst(ev.x, ev.y - 20, '#ff9a3a', 24, 90); sfx('reaction', { vol: 0.3, rate: 0.8 }); break;
       }
     }
+    if (pend) this.tierPolish(w, pend);
     w.events.length = 0;
     if (w.revealed.length) this.applyReveal(false);
+  },
+
+  // ───── 스킬 연출 등급 (각인 1~5등급) ─────
+  // 1 · 2등급은 수수하게: 불티를 덜고 흔들림 · 멈춤을 줄인다. 3등급은 그대로. 4 · 5등급은 화려하게: 불티가 늘고, 땅이 반응한다
+  // (바닥에 금 · 그을음이 남고, 돌 조각이 튀어 떨어지고, 물에서는 물보라가 인다 — 허공에 뜬 빛이 아니라 맵에 닿는 것들)
+  tierPolish(w, m) {
+    const ev = m.ev, T = ev.tier, P = this.parts, A = this.anims;
+    if (T === 3) return;
+    if (T < 3) {
+      const keep = T === 1 ? 0.35 : 0.6;
+      const born = P.splice(m.parts); for (const q of born) if (Math.random() < keep) P.push(q);
+      for (let i = this.fx.length - 1; i >= m.fx; i--) { const k = this.fx[i].k; if (k === 'glow' || k === 'trail' || (k === 'ghost' && T === 1) || (k === 'ring' && i > m.fx)) this.fx.splice(i, 1); }
+      this.shake = Math.max(m.shake, Math.min(this.shake, T === 1 ? 1.5 : 3));
+      this.hitstop = Math.max(m.hitstop, Math.min(this.hitstop, T === 1 ? 0.02 : 0.035));
+      this.flash = m.flash;
+      for (let i = m.px; i < A.px.list.length; i++) A.px.list[i].scale *= T === 1 ? 0.72 : 0.86;
+      return;
+    }
+    const hi = T >= 5, n1 = P.length;
+    for (let i = m.parts; i < n1; i++) if (hi || i % 2 === 0) { const q = P[i], s = 1.25 + Math.random() * 0.5; P.push({ ...q, vx: q.vx * s, vy: q.vy * s, t: q.t * 1.3, max: q.max * 1.3 }); }
+    if (this.shake > m.shake) this.shake = Math.min(16, this.shake * (hi ? 1.6 : 1.3));
+    if (this.hitstop > m.hitstop) this.hitstop = Math.min(0.14, this.hitstop + (hi ? 0.035 : 0.015));
+    for (let i = m.px; i < A.px.list.length; i++) A.px.list[i].scale *= hi ? 1.22 : 1.1;
+    const el = ev.elem, col = ELEM[el]?.color && el !== 'phys' ? ELEM[el].color : '#ffd890';
+    const land = (x, y) => (w.wallAt(x, y) ? 0 : w.isWaterAt(x, y) ? 2 : w.solid(x, y) ? 0 : 1); // 0 벽 · 허공 · 1 땅 · 2 물
+    // 맵에 닿는 것: 돌 조각이 튀어 땅에 떨어진다 (벽 쪽으로는 안 튄다) · 물이면 물보라
+    const scatter = (x, y, r, n) => {
+      const pieces = [];
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2, d = r * (0.4 + Math.random() * 0.8), x1 = x + Math.cos(a) * d, y1 = y + Math.sin(a) * d * 0.6, k = land(x1, y1);
+        if (k === 1) pieces.push({ x0: x, y0: y - 3, x1, y1, h: 12 + Math.random() * (hi ? 30 : 18), fly: 0.25 + Math.random() * 0.2, s: 1.5 + Math.random() * (hi ? 2.5 : 1.5), rot: Math.random() * 6 });
+        else if (k === 2) for (let j = 0; j < 4; j++) P.push({ x: x1 + (Math.random() - 0.5) * 6, y: y1, vx: (Math.random() - 0.5) * 30, vy: -50 - Math.random() * 50, t: 0.45, max: 0.45, color: j % 2 ? '#d8f0ff' : '#8ac8f0', g: 260, floor: y1 + 1, size: 1 });
+      }
+      if (pieces.length) this.fx.push({ k: 'debris', pieces, cold: el !== 'fire', t: hi ? 2.6 : 1.8, max: hi ? 2.6 : 1.8 });
+    };
+    if (ev.t === 'skillAoe' && ev.r >= 20 && ev.fx !== 'taunt' && ev.fx !== 'provoke' && ev.fx !== 'absorb' && ev.fx !== 'spread') {
+      if (land(ev.x, ev.y) === 1) {
+        if (A.ground.length === m.ag) A.add('cracks', { x: ev.x, y: ev.y, r: ev.r * (hi ? 1.15 : 0.85), col, max: hi ? 2.4 : 1.6 });
+        if (el === 'fire' || hi) this.fx.push({ k: 'scorch', x: ev.x, y: ev.y, r: ev.r * 0.6, t: hi ? 4 : 2.5, max: hi ? 4 : 2.5 });
+      }
+      scatter(ev.x, ev.y, ev.r, hi ? 12 : 6);
+      if (hi && !this.flash) this.flash = { color: '255,240,215', t: 0.14, max: 0.14 };
+    } else if (ev.t === 'skillCone') {
+      const cx = ev.x + Math.cos(ev.ang) * ev.range * 0.7, cy = ev.y + Math.sin(ev.ang) * ev.range * 0.7;
+      scatter(cx, cy, ev.range * 0.5, hi ? 7 : 4);
+      if (hi && land(cx, cy) === 1) A.add('cracks', { x: cx, y: cy, r: ev.range * 0.55, col, max: 1.6 });
+    } else if (ev.t === 'skillLine') {
+      const n = hi ? 5 : 3; for (let i = 1; i <= n; i++) { const u = i / (n + 1); scatter(ev.x1 + (ev.x2 - ev.x1) * u, ev.y1 + (ev.y2 - ev.y1) * u, (ev.w || 24) * 0.9, 3); }
+    } else if (ev.t === 'skillSingle') {
+      scatter(ev.x, ev.y + 2, hi ? 26 : 18, hi ? 6 : 3);
+    } else if (ev.t === 'skillDash' || ev.t === 'meleeStep') { // 높은 등급의 돌진: 잔상이 더 길게 이어지고, 멈춘 자리에 미끄러진 자국과 흙
+      const dx = ev.x2 - ev.x1, dy = ev.y2 - ev.y1, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, g2 = hi ? 4 : 2;
+      for (let i = 0; i < g2; i++) { const u = (i + 0.5) / g2; this.fx.push({ k: 'ghost', x: ev.x1 + dx * u, y: ev.y1 + dy * u, t: 0.16 + u * 0.2, max: 0.36, dir: dx > 0 ? 1 : -1 }); }
+      if (L > 14 && land(ev.x2, ev.y2) === 1) { const pts = []; for (let d = Math.min(L, hi ? 26 : 16); d >= 0; d -= 4) pts.push({ x: ev.x2 - ux * d, y: ev.y2 - uy * d + 4 }); A.ground.push({ type: 'skid', pts, ux, uy, t: 0, max: 1.2 }); }
+      for (let i = 0; i < (hi ? 8 : 4); i++) P.push({ x: ev.x2, y: ev.y2 + 3, vx: ux * (30 + Math.random() * 50) + (Math.random() - 0.5) * 24, vy: -24 - Math.random() * 30, t: 0.4, max: 0.4, color: '#7a6448', g: 380, chunk: true, floor: ev.y2 + 4 });
+    }
   },
 
   aoeFxFull(ev) {

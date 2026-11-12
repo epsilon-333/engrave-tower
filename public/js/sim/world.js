@@ -14,7 +14,7 @@ export const POTION_CD = 8; // 물약 · 회복 요리 대기시간 (함께 쓴�
 import { climbMul, setZoneRef, floorFoes, rollDoors, actOf, REWARDS, BOSS_HEAL, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, rollFloorMod } from '../data/climb.js';
 import { RAID_BOSS } from '../data/raid.js';
 import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
-import { SKILLS, ELEM, ZONE_ELEM, aimRule, PVP, WORD_FAMILY, WORD_COMBO, CLASS_BAL, CLASS_BAL_PVE } from '../data/skills.js';
+import { SKILLS, ELEM, ZONE_ELEM, aimRule, PVP, WORD_FAMILY, WORD_COMBO, CLASS_BAL, CLASS_BAL_PVE, CURSE } from '../data/skills.js';
 import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower } from '../data/spirits.js';
 export const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
 export const SPIRIT_DMG_ELEM = { fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' };
@@ -413,6 +413,7 @@ export class World {
       const L = Math.hypot(e.x2 - e.x1, e.y2 - e.y1), a = Math.atan2(e.y2 - e.y1, e.x2 - e.x1), l2 = this.rayLen(e.x1, e.y1, a, L);
       if (l2 < L - 2) { e.x2 = e.x1 + Math.cos(a) * l2; e.y2 = e.y1 + Math.sin(a) * l2; e.wall = true; }
     }
+    if (this._tier != null && e.tier == null) e.tier = this._tier; // 스킬 연출 등급 (sim/skillrun.js)
     this.events.push(e);
     if (this.coRec && CO_EV.has(e.t)) this.coop.ev.push(e); // 파티 탑 (방장): 적이 낸 사건을 동료에게도
     if (this.map?.outdoor && (e.elem === 'fire' || e.elem === 'ice') && e.t && e.t.startsWith('skill')) this.elemReact(e);
@@ -1974,7 +1975,7 @@ export class World {
       a.t -= DT;
       if (a.t > 0) continue;
       a.done = true;
-      if (a.run) { a.run(); continue; }
+      if (a.run) { const pv = this._tier; this._tier = a.tier; try { a.run(); } finally { this._tier = pv; } continue; }
       this.emit({ t: a.fx === 'meteor' ? 'meteor' : 'ring', x: a.x, y: a.y, r: a.r, color: a.type === 'mag' ? '#c9a8ff' : '#ffe8a0' });
       if (a.big) { this.emit({ t: 'hitstop', v: 0.08 }); this.emit({ t: 'shake', v: 6 }); }
       for (const e of this.enemiesNear(a.x, a.y, a.r)) this.hitEnemy(e, a.dmg, a.type, !!a.big);
@@ -2260,7 +2261,7 @@ export class World {
     }
     if (e.st.mark > 0) mult *= 1.2;
     if (e.guardT > 0) mult *= 0.6; // 몬스터 회복 · 보호: 잠깐 받는 피해 -40%
-    if (e.st.curse && this.b.offItem?.offCurse) mult *= 1 + 0.02 * e.st.curse.n; // 저주 인형: 저주 중첩마다 받는 피해 +2%
+    if (e.st.curse) mult *= 1 + CURSE.take * e.st.curse.n * (d.curseMul ?? 1); // 저주: 중첩마다 받는 피해 +2%
     if (e.st.frozen > 0 && this.f.has('frozenVuln')) mult *= 1.5;
     if (d.lowHunt && e.hp < e.maxHp * 0.3) mult *= 1 + d.lowHunt; // 마무리: 체력 30% 밑의 적
     // 새 상태이상·속성 상성·종족 특성
@@ -2492,6 +2493,7 @@ export class World {
     if ((p.airT > 0 || p.leap) && !opt.direct) return;
     if (p.markT > 0 && !this.coTgt) amount *= 1.3; // 보스의 저주의 표식
     if (p.st.shock) amount *= 1.15; // 감전: 받는 피해 +15% (적과 같은 규칙)
+    if (attacker?.st?.curse) amount *= Math.max(0.4, 1 - CURSE.deal * attacker.st.curse.n * (d.curseMul ?? 1)); // 저주: 중첩마다 그 적이 주는 피해 -3%
     if (this.climb?.stars?.length) amount *= zoneHitMul(this, attacker); // 별의 서고: 별자리 위의 적은 +20%
     if (p.riding && amount > this.d.maxHp * 0.08 && !opt.direct) { this.dismount(); this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '랩터에서 떨어졌다!', color: '#ffb0a0' }); }
     // 수호기사: 정면 공격은 25% 덜 받고 오러를 얻는다. 철벽 중에는 완전히 막는다

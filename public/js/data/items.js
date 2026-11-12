@@ -220,7 +220,7 @@ Object.assign(ITEMS, {
   buckler: { name: '작은 방패', slot: 'off', price: 100, stats: { pres: 5 }, tags: [], off: { shield: 1, parry: 1 }, odesc: '방패 · 받아치기 스킬을 온전히 쓴다' },
   knightBuckler: { name: '기사단 원형 방패', slot: 'off', price: 550, stats: { pres: 12, vit: 3 }, tags: [], off: { shield: 1, parry: 1 }, odesc: '방패 · 받아치기 스킬을 온전히 쓴다' },
   throwPouch: { name: '투척 주머니', slot: 'off', price: 90, stats: { str: 1, agi: 1 }, tags: [], off: { throw: 0.85 }, odesc: '던지기 스킬을 85% 힘으로 쓴다' },
-  curseDoll: { name: '작은 저주 인형', slot: 'off', price: 320, stats: { mag: 3, spi: 2 }, tags: ['curse'], off: { spell: 0.85 }, offCurse: { chance: 0.3, stacks: 1 }, odesc: '마법을 85% 힘으로 쓴다 · 내 공격에 맞은 적은 30% 확률로 저주 1중첩 (중첩마다 지속 피해, 받는 피해 +2%)' },
+  curseDoll: { name: '작은 저주 인형', slot: 'off', price: 320, stats: { mag: 3, spi: 2 }, tags: ['curse'], off: { spell: 0.85 }, offCurse: { chance: 0.3, stacks: 1 }, odesc: '마법을 85% 힘으로 쓴다 · 내 공격에 맞은 적은 30% 확률로 저주 1중첩 (중첩마다 받는 피해 +2% · 주는 피해 -3%)' },
   knifeBelt: { name: '투척 단검 띠', slot: 'off', price: 550, stats: { agi: 3, sen: 2 }, tags: [], off: { throw: 1 }, odesc: '던지기 스킬을 온전한 힘으로 쓴다' },
 });
 // 장비 값: 예전보다 두 배 (돈이 너무 쉽게 남지 않게)

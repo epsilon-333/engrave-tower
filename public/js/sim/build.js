@@ -183,7 +183,7 @@ export function computeBuild(lo) {
     physPen: 0, magPen: 0, knockback: 30, regen: 0,
     dmgMul: 1, dmgTakenMul: 1, burnMul: 1, bleedMul: 1, chillMul: 1, reactionMul: 1, statusDmgMul: 1, reflectMul: 1,
     poisonCap: 10, freezeReduce: 0, cloudSize: 0, dashCd: 1.2, goldMul: 1, projMul: 1,
-    resGain: 1, hurtRes: 0, lowHunt: 0, skillCdMul: 1, aimSlow: 0.65,
+    resGain: 1, hurtRes: 0, lowHunt: 0, curseMul: 1, skillCdMul: 1, aimSlow: 0.65,
     freezeTime: 1.6, castMul: 1, costMul: 1, healMul: 1,
   };
   // 종족 고유 수치
