@@ -7,6 +7,7 @@ import { ZONES, MONSTERS, ECHOES } from './data/monsters.js';
 import { newClock } from './sim/time.js';
 import { CLASSES, SKILLS, ENGRAVING_SKILLS, RACE_CLASSES } from './data/skills.js';
 import { ENGRAVINGS } from './data/engravings.js';
+import { LV_GRADE } from './data/skillengs.js';
 
 const KEY = 'engrave-tower-save-v1';
 
@@ -111,7 +112,8 @@ export function syncLevel(s) {
 // 고르는 각인: 몬스터 부산물(m_)보다 원래 각인, 그중 낮은 등급. 스킬마다 한 번만 (s.classEng에 적어 둔다)
 export function classEngravingFor(skillId) {
   const L = Object.keys(ENGRAVING_SKILLS).filter((e) => ENGRAVING_SKILLS[e] === skillId && ENGRAVINGS[e]);
-  L.sort((a, b) => (!!ENGRAVINGS[b].start - !!ENGRAVINGS[a].start) || (a.startsWith('m_') - b.startsWith('m_')) || (ENGRAVINGS[a].grade - ENGRAVINGS[b].grade)); // 종족 시작 각인이 먼저
+  const want = (SKILLS[skillId]?.unlock || 1) <= 1 ? 1 : LV_GRADE(SKILLS[skillId]); // 받는 레벨에 맞는 등급
+  L.sort((a, b) => (!!ENGRAVINGS[b].start - !!ENGRAVINGS[a].start) || (Math.abs(ENGRAVINGS[a].grade - want) - Math.abs(ENGRAVINGS[b].grade - want)) || (!!ENGRAVINGS[b].lvEng - !!ENGRAVINGS[a].lvEng) || (a.startsWith('m_') - b.startsWith('m_')) || (ENGRAVINGS[a].grade - ENGRAVINGS[b].grade)); // 종족 시작 각인 → 등급이 맞는 것
   return L[0] || null;
 }
 // 클래스는 없다: 종족의 스킬(예전 두 클래스의 것 모두)이 그 레벨이 되면 각인으로 온다 · 1레벨 넷이 시작 각인

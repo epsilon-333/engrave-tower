@@ -437,7 +437,7 @@ export const SKILL_BAL = {}; // 스킬 하나씩은 보정하지 않는다 (한 
 // ── 클래스 밸런스 보정 (tools/balance.mjs: 30초 실제 싸움 · 무리 / 단단한 적) ──
 export const CLASS_BAL = {"predator": 1, "behemoth": 0.92, "elementalist": 1.07, "chronomancer": 0.9, "guardian": 1.6, "greatsword": 1.6, "berserker": 0.8, "thrower": 1.08, "necromancer": 0.71, "hexer": 0.96, "shadowblade": 0.97, "venomHunter": 1.6, "spiritcaller": 1.5, "ranger": 1.04, "dragoon": 0.68, "dragonSage": 1.09}; // 결투(사람 대 사람)
 // 몬스터를 상대할 때의 클래스 보정 (tools/tests/climbsim.mjs 로 클래스마다 오른 층을 비교해 맞춤)
-export const CLASS_BAL_PVE = {"predator":  0.75, "behemoth":  1.03, "elementalist":  1.15, "chronomancer":  1.45, "guardian":  2.8, "greatsword":  1.72, "berserker":  0.8, "thrower":  1.1, "necromancer":  2.5, "hexer":  2.2, "shadowblade":  1.05, "venomHunter":  1.65, "spiritcaller":  2.2, "ranger":  1.28, "dragoon":  1.05, "dragonSage":  0.9};
+export const CLASS_BAL_PVE = {"predator":  0.5, "behemoth":  1.15, "elementalist":  1.15, "chronomancer":  1.7, "guardian":  2.6, "greatsword":  1.6, "berserker":  0.35, "thrower":  1.1, "necromancer":  2.5, "hexer":  2.2, "shadowblade":  1.35, "venomHunter":  1.65, "spiritcaller":  2.4, "ranger":  1.7, "dragoon":  1.05, "dragonSage":  0.9};
 
 // ── 돈 · 미션으로 얻는 CC기 (누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다) ──
 export const CC_EXTRA = {
