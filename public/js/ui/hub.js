@@ -297,9 +297,7 @@ export class Hub {
       wcard = `<div class="skc on" style="--c:#aab0c0"><div class="c-head"><b>[우클릭] ${wsk.name}</b><span class="role">무기</span></div><div class="c-sum">${esc(wsk.desc || '')}</div><div class="sk-scale">평타 · 무기 기술: ${sn(wst)} 계수 <b>×${(ws?.dmg || 1).toFixed(2)}</b> ${WEAPON_PERKS.map((pk) => `<span class="${(ws?.v || 0) >= pk.at ? 'on' : ''}">${sn(wst)} ${pk.at}: ${pk.text}</span>`).join(' ')}</div><div class="c-act">${wbtn}</div></div>`;
     }
     const auto = getAutoAim();
-    const upcoming = all.map(([, x]) => x).filter((x) => (x.unlock || 1) > b.level).sort((x, y) => x.unlock - y.unlock); // 아래 스킬 칸과 같은 안내: 다음에 열릴 내 스킬
-    let upI = 0;
-    const now = SLOT_KEYS.slice(0, 4).map((k, i) => { const id = b.skills[i], sk = id && SKILLS[id]; return `<div class="skc ${sk ? 'on' : ''}" style="--c:${sk ? ROLE_COLOR[sk.role] : '#5a5068'}"><div class="c-head"><b>[${k}] ${sk ? sk.name : '비어 있음'}</b>${sk ? `<span class="role">${sk.role}</span>` : ''}</div><div class="c-sum">${sk ? esc(sk.desc) : (() => { const nx = upcoming[upI++]; return nx ? `Lv ${nx.unlock}에 「${nx.name}」 각인을 받는다 · 공명 제단에서 아무 각인이나 넣으면 그 각인의 스킬이 나간다` : '공명 제단에서 이 칸에 각인을 넣으면 그 각인의 스킬이 나간다'; })()}</div>${sk ? scaleLine(id) : ''}</div>`; }).join('');
+    const now = SLOT_KEYS.slice(0, 4).map((k, i) => { const id = b.skills[i], sk = id && SKILLS[id]; return `<div class="skc ${sk ? 'on' : ''}" style="--c:${sk ? ROLE_COLOR[sk.role] : '#5a5068'}"><div class="c-head"><b>[${k}] ${sk ? sk.name : '비어 있음'}</b>${sk ? `<span class="role">${sk.role}</span>` : ''}</div><div class="c-sum">${sk ? esc(sk.desc) : '공명 제단에서 이 칸에 각인을 넣으면 그 각인의 스킬이 나간다 (각인이 없으면 스킬도 없다)'}</div>${sk ? scaleLine(id) : ''}</div>`; }).join('');
     return `<section class="panel">
       <h3>스킬${help('Q · E · R · F 칸에 끼운 각인의 스킬이 나간다. 종족 스킬 각인은 레벨이 오르면 받는다.')}</h3>
       <div class="skill-tools">

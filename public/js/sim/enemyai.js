@@ -269,7 +269,7 @@ export const EnemyAiMethods = {
       this.move(e, (vx * spd + e.kbx) * DT, (vy * spd + e.kby) * DT);
       if (e.kbHot > 0) this.knockCollide(e, ex0, ey0, kbSpd);
       e.kbx *= 0.85; e.kby *= 0.85;
-      if (p === P && this.b.cls === 'behemoth' && (P.buffs.shell || P.buffs.giant) && !(e.bumpCd > 0) && dist < e.r + P.r + (P.buffs.giant ? 12 : 6)) {
+      if (p === P && this.f.has('impact') && (P.buffs.shell || P.buffs.giant) && !(e.bumpCd > 0) && dist < e.r + P.r + (P.buffs.giant ? 12 : 6)) {
         e.bumpCd = 0.6;
         const big = !!P.buffs.giant;
         if (!e.def.elite) { e.kbx += (-dxp / dist) * (big ? 640 : 440); e.kby += (-dyp / dist) * (big ? 640 : 440); e.kbHot = 0.45; e.kbAtk = this.skillAtk('phys'); }

@@ -152,7 +152,7 @@ export const SkillMethods = {
           if (wc === 'bow' && (op.kind === 'dart' || bolt)) op = { ...op, kind: bolt ? 'bolt' : 'arrow', status: op.status === 'poison' ? null : op.status };
           else if (wc === 'tube' && op.kind === 'arrow') op = { ...op, kind: 'dart' };
         }
-        if (op.focus && this.b.cls === 'ranger' && p.focus > 0) { ctx = { ...ctx, bonus: ctx.bonus * (1 + 0.25 * p.focus) }; p.focus = 0; p.focusT = 0; }
+        if (op.focus && this.f.has('focus') && p.focus > 0) { ctx = { ...ctx, bonus: ctx.bonus * (1 + 0.25 * p.focus) }; p.focus = 0; p.focusT = 0; }
         if (op.fullPierce && ctx.charge >= 3) op = { ...op, pierce: 99, mul: op.mul * 1.2 };
         for (let i = 0; i < (op.n || 1); i++) {
           const a = ang + (i - ((op.n || 1) - 1) / 2) * (op.spread || 0);
@@ -722,7 +722,7 @@ export const SkillMethods = {
     if (!opt.weapon) { const ts = SKILL_TSTAT[id]; if (ts) for (const [k, v, dur] of ts) this.addTemp(k, v, dur, def.name); this.chainEvent('cast', null, this.player); }
     const p = this.player;
     const elem = def.elem === 'current' ? p.elem : def.elem;
-    if (this.b.cls === 'elementalist' && ELEM_CYCLE.includes(elem)) p.elem = elem;
+    if (ELEM_CYCLE.includes(elem)) p.elem = elem; // 마지막 속성은 늘 적어 둔다 (평타가 따라가는 것은 「원소 맞춤」 특성)
     let bonus = 1;
     const lvl = opt.charge || 0;
     if (def.charge) bonus *= [1, 1.35, 1.75, 2.2][lvl];
@@ -794,7 +794,7 @@ export const SkillMethods = {
     if (op.knock && !e.def.elite) {
       const dx = e.x - p.x, dy = e.y - p.y, l = Math.hypot(dx, dy) || 1;
       e.kbx += (dx / l) * op.knock * 2; e.kby += (dy / l) * op.knock * 2;
-      if (this.b.cls === 'behemoth') { e.kbHot = op.launch ? 0.7 : 0.45; e.kbAtk = ctx.atk; }
+      if (this.f.has('impact')) { e.kbHot = op.launch ? 0.7 : 0.45; e.kbAtk = ctx.atk; }
     }
     if (op.pull) { e.reelT = 0.6; e.reelK = e.def.elite ? 0.85 : 1; /* 쇠사슬 · 작살: 내 바로 앞까지 */ e.reelX0 = e.x; e.reelY0 = e.y; e.kbx = 0; e.kby = 0; this.aggro(e); this.emit({ t: 'reel', id: e.id }); }
     return false;

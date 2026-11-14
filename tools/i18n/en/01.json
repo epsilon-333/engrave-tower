@@ -1,5 +1,4 @@
 [
-"Witch of the Sunken Temple",
 "Garen",
 "3 tiles wide",
 "One big horizontal slash, then a long downward cut ahead. The second hit is stronger. Aura +12",
@@ -126,6 +125,13 @@
 "Splitting Ice Spear",
 "Splitting Arrow",
 "Cracked Earth",
+"Path trait · Stopped Time: damage to slowed or frozen enemies +20",
+"Path trait · Elemental Attunement: basic attacks take the element of your last fire · ice · lightning skill and apply its status",
+"Path trait · Spirit's Friend: bond with spirits you fight beside grows 1.5x faster",
+"Path trait · Front Guard: damage from the front -25%, resource +4 per frontal block · returns 25% of blocked damage",
+"Path trait · Focus: standing still grants 1 focus every 0.5s (max 3) · next shot +25",
+"Path trait · Impact: enemies you knock into walls or other enemies take damage and are stunned for 1s",
+"Path trait · Scent of Blood: move speed +25% toward bleeding enemies, heal 0.06% HP when hitting a bleeding enemy",
 "Hairtail",
 "Gnawed writing",
 "Persimmon",
@@ -392,11 +398,5 @@
 "Meat skewer",
 "Meat rice bowl",
 "Stir-fried meat and veggies",
-"Throws meat. For 6 seconds nearby monsters rush to the bait. 50% for enemies chasing me, otherwise 75% (shorter for elites). If you've laid a trap, the bait goes on it. Shadow 15",
-"Give meat",
-"Ancient Golem",
-"Ancient Golem (raid",
-"Ancient Golem's Chamber",
-"Ancient Golem's Heart",
-"Ancient Golem's Core"
+"Throws meat. For 6 seconds nearby monsters rush to the bait. 50% for enemies chasing me, otherwise 75% (shorter for elites). If you've laid a trap, the bait goes on it. Shadow 15"
 ]

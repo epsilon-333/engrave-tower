@@ -100,18 +100,18 @@ const L = [
 // ── 종족 시작 각인: 종족마다 넷 (예전 두 클래스의 1레벨 스킬). 1등급 · 부하 2 · 패시브는 그 스킬의 느낌을 작게 ──
 const START = [
   // 공룡 수인
-  ['sPounce', '덮치는 발톱', ['bleed'], { agi: 2 }, [on('hit', 0.15, st('bleed'), '공격하면 15% 확률로 출혈')], 'pounce'],
+  ['sPounce', '덮치는 발톱', ['bleed'], { agi: 2 }, [{ type: 'flag', flag: 'bloodHunt', text: '갈래 특성 · 피 냄새: 출혈 걸린 적에게 다가갈 때 이동 +25%, 출혈 걸린 적을 때리면 체력 0.06% 회복' }, on('hit', 0.15, st('bleed'), '공격하면 15% 확률로 출혈')], 'pounce'],
   ['sRake', '치고 빠지는 버릇', ['wind'], { agi: 2 }, [on('hit', 0.2, buff('rake', 1, { moveSpeed: 1.1 }, '치고 빠지기', '#bfe8d0'), '적을 때리면 20% 확률로 1초 동안 이동 +10%')], 'rakeRetreat'],
-  ['sTail', '긴 꼬리', ['giant'], { vit: 2 }, [add('knockback', 30, '넉백 +30')], 'tailSwipe'],
+  ['sTail', '긴 꼬리', ['giant'], { vit: 2 }, [{ type: 'flag', flag: 'impact', text: '갈래 특성 · 충돌: 내가 밀쳐낸 적이 벽이나 다른 적에 부딪히면 피해를 받고 1초 기절' }, add('knockback', 30, '넉백 +30')], 'tailSwipe'],
   ['sHorn', '들이받는 뿔', ['brawl'], { str: 2 }, [on('dash', 1, buff('horn', 1.5, { dmgMul: 1.1 }, '들이받기', '#ffb070'), '대시 뒤 1.5초 동안 피해 +10%')], 'rush'],
   // 마법사
-  ['sEmber', '튀는 불씨', ['fire'], { mag: 2 }, [mul('burnMul', 1.1, '화상 피해 +10%')], 'flameBurst'],
+  ['sEmber', '튀는 불씨', ['fire'], { mag: 2 }, [{ type: 'flag', flag: 'elemAttune', text: '갈래 특성 · 원소 맞춤: 평타가 마지막으로 쓴 화염 · 냉기 · 번개 스킬의 속성을 따라가고 그 상태이상을 건다' }, mul('burnMul', 1.1, '화상 피해 +10%')], 'flameBurst'],
   ['sFrostRing', '얼음 고리', ['ice'], { mag: 2 }, [mul('chillMul', 1.15, '냉기 둔화 +15%')], 'frostChain'],
   ['sSeeker', '쫓는 화살', ['wind'], { mag: 2 }, [mul('projMul', 1.06, '투사체 사거리 · 속도 +6%')], 'arcaneBarrage'],
-  ['sAfterimage', '남는 잔상', ['wind'], { spi: 2 }, [mul('dashCd', 0.92, '대시 쿨타임 -8%')], 'blinkBlast'],
+  ['sAfterimage', '남는 잔상', ['wind'], { spi: 2 }, [{ type: 'flag', flag: 'slowHunt', text: '갈래 특성 · 멈춘 시간: 느려지거나 얼어 있는 적에게 주는 피해 +20%' }, mul('dashCd', 0.92, '대시 쿨타임 -8%')], 'blinkBlast'],
   // 기사
   ['sCounter', '되받는 손목', ['reflect'], { pres: 2 }, [on('dodge', 1, buff('counter', 3, { dmgMul: 1.15 }, '되받기', '#ffe080'), '피하면 3초 동안 피해 +15%')], 'riposte'],
-  ['sShieldPush', '밀고 가는 방패', ['reflect'], { pres: 2 }, [mul('dmgTakenMul', 0.97, '받는 피해 -3%')], 'shieldCharge'],
+  ['sShieldPush', '밀고 가는 방패', ['reflect'], { pres: 2 }, [{ type: 'flag', flag: 'frontGuard', text: '갈래 특성 · 정면 수호: 정면에서 오는 피해 -25%, 정면으로 막을 때마다 자원 +4 · 막은 피해의 25%를 되갚는다' }, mul('dmgTakenMul', 0.97, '받는 피해 -3%')], 'shieldCharge'],
   ['sSpinBlade', '도는 칼', ['brawl'], { str: 2 }, [mul('atkSpeed', 1.04, '공격 속도 +4%')], 'comboSlash'],
   ['sLunge', '앞으로 긋는 칼', ['bleed'], { str: 2 }, [add('critDmg', 0.1, '치명타 피해 +10%')], 'dashSlash'],
   // 오크
@@ -130,9 +130,9 @@ const START = [
   ['sTrap', '숨긴 덫', ['poison'], { sen: 2 }, [on('hit', 0.12, st('poison'), '공격하면 12% 확률로 독 1중첩')], 'snare'],
   ['sBackDart', '뒷걸음 독침', ['poison'], { agi: 2 }, [on('dash', 1, buff('backdart', 1.5, { moveSpeed: 1.12 }, '뒷걸음', '#9be15d'), '대시 뒤 1.5초 동안 이동 +12%')], 'retreatShot'],
   // 엘프
-  ['sSpiritCall', '정령의 속삭임', ['wind'], { spi: 2 }, [mul('resGain', 1.05, '자원 회복 +5%')], 'summonSpirit'],
+  ['sSpiritCall', '정령의 속삭임', ['wind'], { spi: 2 }, [{ type: 'flag', flag: 'spiritBond', text: '갈래 특성 · 정령의 벗: 함께 싸운 정령의 결속이 1.5배 빨리 쌓인다' }, mul('resGain', 1.05, '자원 회복 +5%')], 'summonSpirit'],
   ['sLifeDrink', '생기 한 모금', ['drain'], { spi: 2 }, [on('kill', 0.2, { heal: 0.006 }, '처치하면 20% 확률로 체력 0.6% 회복')], 'spiritAbsorb'],
-  ['sPierceTip', '꿰는 화살촉', ['wind'], { sen: 2 }, [mul('projMul', 1.06, '투사체 사거리 · 속도 +6%')], 'pierceArrow'],
+  ['sPierceTip', '꿰는 화살촉', ['wind'], { sen: 2 }, [{ type: 'flag', flag: 'focus', text: '갈래 특성 · 집중: 가만히 서 있으면 0.5초마다 집중 1단계(최대 3) · 다음 사격 피해 단계당 +25%' }, mul('projMul', 1.06, '투사체 사거리 · 속도 +6%')], 'pierceArrow'],
   ['sWindShoe', '바람 신발', ['wind'], { agi: 2 }, [mul('dashCd', 0.93, '대시 쿨타임 -7%')], 'windStep'],
   // 용족
   ['sBoilBreath', '끓는 숨', ['fire'], { vit: 2 }, [mul('burnMul', 1.1, '화상 피해 +10%')], 'breath'],
@@ -140,7 +140,7 @@ const START = [
   ['sFireWord', '불의 낱말', ['fire'], { mag: 2 }, [mul('magAtk', 1.03, '마법 공격력 +3%')], 'wordFire'],
   ['sWingWord', '날개의 낱말', ['wind'], { spi: 2 }, [mul('dashCd', 0.93, '대시 쿨타임 -7%')], 'wordWing'],
 ];
-for (const [id, name, tags, stats, effects, skill] of START) L.push([id, name, 'arm', 1, tags, stats, effects, { goo: 2, rust: 1 }, skill]);
+for (const [id, name, tags, stats, effects, skill] of START) L.push([id, name, 'arm', effects.some((e) => e.type === 'flag') ? 2 : 1, tags, stats, effects, { goo: 2, rust: 1 }, skill]); // 갈래 특성을 단 각인은 2등급
 export const START_ENGS = Object.fromEntries(START.map((x) => [x[5], x[0]])); // 스킬 → 그 종족 시작 각인
 
 export const SKILL_ENGS = L.map(([id, name, slot, grade, tags, stats, effects, recipe, skill]) => ({ id, name, slot, grade, tags, stats, effects, recipe: Object.fromEntries(Object.entries(recipe).filter(([, n]) => n > 0)), skill }));

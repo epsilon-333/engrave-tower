@@ -1,4 +1,10 @@
 [
+"Give meat",
+"Ancient Golem",
+"Ancient Golem (raid",
+"Ancient Golem's Chamber",
+"Ancient Golem's Heart",
+"Ancient Golem's Core",
 "Ancient tablet",
 "Read the ancient tablet",
 "Ancient Ruins",
@@ -145,7 +151,7 @@
 "Resonant Lightning",
 "Resonance Altar",
 "Engrave at the Resonance Altar",
-"Put an engraving in this slot at the Resonance Altar and its skill fires",
+"Put an engraving in this slot at the Resonance Altar to use its skill (no engraving, no skill",
 "Resonance Amplifier",
 "Resonance Stone Necklace",
 "Vacant",
@@ -392,11 +398,5 @@
 "Shadow Graveyard",
 "Shadow Bat",
 "Shadow Bell",
-"Shadow Hunter",
-"Shadow Apostle",
-"Shadow Forest",
-"Shadow Assassin",
-"Shadow Queen Seryl",
-"Shadow Garb",
-"Shadow job"
+"Shadow Hunter"
 ]

@@ -1,4 +1,10 @@
 [
+"Bandit's Hood",
+"Banner of Challenge",
+"Poison",
+"Poison cloud",
+"Poison cloud size +50",
+"Poison Aura",
 "Poison Dagger Shower",
 "Scatters nine poison daggers forward",
 "Poison Cloak",
@@ -392,11 +398,5 @@
 "Low magic resistance · Slow",
 "Magic projectiles explode slightly",
 "Magic damage reduction",
-"Taking magic damage sends a chill wave around",
-"Taking magic damage grants a shield of 5% max health",
-"Mage",
-"Mage Robe",
-"Don't talk about the guild in front of mages. Fireballs fly instantly",
-"Mage discount",
-"Mages? Cowards who throw fire from far away"
+"Taking magic damage sends a chill wave around"
 ]

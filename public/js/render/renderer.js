@@ -2092,7 +2092,7 @@ export class Renderer {
 
   castColor(w, p) {
     const sk = p.castSkill?.def;
-    const el = sk ? (sk.elem === 'current' ? p.elem : sk.elem) : w.b.cls === 'elementalist' ? p.elem : null;
+    const el = sk ? (sk.elem === 'current' ? p.elem : sk.elem) : w.f?.has('elemAttune') ? p.elem : null;
     return ELEM[el]?.color || CLASS_MAGIC[w.b.cls] || '#c9a8ff';
   }
 
@@ -2108,14 +2108,14 @@ export class Renderer {
       }
       if (Math.random() < 0.3 + k * 0.5) { const a = Math.random() * Math.PI * 2; this.parts.push({ x: x + Math.cos(a) * 22, y: top + 12 + Math.sin(a) * 18, vx: -Math.cos(a) * 80, vy: -Math.sin(a) * 80, t: 0.25, max: 0.25, color: '#ffe080', g: 0, glow: true }); }
     }
-    if (w.b.cls === 'ranger' && p.focus > 0) {
+    if (w.f?.has('focus') && p.focus > 0) {
       for (let i = 0; i < p.focus; i++) { // 집중: 작은 깃 달린 화살촉 (단계마다 하나)
         const xx = Math.round(x - (p.focus - 1) * 3.5 + i * 7), yy = Math.round(top - 6 + Math.sin(w.t * 4 + i) * 0.6), col = p.focus >= 3 ? '#fff2a0' : '#bfffd0';
         g.fillStyle = '#0d0b10'; g.fillRect(xx - 2, yy - 2, 5, 3); g.fillRect(xx - 1, yy + 1, 3, 1); g.fillRect(xx, yy + 2, 1, 1);
         g.fillStyle = col; g.fillRect(xx - 1, yy - 1, 3, 1); g.fillRect(xx, yy, 1, 2);
       }
     }
-    if (w.b.cls === 'dragonSage') {
+    if (w.b.skills?.some((id) => SKILLS[id]?.word)) { // 용언을 끼웠으면 쌓인 단어 칸
       const n = 3;
       for (let i = 0; i < n; i++) {
         const wd = p.words[i], xx = Math.round(x - 10 + i * 7), yy = Math.round(top - 8);

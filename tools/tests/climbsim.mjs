@@ -8,7 +8,10 @@ const { computeBuild } = await import(root + '/sim/build.js');
 const { buildClimbFloor } = await import(root + '/sim/climbmap.js');
 const { createRng } = await import(root + '/sim/rng.js');
 const { ZONES, ALL_ZONES } = await import(root + '/data/monsters.js');
-const { CLASSES } = await import(root + '/data/skills.js');
+const { CLASSES, SKILLS } = await import(root + '/data/skills.js');
+const { classEngravingFor } = await import(root + '/save.js');
+const { ENGRAVINGS } = await import(root + '/data/engravings.js');
+const { SLOTS } = await import(root + '/sim/build.js');
 const { ITEMS } = await import(root + '/data/items.js');
 const C = await import(root + '/data/climb.js');
 const { TOWER_WEAPONS } = await import(root + '/data/weapons.js');
@@ -35,7 +38,11 @@ function loadout(cid, level, f = 1) {
   const wpn = ITEMS[tw || c.weapons[1] || c.weapons[0]];
   const main = wpn.weapon.dmg === 'mag' ? 'mag' : wpn.weapon.scale === 'agi' ? 'agi' : 'str';
   const pts = level - 1;
-  return { race: R, cls: cid, level, allSkills: false, alloc: { [main]: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings: {}, gear: { weapon: tw || c.weapons[1] || c.weapons[0], off: c.off }, skills: null };
+  // 클래스가 없다: 그 갈래 스킬의 각인을 레벨에 맞게 Q · E · R · F에 (궁극 · 마무리 먼저) · 다섯째 칸에 갈래 특성 각인
+  const sks = c.skills.filter((id) => (SKILLS[id].unlock || 1) <= level).sort((a, b) => (SKILLS[b].ult - SKILLS[a].ult) || ((SKILLS[b].role === '마무리') - (SKILLS[a].role === '마무리')) || ((SKILLS[b].unlock || 1) - (SKILLS[a].unlock || 1)));
+  const engs = sks.map(classEngravingFor).filter(Boolean).slice(0, 4), trait = c.skills.map(classEngravingFor).find((e) => ENGRAVINGS[e]?.effects?.some((x) => x.type === 'flag' && /갈래 특성/.test(x.text || '')));
+  const engravings = Object.fromEntries(engs.map((e, i) => [SLOTS[i], e])); if (trait && !engs.includes(trait)) engravings[SLOTS[4]] = trait;
+  return { race: R, cls: cid, level, allSkills: false, alloc: { [main]: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings, gear: { weapon: tw || c.weapons[1] || c.weapons[0], off: c.off }, skills: null };
 }
 
 function makeWorld(run, lo) {

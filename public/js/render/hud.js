@@ -125,7 +125,7 @@ export const HudMethods = {
     const desk = !document.body.classList.contains('touch');
     const R = RACES[w.b.race]?.res;
     const pw = (desk ? 24 : 26) * u, bw = (desk ? 120 : 110) * u, bh = (desk ? 9 : 10) * u, gh = desk ? 5 * u : 7 * u;
-    const extra = R && (w.b.cls === 'necromancer' || w.b.race === 'wizard') ? 10 * u : 0;
+    const extra = R && (w.b.race === 'undead' || w.b.race === 'wizard') ? 10 * u : 0;
     const frameH = Math.max(pw, bh + (R ? 3 * u + gh : 0) + extra);
     const fx = m, fy = desk ? H - m - frameH - 6 * u : m;
     this.hudFrameTop = fy;
@@ -156,7 +156,7 @@ export const HudMethods = {
       if (desk) this.text(`${R.name} ${Math.floor(p.res)}`, bx + bw + 4 * u, ry + gh / 2, Math.max(1, u - 1), R.color, 'left'); // 얇은 막대: 이름 · 수치는 막대 오른쪽에
       else this.text(`${R.name} ${Math.floor(p.res)}`, bx + bw / 2, ry + gh / 2, Math.max(1, u - 1), '#ffffff', 'center');
       ry += gh + 2 * u;
-      if (w.b.cls === 'necromancer') { this.text(`거둔 영혼 ${p.souls.length} / 10`, bx, ry + 5 * u, Math.max(1, u - 1), '#7ae8ff'); ry += 10 * u; }
+      if (w.b.race === 'undead') { this.text(`거둔 영혼 ${p.souls.length} / 10`, bx, ry + 5 * u, Math.max(1, u - 1), '#7ae8ff'); ry += 10 * u; }
       if (w.b.race === 'wizard') { const el = ELEM[p.elem]; this.text(`속성: ${el.name}${w.zElem?.weak === p.elem ? ' (약점!)' : w.zElem?.resist === p.elem ? ' (내성)' : ''}`, bx, ry + 5 * u, Math.max(1, u - 1), el.color); ry += 10 * u; }
     }
     // 데스크톱: 버프 · 상태이상은 막대 위쪽 줄에 (위로 쌓인다) / 모바일: 막대 아래
@@ -438,10 +438,6 @@ export const HudMethods = {
     const touch = document.body.classList.contains('touch');
     const box = (touch ? 16 : 20) * v, gap = 12 * v;
     const sk4 = (w.b.skills || []).filter((x) => x !== 'weapon'); while (sk4.length < 4) sk4.push(null); // Q · E · R · F 자리는 늘 그대로 (빈 각인 칸은 빈 칸)
-    // 빈 칸 아래 안내: 다음 클래스 스킬이 열리는 레벨, 이미 열렸으면 공명 제단에서 끼운다
-    const upcoming = Object.values(SKILLS).filter((sk) => sk.race === w.b.race && sk.cls && sk.cls !== 'wild' && (sk.unlock || 1) > w.b.level).sort((a, b) => a.unlock - b.unlock); // 아직 못 배운 내 스킬 (빈 칸에 흐리게)
-    const nextLv = upcoming.length ? upcoming[0].unlock : Infinity;
-    const emptyHint = (w.b.available || []).some((id) => SKILLS[id]?.cls && !sk4.includes(id)) ? '제단에서' : Number.isFinite(nextLv) ? `Lv ${nextLv}` : '빈 칸';
     const slots = [...sk4.slice(0, 4), 'weapon'];
     const keys = [...['KeyQ', 'KeyE', 'KeyR', 'KeyF'].map((k) => keyLabel(keyFor(k))), touch ? '무기' : '우클릭']; // 키 바꾸기를 따른다
     const n = slots.length + 1;
@@ -479,13 +475,11 @@ export const HudMethods = {
         this.text(this.fitName(WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기', box * 1.3, Math.max(1, u - 1)), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#dcd2c6', 'center');
         return;
       }
-      if (!id) { // 빈 칸: 다음에 열릴 스킬을 흐리게 보여 준다 (그림 · 이름 · 열리는 레벨)
+      if (!id) { // 빈 칸: 각인이 없으면 스킬도 없다 (아무것도 채우지 않는다)
         if (touch) return;
-        const nx = emptyHint === '제단에서' ? null : upcoming[sk4.slice(0, i).filter((z) => !z).length];
-        this.cooldownBox(x, y0, box, 1, keys[i], '', null, 0, nx || null);
+        this.cooldownBox(x, y0, box, 1, keys[i], '', null, 0);
         g.fillStyle = 'rgba(8,6,10,0.62)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u);
-        if (nx) { this.text(`Lv ${nx.unlock}`, x + box / 2, y0 + box / 2 + 2 * v, Math.max(1, u - 1), '#e8d8b0', 'center', true); this.text(this.fitName(nx.name, box * 1.3, Math.max(1, u - 1)), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#8c8079', 'center'); }
-        else this.text(emptyHint, x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#8c8079', 'center');
+        this.text('빈 칸', x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#8c8079', 'center');
         return;
       }
       const sk = SKILLS[id];

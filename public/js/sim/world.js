@@ -881,7 +881,7 @@ export class World {
 
     p.stillT = p.moving || p.dashT > 0 || special ? 0 : (p.stillT || 0) + DT; // 가만히 서 있은 시간 (각인 「바위의 인내」)
     // 숲의 사수: 가만히 서 있으면 집중
-    if (this.b.cls === 'ranger') {
+    if (this.f.has('focus')) {
       if (p.moving && p.dashT <= 0) { p.focusT = 0; if (!p.focusKeep) p.focus = 0; }
       else { p.focusT += DT; if (p.focusT >= 0.5) { p.focusT = 0; if (p.focus < 3) { p.focus++; this.emit({ t: 'focus', x: p.x, y: p.y, n: p.focus }); } } }
       if (p.dashT <= 0 && p.moving) p.focusKeep = false;
@@ -1466,7 +1466,7 @@ export class World {
     let mul = w.mul, heavy = false;
     if (this.f.has('heavyHit') && p.atkCount % 4 === 0) { mul *= 2; heavy = true; }
     if (w.charge) { mul *= 1 + 0.6 * Math.min(1, (this.t - p.lastShot) / 1.6); }
-    if (this.b.cls === 'ranger' && p.focus > 0 && w.kind === 'proj') { mul *= 1 + 0.25 * p.focus; heavy = p.focus >= 3; p.focus = 0; p.focusT = 0; }
+    if (this.f.has('focus') && p.focus > 0 && w.kind === 'proj') { mul *= 1 + 0.25 * p.focus; heavy = p.focus >= 3; p.focus = 0; p.focusT = 0; }
     p.lastShot = this.t;
     this.breakStealth();
     const base = atk * mul;
@@ -1517,7 +1517,7 @@ export class World {
         this.delayed.push({ t: p.swingMax * 0.57, run: () => { strike(true, 1.3); this.emit({ t: 'hitstop', v: 0.07 }); this.emit({ t: 'shake', v: 5 }); } });
       } else strike();
       // 도끼 군단: 휘두를 때마다 돌아오는 도끼 3자루를 함께 던진다
-      if (p.buffs.axeLegion && this.b.cls === 'thrower') for (let i = -1; i <= 1; i++) {
+      if (p.buffs.axeLegion) for (let i = -1; i <= 1; i++) {
         const a = ang + i * 0.25;
         this.projs.push({ owner: 'p', x: p.x, y: p.y, vx: Math.cos(a) * 230, vy: Math.sin(a) * 230, life: 0.6, maxLife: 0.6, dmg: base * 0.6, type, pierce: 99, hit: new Set(), color: '#e8e2cf', kind: 'axe', boomerang: true, ox: p.x, oy: p.y, weaponHit: true });
       }
@@ -1526,8 +1526,8 @@ export class World {
       const n = (w.count || 1) + (legion ? 2 : 0);
       const spread = legion ? Math.max(0.22, w.spread || 0) : w.spread || 0;
       const wind = this.spiritCount('wind');
-      const elem = this.b.cls === 'elementalist' ? p.elem : null;
-      const spiritCol = this.b.cls === 'spiritcaller' && p.spirits.length ? ELEM[p.spirits[p.spirits.length - 1].elem]?.color : null; // 정령 활: 깃든 정령의 빛
+      const elem = this.f.has('elemAttune') ? p.elem : null;
+      const spiritCol = p.spirits.length ? ELEM[p.spirits[p.spirits.length - 1].elem]?.color : null; // 정령 활: 깃든 정령의 빛
       const rangeMul = this.mod('projRange');
       for (let i = 0; i < n; i++) {
         const a = ang + (i - (n - 1) / 2) * spread;
@@ -1742,7 +1742,7 @@ export class World {
 
   // 포식자: 출혈 걸린 적에게 다가갈 때 빨라진다
   predatorSpeed(mx, my, ml) {
-    if (this.b.cls !== 'predator' || ml <= 0) return 1;
+    if (!this.f.has('bloodHunt') || ml <= 0) return 1;
     const p = this.player;
     for (const e of this.enemies) {
       if (e.dead || !e.st.bleed) continue;
@@ -2027,7 +2027,7 @@ export class World {
     }
     this.damageEnemy(e, base * (crit ? d.critDmg : 1) * charge + extra, type, { src: 'attack', crit, heavy, proj, dist: opt.dist, elem: opt.elem, pen: opt.pen });
     if (opt.weapon && !e.dead) this.weaponExtras(e, base, crit, bleeding);
-    if (this.b.cls === 'predator' && bleeding) this.heal(d.maxHp * 0.0006, 'steal');
+    if (this.f.has('bloodHunt') && bleeding) this.heal(d.maxHp * 0.0006, 'steal');
     if (p.buffs.apex && !e.dead) this.applyStatus(e, 'bleed', 2);
     if (p.spirits.length && !e.dead) {
       const fire = this.spiritCount('fire'), forest = this.spiritCount('forest'), wind = this.spiritCount('wind');
@@ -2035,7 +2035,7 @@ export class World {
       if (fire && forest && e.st.burn) this.heal(d.maxHp * 0.002, 'skill');
       if (fire && wind && proj && this.rng.chance(0.25)) this.zones.push({ kind: 'fire', x: e.x, y: e.y, r: 14, t: 2, max: 2, tick: 0, atk: this.skillAtk('best') });
     }
-    if (opt.weapon && this.b.cls === 'elementalist' && !e.dead && ELEM[p.elem]?.status) this.applyStatus(e, ELEM[p.elem].status, 1);
+    if (opt.weapon && this.f.has('elemAttune') && !e.dead && ELEM[p.elem]?.status) this.applyStatus(e, ELEM[p.elem].status, 1);
     if (p.buffs.venom && !e.dead) this.applyStatus(e, 'poison', 2);
     if (opt.weapon) {
       if (w.onHit && this.rng.chance(w.onHit.chance)) this.applyStatus(e, w.onHit.status, w.onHit.stacks);
@@ -2275,7 +2275,7 @@ export class World {
     }
     if (opt.pen) mult *= 1 + opt.pen * 0.5;
     if (opt.src === 'reaction' && e.st.elemMark > 0) mult *= 1.5;
-    if (this.b.cls === 'chronomancer' && (e.st.slowZ > 0 || e.st.chill || e.st.frozen > 0)) mult *= 1.2;
+    if (this.f.has('slowHunt') && (e.st.slowZ > 0 || e.st.chill || e.st.frozen > 0)) mult *= 1.2;
     mult *= this.mod('dmgMul');
     { const lh = this.modAdd('lowHpDmg'); if (lh) mult *= 1 + lh * (1 - p.hp / d.maxHp); }
     mult *= this.raceDmgMul(type, opt);
@@ -2499,7 +2499,7 @@ export class World {
     // 수호기사: 정면 공격은 25% 덜 받고 오러를 얻는다. 철벽 중에는 완전히 막는다
     let front = false;
     const fx = opt.fromX ?? attacker?.x, fy = opt.fromY ?? attacker?.y;
-    if (this.b.cls === 'guardian' && fx != null && !opt.direct) {
+    if (this.f.has('frontGuard') && fx != null && !opt.direct) {
       const vx = fx - p.x, vy = fy - p.y, l = Math.hypot(vx, vy) || 1;
       front = (vx * p.aimX + vy * p.aimY) / l > 0.25;
       if (front && p.buffs.ironWall && p.parryT <= 0) {

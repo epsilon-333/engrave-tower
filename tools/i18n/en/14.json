@@ -1,4 +1,8 @@
 [
+"Race shop technique book · 1500 gold",
+"Race shop technique book · 1800 gold",
+"Race sanctum · training",
+"Train and take quests at race sanctums, enhance gear at the smithy. Farming · fishing · cooking (cooking = healing in the tower",
 "Race resource +10",
 "If race resource runs short, skills use health for the shortfall (per 1, max HP 0.5",
 "Race token (accessory",
@@ -394,9 +398,5 @@
 "Heal 0.07% max HP per second",
 "Heal 0.1% max HP per second",
 "Heal 0.11% max HP per second",
-"Heal 0.18% max HP per second",
-"Green",
-"Exit by the green path",
-"s lost",
-"s to move to another dummy"
+"Heal 0.18% max HP per second"
 ]

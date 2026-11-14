@@ -1,4 +1,10 @@
 [
+"Taking magic damage grants a shield of 5% max health",
+"Mage",
+"Mage Robe",
+"Don't talk about the guild in front of mages. Fireballs fly instantly",
+"Mage discount",
+"Mages? Cowards who throw fire from far away",
 "Mages learn magic from dragon fire, and dragonkin read the stars to know when the volcano will erupt",
 "Mage engraving · meteor rain",
 "30% chance when hit by magic: 3 mirror shards",
@@ -392,11 +398,5 @@
 "Suddenly realized",
 "Glyph engraving",
 "Glyph engraving · mixed",
-"Rain of Glyphs",
-"Light of Glyphs",
-"Octopus",
-"The door opened. Press G at the door",
-"A door torn off and fitted with a handle",
-"Surface",
-"Can't read on the water"
+"Rain of Glyphs"
 ]
