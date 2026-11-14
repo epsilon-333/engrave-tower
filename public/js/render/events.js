@@ -117,7 +117,7 @@ export const EventMethods = {
           break;
         }
         case 'echo':
-          this.texts.push({ x: ev.x, y: ev.y - 18, text: '+' + ECHOES[ev.id].name, color: ECHOES[ev.id].color, t: 1.5, vy: -12, vx: 0, label: true });
+          // 이름은 오른쪽 줍기 목록에 뜬다 (싸우는 자리에 글을 더 얹지 않는다)
           this.burst(ev.x, ev.y, ECHOES[ev.id].color, 10, 50);
           sfx('echo', { vol: 0.6 });
           break;
@@ -142,13 +142,12 @@ export const EventMethods = {
         case 'crackHit': this.burst(ev.x, ev.y, '#a89880', 6, 60); this.shake = Math.max(this.shake, 1.5); sfx('crack', { vol: 0.6 }); break;
         case 'region':
           if (ev.vista && ev.first) break; // 전망대는 따로 연출
-          this.banner = { text: ev.name, sub: [ev.lv ? `권장 Lv ${ev.lv[0]}~${ev.lv[1]}` : '', ev.first ? '새 장소 발견 · 도감 +2' : ''].filter(Boolean).join(' · '), t: ev.first ? 3 : 2.2, color: '#e8dcc0' };
+          this.banner = { text: ev.name, sub: [ev.lv ? `권장 Lv ${ev.lv[0]}~${ev.lv[1]}` : '', ev.first ? '새 장소 발견 · 도감 +2' : ''].filter(Boolean).join(' · '), t: ev.first ? 3 : 2.2, color: '#e8dcc0', region: true };
           if (ev.first) sfx('levelup', { vol: 0.4, rate: 1.2 });
           break;
         case 'vista': this.vista = { t: 0, name: ev.name }; sfx('levelup', { vol: 0.5, rate: 0.6 }); break;
         case 'codexStage':
           this.note(ev.stage >= 3 ? `도감 · ${ev.name} 완성!` : `도감 · ${ev.name} ${ev.stage}단계 (다음: ${ev.next}마리)`, ev.stage >= 3 ? '#ffe080' : '#c8e8ff');
-          this.texts.push({ x: ev.x, y: ev.y - 20, text: ev.stage >= 3 ? '도감 완성' : `도감 ${ev.stage}단계`, color: '#c8e8ff', t: 1.4, vy: -12, vx: 0, label: true });
           sfx('echo', { vol: 0.5, rate: 0.8 });
           break;
         case 'shardGet': {
@@ -162,8 +161,7 @@ export const EventMethods = {
         case 'storyItem': {
           const it = STORY_ITEMS[ev.id];
           this.note(`${it.name}${it.max > 1 ? ` ${Math.min(ev.n, it.max)}/${it.max}` : ''}`, it.color);
-          this.texts.push({ x: ev.x, y: ev.y - 18, text: '+' + it.name, color: it.color, t: 1.6, vy: -12, vx: 0, label: true });
-          this.burst(ev.x, ev.y, it.color, 14, 60);
+          this.burst(ev.x, ev.y, it.color, 14, 60); // 이름은 왼쪽 알림에
           if (ev.n === 1 && !this.seenItem?.[ev.id]) { (this.seenItem ||= {})[ev.id] = 1; this.calmBanner({ text: it.name, sub: it.desc, t: 3.5, color: it.color }); }
           sfx('lore', { vol: 0.5 });
           break;

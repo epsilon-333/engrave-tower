@@ -259,7 +259,6 @@
 "Only 15% damage gets through on the shielded side, and the shield",
 "Raise a shield: frontal damage -20%, can use shield techniques",
 "Charges far behind a shield for 160% attack damage to enemies in the path, knocking back and stunning 0.8s. Aura +10",
-"Raised the shield",
 "Charges shield-first, 0.6s stun, for 3 seconds damage taken -30",
 "What touches the shield freezes",
 "Vines grow from the shield and wrap enemies",
@@ -398,5 +397,6 @@
 "Reward",
 "Reward ◆",
 "Claim reward",
-"Give reward"
+"Give reward",
+"Reward: gold"
 ]

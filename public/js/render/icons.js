@@ -348,7 +348,8 @@ export function iconCanvas(key) {
   if (cache.has(key)) return cache.get(key);
   const P = new Pix(16);
   try {
-    if (key.startsWith('tool:')) { const [, kind, tier] = key.split(':'); drawToolIcon(P, kind, +tier); }
+    if (key.startsWith('gear:')) (DRAW[key.slice(5)] || DRAW.lump)(P, []); // 장비 칸 그림 (방어구 helm · 장신구 ring · 왼손 doll/mirror)
+    else if (key.startsWith('tool:')) { const [, kind, tier] = key.split(':'); drawToolIcon(P, kind, +tier); }
     else if (key.startsWith('art:')) { const a = ARTIFACTS[key.slice(4)]; DRAW[a?.icon || 'pot'](P); }
     else if (key.startsWith('shard:')) DRAW.shard(P, [key.slice(6), lighter(key.slice(6), 0.5), darker(key.slice(6), 0.4)]);
     else {

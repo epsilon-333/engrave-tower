@@ -18,6 +18,24 @@ import { computeBuild, encodeLoadout, decodeLoadout, SLOTS, SLOT_KEYS, fitEngrav
 import { condText, evalCond } from '../sim/conditions.js';
 import { toLoadout, writeSave, refreshQuests, claimQuest, grantClassEngravings } from '../save.js';
 import { sfx } from '../audio.js';
+import { iconURL } from '../render/icons.js';
+import { sprite } from '../render/assets.js';
+import { weaponArt } from '../data/art.js';
+// 장비 칸 그림: 무기는 게임 속 무기 그림 그대로, 나머지는 도트 아이콘
+const gearIcoCache = new Map();
+function gearIco(id) {
+  const it = ITEMS[id]; if (!it) return '';
+  let url = gearIcoCache.get(id);
+  if (!url) {
+    if (it.weapon) {
+      const wa = weaponArt(id, ITEMS), img = sprite(wa.s, wa.tint || '');
+      if (img) { const c = document.createElement('canvas'), k = Math.max(1, Math.floor(30 / Math.max(img.width, img.height))); c.width = c.height = 32; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(img, Math.round((32 - img.width * k) / 2), Math.round((32 - img.height * k) / 2), img.width * k, img.height * k); url = c.toDataURL(); }
+    } else url = iconURL('gear:' + (it.slot === 'armor' ? 'helm' : it.slot === 'off' ? (it.offCurse ? 'doll' : 'mirror') : 'ring'));
+    if (!url) return '';
+    gearIcoCache.set(id, url);
+  }
+  return `<img class="gear-ico" src="${url}" alt="">`;
+}
 import { engravingSkillFor, KIND_NAME, SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS } from '../data/skills.js';
 import { getAutoAim, setAutoAim } from '../settings.js';
 import { skillScale, weaponStat, SKILL_PERKS, WEAPON_PERKS, CLASS_STATS } from '../data/statscale.js';
@@ -58,11 +76,11 @@ export class Hub {
     const s = this.s, b = computeBuild(toLoadout(s));
     this.b = b;
     // 그 집(시설)에서 연 창이면 그 시설의 탭 + 언제나 쓸 수 있는 탭(캐릭터 · 가방 · 도감)만 보인다
-    const tabs = [['char', '캐릭터'], ['gear', '장비'], ['where', '어디서 얻나'], ['altar', '공명 제단'], ['shop', '대장간'], ['forge', '제작'], ['craft', '무기 만들기'], ['trade', '잡화점'], ['learn', '기술 배우기'], ['cook', '부엌'], ['storage', '보관함'], ['quest', '의뢰'], ['hunt', '관문 정보'], ['bag', '가방'], ['codex', '도감']]
+    const tabs = [['char', '캐릭터'], ['skills', '스킬'], ['gear', '장비'], ['where', '어디서 얻나'], ['altar', '공명 제단'], ['shop', '대장간'], ['forge', '제작'], ['craft', '무기 만들기'], ['trade', '잡화점'], ['learn', '기술 배우기'], ['cook', '부엌'], ['storage', '보관함'], ['quest', '의뢰'], ['hunt', '관문 정보'], ['bag', '가방'], ['codex', '도감']]
       .filter(([k]) => !this.allowed || this.allowed.includes(k));
     if (!tabs.some(([k]) => k === this.tab)) this.tab = tabs[0][0];
     // 왼쪽 세로 탭 (묶음별): 나 · 세계 · 시설 — 시설 탭은 그 시설에서 열었을 때만 보인다
-    const GROUPS = [['나', ['char', 'gear', 'bag', 'altar']], ['세계', ['codex', 'quest', 'where', 'hunt']], ['시설', ['shop', 'forge', 'craft', 'trade', 'learn', 'cook', 'storage']]];
+    const GROUPS = [['나', ['char', 'skills', 'gear', 'bag', 'altar']], ['세계', ['codex', 'quest', 'where', 'hunt']], ['시설', ['shop', 'forge', 'craft', 'trade', 'learn', 'cook', 'storage']]];
     const tabName = Object.fromEntries(tabs);
     const dot = (k) => `${k === 'char' && s.points ? ` <b class="dot" title="나눌 스탯 포인트 ${s.points}점">${s.points}</b>` : ''}${k === 'quest' && (s.quests || []).some((q) => q.done) ? ' <b class="dot" title="보상을 받을 의뢰가 있다">!</b>' : ''}`;
     const rail = GROUPS.map(([gname, ks]) => { const list = ks.filter((k) => tabName[k]); return list.length ? `<div class="rail-g"><div class="rail-h">${gname}</div>${list.map((k) => `<button data-tab="${k}" class="${this.tab === k ? 'on' : ''}">${tabName[k]}${dot(k)}</button>`).join('')}</div>` : ''; }).join('');
@@ -85,6 +103,7 @@ export class Hub {
   tab_cook(s) { return cookTab(s, this); }
   tab_craft(s) { return craftTab(s, this); }
   tab_learn(s, b) { return learnTab(s, this, b); }
+  tab_skills(s, b) { return this.skillPanel(s, b); } // 스킬 (K): 제단에 가지 않아도 Q · E · R · F 를 본다
   tab_trade(s) { return tradeTab(s); }
   tab_forge(s) { return forgeTab(s); }
 
@@ -417,7 +436,7 @@ export class Hub {
   tab_shop(s, b, ownedOnly = false) {
     const gear = s.gear, twoHand = weaponHands(ITEMS[gear.weapon]) >= 2;
     const gearRow = [['weapon', '무기 (오른손)'], ['off', '왼손'], ['armor', '방어구'], ['acc1', '장신구 1'], ['acc2', '장신구 2']]
-      .map(([k, n]) => `<div class="slot ${gear[k] ? 'filled' : ''} ${k === 'off' && twoHand && gear.off ? 'resting' : ''}"><div class="sl-name">${n}</div>${gear[k] && ITEMS[gear[k]] ? `<div class="sl-e">${ITEMS[gear[k]].name}</div>${k === 'off' && twoHand ? '<div class="muted">양손 무기라 쉬는 중</div>' : ''}${k !== 'weapon' ? `<button class="sm ghost" data-act="unequipG" data-slot="${k}">빼기</button>` : ''}` : `<div class="muted">${k === 'off' && twoHand ? (weaponCat(ITEMS[gear.weapon]) === 'shield' ? '방패를 들었다' : '양손 무기를 들었다') : '비어 있음'}</div>`}</div>`).join('');
+      .map(([k, n]) => `<div class="slot ${gear[k] ? 'filled' : ''} ${k === 'off' && twoHand && gear.off ? 'resting' : ''}"><div class="sl-name">${n}</div>${gear[k] && ITEMS[gear[k]] ? `<div class="sl-e">${gearIco(gear[k])}${ITEMS[gear[k]].name}</div>${k === 'off' && twoHand ? '<div class="muted">양손 무기라 쉬는 중</div>' : ''}${k !== 'weapon' ? `<button class="sm ghost" data-act="unequipG" data-slot="${k}">빼기</button>` : ''}` : `<div class="muted">${k === 'off' && twoHand ? (weaponCat(ITEMS[gear.weapon]) === 'shield' ? '무기에 딸린 방패' : '양손 무기라 비움') : '비어 있음'}</div>`}</div>`).join('');
     const card = (id) => {
       const it = ITEMS[id], has = s.items.includes(id);
       const stats = Object.entries(it.stats).map(([k, v]) => `${(STAT_INFO[k] || SPECIAL_INFO[k]).name} ${v > 0 ? '+' : ''}${v}`).join(', ');
@@ -445,7 +464,7 @@ export class Hub {
     const sel = all.includes(this.gearSel) ? this.gearSel : all[0];
     const gearRowItem = (id) => { const it = ITEMS[id], rc = it.rarityColor || RC[it.rarity] || '#c8c0d0';
       const rf = s.reinforce?.[id] || 0, dup = s.items.filter((x) => baseId(x) === baseId(id)).length > 1 ? ` (${id.includes('#') ? id.split('#')[1] : 1})` : '';
-      return `<button class="eng-row gear-row ${sel === id ? 'on' : ''}" data-act="gsel" data-id="${id}" style="--g:${rc}"><span class="er-name">${esc(it.name)}${rf ? ` <b class="up">+${rf}</b>` : ''}${dup}</span>
+      return `<button class="eng-row gear-row ${sel === id ? 'on' : ''}" data-act="gsel" data-id="${id}" style="--g:${rc}"><span class="er-name">${gearIco(id)}${esc(it.name)}${rf ? ` <b class="up">+${rf}</b>` : ''}${dup}</span>
         <span class="er-tags">${it.weapon ? `<i style="--c:#c9beb2">${WCAT_NAME[weaponCat(it)] || ''}</i><i style="--c:#f0c878">위력 ×${it.weapon.mul}</i>` : Object.entries(it.stats || {}).slice(0, 3).map(([k, v]) => `<i style="--c:#c9beb2">${(STAT_INFO[k] || SPECIAL_INFO[k])?.name || k} +${v}</i>`).join('')}</span>
         <span class="er-skill">${it.rarity != null ? ['일반', '희귀', '영웅', '전설', '신화'][it.rarity] : ''}</span><span class="er-state">${equippedIds.has(id) ? '<b class="ok">장착 중</b>' : s.items.includes(id) ? '보유' : it.price ? `◆ ${it.price}` : ''}</span></button>`; };
     const cats = [...new Set(idsOf('weapon').map((id) => weaponCat(ITEMS[id])))];

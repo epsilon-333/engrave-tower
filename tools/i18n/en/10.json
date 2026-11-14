@@ -1,5 +1,4 @@
 [
-"Forest bandit's feathered arrow",
 "Forest Archer's Bow",
 "Forest Sprite",
 "Guard the Forest",
@@ -342,9 +341,9 @@
 "Double Axe",
 "Both hands",
 "Two-handed weapon: damage +12",
+"Empty (two-handed weapon)",
 "Resting due to a two-handed weapon",
 "Holding a two-handed weapon",
-"Equipped a two-handed weapon",
 "Two-handed twin swords: attack speed +15",
 "Two-handed ranged weapon: damage +8",
 "Two-handed Battleaxe",
@@ -398,5 +397,6 @@
 "Damage to frozen enemies",
 "More damage to frozen enemies",
 "Defeat frozen enemies and",
-"Frozen Corridor"
+"Frozen Corridor",
+"Frozen, briefly unable to move or attack"
 ]

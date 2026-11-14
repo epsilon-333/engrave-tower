@@ -1866,7 +1866,7 @@ function showTutorial() {
 
 // ───── 패널 (마을 시설) ─────
 // 그 시설(집)에서 열면 그 시설의 탭까지, 키로 열면 캐릭터 · 가방 · 도감만
-const ALWAYS_TABS = ['char', 'gear', 'where', 'bag', 'codex'];
+const ALWAYS_TABS = ['char', 'skills', 'gear', 'where', 'bag', 'codex'];
 const STATION_TABS = { altar: ['altar'], shop: ['shop', 'forge', 'craft'], forge: ['forge', 'shop', 'craft'], codex: ['codex', 'learn'], char: ['char', 'learn'], quest: ['quest'], trade: ['trade'], hunt: ['hunt'], cook: ['cook', 'storage'], storage: ['storage', 'cook'], craft: ['craft', 'storage'] };
 function openPanel(tab, fromStation = false) {
   touch?.reset();
@@ -2057,7 +2057,8 @@ addEventListener('keydown', (e) => {
   if (code === 'KeyT') { setAutoAim(!getAutoAim()); renderer.banner = { text: getAutoAim() ? '자동 조준 켜짐' : '자동 조준 꺼짐', t: 1.2, color: '#7ad8ff' }; if (world.practice) showPracticePanel(); }
   if (code === 'KeyC' && (world.mode === 'plaza' || world.state === 'play') && !world.practice) openPanel('char'); // 던전 안에서도 스킬 · 스탯을 바꿀 수 있다 (재사용 대기는 스킬마다 그대로)
   if (code === 'KeyB' && world.state === 'play') openPanel('bag');
-  if ((code === 'KeyI' || code === 'KeyK') && world.state === 'play') openPanel('gear'); // 장비: 대장간에 가지 않아도 바로 바꾼다
+  if (code === 'KeyI' && world.state === 'play') openPanel('gear'); // 장비: 대장간에 가지 않아도 바로 바꾼다
+  if (code === 'KeyK' && world.state === 'play' && !world.practice) openPanel('skills'); // 스킬 화면
   if (code === 'KeyX' && world.life && world.farmRect) { const sd = cycleSeed(world); renderer.banner = { text: sd ? `${GOODS[sd].name} (${save.bag[sd]}개)` : '씨앗이 없다', sub: sd ? '이 씨앗을 심는다 · X로 바꾸기' : '잡화점에서 씨앗을 산다', t: 1.6, color: '#c8e8a0' }; }
   if (code === 'KeyM' && world.map?.outdoor) renderer.bigMap = !renderer.bigMap;
   if (code === 'KeyN') showRank(); // 랭킹

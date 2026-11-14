@@ -750,3 +750,11 @@ body.touch:has(#title:not([hidden])) #cloudChip { top: auto; bottom: calc(8px + 
 .key-grid button { min-width: 64px; }
 /* 타이틀: 저장 표시는 오른쪽 위 (아래 가운데의 출처 글과 겹치지 않게) */
 body:not(.touch):has(#title:not([hidden])) #cloudChip { bottom: auto; top: calc(10px + env(safe-area-inset-top, 0px)); }
+
+/* 장비 칸: 도트 판처럼 (점선 웹 상자 대신 · 그림 + 이름) */
+.slot { border: 0; box-shadow: 0 0 0 2px #0c0a0b, inset 0 0 0 2px #3a3233, inset 0 3px 0 2px #15110f; background: linear-gradient(#1f1a1b, #2a2324); }
+.slot.filled { box-shadow: 0 0 0 2px #0c0a0b, inset 0 0 0 2px var(--g, #6a5acd), inset 0 3px 0 2px #15110f; }
+.slot .sl-name { font-size: 13px; color: #9a8f86; letter-spacing: 0.5px; }
+.slot .sl-e { display: flex; align-items: center; gap: 6px; }
+.gear-ico { width: 32px; height: 32px; image-rendering: pixelated; flex: none; background: #120f10; box-shadow: inset 0 0 0 1px #3a3233; }
+.eng-row .gear-ico { width: 24px; height: 24px; margin-right: 6px; vertical-align: middle; }

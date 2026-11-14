@@ -166,6 +166,18 @@ export function paintTile(g, w, x, y, ox = 0, oy = 0) {
       if (gg === G.STONE) for (let r = 0; r < 4; r++) { P(pal[3], 0, r * 4 + 3, 16, 1); const off = (r + y) % 2 ? 0 : 4; for (let k = off; k < 16; k += 8) P(pal[3], k, r * 4, 1, 3); }
       else for (let i = 0; i < 5; i++) { const r = hash(x, y, 120 + i), cx = (i % 3) * 5 + (r % 3), cy = Math.floor(i / 3) * 7 + (r >>> 3) % 4; P(OL, cx, cy, 5, 4); P(pal[1], cx, cy, 4, 3); P(pal[2], cx, cy, 3, 1); } // 둥근 자갈
       speck([pal[2]], 3, 12);
+      // 포장 가장자리: 옆이 흙 · 풀이면 돌이 반듯한 직선으로 끊기지 않게 — 가장자리 돌이 깨져 빠지고, 옆 땅의 풀 · 흙이 들쭉날쭉 파고든다
+      const paved = (q) => q === G.STONE || q === G.COBBLE || q === G.STAIRS || q === G.BRIDGE;
+      for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+        if (T(x + dx, y + dy) !== T_FLOOR) continue;
+        const ng = Gd(x + dx, y + dy); if (paved(ng)) continue;
+        const np = ng === G.GRASS || ng === G.TALL || ng === G.FLOWER ? PAL.grass : GROUND_PAL[ng] || PAL.dirt;
+        for (let i = 0; i < 16; i++) {
+          const r = hash(x * 5 + dx, y * 5 + dy, 200 + i), len = (r % 7 === 0 ? 4 : r % 3 === 0 ? 3 : r % 2 ? 2 : 1);
+          const fill = (a, b, c) => { for (let k = 0; k < c; k++) { const [px2, py2] = dy === -1 ? [i, k] : dy === 1 ? [i, 15 - k] : dx === -1 ? [k, i] : [15 - k, i]; P(k === c - 1 ? b : a, px2, py2, 1, 1); } };
+          fill(np[(r >>> 5) % 2], (r >>> 7) % 3 ? pal[3] : np[2], len); // 옆 땅이 덮고 · 끝에는 깨진 돌의 짙은 테
+        }
+      }
     } else if (gg === G.STAIRS) { // 돌계단: 가로 단 + 그늘
       P(pal[1], 0, 0, 16, 16);
       for (let k = 0; k < 4; k++) { P(pal[2], 0, k * 4, 16, 1); P(pal[3], 0, k * 4 + 3, 16, 1); }

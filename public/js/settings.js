@@ -30,7 +30,7 @@ export const KEY_ACTIONS = [
   ['Space', '구르기'], ['KeyG', '상호작용'],
   ['KeyQ', '스킬 1'], ['KeyE', '스킬 2'], ['KeyR', '스킬 3'], ['KeyF', '스킬 4'],
   ['KeyH', '음식'], ['KeyZ', '물약'], ['KeyV', '탈것'],
-  ['KeyC', '캐릭터'], ['KeyI', '장비'], ['KeyB', '가방'], ['KeyJ', '퀘스트'], ['KeyM', '지도'],
+  ['KeyC', '캐릭터'], ['KeyK', '스킬'], ['KeyI', '장비'], ['KeyB', '가방'], ['KeyJ', '퀘스트'], ['KeyM', '지도'],
 ];
 const KEYS_KEY = 'et-keys';
 let binds = {}; // 기본 키 → 내가 고른 키
