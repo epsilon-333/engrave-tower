@@ -223,7 +223,14 @@ export function computeBuild(lo) {
 
   // 액티브 스킬: 각인 칸 Q · E · R · F에 장착한 각인의 스킬 (빈 칸은 비워 둔다). 탑 등반에서 새긴 각인의 스킬은 빈 칸을 채운다
   // allSkills(연습 · 시뮬레이션)일 때만 예전처럼 클래스 스킬에서 고른다
-  const cls = lo.cls && CLASSES[lo.cls]?.race === lo.race ? lo.cls : RACE_CLASSES(lo.race)[0];
+  // 클래스는 고르지 않는다: 끼운 각인의 스킬로 정해진다 (그 종족의 두 갈래 가운데 스킬을 더 많이 끼운 쪽 · 같으면 예전 값). 갈래 특성 · 밸런스 보정이 따라간다
+  const rc = RACE_CLASSES(lo.race);
+  let cls = lo.cls && CLASSES[lo.cls]?.race === lo.race ? lo.cls : rc[0];
+  if (!lo.allSkills) {
+    const eq = SKILL_SLOTS.map((sl) => { const id = lo.engravings?.[sl]; return id && ENGRAVINGS[id] ? engravingSkillFor(id, lo.race) : null; }).filter(Boolean);
+    const n = (c) => eq.filter((sk) => CLASSES[c].skills.includes(sk)).length;
+    for (const c of rc) if (n(c) > n(cls)) cls = c;
+  }
   let skills, available, innateSkills = [];
   if (lo.allSkills) {
     available = CLASSES[cls].skills.slice();
@@ -237,12 +244,7 @@ export function computeBuild(lo) {
   } else {
     skills = SKILL_SLOTS.map((sl) => { const id = lo.engravings?.[sl]; return id && ENGRAVINGS[id] ? engravingSkillFor(id, lo.race) : null; });
     for (const re of lo.runEng || []) { const sk = engravingSkillFor(re.id, lo.race); const i = skills.indexOf(null); if (sk && i >= 0 && !skills.includes(sk)) skills[i] = sk; }
-    // 종족 스킬은 처음부터 그 종족의 것: 각인이 없는 칸은 내 클래스 스킬(레벨에 맞게 열린 것)로 채운다. 각인을 넣으면 그 칸은 각인 스킬로 바뀐다
-    const own = CLASSES[cls].skills.filter((id) => SKILLS[id] && (SKILLS[id].unlock || 1) <= (lo.level || 1) && !skills.includes(id));
-    const pickOwn = (roles) => { const i = own.findIndex((id) => roles.includes(SKILLS[id].role)); return i >= 0 ? own.splice(i, 1)[0] : null; };
-    const order = [['준비', '강화', '전환', '방어'], ['공격', '이동', '연타', '제어', '소환'], ['마무리'], ['궁극']];
-    for (let i = 0; i < skills.length; i++) if (!skills[i]) skills[i] = pickOwn(order[i] || []) || own.shift() || null;
-    innateSkills = skills.filter((id) => id && CLASSES[cls].skills.includes(id));
+    // 빈 칸은 빈 칸 (클래스 스킬로 채우지 않는다): 스킬은 모두 각인에서 나온다
     available = skills.filter(Boolean);
   }
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다

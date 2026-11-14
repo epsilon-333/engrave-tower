@@ -233,6 +233,7 @@
 "J) and the screen-edge",
 "M · Close map",
 "Q · E · R · F slots: the engraving's skill and passive. Last slot: passive only. Load limit is 25 + per 10 Spirit 1",
+"The skills of engravings set in Q · E · R · F are used. Race skill engravings come as you level up",
 "Hit the dummy with your Q · E skills. Skills marked [Charge] get stronger when you hold and release",
 "Press Space to roll. You dodge attacks while rolling",
 "WASD Move · Mouse Aim · Left-click Basic attack · Right-click Weapon skill · Q·E·R·F Skills (hold charge skills) · Space Roll (invulnerable) · G Interact · H Food · Z Potion · C Character · I Gear · B Bag · J Quests · M Map · Esc Menu",
@@ -302,7 +303,6 @@
 "…Skeletons are weak to magic, ogres to lasting pain",
 "← Play without logging in (saved only in this browser",
 "← Frost Snowfield (Mage Tower)  ·  → Volcanic Zone (Crimson Crater",
-"← Choose race again",
 "← Ruined City · Shadow Graveyard  ·  ↑ Northern Crags · Frost Snowfield  ·  → Mirror Lake · Barren Wastes",
 "↑ Tower of Engraving  ·  ↖ Moss Forest · Poison Swamp  ·  ↗ Flower Wind Fields · Old Forest  ·  ↘ South Coast",
 "↑ World Tree  ·  ← Moss Cave  ·  ↓ Poison Swamp",
@@ -372,7 +372,9 @@
 "「Devour」·「Pounce」 damage +40",
 "「Fire Breath」·「Soar」 damage +40",
 "」 (equip at the smithy",
+"」 · set it at the Resonance Altar",
 "」 · can be swapped in Gear",
+"」 engraving · any engraving set at the Resonance Altar gives its skill",
 "」 skill already",
 "」 or better",
 "」 (ultimate) is that race only · other races use this technique",
@@ -387,7 +389,6 @@
 "」 fully tempered",
 "」 learned! Equip it in the character window",
 "」 bought",
-"」 unlocks · until then, put an engraving in this slot at the Resonance Altar to use its skill",
 "",
 " show the way",
 "Shop",
@@ -397,6 +398,5 @@
 "Freezes the nearest enemy for 1 second (3 chill stacks",
 "Hide nearby and watch (10 seconds",
 "Worn out by poverty and taxes, they say they're joining Noctaris",
-"Sunken Temple",
-"Witch of the Sunken Temple"
+"Sunken Temple"
 ]

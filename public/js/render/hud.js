@@ -439,8 +439,8 @@ export const HudMethods = {
     const box = (touch ? 16 : 20) * v, gap = 12 * v;
     const sk4 = (w.b.skills || []).filter((x) => x !== 'weapon'); while (sk4.length < 4) sk4.push(null); // Q · E · R · F 자리는 늘 그대로 (빈 각인 칸은 빈 칸)
     // 빈 칸 아래 안내: 다음 클래스 스킬이 열리는 레벨, 이미 열렸으면 공명 제단에서 끼운다
-    const upcoming = Object.values(SKILLS).filter((sk) => sk.cls === w.b.cls && (sk.unlock || 1) > w.b.level).sort((a, b) => a.unlock - b.unlock); // 아직 못 배운 내 스킬 (빈 칸에 흐리게)
-    const nextLv = Math.min(...Object.values(SKILLS).filter((sk) => sk.cls === w.b.cls && (sk.unlock || 1) > w.b.level).map((sk) => sk.unlock));
+    const upcoming = Object.values(SKILLS).filter((sk) => sk.race === w.b.race && sk.cls && sk.cls !== 'wild' && (sk.unlock || 1) > w.b.level).sort((a, b) => a.unlock - b.unlock); // 아직 못 배운 내 스킬 (빈 칸에 흐리게)
+    const nextLv = upcoming.length ? upcoming[0].unlock : Infinity;
     const emptyHint = (w.b.available || []).some((id) => SKILLS[id]?.cls && !sk4.includes(id)) ? '제단에서' : Number.isFinite(nextLv) ? `Lv ${nextLv}` : '빈 칸';
     const slots = [...sk4.slice(0, 4), 'weapon'];
     const keys = [...['KeyQ', 'KeyE', 'KeyR', 'KeyF'].map((k) => keyLabel(keyFor(k))), touch ? '무기' : '우클릭']; // 키 바꾸기를 따른다

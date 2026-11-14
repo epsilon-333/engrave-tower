@@ -9,7 +9,7 @@ import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
 import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
 import { padState, applyPad, padMenu } from './gamepad.js';
-import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, setStaleHook, onLocalSave, isStale } from './save.js';
+import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, raceSkills, setStaleHook, onLocalSave, isStale } from './save.js';
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
 import { codexPoints } from './data/codex.js';
 import { TILE, generateField } from './sim/mapgen.js';
@@ -31,7 +31,7 @@ import { initCloud, cloudSave, cloudSaveNow, cloudDelete, onCloud, cloudLabel, c
 import { ECHOES, ZONES, MONSTERS } from './data/monsters.js';
 import { RACES, RACE_MIGRATE, pointsAt } from './data/races.js';
 import { RACE_STORY, relation, allies, ALLY_AFF, REL_NAME, REL_COLOR } from './data/lore.js';
-import { ITEMS, WEAPON_SKILLS, addItem } from './data/items.js';
+import { ITEMS, WEAPON_SKILLS, addItem, WCAT_NAME } from './data/items.js';
 import './data/weapons.js'; // 탑의 무기 100종을 장비 목록에 올린다
 import './data/towergear.js'; // 탑의 방어구 · 장신구 · 부적 30종
 import { CC_EXTRA, CLASSES, ENGRAVING_SKILLS, RACE_CLASSES, SKILLS, crossReq, crossOk, handFit, fitText, KIND_NAME, plainDesc, engravingSkillFor } from './data/skills.js';
@@ -810,7 +810,7 @@ function resetGame() { clearSave(); cloudDelete(); save = null; world = null; sh
 
 function showRaceSelect() {
   gameEl.hidden = true; titleEl.hidden = false;
-  renderRaceSelect(titleEl, (race) => { unlockAudio(); sfx('select'); showStyleSelect(race); }, () => playIntro(showRaceSelect));
+  renderRaceSelect(titleEl, (race) => { unlockAudio(); sfx('select'); startAs(race); }, () => playIntro(showRaceSelect));
   // 종족 카드 미리보기 애니메이션
   const cards = [...titleEl.querySelectorAll('canvas[data-race]')];
   const t0 = performance.now();
@@ -831,42 +831,29 @@ function showRaceSelect() {
   anim();
 }
 
-// 플레이 스타일 선택: 시작 무기를 받는다 (나중에 언제든 바꿀 수 있음)
-function showStyleSelect(race) {
-  const R = RACES[race];
-  titleEl.innerHTML = `<div class="race-select">
-    <h1>${R.name}</h1>
-    ${reGolem ? '<p class="lvup">골렘족은 이제 몬스터다. 새 종족과 클래스를 고른다 (레벨 · 장비 · 돈 · 도감은 그대로).</p>' : ''}<p class="muted">공명 제단에서 언제든 바꿀 수 있다.</p>
-    <div class="styles">${RACE_CLASSES(race).map((id) => {
-      const c = CLASSES[id];
-      return `<button class="style" data-style="${id}">
-        <b>${c.name}</b>
-        <p>${c.desc}</p>
-        <p class="lvup">주력 스탯: ${(CLASS_STATS[id] || []).map((k) => STAT_INFO[k]?.name).join(' · ')}</p>
-        <p class="sk-list">${c.skills.map((sid, i) => `<span${i === 5 ? ' class="ult"' : ''}>${SKILLS[sid].name}</span>`).join(' · ')}</p>
-        <small>시작 무기: ${ITEMS[c.weapons[0]].name}${c.off ? ` + ${ITEMS[c.off].name}` : ""}</small>
-      </button>`;
-    }).join('')}</div>
-    <button class="ghost" id="backRace">← 종족 다시 고르기</button></div>`;
-  titleEl.querySelectorAll('[data-style]').forEach((b) => (b.onclick = () => {
-    const c = CLASSES[b.dataset.style];
-    sfx('levelup');
-    if (reGolem) { // 예전 골렘 저장: 종족 · 클래스만 바꾼다
-      reGolem = false; delete save.reRace; save.race = race; save.cls = b.dataset.style; save.style = c.style; grantClassEngravings(save);
-      if (!(save.items ||= []).includes(c.weapons[0])) save.items.push(c.weapons[0]);
-      (save.gear ||= {}).weapon = c.weapons[0];
-      if (c.off) { if (!save.items.includes(c.off)) save.items.push(c.off); save.gear.off ||= c.off; }
-      refreshQuests(save); writeSave(save); cloudSaveNow(save); titleEl.hidden = true; enterWorld();
-      return;
-    }
-    save = newSave(race);
-    save.cls = b.dataset.style; save.style = c.style; grantClassEngravings(save);
-    save.items = ['rustySword', c.weapons[0], ...(c.off ? [c.off] : [])];
-    save.gear = { weapon: c.weapons[0], ...(c.off ? { off: c.off } : {}) }; // 수호기사: 한손 검 + 왼손 방패
-    save.tutorial = { step: 0 }; // 처음 시작하는 사람은 튜토리얼부터
-    refreshQuests(save); writeSave(save); titleEl.hidden = true; enterWorld(null, true);
-  }));
-  document.getElementById('backRace').onclick = () => showRaceSelect();
+// 종족을 고르면 바로 시작한다 (클래스는 없다): 종족 시작 각인 넷을 Q · E · R · F에 끼우고, 두 갈래의 시작 무기를 모두 받는다
+function startAs(race) {
+  const cs = RACE_CLASSES(race), c0 = CLASSES[cs[0]];
+  const weapons = [...new Set(cs.map((id) => CLASSES[id].weapons[0]))], offs = cs.map((id) => CLASSES[id].off).filter(Boolean);
+  const give = (sv) => { sv.items ||= []; for (const id of [...weapons, ...offs]) if (!sv.items.includes(id)) sv.items.push(id); };
+  const equipStart = (sv) => { // 시작 각인을 빈 스킬 칸에
+    const ids = raceSkills(race).filter((sk) => (SKILLS[sk].unlock || 1) <= 1).map((sk) => sv.classEng?.[sk]).filter(Boolean);
+    sv.slots ||= {}; for (const sl of SLOTS.slice(0, 4)) if (!sv.slots[sl]) { const id = ids.shift(); if (id) sv.slots[sl] = id; }
+  };
+  sfx('levelup');
+  if (reGolem) { // 예전 골렘 저장: 종족만 바꾼다
+    reGolem = false; delete save.reRace; save.race = race; save.cls = cs[0]; save.style = c0.style; grantClassEngravings(save);
+    give(save); (save.gear ||= {}).weapon = c0.weapons[0]; if (c0.off) save.gear.off ||= c0.off; equipStart(save);
+    refreshQuests(save); writeSave(save); cloudSaveNow(save); titleEl.hidden = true; enterWorld();
+    return;
+  }
+  save = newSave(race);
+  save.cls = cs[0]; save.style = c0.style; grantClassEngravings(save);
+  save.items = ['rustySword']; give(save);
+  save.gear = { weapon: c0.weapons[0], ...(c0.off ? { off: c0.off } : {}) };
+  equipStart(save);
+  save.tutorial = { step: 0 }; // 처음 시작하는 사람은 튜토리얼부터
+  refreshQuests(save); writeSave(save); titleEl.hidden = true; enterWorld(null, true);
 }
 
 // ───── 타이틀 화면: 게임을 켜면 언제나 여기부터 (로그인은 하고 싶을 때만) ─────
@@ -1127,7 +1114,15 @@ function migrateSave(sv) {
   for (const [k, v] of Object.entries(newLife())) sv[k] ||= v;
   sv.time ||= newClock(); sv.effects ||= []; sv.learned ||= []; sv.abilities ||= {}; sv.crafted ||= {}; sv.chest ||= {}; sv.bagCap ||= 30; sv.dishLog ||= {};
   syncLevel(sv);
-  sv.slots ||= {}; fitEngravings(sv, toLoadout); // 각인 칸: 부하 한도(25 + 정신)를 넘으면 뒤 칸부터 뺀다
+  sv.slots ||= {};
+  if (!sv.noClass && sv.race && RACE_CLASSES(sv.race).length) { // 클래스가 없어졌다: 빈 칸을 채워 주던 클래스 스킬 대신, 가진 종족 각인을 빈 스킬 칸에 (예전에 쓰던 스킬부터 · 가벼운 것부터)
+    sv.noClass = true; grantClassEngravings(sv);
+    const used = new Set(Object.values(sv.slots)), had = (sv.skills || []).filter((id) => id !== 'weapon');
+    const cand = raceSkills(sv.race).map((sk) => [sk, sv.classEng?.[sk]]).filter(([, e]) => e && ENGRAVINGS[e] && !used.has(e) && (sv.owned?.[e] || 0) > 0)
+      .sort((a, b) => ((had.includes(b[0]) - had.includes(a[0])) || (ENGRAVINGS[a[1]].load - ENGRAVINGS[b[1]].load)));
+    for (const sl of SLOTS.slice(0, 4)) if (!sv.slots[sl] && cand.length) sv.slots[sl] = cand.shift()[1];
+  }
+  fitEngravings(sv, toLoadout); // 각인 칸: 부하 한도(25 + 정신)를 넘으면 뒤 칸부터 뺀다
   return sv;
 }
 
@@ -1346,7 +1341,7 @@ function raceShopHtml(race, lv) {
   }).join('');
   const weapons = raceWeapons(race).map((id) => {
     const it = ITEMS[id], p = raceItemPrice(race, id), has = save.items.includes(id);
-    return `<div class="skc"><div class="c-head"><b>${it.name}</b><span class="role">${CLASSES[it.cls].name}</span></div><div class="c-sum">${esc(it.bdesc || '')}${it.cls !== save.cls ? ' <span class="muted">(그 클래스가 아니면 무기의 특별한 힘은 없다)</span>' : ''}</div>
+    return `<div class="skc"><div class="c-head"><b>${it.name}</b><span class="role">${WCAT_NAME[it.cat] || ''}</span></div><div class="c-sum">${esc(it.bdesc || '')}</div>
       <div class="c-act">${has ? '<span class="muted">가지고 있다 · 장비 창(I)에서 바꾼다</span>' : `<button class="sm" data-ritem="${id}" ${canW && save.gold >= p ? '' : 'disabled'}>◆ ${p}</button>`}</div></div>`;
   }).join('');
   return `<div class="talk"><p>「${S.name}의 물건이오. 이 땅에서만 구할 수 있지.」</p>${own ? '' : `<p class="muted">무기: 친밀도 「${AFF_NAME[2]}」부터 · 다른 종족 +30%</p>`}</div>
@@ -1789,7 +1784,7 @@ function enterPractice() {
   world.explored.fill(1);
   spawnArena(practice.arena);
   renderer.setWorld(world);
-  renderer.banner = { text: '연습 실험장', sub: '왼쪽 위: 클래스 · 스킬 · 상대 · 죽지 않고 기록도 남지 않는다', t: 3.5, color: '#7ad8ff' };
+  renderer.banner = { text: '연습 실험장', sub: '왼쪽 위: 갈래 · 스킬 · 상대 · 죽지 않고 기록도 남지 않는다', t: 3.5, color: '#7ad8ff' };
   startMusic('cave');
   showPracticePanel();
   startLoop();

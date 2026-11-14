@@ -97,8 +97,54 @@ const L = [
   ['eSilenceSeal', '봉인의 인장', 'head', 3, ['curse'], { spi: 6, mres: 3 }, [add('statusRes', 0.1, '받는 상태이상 지속 -10%')], { soul: 4, witch: 1 }, 'silenceSeal'],
 ];
 
+// ── 종족 시작 각인: 종족마다 넷 (예전 두 클래스의 1레벨 스킬). 1등급 · 부하 2 · 패시브는 그 스킬의 느낌을 작게 ──
+const START = [
+  // 공룡 수인
+  ['sPounce', '덮치는 발톱', ['bleed'], { agi: 2 }, [on('hit', 0.15, st('bleed'), '공격하면 15% 확률로 출혈')], 'pounce'],
+  ['sRake', '치고 빠지는 버릇', ['wind'], { agi: 2 }, [on('hit', 0.2, buff('rake', 1, { moveSpeed: 1.1 }, '치고 빠지기', '#bfe8d0'), '적을 때리면 20% 확률로 1초 동안 이동 +10%')], 'rakeRetreat'],
+  ['sTail', '긴 꼬리', ['giant'], { vit: 2 }, [add('knockback', 30, '넉백 +30')], 'tailSwipe'],
+  ['sHorn', '들이받는 뿔', ['brawl'], { str: 2 }, [on('dash', 1, buff('horn', 1.5, { dmgMul: 1.1 }, '들이받기', '#ffb070'), '대시 뒤 1.5초 동안 피해 +10%')], 'rush'],
+  // 마법사
+  ['sEmber', '튀는 불씨', ['fire'], { mag: 2 }, [mul('burnMul', 1.1, '화상 피해 +10%')], 'flameBurst'],
+  ['sFrostRing', '얼음 고리', ['ice'], { mag: 2 }, [mul('chillMul', 1.15, '냉기 둔화 +15%')], 'frostChain'],
+  ['sSeeker', '쫓는 화살', ['wind'], { mag: 2 }, [mul('projMul', 1.06, '투사체 사거리 · 속도 +6%')], 'arcaneBarrage'],
+  ['sAfterimage', '남는 잔상', ['wind'], { spi: 2 }, [mul('dashCd', 0.92, '대시 쿨타임 -8%')], 'blinkBlast'],
+  // 기사
+  ['sCounter', '되받는 손목', ['reflect'], { pres: 2 }, [on('dodge', 1, buff('counter', 3, { dmgMul: 1.15 }, '되받기', '#ffe080'), '피하면 3초 동안 피해 +15%')], 'riposte'],
+  ['sShieldPush', '밀고 가는 방패', ['reflect'], { pres: 2 }, [mul('dmgTakenMul', 0.97, '받는 피해 -3%')], 'shieldCharge'],
+  ['sSpinBlade', '도는 칼', ['brawl'], { str: 2 }, [mul('atkSpeed', 1.04, '공격 속도 +4%')], 'comboSlash'],
+  ['sLunge', '앞으로 긋는 칼', ['bleed'], { str: 2 }, [add('critDmg', 0.1, '치명타 피해 +10%')], 'dashSlash'],
+  // 오크
+  ['sWarShout', '전장의 목청', ['brawl'], { str: 2 }, [on('kill', 0.3, { res: 6 }, '처치하면 30% 확률로 자원 +6')], 'warCry'],
+  ['sStomp', '내리찍는 발', ['giant'], { vit: 2 }, [on('dash', 1, strike(30, 0.4, 'phys', 'quake'), '대시가 끝난 자리를 내려찍는다 (피해 40%)')], 'chargeSmash'],
+  ['sHarpoon', '끌어오는 작살', ['brawl'], { str: 2 }, [on('hit', 0.08, { stun: 0.3 }, '공격하면 8% 확률로 0.3초 기절')], 'harpoon'],
+  ['sQuickWrist', '가벼운 팔', ['wind'], { agi: 2 }, [mul('atkSpeed', 1.05, '공격 속도 +5%')], 'rapidThrow'],
+  // 언데드
+  ['sBoneBag', '덜그럭 주머니', ['undying'], { spi: 2 }, [on('kill', 0.15, { heal: 0.008 }, '처치하면 15% 확률로 체력 0.8% 회복')], 'skeletons'],
+  ['sGrasp', '붙잡는 손가락', ['shadow'], { spi: 2 }, [on('hit', 0.08, { stun: 0.3 }, '공격하면 8% 확률로 0.3초 묶는다')], 'graspWraith'],
+  ['sHexDoll', '저주 인형', ['curse'], { mag: 2 }, [on('hit', 0.15, st('curse'), '공격하면 15% 확률로 저주 1중첩')], 'curse'],
+  ['sPainChain', '고통의 사슬', ['curse'], { mag: 2 }, [mul('statusDmgMul', 1.06, '상태이상 피해 +6%')], 'painLink'],
+  // 암살자
+  ['sBehind', '등 뒤의 그림자', ['shadow'], { agi: 2 }, [add('dodge', 0.02, '회피 +2%')], 'shadowStep'],
+  ['sWeakEye', '약점을 보는 눈', ['shadow'], { sen: 2 }, [add('crit', 0.03, '치명타 +3%')], 'weakMark'],
+  ['sTrap', '숨긴 덫', ['poison'], { sen: 2 }, [on('hit', 0.12, st('poison'), '공격하면 12% 확률로 독 1중첩')], 'snare'],
+  ['sBackDart', '뒷걸음 독침', ['poison'], { agi: 2 }, [on('dash', 1, buff('backdart', 1.5, { moveSpeed: 1.12 }, '뒷걸음', '#9be15d'), '대시 뒤 1.5초 동안 이동 +12%')], 'retreatShot'],
+  // 엘프
+  ['sSpiritCall', '정령의 속삭임', ['wind'], { spi: 2 }, [mul('resGain', 1.05, '자원 회복 +5%')], 'summonSpirit'],
+  ['sLifeDrink', '생기 한 모금', ['drain'], { spi: 2 }, [on('kill', 0.2, { heal: 0.006 }, '처치하면 20% 확률로 체력 0.6% 회복')], 'spiritAbsorb'],
+  ['sPierceTip', '꿰는 화살촉', ['wind'], { sen: 2 }, [mul('projMul', 1.06, '투사체 사거리 · 속도 +6%')], 'pierceArrow'],
+  ['sWindShoe', '바람 신발', ['wind'], { agi: 2 }, [mul('dashCd', 0.93, '대시 쿨타임 -7%')], 'windStep'],
+  // 용족
+  ['sBoilBreath', '끓는 숨', ['fire'], { vit: 2 }, [mul('burnMul', 1.1, '화상 피해 +10%')], 'breath'],
+  ['sHotClaw', '달군 발톱', ['fire'], { str: 2 }, [on('hit', 0.1, st('burn'), '공격하면 10% 확률로 화상')], 'dragonClaw'],
+  ['sFireWord', '불의 낱말', ['fire'], { mag: 2 }, [mul('magAtk', 1.03, '마법 공격력 +3%')], 'wordFire'],
+  ['sWingWord', '날개의 낱말', ['wind'], { spi: 2 }, [mul('dashCd', 0.93, '대시 쿨타임 -7%')], 'wordWing'],
+];
+for (const [id, name, tags, stats, effects, skill] of START) L.push([id, name, 'arm', 1, tags, stats, effects, { goo: 2, rust: 1 }, skill]);
+export const START_ENGS = Object.fromEntries(START.map((x) => [x[5], x[0]])); // 스킬 → 그 종족 시작 각인
+
 export const SKILL_ENGS = L.map(([id, name, slot, grade, tags, stats, effects, recipe, skill]) => ({ id, name, slot, grade, tags, stats, effects, recipe: Object.fromEntries(Object.entries(recipe).filter(([, n]) => n > 0)), skill }));
 export function registerSkillEngravings(ENGRAVINGS) {
-  for (const e of SKILL_ENGS) ENGRAVINGS[e.id] = { name: e.name, slot: e.slot, grade: e.grade, load: [0, 2, 3, 5, 7, 10][e.grade], tags: e.tags, stats: e.stats, effects: e.effects, recipe: e.recipe };
+  for (const e of SKILL_ENGS) ENGRAVINGS[e.id] = { name: e.name, slot: e.slot, grade: e.grade, load: [0, 2, 3, 5, 7, 10][e.grade], start: /^s[A-Z]/.test(e.id) /* 종족 시작 각인 */, tags: e.tags, stats: e.stats, effects: e.effects, recipe: e.recipe };
 }
 export function registerSkillEngravingSkills(ENGRAVING_SKILLS) { for (const e of SKILL_ENGS) ENGRAVING_SKILLS[e.id] = e.skill; }

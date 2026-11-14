@@ -16,7 +16,7 @@ import { WORLD_ZONE, ENTRANCES } from '../data/maps/overworld.js';
 import { LABY_ZONE, PALACE_ZONE } from '../data/maps/interiors.js';
 import { computeBuild, encodeLoadout, decodeLoadout, SLOTS, SLOT_KEYS, fitEngravings, twoHandBonus, weaponFamily, FAMILY_NAME } from '../sim/build.js';
 import { condText, evalCond } from '../sim/conditions.js';
-import { toLoadout, writeSave, refreshQuests, claimQuest, grantClassEngravings } from '../save.js';
+import { toLoadout, writeSave, refreshQuests, claimQuest, grantClassEngravings, raceSkills } from '../save.js';
 import { sfx } from '../audio.js';
 import { iconURL } from '../render/icons.js';
 import { sprite } from '../render/assets.js';
@@ -210,7 +210,7 @@ export class Hub {
       if (filter === 'ready') return Object.entries(e.recipe).every(([eid, n]) => (s.echoes[eid] || 0) >= n) || (s.owned[id] || 0) > 0;
       return !!ftags && e.tags.some((t) => ftags.includes(t));
     };
-    const clsBtns = RACE_CLASSES(s.race).filter((c) => CLASS_TAGS[c]).sort((a2, c2) => (c2 === b.cls) - (a2 === b.cls)).map((c) => [`cls:${c}`, c === b.cls ? `내 클래스 · ${CLASSES[c].name}` : CLASSES[c].name]);
+    const clsBtns = RACE_CLASSES(s.race).filter((c) => CLASS_TAGS[c]).sort((a2, c2) => (c2 === b.cls) - (a2 === b.cls)).map((c) => [`cls:${c}`, c === b.cls ? `내 갈래 · ${CLASSES[c].name}` : CLASSES[c].name]);
     const filterBar = `<div class="filters">${[...clsBtns, ['all', '전체'], ['mine', `내 각인 ${Object.values(s.owned || {}).filter((n) => n > 0).length}`], ['goal', '★ 찜'], ['ready', '새길 수 있음']]
       .map(([k, n]) => `<button class="sm ${filter === k ? 'on' : ''}" data-act="filter" data-id="${k}">${n}</button>`).join('')}</div>
       ${ftags ? `<p class="muted">${CLASSES[fcls].name}에게 잘 맞는 각인 · 핵심 태그 ${ftags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</p>` : ''}`;
@@ -269,16 +269,15 @@ export class Hub {
   skillPanel(s, b) {
     const keys = ['Q', 'E', 'R', 'F'];
     const resName = RACES[s.race].res.name;
-    const all = CLASSES[b.cls].skills.map((id) => [id, SKILLS[id]]);
+    const all = raceSkills(s.race).filter((id) => SKILLS[id]).sort((x, y) => (SKILLS[x].unlock || 1) - (SKILLS[y].unlock || 1)).map((id) => [id, SKILLS[id]]); // 종족 스킬 (예전 두 클래스의 것 모두)
     const sn = (k) => STAT_INFO[k]?.name || k;
     // 스탯 계수: 이 스킬이 따라가는 스탯 · 지금 배율 · 개방
     const scaleLine = (id) => { const sc = skillScale(id, b); return `<div class="sk-scale">${sn(sc.stat)} 계수 <b>×${sc.dmg.toFixed(2)}</b> <small>(${sn(sc.stat)} ${Math.round(sc.v)} · 1마다 +0.6%)</small> ${SKILL_PERKS.map((pk) => `<span class="${sc.v >= pk.at ? 'on' : ''}">${sn(sc.stat)} ${pk.at}: ${pk.text}</span>`).join(' ')}</div>`; };
     const card = (id, sk, locked) => {
       const i = b.skills.indexOf(id), on = i >= 0;
       const cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
-      const btn = locked ? `<span class="muted">${sk.unlock}레벨에 배움</span>`
-        : on ? `<button class="sm ghost" data-act="skillOff" data-id="${id}">빼기</button>` + (i > 0 ? `<button class="sm ghost" data-act="skillUp" data-id="${id}">앞으로</button>` : '')
-        : `<button class="sm" data-act="skillOn" data-id="${id}">장착</button>`;
+      const eid = s.classEng?.[id], has = eid && (s.owned?.[eid] || 0) > 0;
+      const btn = on ? '<span class="ok">끼우고 있다</span>' : has ? `<span class="muted">각인 「${ENGRAVINGS[eid]?.name || ''}」 · 공명 제단에서 끼운다</span>` : `<span class="muted">Lv ${sk.unlock || 1}에 각인으로 받는다</span>`;
       return `<div class="skc ${on ? 'on' : ''} ${locked ? 'locked' : ''}" style="--c:${ROLE_COLOR[sk.role]}">
         <div class="c-head"><b>${on ? `[${keys[i]}] ` : ''}${sk.name}</b><span class="role">${sk.role}</span></div>
         <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''}${sk.cast ? ` · 시전 ${sk.cast}초` : ''}</div>
@@ -297,23 +296,19 @@ export class Hub {
       const ws = b.wScale, wst = weaponStat(b.weaponItem);
       wcard = `<div class="skc on" style="--c:#aab0c0"><div class="c-head"><b>[우클릭] ${wsk.name}</b><span class="role">무기</span></div><div class="c-sum">${esc(wsk.desc || '')}</div><div class="sk-scale">평타 · 무기 기술: ${sn(wst)} 계수 <b>×${(ws?.dmg || 1).toFixed(2)}</b> ${WEAPON_PERKS.map((pk) => `<span class="${(ws?.v || 0) >= pk.at ? 'on' : ''}">${sn(wst)} ${pk.at}: ${pk.text}</span>`).join(' ')}</div><div class="c-act">${wbtn}</div></div>`;
     }
-    const clsRow = RACE_CLASSES(s.race).map((cid) => {
-      const c = CLASSES[cid], on = cid === b.cls;
-      return `<button class="cls ${on ? 'on' : ''}" data-act="setCls" data-id="${cid}"><b>${c.name}</b><small>${c.desc}</small></button>`;
-    }).join('');
     const auto = getAutoAim();
-    const upcoming = Object.values(SKILLS).filter((x) => x.cls === b.cls && (x.unlock || 1) > b.level).sort((x, y) => x.unlock - y.unlock); // 아래 스킬 칸과 같은 안내: 다음에 열릴 내 스킬
+    const upcoming = all.map(([, x]) => x).filter((x) => (x.unlock || 1) > b.level).sort((x, y) => x.unlock - y.unlock); // 아래 스킬 칸과 같은 안내: 다음에 열릴 내 스킬
     let upI = 0;
-    const now = SLOT_KEYS.slice(0, 4).map((k, i) => { const id = b.skills[i], sk = id && SKILLS[id]; return `<div class="skc ${sk ? 'on' : ''}" style="--c:${sk ? ROLE_COLOR[sk.role] : '#5a5068'}"><div class="c-head"><b>[${k}] ${sk ? sk.name : '비어 있음'}</b>${sk ? `<span class="role">${sk.role}</span>` : ''}</div><div class="c-sum">${sk ? esc(sk.desc) : (() => { const nx = upcoming[upI++]; return nx ? `Lv ${nx.unlock}에 「${nx.name}」이(가) 열린다 · 그 전에 공명 제단에서 각인을 넣으면 그 각인의 스킬이 나간다` : '공명 제단에서 이 칸에 각인을 넣으면 그 각인의 스킬이 나간다'; })()}</div>${sk ? scaleLine(id) : ''}</div>`; }).join('');
+    const now = SLOT_KEYS.slice(0, 4).map((k, i) => { const id = b.skills[i], sk = id && SKILLS[id]; return `<div class="skc ${sk ? 'on' : ''}" style="--c:${sk ? ROLE_COLOR[sk.role] : '#5a5068'}"><div class="c-head"><b>[${k}] ${sk ? sk.name : '비어 있음'}</b>${sk ? `<span class="role">${sk.role}</span>` : ''}</div><div class="c-sum">${sk ? esc(sk.desc) : (() => { const nx = upcoming[upI++]; return nx ? `Lv ${nx.unlock}에 「${nx.name}」 각인을 받는다 · 공명 제단에서 아무 각인이나 넣으면 그 각인의 스킬이 나간다` : '공명 제단에서 이 칸에 각인을 넣으면 그 각인의 스킬이 나간다'; })()}</div>${sk ? scaleLine(id) : ''}</div>`; }).join('');
     return `<section class="panel">
-      <h3>클래스${help('언제든 무료로 바꾼다. 바꾸면 그 클래스의 시작 무기를 받는다.')}</h3>
-      <div class="cls-row">${clsRow}</div>
-      <h3>스킬${help('빈 칸은 내 클래스 스킬, 각인을 넣으면 그 각인의 스킬.')}</h3>
+      <h3>스킬${help('Q · E · R · F 칸에 끼운 각인의 스킬이 나간다. 종족 스킬 각인은 레벨이 오르면 받는다.')}</h3>
       <div class="skill-tools">
         <label class="toggle"><input type="checkbox" data-act="autoAim" ${auto ? 'checked' : ''}> 자동 조준 <small>(T)</small></label>
         <button class="sm" data-act="practice">연습장</button>
       </div>
       <div class="skill-row">${now}${wcard}</div>
+      <h4>${RACES[s.race].name} 스킬 <small class="muted">레벨이 오르면 각인으로 받는다 · 섞어서 끼운다</small></h4>
+      <div class="skill-row">${race}</div>
     </section>`;
   }
 

@@ -1,4 +1,5 @@
 [
+"Witch of the Sunken Temple",
 "Garen",
 "3 tiles wide",
 "One big horizontal slash, then a long downward cut ahead. The second hit is stronger. Aura +12",
@@ -21,6 +22,7 @@
 "Bag is full",
 "Bag is full · store it at home or sell it",
 "Light Wrist",
+"Light Arm",
 "Light and quick to draw",
 "Light and fast. But arrows don't fly far",
 "Nimble",
@@ -72,6 +74,7 @@
 "When awakened",
 "Awakened",
 "Engraving",
+"Engraving 「",
 "Engraving Wraith",
 "Engraving list",
 "Engraving load",
@@ -395,8 +398,5 @@
 "Ancient Golem (raid",
 "Ancient Golem's Chamber",
 "Ancient Golem's Heart",
-"Ancient Golem's Core",
-"Ancient tablet",
-"Read the ancient tablet",
-"Ancient Ruins"
+"Ancient Golem's Core"
 ]
