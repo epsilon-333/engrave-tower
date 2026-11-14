@@ -53,7 +53,7 @@
 
 ## 도구와 테스트
 - `tools/tests/*.mjs`: 2D 시뮬레이션 테스트. 예) `node tools/tests/simtest.mjs` → `ALL OK`, `node tools/tests/storytest.mjs`. 한꺼번에: `node tools/tests/all.mjs` (실패하면 종료 코드 1)
-- 밸런스: `node tools/tests/climbsim.mjs <클래스> <레벨> <등반 수> <최대 층> <시작 층>`. 몬스터 상대 클래스 배율은 `CLASS_BAL_PVE`(data/skills.js)
+- 밸런스 (2026-11-14): **같은 등급의 각인이면 딸린 스킬의 힘도 비슷하게.** `node tools/skillbal.mjs gen`이 종족 스킬마다 실제로 싸워 초당 피해를 재고 등급별 목표(2등급 가운데값 × `GRADE_K`)에 맞춘 보정을 `public/js/data/skillbal.js`(→ `SKILL_BAL`)에 쓴다(손으로 고치지 않는다 · 0.5~2배 · 버프 · 소환 · 다른 것이 깔려야 터지는 스킬은 재지 않는다). 그 뒤 남는 갈래 차이(종족 스탯 · 무기 · 소환)만 `CLASS_BAL_PVE`로 메운다. 확인은 `node tools/tests/climbsim.mjs <갈래> <레벨> <등반 수> <최대 층> <시작 층>`(그 갈래 각인을 공격 스킬부터 끼우고 잰다) — 권장 레벨로 60층까지 돌리면 갈래마다 약 30층이 목표
 - 디버그: 브라우저 콘솔의 `window.__game` (world · dbg.climb · dbg.save), `window.__bot = (input, w) => {...}` 로 자동 플레이. localhost 또는 주소에 `?debug`가 있을 때만 열린다(배포판에서는 없음)
 - 처음 시작 · 튜토리얼은 `tools/tests/starttest.mjs`(시작 자리 · 허수아비 · 상태이상 풀림 · 맵 밖 거리장). 튜토리얼 단계는 `public/js/ui/tutorial.js`
 - 키 바꾸기는 `public/js/settings.js`(KEY_ACTIONS · logicalKey): 게임 입력은 눌린 키를 「기본 키」로 바꿔 읽는다. 새 단축키를 넣으면 KEY_ACTIONS에도 넣는다

@@ -39,7 +39,8 @@ function loadout(cid, level, f = 1) {
   const main = wpn.weapon.dmg === 'mag' ? 'mag' : wpn.weapon.scale === 'agi' ? 'agi' : 'str';
   const pts = level - 1;
   // 클래스가 없다: 그 갈래 스킬의 각인을 레벨에 맞게 Q · E · R · F에 (궁극 · 마무리 먼저) · 다섯째 칸에 갈래 특성 각인
-  const sks = c.skills.filter((id) => (SKILLS[id].unlock || 1) <= level).sort((a, b) => (SKILLS[b].ult - SKILLS[a].ult) || ((SKILLS[b].role === '마무리') - (SKILLS[a].role === '마무리')) || ((SKILLS[b].unlock || 1) - (SKILLS[a].unlock || 1)));
+  const DMG = new Set(['공격', '마무리', '궁극', '연타', '이동', '소환']); // 사람처럼: 때리는 스킬부터 끼운다 (궁극 · 마무리 먼저)
+  const sks = c.skills.filter((id) => (SKILLS[id].unlock || 1) <= level).sort((a, b) => (DMG.has(SKILLS[b].role) - DMG.has(SKILLS[a].role)) || (!!SKILLS[b].ult - !!SKILLS[a].ult) || ((SKILLS[b].role === '마무리') - (SKILLS[a].role === '마무리')) || ((SKILLS[b].unlock || 1) - (SKILLS[a].unlock || 1)));
   const engs = sks.map(classEngravingFor).filter(Boolean).slice(0, 4), trait = c.skills.map(classEngravingFor).find((e) => ENGRAVINGS[e]?.effects?.some((x) => x.type === 'flag' && /갈래 특성/.test(x.text || '')));
   const engravings = Object.fromEntries(engs.map((e, i) => [SLOTS[i], e])); if (trait && !engs.includes(trait)) engravings[SLOTS[4]] = trait;
   return { race: R, cls: cid, level, allSkills: false, alloc: { [main]: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings, gear: { weapon: tw || c.weapons[1] || c.weapons[0], off: c.off }, skills: null };

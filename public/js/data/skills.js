@@ -1,3 +1,4 @@
+import { SKILL_BAL_GEN } from './skillbal.js';
 import { registerPartSkills } from './monsterparts.js';
 import { registerSkillEngravingSkills } from './skillengs.js';
 // 클래스와 액티브 스킬. 종족마다 클래스 2개, 클래스마다 스킬 6개(1·1·3·6·10·15레벨에 배움). 최대 4개 장착(Q·E·R·F).
@@ -433,11 +434,12 @@ for (const sk of Object.values(SKILLS)) if (sk.general) sk.race = 'general';
 // slash 베기 · smash 내려찍기 · thrust 찌르기 · shoot 쏘기(활 · 석궁 · 바람총) · throw 던지기 · spell 마법 · parry 받아치기 · shield 방패 · body 몸(무기 상관없음)
 
 // ── 스킬 밸런스 보정 (tools/balance.mjs: 단단한 적 3마리에게 6초 동안 넣은 피해 ÷ 재사용 대기, 중간값에서 많이 벗어난 것만) ──
-export const SKILL_BAL = {}; // 스킬 하나씩은 보정하지 않는다 (한 번의 피해로는 알 수 없다) — 클래스 단위 CLASS_BAL로
+// 각인 등급 밸런스: 같은 등급의 각인이면 딸린 스킬의 초당 피해가 비슷하게 (실제로 싸워서 잰 값 · tools/skillbal.mjs gen)
+export const SKILL_BAL = { ...SKILL_BAL_GEN };
 // ── 클래스 밸런스 보정 (tools/balance.mjs: 30초 실제 싸움 · 무리 / 단단한 적) ──
 export const CLASS_BAL = {"predator": 1, "behemoth": 0.92, "elementalist": 1.07, "chronomancer": 0.9, "guardian": 1.6, "greatsword": 1.6, "berserker": 0.8, "thrower": 1.08, "necromancer": 0.71, "hexer": 0.96, "shadowblade": 0.97, "venomHunter": 1.6, "spiritcaller": 1.5, "ranger": 1.04, "dragoon": 0.68, "dragonSage": 1.09}; // 결투(사람 대 사람)
 // 몬스터를 상대할 때의 클래스 보정 (tools/tests/climbsim.mjs 로 클래스마다 오른 층을 비교해 맞춤)
-export const CLASS_BAL_PVE = {"predator":  0.5, "behemoth":  1.15, "elementalist":  1.15, "chronomancer":  1.7, "guardian":  2.6, "greatsword":  1.6, "berserker":  0.35, "thrower":  1.1, "necromancer":  2.5, "hexer":  2.2, "shadowblade":  1.35, "venomHunter":  1.65, "spiritcaller":  2.4, "ranger":  1.7, "dragoon":  1.05, "dragonSage":  0.9};
+export const CLASS_BAL_PVE = {"predator": 0.58, "behemoth": 0.8, "elementalist": 1.0, "chronomancer": 2.05, "guardian": 1.71, "greatsword": 1.12, "berserker": 0.33, "thrower": 1.0, "necromancer": 3.03, "hexer": 1.7, "shadowblade": 1.71, "venomHunter": 1.71, "spiritcaller": 2.89, "ranger": 1.93, "dragoon": 1.0, "dragonSage": 1.45}; // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만
 
 // ── 돈 · 미션으로 얻는 CC기 (누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다) ──
 export const CC_EXTRA = {
