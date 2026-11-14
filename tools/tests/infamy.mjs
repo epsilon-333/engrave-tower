@@ -3,7 +3,7 @@ const root = new URL('../../public/js', import.meta.url).href;
 const { World } = await import(root + '/sim/world.js');
 const { computeBuild } = await import(root + '/sim/build.js');
 const { CLASSES } = await import(root + '/data/skills.js');
-const c = CLASSES.greatsword, b = computeBuild({ race: c.race, cls: 'greatsword', level: 10, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] } });
+const c = CLASSES.greatsword, b = computeBuild({ race: c.race, cls: 'greatsword', level: 10, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off } });
 const w = new World({ build: b, mode: 'field', zoneId: 'world' });
 const at = (id, inf) => { w.infamy = inf; return w.makeEnemy(id, 0, 0, { noAffix: true }); };
 let bad = 0; const ok = (cond, t) => { console.log(cond ? 'OK ' : 'FAIL', t); if (!cond) bad++; };

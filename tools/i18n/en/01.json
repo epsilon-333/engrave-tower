@@ -1,4 +1,5 @@
 [
+"Garen",
 "3 tiles wide",
 "One big horizontal slash, then a long downward cut ahead. The second hit is stronger. Aura +12",
 "Standing still builds focus (1 stage per 0.5s, max 3). Next shot damage per stage +25",
@@ -308,8 +309,6 @@
 "Bounty ◆",
 "Time taken",
 "Sword",
-"Sword and shield",
-"Sword and shield: damage +12",
 "Sword Wave",
 "Broke through the checkpoint",
 "Search",
@@ -398,5 +397,6 @@
 "Ancient Golem's Heart",
 "Ancient Golem's Core",
 "Ancient tablet",
-"Read the ancient tablet"
+"Read the ancient tablet",
+"Ancient Ruins"
 ]

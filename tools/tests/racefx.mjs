@@ -10,7 +10,7 @@ const ok = (cond, text) => { console.log(cond ? 'OK ' : 'FAIL', text); if (!cond
 const clsOf = (race) => Object.keys(CLASSES).find((k) => CLASSES[k].race === race);
 const mk = (race, engravings = {}) => {
   const cls = clsOf(race), c = CLASSES[cls];
-  const b = computeBuild({ race, cls, level: 20, allSkills: true, alloc: {}, engravings, gear: { weapon: c.weapons[0] }, skills: c.skills.slice(0, 4) });
+  const b = computeBuild({ race, cls, level: 20, allSkills: true, alloc: {}, engravings, gear: { weapon: c.weapons[0], off: c.off }, skills: c.skills.slice(0, 4) });
   const w = new World({ build: b, mode: 'field', zoneId: ZONES[0].id, seed: 7 });
   w.enemies.forEach((e) => { e.x = -999; e.y = -999; });
   return w;
@@ -19,7 +19,7 @@ const near = (a, b, t = 0.01) => Math.abs(a - b) < t;
 
 // 체력: 마법사 -20% · 기사 +40% (종족 보정 없이 계산한 값과 비교)
 for (const [race, mul] of [['wizard', R.wizardHp], ['knight', R.knightHp]]) {
-  const cls = clsOf(race), c = CLASSES[cls], lo = { race, cls, level: 20, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] } };
+  const cls = clsOf(race), c = CLASSES[cls], lo = { race, cls, level: 20, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off } };
   const hp = computeBuild(lo).derived.maxHp, save = R[race + 'Hp']; R[race + 'Hp'] = 1;
   const hp0 = computeBuild(lo).derived.maxHp; R[race + 'Hp'] = save;
   ok(near(hp / hp0, mul, 0.01), `${race} 최대 체력 ${hp0} → ${hp} (×${mul})`);
@@ -53,7 +53,7 @@ for (const [race, mul] of [['wizard', R.wizardHp], ['knight', R.knightHp]]) {
 
 // 회피: 암살자 +10% (모든 공격) · 언데드 물리 +20%
 {
-  const as = mk('assassin'), base = computeBuild({ race: 'assassin', cls: clsOf('assassin'), level: 20, alloc: {}, engravings: {}, gear: { weapon: CLASSES[clsOf('assassin')].weapons[0] } });
+  const as = mk('assassin'), base = computeBuild({ race: 'assassin', cls: clsOf('assassin'), level: 20, alloc: {}, engravings: {}, gear: { weapon: CLASSES[clsOf("assassin")].weapons[0] } });
   ok(near(as.d.dodge, base.derived.dodge), `암살자 회피 ${(as.d.dodge * 100).toFixed(1)}% (민첩 몫 + 10%)`);
   const dodged = (w, type, n = 4000) => { const p = w.player; let k = 0; for (let i = 0; i < n; i++) { p.hp = w.d.maxHp; p.invuln = 0; w.hurtPlayer(1, type, null, {}); if (p.hp === w.d.maxHp) k++; } return k / n; };
   const ud = mk('undead'), dp = dodged(ud, 'phys'), dm = dodged(ud, 'mag');

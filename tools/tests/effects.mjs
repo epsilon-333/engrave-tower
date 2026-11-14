@@ -7,7 +7,7 @@ const { ZONES } = await import(root + '/data/monsters.js');
 const ok = (cond, text) => { console.log(cond ? 'OK ' : 'FAIL', text); if (!cond) process.exitCode = 1; };
 const mk = (cls, engravings = {}, gear = {}) => {
   const c = CLASSES[cls];
-  const b = computeBuild({ race: c.race, cls, level: 20, allSkills: true, alloc: {}, engravings, gear: { weapon: c.weapons[0], ...gear }, skills: c.skills.slice(0, 4) });
+  const b = computeBuild({ race: c.race, cls, level: 20, allSkills: true, alloc: {}, engravings, gear: { weapon: c.weapons[0], off: c.off, ...gear }, skills: c.skills.slice(0, 4) });
   const w = new World({ build: b, mode: 'field', zoneId: ZONES[0].id, seed: 7 });
   w.enemies.forEach((e) => { e.x = -999; e.y = -999; });
   return w;

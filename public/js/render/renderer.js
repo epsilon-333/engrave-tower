@@ -1320,7 +1320,7 @@ export class Renderer {
     if (p.boat) this.drawBoat(w, p.x, p.y, p.dir, p.moving, 'back');
     if (w.map.underwater && dt > 0 && Math.random() < dt * 1.6) this.parts.push({ x: bx + p.dir * 3, y: by - 14, vx: (Math.random() - 0.5) * 6, vy: -26 - Math.random() * 14, t: 1.4, max: 1.4, color: '#e0f6ff', g: -6, bubble: true });
     const wart = weaponArt(w.b.weaponId, ITEMS);
-    if ((wart.shield || w.b.wcat === 'shield') && !hideW) this.drawShield(w, p, pose, bx, by, gs);
+    if (wart.shield && !hideW) this.drawShield(w, p, pose, bx, by, gs);
     else if (w.b.offItem && !hideW) this.drawOffhand(w, p, pose, bx, by, gs); // 왼손 도구 (한손 무기일 때)
     if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx - p.dir * (back ? -1 : 4) * gs, by - (back ? 7 : 5) * gs, this.fistMetal(wart), p.dir); }
     if (pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
@@ -2025,7 +2025,7 @@ export class Renderer {
   // 방패 (검과 방패): 반대 팔에 든다. 몸 뒤쪽 가장자리에 걸쳐 보인다
   drawShield(w, p, P, bx, by, gs) {
     const g = this.g, dir = p.dir, x = Math.round(bx - dir * 5 * gs), y = Math.round(by - 9 * gs);
-    const front = w.b.wcat === 'shield' && w.b.weaponId === 'bastionBlade' ? '#d8c070' : '#8a96b0', rim = '#4a4a56';
+    const front = '#8a96b0', rim = '#4a4a56';
     g.fillStyle = '#16121c'; g.beginPath(); g.moveTo(x - 5, y - 6); g.lineTo(x + 5, y - 6); g.lineTo(x + 5, y + 2); g.lineTo(x, y + 7); g.lineTo(x - 5, y + 2); g.closePath(); g.fill();
     g.fillStyle = rim; g.beginPath(); g.moveTo(x - 4, y - 5); g.lineTo(x + 4, y - 5); g.lineTo(x + 4, y + 2); g.lineTo(x, y + 6); g.lineTo(x - 4, y + 2); g.closePath(); g.fill();
     g.fillStyle = front; g.beginPath(); g.moveTo(x - 3, y - 4); g.lineTo(x + 3, y - 4); g.lineTo(x + 3, y + 2); g.lineTo(x, y + 5); g.lineTo(x - 3, y + 2); g.closePath(); g.fill();

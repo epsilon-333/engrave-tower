@@ -161,8 +161,8 @@ Object.assign(ITEMS, {
   triOrb: W('elementalist', '삼원소 보주', { kind: 'proj', dmg: 'mag', mul: 1.85, speed: 1.5, projSpeed: 260, range: 200, splash: 28, mana: 5, skill: 'nova' }, { mag: 7, spi: 3 }, { price: 300, boost: { grandFireball: 0.35, flameBurst: 0.35 }, bdesc: '「거대 화염구」·「화염 작렬」 피해 +35%' }),
   hourglassStaff: W('chronomancer', '모래시계 지팡이', { kind: 'proj', dmg: 'mag', mul: 1.15, speed: 1.9, projSpeed: 280, range: 200, pierce: 1, mana: 4, skill: 'nova' }, { mag: 2, spi: 2 }),
   aeonPendulum: W('chronomancer', '영겁의 시계추', { kind: 'proj', dmg: 'mag', mul: 1.5, speed: 2.0, projSpeed: 300, range: 210, pierce: 2, mana: 4, skill: 'nova' }, { mag: 6, spi: 4 }, { price: 300, boost: { arcaneBarrage: 0.4, gravityCollapse: 0.4 }, bdesc: '「비전 연발」·「중력 붕괴」 피해 +40%' }),
-  guardSword: W('guardian', '기사 장검과 방패', { kind: 'melee', dmg: 'phys', mul: 1.0, speed: 1.5, range: 30, arc: 1.9, skill: 'spin' }, { pres: 5 }),
-  bastionBlade: W('guardian', '철벽의 성채방패', { kind: 'melee', dmg: 'phys', mul: 1.25, speed: 1.5, range: 32, arc: 2.0, skill: 'spin' }, { pres: 10, vit: 4 }, { price: 280, tags: ['reflect'], boost: { shieldBash: 0.45, riposte: 0.45 }, bdesc: '「방패 강타」·「받아치기」 피해 +45%' }),
+  guardSword: W('guardian', '기사 장검', { kind: 'melee', dmg: 'phys', mul: 1.0, speed: 1.5, range: 30, arc: 1.9, skill: 'spin' }, { pres: 5 }),
+  bastionBlade: W('guardian', '철벽의 장검', { kind: 'melee', dmg: 'phys', mul: 1.25, speed: 1.5, range: 32, arc: 2.0, skill: 'spin' }, { pres: 10, vit: 4 }, { price: 280, tags: ['reflect'], boost: { shieldBash: 0.45, riposte: 0.45 }, bdesc: '「방패 강타」·「받아치기」 피해 +45%' }),
   steelGreatsword: W('greatsword', '강철 대검', { kind: 'melee', dmg: 'phys', mul: 1.4, speed: 0.9, range: 40, arc: 2.4, skill: 'slam' }, { str: 3 }),
   mountainCleaver: W('greatsword', '산을 가르는 검', { kind: 'melee', dmg: 'phys', mul: 1.8, speed: 0.88, range: 44, arc: 2.6, skill: 'slam' }, { str: 8 }, { price: 300, tags: ['giant'], boost: { skyfall: 0.35, swordWave: 0.4 }, bdesc: '「천붕참」 +35% · 「검기 날리기」 +40%' }),
   twoHandAxe: W('berserker', '양손 전투도끼', { kind: 'melee', dmg: 'phys', mul: 1.45, speed: 0.95, range: 34, arc: 2.2, skill: 'spin' }, { str: 3 }),
@@ -190,7 +190,7 @@ Object.assign(ITEMS, {
 // ── 무기 갈래: 스킬이 이 무기로 되는지 · 얼마나 잘 되는지 (skills.js FIT) ──
 // blade 한손 칼 · great 대검 · axe 도끼 · blunt 둔기 · polearm 창 · fist 주먹 · bow 활 · tube 바람총 · throw 던지는 무기 · staff 지팡이 · tome 마도서 · shield 검과 방패 · whip 채찍 · scythe 낫
 const WCAT = {
-  blade: ['knightSword', 'rustySword', 'dagger', 'heavySword', 'dualBlades', 'katana', 'rotDagger', 'copperDagger', 'copperSword', 'ironSword', 'silverRapier', 'twinDaggers', 'nightPiercer'],
+  blade: ['knightSword', 'rustySword', 'dagger', 'heavySword', 'dualBlades', 'katana', 'rotDagger', 'copperDagger', 'copperSword', 'ironSword', 'silverRapier', 'twinDaggers', 'nightPiercer', 'guardSword', 'bastionBlade'],
   great: ['riftGreatsword', 'steelGreatsword', 'mountainCleaver', 'obsidianBlade'],
   axe: ['handAxe', 'battleAxe', 'doubleAxe', 'ironWaraxe', 'twoHandAxe', 'bloodthirstAxe', 'throwHatchet', 'twinReturnAxe'],
   blunt: ['mace', 'stoneClub', 'tectonicHammer'],
@@ -201,11 +201,10 @@ const WCAT = {
   throw: ['throwingAxe'],
   staff: ['apprenticeWand', 'mossStaff', 'apprenticeStaff', 'frostWand', 'poisonStaff', 'archStaff', 'crystalStaff', 'elemStaff', 'triOrb', 'hourglassStaff', 'aeonPendulum', 'skullStaff', 'deadScepter', 'cursedDoll', 'elderHeartstone'],
   tome: ['oldTome', 'tome', 'starTome', 'doomTome', 'dragonTome'],
-  shield: ['guardSword', 'bastionBlade'],
 };
 for (const [cat, ids] of Object.entries(WCAT)) for (const id of ids) { const it = ITEMS[id]; if (it?.weapon) { it.cat = cat; it.weapon.cat = cat; if (cat === 'great') it.weapon.great = true; } }
 // 한손 · 양손: 한손 무기를 들면 왼손에 보조 도구(부적 · 손쇠뇌 · 작은 방패 · 투척 주머니)를 들 수 있다. 양손 무기는 두 손을 다 쓴다
-export const CAT_HANDS = { blade: 1, axe: 1, blunt: 1, whip: 1, throw: 1, tome: 1, great: 2, polearm: 2, bow: 2, tube: 2, staff: 2, scythe: 2, fist: 2, shield: 2 };
+export const CAT_HANDS = { blade: 1, axe: 1, blunt: 1, whip: 1, throw: 1, tome: 1, great: 2, polearm: 2, bow: 2, tube: 2, staff: 2, scythe: 2, fist: 2 };
 const HANDS = { // 분류와 다른 것: 쌍검 · 큰 도끼 · 큰 곤봉은 양손, 완드 · 보주 · 홀 · 인형 · 시계추 · 심장석은 한손
   dualBlades: 2, twinDaggers: 2, katana: 2, doubleAxe: 2, twoHandAxe: 2, bloodthirstAxe: 2, twinReturnAxe: 2, stoneClub: 2, tectonicHammer: 2,
   apprenticeWand: 1, frostWand: 1, triOrb: 1, cursedDoll: 1, deadScepter: 1, aeonPendulum: 1, elderHeartstone: 1,
@@ -217,8 +216,8 @@ Object.assign(ITEMS, {
   starCharm: { name: '별빛 부적', slot: 'off', price: 600, stats: { mag: 5, spi: 2 }, tags: [], off: { spell: 1 }, odesc: '마법을 온전한 힘으로 쓴다' },
   handCrossbow: { name: '손쇠뇌', slot: 'off', price: 150, stats: { agi: 2 }, tags: [], off: { shoot: 0.8 }, odesc: '쏘기 스킬을 80% 힘으로 쓴다 (쇠살)' },
   repeatCrossbow: { name: '연발 손쇠뇌', slot: 'off', price: 650, stats: { agi: 4, sen: 2 }, tags: [], off: { shoot: 0.95 }, odesc: '쏘기 스킬을 95% 힘으로 쓴다 (쇠살)' },
-  buckler: { name: '작은 방패', slot: 'off', price: 100, stats: { pres: 5 }, tags: [], off: { shield: 1, parry: 1 }, odesc: '방패 · 받아치기 스킬을 온전히 쓴다' },
-  knightBuckler: { name: '기사단 원형 방패', slot: 'off', price: 550, stats: { pres: 12, vit: 3 }, tags: [], off: { shield: 1, parry: 1 }, odesc: '방패 · 받아치기 스킬을 온전히 쓴다' },
+  buckler: { name: '작은 방패', slot: 'off', price: 100, stats: { pres: 5 }, tags: [], off: { shield: 1, parry: 1 }, guard: 0.15, odesc: '방패 · 앞에서 오는 피해 -15% · 방패 · 받아치기 스킬을 온전히 쓴다' },
+  knightBuckler: { name: '기사단 원형 방패', slot: 'off', price: 550, stats: { pres: 12, vit: 3 }, tags: [], off: { shield: 1, parry: 1 }, guard: 0.25, odesc: '방패 · 앞에서 오는 피해 -25% · 방패 · 받아치기 스킬을 온전히 쓴다' },
   throwPouch: { name: '투척 주머니', slot: 'off', price: 90, stats: { str: 1, agi: 1 }, tags: [], off: { throw: 0.85 }, odesc: '던지기 스킬을 85% 힘으로 쓴다' },
   curseDoll: { name: '작은 저주 인형', slot: 'off', price: 320, stats: { mag: 3, spi: 2 }, tags: ['curse'], off: { spell: 0.85 }, offCurse: { chance: 0.3, stacks: 1 }, odesc: '마법을 85% 힘으로 쓴다 · 내 공격에 맞은 적은 30% 확률로 저주 1중첩 (중첩마다 받는 피해 +2% · 주는 피해 -3%)' },
   knifeBelt: { name: '투척 단검 띠', slot: 'off', price: 550, stats: { agi: 3, sen: 2 }, tags: [], off: { throw: 1 }, odesc: '던지기 스킬을 온전한 힘으로 쓴다' },
@@ -226,7 +225,7 @@ Object.assign(ITEMS, {
 // 장비 값: 예전보다 두 배 (돈이 너무 쉽게 남지 않게)
 for (const it of Object.values(ITEMS)) if (it.price) it.price = Math.round(it.price * 2);
 export const OFF_LOOK = { curseDoll: 'doll', talisman: 'charm', starCharm: 'charm', handCrossbow: 'xbow', repeatCrossbow: 'xbow', buckler: 'buckler', knightBuckler: 'buckler', throwPouch: 'pouch', knifeBelt: 'pouch' };
-export const WCAT_NAME = { blade: '한손 칼', great: '대검', axe: '도끼', blunt: '둔기', polearm: '창', fist: '주먹', bow: '활 · 석궁', tube: '바람총', throw: '던지는 무기', staff: '지팡이', tome: '마도서', shield: '검과 방패', whip: '채찍', scythe: '낫' };
+export const WCAT_NAME = { blade: '한손 칼', great: '대검', axe: '도끼', blunt: '둔기', polearm: '창', fist: '주먹', bow: '활 · 석궁', tube: '바람총', throw: '던지는 무기', staff: '지팡이', tome: '마도서', whip: '채찍', scythe: '낫' };
 export const weaponHands = (it) => it?.hands || CAT_HANDS[it?.weapon?.cat || it?.cat] || 1;
 export const weaponCat = (it) => it?.weapon?.cat || it?.cat || (it?.weapon?.kind === 'proj' ? (it.weapon.dmg === 'mag' ? 'staff' : 'bow') : 'blade');
 

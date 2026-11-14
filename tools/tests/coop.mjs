@@ -11,7 +11,7 @@ const ok = (cond, text) => { console.log(cond ? 'OK ' : 'FAIL', text); if (!cond
 
 const f = 3, seed = 4242, zid = towerZoneId(f), z = ZONES.find((x) => x.id === zid);
 const mk = (cls, role) => {
-  const c = CLASSES[cls], b = computeBuild({ race: c.race, cls, level: 12, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] }, skills: c.skills.slice(0, 4) });
+  const c = CLASSES[cls], b = computeBuild({ race: c.race, cls, level: 12, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off }, skills: c.skills.slice(0, 4) });
   const w = new World({ build: b, mode: 'field', zoneId: zid, seed, map: generateField(z, seed, Math.floor(f / 6), towerSize(f)), tower: { f }, coop: { role } });
   if (role === 'member') { w.enemies = []; w.camps = []; }
   return w;

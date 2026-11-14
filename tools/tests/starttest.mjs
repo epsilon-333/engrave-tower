@@ -12,7 +12,7 @@ let ok = true;
 const check = (cond, msg) => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${msg}`); if (!cond) ok = false; };
 const idle = (w) => ({ moveX: 0, moveY: 0, aimX: w.player.x + 10, aimY: w.player.y });
 
-const b = computeBuild({ race: 'knight', cls: 'guardian', level: 1, alloc: {}, engravings: {}, gear: { weapon: 'guardSword' } });
+const b = computeBuild({ race: 'knight', cls: 'guardian', level: 1, alloc: {}, engravings: {}, gear: { weapon: 'guardSword', off: 'buckler' } });
 const w = new World({ build: b, mode: 'field', zone: WORLD_ZONE, zoneId: 'world', seed: 7, map: buildOverworld(WORLD_ZONE) });
 for (let i = 0; i < 30; i++) { w.step(idle(w)); w.signals.length = 0; w.events.length = 0; }
 const p = w.player;

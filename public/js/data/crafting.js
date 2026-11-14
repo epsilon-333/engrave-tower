@@ -17,7 +17,7 @@ export const WTYPES = {
   scythe: { name: '낫', cat: 'scythe', art: { s: 'cw_scythe', long: true }, mats: METAL, need: 5, handle: 3, gold: 35, desc: '긴 날로 앞쪽을 아주 넓게 베어 낸다.', weapon: { kind: 'melee', dmg: 'phys', mul: 1.25, speed: 1.1, range: 40, arc: 2.8, skill: 'whirl' } },
   whip: { name: '채찍', cat: 'whip', art: { s: 'cw_whip', whip: true }, mats: ['wood', 'bone', 'hardwood', 'copper', 'iron', 'silver'], need: 3, handle: 1, gold: 25, desc: '아주 멀리 닿는다. 채찍 끝(사거리 70% 너머)에 맞으면 피해 1.5배.', weapon: { kind: 'melee', dmg: 'phys', mul: 0.85, speed: 1.7, range: 74, shape: 'whip', width: 9, skill: 'lash' } },
   knuckle: { name: '너클', cat: 'fist', art: { s: 'cw_knuckle', fist: true }, mats: METAL, need: 3, handle: 0, gold: 20, desc: '주먹으로 두 번씩 빠르게 친다. 민첩으로 세진다.', weapon: { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.5, hits: 2, speed: 2.6, range: 22, arc: 1.6, skill: 'flurry' } },
-  swordShield: { name: '검과 방패', cat: 'shield', art: { s: 'weapon_regular_sword', shield: true }, mats: METAL, need: 6, handle: 2, gold: 40, desc: '방패를 든다: 앞에서 오는 피해 -20%, 방패 기술을 쓸 수 있다.', stats: { pres: 6 }, weapon: { kind: 'melee', dmg: 'phys', mul: 0.95, speed: 1.5, range: 30, arc: 1.9, skill: 'spin', guard: 0.2 } },
+  swordShield: { name: '기사검', cat: 'blade', art: { s: 'weapon_knight_sword' }, mats: METAL, need: 6, handle: 2, gold: 40, desc: '묵직한 한손 기사검. 왼손에 방패를 함께 들기 좋다.', stats: { pres: 6 }, weapon: { kind: 'melee', dmg: 'phys', mul: 0.95, speed: 1.5, range: 30, arc: 1.9, skill: 'spin' } }, // 예전 「검과 방패」(양손 한 쌍): 방패는 왼손 장비로 따로 든다
   bow: { name: '활', cat: 'bow', art: { s: 'weapon_bow', bow: true }, mats: ['wood', 'hardwood', 'bone'], need: 4, handle: 2, gold: 25, desc: '화살을 쏜다. 쏘기 기술을 쓸 수 있다.', weapon: { scale: 'agi', kind: 'proj', dmg: 'phys', mul: 1.3, speed: 1.6, projSpeed: 300, range: 210, pierce: 1, skill: 'volley' } },
   crossbow: { name: '석궁', cat: 'bow', art: { s: 'cw_crossbow', crossbow: true }, mats: ['wood', 'hardwood', 'copper', 'iron', 'silver', 'obsidian'], need: 4, handle: 3, gold: 45, desc: '느리지만 강한 쇠살이 셋까지 꿰뚫는다.', weapon: { kind: 'proj', dmg: 'phys', mul: 2.1, speed: 0.75, projSpeed: 430, range: 250, pierce: 3, skill: 'rain', projKind: 'bolt' } },
   boomerang: { name: '부메랑', cat: 'throw', art: { s: 'cw_boomerang', thrown: true }, mats: ['wood', 'hardwood', 'bone', 'copper', 'iron'], need: 3, handle: 0, gold: 20, desc: '던지면 날아갔다 돌아오며 두 번 벤다.', weapon: { kind: 'proj', dmg: 'phys', mul: 1.05, speed: 1.4, projSpeed: 240, range: 130, boomerang: true, skill: 'boomStorm', projKind: 'boomerang' } },
@@ -145,7 +145,7 @@ export function craftCost(type, mat, parts = []) {
   return { mats, gold: T.gold + M.tier * M.tier * 12 };
 }
 
-const CRAFT_HANDS = { greatsword: 2, hammer: 2, spear: 2, halberd: 2, scythe: 2, knuckle: 2, swordShield: 2, bow: 2, crossbow: 2, staff: 2 }; // 양손 무기 (나머지는 한손)
+const CRAFT_HANDS = { greatsword: 2, hammer: 2, spear: 2, halberd: 2, scythe: 2, knuckle: 2, bow: 2, crossbow: 2, staff: 2 }; // 양손 무기 (나머지는 한손)
 // 만든 무기 정보 → 장비 (items.js 와 같은 모양)
 export function craftItem(rec) {
   const T = WTYPES[rec.type], M = WMATS[rec.mat];

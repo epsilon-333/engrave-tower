@@ -6,7 +6,7 @@ const { CLASSES } = await import(root + '/data/skills.js');
 const { ZONES } = await import(root + '/data/monsters.js');
 const c = CLASSES.dragonSage;
 const run = (words, race = 'dragon') => {
-  const b = computeBuild({ race, cls: race === 'dragon' ? 'dragonSage' : undefined, level: 20, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] }, learned: race === 'dragon' ? [] : c.skills.filter((s) => s !== 'wordSilence') });
+  const b = computeBuild({ race, cls: race === 'dragon' ? 'dragonSage' : undefined, level: 20, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off }, learned: race === 'dragon' ? [] : c.skills.filter((s) => s !== 'wordSilence') });
   const w = new World({ build: b, mode: 'field', zoneId: ZONES[0].id, seed: 5 });
   const p = w.player, foes = w.enemies.slice(0, 6);
   foes.forEach((e, i) => { e.x = p.x + 60 + (i % 3) * 6; e.y = p.y + (i < 3 ? -4 : 4); e.atk = 0; e.maxHp = e.hp = 1e6; e.state = 'idle'; e.home = { x: e.x, y: e.y }; e.speedMul = 0; });

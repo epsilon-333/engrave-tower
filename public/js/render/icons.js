@@ -252,6 +252,12 @@ const DRAW = {
     P.set(7, 4, '#1a1410'); P.set(9, 4, '#1a1410'); P.rect(6, 10, 4, 1, '#8ad060'); P.set(8, 12, '#3e7a2a');
     P.outline();
   },
+  shieldIco(P) { // 왼손 방패: 위가 넓고 아래로 뾰족한 방패 + 가운데 띠
+    for (let y = 2; y <= 14; y++) { const w = y < 9 ? 6 : Math.max(0, 6 - (y - 8)); P.rect(8 - w, y, w * 2, 1, '#7a86a0'); }
+    for (let y = 3; y <= 12; y++) P.rect(7, y, 2, 1, '#d8c070');
+    P.rect(3, 6, 10, 2, '#d8c070');
+    P.bevel(0.3, 0.35);
+  },
   ring(P) { P.circle(8, 9.5, 5, '#f0c040'); P.circle(8, 9.5, 2.8, null); P.bevel(0.35, 0.35); P.circle(8, 4, 2, '#5aa848'); P.set(7, 3, '#c8ffc8'); P.outline(); },
   idol(P) { P.circle(8, 4.5, 3, '#d8b070'); P.rect(5, 7, 6, 7, '#d8b070'); P.rect(4, 13, 8, 2, '#b88a50'); P.bevel(0.3, 0.35); P.set(7, 4, '#1a1410'); P.set(9, 4, '#1a1410'); P.rect(7, 6, 2, 1, '#8a5a2a'); P.outline(); },
   mirror(P) { P.ellipse(8, 7, 5, 6, '#c8a040'); P.bevel(0.3, 0.35); P.ellipse(8, 7, 3.6, 4.6, '#a8d8f0'); P.set(6, 4, '#ffffff'); P.set(6, 5, '#ffffff'); P.rect(7, 13, 2, 2, '#8a6a2a'); P.outline(); },

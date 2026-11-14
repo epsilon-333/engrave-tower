@@ -1621,7 +1621,7 @@ export class World {
   // 상위 클래스 무기: 지정한 스킬 피해 증가
   weaponBoost(id) {
     const it = this.b.weaponItem;
-    if (!it || !it.boost || it.cls !== this.b.cls) return 1;
+    if (!it || !it.boost) return 1; // 무기의 스킬 강화: 클래스와 상관없이 그 스킬을 쓰면
     return 1 + (it.boost[id] || 0);
   }
 
@@ -2542,9 +2542,9 @@ export class World {
     if (p.stillT >= 1 && this.f.has('stillGuard')) dmg *= 0.5; // 각인 「바위의 인내」: 1초 동안 가만히 있으면 다시 움직일 때까지 받는 피해 -50%
     if (this.f.has('resGuard') && p.res >= 50) dmg *= 0.9;
     if (front) { dmg *= 0.75; this.addRes(4); this.knack('block'); if (attacker && !attacker.dead) this.damageEnemy(attacker, raw * 0.25, 'phys', { src: 'reflect', color: '#a8c8ff' }); /* 수호기사: 정면으로 막으면 25%를 되갚는다 */ this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
-    else if (this.b.weapon.guard && fx != null && !opt.direct) { // 방패를 든 무기: 앞에서 오는 피해를 줄인다
+    else if ((this.b.weapon.guard || this.b.offItem?.guard) && fx != null && !opt.direct) { // 방패(무기 · 왼손): 앞에서 오는 피해를 줄인다
       const vx = fx - p.x, vy = fy - p.y, l = Math.hypot(vx, vy) || 1;
-      if ((vx * p.aimX + vy * p.aimY) / l > 0.25) { dmg *= 1 - this.b.weapon.guard; this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
+      if ((vx * p.aimX + vy * p.aimY) / l > 0.25) { dmg *= 1 - Math.max(this.b.weapon.guard || 0, this.b.offItem?.guard || 0); this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
     }
     if (p.charging) dmg *= 0.75;
     if (p.buffs.stoneSkin && type === 'phys') dmg *= 1 - 60 / (60 + 100 + Math.max(0, this.s.pres));

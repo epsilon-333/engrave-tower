@@ -844,7 +844,7 @@ function showStyleSelect(race) {
         <p>${c.desc}</p>
         <p class="lvup">주력 스탯: ${(CLASS_STATS[id] || []).map((k) => STAT_INFO[k]?.name).join(' · ')}</p>
         <p class="sk-list">${c.skills.map((sid, i) => `<span${i === 5 ? ' class="ult"' : ''}>${SKILLS[sid].name}</span>`).join(' · ')}</p>
-        <small>시작 무기: ${ITEMS[c.weapons[0]].name}</small>
+        <small>시작 무기: ${ITEMS[c.weapons[0]].name}${c.off ? ` + ${ITEMS[c.off].name}` : ""}</small>
       </button>`;
     }).join('')}</div>
     <button class="ghost" id="backRace">← 종족 다시 고르기</button></div>`;
@@ -855,13 +855,14 @@ function showStyleSelect(race) {
       reGolem = false; delete save.reRace; save.race = race; save.cls = b.dataset.style; save.style = c.style; grantClassEngravings(save);
       if (!(save.items ||= []).includes(c.weapons[0])) save.items.push(c.weapons[0]);
       (save.gear ||= {}).weapon = c.weapons[0];
+      if (c.off) { if (!save.items.includes(c.off)) save.items.push(c.off); save.gear.off ||= c.off; }
       refreshQuests(save); writeSave(save); cloudSaveNow(save); titleEl.hidden = true; enterWorld();
       return;
     }
     save = newSave(race);
     save.cls = b.dataset.style; save.style = c.style; grantClassEngravings(save);
-    save.items = ['rustySword', c.weapons[0]];
-    save.gear = { weapon: c.weapons[0] };
+    save.items = ['rustySword', c.weapons[0], ...(c.off ? [c.off] : [])];
+    save.gear = { weapon: c.weapons[0], ...(c.off ? { off: c.off } : {}) }; // 수호기사: 한손 검 + 왼손 방패
     save.tutorial = { step: 0 }; // 처음 시작하는 사람은 튜토리얼부터
     refreshQuests(save); writeSave(save); titleEl.hidden = true; enterWorld(null, true);
   }));
@@ -1103,6 +1104,8 @@ function migrateSave(sv) {
     if (!sv.items.includes(st)) sv.items.push(st);
   }
   if (sv.skills) sv.skills = sv.skills.filter((id) => id === 'weapon' || SKILLS[id]);
+  // 예전 「검과 방패」(한 쌍)는 한손 검이 되었다: 방패를 왼손 장비로 하나 준다 (한 번만)
+  if (!sv.splitShield) { sv.splitShield = true; if (sv.items.some((id) => id === 'guardSword' || id === 'bastionBlade') && !sv.items.includes('buckler')) { sv.items.push('buckler'); if (!sv.gear.off && ['guardSword', 'bastionBlade'].includes(sv.gear.weapon)) sv.gear.off = 'buckler'; } }
   if (sv.cls === 'greatsword' && sv.skills) sv.skills = sv.skills.map((id) => (id === 'sweep' && !(sv.learned || []).includes('sweep') ? 'comboSlash' : id)); // 횡베기 → 연속베기
   sv.story ||= newStory(); sv.story.items ||= {}; sv.story.flags ||= {};
   sv.codex ||= {}; sv.codex.kills ||= {}; sv.codex.places ||= {}; sv.codex.journals ||= {}; sv.codex.lore ||= [];
@@ -1778,7 +1781,7 @@ const practice = { cls: null, skills: null, infRes: true, noCd: false, arena: 'w
 function practiceBuild() {
   const c = CLASSES[practice.cls];
   const sp = save.spirits?.main ? { id: save.spirits.main, star: save.spirits.owned[save.spirits.main]?.star || 1 } : { id: 'fire2', star: 1 }; // 연습장: 계약한 정령이 없으면 화염 여우를 빌려 준다
-  return computeBuild({ race: c.race, cls: practice.cls, level: 20, allSkills: true, alloc: { str: 18, mag: 18, agi: 10, vit: 10 }, engravings: {}, gear: { weapon: c.weapons[1] }, skills: practice.skills, spirit: sp });
+  return computeBuild({ race: c.race, cls: practice.cls, level: 20, allSkills: true, alloc: { str: 18, mag: 18, agi: 10, vit: 10 }, engravings: {}, gear: { weapon: c.weapons[1], off: c.off }, skills: practice.skills, spirit: sp });
 }
 function enterPractice() {
   practice.cls ||= save.cls; practice.skills ||= CLASSES[practice.cls].skills.slice(0, 4);

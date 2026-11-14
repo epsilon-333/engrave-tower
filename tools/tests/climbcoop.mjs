@@ -10,7 +10,7 @@ const ok = (cond, text) => { console.log(cond ? 'OK ' : 'FAIL', text); if (!cond
 
 const f = 2, seed = 777, z = ZONES[0];
 const mk = (cls, role) => {
-  const c = CLASSES[cls], b = computeBuild({ race: c.race, cls, level: 5, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] } });
+  const c = CLASSES[cls], b = computeBuild({ race: c.race, cls, level: 5, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off } });
   const run = C.newRun({ seed }); run.f = f;
   return new World({ build: b, mode: 'field', zone: z, zoneId: z.id, seed: seed + f * 7919, map: buildClimbFloor(z, seed + f * 7919, f, 'fight'), tower: { f }, coop: { role }, climb: { run, f, kind: 'fight' } });
 };

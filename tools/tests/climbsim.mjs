@@ -35,7 +35,7 @@ function loadout(cid, level, f = 1) {
   const wpn = ITEMS[tw || c.weapons[1] || c.weapons[0]];
   const main = wpn.weapon.dmg === 'mag' ? 'mag' : wpn.weapon.scale === 'agi' ? 'agi' : 'str';
   const pts = level - 1;
-  return { race: R, cls: cid, level, allSkills: false, alloc: { [main]: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings: {}, gear: { weapon: tw || c.weapons[1] || c.weapons[0] }, skills: null };
+  return { race: R, cls: cid, level, allSkills: false, alloc: { [main]: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings: {}, gear: { weapon: tw || c.weapons[1] || c.weapons[0], off: c.off }, skills: null };
 }
 
 function makeWorld(run, lo) {

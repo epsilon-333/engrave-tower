@@ -283,7 +283,6 @@ export function twoHandBonus(id, it) {
   if (c === 'bow') return { dmgMul: 1.08, text: '활: 피해 +8%' };
   if (['tube', 'staff'].includes(c)) return { dmgMul: 1.08, text: '양손 원거리 무기: 피해 +8%' };
   if (c === 'fist') return { atkSpeed: 1.08, dmgMul: 1.05, text: '양손 주먹: 공격 속도 +8% · 피해 +5%' };
-  if (c === 'shield') return { dmgMul: 1.12, text: '검과 방패: 피해 +12%' }; // 왼손은 방패가 차지한다 (양손 무기는 아니다)
   return { dmgMul: 1.12, text: '양손 무기: 피해 +12%' };
 }
 // 같은 계열 한손 무기 둘: 살짝만 강해진다

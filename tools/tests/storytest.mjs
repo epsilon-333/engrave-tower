@@ -7,7 +7,7 @@ const { TILE } = await import(root + '/sim/mapgen.js');
 const { pinoTalk, newStory } = await import(root + '/data/story.js');
 const { codexPoints, levelFor } = await import(root + '/data/codex.js');
 const cid = 'knight' in CLASSES ? 'knight' : Object.keys(CLASSES)[0], c = CLASSES[cid];
-const b = computeBuild({ race: c.race, cls: cid, level: 5, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] }, skills: c.skills.slice(0, 4) });
+const b = computeBuild({ race: c.race, cls: cid, level: 5, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off }, skills: c.skills.slice(0, 4) });
 const save = { story: newStory(), codex: { kills: {}, places: {}, journals: {}, lore: [] } };
 const w = new World({ build: b, mode: 'field', zoneId: 'cave', seed: 1, story: save.story, codex: save.codex });
 const p = w.player, inp = { moveX: 0, moveY: 0, aimX: p.x + 50, aimY: p.y, attack: false };

@@ -4,7 +4,7 @@ const { computeBuild } = await import(root + '/sim/build.js');
 const { CLASSES } = await import(root + '/data/skills.js');
 const { ZONES } = await import(root + '/data/monsters.js');
 const c = CLASSES.dragoon;
-const b = computeBuild({ race: c.race, cls: 'dragoon', level: 20, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] } });
+const b = computeBuild({ race: c.race, cls: 'dragoon', level: 20, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off } });
 const w = new World({ build: b, mode: 'field', zoneId: ZONES[0].id, seed: 3 });
 const p = w.player;
 const es = w.enemies.slice(0, 3); es.forEach((e, i) => { e.x = p.x + 40 + i * 8; e.y = p.y; e.hp = e.maxHp = 99999; e.atk = 0; e.state = 'chase'; e.home = { x: e.x, y: e.y }; });

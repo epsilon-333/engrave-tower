@@ -24,7 +24,7 @@ const startOpen = BIOME_LIST.filter((b) => !need('regions', b.id)).map((b) => b.
 console.log('     처음부터 열린 지역:', startOpen.join(' · '));
 check(!makeLocks(save(50), BIOME_LIST).regions.size, '50층을 깨면 모든 지역이 열린다');
 
-const b = computeBuild({ race: 'knight', cls: 'guardian', level: 1, alloc: {}, engravings: {}, gear: { weapon: 'guardSword' } });
+const b = computeBuild({ race: 'knight', cls: 'guardian', level: 1, alloc: {}, engravings: {}, gear: { weapon: 'guardSword', off: 'buckler' } });
 const map = buildOverworld(WORLD_ZONE);
 const w = new World({ build: b, mode: 'field', zone: WORLD_ZONE, zoneId: 'world', seed: 7, map });
 w.locks = makeLocks(save(0), BIOME_LIST);
