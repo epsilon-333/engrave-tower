@@ -1,4 +1,15 @@
 [
+"Training limit 5 → 10 stages",
+"Reached the training limit",
+"Trainee Van",
+"Trainee Kira",
+"Trainee's forbidden book note",
+"Training ground",
+"Training ground instructor Gar",
+"Go to the training ground to start",
+"Left the training ground",
+"Shuriken Fan",
+"Throws seven shuriken (60% attack each) in a fan. Shadow +12",
 "Gatekeeper's Wave",
 "Wanted Bandit Hunt",
 "A wanted criminal! Bounty ◆",
@@ -387,16 +398,5 @@
 "A row of ice spikes rises ahead. Frozen enemies shatter for 2.5x damage",
 "Slams ahead scattering embers. 2 burn stacks",
 "Claws ahead four times in a row. 1 bleed stack each. Instinct +12",
-"Smashes ahead, sending enemies flying with a 0.8s stun",
-"A big cleave ahead, 2 bleed stacks",
-"Wraps ahead, binding 1.6s with 2 bleed stacks",
-"A heavy blow to one enemy ahead, 130% attack damage · 1.3s stun",
-"A heavy slam ahead for big damage and stagger",
-"Three wide lashes ahead, finally pulling the hit enemy in front of me",
-"Claws ahead for 2 bleed stacks and leaps back. Instinct +6",
-"In-app browser",
-"Camp · leave echoes and rest",
-"The share left at camp was kept",
-"Left echoes at camp",
-"Palm Beach"
+"Smashes ahead, sending enemies flying with a 0.8s stun"
 ]

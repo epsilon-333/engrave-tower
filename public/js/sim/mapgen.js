@@ -148,7 +148,7 @@ export function generateField(zone, seed, depth = 0, size = null) {
     const x = i % tw, y = (i / tw) | 0;
     if (Math.hypot(x - lair.x, y - lair.y) < 12 || !free(x, y, 9)) continue;
     const r = regionInfo[regions[i]] || regionInfo[0];
-    camps.push({ x, y, type: rng.pick(r.types), n: rng.int(3, 5), region: regions[i] });
+    camps.push({ x, y, type: rng.pick(r.types), n: rng.int(2, 4), region: regions[i] });
     taken.push({ x, y });
   }
   const champions = [];

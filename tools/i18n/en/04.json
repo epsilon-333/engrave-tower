@@ -1,4 +1,7 @@
 [
+"Chill effect +15",
+"Chill effect +20",
+"Chill effect +25",
 "Stacks chill to slow, then freezes to bind",
 "Frosty",
 "Yum",
@@ -395,8 +398,5 @@
 "Spins the halberd and slashes three times. The last is strongest",
 "Dodge spinning beams by circling the same way",
 "Turning Blade",
-"Reached: underground",
-"Stolen seal",
-"Doren",
-"Lizard Warrior"
+"Reached: underground"
 ]

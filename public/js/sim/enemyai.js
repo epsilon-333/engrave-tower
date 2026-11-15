@@ -173,6 +173,8 @@ export const EnemyAiMethods = {
         e.leashT = dist > 260 ? e.leashT + DT : 0;
         if (!this.climb && (fromHome > 420 || e.leashT > 3)) { e.state = 'return'; e.mv = null; }
       }
+      if (e.holdT > 0) { e.holdT -= DT; e.moving = false; continue; } // 레이저를 겨누는 중: 멈춰 선다
+      if (e.trait && e.state === 'chase' && this.traitTick(e, p, dist, frozen)) { e.kbx *= 0.85; e.kby *= 0.85; continue; } // 몬스터 특성 (sim/montraits.js)
       if (e.state === 'chase' && this.enemyMove(e, p, dist, frozen)) { e.kbx *= 0.85; e.kby *= 0.85; continue; } // 몬스터 기술 (연속 베기 · 뛰어들기 · 부채꼴 · 장판 · 회복 · 순간이동)
 
       if (e.state === 'idle') {
@@ -267,6 +269,8 @@ export const EnemyAiMethods = {
       e.moving = (vx || vy) && spd > 0;
       if (e.moving) e.walkT += DT;
       if (Math.abs(vx) > 0.1) e.dir = vx > 0 ? 1 : -1;
+      if (e.faceLock) e.dir = Math.cos(e.face) >= 0 ? 1 : -1; // 방패병: 몸은 방패 쪽을 본다
+      if (e.trait === 'shield' && e.shieldHp > 0) spd *= 0.8;
       const ex0 = e.x, ey0 = e.y, kbSpd = Math.hypot(e.kbx, e.kby);
       this.move(e, (vx * spd + e.kbx) * DT, (vy * spd + e.kby) * DT);
       if (e.kbHot > 0) this.knockCollide(e, ex0, ey0, kbSpd);

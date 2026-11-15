@@ -1094,12 +1094,16 @@ export class Renderer {
     this.shadow(e.x, e.y + 3, Math.max(5, img.width * sc * 0.32) * (ip ? Math.max(0.2, ip.shadow) : 1));
     if (art.ghost) g.globalAlpha = 0.65 + 0.15 * Math.sin(w.t * 3 + e.phase);
     if (def.veil && !(e.revealT > 0)) g.globalAlpha = 0.13 + 0.05 * Math.sin(w.t * 5 + e.phase); // 지워진 기록: 맞기 전에는 거의 보이지 않는다
+    if (e.cloak && !(e.revealT > 0)) g.globalAlpha = 0.16 + 0.06 * Math.sin(w.t * 4 + e.phase); // 은신 특성: 일렁이는 윤곽만
     const carryLift = e.carried > 0 ? 18 + (w.player.air || 0) : 0;
     const flyUp = art.fly ? 6 + Math.sin(w.t * 3 + e.phase) * 2 : 0; // 나는 몬스터는 땅 위에 떠 있다
     const dx = Math.round(e.x - w0 / 2 + wobble), dy = Math.round(e.y + 4 - h0 - carryLift + lungeY - flyUp - (ip?.lift || 0) + (ip?.sink || 0) * h0);
     if (ip) { g.globalAlpha *= ip.alpha; if (ip.sink > 0) { g.save(); g.beginPath(); g.rect(dx - 4, dy - 4, Math.round(w0) + 8, Math.round(e.y + 4 - dy) + 4); g.clip(); } }
     const bp = e.pose ? beastPose(e.pose, e.dir || 1, w.t) : null; // 몸 기술 동작: 몸 전체가 일어서고 · 웅크리고 · 내밀고 · 내려찍는다
-    if (bp) {
+    if (e.feignT > 0) { // 죽은 척: 옆으로 쓰러져 누운 몸 (일어나기 직전 0.4초 들썩)
+      const tw = e.feignT < 0.4 ? Math.sin(w.t * 40) * 1.5 : 0;
+      g.save(); g.translate(Math.round(e.x), Math.round(e.y + 2)); g.rotate((e.dir || 1) * Math.PI / 2); g.drawImage(img, Math.round(-h0 + 2 + tw), Math.round(-w0 / 2), Math.round(w0), Math.round(h0)); g.restore();
+    } else if (bp) {
       g.save(); g.translate(Math.round(e.x + wobble + bp.x), Math.round(e.y + 4 - carryLift - flyUp + bp.y)); g.rotate(bp.rot); g.scale(bp.sx, bp.sy);
       g.drawImage(img, Math.round(-w0 / 2), Math.round(-h0), Math.round(w0), Math.round(h0)); g.restore();
       if (e.pose.k === 'dizzy') for (let i = 0; i < 3; i++) { const a = w.t * 7 + i * 2.1; g.fillStyle = '#ffe060'; g.fillRect(Math.round(e.x + Math.cos(a) * 8), Math.round(dy - 5 + Math.sin(a) * 2), 2, 2); }
@@ -1107,6 +1111,16 @@ export class Renderer {
     } else g.drawImage(img, dx, dy, Math.round(w0), Math.round(h0));
     if (ip?.sink > 0) g.restore();
     g.globalAlpha = 1;
+    if (e.trait === 'shield' && e.shieldHp > 0 && !(e.feignT > 0)) { // 방패병: 바라보는 쪽에 큰 방패 (방패 체력이 줄면 금이 간다)
+      const fx = e.x + Math.cos(e.face) * (e.r + 2), fy = e.y - 8 + Math.sin(e.face) * (e.r * 0.5), k2 = e.shieldHp / (e.maxHp * 2);
+      g.fillStyle = '#16121c'; g.fillRect(Math.round(fx - 4), Math.round(fy - 7), 8, 13);
+      g.fillStyle = '#7a86a0'; g.fillRect(Math.round(fx - 3), Math.round(fy - 6), 6, 11); g.fillStyle = '#d8c070'; g.fillRect(Math.round(fx - 1), Math.round(fy - 5), 2, 9);
+      g.fillStyle = 'rgba(255,255,255,0.4)'; g.fillRect(Math.round(fx - 3), Math.round(fy - 6), 6, 1);
+      if (k2 < 0.6) { g.fillStyle = '#16121c'; g.fillRect(Math.round(fx - 2), Math.round(fy - 3), 1, 4); g.fillRect(Math.round(fx + 1), Math.round(fy + 1), 1, 3); }
+      if (k2 < 0.3) { g.fillRect(Math.round(fx - 3), Math.round(fy), 3, 1); }
+    }
+    if (e.trait === 'carapace' && e.shellHp > 0 && dt > 0 && Math.random() < 0.05) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y - 6 - Math.random() * e.r, vx: 0, vy: -6, t: 0.4, max: 0.4, color: '#e8e0c8', g: 0, glow: true, size: 1 }); // 갑각: 단단한 껍질이 반짝인다
+    if (e.stoneT > 0 && dt > 0 && Math.random() < 0.12) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y - Math.random() * e.r * 2, vx: (Math.random() - 0.5) * 10, vy: 10, t: 0.5, max: 0.5, color: '#9a9488', g: 120, size: 1 }); // 석화: 돌가루가 떨어진다
     if (e.st.frozen > 0) {
       g.fillStyle = 'rgba(170,225,255,0.5)'; g.fillRect(dx, dy + 2, Math.round(w0), Math.round(h0) - 2);
       g.fillStyle = '#e8f8ff'; g.fillRect(dx + 1, dy + 3, 2, 1); g.fillRect(dx + Math.round(w0) - 4, dy + 6, 2, 1);

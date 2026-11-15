@@ -73,7 +73,7 @@ export const CLASSES = {
     skills: ['wordFire', 'wordWing', 'wordSky', 'wordScale', 'wordEarth', 'wordSilence'] },
 };
 export const RACE_CLASSES = (race) => Object.keys(CLASSES).filter((k) => CLASSES[k].race === race);
-export const UNLOCKS = [1, 1, 3, 6, 10, 30]; // 마지막(궁극기)은 레벨 30 · 여정 「레벨 30」 보상으로 받는다
+export const UNLOCKS = [1, 1, 3, 6, 10, 20]; // 마지막(궁극기)은 레벨 20 · 여정 「레벨 20」 보상으로 받는다
 
 export const SKILLS = {
   // ══════ 공룡 수인 · 포식자 ══════

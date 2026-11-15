@@ -1,4 +1,6 @@
 [
+"Get off the shadow path",
+"Shadow Feather Trim",
 "Shadow Pierce",
 "Shadow Leap",
 "Shadow Hood",
@@ -209,6 +211,7 @@
 "Mandarin fish",
 "Unbreakable Heart",
 "Harden Shell",
+"Shell broken",
 "Tail Swing",
 "Sweeps a full circle with the tail, pushing enemies away. Instinct +10",
 "A star with a trailing tail hangs by the ear",
@@ -395,8 +398,5 @@
 "Chill slow +15",
 "Frost Imbue",
 "Frost Vortex",
-"Cold Affinity",
-"Chill effect +15",
-"Chill effect +20",
-"Chill effect +25"
+"Cold Affinity"
 ]

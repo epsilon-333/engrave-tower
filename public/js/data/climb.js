@@ -70,7 +70,7 @@ export function rollFloorMod(f, kind, rng) {
   return rng.pick(Object.keys(FLOOR_MODS));
 }
 // 층마다 나오는 적 수 (물결 셋으로 나눠 나온다)
-export const floorFoes = (f, trial = false) => Math.round((8 + f * 0.45) * (trial ? 1.15 : 1));
+export const floorFoes = (f, trial = false) => Math.round((5 + f * 0.28) * (trial ? 1.15 : 1)); // 몬스터 수 (2026-11-15: 8 + 0.45층 → 5 + 0.28층 · 마구 누르지 않고 하나하나 상대하게)
 
 // ───── 문 (층을 깨면 열린다) ─────
 // 탑 안에는 보상 · 상인 · 제단이 없다: 다음 층은 언제나 몬스터 (5층 수호자 · 10층 구역의 주인)

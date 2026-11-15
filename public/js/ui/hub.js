@@ -277,7 +277,7 @@ export class Hub {
       const i = b.skills.indexOf(id), on = i >= 0;
       const cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
       const eid = s.classEng?.[id], has = eid && (s.owned?.[eid] || 0) > 0;
-      const btn = on ? '<span class="ok">끼우고 있다</span>' : has ? `<span class="muted">각인 「${ENGRAVINGS[eid]?.name || ''}」 · 공명 제단에서 끼운다</span>` : `<span class="muted">${sk.ult ? '여정 「레벨 30」 보상' : '여정 보상'}으로 받는다</span>`;
+      const btn = on ? '<span class="ok">끼우고 있다</span>' : has ? `<span class="muted">각인 「${ENGRAVINGS[eid]?.name || ''}」 · 공명 제단에서 끼운다</span>` : `<span class="muted">${sk.ult ? '여정 「레벨 20」 보상' : '여정 보상'}으로 받는다</span>`;
       return `<div class="skc ${on ? 'on' : ''} ${locked ? 'locked' : ''}" style="--c:${ROLE_COLOR[sk.role]}">
         <div class="c-head"><b>${on ? `[${keys[i]}] ` : ''}${sk.name}</b><span class="role">${sk.role}</span></div>
         <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''}${sk.cast ? ` · 시전 ${sk.cast}초` : ''}</div>
@@ -299,7 +299,7 @@ export class Hub {
     const auto = getAutoAim();
     const now = SLOT_KEYS.slice(0, 4).map((k, i) => { const id = b.skills[i], sk = id && SKILLS[id]; return `<div class="skc ${sk ? 'on' : ''}" style="--c:${sk ? ROLE_COLOR[sk.role] : '#5a5068'}"><div class="c-head"><b>[${k}] ${sk ? sk.name : '비어 있음'}</b>${sk ? `<span class="role">${sk.role}</span>` : ''}</div><div class="c-sum">${sk ? esc(sk.desc) : '공명 제단에서 이 칸에 각인을 넣으면 그 각인의 스킬이 나간다 (각인이 없으면 스킬도 없다)'}</div>${sk ? scaleLine(id) : ''}</div>`; }).join('');
     return `<section class="panel">
-      <h3>스킬${help('Q · E · R · F 칸에 끼운 각인의 스킬이 나간다. 종족 스킬 각인은 여정을 마치면 받는다 (궁극기는 레벨 30).')}</h3>
+      <h3>스킬${help('Q · E · R · F 칸에 끼운 각인의 스킬이 나간다. 종족 스킬 각인은 여정을 마치면 받는다 (궁극기는 레벨 20).')}</h3>
       <div class="skill-tools">
         <label class="toggle"><input type="checkbox" data-act="autoAim" ${auto ? 'checked' : ''}> 자동 조준 <small>(T)</small></label>
         <button class="sm" data-act="practice">연습장</button>

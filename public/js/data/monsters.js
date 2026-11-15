@@ -337,3 +337,31 @@ export const LORES = [
 
 // 몬스터 개체마다 고유한 부산물 (data/monsterparts.js)
 registerParts(ECHOES, MONSTERS);
+
+// ── 몬스터 특성: 「이 몬스터는 이렇게 상대한다」 규칙 하나 (sim/montraits.js) ──
+export const MON_TRAIT = {
+  shield: ['shieldDemon', 'boneGuard', 'royalGuard', 'mirrorKnight', 'clockSoldier', 'lizardWarrior'],
+  stone: ['magmaGolem', 'iceGolem', 'rockGolem', 'gargoyle', 'steamGolem', 'archiveKeeper', 'lightWarden'],
+  dig: ['sandScorpion', 'desertScorpion', 'bookworm', 'lavaLizard', 'toxShroom'], // 땅을 파는 짐승 기술(burrow)이 이미 있는 잠복자 · 모래 벌레는 빼다
+  caster: ['wraith', 'stargazer', 'grimoire', 'erasedRecord', 'engravedShade', 'cultShade', 'inkWraith'],
+  feign: ['skeleton', 'ghoul', 'shroom', 'wraithKnight', 'swampTroll'],
+  split: ['slime', 'spikeSlime', 'mirrorSlime', 'leech', 'jellyfish'],
+  callHelp: ['goblin', 'hyena', 'bandit', 'boarRunner', 'harpy'],
+  rammer: ['goblinChief', 'orcRaider', 'ruinSentinel'],
+  healer: ['vineSpirit', 'waterSpirit', 'petalSprite', 'starlightSpirit', 'necroAcolyte'],
+  bomber: ['mossSlug', 'gasBloat', 'pumpkinFiend', 'frostSlug', 'tinyCorpse'],
+  stalker: ['shadowPanther', 'shadeWraith', 'poisonSpider', 'mirrorShade', 'lightEater'],
+  carapace: ['bigBeetle', 'coralCrab', 'glassCrawler', 'gearSpider', 'yeti'],
+};
+for (const [t, ids] of Object.entries(MON_TRAIT)) for (const id of ids) if (MONSTERS[id]) MONSTERS[id].trait = t;
+// ── 센 원거리 몬스터의 탄: 일직선이 아닌 개성 (world.enemyShot) ──
+// split 날아가다 세 갈래 · homing 느리지만 쫓아오는 탄 · bounce 벽에서 두 번 튕김 · helix 두 줄이 꼬이며 날아감 · laser 예고선 뒤 레이저 · burst 끝에서 터짐
+export const MON_SHOT = {
+  split: ['salamander', 'shardBird', 'rockThrower'],
+  homing: ['watcherEye', 'grimoire', 'wingedApostle', 'hourglassSpirit'],
+  bounce: ['iceArcher', 'clockmaker', 'mirrorWitch'],
+  helix: ['waterSpirit', 'windSpirit', 'starlightSpirit'],
+  laser: ['stargazer', 'phantomArcher', 'hawkRider'],
+  burst: ['venomSpitter', 'seaSerpent', 'fireSpirit', 'petalSprite'],
+};
+for (const [k, ids] of Object.entries(MON_SHOT)) for (const id of ids) if (MONSTERS[id]?.proj) MONSTERS[id].proj = { ...MONSTERS[id].proj, pat: k };

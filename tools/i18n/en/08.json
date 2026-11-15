@@ -1,4 +1,13 @@
 [
+"Flash Bell",
+"Paid half the fine",
+"Pay a fine to clear infamy (◆",
+"Paid the fine",
+"Bee Swarm Arrow",
+"Lumberjack's Knack",
+"Hive Bow",
+"Hit several tough enemies together with area skills",
+"Slash",
 "Bernin",
 "Reaps the souls of what it cuts. The handle is always cold",
 "Frost flowers burst after the slash. 2 chill stacks",
@@ -159,6 +168,7 @@
 "Clone",
 "Clones break fast. The one that holds up when hit is real",
 "Clones break fast. The one that holds up is real",
+"Split",
 "Eruption",
 "Fire",
 "Those who smell of fire can't enter the forest. Especially dragonkin",
@@ -388,15 +398,5 @@
 "Root Hammer",
 "Root Drain",
 "Hit it hard to break the roots when it heals with them",
-"Root Mark",
-"Fraud",
-"Fraud ◆",
-"Hunt",
-"Hunt begins",
-"Hunting game",
-"Hunting Instinct",
-"Hunting Fang",
-"Hunting Bow",
-"Hunter's Leathers",
-"Hunter Grik"
+"Root Mark"
 ]

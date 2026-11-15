@@ -1,4 +1,12 @@
 [
+"Collapsed Shaft",
+"Collapsed Cemetery",
+"Collapsed rock",
+"Skeletons on the crumbled walls still stand guard",
+"Fallen Castle",
+"A rusty sewer grate in the field south of the fallen castle. One bar is unusually smooth. As if someone opens and closes it often",
+"Beneath the Collapsed Well",
+"Inspect the collapsed well",
 "Collapsed Lookout",
 "No Thought",
 "Horde",
@@ -316,6 +324,7 @@
 "Spikes grew on the shield's face",
 "A thousand mirrors on one shield. Magic loses its way",
 "Shield Dummy",
+"Shield broken",
 "The shield blazes",
 "Hitting it while the shield glows hurts you",
 "Don't hit when the shield glows · crystal sword waves: between the first three lines → then between the next two · escape the prison by the green path",
@@ -389,14 +398,5 @@
 "Slashes through like lightning, then frost bursts. 1s freeze",
 "Slashes forward through enemies like lightning",
 "Spreading Ink",
-"th opponent",
-"Flash Bell",
-"Paid half the fine",
-"Pay a fine to clear infamy (◆",
-"Paid the fine",
-"Bee Swarm Arrow",
-"Lumberjack's Knack",
-"Hive Bow",
-"Hit several tough enemies together with area skills",
-"Slash"
+"th opponent"
 ]

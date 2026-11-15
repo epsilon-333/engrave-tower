@@ -74,6 +74,7 @@ function overworldMap(zone) {
 import { EnemyAiMethods } from './enemyai.js';
 import { SkillMethods } from './skillrun.js';
 import { AllyMethods } from './allies.js';
+import { TraitMethods } from './montraits.js';
 export class World {
   // mode: 'field' | 'plaza'
   constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null, souls = null, raid = null, minions = null, npcMem = null, climb = null }) {
@@ -548,7 +549,7 @@ export class World {
   get canDive() { return true; }
   wallAt(px, py) { const t = this.tileAt(px, py); return t === T_WALL || t === T_CRACK || t === T_BUILD || t === T_GATE; }
   // 싸울 상대인가: 살아 있고 보이며, 허수아비는 광장 · 연습장에서만 (바깥의 허수아비는 스킬이 노리지 않는다)
-  targetable(e) { return !e.dead && !e.hidden && (e.def.ai !== 'dummy' || this.mode === 'plaza' || !!this.practice); }
+  targetable(e) { return !e.dead && !e.hidden && !e.under && !(e.feignT > 0) && (e.def.ai !== 'dummy' || this.mode === 'plaza' || !!this.practice); }
   // 기술이 떨어질 자리: 걸을 수 있는 바닥이면 그대로, 벽 · 물 · 맵 밖이면 가까운 바닥으로 (60px 안에 없으면 null)
   floorNear(x, y, r = 10) {
     if (!this.blocked(x, y, r)) return { x, y };
@@ -2279,6 +2280,7 @@ export class World {
     mult *= this.mod('dmgMul');
     { const lh = this.modAdd('lowHpDmg'); if (lh) mult *= 1 + lh * (1 - p.hp / d.maxHp); }
     mult *= this.raceDmgMul(type, opt);
+    if (e.trait) mult *= this.traitTakeMul(e, opt);
     let dmg = amount * mult;
     if (e.remote) { // 결투 상대: 피해는 상대 쪽에서 상대의 방어로 다시 셈한다 (여기서는 숫자만 보인다)
       if (dmg > 0) this.pvp?.out.push({ t: 'dhit', dmg: Math.round(dmg * 10) / 10, type: type === 'mag' ? 'mag' : 'phys' });
@@ -2292,6 +2294,7 @@ export class World {
       if (dmg >= 0.5 && opt.src !== 'dot') this.emit({ t: 'dmg', x: e.x, y: e.y - e.r - 10, v: dmg, crit: opt.crit, heavy: opt.heavy, src: opt.src, id: e.id, color: opt.color || (type === 'mag' ? '#c9a8ff' : '#ffffff') });
     } else {
     if (e.bshield > 0) { const ab = Math.min(e.bshield, dmg); e.bshield -= ab; dmg -= ab; if (e.bshield <= 0) { this.emit({ t: 'text', x: e.x, y: e.y - 34, text: '보호막이 깨졌다!', color: '#bfe8ff' }); this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 40, elem: 'ice', fx: 'shatter' }); } }
+    if (e.trait) dmg = this.traitAbsorb(e, dmg, opt); // 방패 · 껍질
     if (e.bind && opt.src !== 'bind' && dmg > 0) e.bind.acc += dmg * 0.3; // 그림자 꿰기: 묶인 동안 받은 피해의 30%
     e.hp -= dmg;
     if (this.practice) (this.dmgLog ||= []).push([this.t, dmg]); // 연습: 초당 피해 재기
@@ -2670,6 +2673,7 @@ export class World {
       if (af.atkRate) e.atkRate = af.atkRate;
     }
     if (id === 'royalGuard' && this.infamy > 0) { const k = Math.min(100, this.infamy); e.hp = e.maxHp = Math.round(e.maxHp * (1 + 0.02 * k)); e.atk *= 1 + 0.01 * k; } // 악명이 높을수록 경비병이 강해진다 (악명 1마다 체력 +2% · 공격 +1%, 100까지)
+    this.traitInit(e); // 몬스터 특성 (sim/montraits.js)
     return e;
   }
 
@@ -2752,15 +2756,30 @@ export class World {
   }
 
   enemyShot(e, ang, n, spread) {
-    const pr = e.def.proj;
+    const pr = e.def.proj, pat = pr.pat, p = this.player;
+    if (pat === 'laser') { // 레이저: 0.7초 예고선 뒤 벽까지 곧게 (예고선 밖으로 비키면 피한다)
+      const x1 = e.x, y1 = e.y - 6, len = this.rayLen(x1, y1, ang, 260), x2 = x1 + Math.cos(ang) * len, y2 = y1 + Math.sin(ang) * len;
+      this.emit({ t: 'lineTele', x1, y1, x2, y2, w: 10, dur: 0.7 });
+      e.holdT = 0.75; // 예고 동안 멈춰 겨눈다
+      this.delayed.push({ t: 0.7, run: () => { if (e.dead) return; this.emit({ t: 'beamFx', x1, y1, x2, y2, color: pr.color, w: 6 }); for (const t of this.coTargets()) if (distToSeg(t.x, t.y - 4, x1, y1, x2, y2) < 9) { this.coTgt = t === p ? null : t; this.hurtPlayer(e.atk * 1.6, e.def.type, e, { status: pr.status, fromX: e.x, fromY: e.y }); this.coTgt = null; } } });
+      return;
+    }
+    const dist = Math.hypot(p.x - e.x, p.y - e.y);
     for (let i = 0; i < n; i++) {
       const a = ang + (i - (n - 1) / 2) * spread;
-      this.projs.push({ owner: 'e', src: e, x: e.x, y: e.y, vx: Math.cos(a) * pr.speed, vy: Math.sin(a) * pr.speed, life: 3, dmg: e.atk, type: e.def.type, status: pr.status, color: pr.color });
+      const base = { owner: 'e', src: e, x: e.x, y: e.y, vx: Math.cos(a) * pr.speed, vy: Math.sin(a) * pr.speed, life: 3, dmg: e.atk, type: e.def.type, status: pr.status, color: pr.color, pat };
+      if (pat === 'split') base.splitT = Math.min(0.6, dist / pr.speed * 0.5); // 반쯤 가서 세 갈래
+      if (pat === 'homing') { base.vx *= 0.5; base.vy *= 0.5; base.life = 5; base.ehome = true; base.big = true; } // 느리지만 쫓아온다
+      if (pat === 'bounce') base.bounces = 2; // 벽에서 두 번 튕긴다
+      if (pat === 'burst') { base.life = Math.max(0.3, Math.min(2.5, dist / pr.speed)); base.burst = 30; base.big = true; } // 내 자리 근처에서 터진다
+      if (pat === 'helix') { for (const ph of [0, Math.PI]) this.projs.push({ ...base, helix: { bx: e.x, by: e.y, t: 0, ph } }); continue; } // 두 줄이 꼬이며
+      this.projs.push(base);
     }
   }
 
   killEnemy(e, selfDestruct = false) {
     if (e.dead) return;
+    if (e.trait && this.traitDeath(e)) return; // 죽은 척 · 분열 · 폭탄
     if (e.decoyOf && !e.shardFake) this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '가짜!', color: '#c8a8ff' });
     if (e.shardFake) shardFakeDie(this, e);
     if (e.passives?.includes('deathRattle')) { // 최후의 발악
@@ -3218,6 +3237,15 @@ export class World {
         if (bl < 10) { pr.life = 0; continue; }
       }
       pr.spin = (pr.spin || 0) + DT * 20;
+      if (pr.owner === 'e' && pr.ehome) { // 느린 유도탄: 초당 1.6라디안까지 나를 향해 돈다
+        const a0 = Math.atan2(pr.vy, pr.vx), sp = Math.hypot(pr.vx, pr.vy); let da = Math.atan2(p.y - 4 - pr.y, p.x - pr.x) - a0; da = Math.atan2(Math.sin(da), Math.cos(da));
+        const a1 = a0 + Math.max(-1.6 * DT, Math.min(1.6 * DT, da)); pr.vx = Math.cos(a1) * sp; pr.vy = Math.sin(a1) * sp;
+      }
+      if (pr.helix) { // 이중나선: 가운데 선을 따라 가며 좌우로 엇갈려 흔들린다
+        const H = pr.helix; H.t += DT; H.bx += pr.vx * DT; H.by += pr.vy * DT;
+        const sp = Math.hypot(pr.vx, pr.vy) || 1, nx = -pr.vy / sp, ny = pr.vx / sp, off = Math.sin(H.t * 12 + H.ph) * 10;
+        pr.x = H.bx + nx * off - pr.vx * DT; pr.y = H.by + ny * off - pr.vy * DT;
+      }
       if (pr.owner === 'e' && pr.curve) { const c = Math.cos(pr.curve * DT), sn = Math.sin(pr.curve * DT), vx = pr.vx; pr.vx = vx * c - pr.vy * sn; pr.vy = vx * sn + pr.vy * c; pr.curve *= 0.985; } // 빙글 휘며 날아간다
       if (pr.owner === 'e' && pr.splitT > 0 && (pr.splitT -= DT) <= 0) { // 날아가다 세 갈래로
         const a0 = Math.atan2(pr.vy, pr.vx), sp = Math.hypot(pr.vx, pr.vy);
@@ -3240,6 +3268,11 @@ export class World {
       }
       if (this.wallAt(pr.x, pr.y) && !pr.returning && pr.boomerang && pr.owner === 'p') { pr.returning = true; pr.hit.clear(); pr.x -= pr.vx * DT; pr.y -= pr.vy * DT; this.emit({ t: 'spark', x: pr.x, y: pr.y, color: '#e8e2cf' }); }
       else if (this.wallAt(pr.x, pr.y) && !pr.returning && mirrorBounce(this, pr)) { /* 거울 미궁: 벽에서 한 번 튕긴다 */ }
+      else if (this.wallAt(pr.x, pr.y) && pr.bounces > 0) { // 튕기는 탄: 부딪힌 쪽 축을 뒤집는다
+        pr.bounces--; const hx = this.wallAt(pr.x, pr.y - pr.vy * DT), hy = this.wallAt(pr.x - pr.vx * DT, pr.y);
+        if (hx || !hy) pr.vx = -pr.vx; if (hy || !hx) pr.vy = -pr.vy; pr.x += pr.vx * DT * 2; pr.y += pr.vy * DT * 2; pr.life = Math.max(pr.life, 1);
+        this.emit({ t: 'spark', x: pr.x, y: pr.y, color: pr.color });
+      }
       else if (this.wallAt(pr.x, pr.y) && !pr.returning) {
         if (pr.owner === 'p' && this.tileAt(pr.x, pr.y) === T_CRACK) this.hitCrack(pr.x, pr.y, pr.dmg);
         this.emit({ t: 'spark', x: pr.x - pr.vx * DT, y: pr.y - pr.vy * DT, color: pr.color });
@@ -3274,6 +3307,10 @@ export class World {
           this.coTgt = null;
         }
       }
+    }
+    for (const pr of this.projs) if (pr.life <= 0 && pr.burst && !pr.bursted) { // 터지는 탄: 끝난 자리에서 둘레를 친다
+      pr.bursted = true; this.emit({ t: 'skillAoe', x: pr.x, y: pr.y, r: pr.burst, elem: pr.status === 'poison' ? 'poison' : pr.status === 'burn' ? 'fire' : null, fx: 'burst' });
+      this.enemyArea(pr.src || null, pr.x, pr.y, pr.burst, pr.dmg * 1.2, pr.type, pr.status);
     }
     for (const pr of this.projs) if (pr.life <= 0 && pr.owner === 'p' && !pr.burned && (pr.elem === 'fire' || pr.ench === 'fire') && this.map.outdoor) { // 날아가다 끝난 자리
       pr.burned = true;
@@ -3317,4 +3354,4 @@ export function distToSeg(px, py, x1, y1, x2, y2) {
 export { ECHOES, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP };
 
 // 나눠 둔 메서드를 World 에 붙인다
-Object.assign(World.prototype, EnemyAiMethods, SkillMethods, AllyMethods);
+Object.assign(World.prototype, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods);

@@ -178,6 +178,10 @@ export const EventMethods = {
           if ((this.noManaT || 0) < w.t) { this.noManaT = w.t + 1; this.texts.push({ x: ev.x, y: ev.y - 22, text: '마력 부족', color: '#7aa8ff', t: 0.9, vy: -14, vx: 0, label: true }); sfx('error', { vol: 0.3 }); }
           break;
         case 'fuse': this.alerts.set(ev.id, 0.55); sfx('windup', { vol: 0.6, rate: 1.6 }); break;
+        case 'healBeam': { // 치유사: 초록 빛알이 줄지어 다친 몬스터에게 흘러간다
+          for (let i = 0; i < 10; i++) { const u = i / 10, T = 0.35; this.parts.push({ x: ev.x1 + (ev.x2 - ev.x1) * u, y: ev.y1 + (ev.y2 - ev.y1) * u, vx: (ev.x2 - ev.x1) * (1 - u) / T * 0.5, vy: (ev.y2 - ev.y1) * (1 - u) / T * 0.5 - 6, t: T, max: T, color: i % 2 ? '#8af08a' : '#e8ffd8', g: 0, glow: true, size: 1 }); }
+          sfx('echo', { vol: 0.3, rate: 1.4 }); break;
+        }
         case 'emerge': this.burst(ev.x, ev.y + 2, '#8a7a5a', 18, 90); sfx('crack', { vol: 0.5, rate: 1.3 }); break;
         case 'summon': if (!this.anims.px.add('spawn/summon-rise', ev.x, ev.y + 3, { scale: 0.8, max: 1.6 })) this.burst(ev.x, ev.y, '#c45cff', 12, 60); break; // 소환: 땅이 갈라지며 기어 나온다 (pixelfx)
         case 'parryFx': this.anims.px.add('impacts/parry', ev.x, ev.y, { scale: 0.8, floor: 0, max: 0.6 }); sfx('hitHeavy', { vol: 0.5, rate: 1.6 }); break;

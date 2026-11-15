@@ -566,11 +566,11 @@ export function buildOverworld(zone) {
   }
   const regionInfo = OW_PLACES.map((name, r) => ({ name, x: 0, y: 0, place: true, types: r < BIOMES.length ? BIOMES[r].pool : ['slime', 'toad'], lv: (r < BIOMES.length && BIOMES[r].lv) || [1, 3], lvShow: r < BIOMES.length && !!BIOMES[r].lv, town: r === R_VILLAGE })); // lv: 권장 레벨 (몬스터 강함) · town: 마을 안은 불이 번지지 않는다
   const camps = [];
-  for (let a = 0; a < 40000 && camps.length < 300; a++) {
+  for (let a = 0; a < 40000 && camps.length < 200; a++) { // 들판의 무리 수 (300 → 200 · 2026-11-15)
     const x = rng.int(6, TW - 7), y = rng.int(6, TH - 7), k = I(x, y), r = regions[k];
     if (t[k] !== T_FLOOR || !seen[k] || occupied[k] || r === R_VILLAGE || r === B.tower || nearSafe(x, y, 6) || Math.hypot(x - V.x, y - V.y) < 34) continue;
     if (camps.some((c) => Math.hypot(c.x - x, c.y - y) < 13)) continue;
-    camps.push({ x, y, type: rng.pick(regionInfo[r].types), n: rng.int(2, 4), region: r });
+    camps.push({ x, y, type: rng.pick(regionInfo[r].types), n: rng.int(2, 3), region: r });
   }
   const champions = [[B.forest, 'goblin', 80, 250], [B.swamp, 'bogWitch', 70, 300], [B.wasteland, 'orcRaider', 430, 160], [B.jungle, 'raptor', 430, 280], [B.ruins, 'bandit', 176, 124], [B.mountains, 'frostWolf', 284, 70], [B.volcano, 'magmaGolem', 420, 52], [B.snow, 'iceShaman', 150, 56]]
     .map(([region, type, x0, y0]) => { const c = biomeTiles(region, (x, y) => Math.hypot(x - x0, y - y0) < 16 && !nearSafe(x, y, 4))[0]; return c ? { x: c.x, y: c.y, type, region } : null; }).filter(Boolean);
