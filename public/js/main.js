@@ -9,7 +9,7 @@ import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
 import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
 import { padState, applyPad, padMenu } from './gamepad.js';
-import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, raceSkills, setStaleHook, onLocalSave, isStale } from './save.js';
+import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, grantRaceSkills, raceSkills, setStaleHook, onLocalSave, isStale } from './save.js';
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
 import { codexPoints } from './data/codex.js';
 import { TILE, generateField } from './sim/mapgen.js';
@@ -766,11 +766,12 @@ function journeyTick(dt) {
       (save.journey ||= {})[J.step.id] = Date.now();
       if (r.gold) { save.gold += r.gold; sum.gold += r.gold; }
       if (r.potion) { bagAdd(lifeOf(), r.potion, 1); sum.potion = r.potion; }
+      if (r.skill) { const got = grantRaceSkills(save, r.skill); if (got.length) { sum.skill = (sum.skill || 0) + got.length; if (r.skill === 'ult') sum.ult = 1; sum.names = [...(sum.names || []), ...got.map((e) => ENGRAVINGS[e]?.name)]; } } // 종족 스킬 각인
       titles.push(J.step.title);
       J = journeyNow(save);
     }
     writeSave(save);
-    renderer.banner = { text: titles.length > 1 ? `여정 완료 ×${titles.length}` : `여정 완료 · ${titles[0]}`, sub: `${journeyReward(sum)}${J ? ` · 다음: ${J.step.title}` : ' · 모든 여정을 마쳤다!'}`, t: 4, color: '#e9b85c' };
+    renderer.banner = { text: titles.length > 1 ? `여정 완료 ×${titles.length}` : `여정 완료 · ${titles[0]}`, sub: `${journeyReward(sum)}${sum.names ? ` · 각인 「${sum.names.join('」 「')}」` : ''}${J ? ` · 다음: ${J.step.title}` : ' · 모든 여정을 마쳤다!'}`, t: 4, color: '#e9b85c' };
     sfx('levelup', { vol: 0.6 });
     if (!J) { renderer.journey = null; return; }
   }
@@ -869,9 +870,11 @@ function showTitle() {
       <button id="tsGo" class="primary">${save ? `이어 하기 <small>${RACES[save.race]?.name || ''} · Lv ${save.level || 1}</small>` : '새로 시작'}</button>
       ${canLogin ? '<button id="tsLogin" class="ghost">계정으로 저장 · 로그인</button>' : ''}
       <button id="tsIntro" class="ghost">인트로 보기</button>
+      <button id="tsLang" class="ghost">Language · ${window.__lang === 'en' ? 'English' : '한국어'}</button>
     </div>${who}
     ${IN_APP ? '<p class="title-warn"><b>앱 안 브라우저</b>: 창을 닫으면 진행이 지워질 수 있다. 「다른 브라우저로 열기」(크롬 · 사파리)나 로그인하면 안전하다.</p>' : ''}
     <p class="title-foot">그래픽 0x72 (CC0) · 효과음 Kenney (CC0) · 글꼴 갈무리 (OFL) · 이펙트 pixelfx (MIT)</p></div></div>`;
+  document.getElementById('tsLang').onclick = () => { const next = window.__lang === 'en' ? 'ko' : 'en'; try { localStorage.setItem('lang', next); } catch { /* 저장소 막힘 */ } location.reload(); }; // 언어: 계정 · 종족을 고르기 전에도 바꾼다 (단추 글은 늘 영어 「Language」)
   const cv = titleEl.querySelector('.title-bg'), st = makeStage(), t0 = performance.now();
   const T0 = INTRO_TOTAL - 6 - 3.6 - 6.2 + 0.6, LEN = 4.8; // 「그리고 삼백 년 뒤」 장면의 가운데 (어두워지기 전)
   const draw = () => {

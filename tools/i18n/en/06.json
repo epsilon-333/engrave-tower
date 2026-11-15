@@ -1,4 +1,8 @@
 [
+"Magic attack",
+"Magic attack +10",
+"Magic attack +15",
+"Magic attack +20",
 "Magic attack +20%, skill resource -10",
 "Magic attack +3",
 "Magic attack +4",
@@ -151,9 +155,9 @@
 "Aura from hits +30",
 "Aura from hits +50",
 "When hit",
-"10% chance when hit: attacker is stunned for 0.4s",
 "10% chance when hit: shield (3",
 "12% chance when hit to roll and push back",
+"12% chance when hit: attacker is stunned for 0.4s",
 "12% chance when hit to trap the attacker in a crystal for 0.5s",
 "12% chance when hit for red energy to burst",
 "15% chance when hit: for 1.5s damage taken -50",
@@ -214,7 +218,7 @@
 "Stronger the more you're hit. That's why the fiend captain never dodged",
 "Harder the more it's hit, angrier the harder it gets",
 "Rage builds as you take hits and fuels big axe skills",
-"Aura builds as you take hits and powers heavy blows. Max HP +40%, physical damage taken -15",
+"Aura builds as you are hit and powers your strikes. Max HP +50%, physical damage taken -20",
 "A reflect tank: enemies die the more they hit you",
 "Hit",
 "Mismatched weapons are weak · Off-hand tools for one-handers at the smithy",
@@ -394,9 +398,5 @@
 "Fallen Castle",
 "A rusty sewer grate in the field south of the fallen castle. One bar is unusually smooth. As if someone opens and closes it often",
 "Beneath the Collapsed Well",
-"Inspect the collapsed well",
-"Collapsed Lookout",
-"No Thought",
-"Horde",
-"Pack Hunt"
+"Inspect the collapsed well"
 ]

@@ -211,6 +211,7 @@ export const SkillMethods = {
       case 'buff': {
         const mods = { ...op.mods };
         if (op.scaleRes && mods.dmgMul) mods.dmgMul = 1 + (mods.dmgMul - 1) * (1 + ctx.spent / 100);
+        for (const k of ['dmgMul', 'atkSpeed']) if (mods[k] > 1 && ctx.bal != null) mods[k] = 1 + (mods[k] - 1) * ctx.bal; // 각인 등급 보정은 버프의 「+%」에 걸린다
         p.buffs[op.id] = { t: op.dur, max: op.dur, mods, color: op.color, bubble: op.bubble, power: op.power };
         if (op.id !== 'nextCrit') this.emit({ t: 'buff', x: p.x, y: p.y, color: op.color || '#ffffff', bubble: op.bubble });
         break;
@@ -731,7 +732,8 @@ export const SkillMethods = {
     if (p.buffs.charged && id !== 'chargeUp') { bonus *= p.buffs.charged.power || 2.5; p.buffs.charged.t = Math.min(p.buffs.charged.t, 0.05); }
     const boost = opt.weapon ? this.b.weapon.mul : this.weaponBoost(id), hf = opt.weapon ? { fit: 1, hand: 'main' } : handFit(def, this.b), fit = hf.fit, cross = opt.weapon ? 1 : crossMul(def, this.b); // 다른 종족 스킬: 능력치가 모자라면 85%
     const sc = opt.weapon ? this.b.wScale : skillScale(id, this.b); // 스탯 계수 (이 스킬 · 무기가 따라가는 스탯)
-    const ctx = { def, id, spent, elem, bonus: bonus * boost * fit * cross * (this.skillBalOff === id ? 1 : SKILL_BAL[id] ?? 1) * (sc?.dmg ?? 1), // SKILL_BAL: 종족 스킬 밸런스 보정
+    const ctxBal = this.skillBalOff === id ? 1 : SKILL_BAL[id] ?? 1; // 각인 등급 보정 (tools/skillbal.mjs)
+    const ctx = { bal: ctxBal, def, id, spent, elem, bonus: bonus * boost * fit * cross * ctxBal * (sc?.dmg ?? 1), // SKILL_BAL: 종족 스킬 밸런스 보정
       fit, hand: hf.hand, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot, tier: this._tier };
     if (fit < 0.95 && fit > 0) this.emit({ t: 'text', x: p.x, y: p.y - 26, text: `무기가 맞지 않다 · 피해 ${Math.round(fit * 100)}%`, color: '#c8b8a0' });
     if (this.autoAim) {

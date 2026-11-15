@@ -123,7 +123,7 @@ export function grantClassEngravings(s) {
   s.owned ||= {}; s.classEng ||= {};
   const got = [];
   for (const sk of raceSkills(s.race)) {
-    if (!SKILLS[sk] || s.classEng[sk] || (SKILLS[sk].unlock || 1) > (s.level || 1)) continue;
+    if (!SKILLS[sk] || s.classEng[sk] || (SKILLS[sk].unlock || 1) > 1) continue; // 레벨업으로는 시작 각인(1레벨 스킬)만 · 나머지는 여정 보상(grantRaceSkills)
     const eid = classEngravingFor(sk); if (!eid) continue;
     s.classEng[sk] = eid;
     if ((s.owned[eid] || 0) > 0) continue; // 이미 가진 각인은 또 주지 않는다 (같은 각인은 하나만)
@@ -131,6 +131,21 @@ export function grantClassEngravings(s) {
     got.push(eid);
   }
   if (got.length) (s.newEng ||= []).push(...got); // 화면에 알릴 것 (보여 주고 비운다)
+  return got;
+}
+
+// 여정 보상: 아직 받지 않은 종족 스킬 각인을 열리는 레벨 차례로 n개 (궁극기 빼고) · n === 'ult'면 궁극기만
+export function grantRaceSkills(s, n) {
+  s.owned ||= {}; s.classEng ||= {};
+  const list = raceSkills(s.race).filter((sk) => SKILLS[sk] && !s.classEng[sk] && (n === 'ult' ? SKILLS[sk].ult : !SKILLS[sk].ult)).sort((a, b) => (SKILLS[a].unlock || 1) - (SKILLS[b].unlock || 1));
+  const got = [];
+  for (const sk of n === 'ult' ? list : list.slice(0, n)) {
+    const eid = classEngravingFor(sk); if (!eid) continue;
+    s.classEng[sk] = eid;
+    if ((s.owned[eid] || 0) > 0) continue;
+    s.owned[eid] = 1; got.push(eid);
+  }
+  if (got.length) (s.newEng ||= []).push(...got);
   return got;
 }
 

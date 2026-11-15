@@ -11,6 +11,7 @@ import { TILE, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP } from './mapg
 import { G } from '../data/maps/overworld.js';
 import { ACTIVE_RANGE, AI_MOVES, DT, N8, STATUS_COLOR, distToSeg } from './world.js';
 
+export const SUMMON_MAX = 3, SUMMON_AREA_MAX = 6, BOSS_ADDS_MAX = 4; // 몬스터 소환체 최대 수
 export const EnemyAiMethods = {
   updateEnemies() {
     const P = this.player, d = this.d, s = this.s, host = !!this.coop; // 파티 탑: 내가 맡은 몬스터는 내 세계가 움직인다
@@ -224,9 +225,10 @@ export const EnemyAiMethods = {
           else if (dist < def.range * 0.6) { vx = -dxp / dist; vy = -dyp / dist; }
           if (!frozen && e.shotCd <= 0 && dist < def.range + 40) { e.shotCd = 2.4; this.enemyShot(e, Math.atan2(dyp, dxp), 1, 0); }
           const alive = this.enemies.filter((o) => o.summoner === e.id && !o.dead).length;
-          if (!frozen && e.summonCd <= 0 && alive < 4) {
+          const room = Math.min(SUMMON_MAX - alive, SUMMON_AREA_MAX - this.enemies.filter((o) => o.summoned && !o.dead && Math.hypot(o.x - e.x, o.y - e.y) < 200).length); // 소환체 최대: 한 소환사당 3 · 둘레 200 안에 모두 6
+          if (!frozen && e.summonCd <= 0 && room > 0) {
             e.summonCd = 7;
-            for (let i = 0; i < 2; i++) {
+            for (let i = 0; i < Math.min(2, room); i++) {
               const a = this.rng.range(0, Math.PI * 2);
               let x = e.x + Math.cos(a) * 20, y = e.y + Math.sin(a) * 20;
               if (this.blocked(x, y, 6)) { x = e.x; y = e.y; }
@@ -575,8 +577,10 @@ export const EnemyAiMethods = {
         for (let i = 0; i < 3; i++) { const q = this.floorNear(e.x + this.rng.range(-110, 110), e.y + this.rng.range(-80, 80)); if (q) spots.push(q); } // 벽 위에는 떨어지지 않는다
         e.mv = { k: 'rain', t: 1.1, spots }; for (const q of spots) this.tele(e, true, { t: 'telegraphCircle', x: q.x, y: q.y, r: 30, dur: 1.1 }); this.mobPose(e, 'howl', 1.1); return true;
       }
-      if (pick === 'adds') { // 부하를 깨운다
-        for (let i = 0; i < 2; i++) { const a = this.rng.range(0, Math.PI * 2); let x = e.x + Math.cos(a) * 40, y = e.y + Math.sin(a) * 40; if (this.blocked(x, y, 6)) { x = e.x; y = e.y; } const m = this.makeEnemy(def.adds || 'goblin', x, y, { summoned: true }); m.summoner = e.id; m.state = 'chase'; m.home = { ...e.home }; this.enemies.push(m); }
+      if (pick === 'adds') { // 부하를 깨운다 (보스의 부하도 최대 4)
+        const room = BOSS_ADDS_MAX - this.enemies.filter((o) => o.summoner === e.id && !o.dead).length;
+        if (room <= 0) return false;
+        for (let i = 0; i < Math.min(2, room); i++) { const a = this.rng.range(0, Math.PI * 2); let x = e.x + Math.cos(a) * 40, y = e.y + Math.sin(a) * 40; if (this.blocked(x, y, 6)) { x = e.x; y = e.y; } const m = this.makeEnemy(def.adds || 'goblin', x, y, { summoned: true }); m.summoner = e.id; m.state = 'chase'; m.home = { ...e.home }; this.enemies.push(m); }
         this.emit({ t: 'summon', x: e.x, y: e.y }); return false;
       }
       if (pick === 'charge' && this.rayLen(e.x, e.y, Math.atan2(ty - e.y, tx - e.x), 260) > 70) { // 돌진: 굵은 예고선을 따라 끝까지 (앞이 벽에 막혀 있으면 고르지 않는다)

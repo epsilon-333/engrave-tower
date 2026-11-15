@@ -73,7 +73,7 @@ export const CLASSES = {
     skills: ['wordFire', 'wordWing', 'wordSky', 'wordScale', 'wordEarth', 'wordSilence'] },
 };
 export const RACE_CLASSES = (race) => Object.keys(CLASSES).filter((k) => CLASSES[k].race === race);
-export const UNLOCKS = [1, 1, 3, 6, 10, 15];
+export const UNLOCKS = [1, 1, 3, 6, 10, 30]; // 마지막(궁극기)은 레벨 30 · 여정 「레벨 30」 보상으로 받는다
 
 export const SKILLS = {
   // ══════ 공룡 수인 · 포식자 ══════
@@ -439,7 +439,9 @@ export const SKILL_BAL = { ...SKILL_BAL_GEN };
 // ── 클래스 밸런스 보정 (tools/balance.mjs: 30초 실제 싸움 · 무리 / 단단한 적) ──
 export const CLASS_BAL = {"predator": 1, "behemoth": 0.92, "elementalist": 1.07, "chronomancer": 0.9, "guardian": 1.6, "greatsword": 1.6, "berserker": 0.8, "thrower": 1.08, "necromancer": 0.71, "hexer": 0.96, "shadowblade": 0.97, "venomHunter": 1.6, "spiritcaller": 1.5, "ranger": 1.04, "dragoon": 0.68, "dragonSage": 1.09}; // 결투(사람 대 사람)
 // 몬스터를 상대할 때의 클래스 보정 (tools/tests/climbsim.mjs 로 클래스마다 오른 층을 비교해 맞춤)
-export const CLASS_BAL_PVE = {"predator": 0.58, "behemoth": 0.8, "elementalist": 1.0, "chronomancer": 2.05, "guardian": 1.71, "greatsword": 1.12, "berserker": 0.33, "thrower": 1.0, "necromancer": 3.03, "hexer": 1.7, "shadowblade": 1.71, "venomHunter": 1.71, "spiritcaller": 2.89, "ranger": 1.93, "dragoon": 1.0, "dragonSage": 1.45}; // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만 // 남은 갈래 차이 (종족 스탯 · 무기 · 소환): 스킬 등급 보정(SKILL_BAL) 뒤의 나머지만
+export const CLASS_BAL_PVE = {}; // 갈래 보정 없음 (2026-11-15): 힘은 각인 등급(SKILL_BAL) · 종족 특성으로 맞춘다
+// 종족 보정 (임시): 종족 특성 · 각인 등급을 맞춘 뒤에도 남는 종족 차이 (등반 시뮬레이션: 종족 각인을 섞어 끼우고 약 30층)
+export const RACE_BAL_PVE = {"dino": 0.89, "wizard": 1.62, "knight": 2.06, "orc": 0.84, "undead": 3.18, "assassin": 1.32, "elf": 2.15, "dragon": 1.81};
 
 // ── 돈 · 미션으로 얻는 CC기 (누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다) ──
 export const CC_EXTRA = {
@@ -753,4 +755,6 @@ for (const [cls, list] of Object.entries(MORE_SKILLS)) {
   const c = CLASSES[cls]; // wild: 클래스 없음
   for (const [id, sk] of Object.entries(list)) { sk.cls = cls; sk.race = c ? c.race : 'wild'; sk.kind ||= ['wizard', 'undead'].includes(sk.race) || ['spiritcaller', 'dragonSage'].includes(cls) ? 'spell' : 'body'; if (c && !c.skills.includes(id)) c.skills.push(id); if (!c) WILD_SKILLS.push(id); }
 }
+// 대지 거수: 초반에 때리는 스킬이 모자라 10층에서 막혔다 → 바위 던지기를 6레벨로 당기고 지축 울림 10 · 껍질 굳히기 15로 미룬다
+Object.assign(SKILLS.boulderToss, { unlock: 6 }); Object.assign(SKILLS.tremor, { unlock: 10 }); Object.assign(SKILLS.hardenShell, { unlock: 15 });
 

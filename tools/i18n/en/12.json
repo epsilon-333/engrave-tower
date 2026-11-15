@@ -1,4 +1,11 @@
 [
+"The sewer grate south of the castle — the third bar comes out. Follow the kingdom's waterways to Noct Haven. Right under the guards' noses, so only the bold use it",
+"Castle Dungeon",
+"The race that grew with the castle",
+"The day the castle fell, three royal guard shields were left in the fields. Will you find them",
+"With the royal treasury empty, taxes",
+"Royal Mage",
+"Royal wine",
 "Did the crown's dirty work and was abandoned",
 "The king left and the castle fell, but the oath remains",
 "King's Engraving",
@@ -210,6 +217,7 @@
 " taken over",
 " selected",
 "jump down to",
+"",
 "use as",
 "use as. If it's a using technique",
 "Silver",
@@ -390,13 +398,5 @@
 "Move speed +15%, dash cooldown -10",
 "Move speed +4",
 "Move speed +5",
-"Move speed +6",
-"Move speed +8",
-"Move speed +8% · damage taken -5",
-"Travel scroll",
-"Read a travel scroll",
-"Travel portal",
-"Travel portal · go to another portal",
-"Move · attack speed +20",
-"… Honestly, those above don't think well of your kind. You'll have to complete one trial mission.\""
+"Move speed +6"
 ]

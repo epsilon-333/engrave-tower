@@ -145,10 +145,10 @@ for (const [id, name, tags, stats, effects, skill] of START) L.push([id, name, '
 const LV = [
   // 공룡 수인
   ['kMaul', '놓지 않는 턱', 2, ['bleed'], { str: 3, agi: 2 }, [mul('bleedMul', 1.12, '출혈 피해 +12%')], { blood: 3, bone: 2 }, 'maul'],
-  ['kTremor', '울리는 발', 2, ['giant'], { vit: 3, pres: 2 }, [on('hurt', 0.1, { stun: 0.4 }, '맞으면 10% 확률로 때린 적이 0.4초 기절')], { bone: 3, goo: 2 }, 'tremor'],
+  ['kTremor', '울리는 발', 3, ['giant'], { vit: 5, pres: 4 }, [on('hurt', 0.12, { stun: 0.4 }, '맞으면 12% 확률로 때린 적이 0.4초 기절')], { bone: 4, goo: 3 }, 'tremor'],
   ['kShell', '두꺼운 껍질', 3, ['giant', 'reflect'], { vit: 5, pres: 4 }, [mul('dmgTakenMul', 0.95, '받는 피해 -5%')], { bone: 4, goo: 3, cinder: 2 }, 'hardenShell'],
   ['kFrenzy', '네 갈래 발톱', 3, ['bleed', 'brawl'], { agi: 5, str: 4 }, [on('hit', 0.2, st('bleed'), '공격하면 20% 확률로 출혈')], { blood: 5, bone: 3 }, 'frenzyClaws'],
-  ['kBoulder', '뜯어낸 바위', 3, ['giant'], { str: 5, vit: 4 }, [add('knockback', 40, '넉백 +40'), add('critDmg', 0.1, '치명타 피해 +10%')], { bone: 4, cinder: 4 }, 'boulderToss'],
+  ['kBoulder', '뜯어낸 바위', 2, ['giant'], { str: 3, vit: 2 }, [add('knockback', 30, '넉백 +30'), add('critDmg', 0.08, '치명타 피해 +8%')], { bone: 3, cinder: 2 }, 'boulderToss'],
   // 마법사
   ['kElemMark', '세 빛깔 표식', 2, ['fire', 'ice'], { mag: 3, spi: 2 }, [mul('reactionMul', 1.1, '원소 반응 피해 +10%')], { ember: 3, frost: 3 }, 'elemMark'],
   ['kRewind', '되돌린 시계', 2, ['undying'], { spi: 3, vit: 2 }, [on('hurt', 0.1, { shield: 0.03 }, '맞으면 10% 확률로 보호막(최대 체력 3%)')], { mirror: 3, goo: 2 }, 'rewind'],

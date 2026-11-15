@@ -1,4 +1,8 @@
 [
+"Collapsed Lookout",
+"No Thought",
+"Horde",
+"Pack Hunt",
 "Calls the pack",
 "A place to sweep a horde all at once",
 "Floor of Hordes",
@@ -69,7 +73,7 @@
 "Per 4 physical resist, health +1",
 "Dummies with different physical · magic resist",
 "Physical damage reduction",
-"Physical evasion +20% · Immune to poison, curse, bleed",
+"Physical dodge +30% · immune to poison · curse · bleed",
 "Physical · magic resist +6, slows attackers",
 "Watering can",
 "You need a watering can",
@@ -394,9 +398,5 @@
 "Lumberjack's Knack",
 "Hive Bow",
 "Hit several tough enemies together with area skills",
-"Slash",
-"Bernin",
-"Reaps the souls of what it cuts. The handle is always cold",
-"Frost flowers burst after the slash. 2 chill stacks",
-"Frost flowers bloom where it cuts"
+"Slash"
 ]

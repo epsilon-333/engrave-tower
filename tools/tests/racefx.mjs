@@ -31,8 +31,8 @@ for (const [race, mul] of [['wizard', R.wizardHp], ['knight', R.knightHp]]) {
   const dr = mk('dragon'); ok(dr.raceDmgMul('mag', { elem: 'fire' }) === R.dragonFire && dr.raceDmgMul('mag', { elem: 'ice' }) === 1, '용족: 화염 피해 ×1.3 · 다른 속성은 그대로');
   const el = mk('elf');
   const m0 = el.raceDmgMul('phys', { proj: true, dist: 0 }), m1 = el.raceDmgMul('phys', { proj: true, dist: 130 }), m2 = el.raceDmgMul('phys', { proj: true, dist: 400 });
-  ok(near(m0, 1) && near(m1, 1.5) && near(m2, 2), `엘프: 거리 0 ×${m0} · 130 ×${m1} · 400 ×${m2}`);
-  el.projHitDist = 260; ok(near(el.raceDmgMul('mag', {}), 2), '엘프: 스킬 투사체도 거리 보너스'); el.projHitDist = null;
+  ok(near(m0, 1) && near(m1, 1 + R.elfFar / 2) && near(m2, 1 + R.elfFar), `엘프: 거리 0 ×${m0} · 130 ×${m1} · 400 ×${m2}`);
+  el.projHitDist = 260; ok(near(el.raceDmgMul('mag', {}), 1 + R.elfFar), '엘프: 스킬 투사체도 거리 보너스'); el.projHitDist = null;
   ok(el.raceDmgMul('phys', {}) === 1, '엘프: 근접은 그대로');
   const oc = mk('orc'), p = oc.player;
   p.hp = oc.d.maxHp; const o1 = oc.raceDmgMul('phys', {});
@@ -57,7 +57,7 @@ for (const [race, mul] of [['wizard', R.wizardHp], ['knight', R.knightHp]]) {
   ok(near(as.d.dodge, base.derived.dodge), `암살자 회피 ${(as.d.dodge * 100).toFixed(1)}% (민첩 몫 + 10%)`);
   const dodged = (w, type, n = 4000) => { const p = w.player; let k = 0; for (let i = 0; i < n; i++) { p.hp = w.d.maxHp; p.invuln = 0; w.hurtPlayer(1, type, null, {}); if (p.hp === w.d.maxHp) k++; } return k / n; };
   const ud = mk('undead'), dp = dodged(ud, 'phys'), dm = dodged(ud, 'mag');
-  ok(dp - dm > 0.16 && dp - dm < 0.24, `언데드: 물리 회피 ${(dp * 100).toFixed(1)}% · 마법 회피 ${(dm * 100).toFixed(1)}%`);
+  ok(Math.abs(dp - dm - R.undeadPhysDodge) < 0.04, `언데드: 물리 회피 ${(dp * 100).toFixed(1)}% · 마법 회피 ${(dm * 100).toFixed(1)}%`);
 }
 
 // 면역: 언데드 독 · 저주 · 출혈 · 용족 화상 · 냉기

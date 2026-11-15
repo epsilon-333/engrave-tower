@@ -1,4 +1,8 @@
 [
+"Hunter Kar",
+"Hunter Tao",
+"Hunter's",
+"Hunter's Eye",
 "Hunter's Leap",
 "Hunter's Snare",
 "Hunter's Intuition",
@@ -6,7 +10,7 @@
 "Hunter's Mark",
 "Hunter's Bow",
 "Once per hunt, revive at 30% HP on death",
-"Survives by the hunt. Restores 2% max HP per kill",
+"Survives by hunting. Heal 1% max HP on every kill",
 "Engrave with monster parts from hunting. The way to get stronger lies outside the tower",
 "We hunt to eat. Not to brag",
 "Hunter's Blood",
@@ -289,6 +293,7 @@
 "Sanctum",
 "Talk to the sanctum guardian",
 "Sanctum quests",
+"Sanctum and village quests also fill the codex",
 "More details in 「Story」 in the sanctum window",
 "Crossed the road to the sanctum · talk to the sanctum guardian to go back",
 "Returned from the sanctum",
@@ -393,10 +398,5 @@
 "Go to the training ground to start",
 "Left the training ground",
 "Shuriken Fan",
-"Throws seven shuriken (60% attack each) in a fan. Shadow +12",
-"Gatekeeper's Wave",
-"Wanted Bandit Hunt",
-"A wanted criminal! Bounty ◆",
-"Crystal Prison",
-"Crystal prison orb"
+"Throws seven shuriken (60% attack each) in a fan. Shadow +12"
 ]

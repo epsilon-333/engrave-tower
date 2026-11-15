@@ -3,7 +3,7 @@
 export const RACES = {
   dino: {
     name: '공룡 수인', origin: '원시림',
-    desc: '사냥으로 살아남는다. 적을 쓰러뜨릴 때마다 최대 체력 2% 회복.',
+    desc: '사냥으로 살아남는다. 적을 쓰러뜨릴 때마다 최대 체력 1% 회복.',
     strong: '근력 · 민첩', weak: '마법 저항 낮음',
     base: { str: 15, mag: 3, agi: 15, vit: 12, sen: 10, spi: 5, pres: 6, mres: 4 },
     growth: { str: 1 },
@@ -13,8 +13,8 @@ export const RACES = {
   },
   wizard: {
     name: '마법사', origin: '인간',
-    desc: '마력으로 주문을 시전한다. 시전 중에는 움직일 수 없다. 마법 피해 +50%, 최대 체력 -20%.',
-    strong: '마력 · 정신 · 마법 피해 +50%', weak: '최대 체력 -20% · 물리 저항이 가장 낮음',
+    desc: '마력으로 주문을 시전한다. 시전 중에는 움직일 수 없다. 마법 피해 +80%, 최대 체력 -10%.',
+    strong: '마력 · 정신 · 마법 피해 +80%', weak: '최대 체력 -10% · 물리 저항이 가장 낮음',
     base: { str: 3, mag: 18, agi: 8, vit: 6, sen: 9, spi: 15, pres: 3, mres: 9 },
     growth: { mag: 1 },
     mult: { mag: 1.2, spi: 1.1, str: 0.7, vit: 0.85, pres: 0.8 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
@@ -23,8 +23,8 @@ export const RACES = {
   },
   knight: {
     name: '기사', origin: '인간',
-    desc: '맞을수록 오러가 쌓이고, 오러를 실어 강타한다. 최대 체력 +40%, 받는 물리 피해 -15%.',
-    strong: '최대 체력 +40% · 물리 피해 -15%', weak: '마력 낮음 · 마법 저항 낮음',
+    desc: '맞을수록 오러가 쌓이고, 오러를 실어 강타한다. 최대 체력 +50%, 받는 물리 피해 -20%.',
+    strong: '최대 체력 +50% · 물리 피해 -20%', weak: '마력 낮음 · 마법 저항 낮음',
     base: { str: 13, mag: 3, agi: 6, vit: 16, sen: 6, spi: 7, pres: 15, mres: 7 },
     growth: { str: 1 },
     mult: { pres: 1.15, vit: 1.1, agi: 0.85, mag: 0.75 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
@@ -43,8 +43,8 @@ export const RACES = {
   },
   undead: {
     name: '언데드', origin: '묘지',
-    desc: '영혼을 거둬 저주를 터뜨린다. 물리 공격 회피 +20%. 독 · 저주 · 출혈에 면역.',
-    strong: '물리 회피 +20% · 독 · 저주 · 출혈 면역', weak: '마법 저항 낮음 · 느림',
+    desc: '영혼을 거둬 저주를 터뜨린다. 물리 공격 회피 +30%. 독 · 저주 · 출혈에 면역.',
+    strong: '물리 회피 +30% · 독 · 저주 · 출혈 면역', weak: '마법 저항 낮음 · 느림',
     base: { str: 6, mag: 15, agi: 6, vit: 11, sen: 6, spi: 10, pres: 15, mres: 6 },
     growth: { pres: 1 },
     mult: { pres: 1.15, mag: 1.1, agi: 0.85, vit: 0.9 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
@@ -53,7 +53,7 @@ export const RACES = {
   },
   assassin: {
     name: '암살자', origin: '뒷골목',
-    desc: '피하고 파고들며 그림자를 모은다. 모든 공격 회피 +10%. 대시가 순간이동이다(벽은 넘지 못한다).',
+    desc: '피하고 파고들며 그림자를 모은다. 모든 공격 회피 +15%. 대시가 순간이동이다(벽은 넘지 못한다).',
     strong: '민첩 · 감각', weak: '체력 낮음 · 저항 낮음',
     base: { str: 9, mag: 4, agi: 17, vit: 8, sen: 16, spi: 6, pres: 4, mres: 5 },
     growth: { sen: 1 },
@@ -63,7 +63,7 @@ export const RACES = {
   },
   elf: {
     name: '엘프', origin: '숲',
-    desc: '정령과 함께 싸운다. 멀리서 맞힐수록 투사체 피해가 커진다(거리 260에서 +100%, 그 사이는 고르게).',
+    desc: '정령과 함께 싸운다. 멀리서 맞힐수록 투사체 피해가 커진다(거리 260에서 +150%, 그 사이는 고르게).',
     strong: '민첩 · 마력', weak: '체력 낮음 · 가까이에서 약함',
     base: { str: 5, mag: 14, agi: 15, vit: 7, sen: 12, spi: 11, pres: 4, mres: 8 },
     growth: { agi: 1 },
@@ -73,8 +73,8 @@ export const RACES = {
   },
   dragon: {
     name: '용족', origin: '화산',
-    desc: '불을 다루는 고대 혈통. 화염 피해 +30%(화상 포함). 화상 · 냉기에 면역.',
-    strong: '화염 피해 +30% · 화상 · 냉기 면역', weak: '느림 · 회피 낮음',
+    desc: '불을 다루는 고대 혈통. 화염 피해 +50%(화상 포함). 화상 · 냉기에 면역.',
+    strong: '화염 피해 +50% · 화상 · 냉기 면역', weak: '느림 · 회피 낮음',
     base: { str: 13, mag: 13, agi: 7, vit: 11, sen: 6, spi: 7, pres: 7, mres: 9 },
     growth: { mres: 1 },
     mult: { str: 1.05, mag: 1.05, mres: 1.1, agi: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
@@ -85,16 +85,16 @@ export const RACES = {
 
 // 종족 특성 수치 (2026-11-10 개편: 종족마다 특성 하나 · 둘을 숫자로 분명하게, 예전 특성은 모두 뺐다)
 export const RACE_FX = {
-  assassinDodge: 0.10,   // 암살자: 모든 공격 회피 +10%
+  assassinDodge: 0.15,   // 암살자: 모든 공격 회피 +15%
   assassinBlink: 64,     // 암살자: 대시 = 순간이동 (거리 · 벽과 하늘 낭떠러지는 넘지 않는다)
-  undeadPhysDodge: 0.20, // 언데드: 물리 공격 회피 +20%
-  wizardMag: 1.5,        // 마법사: 마법 피해 +50%
-  wizardHp: 0.8,         //        최대 체력 -20%
-  dragonFire: 1.3,       // 용족: 화염 피해 +30% (화상 포함)
-  knightPhys: 0.85,      // 기사: 받는 물리 피해 -15%
-  knightHp: 1.4,         //      최대 체력 +40%
-  dinoKillHeal: 0.02,    // 공룡 수인: 처치마다 최대 체력 2% 회복
-  elfFar: 1.0,           // 엘프: 맞힌 거리에 따라 투사체 피해 +0~100%
+  undeadPhysDodge: 0.30, // 언데드: 물리 공격 회피 +30%
+  wizardMag: 1.8,        // 마법사: 마법 피해 +80%
+  wizardHp: 0.9,         //        최대 체력 -10%
+  dragonFire: 1.5,       // 용족: 화염 피해 +50% (화상 포함)
+  knightPhys: 0.8,       // 기사: 받는 물리 피해 -20%
+  knightHp: 1.5,         //      최대 체력 +50%
+  dinoKillHeal: 0.01,    // 공룡 수인: 처치마다 최대 체력 1% 회복
+  elfFar: 1.5,           // 엘프: 맞힌 거리에 따라 투사체 피해 +0~150%
   elfFarRange: 260,      //      가장 긴 무기 사거리에서 최대
   orcLow: 1.0,           // 오크: 체력이 낮을수록 피해 +0~100% (체력 100% → 0 · 10% 이하 → 최대)
   orcLowAt: 0.1,

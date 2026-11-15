@@ -14,7 +14,7 @@ export const POTION_CD = 8; // 물약 · 회복 요리 대기시간 (함께 쓴�
 import { climbMul, setZoneRef, floorFoes, rollDoors, actOf, REWARDS, BOSS_HEAL, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, rollFloorMod } from '../data/climb.js';
 import { RAID_BOSS } from '../data/raid.js';
 import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
-import { SKILLS, ELEM, ZONE_ELEM, aimRule, PVP, WORD_FAMILY, WORD_COMBO, CLASS_BAL, CLASS_BAL_PVE, CURSE } from '../data/skills.js';
+import { SKILLS, ELEM, ZONE_ELEM, aimRule, PVP, WORD_FAMILY, WORD_COMBO, CLASS_BAL, CLASS_BAL_PVE, RACE_BAL_PVE, CURSE } from '../data/skills.js';
 import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower } from '../data/spirits.js';
 export const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
 export const SPIRIT_DMG_ELEM = { fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' };
@@ -2240,7 +2240,7 @@ export class World {
     if (e.def.veil) e.revealT = 4; // 지워진 기록: 맞으면 4초 동안 드러난다
     if (e.hiding && !opt.fromDot) shardHit(this, e); // 깨진 거울의 여왕: 진짜를 찾았다
     if (e.thornsT > this.t && !opt.fromDot && this.t - (e.thornT ?? -9) > 0.3) { /* 가시 세움 중: 거리 상관없이 */ e.thornT = this.t; this.hurtPlayer(Math.min(amount * 0.15, d.maxHp * 0.05), 'phys', e, { fromX: e.x, fromY: e.y }); this.emit({ t: 'text', x: p.x, y: p.y - 22, text: '가시!', color: '#ffb07a' }); }
-    let mult = d.dmgMul * ((e.remote ? CLASS_BAL : CLASS_BAL_PVE)[this.b.cls] ?? 1) * (this.balMul ?? 1); // 클래스 밸런스 보정 (결투는 따로)
+    let mult = d.dmgMul * ((e.remote ? CLASS_BAL : CLASS_BAL_PVE)[this.b.cls] ?? 1) * (e.remote ? 1 : RACE_BAL_PVE[this.b.race] ?? 1) * (this.balMul ?? 1); // 클래스 밸런스 보정 (결투는 따로)
     if (e.exposedT > 0) mult *= e.exposeMul || 2; // 수호자의 빈틈: 기절 · 과열 · 의식 실패
     if (this.climb?.gz) mult *= zoneTakeMul(this, e); // 빛의 정상: 빛 안 +25% · 그림자 -30% · 별자리 위에서 +20%
     if (e.def.frontGuard && !opt.fromDot) mult *= (p.x - e.x) * (e.dir || 1) > 0 ? 0.4 : 1.3; // 철갑 딱정벌레: 정면은 단단하고 뒤가 약점

@@ -26,6 +26,8 @@ import { SKILLS, ELEM } from '../data/skills.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, weaponArt, RACE_LOOK } from '../data/art.js';
 import { BOSS_PASSIVES } from '../data/tower.js';
 import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
+// 바닥에 납작하게 깔린 것: 사람 · 몬스터 아래에 그린다 (아래 끝 기준으로 줄 세우면 위쪽에 선 사람의 몸을 덮었다)
+export const FLAT_PROP = new Set(['hole', 'whirlpool']), FLAT_OBJ = new Set(['dig', 'trap']);
 export const GROUND_MARKS = new Set(['ink', 'cracks', 'scorch', 'scrape', 'rageCracks']); // 그 가운데 땅에 새겨지는 것 (벽 · 물 · 허공에는 안 생긴다)
 export const GROUND_FX = new Set(['ink', 'tcircle', 'tdonut', 'lineTele', 'cracks', 'scorch', 'scrape', 'castCircle', 'rune', 'glyphs', 'rageCracks', 'path']); // 바닥에 그리는 이펙트
 const BOSS_MELEE = new Set(['combo', 'cleave', 'whirl', 'shove', 'charge', 'leap', 'jumps3', 'quake', 'grab', 'retreat']);
@@ -629,14 +631,14 @@ export class Renderer {
     // 엔티티 (y 정렬)
     const vis = (x, y) => x > cx - 48 && x < cx + VW + 48 && y > cy - 48 && y < cy + VH + 64;
     const list = [];
-    for (const o of w.objects) if (vis(o.x, o.y)) list.push({ o, y: o.kind === 'gate' ? -1e9 : o.sortY ?? o.y }); // sortY: 처형대 위 사람처럼 바닥보다 높이 선 것
+    for (const o of w.objects) if (vis(o.x, o.y)) list.push({ o, y: o.kind === 'gate' ? -1e9 : FLAT_OBJ.has(o.kind) ? -1e9 + 2 : o.sortY ?? o.y }); // 바닥에 납작한 것(캐낸 자리 · 덫)은 늘 사람 아래 // sortY: 처형대 위 사람처럼 바닥보다 높이 선 것
     for (const dr of w.drops) list.push({ dr, y: dr.y });
     for (const e of w.enemies) if (vis(e.x, e.y)) list.push({ e, y: e.y });
     for (const c of this.corpses) list.push({ c, y: c.y });
     list.push({ p, y: p.y });
     for (const rp of w.remotes || []) if (vis(rp.x, rp.y)) list.push({ rp, y: rp.y }); // 온라인: 같은 지도의 다른 사람
     for (const al of w.allies || []) list.push({ al, y: al.y });
-    if (w.map.props) for (const pr of w.map.props) { const px = (pr.x + pr.w / 2) * TILE, py = (pr.y + pr.h) * TILE, big = pr.kind !== 'tree' && pr.kind !== 'well' && pr.kind !== 'house'; if (pr.big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 240 && py > cy - 40 && py < cy + VH + 460 : big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 140 && py > cy - 40 && py < cy + VH + 260 : vis(px, py - 40)) list.push({ prop: pr, y: py - 2 }); }
+    if (w.map.props) for (const pr of w.map.props) { const px = (pr.x + pr.w / 2) * TILE, py = (pr.y + pr.h) * TILE, big = pr.kind !== 'tree' && pr.kind !== 'well' && pr.kind !== 'house'; if (pr.big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 240 && py > cy - 40 && py < cy + VH + 460 : big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 140 && py > cy - 40 && py < cy + VH + 260 : vis(px, py - 40)) list.push({ prop: pr, y: FLAT_PROP.has(pr.kind) ? -1e9 + 2 : py - 2 }); }
     if (w.map.plaza) for (const d of w.map.wallDeco) list.push({ wd: d, y: -1e9 + 1 });
     if (w.farmRect && w.life) for (const [key, pl] of Object.entries(w.life.farm)) if (pl.crop) { const [fx, fy] = key.split(',').map(Number); if (vis(fx * TILE + 8, fy * TILE + 8)) list.push({ crop: { x: fx, y: fy, pl }, y: fy * TILE + 13 }); }
     this.anims.px.update(dt); for (const pe of this.anims.px.list) list.push({ pxe: pe, y: (pe.sortY ?? pe.y) + 2 }); // 스킬 이펙트(pixelfx)도 같은 줄에: 앞에 선 건물이 가린다

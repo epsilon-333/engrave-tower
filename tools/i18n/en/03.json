@@ -1,4 +1,5 @@
 [
+"Shadow Pierce",
 "Shadow Leap",
 "Shadow Hood",
 "Shadow Cloak",
@@ -397,6 +398,5 @@
 "Cold Affinity",
 "Chill effect +15",
 "Chill effect +20",
-"Chill effect +25",
-"Stacks chill to slow, then freezes to bind"
+"Chill effect +25"
 ]

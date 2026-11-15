@@ -1,4 +1,8 @@
 [
+"Bernin",
+"Reaps the souls of what it cuts. The handle is always cold",
+"Frost flowers burst after the slash. 2 chill stacks",
+"Frost flowers bloom where it cuts",
 "Word of Thunder",
 "Lightning jumps between enemies five times. Dragon word 16",
 "Stunned by hitting a wall",
@@ -212,7 +216,7 @@
 "Burned, taking damage over time. Water puts it out",
 "Fire burns everything, but also lights what must be protected",
 "Fire bore us, and we guard the fire",
-"An ancient bloodline of fire. Fire damage +30% (burn included). Immune to burn and chill",
+"An ancient fire-wielding bloodline. Fire damage +50% (incl. burn). Immune to burn · chill",
 "Dragonkin with fire in their blood",
 "Word of Fire",
 "A child of fire. Drop even one ember before the World Tree and the forest will drive you out",
@@ -394,9 +398,5 @@
 "Hunting Fang",
 "Hunting Bow",
 "Hunter's Leathers",
-"Hunter Grik",
-"Hunter Kar",
-"Hunter Tao",
-"Hunter's",
-"Hunter's Eye"
+"Hunter Grik"
 ]
