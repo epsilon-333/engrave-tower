@@ -1,6 +1,4 @@
 [
-"Aim",
-"Charges in the aim direction, stabbing enemies in the path (invulnerable while charging",
 "A giant pillar of light where you aim. 1.5s stun",
 "Vines spring up where you aim, binding 1.4s",
 "Poison rain falls four times where you aim. 2 poison stacks each",
@@ -398,5 +396,7 @@
 "Thunder Ring",
 "Thunderstorm",
 "Observatory",
-"Divine Punishment Beam"
+"Divine Punishment Beam",
+"Skyfall Slash",
+"Armor quilted from layers of cloth. Worn by the tower's lower-floor gatekeepers"
 ]

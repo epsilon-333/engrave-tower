@@ -1,5 +1,4 @@
 [
-"Training limit 5 → 10 stages",
 "Reached the training limit",
 "Trainee Van",
 "Trainee Kira",
@@ -112,7 +111,6 @@
 "Skill 4",
 "Skill 「",
 "Skill line",
-"Hit the dummy with a skill button. Skills marked [Charge] get stronger when you hold and release",
 "No skill",
 "Skill resource -10",
 "Skill resource -4",
@@ -398,5 +396,7 @@
 "A row of ice spikes rises ahead. Frozen enemies shatter for 2.5x damage",
 "Slams ahead scattering embers. 2 burn stacks",
 "Claws ahead four times in a row. 1 bleed stack each. Instinct +12",
-"Smashes ahead, sending enemies flying with a 0.8s stun"
+"Smashes ahead, sending enemies flying with a 0.8s stun",
+"A big cleave ahead, 2 bleed stacks",
+"Wraps ahead, binding 1.6s with 2 bleed stacks"
 ]

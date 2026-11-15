@@ -9,7 +9,7 @@ import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
 import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
 import { padState, applyPad, padMenu } from './gamepad.js';
-import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, grantRaceSkills, raceSkills, setStaleHook, onLocalSave, isStale } from './save.js';
+import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, grantRaceSkills, raceSkills, classEngravingFor, setStaleHook, onLocalSave, isStale } from './save.js';
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
 import { codexPoints } from './data/codex.js';
 import { TILE, generateField } from './sim/mapgen.js';
@@ -766,6 +766,10 @@ function journeyTick(dt) {
       (save.journey ||= {})[J.step.id] = Date.now();
       if (r.gold) { save.gold += r.gold; sum.gold += r.gold; }
       if (r.potion) { bagAdd(lifeOf(), r.potion, 1); sum.potion = r.potion; }
+      if (r.firstMats) { // 첫 각인: 종족의 처음 스킬 각인을 새길 재료를 준다 (새기는 것은 여정 2)
+        const sk = raceSkills(save.race).find((id) => SKILLS[id] && (SKILLS[id].unlock || 1) <= 1), eid = sk && classEngravingFor(sk);
+        if (eid) { (save.flags ||= {}).firstEng = eid; (save.classEng ||= {})[sk] = eid; for (const [k, n] of Object.entries(ENGRAVINGS[eid].recipe || {})) save.echoes[k] = (save.echoes[k] || 0) + n; sum.names = [...(sum.names || []), `${ENGRAVINGS[eid].name} 재료`]; sum.firstMats = true; }
+      }
       if (r.skill) { const got = grantRaceSkills(save, r.skill); if (got.length) { sum.skill = (sum.skill || 0) + got.length; if (r.skill === 'ult') sum.ult = 1; sum.names = [...(sum.names || []), ...got.map((e) => ENGRAVINGS[e]?.name)]; } } // 종족 스킬 각인
       titles.push(J.step.title);
       J = journeyNow(save);
@@ -849,10 +853,9 @@ function startAs(race) {
     return;
   }
   save = newSave(race);
-  save.cls = cs[0]; save.style = c0.style; grantClassEngravings(save);
+  save.cls = cs[0]; save.style = c0.style; save.journeySkills = 1; // 스킬 없이 시작: 첫 각인은 여정 1 · 2로 만든다
   save.items = ['rustySword']; give(save);
   save.gear = { weapon: c0.weapons[0], ...(c0.off ? { off: c0.off } : {}) };
-  equipStart(save);
   save.tutorial = { step: 0 }; // 처음 시작하는 사람은 튜토리얼부터
   refreshQuests(save); writeSave(save); titleEl.hidden = true; enterWorld(null, true);
 }

@@ -21,7 +21,6 @@
 "Hunter's Bow",
 "Once per hunt, revive at 30% HP on death",
 "Survives by hunting. Heal 1% max HP on every kill",
-"Engrave with monster parts from hunting. The way to get stronger lies outside the tower",
 "We hunt to eat. Not to brag",
 "Hunter's Blood",
 "Unhappy about hunting ground taxes",
@@ -398,5 +397,6 @@
 "Training stage",
 "Defeat the training opponent",
 "Training succeeded",
-"Training failed"
+"Training failed",
+"Training limit 5 → 10 stages"
 ]

@@ -1,6 +1,4 @@
 [
-"Skyfall Slash",
-"Armor quilted from layers of cloth. Worn by the tower's lower-floor gatekeepers",
 "Iron",
 "Iron Pickaxe",
 "Iron vein",
@@ -23,6 +21,7 @@
 "Bastion Longsword",
 "Mace",
 "Iron Blood",
+"First engraving materials",
 "Memento of the first hunt",
 "Marlin",
 "HP",
@@ -398,5 +397,6 @@
 "Throwing Dagger Belt",
 "Throwing Axe",
 "Throwing Hatchet",
-"Thrower"
+"Thrower",
+"Throwing Pouch"
 ]

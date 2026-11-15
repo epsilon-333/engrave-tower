@@ -9,19 +9,19 @@ const lords = (s, n) => !!(C(s).lords || {})[n];
 const visited = (s, name) => !!s.codex?.places?.[`world:${name}`]; // 바깥 세계의 그 지역에 가 봤나
 
 export const JOURNEY = [
-  { id: 'hunt', title: '시작 평원에서 몬스터 5마리 사냥', hint: '마을 북쪽 시작 평원. 몬스터마다 다른 부산물이 떨어진다. 각인의 재료', check: (s) => Object.values(s.codex?.kills || {}).reduce((a, n) => a + n, 0) >= 5, reward: { skill: 1, gold: 30 } },
-  { id: 'altarEng', title: '공명 제단에서 각인 새기기', hint: '사냥으로 얻은 몬스터 부산물로 각인을 새긴다. 강해지는 길은 탑 밖에 있다', check: (s) => Object.values(s.slots || {}).some(Boolean), reward: { gold: 100 } },
-  { id: 'door', title: '각인의 탑 문 앞에 서기', hint: '섬 한가운데 높은 탑. 화면의 노란 화살표를 따라가자', to: { kind: 'towerDoor' }, check: (s) => !!s.flags?.towerSeen || (C(s).runs || 0) > 0, reward: { gold: 30 } },
-  { id: 'f1', title: '탑 1층 돌파', hint: '탑 문 앞에서 G → 「1층부터」. 적을 모두 쓰러뜨리면 층이 열린다', to: { kind: 'towerDoor' }, check: (s) => (C(s).best || 0) >= 1, reward: { gold: 80 } },
+  { id: 'hunt', title: '시작 평원에서 몬스터 5마리 사냥', hint: '마을 북쪽 시작 평원. 처음에는 스킬이 없다 — 평타(좌클릭)와 무기 기술(우클릭)로 싸우자. 마치면 첫 각인의 재료를 받는다', check: (s) => Object.values(s.codex?.kills || {}).reduce((a, n) => a + n, 0) >= 5, reward: { firstMats: true, gold: 30 } },
+  { id: 'altarEng', title: '공명 제단에서 첫 각인 새기기', hint: '마을의 공명 제단(G)에서 받은 재료로 종족의 첫 각인을 새기고 Q 칸에 끼우자. 각인을 끼우면 그 각인의 스킬을 쓴다', check: (s) => s.flags?.firstEng ? (s.owned?.[s.flags.firstEng] || 0) > 0 : Object.values(s.slots || {}).some(Boolean), reward: { gold: 100 } },
+  { id: 'door', title: '각인의 탑 문 앞에 서기', hint: '섬 한가운데 높은 탑. 화면의 노란 화살표를 따라가자', to: { kind: 'towerDoor' }, check: (s) => !!s.flags?.towerSeen || (C(s).runs || 0) > 0, reward: { skill: 1, gold: 30 } },
+  { id: 'f1', title: '탑 1층 돌파', hint: '탑 문 앞에서 G → 「1층부터」. 적을 모두 쓰러뜨리면 층이 열린다', to: { kind: 'towerDoor' }, check: (s) => (C(s).best || 0) >= 1, reward: { skill: 1, gold: 80 } },
   { id: 'f5', title: '5층 수호자 쓰러뜨리기', hint: '빨간 예고 원 · 선을 보고 Space로 구르자. 구르는 동안은 맞지 않는다', to: { kind: 'towerDoor' }, check: (s) => (C(s).best || 0) >= 5, reward: { skill: 1, gold: 80, potion: 'potion1' } },
   { id: 'lv5', title: '레벨 5 되기', hint: '레벨은 도감으로 오른다. 처음 보는 몬스터 · 처음 가는 장소 · 기록 · 사람. 섬을 돌아다니자', check: (s) => (s.level || 1) >= 5, reward: { skill: 1, gold: 150 } },
   { id: 'forge', title: '대장간에서 무기 강화하기', hint: '바람결 마을 대장간의 브론. 강화 한 단계마다 모든 피해 +6%', to: { kind: 'door', house: 'forge' }, check: (s) => Object.values(s.reinforce || {}).some((v) => v > 0), reward: { gold: 120 } },
   { id: 'lord1', title: '10층 · 이끼 굴의 주인 쓰러뜨리기', hint: '주인은 체력이 셋으로 나뉘어 단계마다 기술이 바뀐다. 쓰러뜨리면 섬의 새 지역이 열린다', to: { kind: 'towerDoor' }, check: (s) => lords(s, 1), reward: { skill: 1, gold: 450 } },
-  { id: 'open10', title: '새로 열린 이끼 숲에 가 보기', hint: '탑 10층을 넘으면 이끼 숲 · 물안개 해안 · 독늪이 열린다. 지도(M)에서 밝아진 곳', check: (s) => visited(s, '이끼 숲'), reward: { gold: 120 } },
+  { id: 'open10', title: '새로 열린 이끼 숲에 가 보기', hint: '탑 10층을 넘으면 이끼 숲 · 물안개 해안 · 독늪이 열린다. 지도(M)에서 밝아진 곳', check: (s) => visited(s, '이끼 숲'), reward: { skill: 1, gold: 120 } },
   { id: 'sanct', title: '내 종족의 성지 찾아가기', hint: '탑 10층을 넘으면 열린다. 성지가 아직 잠긴 지역에 있으면 마을 포탈에서 바로 간다', to: { kind: 'sanctum', mine: true }, check: (s) => !!s.flags?.['sanct:' + s.race], reward: { gold: 60 } },
   { id: 'lv10', title: '레벨 10 되기', hint: '이끼 숲 · 물안개 해안 · 독늪: 권장 레벨이 지역 이름 아래에 보인다', check: (s) => (s.level || 1) >= 10, reward: { skill: 1, gold: 300 } },
   { id: 'lv12', title: '레벨 12 되기', hint: '레벨은 도감으로 오른다. 새 몬스터 · 새 장소를 찾아가자', check: (s) => (s.level || 1) >= 12, reward: { skill: 1, gold: 200 } },
-  { id: 'f15', title: '15층 수호자 쓰러뜨리기', hint: '독늪의 수호자는 독을 뿌린다. 같은 태그의 각인을 모으면 시너지가 켜진다', to: { kind: 'towerDoor' }, check: (s) => (C(s).best || 0) >= 15, reward: { gold: 120 } },
+  { id: 'f15', title: '15층 수호자 쓰러뜨리기', hint: '독늪의 수호자는 독을 뿌린다. 같은 태그의 각인을 모으면 시너지가 켜진다', to: { kind: 'towerDoor' }, check: (s) => (C(s).best || 0) >= 15, reward: { skill: 1, gold: 120 } },
   { id: 'lord2', title: '20층 · 독늪의 주인 쓰러뜨리기', hint: '구역의 주인을 쓰러뜨리면 다음부터 그 다음 층에서 시작한다. 부산물로 각인을 새겨 다시 오르자', to: { kind: 'towerDoor' }, check: (s) => lords(s, 2), reward: { skill: 1, gold: 850 } },
   { id: 'open20', title: '폐허 도시 · 원시림 · 화산 지대 중 한 곳 가 보기', hint: '탑 20층을 넘으면 열린다. 농사 · 동료(파티 · 결투)도 이때 열린다', check: (s) => ['폐허 도시', '원시림', '화산 지대'].some((n) => visited(s, n)), reward: { gold: 400 } },
   { id: 'lv16', title: '레벨 16 되기', hint: '폐허 도시 · 원시림 · 화산 지대. 의뢰 게시판의 의뢰도 도감을 채운다', check: (s) => (s.level || 1) >= 16, reward: { skill: 1, gold: 600 } },
@@ -47,4 +47,4 @@ export function journeyNow(s) {
   for (let i = 0; i < JOURNEY.length; i++) if (!got[JOURNEY[i].id]) return { i, step: JOURNEY[i], done: JOURNEY[i].check(s) };
   return null;
 }
-export const rewardText = (r = {}) => [r.skill === 'ult' || r.ult ? '궁극기 각인' : r.skill ? `종족 스킬 각인${r.skill > 1 ? ' ×' + r.skill : ''}` : '', r.gold ? `◆ ${r.gold}` : '', r.potion ? '물약' : ''].filter(Boolean).join(' · ');
+export const rewardText = (r = {}) => [r.firstMats ? '첫 각인 재료' : '', r.skill === 'ult' || r.ult ? '궁극기 각인' : r.skill ? `종족 스킬 각인${r.skill > 1 ? ' ×' + r.skill : ''}` : '', r.gold ? `◆ ${r.gold}` : '', r.potion ? '물약' : ''].filter(Boolean).join(' · ');

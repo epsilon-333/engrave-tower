@@ -119,7 +119,7 @@ export function classEngravingFor(skillId) {
 // 클래스는 없다: 종족의 스킬(예전 두 클래스의 것 모두)이 그 레벨이 되면 각인으로 온다 · 1레벨 넷이 시작 각인
 export const raceSkills = (race) => [...new Set(RACE_CLASSES(race).flatMap((c) => CLASSES[c].skills))];
 export function grantClassEngravings(s) {
-  if (!RACE_CLASSES(s.race).length) return [];
+  if (!RACE_CLASSES(s.race).length || s.journeySkills) return []; // 새 저장: 스킬 각인은 모두 여정에서 (시작 각인도)
   s.owned ||= {}; s.classEng ||= {};
   const got = [];
   for (const sk of raceSkills(s.race)) {
