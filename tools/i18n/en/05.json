@@ -1,4 +1,6 @@
 [
+"Reached: underground",
+"Stolen seal",
 "Doren",
 "Lizard Warrior",
 "Lizard warrior's scale shield",
@@ -243,6 +245,7 @@
 "Drops the spirit on its back",
 "Discus",
 "Pick",
+"Follow · show arrow",
 "Automatic, no button needed",
 "Beetle shell",
 "Beetle Knuckles",
@@ -395,8 +398,5 @@
 "Mana Film",
 "Casts spells with mana. Cannot move while casting. Magic damage +80%, max HP -10",
 "Sea of Mana",
-"Purple crystal of hardened mana. Grows deep in the snowfield",
-"Scatters three mana bolts (mana). Pairs well with magic skills",
-"Marten",
-""
+"Purple crystal of hardened mana. Grows deep in the snowfield"
 ]

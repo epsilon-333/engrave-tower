@@ -1,4 +1,7 @@
 [
+"Root Drain",
+"Hit it hard to break the roots when it heals with them",
+"Root Mark",
 "Fraud",
 "Fraud ◆",
 "Hunt",
@@ -395,8 +398,5 @@
 "Training",
 "Training target",
 "Training stage",
-"Defeat the training opponent",
-"Training succeeded",
-"Training failed",
-"Training limit 5 → 10 stages"
+"Defeat the training opponent"
 ]

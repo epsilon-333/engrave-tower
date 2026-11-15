@@ -1,4 +1,7 @@
 [
+"Melted the weapon and got 1 material back",
+"Add it when crafting a weapon to grant an ability",
+"Got a weapon",
 "Collapsed Shaft",
 "Collapsed Cemetery",
 "Collapsed rock",
@@ -395,8 +398,5 @@
 "Lightning whetstone",
 "Lightning jumps between enemies 4 times",
 "Lightning jumps between enemies 6 times. Shocked enemies take +15% damage. Mana 22",
-"Slashes through like lightning, then frost bursts. 1s freeze",
-"Slashes forward through enemies like lightning",
-"Spreading Ink",
-"th opponent"
+"Slashes through like lightning, then frost bursts. 1s freeze"
 ]

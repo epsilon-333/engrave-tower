@@ -1,4 +1,7 @@
 [
+"Smashes ahead, sending enemies flying with a 0.8s stun",
+"A big cleave ahead, 2 bleed stacks",
+"Wraps ahead, binding 1.6s with 2 bleed stacks",
 "A heavy blow to one enemy ahead, 130% attack damage · 1.3s stun",
 "A heavy slam ahead for big damage and stagger",
 "Three wide lashes ahead, finally pulling the hit enemy in front of me",
@@ -395,8 +398,5 @@
 "The capital guard rushes in · pay the prison warden a fine to be released",
 "Defeated the capital guard",
 "Capital Guard",
-"Talk to capital trader Mathilde · buy and sell trade goods",
-"Go to the capital recruiter and you can join Aurelion",
-"Capital folk",
-"View the capital price board"
+"Talk to capital trader Mathilde · buy and sell trade goods"
 ]

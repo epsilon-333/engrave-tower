@@ -772,7 +772,9 @@ function journeyTick(dt) {
       }
       if (r.skill) { const got = grantRaceSkills(save, r.skill); if (got.length) { sum.skill = (sum.skill || 0) + got.length; if (r.skill === 'ult') sum.ult = 1; sum.names = [...(sum.names || []), ...got.map((e) => ENGRAVINGS[e]?.name)]; } } // 종족 스킬 각인
       titles.push(J.step.title);
+      const wasFollowing = save.follow === J.step.id;
       J = journeyNow(save);
+      if (wasFollowing) save.follow = J?.step.to ? J.step.id : null; // 따라가기는 다음 여정으로 이어진다
     }
     writeSave(save);
     renderer.banner = { text: titles.length > 1 ? `여정 완료 ×${titles.length}` : `여정 완료 · ${titles[0]}`, sub: `${journeyReward(sum)}${sum.names ? ` · 각인 「${sum.names.join('」 「')}」` : ''}${J ? ` · 다음: ${J.step.title}` : ' · 모든 여정을 마쳤다!'}`, t: 4, color: '#e9b85c' };
@@ -780,12 +782,20 @@ function journeyTick(dt) {
     if (!J) { renderer.journey = null; return; }
   }
   let target = null;
-  const to = J.step.to;
-  if (to && world.zone?.id === 'world') {
-    const o = world.objects.find((x) => x.kind === to.kind && (!to.house || x.house === to.house) && (!to.mine || x.race === save.race));
-    if (o) target = { x: o.x, y: o.y, label: to.kind === 'towerDoor' ? '탑' : to.kind === 'sanctum' ? '성지' : to.kind === 'raidAltar' ? '레이드' : to.house === 'forge' ? '대장간' : '' };
+  const to = J.step.to, following = save.follow === J.step.id; // 따라가기를 켠 여정만 화살표
+  if (to && following && world.zone?.id === 'world') target = journeyTarget(to);
+  renderer.journey = { n: J.i + 1, total: JOURNEY.length, title: J.step.title, hint: J.step.hint, done: J.done, reward: journeyReward(J.step.reward), target, canFollow: !!to };
+}
+// 여정 목적지 → 화살표 자리 (바깥 세계에서만)
+const HOUSE_NAME = { altar: '공명 제단', forge: '대장간', library: '서고', guild: '의뢰소', shop: '잡화점', dojo: '수련장', home: '내 집' };
+function journeyTarget(to) {
+  if (to.region) { // 지역: 그 지역 한가운데 (여럿이면 가장 가까운 곳)
+    const names = [].concat(to.region), p = world.player;
+    const L = BIOME_LIST.filter((b) => names.includes(b.name)).map((b) => ({ x: b.x * 16 + 8, y: b.y * 16 + 8, label: b.name }));
+    return L.sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0] || null;
   }
-  renderer.journey = { n: J.i + 1, total: JOURNEY.length, title: J.step.title, hint: J.step.hint, done: J.done, reward: journeyReward(J.step.reward), target };
+  const o = world.objects.find((x) => x.kind === to.kind && (!to.house || x.house === to.house) && (!to.mine || x.race === save.race));
+  return o ? { x: o.x, y: o.y, label: to.kind === 'towerDoor' ? '탑' : to.kind === 'sanctum' ? '성지' : to.kind === 'raidAltar' ? '레이드' : HOUSE_NAME[to.house] || '' } : null;
 }
 // 탑 등반 (본편): 화면과 흐름은 ui/climb.js
 const climbUi = createClimb({
@@ -952,10 +962,12 @@ function showQuestLog() {
       <p class="muted">${d.text}</p><small>${what}</small><div class="qmeta">${bar(have, d.n)}${have >= d.n ? '<small><em class="up">다 했다 · 성지에 돌아가 알리기</em></small>' : ''}</div></div>`;
   }).join('') || '<p class="muted">받은 성지 의뢰 없음</p>';
   const JN = journeyNow(save), jg = save.journey || {};
-  const jrows = JOURNEY.map((st, i) => { const done = !!jg[st.id], cur = JN && JN.i === i; if (!done && !cur && i > (JN?.i ?? 0) + 2) return ''; return `<div class="qrow jn ${done ? 'done' : cur ? 'cur' : 'next'}"><b>${done ? '✓' : cur ? '▶' : '·'} ${i + 1}. ${st.title}</b> <small class="muted">${journeyReward(st.reward)}</small>${cur ? `<p class="muted">${st.hint}</p>` : ''}</div>`; }).join('');
+  const jrows = JOURNEY.map((st, i) => { const done = !!jg[st.id], cur = JN && JN.i === i; if (!done && !cur && i > (JN?.i ?? 0) + 2) return ''; return `<div class="qrow jn ${done ? 'done' : cur ? 'cur' : 'next'}"><b>${done ? '✓' : cur ? '▶' : '·'} ${i + 1}. ${st.title}</b> <small class="muted">${journeyReward(st.reward)}</small>${cur ? `<p class="muted">${st.hint}</p>${st.to ? `<button class="sm ${save.follow === st.id ? 'ghost' : ''}" data-follow="${st.id}">${save.follow === st.id ? '그만 따라가기' : '따라가기 · 화살표'}</button>` : ''}` : ''}</div>`; }).join('');
   const jdone = JOURNEY.filter((st) => jg[st.id]).length;
   showModal(`<h2>퀘스트</h2><div class="qlog"><h3>여정 <small class="muted">${jdone} / ${JOURNEY.length} · 지금 할 일이 맨 위에 보인다</small></h3><div class="jlist">${jrows}</div><h3>의뢰 게시판</h3>${board}<h3>성지 의뢰</h3>${sanct}</div><div class="actions"><button data-close>닫기 (J)</button></div>`);
+  document.querySelectorAll('[data-follow]').forEach((b) => (b.onclick = () => { save.follow = save.follow === b.dataset.follow ? null : b.dataset.follow; writeSave(save); journeyT = 0; showQuestLog(); })); // 따라가기: 켠 여정의 목적지를 화면 화살표가 가리킨다
 }
+
 
 // 소개 영상: 화면 전체를 덮고, 끝나거나 건너뛰면 then()
 function playIntro(then) {

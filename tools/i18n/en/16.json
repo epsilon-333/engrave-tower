@@ -1,4 +1,7 @@
 [
+"Throwing Hatchet",
+"Thrower",
+"Throwing Pouch",
 "Thrower's round stone",
 "Leaping Ember",
 "Tutorial",
@@ -395,8 +398,5 @@
 "Burn + Shock",
 "Burn + Cold",
 "Explodes at 5 burn stacks",
-"Fire spreads when a burning enemy dies, burn damage +15",
-"Burn damage +10",
-"Burn damage +12",
-"Burn damage +15"
+"Fire spreads when a burning enemy dies, burn damage +15"
 ]

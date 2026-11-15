@@ -379,7 +379,7 @@ export const HudMethods = {
     this.journeyBottom = y + h;
     if (right != null) this.rightCol = { x: Math.min(this.rightCol?.x ?? x, x), bottom: y + h };
     g.fillStyle = J.done ? '#8fcf7a' : '#e9b85c'; g.fillRect(x, y, 2 * u, h);
-    this.text(`여정 ${J.n} / ${J.total}${J.done ? ' · 완료!' : ''}`, x + 7 * u, y + 7 * u, tu, J.done ? '#8fcf7a' : '#c8b88a', 'left', false);
+    this.text(`여정 ${J.n} / ${J.total}${J.done ? ' · 완료!' : ''}${J.canFollow && !J.target ? ' · J 따라가기' : ''}`, x + 7 * u, y + 7 * u, tu, J.done ? '#8fcf7a' : '#c8b88a', 'left', false);
     this.text(J.title, x + 7 * u, y + 19 * u, u, '#f6dfae', 'left', true, true);
     show.forEach((l, i) => this.text(l, x + 7 * u, y + 31 * u + i * 12 * tu, tu, '#c9beb2', 'left', false));
     this.tipRects.push({ x, y, w: tw, h, title: '여정 (J로 전체 보기)', color: '#e9b85c', lines: ['하나를 마치면 보상을 받고 다음 목표가 보인다', J.reward ? `보상: ${J.reward}` : ''].filter(Boolean) });

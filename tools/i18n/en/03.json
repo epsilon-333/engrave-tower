@@ -1,4 +1,5 @@
 [
+"Get off the shadow path",
 "Shadow Feather Trim",
 "Shadow Pierce",
 "Shadow Leap",
@@ -30,6 +31,7 @@
 "Shadows need light to exist. Don't forget",
 "Assassin who walks in shadow",
 "Shadows and fakes",
+"Stop following",
 "Stop",
 "Quit",
 "Aurora Blade",
@@ -396,7 +398,5 @@
 "Cold + Shock",
 "Chill slow +15",
 "Frost Imbue",
-"Frost Vortex",
-"Cold Affinity",
-"Chill effect +15"
+"Frost Vortex"
 ]

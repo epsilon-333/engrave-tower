@@ -1,4 +1,7 @@
 [
+"Moss Bracelet",
+"The moss is alive. It needs watering now and then",
+"Moss covers the whole body",
 "Swamp slimes and slugs carry moss on their bodies. (Glowing moss",
 "Move",
 "Move speed",
@@ -395,8 +398,5 @@
 "Impatient Tower",
 "Talk to shipwright Drek · my ship",
 "Joel",
-"Controls",
-"Controls · help",
-"Aim",
-"Charges in the aim direction, stabbing enemies in the path (invulnerable while charging"
+"Controls"
 ]
