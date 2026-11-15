@@ -1,4 +1,12 @@
 [
+"Condition",
+"Conditional effect",
+"Slightly low",
+"Slightly high",
+"Impatient Tower",
+"Talk to shipwright Drek · my ship",
+"Joel",
+"Controls",
 "Controls · help",
 "Aim",
 "Charges in the aim direction, stabbing enemies in the path (invulnerable while charging",
@@ -171,6 +179,7 @@
 "Now! G",
 "Save everything collected so far",
 "Uses every technique of all guardians so far",
+"Closed for now",
 "The ship's stopped now! Clear the ones on deck first",
 "Can't train now",
 "No wanted Noctaris officers right now",
@@ -389,14 +398,5 @@
 "A prisoner is dragged to the execution block",
 "Execution Ground Guard",
 "Four execution ground guards",
-"Execute",
-"Thousand Cuts",
-"Thousand Mirror Armor",
-"Thousand Mirror Shield",
-"Thousand Sheaths",
-"Sky-Piercing Shot",
-"Thunder Hawk",
-"Thunder Ring",
-"Thunderstorm",
-"Observatory"
+"Execute"
 ]

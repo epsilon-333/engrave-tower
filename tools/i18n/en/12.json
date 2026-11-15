@@ -1,4 +1,9 @@
 [
+"Capital",
+"The capital guard rushes in · pay the prison warden a fine to be released",
+"Defeated the capital guard",
+"Capital Guard",
+"Talk to capital trader Mathilde · buy and sell trade goods",
 "Go to the capital recruiter and you can join Aurelion",
 "Capital folk",
 "View the capital price board",
@@ -46,6 +51,7 @@
 "Cooking",
 "Make food by cooking, fishing and farming. Eat it in the tower with H to recover health",
 "Made by cooking · crafting",
+"Cook a dish",
 "Eating dishes: healing +20",
 "Cookbook",
 "Cook",
@@ -392,11 +398,5 @@
 "Moss Lantern: to the northern briars",
 "Moss Slug",
 "Moss Rain",
-"Moss Deer",
-"A blade buried in moss for a hundred years. It ends the moment it's drawn",
-"Moss Fang",
-"Moss Forest",
-"Moss Forest · Misty Coast · Poison Swamp: recommended levels show under area names",
-"Moss Staff",
-"Moss Katana"
+"Moss Deer"
 ]

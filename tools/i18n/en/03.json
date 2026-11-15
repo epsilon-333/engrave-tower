@@ -378,6 +378,7 @@
 "My race's resource",
 "My house",
 "My house · enter",
+"Cook with fish and crops in your home kitchen. Food is the only way to recover HP inside the tower (H to eat",
 "Enemies I knock back take damage and are stunned 1s if they hit a wall or another enemy",
 "Places a trap where I stand. Enemies stepping on it take 150% attack damage, are bound 2s and get 4 poison stacks. Max 3. Shadow 10",
 "What I give",
@@ -397,6 +398,5 @@
 "Cold",
 "Cold + Shock",
 "Chill slow +15",
-"Frost Imbue",
-"Frost Vortex"
+"Frost Imbue"
 ]

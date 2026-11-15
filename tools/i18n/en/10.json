@@ -1,4 +1,9 @@
 [
+"Mire Crossbow",
+"Training",
+"Training target",
+"Training stage",
+"Defeat the training opponent",
 "Training succeeded",
 "Training failed",
 "Training limit 5 → 10 stages",
@@ -393,10 +398,5 @@
 "Forward Cut",
 "Advances, spinning to slash three times. Each turn slashes and pushes back nearby enemies, the third strongest. Aura +12",
 "Slides forward stabbing, 2 poison stacks",
-"A glacier rises far ahead. 3 chill stacks · 1s freeze",
-"Teleports forward and slashes a full circle",
-"Rends space very far ahead",
-"A row of ice spikes rises ahead. Frozen enemies shatter for 2.5x damage",
-"Slams ahead scattering embers. 2 burn stacks",
-"Claws ahead four times in a row. 1 bleed stack each. Instinct +12"
+"A glacier rises far ahead. 3 chill stacks · 1s freeze"
 ]

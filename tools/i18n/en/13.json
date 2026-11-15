@@ -1,4 +1,10 @@
 [
+"A blade buried in moss for a hundred years. It ends the moment it's drawn",
+"Moss Fang",
+"Moss Forest",
+"Moss Forest · Misty Coast · Poison Swamp: recommended levels show under area names",
+"Moss Staff",
+"Moss Katana",
 "Moss Bracelet",
 "The moss is alive. It needs watering now and then",
 "Moss covers the whole body",
@@ -112,6 +118,7 @@
 "Resource regen +6",
 "Viscount",
 "Crop",
+"Harvest a crop",
 "Harpoon",
 "Throws a harpoon, binding the hit enemy 1s",
 "Throws a harpoon to pull the hit enemy in front of me, 0.6s stun. Rage 10",
@@ -190,6 +197,7 @@
 "Materials",
 "No materials",
 "Add materials",
+"Each ingredient makes a different dish, each with its own healing · buffs. Pack some before climbing the tower",
 "Finance minister",
 "Quick",
 "Quickness",
@@ -390,13 +398,5 @@
 "Lost · score -10",
 "Shard",
 "1 shard",
-"Shards gather and",
-"Condition",
-"Conditional effect",
-"Slightly low",
-"Slightly high",
-"Impatient Tower",
-"Talk to shipwright Drek · my ship",
-"Joel",
-"Controls"
+"Shards gather and"
 ]

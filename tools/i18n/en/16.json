@@ -1,4 +1,15 @@
 [
+"Fighter's ornament",
+"Fighter's Breastplate",
+"Projectile range",
+"Projectile range · speed +10",
+"Projectile range · speed +5",
+"Projectile range · speed +6",
+"Struggle",
+"Struggle +20 · infamy +6",
+"Throwing Dagger",
+"Throwing Dagger Belt",
+"Throwing Axe",
 "Throwing Hatchet",
 "Thrower",
 "Throwing Pouch",
@@ -387,16 +398,5 @@
 "Volcanic Bomb",
 "Hit with countless arrows and bolts and",
 "A comet hangs on every arrowhead",
-"Rumor says it shoots snowflakes instead of arrows. It's true",
-"Arrow Guard",
-"Arrow guard · for 4s projectile damage -40",
-"Arrow Rain",
-"Shoots arrows. Can use shooting techniques",
-"Arrows curve on the wind",
-"Arrow",
-"Burn",
-"Burn + Shock",
-"Burn + Cold",
-"Explodes at 5 burn stacks",
-"Fire spreads when a burning enemy dies, burn damage +15"
+"Rumor says it shoots snowflakes instead of arrows. It's true"
 ]

@@ -1,4 +1,5 @@
 [
+"Weapon doesn't fit · damage",
 "Melted the weapon and got 1 material back",
 "Add it when crafting a weapon to grant an ability",
 "Got a weapon",
@@ -56,7 +57,9 @@
 "A huge dorsal fin between the waves",
 "Bites and retreats leaving bleeds, follows the smell of blood",
 "Fish",
+"Catch 5 kinds of fish",
 "Sell all fish · crops · junk (◆",
+"Catch a fish",
 "Reel in fish and",
 "P.Atk",
 "Water Pillar",
@@ -86,6 +89,7 @@
 "Physical damage reduction",
 "Physical dodge +30% · immune to poison · curse · bleed",
 "Physical · magic resist +6, slows attackers",
+"Each water has different fish. Visit rivers · lakes · the sea · swamps (Codex · Fish",
 "Watering can",
 "You need a watering can",
 "Breath underwater 8s → 45s · swim speed +40%. (You can swim and dive without the blessing, but breath is short",
@@ -394,9 +398,5 @@
 "Lightning",
 "Lightning-charged Fingertips",
 "Lightning Imbue",
-"Chain Lightning",
-"Lightning whetstone",
-"Lightning jumps between enemies 4 times",
-"Lightning jumps between enemies 6 times. Shocked enemies take +15% damage. Mana 22",
-"Slashes through like lightning, then frost bursts. 1s freeze"
+"Chain Lightning"
 ]

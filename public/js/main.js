@@ -3275,6 +3275,7 @@ let HAPPEN_LIST = [], happenClock = 0, hunterClock = 0, titleClock = 0, happenSe
 function spawnHappening() {
   const w = world, m = w.map, p = w.player;
   if (!m.outdoor || !m.onPath || w.voyage || w.pvp || w.raid) return;
+  if (!isOpen(save, 'systems', 'politics')) return; // 정치를 잠가 두었다: 섬의 정치 사건(마차 · 교단 · 세금)도 일어나지 않는다
   const kinds = ['caravan', 'caravan', 'cult', /* 순찰대의 횡포는 이제 진짜 경비가 세금을 걷으며 벌인다 */ ...(officialNow(save, 'taxChief') && w.zoneId === 'world' ? ['taxWagon', 'taxWagon'] : [])];
   const type = kinds[Math.floor(Math.random() * kinds.length)];
   let at = null;
@@ -3568,11 +3569,11 @@ function chronicleTalk() {
 }
 function arcTalk(id) {
   if (id.startsWith('cap_')) { capitalTalk(id); return true; }
-  if (id === 'pol_recruiter') { recruiterTalk(); return true; }
+  if (id === 'pol_recruiter') { if (!lockedMsg('systems', 'politics')) recruiterTalk(); return true; }
   if (id === 'chronicle') { chronicleTalk(); return true; }
-  if (id.startsWith('official_')) { officialTalk(id.slice(9)); return true; }
+  if (id.startsWith('official_')) { if (!lockedMsg('systems', 'politics')) officialTalk(id.slice(9)); return true; }
   if (id.startsWith('sanct_')) { sanctTalk(id); return true; }
-  if (id === 'nokt_broker') { brokerJoin(); return true; }
+  if (id === 'nokt_broker') { if (!lockedMsg('systems', 'politics')) brokerJoin(); return true; }
   return islandTalk(id);
 }
 
