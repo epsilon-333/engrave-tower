@@ -2365,7 +2365,7 @@ export class World {
     if (kind === 'shock') { st.shock = Math.max(st.shock || 0, 4); this.checkReactions(e); return; }
     if (kind === 'burn') {
       const fresh = !st.burn;
-      st.burn = { n: Math.min(10, (st.burn?.n || 0) + stacks), t: 3 };
+      st.burn = { n: Math.min(10, (st.burn?.n || 0) + stacks), t: 3 * (this.b.race === 'dragon' ? RACE_FX.dragonBurnT : 1) }; // 용족: 화상이 두 배 오래
       if (fresh && this.f.has('burnCatch') && !this._catching) {
         this._catching = true;
         for (const o of this.enemiesNear(e.x, e.y, 34)) if (o !== e && !o.st.burn) this.applyStatus(o, 'burn', 1);

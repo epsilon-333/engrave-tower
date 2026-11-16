@@ -73,8 +73,8 @@ export const RACES = {
   },
   dragon: {
     name: '용족', origin: '화산',
-    desc: '불을 다루는 고대 혈통. 화염 피해 +50%(화상 포함). 화상 · 냉기에 면역.',
-    strong: '화염 피해 +50% · 화상 · 냉기 면역', weak: '느림 · 회피 낮음',
+    desc: '불을 다루는 고대 혈통. 화염 피해 +50%, 화상은 피해 2배 · 지속 2배. 화상 · 냉기에 면역.',
+    strong: '화염 피해 +50% · 화상 피해 · 지속 2배 · 화상 · 냉기 면역', weak: '느림 · 회피 낮음',
     base: { str: 13, mag: 13, agi: 7, vit: 11, sen: 6, spi: 7, pres: 7, mres: 9 },
     growth: { mres: 1 },
     mult: { str: 1.05, mag: 1.05, mres: 1.1, agi: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
@@ -90,7 +90,9 @@ export const RACE_FX = {
   undeadPhysDodge: 0.30, // 언데드: 물리 공격 회피 +30%
   wizardMag: 1.8,        // 마법사: 마법 피해 +80%
   wizardHp: 0.9,         //        최대 체력 -10%
-  dragonFire: 1.5,       // 용족: 화염 피해 +50% (화상 포함)
+  dragonFire: 1.5,       // 용족: 화염 피해 +50% (화상은 아래 dragonBurn)
+  dragonBurn: 2,         // 용족: 화상 피해 2배 (2026-11-16)
+  dragonBurnT: 2,        // 용족: 화상 지속 시간 2배 (3초 → 6초)
   knightPhys: 0.8,       // 기사: 받는 물리 피해 -20%
   knightHp: 1.5,         //      최대 체력 +50%
   dinoKillHeal: 0.01,    // 공룡 수인: 처치마다 최대 체력 1% 회복

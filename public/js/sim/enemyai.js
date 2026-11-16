@@ -45,7 +45,7 @@ export const EnemyAiMethods = {
 
       // 지속 피해
       let burn = 0, poison = 0, bleed = 0;
-      if (st.burn) { burn = st.burn.n * (2 + d.magAtk * 0.12) * (1 + (s.fireAff || 0) * 0.04) * d.burnMul * (this.b.race === 'dragon' ? RACE_FX.dragonFire : 1); if ((st.burn.t -= DT) <= 0) st.burn = null; } // 용족: 화염 피해 (화상도)
+      if (st.burn) { burn = st.burn.n * (2 + d.magAtk * 0.12) * (1 + (s.fireAff || 0) * 0.04) * d.burnMul * (this.b.race === 'dragon' ? RACE_FX.dragonBurn : 1); if ((st.burn.t -= DT) <= 0) st.burn = null; } // 용족: 화염 피해 (화상도)
       if (st.poison) {
         const deep = this.f.has('poisonDeep') ? 1 + Math.max(0, st.poison.n - 5) * 0.08 : 1;
         poison = st.poison.n * (1.5 + (s.toxicity || 0) * 0.6) * (st.septic > 0 ? 2 : 1) * deep;
