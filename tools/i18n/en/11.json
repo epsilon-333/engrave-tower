@@ -1,4 +1,7 @@
 [
+"Advances, spinning to slash three times. Each turn slashes and pushes back nearby enemies, the third strongest. Aura +12",
+"Slides forward stabbing, 2 poison stacks",
+"A glacier rises far ahead. 3 chill stacks · 1s freeze",
 "Teleports forward and slashes a full circle",
 "Rends space very far ahead",
 "A row of ice spikes rises ahead. Frozen enemies shatter for 2.5x damage",
@@ -395,8 +398,5 @@
 "The kingdom fell, but the oath still stands",
 "A knight of the kingdom. Your brothers stand here too. …If you want to take them, ask them yourself",
 "On the 「Black Night」 when the kingdom fell, the dead of the Ashen Mausoleum raised the fallen royal guards and took them. The princess swore to bring them back and let them rest",
-"Books the kingdom ordered burned. A few scholars at Windward Port buy them in secret",
-"Princess Adelheid",
-"I sent the seal records to Princess Adelheid. The old promise still lives",
-"The princess walks the walls every morning"
+"Books the kingdom ordered burned. A few scholars at Windward Port buy them in secret"
 ]

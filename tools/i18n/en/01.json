@@ -1,4 +1,9 @@
 [
+"Freezes the nearest enemy for 1 second (3 chill stacks",
+"Hide nearby and watch (10 seconds",
+"Worn out by poverty and taxes, they say they're joining Noctaris",
+"Sunken Temple",
+"Witch of the Sunken Temple",
 "Garen",
 "3 tiles wide",
 "One big horizontal slash, then a long downward cut ahead. The second hit is stronger. Aura +12",
@@ -265,6 +270,7 @@
 "Mirror Witch",
 "Mirror Witch's Hand Mirror",
 "Mirror Labyrinth",
+"Mirror Labyrinth: find the real one among the fake doubles",
 "Crystal knight guarding the Mirror Labyrinth",
 "Mirror Rampart",
 "Mirror Shield Plate",
@@ -392,11 +398,5 @@
 "No line echo",
 "Account · saved on server",
 "Account · Save",
-"Logged in with account",
-"Continue on any device with an account",
-"Save with account · Log in",
-"Nods",
-"Meat",
-"Meat skewer",
-"Meat rice bowl"
+"Logged in with account"
 ]

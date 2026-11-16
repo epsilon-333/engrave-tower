@@ -149,6 +149,18 @@ export function grantRaceSkills(s, n) {
   return got;
 }
 
+// 여정 보상: 종족 스킬 각인 하나를 새길 재료 (열리는 레벨 차례로 · 'ult'면 그 갈래의 궁극기). 고른 각인은 적어 둬서 다시 고르지 않는다
+export function grantRaceMats(s, kind, cls) {
+  s.classEng ||= {}; s.echoes ||= {};
+  let list = raceSkills(s.race).filter((sk) => SKILLS[sk] && !s.classEng[sk] && (kind === 'ult' ? SKILLS[sk].ult : !SKILLS[sk].ult)).sort((a, b) => (SKILLS[a].unlock || 1) - (SKILLS[b].unlock || 1));
+  if (kind === 'ult' && cls) list = list.sort((a, b) => (CLASSES[cls]?.skills.includes(b) ? 1 : 0) - (CLASSES[cls]?.skills.includes(a) ? 1 : 0));
+  const sk = list[0]; if (!sk) return null;
+  const eid = classEngravingFor(sk); if (!eid) return null;
+  s.classEng[sk] = eid;
+  for (const [k, n] of Object.entries(ENGRAVINGS[eid].recipe || {})) s.echoes[k] = (s.echoes[k] || 0) + n;
+  return eid;
+}
+
 // ───── 의뢰 (광장 게시판) ─────
 
 export function refreshQuests(s, seedBump = 0) {

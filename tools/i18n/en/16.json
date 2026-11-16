@@ -1,4 +1,9 @@
 [
+"Fighter Grak",
+"Fighter Morga",
+"Fighter's horn",
+"Fighter's tooth",
+"Fighter's Tooth Bracelet",
 "Fighter's ornament",
 "Fighter's Breastplate",
 "Projectile range",
@@ -85,7 +90,6 @@
 "Ruins",
 "Ruined City",
 "Visit one of the Ruined City · Old Forest · Volcanic Zone",
-"Ruined City · Old Forest · Volcanic Zone. Quest board quests fill the codex too",
 "That collapsed well in the middle of the Ruined City — climb down the rope and they say it's a tunnel, not a bottom. The people of the night come and go",
 "A bowl from when the Ruined City flourished. The tower crest is stamped on the bottom",
 "Collapsed well of the Ruined City",
@@ -172,7 +176,7 @@
 "Blessing of Blood",
 "Blood Plate",
 "Blood Spin",
-"Dodges and dives in, gathering shadow. Dodge all attacks +15%. Dash is a teleport (cannot pass walls",
+"Dodges and dives in, gathering shadow. Dodge all attacks +15%. Dash is a shadow teleport (passes walls · voids too",
 "Dodge and dive in to slash with crits and bleeds",
 "Damage +15 for 3s after a dodge",
 "Dodging triggers a mirror counter around you",
@@ -394,9 +398,5 @@
 "Volcanic Zone",
 "Wrath of the Volcano",
 "A red flower that blooms on volcanic ash. Warm to the touch",
-"A staff of hardened volcanic ash. Fireballs grow from the tip",
-"Volcanic Bomb",
-"Hit with countless arrows and bolts and",
-"A comet hangs on every arrowhead",
-"Rumor says it shoots snowflakes instead of arrows. It's true"
+"A staff of hardened volcanic ash. Fireballs grow from the tip"
 ]

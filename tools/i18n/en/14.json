@@ -1,4 +1,7 @@
 [
+"Shard",
+"1 shard",
+"Shards gather and",
 "Condition",
 "Conditional effect",
 "Slightly low",
@@ -61,6 +64,7 @@
 "Squire",
 "Paper Charm",
 "Squire Finn",
+"Receive materials for a race ultimate engraving (from the path you have more skills equipped in). Engrave it at the Resonance Altar · only your race can use ultimates",
 "Race smithy",
 "Race modifier ×",
 "Between races",
@@ -70,11 +74,11 @@
 "Race shop technique book · 1800 gold",
 "Race sanctum · training",
 "Train and take quests at race sanctums, enhance gear at the smithy. Farming · fishing · cooking (cooking = healing in the tower",
-"Sanctum training · raids also make you stronger",
+"Sanctum training · raids · engravings made from hunted materials are how you grow stronger",
 "Race skill engraving",
+"Race skill engraving materials",
 "Race resource +10",
 "If race resource runs short, skills use health for the shortfall (per 1, max HP 0.5",
-"Receive your race's two ultimate engravings. Only that race can use them",
 "Race token (accessory",
 "Race token 「",
 " kinds of fish caught, I'll teach you how to go underwater.\" (now",
@@ -394,9 +398,5 @@
 "Heal 0.8% health on kill",
 "Poison cloud on kill spot",
 "Killed enemies explode",
-"Execution",
-"A prisoner is dragged to the execution block",
-"Execution Ground Guard",
-"Four execution ground guards",
-"Execute"
+"Execution"
 ]

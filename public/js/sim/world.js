@@ -873,7 +873,7 @@ export class World {
         if (this.raceRes?.dash) this.addRes(this.raceRes.dash);
         p.dashCd = 0.25;
         if (f.has('dashCrit')) p.dashCritReady = true;
-        if (blink) this.emit({ t: 'blink', x1: bx, y1: by, x2: p.x, y2: p.y });
+        if (blink) this.emit({ t: 'shadowBlink', x1: bx, y1: by, x2: p.x, y2: p.y });
         else this.emit({ t: 'dash', x: p.x, y: p.y, dx, dy });
         if (f.has('dashAfterimage')) this.afterimage(bx, by, bx + dx * 64, by + dy * 64);
         for (const tr of this.b.triggers.dash) if (this.trig(tr)) this.doAction(tr.action, null, { x: bx, y: by, dir: Math.atan2(dy, dx) }); // 대시 방향을 함께 넘긴다
@@ -1474,7 +1474,7 @@ export class World {
     if (w.kind === 'melee') {
       p.swingDir = p.atkCount % 2 ? 1 : -1;
       const great = !!w.great;
-      p.swingMax = great ? Math.max(0.7, 0.95 / (d.atkSpeed * this.mod('atkSpeed'))) : Math.min(0.2, 0.6 / (w.speed * d.atkSpeed)); p.swingT = p.swingMax; p.swingAng = ang;
+      p.swingMax = great ? Math.max(0.85, 1.15 / (d.atkSpeed * this.mod('atkSpeed'))) /* 대검: 무겁게 (예전 0.7초) */ : Math.min(0.2, 0.6 / (w.speed * d.atkSpeed)); p.swingT = p.swingMax; p.swingAng = ang;
       const thrust = w.shape === 'thrust';
       const hits = w.hits || 1;
       const strike = (slam = false, mulK = 1) => {
@@ -1487,7 +1487,7 @@ export class World {
           if (great || Math.abs(da) <= Math.max(thrust ? 0.5 : w.arc, 1.2) / 2 + 0.3 || dd < 14) { pr.life = 0; this.emit({ t: 'spark', x: pr.x, y: pr.y, color: pr.color || '#ffe8a0' }); this.emit({ t: 'deflect', x: pr.x, y: pr.y }); }
         }
       }
-      this.emit({ t: 'swing', x: p.x, y: p.y, ang, range: w.range, arc: thrust ? 0.3 : w.arc, heavy: heavy || great, type, dir: great ? (slam ? -1 : 1) : p.swingDir, dur: great ? 0.12 : p.swingMax, thrust, aura: p.auraT > 0, whip: w.shape === 'whip', fist: w.cat === 'fist', enchant: p.buffs.enchant?.elem });
+      this.emit({ t: 'swing', x: p.x, y: p.y, ang, range: w.range, arc: thrust ? 0.3 : w.arc, heavy: heavy || great, type, dir: great ? (slam ? -1 : 1) : p.swingDir, dur: great ? 0.28 : p.swingMax, thrust, aura: p.auraT > 0, whip: w.shape === 'whip', fist: w.cat === 'fist', enchant: p.buffs.enchant?.elem });
       for (const e of this.enemies) {
         if (e.dead || e.hidden) continue;
         const dx = e.x - p.x, dy = e.y - p.y, dist = Math.hypot(dx, dy);
@@ -1514,8 +1514,8 @@ export class World {
       // 대검은 힘을 모으는 동안은 아직 맞지 않고, 칼이 지나가는 순간 맞는다
       // 대검: 퍼올리는 순간 한 번(약하게), 무게로 땅에 떨어지는 순간 한 번 더(강하게)
       if (great) {
-        this.delayed.push({ t: p.swingMax * 0.42, run: () => { p.dashT = 0.12; p.dvx = Math.cos(ang) * 70; p.dvy = Math.sin(ang) * 70; } }); // 던지는 힘에 몸이 끌려 나간다
-        this.delayed.push({ t: p.swingMax * 0.57, run: () => { strike(true, 1.3); this.emit({ t: 'hitstop', v: 0.07 }); this.emit({ t: 'shake', v: 5 }); } });
+        this.delayed.push({ t: p.swingMax * 0.5, run: () => { p.dashT = 0.16; p.dvx = Math.cos(ang) * 70; p.dvy = Math.sin(ang) * 70; } }); // 던지는 힘에 몸이 끌려 나간다
+        this.delayed.push({ t: p.swingMax * 0.68, run: () => { strike(true, 1.3); this.emit({ t: 'hitstop', v: 0.07 }); this.emit({ t: 'shake', v: 5 }); } });
       } else strike();
       // 도끼 군단: 휘두를 때마다 돌아오는 도끼 3자루를 함께 던진다
       if (p.buffs.axeLegion) for (let i = -1; i <= 1; i++) {
@@ -1563,15 +1563,14 @@ export class World {
     p.res = Math.max(0, Math.min(100, p.res + (n > 0 ? n * this.d.resGain : n)));
     if (!passive && n > 0) p.lastFight = this.t;
   }
-  blinkDash(dx, dy) { // 암살자 대시: 그 거리만큼 곧바로 옮겨 간다. 조금씩 나아가며 벽 · 막힌 칸 · 하늘 낭떠러지 앞에서 멈춘다
-    const p = this.player, step = 4;
-    for (let d = 0; d < RACE_FX.assassinBlink; d += step) {
-      if (this.voidZone && this.tileAt(p.x + dx * step, p.y + dy * step + 3) === T_LIQUID) break;
-      const ox = p.x, oy = p.y; this.move(p, dx * step, dy * step); // 걷기와 같은 충돌 (봉인된 지역 · 물 · 벽)
-      if (Math.hypot(p.x - ox, p.y - oy) < step * 0.5) break;
-    }
+  blinkDash(dx, dy) { // 암살자 대시: 그림자 속으로 들어갔다가 그 거리 끝의 땅에서 나온다 — 벽 · 허공 · 물을 건너뛴다 (내릴 자리가 땅이어야 · 없으면 가까운 땅까지 당긴다)
+    const p = this.player, D = RACE_FX.assassinBlink;
+    const sealedHere = !!this.sealAt?.(p.x, p.y);
+    const land = (x, y) => !this.blocked(x, y, 4) && !this.isWaterAt(x, y) && !(this.voidZone && this.tileAt(x, y + 3) === T_LIQUID) && (sealedHere || !this.sealAt?.(x, y));
+    for (let d = D; d >= 6; d -= 4) { const x = p.x + dx * d, y = p.y + dy * d; if (land(x, y)) { p.x = x; p.y = y; break; } }
     p.dashT = 0; p.dvx = 0; p.dvy = 0;
   }
+
   raceDmgMul(type, opt) { // 종족 특성: 주는 피해 (data/races.js RACE_FX)
     const p = this.player, R = RACE_FX, race = this.b.race;
     if (race === 'wizard' && type === 'mag') return R.wizardMag;

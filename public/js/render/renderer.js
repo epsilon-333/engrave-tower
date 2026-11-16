@@ -46,7 +46,8 @@ const bowHand = (a) => ({ hx: 1 + Math.cos(a) * 11, hy: -9 + Math.sin(a) * 10 })
 // 대검 회전 진행도: 앞 40%는 세제곱으로 천천히 가속, 뒤 60%는 관성으로 감속 (두 구간의 속도가 이어지게 맞춤)
 // 0~35%: 반대쪽으로 살짝 젖히며 버팀 · 35~60%: 세제곱으로 폭발하듯 가속(던지기) · 60~100%: 관성으로 돌다 급히 느려짐
 // (던지기 끝과 관성 시작의 속도가 같도록 7.7제곱으로 맞춤)
-export const greatSpin = (k) => (k < 0.35 ? -0.04 * Math.sin((k / 0.35) * Math.PI / 2) : k < 0.6 ? -0.04 + 0.64 * Math.pow((k - 0.35) / 0.25, 3) : 0.6 + 0.4 * (1 - Math.pow(1 - (k - 0.6) / 0.4, 7.7)));
+// 대검: 0~30% 뒤로 젖혀 모으고 · 30~72% 무게를 실어 천천히 빨라지며 내려온다 · 72~100% 남은 힘으로 끝까지 (예전엔 칼이 지나가는 구간이 25%뿐이라 휙 지나가 가벼워 보였다)
+export const greatSpin = (k) => (k < 0.3 ? -0.06 * Math.sin((k / 0.3) * Math.PI / 2) : k < 0.72 ? -0.06 + 0.7 * Math.pow((k - 0.3) / 0.42, 2.2) : 0.64 + 0.36 * (1 - Math.pow(1 - (k - 0.72) / 0.28, 4)));
 // 용 브레스 목 굽힘: 머리 쪽으로 갈수록 더 많이 돌린다 (몸통 · 다리 · 날개는 그대로)
 // u = 그림 기준 가로(0 꼬리 ~ 1 머리), v = 세로. 각도별로 한 번 계산해 둔다
 const DRAGON_NECK = { pu: 0.62, pv: 0.6, u0: 0.56, uh: 0.8, vt: 0.21, vb: 0.62 };
@@ -87,7 +88,7 @@ function bendDragon(src, tilt, R, key) {
   BEND.set(ck, c);
   return c;
 }
-const greatSpinSpeed = (k) => (k < 0.35 ? 0 : k < 0.6 ? Math.pow((k - 0.35) / 0.25, 2) : Math.pow(1 - (k - 0.6) / 0.4, 6.7));
+const greatSpinSpeed = (k) => (k < 0.3 ? 0 : k < 0.72 ? Math.pow((k - 0.3) / 0.42, 1.2) : Math.pow(1 - (k - 0.72) / 0.28, 3));
 // 무기를 쥔 손 색 (종족별)
 // 종족별 입 높이 (발 기준, 바람총을 대는 자리)
 const MOUTH_Y = { assassin: -6, dragon: -9, knight: -10, wizard: -9, elf: -9, orc: -8, dino: -9, undead: -9, golem: -12 };
@@ -645,7 +646,10 @@ export class Renderer {
     list.sort((a, b) => a.y - b.y);
     for (const it of list) {
       if (it.pxe) this.anims.px.drawOne(g, it.pxe);
-      else if (it.p) { this.drawPlayer(w, p, dt); if (p.webT > 0) drawWeb(g, p.x, p.y, w.t, Math.min(1, p.webT * 3)); } // 거미줄에 묶였다: 몸에 감긴 실
+      else if (it.p) {
+        const sr = this.shadowRise; // 암살자 순간이동: 그림자에서 몸이 아래부터 솟아오른다 (땅 위로 나온 만큼만 보인다)
+        if (sr && sr.t > 0) { sr.t -= dt; const k = 1 - sr.t / sr.max; g.save(); g.beginPath(); g.rect(p.x - 30, p.y - 60, 60, 64); g.clip(); g.translate(0, Math.round((1 - k) * 22)); this.drawPlayer(w, p, dt); g.restore(); }
+        else this.drawPlayer(w, p, dt); if (p.webT > 0) drawWeb(g, p.x, p.y, w.t, Math.min(1, p.webT * 3)); } // 거미줄에 묶였다: 몸에 감긴 실
       else if (it.e) this.drawEnemy(w, it.e, dt);
       else if (it.o) this.drawObject(w, it.o, dt);
       else if (it.dr) this.drawDrop(w, it.dr);
@@ -1632,7 +1636,7 @@ export class Renderer {
         // 무거운 대검을 허리 높이에서 옆으로 돌려 던지듯 휘두른다. th = 바닥 위 방향(0 앞 · π/2 화면 앞쪽 · π 뒤 · -π/2 몸 너머)
         const s = greatSpin(k), th = (Math.PI - 0.5) - Math.PI * 2 * s;
         const c = Math.cos(th), sn = Math.sin(th);
-        const v = greatSpinSpeed(k), wind = k < 0.35 ? k / 0.35 : 0;
+        const v = greatSpinSpeed(k), wind = k < 0.3 ? k / 0.3 : 0;
         const reach = 3.5 + 4.5 * Math.min(1, v);          // 던질 때는 팔을 쭉 뻗는다
         P.a = Math.atan2(sn * 0.3 + 0.1, c);
         P.len = Math.sqrt(c * c + 0.09 * sn * sn);

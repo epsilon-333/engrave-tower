@@ -1,4 +1,6 @@
 [
+"Give weapon",
+"Weapons: affinity 「",
 "Weapon doesn't fit · damage",
 "Melted the weapon and got 1 material back",
 "Add it when crafting a weapon to grant an ability",
@@ -396,7 +398,5 @@
 " first",
 "/day) · Relic +10 · Gift",
 "Lightning",
-"Lightning-charged Fingertips",
-"Lightning Imbue",
-"Chain Lightning"
+"Lightning-charged Fingertips"
 ]

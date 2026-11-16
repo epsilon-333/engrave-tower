@@ -1,4 +1,6 @@
 [
+"Lightning Imbue",
+"Chain Lightning",
 "Lightning whetstone",
 "Lightning jumps between enemies 4 times",
 "Lightning jumps between enemies 6 times. Shocked enemies take +15% damage. Mana 22",
@@ -53,6 +55,7 @@
 "Star Gate",
 "Star Orb",
 "Star Archive",
+"Star Archive: enemies standing on constellations hit harder. Lure them out",
 "The Grand Archivist guarding the Star Archive",
 "The star map? …Pretend you don't know. That's how you live long",
 "Star book page",
@@ -395,8 +398,5 @@
 "Traps enemies in a bone cage for 2.5s. Trapped enemies' damage taken +30",
 "Bone echo",
 "Bone Longbow",
-"Bone Spear",
-"Bone bars",
-"Bone Spearhead",
-"Bone Flute"
+"Bone Spear"
 ]

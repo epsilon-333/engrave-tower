@@ -9,7 +9,7 @@ import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
 import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
 import { padState, applyPad, padMenu } from './gamepad.js';
-import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, grantRaceSkills, raceSkills, classEngravingFor, setStaleHook, onLocalSave, isStale } from './save.js';
+import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, grantRaceSkills, grantRaceMats, raceSkills, classEngravingFor, setStaleHook, onLocalSave, isStale } from './save.js';
 import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
 import { codexPoints } from './data/codex.js';
 import { TILE, generateField } from './sim/mapgen.js';
@@ -770,6 +770,7 @@ function journeyTick(dt) {
         const sk = raceSkills(save.race).find((id) => SKILLS[id] && (SKILLS[id].unlock || 1) <= 1), eid = sk && classEngravingFor(sk);
         if (eid) { (save.flags ||= {}).firstEng = eid; (save.classEng ||= {})[sk] = eid; for (const [k, n] of Object.entries(ENGRAVINGS[eid].recipe || {})) save.echoes[k] = (save.echoes[k] || 0) + n; sum.names = [...(sum.names || []), `${ENGRAVINGS[eid].name} 재료`]; sum.firstMats = true; }
       }
+      if (r.mats) { const eid = grantRaceMats(save, r.mats, world.b.cls); if (eid) sum.names = [...(sum.names || []), `${ENGRAVINGS[eid].name} 재료`]; } // 종족 스킬 각인 재료 (공명 제단에서 새긴다)
       if (r.skill) { const got = grantRaceSkills(save, r.skill); if (got.length) { sum.skill = (sum.skill || 0) + got.length; if (r.skill === 'ult') sum.ult = 1; sum.names = [...(sum.names || []), ...got.map((e) => ENGRAVINGS[e]?.name)]; } } // 종족 스킬 각인
       titles.push(J.step.title);
       const wasFollowing = save.follow === J.step.id;

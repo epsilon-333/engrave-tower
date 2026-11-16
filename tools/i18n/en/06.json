@@ -1,4 +1,7 @@
 [
+"Mana Film",
+"Casts spells with mana. Cannot move while casting. Magic damage +80%, max HP -10",
+"Sea of Mana",
 "Purple crystal of hardened mana. Grows deep in the snowfield",
 "Scatters three mana bolts (mana). Pairs well with magic skills",
 "Marten",
@@ -274,7 +277,6 @@
 "Catfish",
 "Dried spring",
 "Barren Wastes",
-"Barren Wastes · Northern Crags. Training at race sanctums makes you stronger too",
 "Visit the Barren Wastes or the Northern Crags",
 "Boar Charger",
 "Boar Charge",
@@ -396,7 +398,5 @@
 "Indifferent",
 "Weapon",
 "Weapon (right hand",
-"Craft weapons",
-"Give weapon",
-"Weapons: affinity 「"
+"Craft weapons"
 ]

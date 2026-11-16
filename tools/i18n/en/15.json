@@ -1,4 +1,8 @@
 [
+"A prisoner is dragged to the execution block",
+"Execution Ground Guard",
+"Four execution ground guards",
+"Execute",
 "Thousand Cuts",
 "Thousand Mirror Armor",
 "Thousand Mirror Shield",
@@ -363,6 +367,7 @@
 "Clockwork Soldier",
 "Clockwork soldier's winding key",
 "Clockwork Tower",
+"Clockwork Tower: you get pushed along on the gear belts",
 "Clockwork echo",
 "Nothing to detonate",
 "Bursting Rage",
@@ -393,10 +398,5 @@
 "Arena scratches remain like medals",
 "Clear leg",
 "Crude but hits hard",
-"Fighter",
-"Fighter Grak",
-"Fighter Morga",
-"Fighter's horn",
-"Fighter's tooth",
-"Fighter's Tooth Bracelet"
+"Fighter"
 ]

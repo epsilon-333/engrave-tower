@@ -53,7 +53,7 @@ export const RACES = {
   },
   assassin: {
     name: '암살자', origin: '뒷골목',
-    desc: '피하고 파고들며 그림자를 모은다. 모든 공격 회피 +15%. 대시가 순간이동이다(벽은 넘지 못한다).',
+    desc: '피하고 파고들며 그림자를 모은다. 모든 공격 회피 +15%. 대시가 그림자 순간이동이다(벽 · 허공도 건너뛴다).',
     strong: '민첩 · 감각', weak: '체력 낮음 · 저항 낮음',
     base: { str: 9, mag: 4, agi: 17, vit: 8, sen: 16, spi: 6, pres: 4, mres: 5 },
     growth: { sen: 1 },
@@ -86,7 +86,7 @@ export const RACES = {
 // 종족 특성 수치 (2026-11-10 개편: 종족마다 특성 하나 · 둘을 숫자로 분명하게, 예전 특성은 모두 뺐다)
 export const RACE_FX = {
   assassinDodge: 0.15,   // 암살자: 모든 공격 회피 +15%
-  assassinBlink: 64,     // 암살자: 대시 = 순간이동 (거리 · 벽과 하늘 낭떠러지는 넘지 않는다)
+  assassinBlink: 64,     // 암살자: 대시 = 그림자 순간이동 (벽 · 허공 · 물도 건너뛴다 · 내릴 자리는 땅)
   undeadPhysDodge: 0.30, // 언데드: 물리 공격 회피 +30%
   wizardMag: 1.8,        // 마법사: 마법 피해 +80%
   wizardHp: 0.9,         //        최대 체력 -10%
