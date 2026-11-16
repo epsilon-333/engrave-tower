@@ -164,7 +164,7 @@ export function computeBuild(lo) {
   // 8) 파생 수치
   const E = {}; for (const k of BASE_STATS) E[k] = eff(Math.max(0, stats[k]));
   const d = {
-    maxHp: 260 + 14 * ((lo.level || 1) - 1) + E.vit * 36, // (스탯 한 점이 크게: 예전 24) 체력: 레벨마다 +14, 체력 스탯이 더 많이 (공격이 체력보다 빨리 크던 것)
+    maxHp: 260 + 14 * ((lo.level || 1) - 1) + E.vit * 26, // 체력 한 점 (2026-11-16: 36은 공격 스탯보다 너무 세서 26) 체력: 레벨마다 +14, 체력 스탯이 더 많이 (공격이 체력보다 빨리 크던 것)
     physAtk: 4 + E.str * 1.8,  // 스탯 한 점이 크게 (예전 1.1)                  // 기본 공격력은 조금 낮게 (예전 × 1.3)
     dexAtk: 4 + E.agi * 1.6 + E.str * 0.3, // (예전 1.0 · 0.2)
     magAtk: 4 + E.mag * 1.8, // (예전 1.1)
@@ -178,8 +178,8 @@ export function computeBuild(lo) {
     statusRes: E.spi / (E.spi + 90),
     cdr: E.spi / (E.spi + 160),
     loadCap: 25 + Math.floor(stats.spi / 10), // 기본 25 · 정신 10마다 1 (넘치게는 장착할 수 없다)
-    physDR: Math.max(0, stats.pres) / (Math.max(0, stats.pres) + 160), // 방어 1점의 값을 낮췄다 (예전 +100)
-    magDR: Math.max(0, stats.mres) / (Math.max(0, stats.mres) + 160),
+    physDR: E.pres / (E.pres + 200), // 저항도 몰아 올릴수록 한 점이 커진다 (구간 배율 · 2026-11-16: 20 → 9% · 60 → 29% · 100 → 46%)
+    magDR: E.mres / (E.mres + 200),
     physPen: 0, magPen: 0, knockback: 30, regen: 0,
     dmgMul: 1, dmgTakenMul: 1, burnMul: 1, bleedMul: 1, chillMul: 1, reactionMul: 1, statusDmgMul: 1, reflectMul: 1,
     poisonCap: 10, freezeReduce: 0, cloudSize: 0, dashCd: 1.2, goldMul: 1, projMul: 1,
