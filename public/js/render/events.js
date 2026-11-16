@@ -139,6 +139,15 @@ export const EventMethods = {
         case 'alert': this.alerts.set(ev.id, -0.7); break;
         case 'spark': this.sparkBurst(ev.x, ev.y, ev.color, 4); break;
         case 'chest': this.chestOpen.set(`${ev.x},${ev.y}`, 0); this.burst(ev.x, ev.y - 6, ev.rich ? '#d8a8ff' : '#ffe08a', 30, 120); this.shake = 2; sfx('chest', { vol: 0.7 }); sfx('coin', { vol: 0.6 }); break;
+        case 'bossEvolve': { // 보스 변신: 땅이 터져 돌덩이가 튀고 · 흙먼지가 바닥을 타고 퍼지고 · 몸에서 불티가 솟는다 (가운데 검은 구멍 · 고리 없이)
+          const col = ev.n === 2 ? ['#ff5a3a', '#ffd0a0', '#b03a8a'] : ['#ff9a3a', '#ffe8a8', '#ffd050'];
+          for (let i = 0; i < 26; i++) { const a = Math.random() * Math.PI * 2, s2 = 60 + Math.random() * 120; this.parts.push({ x: ev.x + Math.cos(a) * 8, y: ev.y, vx: Math.cos(a) * s2, vy: Math.sin(a) * s2 * 0.5 - 90 - Math.random() * 80, t: 0.8, max: 0.8, color: i % 3 ? '#6a5a48' : '#9a8a70', g: 380, chunk: true, floor: ev.y + 4 + Math.sin(a) * 12 }); } // 튀는 돌덩이
+          for (let i = 0; i < 36; i++) { const a = (i / 36) * Math.PI * 2 + Math.random() * 0.1, s2 = ev.r * (1.4 + Math.random() * 0.5); this.parts.push({ x: ev.x + Math.cos(a) * 10, y: ev.y + 3 + Math.sin(a) * 4, vx: Math.cos(a) * s2, vy: Math.sin(a) * s2 * 0.45, t: 0.7, max: 0.7, color: '#b8a888', g: 0, puff: true, size: 3 + (i % 2) }); } // 바닥을 타고 퍼지는 흙먼지
+          for (let i = 0; i < 40; i++) { const a = Math.random() * Math.PI * 2, rr = Math.random() * 22; this.parts.push({ x: ev.x + Math.cos(a) * rr, y: ev.y - 4 - Math.random() * 30, vx: Math.cos(a) * 20, vy: -60 - Math.random() * 90, t: 0.6 + Math.random() * 0.6, max: 1.2, color: col[i % 3], g: -20, glow: true, flame: i % 4 === 0, size: 1.5 + Math.random() }); } // 솟구치는 불티
+          this.burst(ev.x, ev.y - 14, col[1], 14, 140);
+          this.shake = Math.max(this.shake, ev.n === 2 ? 10 : 7); sfx('crack', { vol: 0.9, rate: 0.6 }); sfx('hitHeavy', { vol: 0.7, rate: 0.7 });
+          break;
+        }
         case 'crackHit': this.burst(ev.x, ev.y, '#a89880', 6, 60); this.shake = Math.max(this.shake, 1.5); sfx('crack', { vol: 0.6 }); break;
         case 'region':
           if (ev.vista && ev.first) break; // 전망대는 따로 연출
@@ -182,7 +191,11 @@ export const EventMethods = {
           for (let i = 0; i < 10; i++) { const u = i / 10, T = 0.35; this.parts.push({ x: ev.x1 + (ev.x2 - ev.x1) * u, y: ev.y1 + (ev.y2 - ev.y1) * u, vx: (ev.x2 - ev.x1) * (1 - u) / T * 0.5, vy: (ev.y2 - ev.y1) * (1 - u) / T * 0.5 - 6, t: T, max: T, color: i % 2 ? '#8af08a' : '#e8ffd8', g: 0, glow: true, size: 1 }); }
           sfx('echo', { vol: 0.3, rate: 1.4 }); break;
         }
-        case 'emerge': this.burst(ev.x, ev.y + 2, '#8a7a5a', 18, 90); sfx('crack', { vol: 0.5, rate: 1.3 }); break;
+        case 'emerge': { // 땅을 뚫고 튀어나온다: 흙덩이가 사방으로 · 몸은 하늘로 솟았다 떨어진다 (digPose)
+          (this.pops ||= new Map()).set(ev.id, { t: 0.55 });
+          for (let i = 0; i < 22; i++) { const a = Math.random() * Math.PI * 2, s2 = 40 + Math.random() * 90; this.parts.push({ x: ev.x + Math.cos(a) * 4, y: ev.y + 2, vx: Math.cos(a) * s2, vy: -80 - Math.random() * 120, t: 0.7, max: 0.7, color: i % 3 ? '#7a6448' : '#a89070', g: 380, chunk: true, floor: ev.y + 3 + Math.sin(a) * 10 }); }
+          this.burst(ev.x, ev.y + 2, '#8a7a5a', 12, 70); sfx('crack', { vol: 0.6, rate: 1.1 }); break;
+        }
         case 'summon': if (!this.anims.px.add('spawn/summon-rise', ev.x, ev.y + 3, { scale: 0.8, max: 1.6 })) this.burst(ev.x, ev.y, '#c45cff', 12, 60); break; // 소환: 땅이 갈라지며 기어 나온다 (pixelfx)
         case 'parryFx': this.anims.px.add('impacts/parry', ev.x, ev.y, { scale: 0.8, floor: 0, max: 0.6 }); sfx('hitHeavy', { vol: 0.5, rate: 1.6 }); break;
         case 'camp': this.burst(ev.x, ev.y - 4, '#ffd88a', 16, 60); sfx('levelup', { vol: 0.4 }); break;

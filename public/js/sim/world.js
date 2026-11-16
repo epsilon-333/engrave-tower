@@ -448,14 +448,15 @@ export class World {
       if (tx >= 0 && ty >= 0 && tx < this.tw && ty < this.th) this.igniteTile(ty * this.tw + tx, true);
     }
   }
-  igniteTile(k, direct = false) { // direct: 불꽃이 바로 닿았다 (낮은 풀도 반은 붙는다)
+  igniteTile(k, direct = false, by = 'p') { // direct: 불꽃이 바로 닿았다 (낮은 풀도 반은 붙는다)
     const g = this.map.ground;
     if (this.map.regionInfo?.[this.map.regions?.[k]]?.town) return; // 마을 안(밭 · 집 둘레)은 타지 않는다
     if (this.tiles[k] === T_FLOOR && (g[k] === G.ICE || g[k] === G.THIN) && this.frozen.has(k)) { this.thawTile(k); return; }
     if (this.tiles[k] !== T_FLOOR || this.burning.has(k) || !(g[k] === G.TALL || g[k] === G.FLOWER || g[k] === G.DEADGRASS || (g[k] === G.GRASS || g[k] === G.FOREST || g[k] === G.JUNGLE) && this.rng.chance(direct ? 0.55 : 0.25))) return;
-    this.burnStart(k);
+    this.burnStart(k, by);
   }
-  burnStart(k) {
+  burnStart(k, by = 'p') {
+    (this.fireBy ||= new Map()).set(k, by); // 누가 붙인 불인가 (번지면 그대로 물려받는다 · 내 불은 나를 태우지 않는다)
     const g = this.map.ground;
     if (!this.burnOrig.has(k)) this.burnOrig.set(k, g[k]);
     this.burning.set(k, g[k] === G.TALL ? 5.5 : g[k] === G.FLOWER || g[k] === G.DEADGRASS ? 3.5 : 2.5);
@@ -506,15 +507,15 @@ export class World {
       for (const o of [1, -1, tw, -tw]) {
         const j = k + o;
         if (j < 0 || j >= g.length || this.burning.has(j) || this.tiles[j] !== T_FLOOR) continue;
-        if ((g[j] === G.TALL && this.rng.chance(0.04)) || (g[j] === G.FLOWER && this.rng.chance(0.025)) || (g[j] === G.DEADGRASS && this.rng.chance(0.05)) || (g[j] === G.GRASS && this.rng.chance(0.003))) this.burnStart(j);
+        if ((g[j] === G.TALL && this.rng.chance(0.04)) || (g[j] === G.FLOWER && this.rng.chance(0.025)) || (g[j] === G.DEADGRASS && this.rng.chance(0.05)) || (g[j] === G.GRASS && this.rng.chance(0.003))) this.burnStart(j, this.fireBy?.get(k) || 'p');
       }
       // 옆의 나무에 옮겨 붙는다
       for (const pr of this.map.props) if (pr.kind === 'tree' && Math.abs(pr.x - x) <= 1 && Math.abs(pr.y - y) <= 1 && !this.burntTrees.has(`${pr.x},${pr.y}`) && this.rng.chance(0.08)) { this.burntTrees.add(`${pr.x},${pr.y}`); this.emit({ t: 'treeBurn', x: pr.x * TILE + 8, y: pr.y * TILE }); }
       // 불길 위에 있으면 탄다
       const cx = x * TILE + 8, cy = y * TILE + 8;
-      for (const e of this.enemies) if (!e.dead && Math.abs(e.x - cx) < 10 && Math.abs(e.y - cy) < 10) this.applyStatus(e, 'burn', 1);
+      for (const e of this.enemies) if (!e.dead && e.def.status !== 'burn' && Math.abs(e.x - cx) < 10 && Math.abs(e.y - cy) < 10) this.applyStatus(e, 'burn', 1); // 불을 쓰는 몬스터는 불길에 타지 않는다
       const p = this.player;
-      if (Math.abs(p.x - cx) < 9 && Math.abs(p.y - cy) < 9 && p.invuln <= 0) this.hurtPlayer(3, 'mag', null, { direct: true, status: 'burn' });
+      if (this.fireBy?.get(k) === 'e' && Math.abs(p.x - cx) < 9 && Math.abs(p.y - cy) < 9 && p.invuln <= 0) this.hurtPlayer(3, 'mag', null, { direct: true, status: 'burn' });
     }
     if (tick) {
       for (const [k, f] of this.frozen) { f.t -= 0.25; if (f.t <= 0) this.thawTile(k); else if (f.t <= 5 && this.map.ground[k] === G.ICE) { this.map.ground[k] = G.THIN; this.emit({ t: 'groundChange', k }); } }
@@ -1481,9 +1482,8 @@ export class World {
     const base = atk * mul;
     if (w.kind === 'melee') {
       p.swingDir = p.atkCount % 2 ? 1 : -1;
-      const great = !!w.great;
-      p.swingMax = great ? Math.max(0.85, 1.15 / (d.atkSpeed * this.mod('atkSpeed'))) /* 대검: 무겁게 (예전 0.7초) */ : Math.min(0.2, 0.6 / (w.speed * d.atkSpeed)); p.swingT = p.swingMax; p.swingAng = ang;
-      const thrust = w.shape === 'thrust';
+      const great = !!w.great, thrust = w.shape === 'thrust';
+      p.swingMax = great ? Math.max(0.85, 1.15 / (d.atkSpeed * this.mod('atkSpeed'))) /* 대검: 무겁게 (예전 0.7초) */ : thrust ? Math.max(0.3, Math.min(0.36, 0.9 / (w.speed * d.atkSpeed))) /* 창: 당겼다가 찌른다 */ : Math.min(0.2, 0.6 / (w.speed * d.atkSpeed)); p.swingT = p.swingMax; p.swingAng = ang;
       const hits = w.hits || 1;
       const strike = (slam = false, mulK = 1) => {
       { // 탄 쳐내기: 휘두른 범위 안의 적 탄은 사라진다 (근접이 원거리 몬스터에게 일방적으로 맞지 않게)
@@ -1524,7 +1524,8 @@ export class World {
       if (great) {
         this.delayed.push({ t: p.swingMax * 0.5, run: () => { p.dashT = 0.16; p.dvx = Math.cos(ang) * 70; p.dvy = Math.sin(ang) * 70; } }); // 던지는 힘에 몸이 끌려 나간다
         this.delayed.push({ t: p.swingMax * 0.68, run: () => { strike(true, 1.6); /* 대검: 느린 만큼 한 방이 크다 (예전 1.3) */ this.emit({ t: 'hitstop', v: 0.07 }); this.emit({ t: 'shake', v: 5 }); } });
-      } else strike();
+      } else if (thrust) this.delayed.push({ t: p.swingMax * 0.38, run: () => { if (!p.dead) strike(); } }); // 창: 뒤로 당긴 뒤 내지르는 순간에 맞는다
+      else strike();
       // 도끼 군단: 휘두를 때마다 돌아오는 도끼 3자루를 함께 던진다
       if (p.buffs.axeLegion) for (let i = -1; i <= 1; i++) {
         const a = ang + i * 0.25;
@@ -2057,7 +2058,8 @@ export class World {
     p.lastFight = this.t;
     if (!e.def.elite && e.def.ai !== 'dummy') {
       const dx = e.x - p.x, dy = e.y - p.y, l = Math.hypot(dx, dy) || 1;
-      const kb = d.knockback * (heavy ? 2 : 1);
+      const blunt = !proj && this.b.wcat === 'blunt' && !opt.skill; // 둔기 평타: 묵직하게 밀어낸다
+      const kb = d.knockback * (heavy ? 2 : 1) * (blunt ? 3.2 : 1);
       e.kbx += (dx / l) * kb * 3; e.kby += (dy / l) * kb * 3;
     }
     if (e.def.ai === 'dummy') e.wobble = 0.3;
@@ -2932,7 +2934,7 @@ export class World {
     e.invulnT = Math.max(e.invulnT || 0, 0.9); e.mv = null; e.windT = 0.9; e.windMax = 0.9; e.mvCd = Math.max(e.mvCd || 0, 1.2);
     // 설명 글 없이: 터지는 연출 · 흔들림 · 모습(색 · 크기)이 바뀌는 것으로만 보여 준다
     this.emit({ t: 'shake', v: n === 2 ? 10 : 7 }); this.emit({ t: 'hitstop', v: 0.12 });
-    this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 70 + n * 20, elem: n === 2 ? 'dark' : 'fire', fx: 'burst', ult: true });
+    this.emit({ t: 'bossEvolve', x: e.x, y: e.y, r: 70 + n * 20, n, id: e.id });
     // 변신 충격파: 가까이 붙어 있으면 밀려난다
     const p = this.player, dx = p.x - e.x, dy = p.y - e.y, l = Math.hypot(dx, dy) || 1;
     if (l < e.r + 50) this.knockPlayer(e.x, e.y, 47);

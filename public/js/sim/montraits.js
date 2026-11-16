@@ -45,6 +45,7 @@ export const TraitMethods = {
       return false;
     }
     if (t === 'dig') {
+      if (e.digInT > 0) { e.digInT -= DT; e.moving = false; e.windT = 0; if (e.digInT <= 0) { e.under = true; e.digT = 1.8; } return true; } // 땅을 파고 들어가는 중 (0.5초 · 그림은 renderer)
       if (e.under) {
         e.digT -= DT;
         const dx = p.x - e.x, dy = p.y - e.y, l = Math.hypot(dx, dy) || 1;
@@ -57,7 +58,7 @@ export const TraitMethods = {
         }
         return true;
       }
-      if (!frozen && e.trCd <= 0 && dist > 40 && dist < 220) { e.under = true; e.digT = 1.8; e.trCd = 8; this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '땅속으로!', color: '#c8a878' }); return true; }
+      if (!frozen && e.trCd <= 0 && dist > 40 && dist < 220) { e.digInT = 0.5; e.trCd = 8; this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '땅속으로!', color: '#c8a878' }); return true; }
       return false;
     }
     if (t === 'caster') {
