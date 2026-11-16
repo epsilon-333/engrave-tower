@@ -54,6 +54,7 @@
 "Jousting Grounds",
 "Jousting Grounds · Knighting",
 "Drink",
+"",
 "Drink to recover 30% health",
 "Drink to recover 55% health",
 "Drink to fully recover health",
@@ -167,6 +168,7 @@
 "Interlocking combos",
 "Counter",
 "Fight back",
+"",
 "Aura from hits +30",
 "Aura from hits +50",
 "When hit",
@@ -261,6 +263,7 @@
 "Clear-headed",
 "Ink echo",
 "Eat",
+"",
 "Ate",
 "Nothing to eat",
 "An ink-smudged charm. Still works, though",
@@ -395,8 +398,5 @@
 "Heavy Axe Blade",
 "Heavy Star",
 "Heavy but reliable",
-"Indifferent",
-"Weapon",
-"Weapon (right hand",
-"Craft weapons"
+"Indifferent"
 ]

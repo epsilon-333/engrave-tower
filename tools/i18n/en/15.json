@@ -1,4 +1,8 @@
 [
+"Heal 0.8% health on kill",
+"Poison cloud on kill spot",
+"Killed enemies explode",
+"Execution",
 "A prisoner is dragged to the execution block",
 "Execution Ground Guard",
 "Four execution ground guards",
@@ -394,9 +398,5 @@
 "Talk to arena master Grom · betting duels",
 "Arena Champion",
 "In the arena fists talk, not words",
-"A small idol the arena orcs worshipped. It has tooth marks",
-"Arena scratches remain like medals",
-"Clear leg",
-"Crude but hits hard",
-"Fighter"
+"A small idol the arena orcs worshipped. It has tooth marks"
 ]

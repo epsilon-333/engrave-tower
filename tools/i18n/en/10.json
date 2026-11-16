@@ -1,4 +1,7 @@
 [
+"Chain Pull",
+"Chain Hook",
+"Pulls one enemy right in front of me with a chain, 0.5s stun (90% attack damage · elites almost all the way",
 "Received a fee",
 "Canopy Scythe",
 "Monk's Robe",
@@ -395,8 +398,5 @@
 "Assassin",
 "Assassin engraving · shadow clone",
 "Rock Armor",
-"Black market",
-"Darkness",
-"A coin said to land only on heads",
-"Forward Cut"
+"Black market"
 ]

@@ -1,4 +1,8 @@
 [
+"Control",
+"Craft",
+"Lost · win streak broken",
+"Lost · score -10",
 "Shard",
 "1 shard",
 "Shards gather and",
@@ -394,9 +398,5 @@
 "Kills give for 8s Strength +4",
 "Kills give for 8s Agility +3",
 "A pillar of light on the kill spot (radius 3 tiles · 120% attack magic damage",
-"Pillar of light on kill",
-"Heal 0.8% health on kill",
-"Poison cloud on kill spot",
-"Killed enemies explode",
-"Execution"
+"Pillar of light on kill"
 ]
