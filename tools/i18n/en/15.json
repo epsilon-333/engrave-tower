@@ -60,7 +60,7 @@
 "Fully restored health · saved",
 "Health is full",
 "Detonates only the 3 lowest-health minions for big area damage. Stronger the higher the minions' max health. With no minions, detonates one nearby enemy",
-"Deals more damage the lower your HP (+100% at 10% HP or less). When hit, rage for 2s: damage +10",
+"Deal more damage the lower your HP (+80% at 10% HP or less). When hit, rage for 2s: damage +10",
 "Small enough to parry",
 "Parried",
 "s",

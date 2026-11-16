@@ -38,7 +38,7 @@ for (const [race, mul] of [['wizard', R.wizardHp], ['knight', R.knightHp]]) {
   p.hp = oc.d.maxHp; const o1 = oc.raceDmgMul('phys', {});
   p.hp = oc.d.maxHp * 0.55; const o2 = oc.raceDmgMul('phys', {});
   p.hp = oc.d.maxHp * 0.05; const o3 = oc.raceDmgMul('phys', {});
-  ok(near(o1, 1) && near(o2, 1.5) && near(o3, 2), `오크: 체력 100% ×${o1.toFixed(2)} · 55% ×${o2.toFixed(2)} · 5% ×${o3.toFixed(2)}`);
+  ok(near(o1, 1) && near(o2, 1 + R.orcLow * 0.5) && near(o3, 1 + R.orcLow), `오크: 체력 100% ×${o1.toFixed(2)} · 55% ×${o2.toFixed(2)} · 5% ×${o3.toFixed(2)}`);
   p.hp = oc.d.maxHp; p.invuln = 0; oc.hurtPlayer(10, 'phys', null, { direct: true });
   ok(p.buffs.orcRage && near(oc.mod('dmgMul'), R.orcHurtMul) && near(p.buffs.orcRage.t, R.orcHurtT), '오크: 맞으면 2초 동안 분노 (피해 +10%)');
 }
