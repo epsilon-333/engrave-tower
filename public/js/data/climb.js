@@ -42,6 +42,7 @@ export const BOSS_STYLE = {
   stormHarpy: [0.8, 1.2], mirrorSelf: [0.75, 1.25], clockKeeper: [0.85, 1.15], highPriest: [0.8, 1.2], // 날카로움
   shardQueen: [1, 1], starReader: [1, 1], lastKing: [1, 1], // 균형
 };
+export const BOSS_DMG = 0.5; // 수호자 · 주인 기술 피해 배율: 보통 몬스터가 열 대에 쓰러뜨리게 세진 만큼(2026-11-16) 보스 큰 기술이 한두 방에 끝내지 않게
 export const BOSS_ATK = { guardian: 1.4, lord: 1.3 }; // 수호자 · 주인은 레벨이 모자라면 벽이 된다 (권장 레벨에서 두 레벨 이상 낮으면 공격 배율을 다 받는다)
 const ZONE_REF = {}; // zone id → { hp, atk } 그 구역 몬스터의 평균
 export function setZoneRef(zoneId, pool) {

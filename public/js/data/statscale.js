@@ -33,8 +33,8 @@ export function weaponStat(it) {
   return WEAPON_STAT[cat] || (w.dmg === 'mag' ? 'mag' : 'str');
 }
 
-// 계수: 스탯 25에서 1배, 스탯 1마다 +0.6% (75 → 1.3배 · 100 → 1.45배)
-export const statMul = (v) => Math.max(0.85, 0.85 + 0.006 * (v || 0));
+// 계수: 스탯 1마다 +1% (25 → 1.1배 · 75 → 1.6배 · 100 → 1.85배 · 예전 +0.6%)
+export const statMul = (v) => Math.max(0.85, 0.85 + 0.01 * (v || 0));
 // 스탯 개방: 40 이상 피해 +15% · 70 이상 재사용 -20% (무기는 50 이상 평타 피해 +15% · 80 이상 공격 속도 +10%)
 export const SKILL_PERKS = [{ at: 40, dmg: 1.15, text: '피해 +15%' }, { at: 70, cd: 0.8, text: '재사용 -20%' }];
 export const WEAPON_PERKS = [{ at: 50, dmg: 1.15, text: '평타 · 무기 기술 피해 +15%' }, { at: 80, spd: 1.1, text: '공격 속도 +10%' }];

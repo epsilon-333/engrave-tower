@@ -164,10 +164,10 @@ export function computeBuild(lo) {
   // 8) 파생 수치
   const E = {}; for (const k of BASE_STATS) E[k] = eff(Math.max(0, stats[k]));
   const d = {
-    maxHp: 260 + 14 * ((lo.level || 1) - 1) + E.vit * 24, // 체력: 레벨마다 +14, 체력 스탯이 더 많이 (공격이 체력보다 빨리 크던 것)
-    physAtk: 4 + E.str * 1.1,                  // 기본 공격력은 조금 낮게 (예전 × 1.3)
-    dexAtk: 4 + E.agi * 1.0 + E.str * 0.2,
-    magAtk: 4 + E.mag * 1.1,
+    maxHp: 260 + 14 * ((lo.level || 1) - 1) + E.vit * 36, // (스탯 한 점이 크게: 예전 24) 체력: 레벨마다 +14, 체력 스탯이 더 많이 (공격이 체력보다 빨리 크던 것)
+    physAtk: 4 + E.str * 1.8,  // 스탯 한 점이 크게 (예전 1.1)                  // 기본 공격력은 조금 낮게 (예전 × 1.3)
+    dexAtk: 4 + E.agi * 1.6 + E.str * 0.3, // (예전 1.0 · 0.2)
+    magAtk: 4 + E.mag * 1.8, // (예전 1.1)
     atkSpeed: 1 + 0.7 * E.agi / (E.agi + 110),       // 민첩: 공격 속도 (최대 +70%, 갈수록 덜 오른다)
     moveSpeed: 80 * (1 + 0.3 * E.agi / (E.agi + 90)), // 민첩: 이동 속도 (최대 +30% · 너무 빠르면 어지러워서 갈수록 덜 오른다)
     dodge: 0.45 * E.agi / (E.agi + 110),                // 민첩: 회피 (민첩 20 → 7% · 60 → 16% · 최대 45%)

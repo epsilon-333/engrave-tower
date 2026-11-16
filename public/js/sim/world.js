@@ -11,7 +11,7 @@ import { rollTowerGear } from '../data/towergear.js'; // 탑의 방어구 · 장
 import { ITEMS } from '../data/items.js';
 import { LIFESTEAL_PER } from '../data/stats.js';
 export const POTION_CD = 8; // 물약 · 회복 요리 대기시간 (함께 쓴다)
-import { climbMul, setZoneRef, floorFoes, rollDoors, actOf, REWARDS, BOSS_HEAL, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, rollFloorMod } from '../data/climb.js';
+import { climbMul, setZoneRef, floorFoes, rollDoors, actOf, REWARDS, BOSS_HEAL, BOSS_HP, BOSS_ATK, BOSS_STYLE, levelGap, rollFloorMod, BOSS_DMG } from '../data/climb.js';
 import { RAID_BOSS } from '../data/raid.js';
 import { initNpcLife, updateNpcLife, pokeNpcs, npcDown, isPerson } from './npclife.js';
 import { SKILLS, ELEM, ZONE_ELEM, aimRule, PVP, WORD_FAMILY, WORD_COMBO, CLASS_BAL, CLASS_BAL_PVE, RACE_BAL_PVE, CURSE } from '../data/skills.js';
@@ -75,6 +75,16 @@ import { EnemyAiMethods } from './enemyai.js';
 import { SkillMethods } from './skillrun.js';
 import { AllyMethods } from './allies.js';
 import { TraitMethods } from './montraits.js';
+// 레벨 lv의 기준 캐릭터(스탯 60% 공격 · 40% 체력)가 1레벨보다 몇 배 세게 때리고 · 몇 배 버티나 → 바깥 몬스터가 지역 레벨만큼 그대로 따라 세진다
+const GROWTH = new Map();
+export function levelGrowth(lv) {
+  lv = Math.max(1, Math.min(100, Math.round(lv)));
+  if (GROWTH.has(lv)) return GROWTH.get(lv);
+  const f = (L) => { const pts = Math.floor((L - 1) * 1.75), b = computeBuild({ race: 'orc', level: L, alloc: { str: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings: {}, gear: {} }), d = b.derived; return [d.physAtk * (b.wScale?.dmg || 1), d.maxHp / (1 - d.physDR)]; };
+  const [a1, h1] = f(1), [a, h] = f(lv), g = { atk: a / a1, ehp: h / h1 };
+  GROWTH.set(lv, g); return g;
+}
+export const AM_FIELD = 12; // 바깥 · 던전 몬스터 공격 배율: 1레벨이 첫 몬스터에게 열 대쯤 맞으면 쓰러진다 (예전 2.8 → 서른 대 넘게)
 export const BLINK_T = { sink: 0.2, travel: 0.16, rise: 0.24, lock: 0.42 }; // 암살자 그림자 이동: 가라앉기 · 땅 밑으로 미끄러지기 · 솟아오르기 (초)
 
 export class World {
@@ -295,7 +305,7 @@ export class World {
       if (C.mod === 'bloodmoon') e.atk *= 1.15;
       if (sp.boss) {
         const wr = C.oath.wrath || 0;
-        { const sty = BOSS_STYLE[e.defId] || [1, 1]; e.hp = e.maxHp = e.maxHp * (BOSS_HP[C.kind] || 1) * sty[0] * (1 + 0.25 * wr); e.atk *= sty[1]; } { const gp = Math.min(1, levelGap(C.f, this.b.level).gap / 2); e.atk *= 1 + ((BOSS_ATK[C.kind] || 1) - 1) * gp; e.hp = e.maxHp = e.maxHp * (1 + 0.15 * gp); } // 레벨이 모자랄수록 수호자가 벽이 된다
+        { const sty = BOSS_STYLE[e.defId] || [1, 1]; e.hp = e.maxHp = e.maxHp * (BOSS_HP[C.kind] || 1) * sty[0] * (1 + 0.25 * wr); e.atk *= sty[1] * BOSS_DMG; } { const gp = Math.min(1, levelGap(C.f, this.b.level).gap / 2); e.atk *= 1 + ((BOSS_ATK[C.kind] || 1) - 1) * gp; e.hp = e.maxHp = e.maxHp * (1 + 0.15 * gp); } // 레벨이 모자랄수록 수호자가 벽이 된다
         if (wr >= 2) { e.enraged = true; e.speedMul *= 1.3; e.atkRate *= 1.35; }
         e.lair = true; this.tower.boss = e; C.boss = e; e.scale = C.kind === 'lord' ? 1.4 : 1.2; // 수호자 · 주인은 더 크게
         this.giveClimbSig(e, C.f);
@@ -2664,7 +2674,7 @@ export class World {
     const soft = !tm && !def.elite && !def.raid && def.ai !== 'dummy' && def.ai !== 'target' ? 1.7 : 1; // 바깥 · 던전의 보통 몬스터: 한 대에 쓰러지지 않게 (두세 번은 때려야)
     // 등반: 난이도 표(data/curve.js)가 체력 · 공격력을 그대로 정한다 (예전엔 여기서 공격 ×3.8이 한 번 더 붙어 표보다 4배 아팠다)
     // 바깥 · 던전 · 예전 탑: 공격은 낮추고 체력은 높여 서로 덜 죽게 (예전 체력 ×0.8 · 공격 ×3.8)
-    const dm = this.climb ? tm.hp : 1.4 * soft * (tm ? tm.hp : 1 + 0.4 * this.depth), am = this.climb ? tm.atk : 2.8 * (tm ? tm.atk : 1 + 0.25 * this.depth);
+    const dm = this.climb ? tm.hp : 1.4 * soft * (tm ? tm.hp : 1 + 0.4 * this.depth), am = this.climb ? tm.atk : AM_FIELD * (tm ? tm.atk : 1 + 0.25 * this.depth);
     const e = {
       id: this.nextId++, defId: id, def, x, y, r: def.r, hp: def.hp * dm, maxHp: def.hp * dm, atk: def.atk * am, pres: def.pres, mres: def.mres,
       st: {}, atkCd: 0.5 + this.rng.range(0, 1), shotCd: 1 + this.rng.next() * 1.5, kbx: 0, kby: 0, hitFlash: 0, dead: false,
@@ -2698,8 +2708,8 @@ export class World {
   }
   applyLevel(e, lv) {
     if (!lv || e.lv) return;
-    e.lv = lv; const k = lv - 1;
-    e.hp = e.maxHp = Math.round(e.maxHp * (1 + 0.09 * k)); e.atk *= 1 + 0.05 * k; e.rewardMul = 1 + 0.06 * k;
+    e.lv = lv; const k = lv - 1, gr = levelGrowth(lv);
+    e.hp = e.maxHp = Math.round(e.maxHp * gr.atk); e.atk *= gr.ehp; e.rewardMul = 1 + 0.06 * k; // 플레이어가 그 레벨에 세지는 만큼 (때리는 횟수 · 맞는 횟수가 레벨이 올라도 비슷하게)
   }
   spawnCamp(c) {
     c.members = [];
