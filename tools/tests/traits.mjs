@@ -49,6 +49,8 @@ const byTrait = (t) => Object.keys(MONSTERS).find((id) => MONSTERS[id].trait ===
 { const w = fresh(), e = spawn(w, byTrait('callHelp'), 60, 0), o = spawn(w, 'slime', 150, 0); o.state = 'idle'; e.hp = e.maxHp * 0.2; run(w, 2); ok(o.state === 'chase', '도움 요청: 동료가 달려온다'); }
 // 구멍 파기 · 마법 · 은신 · 폭탄: 오류 없이 돈다
 for (const t of ['dig', 'caster', 'stalker', 'bomber', 'rammer']) { const w = fresh(); const e = spawn(w, byTrait(t), 90, 0); e.trCd = 0; let err = null; try { run(w, 400); } catch (x) { err = x; } ok(!err, `${t}: 오류 없이 돈다 ${err ? err.stack : ''}`); }
+// 폭탄 둘이 붙어서 밀려나 터져도 끝없이 서로 터뜨리지 않는다
+{ const w = fresh(), id = Object.keys(MONSTERS).find((k) => MONSTERS[k].trait === 'bomber'), a = spawn(w, id, 60, 0), b2 = spawn(w, id, 64, 0); a.knockedBomb = b2.knockedBomb = true; let err = null; try { w.damageEnemy(a, a.hp + 10, 'true', {}); } catch (x) { err = x; } ok(!err && a.dead, `폭탄 연쇄: 무한 반복 없음 ${err ? err.message : ''}`); }
 // 개성 있는 탄: 각 무늬가 사람을 맞힌다 (레이저는 예고 뒤)
 for (const pat of ['laser', 'bounce', 'homing', 'helix', 'split', 'burst']) {
   const id = Object.keys(MONSTERS).find((k) => MONSTERS[k].proj?.pat === pat);

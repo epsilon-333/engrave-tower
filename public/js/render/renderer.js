@@ -1693,7 +1693,7 @@ export class Renderer {
   }
 
   motionPose(w, p, m, P, aimF) {
-    const k = Math.min(1, m.t / m.dur), melee = P.kind === 'melee' || P.kind === 'great' || P.kind === 'axe';
+    const k0 = Math.min(1, m.t / m.dur), k = m.heavy ? Math.pow(k0, 1.9) : k0, melee = P.kind === 'melee' || P.kind === 'great' || P.kind === 'axe'; // 대검 기술: 처음엔 천천히 · 내려올수록 빨라진다
     const big = P.kind === 'great';
     const phase = (a, b) => Math.max(0, Math.min(1, (k - a) / (b - a)));
     const set = (o) => Object.assign(P, o);

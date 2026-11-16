@@ -139,7 +139,7 @@ export const TraitMethods = {
       }
       this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '갈라졌다!', color: '#9be15d' });
     }
-    if (e.trait === 'bomber' && e.knockedBomb) for (const o of this.enemiesNear(e.x, e.y, e.def.boom?.r || 30)) if (o !== e) this.damageEnemy(o, e.atk * 2, 'true', { src: 'aoe', color: '#ffb030' }); // 밀려나 터지면 둘레의 몬스터도
+    if (e.trait === 'bomber' && e.knockedBomb && !e.boomed) { e.boomed = true; e.dead = true; for (const o of this.enemiesNear(e.x, e.y, e.def.boom?.r || 30)) if (o !== e && !o.dead) this.damageEnemy(o, e.atk * 2, 'true', { src: 'aoe', color: '#ffb030' }); e.dead = false; } // 밀려나 터지면 둘레의 몬스터도 (한 번만 · 서로 터뜨리며 끝없이 돌지 않게)
     return false;
   },
 };

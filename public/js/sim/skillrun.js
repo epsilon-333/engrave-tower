@@ -191,7 +191,7 @@ export const SkillMethods = {
         break;
       }
       case 'channel': p.channel = { t: op.dur, every: op.every, tick: 0, sub: op.sub, ctx, invuln: op.invuln }; break;
-      case 'comboSpin': p.combo = { op, ctx, i: 0, t: 0, ang }; break;
+      case 'comboSpin': p.combo = { op: this.b.weapon?.great ? { ...op, every: op.every * 1.45 } : op, ctx, i: 0, t: this.b.weapon?.great ? 0.25 : 0, ang }; break; // 대검: 첫 회전 전에 몸을 비틀어 모으고, 한 바퀴씩 무겁게
       case 'enchant': { // 무기에 속성을 입힌다 (평타 · 무기 기술에 그 속성 피해가 더해진다)
         p.buffs.enchant = { t: op.dur, max: op.dur, mods: {}, color: ELEM[op.elem].color, name: ctx.def.name, elem: op.elem, pow: op.pow, stacks: op.stacks || 1 };
         this.emit({ t: 'enchant', x: p.x, y: p.y, elem: op.elem });
@@ -745,10 +745,13 @@ export const SkillMethods = {
       }
     }
     this.emit({ t: 'skillFx', fx: def.fx, x: p.x, y: p.y, ang: Math.atan2(p.aimY, p.aimX), elem, name: def.name, ult: def.ult, role: def.role, charge: lvl });
-    if (!def.charge && !def.cast) this.motion(def.mo, MOTION_DUR[def.mo] || 0.35);
-    else if (def.charge || def.cast) this.motion(def.mo === 'castBig' ? 'castBigRelease' : def.mo === 'cast' ? 'castRelease' : def.mo, MOTION_DUR[def.mo] || 0.35, { charge: lvl });
+    const heavy = !opt.weapon && this.b.weapon?.great && def.kind !== 'spell' && !def.cast && def.role !== '방어' && def.role !== '강화'; // 대검으로 쓰는 몸 기술: 느리게 들어 올려 무게로 내리친다
+    if (heavy) ctx.bonus *= 1.35; // 느린 만큼 강하다
+    const mDur = (MOTION_DUR[def.mo] || 0.35) * (heavy ? 1.6 : 1);
+    if (!def.charge && !def.cast) this.motion(def.mo, mDur, { heavy });
+    else if (def.charge || def.cast) this.motion(def.mo === 'castBig' ? 'castBigRelease' : def.mo === 'cast' ? 'castRelease' : def.mo, mDur, { charge: lvl, heavy });
     const fire = () => { for (const op of def.do) this.runOp(op, ctx); if (def.word) this.addWord(def.word); };
-    const wu = !def.cast && !opt.now ? WINDUP[def.mo] || 0 : 0; // 차지 스킬도 휘두르는 동작이 지나간 뒤에 나간다
+    const wu = !def.cast && !opt.now ? (WINDUP[def.mo] || (heavy ? 0.15 : 0)) * (heavy ? 2.2 : 1) : 0; // 차지 스킬도 휘두르는 동작이 지나간 뒤에 나간다 · 대검은 들어 올리는 시간이 길다
     if (wu > 0) { p.windupT = wu; this.delayed.push({ t: wu, run: () => { p.windupT = 0; fire(); } }); }
     else fire();
   },
