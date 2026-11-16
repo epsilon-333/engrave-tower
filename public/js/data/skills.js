@@ -260,8 +260,8 @@ export const SKILLS = {
   weakMark: { name: '약점 표식', role: '준비', cd: 7, gain: 10, scale: 'phys', fx: 'rune', aim: 'fresh', mo: 'point',
     desc: '적의 약점을 드러낸다. 8초 동안 받는 피해 +35%. 그림자 +10.', do: [{ op: 'single', range: 180, mul: 0.2, weak: 8 }] },
   ambush: { name: '급습', role: '연타', cd: 6, gain: 10, scale: 'phys', fx: 'dash', mo: 'stab',
-    desc: '겨눈 적(없으면 가장 가까운 적)의 등 뒤로 순식간에 옮겨 가 3번 찌른다. 등 뒤에서 치니 1.5배, 출혈. 그림자 +10.',
-    do: [{ op: 'behind', range: 220 }, { op: 'channel', dur: 0.36, every: 0.12, sub: { op: 'single', range: 40, mul: 0.8, backstab: true, status: 'bleed', stacks: 1, fx: 'stab' } }] },
+    desc: '겨눈 적(없으면 가장 가까운 적)의 등 뒤로 순식간에 옮겨 가 3번 찌른다. 등 뒤에서 치니 1.5배, 출혈, 1초 경직(정예 · 보스는 0.35초). 그림자 +10.',
+    do: [{ op: 'behind', range: 220 }, { op: 'channel', dur: 0.36, every: 0.12, sub: { op: 'single', range: 40, mul: 0.8, backstab: true, status: 'bleed', stacks: 1, stun: 1, fx: 'stab' } }] },
   stealth: { name: '은신', role: '방어', cd: 14, cost: 20, scale: 'phys', fx: 'smoke', aim: 'none', mo: 'crouch',
     desc: '6초 동안 모습을 감춘다. 적이 나를 놓치고, 은신 중 첫 공격은 2배. 공격하면 풀린다. 그림자 20.', do: [{ op: 'stealth', dur: 6 }] },
   shadowEvade: { name: '그림자 회피', role: '방어', cd: 9, gain: 25, scale: 'phys', fx: 'blink', aim: 'away', mo: 'dash',
@@ -441,7 +441,7 @@ export const CLASS_BAL = {"predator": 1, "behemoth": 0.92, "elementalist": 1.07,
 // 몬스터를 상대할 때의 클래스 보정 (tools/tests/climbsim.mjs 로 클래스마다 오른 층을 비교해 맞춤)
 export const CLASS_BAL_PVE = {}; // 갈래 보정 없음 (2026-11-15): 힘은 각인 등급(SKILL_BAL) · 종족 특성으로 맞춘다
 // 종족 보정 (임시): 종족 특성 · 각인 등급을 맞춘 뒤에도 남는 종족 차이 (등반 시뮬레이션: 종족 각인을 섞어 끼우고 약 30층)
-export const RACE_BAL_PVE = {"dino": 0.89, "wizard": 1.62, "knight": 2.06, "orc": 0.84, "undead": 3.18, "assassin": 1.32, "elf": 2.15, "dragon": 1.81};
+export const RACE_BAL_PVE = {"dino": 1.3, "wizard": 1.62, "knight": 3.2, "orc": 0.6, "undead": 2.8, "assassin": 2.6, "elf": 2.8, "dragon": 3.2};
 
 // ── 돈 · 미션으로 얻는 CC기 (누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다) ──
 export const CC_EXTRA = {
