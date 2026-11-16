@@ -229,13 +229,10 @@ export const EventMethods = {
           this.shake = Math.max(this.shake, 2); sfx('dash', { vol: 0.7 }); sfx('swing', { vol: 0.5, rate: 0.8 });
           break;
         }
-        case 'shadowBlink': { // 암살자: 발밑 그림자 웅덩이로 가라앉았다가 도착한 자리의 그림자에서 솟아오른다
-          for (const [x, y, k] of [[ev.x1, ev.y1, 'sink'], [ev.x2, ev.y2, 'rise']]) {
-            this.fx.push({ k: 'ink', x, y: y + 3, blobs: Array.from({ length: 9 }, (_, i) => ({ a: (i / 9) * 6.28, d: 3 + Math.random() * 4, r: 4 + Math.random() * 3, core: true })), t: 0.5, max: 0.5 });
-            for (let i = 0; i < 12; i++) { const a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 8; this.parts.push({ x: x + Math.cos(a) * r, y: y + 2 + Math.sin(a) * r * 0.4, vx: 0, vy: k === 'sink' ? 18 + Math.random() * 10 : -(30 + Math.random() * 30), t: 0.35, max: 0.35, color: i % 3 ? '#1a1024' : '#6a42a8', g: 0, size: 2 }); }
-          }
-          this.shadowSink = { x: ev.x1, y: ev.y1, t: 0.16, max: 0.16 }; this.shadowRise = { x: ev.x2, y: ev.y2, t: 0.22, max: 0.22 };
-          sfx('dash', { vol: 0.5, rate: 0.7 });
+        case 'shadowBlink': { // 암살자: 발밑 그림자 웅덩이로 가라앉고 · 땅 밑 그림자가 미끄러져 가서 · 도착한 웅덩이에서 솟아오른다 (그림은 drawShadowWalk · 몸은 renderer)
+          this.sblink = { ...ev, t: 0, rose: false };
+          for (let i = 0; i < 10; i++) { const a = Math.random() * Math.PI * 2, r = 3 + Math.random() * 7; this.parts.push({ x: ev.x1 + Math.cos(a) * r, y: ev.y1 + 3 + Math.sin(a) * r * 0.4, vx: -Math.cos(a) * 14, vy: 10 + Math.random() * 8, t: 0.22, max: 0.22, color: i % 3 ? '#1a1024' : '#6a42a8', g: 0, size: 2 }); } // 웅덩이로 빨려 든다
+          sfx('dash', { vol: 0.45, rate: 0.55 });
           break;
         }
         case 'blink': { // 순간이동: 떠나는 자리에서 몸이 도트 조각으로 흩어져 오르고 · 도착하는 자리로 조각이 빨려 들어 다시 모인다 (잔상 · 반투명 없음)

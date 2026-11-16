@@ -4,6 +4,7 @@
 import { sprite, frames } from './assets.js';
 import { RACE_ART } from '../data/art.js';
 import { GROUND_FX, GROUND_MARKS, easeOut, WORD_COLOR, hexA, disc, ellipse, smear } from './renderer.js';
+import { sfx } from '../audio.js';
 
 export const FxMethods = {
   // 먹물 얼룩 하나: 가운데 울퉁불퉁한 웅덩이 + 사방으로 튄 줄기(점점 가늘어지다 끝에 방울) + 흩뿌린 작은 방울 (small = 발밑 웅덩이만)
@@ -25,6 +26,42 @@ export const FxMethods = {
   // 이펙트는 두 층: 바닥에 붙는 것(예고 원 · 예고선 · 갈라짐 · 그을음 · 마법진)은 사람 · 보스 · 소품보다 아래, 나머지는 위
   // 화면에 보이는 칸 가운데 그릴 수 있는 칸만 남기고 자른다 (g.save 상태로 돌려준다 → 다 그린 뒤 g.restore)
   // landOnly: 걸을 수 있는 땅만 (벽 · 건물 · 물 · 깊은 곳 빼고) · 아니면 벽 · 건물만 뺀다
+  // 암살자 그림자 이동 (sim BLINK_T와 같은 시간): 몸이 얼마나 잠겼나 depth 0~1 · 어둡기 dark 0~1
+  shadowBody(sb) {
+    const { sink, travel, rise } = sb, t = sb.t;
+    if (t < sink) { const k = t / sink; return { depth: k * k, dark: Math.min(1, k * 1.4) }; } // 처음엔 천천히 · 빨려 들듯 빨라진다
+    if (t < sink + travel) return { depth: 1, dark: 1 };
+    if (t < sink + travel + rise) { const k = (t - sink - travel) / rise, e = 1 - (1 - k) ** 3; return { depth: 1 - e, dark: Math.max(0, 1 - k * 1.3) }; } // 솟구쳐 나와 천천히 선다
+    return null;
+  },
+  // 웅덩이 · 땅 밑을 미끄러지는 그림자 (걸을 수 있는 땅에만 그린다: 벽 밑을 지나는 동안은 안 보인다)
+  drawShadowWalk(w, dt) {
+    const sb = this.sblink; if (!sb) return;
+    sb.t += dt;
+    const g = this.g, { sink, travel, rise } = sb, end = sink + travel + rise, t = sb.t;
+    if (t > end + 0.3) { this.sblink = null; return; }
+    const pool = (x, y, r, a) => { if (r < 1 || a <= 0) return; x = Math.round(x); y = Math.round(y) + 3;
+      g.fillStyle = `rgba(14,8,24,${0.9 * a})`; g.beginPath(); g.ellipse(x, y, r, r * 0.42, 0, 0, 6.29); g.fill();
+      g.fillStyle = `rgba(90,58,150,${0.55 * a})`; g.beginPath(); g.ellipse(x, y - r * 0.12, r * 0.8, r * 0.26, 0, 3.3, 6.12); g.fill(); // 위쪽 가장자리에 비친 보랏빛
+      g.fillStyle = `rgba(4,2,8,${a})`; g.beginPath(); g.ellipse(x, y + r * 0.05, r * 0.62, r * 0.24, 0, 0, 6.29); g.fill(); };
+    const ease = (k) => k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+    // 떠나는 웅덩이: 가라앉는 동안 벌어지고, 미끄러져 나가면 닫힌다
+    const r1 = t < sink ? 4 + 9 * Math.min(1, t / sink * 1.6) : 13 * Math.max(0, 1 - (t - sink) / (travel * 0.9));
+    pool(sb.x1, sb.y1, r1, 1);
+    // 땅 밑 그림자: 길쭉한 먹물 덩어리가 땅을 미끄러진다 (지나간 자리에 옅은 꼬리)
+    if (t >= sink && t < sink + travel) {
+      const k = ease((t - sink) / travel), x = sb.x1 + (sb.x2 - sb.x1) * k, y = sb.y1 + (sb.y2 - sb.y1) * k, ang = Math.atan2((sb.y2 - sb.y1) * 0.42, sb.x2 - sb.x1);
+      for (let i = 4; i >= 0; i--) { const u = Math.max(0, k - i * 0.06), tx = sb.x1 + (sb.x2 - sb.x1) * u, ty = sb.y1 + (sb.y2 - sb.y1) * u; g.fillStyle = `rgba(14,8,24,${0.18 + 0.14 * (4 - i)})`; g.beginPath(); g.ellipse(Math.round(tx), Math.round(ty) + 3, 9 - i, 3.6 - i * 0.5, ang, 0, 6.29); g.fill(); }
+      g.fillStyle = 'rgba(150,110,230,0.8)'; g.fillRect(Math.round(x) - 1, Math.round(y) + 1, 2, 1); g.fillRect(Math.round(x) + 2, Math.round(y) + 1, 2, 1); // 그림자 속 두 눈
+      if (Math.random() < 0.7) this.parts.push({ x: x + (Math.random() - 0.5) * 8, y: y + 3, vx: 0, vy: -10 - Math.random() * 10, t: 0.25, max: 0.25, color: '#1a1024', g: 0, size: 2 });
+    }
+    // 도착 웅덩이: 그림자가 닿기 직전에 열리고, 몸이 다 솟으면 닫힌다
+    const ta = t - sink - travel * 0.6;
+    if (ta > 0) { const r2 = ta < travel * 0.4 + rise * 0.5 ? 4 + 9 * Math.min(1, ta / (travel * 0.4)) : 13 * Math.max(0, 1 - (ta - travel * 0.4 - rise * 0.5) / (rise * 0.5 + 0.3)); pool(sb.x2, sb.y2, r2, 1); }
+    if (!sb.rose && t >= sink + travel) { sb.rose = true; // 솟을 때 먹물이 튄다
+      for (let i = 0; i < 14; i++) { const a = Math.random() * Math.PI * 2, s = 30 + Math.random() * 50; this.parts.push({ x: sb.x2 + Math.cos(a) * 6, y: sb.y2 + 2, vx: Math.cos(a) * s, vy: -40 - Math.random() * 50, t: 0.4, max: 0.4, color: i % 3 ? '#1a0f2a' : '#7a52c0', g: 260, floor: sb.y2 + 3 + Math.sin(a) * 4, size: 2 }); }
+      this.shake = Math.max(this.shake, 1.5); sfx('dash', { vol: 0.55, rate: 1.2 }); }
+  },
   clipTiles(w, cx, cy, landOnly) {
     const g = this.g, T = this.TILE || 16, x0 = Math.max(0, Math.floor(cx / T) - 1), y0 = Math.max(0, Math.floor(cy / T) - 1), x1 = Math.min(w.tw - 1, Math.ceil((cx + this.VW) / T) + 1), y1 = Math.min(w.th - 1, Math.ceil((cy + this.VH) / T) + 1);
     const ok = (tx, ty) => { const t = w.tiles[ty * w.tw + tx]; return landOnly ? t === 0 && !w.isWaterAt(tx * T + 8, ty * T + 8) : !(t === 1 || t === 3 || t === 4 || t === 5); };

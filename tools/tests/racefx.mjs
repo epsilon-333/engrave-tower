@@ -83,7 +83,9 @@ for (const [race, mul] of [['wizard', R.wizardHp], ['knight', R.knightHp]]) {
   p.dashCharges = 2; p.dashCd = 0;
   const free = !w.blocked(x0 + 64, y0, 5);
   w.step({ moveX: 1, moveY: 0, dash: true, aimX: 1, aimY: 0 });
-  ok(p.dashT <= 0 && p.x > x0 + 40 && near(p.y, y0, 2), `암살자 대시: 한 번에 ${(p.x - x0).toFixed(0)}px (${free ? '앞이 트임' : '앞이 막힘'})`);
+  ok(p.x - x0 < 6, '암살자 대시: 먼저 그 자리에서 그림자로 가라앉는다');
+  for (let i = 0; i < 30; i++) w.step({ moveX: 0, moveY: 0 });
+  ok(!p.shadowWalk && p.dashT <= 0 && p.x > x0 + 40 && near(p.y, y0, 2), `암살자 대시: 한 번에 ${(p.x - x0).toFixed(0)}px (${free ? '앞이 트임' : '앞이 막힘'})`);
   // 벽 앞에서: 막힌 칸 바로 앞에서 멈춘다
   w.solid = (x) => x > x0 + 20; p.x = x0; p.y = y0; p.dashCharges = 2; p.dashCd = 0; p.dashRecharge = 0;
   w.blinkDash(1, 0);

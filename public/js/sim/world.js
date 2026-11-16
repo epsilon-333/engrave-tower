@@ -75,6 +75,8 @@ import { EnemyAiMethods } from './enemyai.js';
 import { SkillMethods } from './skillrun.js';
 import { AllyMethods } from './allies.js';
 import { TraitMethods } from './montraits.js';
+export const BLINK_T = { sink: 0.2, travel: 0.16, rise: 0.24, lock: 0.42 }; // 암살자 그림자 이동: 가라앉기 · 땅 밑으로 미끄러지기 · 솟아오르기 (초)
+
 export class World {
   // mode: 'field' | 'plaza'
   constructor({ build, mode, zoneId, zone = null, seed, map, memory, depth = 0, practice = null, story = null, codex = null, life = null, clock = null, persist = null, tower = null, pvp = null, coop = null, souls = null, raid = null, minions = null, npcMem = null, climb = null }) {
@@ -849,6 +851,11 @@ export class World {
     // 대검 차지 · 돌격 · 도약 · 비상: 이동을 직접 다룬다
     const special = this.updateSpecialMove(inp, mx, my, ml);
     if (special) { /* 이동 처리 끝 */ }
+    else if (p.shadowWalk) { // 암살자 그림자 이동 중: 움직일 수 없다
+      const sw = p.shadowWalk; sw.t += DT;
+      if (!sw.done && sw.t >= BLINK_T.sink + BLINK_T.travel) { p.x = sw.x2; p.y = sw.y2; sw.done = true; }
+      if (sw.t >= BLINK_T.lock) p.shadowWalk = null;
+    }
     else if (p.dashT > 0) {
       p.dashT -= DT;
       this.move(p, p.dvx * DT, p.dvy * DT);
@@ -863,9 +870,10 @@ export class World {
       else if (inp.dash && p.dashCharges > 0 && p.dashCd <= 0) {
         const dx = ml > 0 ? mx : p.aimX, dy = ml > 0 ? my : p.aimY;
         const blink = this.b.race === 'assassin' && !p.riding, bx = p.x, by = p.y;
-        if (blink) this.blinkDash(dx, dy); // 암살자: 대시가 순간이동
+        let bt = null;
+        if (blink) bt = this.blinkDash(dx, dy, true); // 암살자: 대시가 그림자 이동
         else { p.dashT = 0.16; p.dvx = dx * 400 * (p.riding ? 1.5 : 1); p.dvy = dy * 400 * (p.riding ? 1.5 : 1); }
-        p.invuln = Math.max(p.invuln, 0.22);
+        p.invuln = Math.max(p.invuln, blink ? BLINK_T.lock + 0.08 : 0.22);
         if (p.riding) this.emit({ t: 'raptorLeap', x: p.x, y: p.y });
         p.dashCharges--; if (p.dashRecharge <= 0) p.dashRecharge = d.dashCd * (1 - d.cdr);
         this.knack('dash');
@@ -873,7 +881,7 @@ export class World {
         if (this.raceRes?.dash) this.addRes(this.raceRes.dash);
         p.dashCd = 0.25;
         if (f.has('dashCrit')) p.dashCritReady = true;
-        if (blink) this.emit({ t: 'shadowBlink', x1: bx, y1: by, x2: p.x, y2: p.y });
+        if (blink) this.emit({ t: 'shadowBlink', x1: bx, y1: by, x2: bt.x, y2: bt.y, ...BLINK_T });
         else this.emit({ t: 'dash', x: p.x, y: p.y, dx, dy });
         if (f.has('dashAfterimage')) this.afterimage(bx, by, bx + dx * 64, by + dy * 64);
         for (const tr of this.b.triggers.dash) if (this.trig(tr)) this.doAction(tr.action, null, { x: bx, y: by, dir: Math.atan2(dy, dx) }); // 대시 방향을 함께 넘긴다
@@ -1563,12 +1571,16 @@ export class World {
     p.res = Math.max(0, Math.min(100, p.res + (n > 0 ? n * this.d.resGain : n)));
     if (!passive && n > 0) p.lastFight = this.t;
   }
-  blinkDash(dx, dy) { // 암살자 대시: 그림자 속으로 들어갔다가 그 거리 끝의 땅에서 나온다 — 벽 · 허공 · 물을 건너뛴다 (내릴 자리가 땅이어야 · 없으면 가까운 땅까지 당긴다)
+  blinkDash(dx, dy, timed = false) { // 암살자 대시: 그림자 속으로 들어갔다가 그 거리 끝의 땅에서 나온다 — 벽 · 허공 · 물을 건너뛴다 (내릴 자리가 땅이어야 · 없으면 가까운 땅까지 당긴다)
     const p = this.player, D = RACE_FX.assassinBlink;
     const sealedHere = !!this.sealAt?.(p.x, p.y);
     const land = (x, y) => !this.blocked(x, y, 4) && !this.isWaterAt(x, y) && !(this.voidZone && this.tileAt(x, y + 3) === T_LIQUID) && (sealedHere || !this.sealAt?.(x, y));
-    for (let d = D; d >= 6; d -= 4) { const x = p.x + dx * d, y = p.y + dy * d; if (land(x, y)) { p.x = x; p.y = y; break; } }
+    let tx = p.x, ty = p.y;
+    for (let d = D; d >= 6; d -= 4) { const x = p.x + dx * d, y = p.y + dy * d; if (land(x, y)) { tx = x; ty = y; break; } }
     p.dashT = 0; p.dvx = 0; p.dvy = 0;
+    if (timed) { p.shadowWalk = { x1: p.x, y1: p.y, x2: tx, y2: ty, t: 0 }; p.atkCd = Math.max(p.atkCd || 0, BLINK_T.lock); } // 가라앉고 · 그림자로 땅을 미끄러져 · 솟는다 (옮겨 가는 건 솟기 직전)
+    else { p.x = tx; p.y = ty; }
+    return { x: tx, y: ty };
   }
 
   raceDmgMul(type, opt) { // 종족 특성: 주는 피해 (data/races.js RACE_FX)
