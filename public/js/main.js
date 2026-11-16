@@ -789,6 +789,14 @@ function journeyTick(dt) {
 // 여정 목적지 → 화살표 자리 (바깥 세계에서만)
 const HOUSE_NAME = { altar: '공명 제단', forge: '대장간', library: '서고', guild: '의뢰소', shop: '잡화점', dojo: '수련장', home: '내 집' };
 function journeyTarget(to) {
+  if (to.water) { // 낚시: 가장 가까운 물가 (걸어서 설 수 있는 땅 바로 옆의 물)
+    const p = world.player, tx0 = Math.floor(p.x / 16), ty0 = Math.floor(p.y / 16);
+    for (let r = 1; r < 140; r++) for (let k = 0; k < r * 8; k++) {
+      const a = (k / (r * 8)) * Math.PI * 2, tx = Math.round(tx0 + Math.cos(a) * r), ty = Math.round(ty0 + Math.sin(a) * r), x = tx * 16 + 8, y = ty * 16 + 8;
+      if (world.isWaterAt(x, y) && !world.isWaterAt(x, y + 16) && !world.solid(x, y + 16)) return { x, y: y + 16, label: '물가' };
+    }
+    return null;
+  }
   if (to.region) { // 지역: 그 지역 한가운데 (여럿이면 가장 가까운 곳)
     const names = [].concat(to.region), p = world.player;
     const L = BIOME_LIST.filter((b) => names.includes(b.name)).map((b) => ({ x: b.x * 16 + 8, y: b.y * 16 + 8, label: b.name }));
