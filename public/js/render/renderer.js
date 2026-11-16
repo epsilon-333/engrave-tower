@@ -627,7 +627,7 @@ export class Renderer {
       }
     }
     // 바닥 이펙트는 지형을 따른다: 땅에 새기는 것(갈라짐 · 그을음 · 먹물 · 긁힌 자국)은 걸을 수 있는 땅에만, 예고 원 · 마법진은 벽 위로만 안 보이게
-    this.clipTiles(w, cx, cy, true); this.anims.drawGround(g, dt); this.drawShadowWalk(w, dt); this.drawFx(w, dt, true, true); g.restore();
+    this.clipTiles(w, cx, cy, true); this.anims.drawGround(g, dt); this.drawShadowWalk(w, dt); this.drawOoze(w); this.drawFx(w, dt, true, true); g.restore();
     this.clipTiles(w, cx, cy, false); this.drawFx(w, dt, true, false); g.restore();
     // 엔티티 (y 정렬)
     const vis = (x, y) => x > cx - 48 && x < cx + VW + 48 && y > cy - 48 && y < cy + VH + 64;
@@ -649,7 +649,7 @@ export class Renderer {
       else if (it.p) {
         const sb = this.sblink, sp = sb && this.shadowBody(sb); // 암살자 그림자 이동: 가라앉기 · 숨기 · 솟기 (땅 위로 나온 만큼만 · 그림자에 잠긴 만큼 어둡게)
         if (sp) { if (sp.depth < 1) { g.save(); g.beginPath(); g.rect(p.x - 30, p.y - 60, 60, 64); g.clip(); g.translate(0, Math.round(sp.depth * 24)); g.filter = `brightness(${(1 - sp.dark * 0.85).toFixed(2)}) saturate(${(1 - sp.dark * 0.7).toFixed(2)})`; this.drawPlayer(w, p, dt); g.filter = 'none'; g.restore(); } }
-        else this.drawPlayer(w, p, dt); if (p.webT > 0) drawWeb(g, p.x, p.y, w.t, Math.min(1, p.webT * 3)); } // 거미줄에 묶였다: 몸에 감긴 실
+        else this.drawPlayer(w, p, dt); if (p.webT > 0) drawWeb(g, p.x, p.y, w.t, Math.min(1, p.webT * 3)); if (p.eating) { const k = Math.min(1, p.eating.t / p.eating.dur), bx = Math.round(p.x - 9), by = Math.round(p.y - 30); g.fillStyle = '#16121c'; g.fillRect(bx - 1, by - 1, 20, 4); g.fillStyle = p.eating.kind === 'drink' ? '#e05a6a' : '#e8b85c'; g.fillRect(bx, by, Math.round(18 * k), 2); } } // 먹는 중: 머리 위 진행 막대 // 거미줄에 묶였다: 몸에 감긴 실
       else if (it.e) this.drawEnemy(w, it.e, dt);
       else if (it.o) this.drawObject(w, it.o, dt);
       else if (it.dr) this.drawDrop(w, it.dr);
@@ -1015,6 +1015,18 @@ export class Renderer {
     return name;
   }
   // 땅 파고들기 (특성 · 짐승 기술): 구멍을 파며 몸이 땅 밑으로 내려가고 · 튀어나올 때는 흙을 뚫고 하늘로 솟았다 떨어진다
+  // 보스가 남긴 독액 웅덩이 (걸을 수 있는 땅에만 · 가장자리가 울퉁불퉁 · 거품이 터진다 · 끝날 때 마른다)
+  drawOoze(w) {
+    if (!w.ooze?.length) return;
+    const g = this.g;
+    for (const o of w.ooze) {
+      const fade = Math.min(1, o.t / 1, (o.max - o.t) / 0.25), R = o.r * Math.min(1, (o.max - o.t) / 0.25 + 0.4);
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2, rr = R * (0.55 + 0.12 * Math.sin(i * 2.7 + o.x)); g.fillStyle = `rgba(58,82,18,${0.55 * fade})`; ellipse(g, o.x + Math.cos(a) * rr * 0.55, o.y + Math.sin(a) * rr * 0.3, R * 0.45, R * 0.22); }
+      g.fillStyle = `rgba(110,150,40,${0.5 * fade})`; ellipse(g, o.x, o.y, R * 0.7, R * 0.36);
+      g.fillStyle = `rgba(160,200,70,${0.35 * fade})`; ellipse(g, o.x - R * 0.15, o.y - R * 0.06, R * 0.3, R * 0.1);
+      if (Math.random() < 0.25) { const a = Math.random() * Math.PI * 2, rr = Math.random() * R * 0.7; this.parts.push({ x: o.x + Math.cos(a) * rr, y: o.y + Math.sin(a) * rr * 0.5, vx: 0, vy: -10, t: 0.4, max: 0.4, color: '#b8e070', g: 0, size: 1.5 }); } // 거품
+    }
+  }
   digHole(x, y, r) { const g = this.g; g.fillStyle = '#7a6448'; ellipse(g, x, y + 3, r + 2, (r + 2) * 0.42); g.fillStyle = '#2a1e14'; ellipse(g, x, y + 3, r, r * 0.38); g.fillStyle = '#4a3828'; ellipse(g, x, y + 2, r * 0.8, r * 0.18); }
   digPose(w, e, dt) {
     const R = e.r || 8;
@@ -1134,7 +1146,7 @@ export class Renderer {
     if (e.cloak && !(e.revealT > 0)) g.globalAlpha = 0.16 + 0.06 * Math.sin(w.t * 4 + e.phase); // 은신 특성: 일렁이는 윤곽만
     const carryLift = e.carried > 0 ? 18 + (w.player.air || 0) : 0;
     const flyUp = art.fly ? 6 + Math.sin(w.t * 3 + e.phase) * 2 : 0; // 나는 몬스터는 땅 위에 떠 있다
-    const dx = Math.round(e.x - w0 / 2 + wobble), dy = Math.round(e.y + 4 - h0 - carryLift + lungeY - flyUp - (ip?.lift || 0) + (ip?.sink || 0) * h0);
+    const dx = Math.round(e.x - w0 / 2 + wobble), dy = Math.round(e.y + 4 - h0 - carryLift + lungeY - flyUp - (ip?.lift || 0) - (e.jumpH || 0) + (ip?.sink || 0) * h0);
     if (ip) { g.globalAlpha *= ip.alpha; if (ip.sink > 0) { g.save(); g.beginPath(); g.rect(dx - 4, dy - 4, Math.round(w0) + 8, Math.round(e.y + 4 - dy) + 4); g.clip(); } }
     let bp = e.pose ? beastPose(e.pose, e.dir || 1, w.t) : null;
     if (bp && art.sheet) { // 통째로 그린 보스 그림은 기울이거나 늘이지 않는다: 일어서기(땅 찍기 준비)는 몸을 웅크렸다 뛰어올라 내려찍는 점프로
@@ -1146,7 +1158,7 @@ export class Renderer {
       const tw = e.feignT < 0.4 ? Math.sin(w.t * 40) * 1.5 : 0;
       g.save(); g.translate(Math.round(e.x), Math.round(e.y + 2)); g.rotate((e.dir || 1) * Math.PI / 2); g.drawImage(img, Math.round(-h0 + 2 + tw), Math.round(-w0 / 2), Math.round(w0), Math.round(h0)); g.restore();
     } else if (bp) {
-      g.save(); g.translate(Math.round(e.x + wobble + bp.x), Math.round(e.y + 4 - carryLift - flyUp + bp.y - (ip?.lift || 0) + (ip?.sink || 0) * h0)); g.rotate(bp.rot); g.scale(bp.sx, bp.sy);
+      g.save(); g.translate(Math.round(e.x + wobble + bp.x), Math.round(e.y + 4 - carryLift - flyUp + bp.y - (ip?.lift || 0) - (e.jumpH || 0) + (ip?.sink || 0) * h0)); g.rotate(bp.rot); g.scale(bp.sx, bp.sy);
       g.drawImage(img, Math.round(-w0 / 2), Math.round(-h0), Math.round(w0), Math.round(h0)); g.restore();
       if (e.pose.k === 'dizzy') for (let i = 0; i < 3; i++) { const a = w.t * 7 + i * 2.1; g.fillStyle = '#ffe060'; g.fillRect(Math.round(e.x + Math.cos(a) * 8), Math.round(dy - 5 + Math.sin(a) * 2), 2, 2); }
       if ((e.pose.k === 'crouch' && e.mv?.k === 'headbutt') && dt > 0 && Math.random() < 0.35) this.parts.push({ x: e.x - (e.dir || 1) * e.r, y: e.y + 3, vx: -(e.dir || 1) * (30 + Math.random() * 40), vy: -20 - Math.random() * 20, t: 0.45, max: 0.45, color: '#a89880', g: 200, puff: true, size: 2 }); // 뒷발로 땅을 긁는 흙먼지

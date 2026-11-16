@@ -148,6 +148,18 @@ export const EventMethods = {
           this.shake = Math.max(this.shake, ev.n === 2 ? 10 : 7); sfx('crack', { vol: 0.9, rate: 0.6 }); sfx('hitHeavy', { vol: 0.7, rate: 0.7 });
           break;
         }
+        case 'filthThrow': { // 오물 덩이: 높이 던져 포물선으로 예고 원 가운데에 떨어진다 (덩이 여럿이 뭉쳐 날아간다)
+          const T = ev.dur, G = 520, vx = (ev.x2 - ev.x1) / T, vy = (ev.y2 - ev.y1) / T - G * T / 2;
+          for (let i = 0; i < 7; i++) this.parts.push({ x: ev.x1 + (Math.random() - 0.5) * 5, y: ev.y1 + (Math.random() - 0.5) * 5, vx: vx + (Math.random() - 0.5) * 6, vy, t: T, max: T, color: ['#4a6a1a', '#6a8a2a', '#3a4a12', '#8aa83a'][i % 4], g: G, size: 4 + (i % 3) });
+          sfx('swing', { vol: 0.6, rate: 0.55 });
+          break;
+        }
+        case 'filthSplash': { // 오물이 터진다: 덩이가 사방으로 튀고 · 독 김이 오른다 (웅덩이는 drawOoze)
+          for (let i = 0; i < 30; i++) { const a = Math.random() * Math.PI * 2, s2 = 40 + Math.random() * ev.r * 1.6; this.parts.push({ x: ev.x, y: ev.y, vx: Math.cos(a) * s2, vy: Math.sin(a) * s2 * 0.5 - 60 - Math.random() * 60, t: 0.6, max: 0.6, color: i % 3 ? '#5a7a22' : '#9ac04a', g: 360, size: 2 + (i % 2), floor: ev.y + Math.sin(a) * ev.r * 0.5 }); }
+          for (let i = 0; i < 12; i++) { const a = Math.random() * Math.PI * 2, rr = Math.random() * ev.r * 0.8; this.parts.push({ x: ev.x + Math.cos(a) * rr, y: ev.y + Math.sin(a) * rr * 0.6, vx: 0, vy: -14, t: 1, max: 1, color: '#9be15d', g: -4, puff: true, size: 3 }); }
+          sfx('crack', { vol: 0.7, rate: 0.7 });
+          break;
+        }
         case 'crackHit': this.burst(ev.x, ev.y, '#a89880', 6, 60); this.shake = Math.max(this.shake, 1.5); sfx('crack', { vol: 0.6 }); break;
         case 'region':
           if (ev.vista && ev.first) break; // 전망대는 따로 연출

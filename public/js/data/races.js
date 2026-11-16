@@ -91,6 +91,7 @@ export const RACE_FX = {
   wizardMag: 1.8,        // 마법사: 마법 피해 +80%
   wizardHp: 0.9,         //        최대 체력 -10%
   dragonFire: 1.5,       // 용족: 화염 피해 +50% (화상은 아래 dragonBurn)
+  knightAtkSpd: 0.7,     // 기사: 평타가 느리다 (×0.7) · 대신 한 방이 그만큼 세다 (1초 평균 피해는 같다)
   dragonBurn: 2,         // 용족: 화상 피해 2배 (2026-11-16)
   dragonBurnT: 2,        // 용족: 화상 지속 시간 2배 (3초 → 6초)
   knightPhys: 0.8,       // 기사: 받는 물리 피해 -20%

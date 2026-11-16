@@ -19,6 +19,7 @@ import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower } from '../data/spiri
 export const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
 export const SPIRIT_DMG_ELEM = { fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' };
 import { RACES, RACE_FX, RACE_IMMUNE } from '../data/races.js';
+import { WPN_BAL } from '../data/wpnbal.js';
 import { computeBuild } from './build.js';
 const TEMP_MAX = 60; // 잠깐 오르는 스탯: 한 스탯에 합쳐서 +60까지
 const STAT_SHORT = { str: '근력', mag: '마력', agi: '민첩', vit: '체력', sen: '감각', spi: '정신', pres: '물리 저항', mres: '마법 저항' };
@@ -85,6 +86,7 @@ export function levelGrowth(lv) {
   GROWTH.set(lv, g); return g;
 }
 export const AM_FIELD = 12; // 바깥 · 던전 몬스터 공격 배율: 1레벨이 첫 몬스터에게 열 대쯤 맞으면 쓰러진다 (예전 2.8 → 서른 대 넘게)
+export const EAT_T = { potion: 1.0, food: 1.6 }; // 마시기 · 먹기에 걸리는 시간 (초)
 export const BLINK_T = { sink: 0.2, travel: 0.16, rise: 0.24, lock: 0.42 }; // 암살자 그림자 이동: 가라앉기 · 땅 밑으로 미끄러지기 · 솟아오르기 (초)
 
 export class World {
@@ -723,7 +725,7 @@ export class World {
     if (this.happenT === undefined || (this.happenT -= DT) <= 0) { this.happenT = 0.25; this.updateHappenings(); }
     updateNpcLife(this, DT);
     if (this.pit?.e?.dead) { this.signals.push({ t: 'pitWon', bet: this.pit.bet, tier: this.pit.tier }); this.pit = null; }
-    this.updateZones();
+    this.updateZones(); this.updateOoze();
     this.updateFlow();
     this.updateEnemies();
     if (this.climb) this.updateClimb();
@@ -825,6 +827,7 @@ export class World {
     if (p.parryT > 0) p.parryT -= DT;
     const cdRate = this.mod('cdRate');
     for (const k of Object.keys(p.cds)) { p.cds[k] -= DT * cdRate; if (p.cds[k] <= 0) delete p.cds[k]; }
+    this.tickConsume();
     if (p.potionCd > 0) p.potionCd -= DT; // 물약 · 요리는 한 번 먹으면 POTION_CD초 뒤에 다시
     if (this.practice) { if (this.practice.infRes) p.res = 100; p.hp = d.maxHp; }
     if (p.dashCharges < 1) {
@@ -844,6 +847,8 @@ export class World {
       if (lq === 'snow') slow = Math.max(slow, 0.25);
       if (lq === 'lava' && p.liquidT <= 0) { p.liquidT = 0.8; this.hurtPlayer(6 + this.zone.floor * 4, 'mag', null, { direct: true, status: 'burn' }); }
     }
+    if (p.oozeT > 0) { p.oozeT -= DT; slow = Math.max(slow, 0.4); } // 독액 웅덩이
+
 
     this.autoAim = inp.autoAim !== false;
     const locked = (p.motion && p.motion.lock) || p.windupT > 0 || p.castT > 0 || p.channel;
@@ -873,7 +878,7 @@ export class World {
     } else {
       const aiming = this.f.has('aimSlow') && (inp.attack || p.atkCd > 0.05);
       const water = p.boat ? 150 / Math.max(1, d.moveSpeed) : p.swim ? (this.b.abilities?.waterBlessing ? 0.8 : 0.55) * (this.hasKnack('swimmer') ? 1.3 : 1) : this.map.underwater ? 0.8 : 1;
-      const spd = p.castT > 0 ? 0 : d.moveSpeed * this.mod('moveSpeed') * (p.boat ? 1 : 1 - slow) * (aiming ? d.aimSlow : 1) * (p.channel ? 0.5 : 1) * (p.charging ? 0.4 : 1) * this.predatorSpeed(mx, my, ml) * water;
+      const spd = p.castT > 0 ? 0 : d.moveSpeed * this.mod('moveSpeed') * (p.boat ? 1 : 1 - slow) * (aiming ? d.aimSlow : 1) * (p.channel ? 0.5 : 1) * (p.charging ? 0.4 : 1) * (p.eating ? 0.35 : 1) * this.predatorSpeed(mx, my, ml) * water;
       this.move(p, mx * spd * DT, my * spd * DT);
       if (inp.mount) this.toggleMount();
       if (inp.dash && p.boat && this.canSwim) { p.boat.riding = false; p.boat = null; this.emit({ t: 'splash', x: p.x, y: p.y }); } // 배에서 물로 뛰어든다
@@ -915,7 +920,7 @@ export class World {
     if (inp.attack && p.riding) { this.dismount(); p.atkCd = Math.max(p.atkCd, 0.25); }
     if (atkWant && p.atkCd <= 0 && p.castT <= 0 && !p.channel && !p.charging && !p.rush && !p.leap && !(p.windupT > 0) && !p.swim && !p.combo && !p.fallInto && !p.drop && !p.hop) {
       const mom = this.mod('atkSpeed');
-      p.atkCd = 1 / (this.b.weapon.speed * d.atkSpeed * mom);
+      p.atkCd = 1 / (this.b.weapon.speed * d.atkSpeed * mom * (this.b.race === 'knight' ? RACE_FX.knightAtkSpd : 1));
       p.atkPeriod = p.atkCd;
       this.attack(0);
       p.atkPressFired = true;
@@ -1483,7 +1488,7 @@ export class World {
       return;
     }
     p.atkCount++;
-    let mul = w.mul, heavy = false;
+    let mul = w.mul * (this.wpnBalOff ? 1 : WPN_BAL[this.b.weaponId] ?? 1) * (this.b.race === 'knight' ? 1 / RACE_FX.knightAtkSpd : 1), heavy = false; // 무기마다 1초 평균 피해를 맞춘 보정 (tools/wpnbal.mjs) · 기사: 느린 만큼 한 방이 세다
     if (this.f.has('heavyHit') && p.atkCount % 4 === 0) { mul *= 2; heavy = true; }
     if (w.charge) { mul *= 1 + 0.6 * Math.min(1, (this.t - p.lastShot) / 1.6); }
     if (this.f.has('focus') && p.focus > 0 && w.kind === 'proj') { mul *= 1 + 0.25 * p.focus; heavy = p.focus >= 3; p.focus = 0; p.focusT = 0; }
@@ -1633,7 +1638,7 @@ export class World {
   }
   dismount() { const p = this.player; if (!p.riding) return; p.riding = null; this.emit({ t: 'mountOff', x: p.x, y: p.y }); }
 
-  castSkillId(id, slot) { this.pHit = true; const tok = this.curTok = (this.tokN = (this.tokN || 0) + 1), n0 = this.projs.length; try { return this.castSkillId0(id, slot); } finally { for (let i = n0; i < this.projs.length; i++) if (this.projs[i].owner === 'p') this.projs[i].tok = tok; this.pHit = false; this.curTok = null; } } // 조준해서 쓴 스킬 한 번 = 표 하나
+  castSkillId(id, slot) { this.pHit = true; const tok = this.curTok = (this.tokN = (this.tokN || 0) + 1), n0 = this.projs.length; try { if (this.player.eating) return false; return this.castSkillId0(id, slot); } finally { for (let i = n0; i < this.projs.length; i++) if (this.projs[i].owner === 'p') this.projs[i].tok = tok; this.pHit = false; this.curTok = null; } } // 조준해서 쓴 스킬 한 번 = 표 하나
   // 캐릭터 몸 동작 (렌더러가 읽는다): kind, 진행 시간, 길이
   motion(kind, dur, extra = {}) {
     if (!kind) return;
@@ -1914,6 +1919,18 @@ export class World {
     al.x = p.x; al.y = p.y; al.path = null;
   }
   // ═══════ 장판 (성역·죽음의 안개·독 웅덩이·불길) ═══════
+  // 보스가 남긴 독액 웅덩이: 안에 있으면 0.5초마다 독 피해 · 중독 · 느려짐
+  updateOoze() {
+    if (!this.ooze?.length) return;
+    const p = this.player;
+    for (const o of this.ooze) {
+      o.t -= DT; o.tick -= DT;
+      const inside = Math.hypot((p.x - o.x) / o.r, (p.y - o.y) / (o.r * 0.6)) < 1;
+      if (inside) p.oozeT = 0.15; // 끈적여서 느려진다
+      if (inside && o.tick <= 0 && p.invuln <= 0) { o.tick = 0.5; this.hurtPlayer(o.atk * 0.3, 'mag', null, { direct: true, status: 'poison' }); }
+    }
+    this.ooze = this.ooze.filter((o) => o.t > 0);
+  }
   updateZones() {
     if (!this.zones.length) return;
     const p = this.player;
@@ -2128,6 +2145,7 @@ export class World {
     const info = eatInfo(id);
     if (!info) return false;
     if (info.heal > 0 && p.potionCd > 0) { this.emit({ t: 'text', x: p.x, y: p.y - 26, text: `아직 먹을 수 없다 (${Math.ceil(p.potionCd)}초)`, color: '#c8b8a0' }); return false; } // 요리 · 물약은 회복 대기시간을 함께 쓴다
+    if (!this._consumeNow && this.state === 'play') return this.startConsume('eat', EAT_T.food, () => this.eat(id));
     life.bag[id]--;
     if (info.heal > 0) p.potionCd = POTION_CD;
     p.hp = Math.min(this.d.maxHp, p.hp + this.d.maxHp * info.heal * (this.hasKnack('cook') ? 1.2 : 1)); // 숙련 「손맛」
@@ -2137,6 +2155,19 @@ export class World {
     this.signals.push({ t: 'save' });
     return true;
   }
+  // 먹기 · 마시기는 시간이 걸린다: 그동안 이동 ×0.35 · 공격 · 스킬 못 씀 · 맞으면 끊긴다(아이템은 그대로) → 싸우는 중에는 먹기 어렵다
+  startConsume(kind, dur, finish) {
+    const p = this.player;
+    if (p.eating) return false;
+    p.eating = { kind, t: 0, dur, finish };
+    this.emit({ t: 'text', x: p.x, y: p.y - 26, text: kind === 'drink' ? '마시는 중…' : '먹는 중…', color: '#e8d8b0' });
+    return true;
+  }
+  tickConsume() {
+    const p = this.player, e = p.eating; if (!e) return;
+    e.t += DT; p.atkCd = Math.max(p.atkCd, 0.05);
+    if (e.t >= e.dur) { p.eating = null; this._consumeNow = true; try { e.finish(); } finally { this._consumeNow = false; } }
+  }
   // 물약 · 주문서 쓰기. 썼으면 true (귀환 · 이동은 main이 마을 · 포탈로 옮긴 뒤에 한 장 쓴다)
   useItem(id) {
     const p = this.player, bag = this.life?.bag, g = GOODS[id], u = g?.use, say = (text, color = '#c8b8a0') => this.emit({ t: 'text', x: p.x, y: p.y - 26, text, color });
@@ -2144,6 +2175,7 @@ export class World {
     if (u.kind === 'potion') {
       if (p.potionCd > 0) { say(`아직 마실 수 없다 (${Math.ceil(p.potionCd)}초)`); return false; }
       if (p.hp >= this.d.maxHp) { say('체력이 가득하다'); return false; }
+      if (!this._consumeNow) return this.startConsume('drink', EAT_T.potion, () => this.useItem(id));
       this.heal(this.d.maxHp * u.heal, 'potion'); p.potionCd = POTION_CD;
       this.emit({ t: 'potion', x: p.x, y: p.y, color: g.icon.c[0] });
     } else if (u.kind === 'buff') {
@@ -2583,6 +2615,7 @@ export class World {
     let absorbed = 0;
     if (p.shield > 0) { absorbed = Math.min(p.shield, dmg); p.shield -= absorbed; dmg -= absorbed; }
     p.hp -= dmg; p.hitFlash = 0.15;
+    if (p.eating && dmg > 0) { p.eating = null; this.emit({ t: 'text', x: p.x, y: p.y - 30, text: '맞아서 먹다 멈췄다', color: '#ff9a7a' }); }
     if (this.tower) this.tower.hurt += dmg;
     if (p.buffs.undying && p.hp < 1) { p.hp = 1; this.emit({ t: 'text', x: p.x, y: p.y - 22, text: '불굴', color: '#ffd84a' }); }
     if (p.buffs.undying) this.addRes((dmg / d.maxHp) * 100);

@@ -357,6 +357,12 @@ export const EnemyAiMethods = {
         }
         e.blinkAt = this.t; this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: spots[2].x, y2: spots[2].y }); e.x = spots[2].x; e.y = spots[2].y; return false;
       }
+      case 'filth': { // 오물 투척: 내 자리로 오물 덩이를 높이 던진다 → 떨어진 자리가 크게 터지고 독액 웅덩이가 7초 남는다
+        say(nm || '오물 투척'); const R = 70;
+        e.mv = { k: 'filth', boss: true, t: 1.05, x: p.x, y: p.y, r: R }; e.windT = 0.35; e.windMax = 0.35;
+        this.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: R, dur: 1.05 }); this.emit({ t: 'filthThrow', x1: e.x, y1: e.y - 20, x2: p.x, y2: p.y, dur: 1.05 });
+        return true;
+      }
       case 'meteorRain': // 운석 비: 내 자리에 세 번 떨어진다 (계속 움직여야 산다)
         say(nm || '운석 비'); e.mv = { k: 'meteorRain', boss: true, t: 2.2, n: 0 }; return false;
       case 'crossBeam': { // 십자 광선: + 모양 → 비스듬한 × 모양 (사이의 틈으로 피한다)
@@ -381,7 +387,7 @@ export const EnemyAiMethods = {
       case 'ripple': // 파문: 안 → 밖으로 고리 셋이 차례로 터진다 (터진 고리 안으로 들어가면 산다)
         say(nm || '파문'); e.mv = { k: 'ripple', boss: true, t: 2.6, n: 0 }; e.windT = 2.6; e.windMax = 2.6; return true;
       case 'jumps3': // 세 번 뛰기: 내 자리로 세 번 연달아 뛰어내린다
-        say(nm || '세 번 뛰기'); e.mv = { k: 'jumps3', boss: true, t: 0.7, n: 0 }; this.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: 40, dur: 0.7 }); e.mv.tx = p.x; e.mv.ty = p.y; return true;
+        say(nm || '세 번 뛰기'); e.mv = { k: 'jumps3', boss: true, t: 0.7, max: 0.7, n: 0, x0: e.x, y0: e.y }; this.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: 40, dur: 0.7 }); e.mv.tx = p.x; e.mv.ty = p.y; return true;
       case 'ritual': { // 제물 셋: 7초 안에 다 쓰러뜨리면 수호자가 무너진다, 아니면 큰 폭발
         this.emit({ t: 'banner', text: nm || '제물 의식', color: '#c8a8ff' });
         const ids = [];
@@ -404,6 +410,13 @@ export const EnemyAiMethods = {
   bossMoveTick(e, p, mv) {
     const def = e.def;
     switch (mv.k) {
+      case 'filth': {
+        if (mv.t > 0) return true;
+        this.enemyArea(e, mv.x, mv.y, mv.r, e.atk * 1.5, 'mag', 'poison');
+        (this.ooze ||= []).push({ x: mv.x, y: mv.y, r: mv.r, t: 7, max: 7, tick: 0, atk: e.atk });
+        this.emit({ t: 'filthSplash', x: mv.x, y: mv.y, r: mv.r }); this.emit({ t: 'shake', v: 3 });
+        e.mv = null; return true;
+      }
       case 'meteorRain': {
         if (mv.n < 3 && mv.t < 2.2 - mv.n * 0.6) { mv.n++; this.rainAt(e, [{ x: p.x, y: p.y }], 0.85); }
         if (mv.t > 0) return false;
@@ -447,11 +460,17 @@ export const EnemyAiMethods = {
         e.mv = null; return true;
       }
       case 'jumps3': {
+        { // 진짜로 뛴다: 처음 25%는 웅크렸다가 · 나머지 동안 포물선으로 날아 예고 원에 내려앉는다 (순간이동 없음)
+          const k = 1 - Math.max(0, mv.t) / mv.max, a = Math.max(0, (k - 0.25) / 0.75), ea = a * a * (3 - 2 * a);
+          const nx = mv.x0 + (mv.tx - mv.x0) * ea, ny = mv.y0 + (mv.ty - mv.y0) * ea;
+          if (!this.blocked(nx, ny, e.r)) { e.x = nx; e.y = ny; }
+          e.jumpH = k < 0.25 ? 0 : Math.sin(a * Math.PI) * 34; e.moving = k >= 0.25;
+        }
         if (mv.t > 0) return true;
-        if (!this.blocked(mv.tx, mv.ty, e.r)) { e.blinkAt = this.t; this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: mv.tx, y2: mv.ty }); e.x = mv.tx; e.y = mv.ty; }
+        e.jumpH = 0;
         this.enemyArea(e, e.x, e.y, 40, e.atk * 1.7, def.type, def.status); if (!this.bfx(e, 'slam', e.x, e.y, 40)) this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 40, fx: 'quake' });
         if (++mv.n >= 3) { e.mv = null; return true; }
-        mv.t = 0.55; mv.tx = p.x; mv.ty = p.y; this.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: 40, dur: 0.55 }); return true;
+        mv.t = mv.max = 0.62; mv.x0 = e.x; mv.y0 = e.y; mv.tx = p.x; mv.ty = p.y; this.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: 40, dur: 0.62 }); return true;
       }
       case 'donut': {
         if (mv.t > 0) return true;
@@ -552,7 +571,7 @@ export const EnemyAiMethods = {
         rain: dist < 260, adds: this.enemies.filter((o) => o.summoner === e.id && !o.dead).length < 3, charge: dist > 50 && dist < 260, mark: true, nova: dist < 120,
         donut: dist < 200, sweep: dist < 230, channel: true, soar: true, mirror: !(e.mirrorT > 0), clones: !this.enemies.some((o) => o.decoyOf === e.id && !o.dead),
         ritual: !this.enemies.some((o) => o.ritualOf === e.id && !o.dead),
-        meteorRain: true, crossBeam: dist < 240, cleave: dist < 130, grab: dist > 50 && dist < 200, spikeTrail: dist < 230, ripple: dist < 170, jumps3: dist < 230 }, BEAST_CAN(e, dist, melee));
+        meteorRain: true, crossBeam: dist < 240, cleave: dist < 130, grab: dist > 50 && dist < 200, spikeTrail: dist < 230, ripple: dist < 170, jumps3: dist < 230, filth: dist < 280 }, BEAST_CAN(e, dist, melee));
       if (e.kit) Object.assign(can, bossCan(this, e, p, dist)); // 51~100층 보스 기술
       const list = (phm ? phm[phase] : e.moves || BEAST_KIT[e.defId] || def.moves || AI_MOVES[def.ai] || []).filter((k) => can[k]); // 짐승은 몸에 맞는 기술 (beastmoves.js)
       if (!list.length) { e.mvCd = 0.3; return false; } // 지금 쓸 수 있는 기술이 없으면 조금 뒤 다시

@@ -151,7 +151,7 @@ Object.assign(BOSS_SHEET, {
   climbChief: { atk: ['combo', 'leap', 'jumps3', 'quake', 'whirl', 'shove'], skl: ['charge'] }, // 몽둥이 내려치기 · 돌진은 기술 줄의 달려드는 그림
   mossLord: { atk: ['combo', 'quake', 'leap', 'shove'], skl: ['spikeTrail', 'channel', 'pool', 'rain', 'nova', 'mark', 'fan', 'ripple', 'adds'] }, // 주먹 · 뿌리
   bogHag: { atk: ['fan', 'pool', 'split'], skl: ['spiral', 'rain', 'mark', 'ripple', 'clones', 'meteorRain', 'adds'] }, // 지팡이 휘두르기 · 초록 마법진
-  climbQueen: { atk: ['leap', 'fan', 'combo', 'split'], skl: ['pool', 'rain', 'nova', 'mark', 'spiral', 'ritual', 'meteorRain', 'ripple', 'adds'] }, // 주먹 · 독 분출
+  climbQueen: { atk: ['leap', 'fan', 'combo', 'split', 'filth'], skl: ['pool', 'rain', 'nova', 'mark', 'spiral', 'ritual', 'meteorRain', 'ripple', 'adds'] }, // 주먹 · 독 분출
   demonCaptain: { atk: ['combo', 'shove', 'charge', 'whirl', 'cleave', 'grab', 'quake', 'jumps3'], skl: ['mirror', 'pool', 'adds'], mirrorSkill: true }, // 사슬 · 방패 치기 · 방패가 빛나는 반사
   climbRift: { atk: ['quake', 'leap', 'combo', 'charge'], skl: ['fan', 'beam', 'sweep', 'crossBeam', 'nova', 'rain', 'pool', 'mark', 'meteorRain', 'ripple', 'adds'] }, // 주먹 · 가슴 핵 광선
   frostOgre: { atk: ['combo', 'shove', 'grab', 'charge', 'cleave'], skl: ['leap', 'jumps3', 'quake', 'nova'] }, // 얼음 주먹 · 뛰어올라 내려찍기
