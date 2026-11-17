@@ -794,7 +794,7 @@ export const SkillMethods = {
       this.delayed.push({ t: op.bind, run: () => { if (e.bind !== b) return; e.bind = null; if (e.dead || b.acc < 1) return; this.damageEnemy(e, b.acc, 'phys', { src: 'bind', pen: 1, heavy: true, color: '#c8a8ff' }); this.emit({ t: 'inkBurst', x: e.x, y: e.y, r: e.r }); } });
     }
     if (op.mark) e.st.elemMark = Math.max(e.st.elemMark || 0, op.mark);
-    if (op.weak) e.st.weak = Math.max(e.st.weak || 0, op.weak);
+    if (op.weak) { e.st.weak = Math.max(e.st.weak || 0, op.weak); e.st.weakK = op.weakK || 1.35; }
     if (op.armorBreak) { e.armorBreak = Math.min(5, (e.armorBreak || 0) + op.armorBreak); e.armorBreakT = 6; }
     if (op.knock && !e.def.elite) {
       const dx = e.x - p.x, dy = e.y - p.y, l = Math.hypot(dx, dy) || 1;

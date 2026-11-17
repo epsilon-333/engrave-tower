@@ -2322,7 +2322,7 @@ export class World {
     if (d.lowHunt && e.hp < e.maxHp * 0.3) mult *= 1 + d.lowHunt; // 마무리: 체력 30% 밑의 적
     // 새 상태이상·속성 상성·종족 특성
     if (e.st.shock > 0) mult *= 1.15;
-    if (e.st.weak > 0) mult *= 1.35;
+    if (e.st.weak > 0) mult *= e.st.weakK || 1.35; // 약화 (스킬마다 세기를 정할 수 있다 · 기본 +35%)
     if (e.st.stun > 0 && e.prison) mult *= 1.3;
     if (opt.elem && opt.elem !== 'phys') {
       if (e.st.elemMark > 0) mult *= 1.4;

@@ -182,7 +182,7 @@ export const SKILLS = {
 
   // ══════ 오크 · 광전사 (분노) ══════
   warCry: { name: '전투 함성', role: '준비', cd: 12, gain: 30, scale: 'phys', fx: 'roar', mo: 'roar',
-    desc: '분노 +30. 주변 적을 약화시킨다(받는 피해 +35%, 5초).', do: [{ op: 'aoe', at: 'self', r: 84, mul: 0.3, weak: 5 }] },
+    desc: '분노 +30. 주변 적을 약화시킨다(받는 피해 +20%, 5초).', do: [{ op: 'aoe', at: 'self', r: 84, mul: 0.3, weak: 5, weakK: 1.2 }] },
   chargeSmash: { name: '돌진 강타', role: '이동', cd: 6, gain: 10, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'leap',
     desc: '돌진한 뒤 도착한 곳을 내려찍는다. 분노 +10.', do: [{ op: 'dash', dist: 110, mul: 0.8 }, { op: 'aoe', at: 'self', r: 50, mul: 1.6, delay: 0.18, fx: 'slam' }] },
   crushingBlows: { name: '분쇄 연타', role: '연타', cd: 7, cost: 15, scale: 'phys', fx: 'smash', mo: 'chop',
