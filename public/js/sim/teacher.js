@@ -23,6 +23,14 @@ export function weaponFam(b) {
   return 'sword';
 }
 
+// 스승의 모습: 내 종족의 상징색(성지 색)을 입힌다 · 무기 갈래마다 크기 · 명암을 조금씩 바꾼다
+const RACE_HUE = { wizard: '#b58aff', elf: '#7be38a', knight: '#ffd76a', orc: '#ff7a5a', undead: '#c45cff', assassin: '#8a6aff', dino: '#9be15d', dragon: '#ff8a3a' };
+const FAM_LOOK = { sword: [1.25, 1.05, 1.2], heavy: [1.38, 0.9, 1.3], magic: [1.2, 1.12, 1.1], scythe: [1.25, 0.8, 1.35], dagger: [1.15, 0.85, 1.25], bow: [1.2, 1.05, 1.15], fist: [1.32, 0.95, 1.25], spear: [1.3, 1.0, 1.2] }; // 크기 · 밝기 · 대비
+export function teacherLook(race, fam) {
+  const [scale, br, ct] = FAM_LOOK[fam] || FAM_LOOK.sword;
+  return { scale, outline: RACE_HUE[race] || RACE_HUE.knight, tint: `saturate(1.2) brightness(${(br * 0.92).toFixed(2)}) contrast(${(ct + 0.1).toFixed(2)})` }; // 원래 그림의 색은 그대로(피부색이 바뀌지 않게) · 명암만 진하게 · 종족 색은 외곽선과 불티로
+}
+
 export const TR = {
   hpMul: 25,      // 스승 체력 = 내 공격력 × 25 (제대로 든 평타 약 스물다섯 번)
   okCap: 0.04,    // 무기를 이해한 공격: 한 대에 스승 체력의 4%까지
@@ -44,7 +52,8 @@ export const TeacherMethods = {
     const Tr = this.trial = { fam, T, s: 'intro', t: 2.6, bodies: [], chain: 0, lastHit: -9, lastOk: -9, guardN: 0, guardT: 0, brokenT: 0, tok: new Map(), msgT: 0, done: false, cx: lx, cy: ly,
       maxHp: Math.round(power * TR.hpMul), hp: 0, sigT: 4, took: [], revived: false, invulnT: 0, rageT: 0 };
     Tr.hp = Tr.maxHp;
-    const mk = (x, y, extra = {}) => { const e = this.makeEnemy(T.mon, x, y, { noAffix: true }); Object.assign(e, { state: 'idle', home: { x, y }, trialOf: fam, champion: T.name, maxHp: Tr.maxHp, hp: Tr.maxHp }, extra); this.enemies.push(e); Tr.bodies.push(e); return e; };
+    const look = teacherLook(this.b.race, fam);
+    const mk = (x, y, extra = {}) => { const e = this.makeEnemy(T.mon, x, y, { noAffix: true }); Object.assign(e, { state: 'idle', home: { x, y }, trialOf: fam, champion: T.name, maxHp: Tr.maxHp, hp: Tr.maxHp, raceLook: this.b.race, tintX: look.tint, scale: look.scale, outline: look.outline }, extra); this.enemies.push(e); Tr.bodies.push(e); return e; };
     if (fam === 'scythe') for (let i = 0; i < 3; i++) mk(lx + Math.cos(i * 2.1) * 50, ly + Math.sin(i * 2.1) * 30, { ang: i * 2.1 });
     else if (fam === 'dagger') { for (let i = 0; i < 5; i++) mk(lx, ly, { ang: (i / 5) * Math.PI * 2 }); }
     else mk(lx, ly);

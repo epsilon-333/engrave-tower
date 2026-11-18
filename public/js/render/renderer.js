@@ -964,6 +964,7 @@ export class Renderer {
     const art = MONSTER_ART[e.defId] || { base: 'goblin' };
     if (art.mirrorPlayer) return { ...art, base: (RACE_ART[e.mirrorRace || w.b?.race] || RACE_ART.knight).base };
     if (art.raceLook) return { ...art, base: RACE_LOOK[e.raceLook] || RACE_LOOK.knight };
+    if (art.teacherLook) return { ...art, base: `p_lead_${e.raceLook || w.b?.race || 'knight'}` }; // 숨은 스승: 내 종족 성지 우두머리의 모습 (색 · 크기는 sim/teacher.js)
     return art;
   }
   // 보스 시트: 지금 하는 일에 맞는 자세 그림 하나를 통째로 (조각을 움직이지 않는다)
@@ -1136,7 +1137,7 @@ export class Renderer {
     else if (wind) wobble -= art.sheet ? vdir * (1 + 3 * easeOut(Math.min(1, (e._wind0 = Math.max(e._wind0 || 0, e.windT), 1 - e.windT / (e._wind0 || 1))))) : e.dir * 1.5; // 큰 보스: 천천히 뒤로 젖혀 힘을 모은다
     if (!wind) e._wind0 = 0;
     const w0 = img.width * sc * sx, h0 = img.height * sc * sy;
-    if (def.elite || e.champion) { g.fillStyle = `rgba(255,60,40,${0.18 + 0.1 * Math.sin(w.t * 4)})`; ellipse(g, e.x, e.y + 3, w0 * 0.55, w0 * 0.2); }
+    if (def.elite || e.champion) { g.fillStyle = e.outline ? hexA(e.outline, 0.16 + 0.08 * Math.sin(w.t * 4)) : `rgba(255,60,40,${0.18 + 0.1 * Math.sin(w.t * 4)})`; ellipse(g, e.x, e.y + 3, w0 * 0.55, w0 * 0.2); } // 숨은 스승은 종족 색
     else if (e.affix) { g.fillStyle = hexA(AFFIXES[e.affix].color, 0.25 + 0.1 * Math.sin(w.t * 5)); ellipse(g, e.x, e.y + 3, w0 * 0.5, w0 * 0.18); }
     if (fuse) { g.fillStyle = `rgba(255,120,60,${0.25 + 0.25 * Math.sin(w.t * 30)})`; disc(g, e.x, e.y, def.boom?.r || 30); }
     const ip = e.introT > 0 ? introPose(this, w, e) : this.digPose(w, e, dt); // 보스 등장: 떨어져 내린다 · 솟는다 · 모인다 / 땅 파고들기 · 튀어나오기
@@ -1163,7 +1164,14 @@ export class Renderer {
       g.drawImage(img, Math.round(-w0 / 2), Math.round(-h0), Math.round(w0), Math.round(h0)); g.restore();
       if (e.pose.k === 'dizzy') for (let i = 0; i < 3; i++) { const a = w.t * 7 + i * 2.1; g.fillStyle = '#ffe060'; g.fillRect(Math.round(e.x + Math.cos(a) * 8), Math.round(dy - 5 + Math.sin(a) * 2), 2, 2); }
       if ((e.pose.k === 'crouch' && e.mv?.k === 'headbutt') && dt > 0 && Math.random() < 0.35) this.parts.push({ x: e.x - (e.dir || 1) * e.r, y: e.y + 3, vx: -(e.dir || 1) * (30 + Math.random() * 40), vy: -20 - Math.random() * 20, t: 0.45, max: 0.45, color: '#a89880', g: 200, puff: true, size: 2 }); // 뒷발로 땅을 긁는 흙먼지
-    } else g.drawImage(img, dx, dy, Math.round(w0), Math.round(h0));
+    } else {
+      if (e.outline && !art.beast && !art.sheet) { // 숨은 스승: 종족 색 1도트 외곽선 (몸 둘레 고리 없이 윤곽만) · 종족 색 불티가 가끔 오른다
+        const sil = sprite(name, e.tintX || '', e.outline, e.dir < 0), o = Math.max(1, Math.round(sc));
+        if (sil) for (const [ox, oy] of [[-o, 0], [o, 0], [0, -o], [0, o]]) g.drawImage(sil, dx + ox, dy + oy, Math.round(w0), Math.round(h0));
+        if (dt > 0 && Math.random() < 0.22) this.parts.push({ x: e.x + (Math.random() - 0.5) * w0 * 0.7, y: dy + h0 * (0.3 + Math.random() * 0.6), vx: (Math.random() - 0.5) * 6, vy: -18 - Math.random() * 14, t: 0.7, max: 0.7, color: e.outline, g: -4, size: 1 });
+      }
+      g.drawImage(img, dx, dy, Math.round(w0), Math.round(h0));
+    }
     if (ip?.sink > 0) g.restore();
     g.globalAlpha = 1;
     if (e.trait === 'shield' && e.shieldHp > 0 && !(e.feignT > 0)) { // 방패병: 바라보는 쪽에 큰 방패 (방패 체력이 줄면 금이 간다)

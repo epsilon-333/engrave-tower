@@ -234,18 +234,19 @@ export const HIDDEN_COUNTS = { npcDown: [100, 'necro'], drown: [50, 'seaWitch'],
 // 시련 · 그림자 · 전설 몬스터 (도감에 넣지 않는다: DUMMIES 에 붙인다)
 const T = (name, extra) => ({ name, shape: 'humanoid', hp: 1e9, atk: 20, type: 'phys', speed: 0, ai: 'trial', r: 7, xp: 0, gold: 0, pres: 0, mres: 0, echo: { id: 'goo', rate: 0 }, trial: true, ...extra }); // ai 'trial': 움직임은 sim/teacher.js 가 맡는다
 export const HIDDEN_MONSTERS = {
-  tchSword: T('노검객', { pal: { a: '#c8ccd8' } }), tchHeavy: T('피 묻은 사슬의 챔피언', { pal: { a: '#a83a2a' }, r: 9 }),
+  tchSword: T('노검객', { pal: { a: '#c8ccd8' } }), tchHeavy: T('피 묻은 사슬의 챔피언', { pal: { a: '#a83a2a' }, r: 8 }),
   tchMagic: T('봉인된 대마법사', { pal: { a: '#8a6ad8' } }), tchScythe: T('첫 번째 망자', { pal: { a: '#c45cff' } }),
   tchDagger: T('얼굴 없는 자', { pal: { a: '#3a2e48' } }), tchBow: T('노궁수', { pal: { a: '#5a8a4a' } }),
   tchTarget: T('움직이는 과녁', { ai: 'target', shape: 'dummy', pal: { a: '#c8a070', b: '#6a4a2a', c: '#f0e0b0', e: '#2a1a0a' } }),
-  tchFist: T('태고의 포식자', { shape: 'quad', pal: { a: '#6a9a3a' }, r: 9 }), tchSpear: T('잠든 고룡', { pal: { a: '#d8501a' }, r: 9 }),
+  tchFist: T('태고의 포식자', { pal: { a: '#6a9a3a' }, r: 8 }), tchSpear: T('잠든 고룡', { pal: { a: '#d8501a' }, r: 8 }),
   myShadow: { name: '나의 그림자', shape: 'humanoid', ghost: true, pal: { a: '#3a2e48' }, hp: 600, atk: 34, type: 'phys', speed: 78, ai: 'chase', raceLook: true, moves: ['combo', 'leap', 'combo'], r: 6, xp: 0, gold: 0, pres: 60, mres: 60, echo: { id: 'goo', rate: 0 }, elite: true },
   frostSteed: { name: '서리 백마', shape: 'quad', pal: { a: '#e8f4ff', b: '#9fc8e8', c: '#ffffff', e: '#3ab0ff' }, hp: 1600, atk: 30, type: 'phys', speed: 110, ai: 'chase', status: 'chill', moves: ['charge', 'stomp'], r: 9, xp: 0, gold: 200, pres: 60, mres: 60, echo: { id: 'goo', rate: 0 }, elite: true },
   bellWraith: { name: '종지기 망령', shape: 'flyer', ghost: true, pal: { a: '#c8a8ff', b: '#6a4a9a', c: '#ffffff', e: '#ffe066' }, hp: 1500, atk: 30, type: 'mag', speed: 60, ai: 'ranged', range: 140, proj: { speed: 150, color: '#c8a8ff', status: 'curse' }, moves: ['spiral', 'retreat'], r: 8, xp: 0, gold: 200, pres: 40, mres: 80, echo: { id: 'goo', rate: 0 }, elite: true },
 };
 export const HIDDEN_ART = {
-  tchSword: { base: 'p_m_fallenKnight' }, tchHeavy: { base: 'p_m_orcWarlord', scale: 1.2 }, tchMagic: { base: 'p_royalMage' }, tchScythe: { base: 'p_m_graveKeeper' },
-  tchDagger: { base: 'p_m_wraith' }, tchBow: { base: 'p_m_forestArcher' }, tchFist: { base: 'raptor_alpha' }, tchSpear: { base: 'p_m_dragonGuard', scale: 1.15 },
+  // 스승: 내 종족의 성지 우두머리 모습 (p_lead_<종족>) + 종족 상징색 · 무기 갈래마다 크기와 명암을 조금씩 (sim/teacher.js TEACHER_LOOK)
+  tchSword: { teacherLook: true }, tchHeavy: { teacherLook: true }, tchMagic: { teacherLook: true }, tchScythe: { teacherLook: true },
+  tchDagger: { teacherLook: true }, tchBow: { teacherLook: true }, tchFist: { teacherLook: true }, tchSpear: { teacherLook: true },
   myShadow: { raceLook: true, ghost: true, tint: 'brightness(0.35) saturate(0.4) hue-rotate(220deg)' },
   frostSteed: { base: 'c_horse', tint: 'grayscale(0.7) brightness(1.55) hue-rotate(170deg) saturate(1.4)', scale: 1.3 },
   bellWraith: { beast: 'ghost', ghost: true, fly: true, tint: 'hue-rotate(40deg) saturate(1.6) brightness(1.2)', scale: 1.4 },
