@@ -33,7 +33,7 @@ export const GROUND_FX = new Set(['ink', 'tcircle', 'tdonut', 'lineTele', 'crack
 const BOSS_MELEE = new Set(['combo', 'cleave', 'whirl', 'shove', 'charge', 'leap', 'jumps3', 'quake', 'grab', 'retreat']);
 const SHEET_LOOKS = ['saturate(1.25) contrast(1.1) brightness(1.08)', 'saturate(1.5) contrast(1.3) brightness(0.92)']; // 보스 시트 2 · 3단계: 색을 돌리지 않고 진하게만
 export const PASSIVE_NAME = Object.fromEntries(Object.entries(BOSS_PASSIVES).map(([k, v]) => [k, v.name]));
-import { STORY_ITEMS, pinoTalk } from '../data/story.js';
+import { STORY_ITEMS } from '../data/story.js';
 import { sfx } from '../audio.js';
 import { drawClimbObject } from './climbfx.js';
 import { drawTowerFloor, drawTowerOver, drawLightPillar, introPose } from './towerfx.js';
@@ -629,10 +629,13 @@ export class Renderer {
     // 바닥 이펙트는 지형을 따른다: 땅에 새기는 것(갈라짐 · 그을음 · 먹물 · 긁힌 자국)은 걸을 수 있는 땅에만, 예고 원 · 마법진은 벽 위로만 안 보이게
     this.clipTiles(w, cx, cy, true); this.anims.drawGround(g, dt); this.drawShadowWalk(w, dt); this.drawOoze(w); this.drawFx(w, dt, true, true); g.restore();
     this.clipTiles(w, cx, cy, false); this.drawFx(w, dt, true, false); g.restore();
+    if (w.veil?.size) { // 금 간 벽 너머 숨은 방: 깨기 전에는 벽 속 어둠처럼 덮어 둔다 (세린의 일지)
+      for (const k of w.veil) { const x = (k % w.tw) * 16, y = ((k / w.tw) | 0) * 16; if (x < cx - 16 || x > cx + VW || y < cy - 16 || y > cy + VH) continue; g.fillStyle = '#0f0c13'; g.fillRect(x, y, 16, 16); g.fillStyle = '#17131c'; for (let q = 0; q < 6; q++) g.fillRect(x + ((k * 7 + q * 5) % 15), y + ((k * 3 + q * 11) % 15), 1, 1); }
+    }
     // 엔티티 (y 정렬)
     const vis = (x, y) => x > cx - 48 && x < cx + VW + 48 && y > cy - 48 && y < cy + VH + 64;
     const list = [];
-    for (const o of w.objects) if (vis(o.x, o.y)) list.push({ o, y: o.kind === 'gate' ? -1e9 : FLAT_OBJ.has(o.kind) ? -1e9 + 2 : o.sortY ?? o.y }); // 바닥에 납작한 것(캐낸 자리 · 덫)은 늘 사람 아래 // sortY: 처형대 위 사람처럼 바닥보다 높이 선 것
+    for (const o of w.objects) if (vis(o.x, o.y) && !o.veiled) list.push({ o, y: o.kind === 'gate' ? -1e9 : FLAT_OBJ.has(o.kind) ? -1e9 + 2 : o.sortY ?? o.y }); // 바닥에 납작한 것(캐낸 자리 · 덫)은 늘 사람 아래 // sortY: 처형대 위 사람처럼 바닥보다 높이 선 것
     for (const dr of w.drops) list.push({ dr, y: dr.y });
     for (const e of w.enemies) if (vis(e.x, e.y)) list.push({ e, y: e.y });
     for (const c of this.corpses) list.push({ c, y: c.y });
@@ -1273,6 +1276,18 @@ export class Renderer {
     g.fillStyle = `rgba(90,170,60,${0.9 * fade})`; for (let i = -2; i <= 2; i++) g.fillRect(Math.round(e.x + i * rx * 0.45), Math.round(foot - 2), 1, 2);
   }
 
+  // 여정을 맡기는 사람 머리 위: 「!」(맡길 일) · 「?」(끝낸 일 알리기) — 도트 글자, 위아래로 살짝
+  questMark(w, o, m) {
+    if (!m || o._top == null) return;
+    const y = o._top - 12 + Math.sin(w.t * 5) * 1.5;
+    if (m === '!') this.bang(o.x, y, '#ffd040');
+    else this.qmark(o.x, y, '#8ad8ff');
+  }
+  qmark(x, y, c) {
+    const g = this.g; x = Math.round(x); y = Math.round(y);
+    g.fillStyle = '#0d0b10'; g.fillRect(x - 3, y - 1, 7, 7); g.fillRect(x - 1, y + 5, 3, 5);
+    g.fillStyle = c; g.fillRect(x - 2, y, 5, 1); g.fillRect(x + 1, y + 1, 2, 2); g.fillRect(x - 2, y + 1, 2, 1); g.fillRect(x, y + 3, 2, 1); g.fillRect(x, y + 4, 1, 2); g.fillRect(x, y + 7, 1, 2);
+  }
   bang(x, y, c) {
     const g = this.g; x = Math.round(x); y = Math.round(y);
     g.fillStyle = '#0d0b10'; g.fillRect(x - 2, y - 1, 5, 11);
@@ -2600,7 +2615,7 @@ export class Renderer {
       return;
     }
     if (o.kind === 'station' && !o.npc) return; // 가구 자리 (침대 · 화덕 · 보관함 · 작업대): 가구 그림이 따로 있다
-    if (o.kind === 'station' || o.kind === 'merchant') return this.drawNpc(w, o);
+    if (o.kind === 'station' || o.kind === 'merchant') { this.drawNpc(w, o); if (o.kind === 'station') this.questMark(w, o, w.questMarks?.['station:' + o.station]); return; }
     if (o.kind === 'relic') { drawRelic(this.g, o, w.t, SANCTUMS[o.race]?.color || '#ffffff', o.opened); return; }
     if (o.kind === 'sign') { drawSign(this.g, o); o._top = o.y - 22; return; }
     if (o.kind === 'hiddenWay') { o._top = o.y - 26; return; }
@@ -2704,7 +2719,7 @@ export class Renderer {
       o._top = o.y - 30; return;
     }
     if (o.kind === 'entrance') { o._top = o.y - 26; return; }
-    if (o.kind === 'door') { o._top = o.y - 42; return; }
+    if (o.kind === 'door') { o._top = o.y - 42; this.questMark(w, o, w.questMarks?.['house:' + o.house]); return; } // 집 안 사람이 맡길 일이 있으면 문 위에
     if (o.kind === 'rest') { // 마을 모닥불: 돌 둘레 · 장작 · 타오르는 불 · 앉는 통나무
       const x = Math.round(o.x), y = Math.round(o.y), f = 0.75 + 0.25 * Math.sin(t * 9) * Math.sin(t * 5.7);
       const gl = g.createRadialGradient(x, y - 4, 2, x, y - 4, 46); gl.addColorStop(0, `rgba(255,170,70,${0.32 * f})`); gl.addColorStop(1, 'rgba(255,170,70,0)'); g.fillStyle = gl; g.fillRect(x - 46, y - 50, 92, 92);
@@ -2731,8 +2746,7 @@ export class Renderer {
       if (o.leaving != null) { o.leaving -= dt * 0.6; if (o.leaving <= 0) { w.objects.splice(w.objects.indexOf(o), 1); return; } g.globalAlpha = o.leaving; }
       this.drawNpc(w, o);
       g.globalAlpha = 1;
-      // 건넬 물건이 있거나 처음 만나면 머리 위에 느낌표
-      if (o.id === 'pino' && o.leaving == null && w.story) { const tk = pinoTalk(w.story); if (tk.set) this.bang(o.x, o._top - 12 + Math.sin(w.t * 5) * 1.5, '#ffd040'); }
+      this.questMark(w, o, w.questMarks?.[o.id]); // 맡길 일이 있으면 「!」 · 끝낸 일을 들으려면 「?」
       return;
     }
     if (o.kind === 'barrier') { if (!o.opened) this.drawBarrier(w, o); return; }
