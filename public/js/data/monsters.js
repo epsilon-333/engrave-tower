@@ -1,4 +1,5 @@
 import { registerParts } from './monsterparts.js';
+import { registerHiddenEchoes } from './hidden.js';
 // 몬스터와 문양 잔향. 원하는 각인을 만들려면 그 잔향을 남기는 몬스터를 골라 사냥해야 한다.
 
 export const ECHOES = {
@@ -39,6 +40,7 @@ export const ECHOES = {
   halo: { name: '후광 잔향', color: '#ffe8f8' },
   crown: { name: '마지막 왕의 잔향', color: '#ffd84a', rare: true },
 };
+registerHiddenEchoes(ECHOES); // 숨은 각인의 증표 (data/hidden.js)
 
 // ai: chase | erratic | ranged | charge | boss | kamikaze(다가와 자폭) | summoner(부하 소환) | burrow(땅속 잠복) | flee(도망)
 // shield: 정면 공격 피해 감소

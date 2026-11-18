@@ -280,6 +280,8 @@ export const WEAPON_ART = {
   dragonTome: { s: 'weapon_red_magic_staff', tint: 'saturate(1.5)' },
   elderHeartstone: { s: 'weapon_red_magic_staff', tint: 'hue-rotate(-20deg) saturate(2) brightness(1.15)' },
   rustySword: { s: 'weapon_rusty_sword' },
+  ironLongsword: { s: 'weapon_duel_sword' },
+  bareHands: { s: 'cw_knuckle', fist: true, metal: '#e8b48a' }, // 맨손: 주먹을 살빛으로
   knightSword: { s: 'weapon_knight_sword' },
   heavySword: { s: 'weapon_anime_sword' },
   handAxe: { s: 'weapon_throwing_axe' },

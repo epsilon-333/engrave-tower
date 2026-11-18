@@ -76,6 +76,7 @@ import { EnemyAiMethods } from './enemyai.js';
 import { SkillMethods } from './skillrun.js';
 import { AllyMethods } from './allies.js';
 import { TraitMethods } from './montraits.js';
+import { HiddenMethods } from './hidden.js';
 // 레벨 lv의 기준 캐릭터(스탯 60% 공격 · 40% 체력)가 1레벨보다 몇 배 세게 때리고 · 몇 배 버티나 → 바깥 몬스터가 지역 레벨만큼 그대로 따라 세진다
 const GROWTH = new Map();
 export function levelGrowth(lv) {
@@ -218,6 +219,7 @@ export class World {
     this.minions.forEach((m, i) => { const a = i * 0.7; this.spawnMinion(m, this.player.x + Math.cos(a) * 18, this.player.y + Math.sin(a) * 18, i); }); // 나와 있던 부하가 따라온다
     if (this.tower) this.tower.bosses = this.enemies.filter((e) => e.champion); // 탑: 이 층의 우두머리 목록 (쓰러뜨리면 줄이 그어진다)
     if (this.climb) this.initClimb();
+    this.hidInit(); // 숨은 각인: 위업 기록 (sim/hidden.js)
   }
 
   // 탑의 문 자리: 시작점에서 걸어서 닿고, 둘레 3×3이 모두 바닥인 칸 중 원래 계단에 가장 가까운 곳
@@ -729,6 +731,7 @@ export class World {
     this.updateFlow();
     this.updateEnemies();
     if (this.climb) this.updateClimb();
+    this.hidTick(DT);
     this.updateVillages();
     this.updateTraining();
     this.updateProjs();
@@ -1494,6 +1497,7 @@ export class World {
     if (this.f.has('focus') && p.focus > 0 && w.kind === 'proj') { mul *= 1 + 0.25 * p.focus; heavy = p.focus >= 3; p.focus = 0; p.focusT = 0; }
     p.lastShot = this.t;
     this.breakStealth();
+    mul *= this.hidBasicMul(); this.hidAttack(); // 숨은 각인: 무영 · 공허의 그릇 · 멈추지 않는 팔
     const base = atk * mul;
     if (w.kind === 'melee') {
       p.swingDir = p.atkCount % 2 ? 1 : -1;
@@ -2565,6 +2569,7 @@ export class World {
         if (attacker && !attacker.dead) this.damageEnemy(attacker, amount * 0.8, 'phys', { src: 'reflect', color: '#a8c8ff' }); // 철벽: 막은 피해를 되돌린다
         this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8 });
         p.invuln = 0.2;
+        if (this.hid?.boss && (this.b.weapon.guard || this.b.offItem?.guard)) this.hid.blocks++; // 철벽으로 완전히 막은 것도 방패로 받은 것
         return;
       }
     }
@@ -2595,6 +2600,7 @@ export class World {
       }
     }
     const dr = type === 'phys' ? d.physDR : d.magDR, raw = amount;
+    let shieldBlock = false; // 방패로 정면에서 받았다 (숨은 각인 「철벽」 기록)
     let dmg = amount * (1 - dr) * d.dmgTakenMul * this.mod('dmgTakenMul') * (1 + 0.05 * (p.ab || 0)); // 갑옷 부수기(결투)
     if (this.b.race === 'knight' && type === 'phys') dmg *= RACE_FX.knightPhys;
     if (p.stillT >= 1 && this.f.has('stillGuard')) dmg *= 0.5; // 각인 「바위의 인내」: 1초 동안 가만히 있으면 다시 움직일 때까지 받는 피해 -50%
@@ -2602,7 +2608,7 @@ export class World {
     if (front) { dmg *= 0.75; this.addRes(4); this.knack('block'); if (attacker && !attacker.dead) this.damageEnemy(attacker, raw * 0.25, 'phys', { src: 'reflect', color: '#a8c8ff' }); /* 수호기사: 정면으로 막으면 25%를 되갚는다 */ this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
     else if ((this.b.weapon.guard || this.b.offItem?.guard) && fx != null && !opt.direct) { // 방패(무기 · 왼손): 앞에서 오는 피해를 줄인다
       const vx = fx - p.x, vy = fy - p.y, l = Math.hypot(vx, vy) || 1;
-      if ((vx * p.aimX + vy * p.aimY) / l > 0.25) { dmg *= 1 - Math.max(this.b.weapon.guard || 0, this.b.offItem?.guard || 0); this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
+      if ((vx * p.aimX + vy * p.aimY) / l > 0.25) { dmg *= 1 - Math.min(0.9, Math.max(this.b.weapon.guard || 0, this.b.offItem?.guard || 0) * (f.has('shieldX2') ? 2 : 1)); shieldBlock = true; this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); } // 철벽(숨은 각인): 방패가 줄이는 피해 2배
     }
     if (p.charging) dmg *= 0.75;
     if (p.buffs.stoneSkin && type === 'phys') dmg *= 1 - 60 / (60 + 100 + Math.max(0, this.s.pres));
@@ -2624,6 +2630,7 @@ export class World {
     p.lastFight = this.t;
     if (!opt.direct) p.invuln = 0.3;
     this.hurtLanded = true;
+    this.hidHurt(shieldBlock || (front && !!(this.b.weapon.guard || this.b.offItem?.guard)));
     if (dmg >= 0.5) this.emit({ t: 'dmg', x: p.x, y: p.y - 16, v: dmg, color: '#ff5a5a', who: 'p' });
     else if (absorbed > 0) this.emit({ t: 'text', x: p.x, y: p.y - 16, text: '보호막', color: '#a8d8ff' }); // 보호막이 다 막으면 0.0 대신
     this.emit({ t: 'shake', v: Math.min(5, 1.5 + dmg / 12) });
@@ -2858,6 +2865,7 @@ export class World {
       if (e.trainee) this.emit({ t: 'death', x: e.x, y: e.y, color: e.def.pal.a, defId: e.defId, dir: e.dir });
       return;
     }
+    this.hidKill(e); // 숨은 각인: 학살자 · 쉰 개의 무덤 · 검귀
     if (!e.summoned && e.def.ai !== 'dummy' && !selfDestruct) { // 숙련: 어떤 상태의 적을 어떻게 쓰러뜨렸나
       const st = e.st;
       if (st.burn) this.knack('killBurning');
@@ -3410,4 +3418,4 @@ export function distToSeg(px, py, x1, y1, x2, y2) {
 export { ECHOES, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP };
 
 // 나눠 둔 메서드를 World 에 붙인다
-Object.assign(World.prototype, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods);
+Object.assign(World.prototype, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods);

@@ -138,6 +138,12 @@ export function computeBuild(lo) {
   }
 
 
+  // 5.5) 숨은 각인 「맨몸의 전설」: 맨손 · 왼손 · 갑옷 · 장신구 둘이 빈 칸마다 기본 스탯 +8%
+  if (effects.some((e) => e.type === 'flag' && e.flag === 'bareKing')) {
+    const g = lo.gear || {}, n = (!g.weapon || g.weapon === 'bareHands' ? 1 : 0) + ['off', 'armor', 'acc1', 'acc2'].filter((k) => !g[k]).length;
+    for (const k of BASE_STATS) stats[k] = Math.round(stats[k] * (1 + 0.08 * n));
+    if (n) notes.push({ kind: 'on', text: `맨몸의 전설: 빈 칸 ${n} · 기본 스탯 +${8 * n}%` });
+  }
   // 6) 2차 스탯 효과 반영
   for (const e of effects) {
     if (e.type === 'stat') stats[e.stat] = (stats[e.stat] || 0) + e.v;

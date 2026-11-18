@@ -10,6 +10,7 @@ import { buildClimbFloor } from '../sim/climbmap.js';
 import { toLoadout, applyRun } from '../save.js';
 import { ALL_ZONES } from '../data/monsters.js';
 import { eatInfo } from '../data/cooking.js';
+import { climbFeats } from '../sim/hidden.js';
 import { CLIMB_TOP, ACTS, actOf, floorKind, recLevel, newRun, runEffects, OATHS, oathScore, climbStarts, newClimbSave, FLOOR_MODS } from '../data/climb.js';
 
 const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
@@ -114,6 +115,7 @@ export function createClimb(ctx) {
         if (s.f < CLIMB_TOP) ctx.banner({ text: '기록이 남았다', sub: first ? `다음부터 ${s.f + 1}층에서 시작할 수 있다${act.n === 1 && !ctx.locked?.('oath') ? ' · 서약이 열렸다' : ''}` : `${s.f + 1}층부터 시작할 수 있다`, t: 4, color: '#8ad8ff' });
       }
       if (s.kind === 'guardian' || s.kind === 'lord') r.bosses.push(w.climb.boss?.def.name || '');
+      for (const id of climbFeats(r, w, s.f, s.kind)) ctx.awardHidden?.(id); // 숨은 각인: 탑의 위업
       r.hpFrac = w.player.hp / w.d.maxHp;
       ctx.save0();
       ctx.onEvent?.('cleared', { f: s.f, kind: s.kind });

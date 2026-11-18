@@ -54,6 +54,8 @@ import { SHIPS, cargoCap, GUILD_RANKS, guildRank } from './data/trade.js';
 import { econOf, econTick, planCaravan, deliver, caravanLost, taxArrived, taxLost, marketGossip, TOWNS } from './data/econ.js';
 import { ENG_STEP, ENG_MAX } from './sim/build.js';
 import { createClimb } from './ui/climb.js';
+import { grantHidden } from './sim/hidden.js';
+import { HIDDEN_BY_ID } from './data/hidden.js';
 import { CLASS_STATS } from './data/statscale.js';
 import { JOURNEY, journeyNow, rewardText as journeyReward } from './data/journey.js';
 import { oathScore, newClimbSave } from './data/climb.js';
@@ -827,8 +829,19 @@ const climbUi = createClimb({
   leave: () => { returnTo = null; enterWorld('tower'); },
   beforeClimb: () => { if (world?.zone?.id === 'world') { save.zoneMemory ||= {}; save.zoneMemory.world = world.exportMemory(); } },
   partyLeader: () => isPartyLeader() && net.party.members.length > 1,
+  awardHidden: (id) => awardHidden(id),
   onEvent: (k, d) => { journeyEvent(k, d); if (k === 'cleared' && coRun?.role === 'host') netSend({ t: 'co', k: 'cclear', f: d.f }); if (k === 'cleared') { if (world?.player?.down) world.coRevive?.(0.3); checkCcMissions(); } },
 });
+
+// 숨은 각인: 위업을 채웠다 → 증표 · 칭호 (data/hidden.js · sim/hidden.js). 무엇을 했는지 이때 처음 알려 준다
+function awardHidden(id) {
+  if (!save || !grantHidden(save, id)) return;
+  const h = HIDDEN_BY_ID[id];
+  writeSave(save); cloudSaveNow(save);
+  sfx('levelup', { vol: 0.8 });
+  renderer.banner = { text: `숨은 각인 · 「${h.title}」`, sub: `${h.cond} · 공명 제단에서 「${h.name}」을 새길 수 있다`, t: 6, color: h.color };
+  if (world) world.emit({ t: 'text', x: world.player.x, y: world.player.y - 34, text: `칭호 「${h.title}」`, color: h.color, big: true });
+}
 
 function resetGame() { clearSave(); cloudDelete(); save = null; world = null; showRaceSelect(); }
 
@@ -873,7 +886,7 @@ function startAs(race) {
   }
   save = newSave(race);
   save.cls = cs[0]; save.style = c0.style; save.journeySkills = 1; // 스킬 없이 시작: 첫 각인은 여정 1 · 2로 만든다
-  save.items = ['rustySword']; give(save);
+  save.items = ['rustySword', 'bareHands']; give(save);
   save.gear = { weapon: c0.weapons[0], ...(c0.off ? { off: c0.off } : {}) };
   save.tutorial = { step: 0 }; // 처음 시작하는 사람은 튜토리얼부터
   refreshQuests(save); writeSave(save); titleEl.hidden = true; enterWorld(null, true);
@@ -1110,6 +1123,7 @@ function migrateSave(sv) {
   }
   sv.items = (sv.items || []).filter((id) => ITEMS[id]);
   if (!sv.items.includes('rustySword')) sv.items.push('rustySword');
+  if (!sv.items.includes('bareHands')) sv.items.push('bareHands'); // 맨손: 누구나 늘 가진다
   if (!sv.gear?.weapon || !ITEMS[sv.gear.weapon]) sv.gear = { ...(sv.gear || {}), weapon: 'rustySword' };
   for (const k of Object.keys(sv.gear)) if (sv.gear[k] && !ITEMS[sv.gear[k]]) delete sv.gear[k];
   if (!sv.cls || CLASSES[sv.cls]?.race !== sv.race) {
@@ -2213,6 +2227,7 @@ function talkTo(id) {
 function handleSignals() {
   // 먼저 비워 둔다: 창을 띄우고 중간에 돌아가도 같은 신호가 다시 처리되지 않게
   for (const s of world.signals.splice(0)) {
+    if (s.t === 'hiddenFeat') { awardHidden(s.id); continue; } // 숨은 각인 (학살자 등 어디서나 채우는 위업)
     if (world.climb && climbUi.signal(s)) { if (s.t === 'climbCleared') continue; return; } // 탑 등반
     if (s.t === 'openPanel') openPanel(s.panel, true);
     if (s.t === 'tower') { showTower(); return; }
