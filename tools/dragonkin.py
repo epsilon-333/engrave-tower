@@ -53,7 +53,7 @@ def run(n=4):
     out = []
     for i in range(n):
         f = i / n * math.pi * 2
-        out.append({'torso': (3, 0, -round(abs(S(f)))), 'legL': (30 * S(f),), 'legR': (-30 * S(f),), 'hair': (-4,), 'tail1': (-10 + 8 * S(f),), 'tail2': (-12 + 10 * S(f + 1),), '_hide': ('wingN', 'wingF')})
+        out.append({'torso': (3, 0, -round(abs(S(f)))), 'legL': (30 * S(f),), 'legR': (-30 * S(f),), 'hair': (-4,), 'tail1': (-10 + 8 * S(f),), 'tail2': (-12 + 10 * S(f + 1),), '_hide': ('wingN', 'wingF'), '_sdx': 1})
     return out
 
 def soar(n=4):
