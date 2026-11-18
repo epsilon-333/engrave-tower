@@ -25,9 +25,9 @@ parts = [
         Shape('line', 'trim', P(11.2, 16), P(11.2, 20), 0.8, flat=True), Shape('line', 'belt', P(6, 20.6), P(14.2, 20.6), 0.9, flat=True),
         Shape('ellipse', 'buckle', *P(11.2, 20.6), 0.6, 0.5, flat=True), Shape('poly', 'trim', [P(8, 15.4), P(12.4, 15.4), P(10.2, 17.2)], flat=True)]),
     Part('head', 'torso', P(10, 15), 3, [
-        Shape('ellipse', 'skin', *P(10.6, 11), 4.6, 4.1),
-        Shape('ellipse', 'eyeW', *P(9.3, 11.3), 0.9, 1.25, flat=True), Shape('ellipse', 'eyeW', *P(12.9, 11.3), 0.9, 1.25, flat=True),
-        Shape('ellipse', 'eye', *P(9.6, 11.6), 0.55, 0.9, flat=True), Shape('ellipse', 'eye', *P(13.2, 11.6), 0.55, 0.9, flat=True),
+        Shape('ellipse', 'skin', *P(10.6, 11), 5.2, 4.6),
+        Shape('ellipse', 'eyeW', *P(9.1, 11.4), 1.25, 1.7, flat=True), Shape('ellipse', 'eyeW', *P(13.1, 11.4), 1.25, 1.7, flat=True),
+        Shape('ellipse', 'eye', *P(9.5, 11.7), 0.8, 1.2, flat=True), Shape('ellipse', 'eye', *P(13.5, 11.7), 0.8, 1.2, flat=True),
         Shape('line', 'mouth', P(11, 13.8), P(12, 13.8), 0.6, flat=True)]),
     Part('hair', 'head', P(10, 9), 3.2, [
         Shape('poly', 'hair', [P(5, 12.5), P(3.6, 9), P(4.6, 7), P(3.6, 4.8), P(6.6, 5.4), P(7.2, 2.6), P(9.6, 4.2), P(11.6, 2.2), P(12.8, 4.8), P(15.8, 4.2), P(15, 6.8), P(16.4, 8.8), P(15, 9.6), P(14, 8), P(11.4, 8.6), P(9.2, 8), P(7.2, 9.8), P(6.6, 13.2)]),
@@ -42,7 +42,8 @@ ramps = {
     'wingfar': ['#c8482a', '#a8341e', '#7c2214', '#561208'],
 }
 flats = {'eye': '#ffb020', 'eyeW': '#3a1a10', 'mouth': '#a85a40', 'trim': '#c8302a', 'belt': '#7a4a2a', 'buckle': '#ffd060', 'bone': '#6a1410', 'bonefar': '#4a0e0a'}
-model = Model(W, H, parts, ramps, '#1c1012', flats)
+GSCALE = (0.74, 0.74, 10 + O, 27.4)  # 다른 종족(0x72 캐릭터 · 키 약 20px)과 비율을 맞춘다: 발밑을 기준으로 몸 전체를 줄인다 (2026-11-18)
+model = Model(W, H, parts, ramps, '#1c1012', flats, gscale=GSCALE)
 S = math.sin
 
 def idle(n=4):
