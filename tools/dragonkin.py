@@ -42,7 +42,7 @@ ramps = {
 flats = {'eye': '#ffb020', 'eyeW': '#3a1a10', 'mouth': '#a85a40', 'trim': '#c8302a', 'belt': '#7a4a2a', 'buckle': '#ffd060', 'bone': '#6a1410', 'bonefar': '#4a0e0a'}
 GSCALE = (0.74, 0.74, 10 + O, 27.4)  # 다른 종족(0x72 캐릭터 · 키 약 20px)과 비율을 맞춘다: 발밑을 기준으로 몸 전체를 줄인다 (2026-11-18)
 model = Model(W, H, parts, ramps, '#1c1012', flats, gscale=GSCALE)
-model.stamps = [{'part': 'head', 'x': x, 'y': 10.6, 'w': 2, 'h': 2, 'color': '#2a120c'} for x in (P(7.9, 0)[0], P(13.3, 0)[0])]  # 눈: 2×2 도트 (2026-11-18)
+model.stamps = [{'part': 'head', 'x': x, 'y': 10.6, 'w': 1, 'h': 2, 'color': '#2a120c'} for x in (P(8.3, 0)[0], P(12.9, 0)[0])]  # 눈: 가로 1 · 세로 2 도트 (2026-11-18)
 S = math.sin
 
 def idle(n=4):
