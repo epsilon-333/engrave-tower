@@ -49,11 +49,13 @@ S = math.sin
 def idle(n=4):
     return [{'torso': (0, 0, [0, 0, 1, 1][i]), 'head': (0, 0, [0, 0, 0, 0][i]), 'hair': (2 * S(i / n * 6.28),), 'tail1': (6 * S(i / n * 6.28),), 'tail2': (10 * S(i / n * 6.28 + 1),), '_hide': ('wingN', 'wingF'), '_sdx': 1} for i in range(n)]  # _sdx: 눈 한 칸 오른쪽 (사용자 확정)
 
+L = lambda f: 30 * abs(S(f))  # 달리기: 모임 → 벌림 → 모임 → 벌림 (다리가 엇갈리면 한 점으로 모여 뾰족해 보여서 · 0x72 캐릭터처럼)
+
 def run(n=4):
     out = []
     for i in range(n):
         f = i / n * math.pi * 2
-        out.append({'torso': (3, 0, -round(abs(S(f)))), 'legL': (30 * S(f),), 'legR': (-30 * S(f),), 'hair': (0,), 'tail1': (-10 + 8 * S(f),), 'tail2': (-12 + 10 * S(f + 1),), '_hide': ('wingN', 'wingF'), '_sdx': 1})
+        out.append({'torso': (3, 0, -round(abs(S(f)))), 'legL': (L(f),), 'legR': (-L(f),), 'hair': (0,), 'tail1': (-10 + 8 * S(f),), 'tail2': (-12 + 10 * S(f + 1),), '_hide': ('wingN', 'wingF'), '_sdx': 1})
     return out
 
 def soar(n=4):
