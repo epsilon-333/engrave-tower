@@ -26,7 +26,7 @@ parts = [
         Shape('ellipse', 'buckle', *P(11.2, 20.6), 0.6, 0.5, flat=True), Shape('poly', 'trim', [P(8, 15.4), P(12.4, 15.4), P(10.2, 17.2)], flat=True)]),
     Part('head', 'torso', P(10, 15), 3, [
         Shape('ellipse', 'skin', *P(10.6, 11), 5.2, 4.6),
-        Shape('line', 'mouth', P(11, 13.8), P(12, 13.8), 0.6, flat=True)]),
+        ]),  # 입은 그리지 않는다 (0x72 캐릭터처럼 눈만 · 눈을 아래로 내리며 겹치지 않게)
     Part('hair', 'head', P(10, 9), 3.2, [
         Shape('poly', 'hair', [P(5, 12.5), P(3.6, 9), P(4.6, 7), P(3.6, 4.8), P(6.6, 5.4), P(7.2, 2.6), P(9.6, 4.2), P(11.6, 2.2), P(12.8, 4.8), P(15.8, 4.2), P(15, 6.8), P(16.4, 8.8), P(15, 9.6), P(14, 8), P(11.4, 8.6), P(9.2, 8), P(7.2, 9.8), P(6.6, 13.2)]),
         Shape('poly', 'hair', [P(5, 9), P(3.6, 14.2), P(6.6, 12.4)])], sep=False),
@@ -40,9 +40,10 @@ ramps = {
     'wingfar': ['#c8482a', '#a8341e', '#7c2214', '#561208'],
 }
 flats = {'eye': '#ffb020', 'eyeW': '#3a1a10', 'mouth': '#a85a40', 'trim': '#c8302a', 'belt': '#7a4a2a', 'buckle': '#ffd060', 'bone': '#6a1410', 'bonefar': '#4a0e0a'}
+EYE_X, EYE_Y = 8.6, 12.6
 GSCALE = (0.74, 0.74, 10 + O, 27.4)  # 다른 종족(0x72 캐릭터 · 키 약 20px)과 비율을 맞춘다: 발밑을 기준으로 몸 전체를 줄인다 (2026-11-18)
 model = Model(W, H, parts, ramps, '#1c1012', flats, gscale=GSCALE)
-model.stamps = [{'part': 'head', 'x': x, 'y': 10.6, 'w': 1, 'h': 2, 'color': '#2a120c'} for x in (P(8.3, 0)[0], P(12.9, 0)[0])]  # 눈: 가로 1 · 세로 2 도트 (2026-11-18)
+model.stamps = [{'part': 'head', 'x': P(EYE_X, 0)[0], 'y': EYE_Y, 'w': 1, 'h': 2, 'gap': 2, 'color': '#2a120c'}]  # 눈: 가로 1 · 세로 2 도트 한 쌍 · 사이 2도트 · 다른 종족처럼 발끝에서 11~12도트 위 (2026-11-18)
 S = math.sin
 
 def idle(n=4):
