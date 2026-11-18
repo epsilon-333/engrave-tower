@@ -7,6 +7,7 @@ import { ENGRAVINGS } from '../data/engravings.js';
 import { SPIRITS, SPIRIT_GRADES } from '../data/spirits.js';
 import { skillScale } from '../data/statscale.js';
 import { absMin } from './time.js';
+import { emptyEngSlots } from './hidden.js';
 import { DT, MOTION_DUR, SKILL_TSTAT, SPIRIT_DMG_ELEM, SPIRIT_OPS, STATUS_COLOR, WINDUP, distToSeg } from './world.js';
 
 export const SkillMethods = {
@@ -213,6 +214,7 @@ export const SkillMethods = {
         if (op.scaleRes && mods.dmgMul) mods.dmgMul = 1 + (mods.dmgMul - 1) * (1 + ctx.spent / 100);
         for (const k of ['dmgMul', 'atkSpeed']) if (mods[k] > 1 && ctx.bal != null) mods[k] = 1 + (mods[k] - 1) * ctx.bal; // 각인 등급 보정은 버프의 「+%」에 걸린다
         p.buffs[op.id] = { t: op.dur, max: op.dur, mods, color: op.color, bubble: op.bubble, power: op.power };
+        if (op.frenzyFill) { p.hFrenzyN = 20; p.hFrenzyT = op.dur; } // 「광란」: 멈추지 않는 팔 가득
         if (op.id !== 'nextCrit') this.emit({ t: 'buff', x: p.x, y: p.y, color: op.color || '#ffffff', bubble: op.bubble });
         break;
       }
@@ -318,11 +320,13 @@ export const SkillMethods = {
           const x2 = x1 + ax * len, y2 = y1 + ay * len;
           this.emit({ t: 'skillLine', x1, y1, x2, y2, w: op.w, elem: ctx.elem, fx: op.fx || ctx.def.fx, ult: ctx.def.ult });
           countHits(this.enemies.filter((e) => !e.dead && !e.hidden && distToSeg(e.x, e.y, x1, y1, x2, y2) < e.r + op.w / 2));
+          if (op.lava) for (let i = 1; i <= 5; i++) { const zx = x1 + (x2 - x1) * i / 5, zy = y1 + (y2 - y1) * i / 5; if (!this.blocked(zx, zy, 4)) this.zones.push({ kind: 'fire', x: zx, y: zy, r: 18, t: op.lava, max: op.lava, tick: 0, atk: ctx.atk }); } // 「용암 균열」
         };
         if (op.delay) this.delayed.push({ t: op.delay, run }); // 내 일직선 스킬은 예고선 없이 (땅이 갈라지는 것으로 보인다)
         else run();
         break;
       }
+      case 'soulCall': case 'bubble': case 'shadowHands': case 'ram': this.hidOp(op, ctx); break; // 숨은 각인 (sim/hidden.js)
       case 'blastSummons': {
         let mine = this.allies.filter((a) => a.kind !== 'spirit' && a.kind !== 'spiritKing');
         if (op.n) mine = mine.sort((a, b) => (a.maxHp ? a.hp / a.maxHp : 1) - (b.maxHp ? b.hp / b.maxHp : 1)).slice(0, op.n);
@@ -678,6 +682,8 @@ export const SkillMethods = {
     if (id === 'weapon') { if (p.skillCd <= 0) { this.breakStealth(); this.useSkill(); } return; }
     const def = SKILLS[id];
     if (!def || p.cds[id] > 0) return;
+    const surge = p.buffs.hSurge && def.kind === 'spell'; // 숨은 각인 「마력 폭주」: 마법은 쿨타임 없이 · 하나 쓰면 0.5초 쉰다
+    if (surge && (p.surgeGate || 0) > this.t) return;
     const fit = handFit(def, this.b).fit;
     if (fit <= 0) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: (CANT_TEXT[def.kind] || '이 무기로는 쓸 수 없다') + (this.b.hands < 2 ? ' · 왼손 도구로도 쓸 수 있다' : '') }); p.cds[id] = 0.4; return; }    if (p.swim && !['dive', 'waterBreath'].includes(id)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: '헤엄치는 중에는 쓸 수 없다' }); p.cds[id] = 0.3; return; }
     if (def.needSpirit && !p.spirits.length) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: '깃든 정령', text: '깃든 정령이 없다' }); p.cds[id] = 0.3; return; }
@@ -695,6 +701,7 @@ export const SkillMethods = {
     let cd = def.cd * this.d.skillCdMul * (1 - this.d.cdr) * skillScale(id, this.b).cd; // 스탯 70: 재사용 -20%
     if (id === 'breath' && p.buffs.dragonForm) cd = 0.3;
     if (this.practice?.noCd) cd = Math.min(cd, 0.25);
+    if (surge) { cd = 0.5; p.surgeGate = this.t + 0.5; }
     p.cds[id] = cd; p.cdMax ||= {}; p.cdMax[id] = cd;
     p.lastFight = this.t;
     if (this.pvp) this.pvp.out.push({ t: 'dskill', id });
@@ -750,6 +757,8 @@ export const SkillMethods = {
     const mDur = (MOTION_DUR[def.mo] || 0.35) * (heavy ? 1.6 : 1);
     if (!def.charge && !def.cast) this.motion(def.mo, mDur, { heavy });
     else if (def.charge || def.cast) this.motion(def.mo === 'castBig' ? 'castBigRelease' : def.mo === 'cast' ? 'castRelease' : def.mo, mDur, { charge: lvl, heavy });
+    this.hidAttack(); // 숨은 각인: 스킬 · 무기 기술도 「치기」
+    if (!opt.weapon) this.hidCast(); // 「피로 쓴 함성」
     const fire = () => { for (const op of def.do) this.runOp(op, ctx); if (def.word) this.addWord(def.word); };
     const wu = !def.cast && !opt.now ? (WINDUP[def.mo] || (heavy ? 0.15 : 0)) * (heavy ? 2.2 : 1) : 0; // 차지 스킬도 휘두르는 동작이 지나간 뒤에 나간다 · 대검은 들어 올리는 시간이 길다
     if (wu > 0) { p.windupT = wu; this.delayed.push({ t: wu, run: () => { p.windupT = 0; fire(); } }); }
@@ -769,6 +778,8 @@ export const SkillMethods = {
     if (op.bonusIf === 'frozen' && (e.st.frozen > 0 || e.st.chill?.n >= 4)) { mul *= 2.5; this.emit({ t: 'shatter', x: e.x, y: e.y }); }
     if (op.bonusIf === 'burning' && e.st.burn) mul *= 1.5;
     if (op.backstab && Math.sign(p.x - e.x) !== e.dir) mul *= 1.5;
+    if (op.bare && this.b.weaponId === 'bareHands') mul *= op.bare; // 숨은 각인 「백열권」: 맨손이면 더 세다
+    if (op.voidMul) mul *= 1 + op.voidMul * Math.min(4, emptyEngSlots(this.b)); // 「공허 일격」: 빈 각인 칸마다
     const type = ctx.def.scale === 'mag' || (ctx.elem && ctx.elem !== 'phys') ? 'mag' : 'phys';
     if (mul > 0) this.hitEnemy(e, ctx.atk * mul, type, true, false, { elem: ctx.elem, pen: op.pen, skill: true });
     if (e.dead) return true;
@@ -781,6 +792,8 @@ export const SkillMethods = {
     if (op.retrib) e.st.retrib = Math.max(e.st.retrib || 0, op.retrib);
     if (op.lose && e.state === 'chase') { e.loseT = 4; e.windT = 0; }
     if (op.status) this.applyStatus(e, op.status, op.stacks || 1);
+    if (op.rebelPass) this.hidRebelPass(e, ctx); // 「반역의 낙인」
+    if (op.healPerHit) this.heal(this.d.maxHp * op.healPerHit, 'skill'); // 「피의 축제」 · 「망자의 낫」
     if (op.extraStatus && !e.dead) this.applyStatus(e, op.extraStatus, 1);
     if (op.elemFire && !e.dead) this.applyStatus(e, 'burn', op.stacks || 1);
     if (op.doom && !e.dead) { e.doom = { atk: ctx.atk * ctx.resMul }; this.emit({ t: 'doomMark', id: e.id }); }

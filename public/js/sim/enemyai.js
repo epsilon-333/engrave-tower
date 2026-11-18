@@ -31,7 +31,7 @@ export const EnemyAiMethods = {
         e.moving = Math.hypot(mx, my) > 1; e.x += mx * k; e.y += my * k;
         continue;
       }
-      if (def.ai === 'target') continue; // 수련 과녁 · 허수아비: 가만히 서 있다
+      if (def.ai === 'target' || def.ai === 'trial') continue; // 수련 과녁 · 허수아비: 가만히 서 있다 · 숨은 스승: sim/teacher.js 가 움직인다
       if (e.introT > 0) { e.introT -= DT; e.moving = false; continue; } // 보스 등장 연출
       if (def.ai === 'dummy') {
         if (this.t - e.lastHit > 3) { e.hp = e.maxHp; e.st = {}; e.dmgLog.length = 0; }

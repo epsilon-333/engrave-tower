@@ -26,6 +26,8 @@ const ITEM_DEFS = {
   // ── 근접 무기 ──
   knightSword: { name: '기사의 검', slot: 'weapon', price: 0, starter: true, weapon: { kind: 'melee', dmg: 'phys', mul: 1.0, speed: 1.5, range: 30, arc: 1.9, skill: 'spin' }, stats: { pres: 3 }, tags: [] },
   rustySword: { name: '녹슨 검', slot: 'weapon', price: 0, weapon: { kind: 'melee', dmg: 'phys', mul: 0.9, speed: 1.6, range: 30, arc: 1.9, skill: 'spin' }, stats: {}, tags: [] },
+  ironLongsword: { name: '강철 장검', slot: 'weapon', price: 170, hands: 2, desc: '두 손으로 쥐는 긴 칼. 한손검보다 멀리 · 세게, 대검보다 빠르게 벤다.', weapon: { kind: 'melee', dmg: 'phys', mul: 1.25, speed: 1.15, range: 36, arc: 2.1, skill: 'spin' }, stats: { str: 3, sen: 2 }, tags: [] },
+  bareHands: { name: '맨손', slot: 'weapon', price: 0, desc: '아무것도 쥐지 않은 두 주먹. 누구나 늘 가지고 있다.', weapon: { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.5, hits: 2, speed: 2.6, range: 22, arc: 1.6, skill: 'flurry' }, stats: {}, tags: [] }, // 숨은 각인 「맨몸의 전설」
   dagger: { name: '단검', slot: 'weapon', price: 0, starter: true, weapon: { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.7, speed: 3.0, range: 24, arc: 1.5, skill: 'dashStab' }, stats: { agi: 3 }, tags: [] },
   heavySword: { name: '무거운 검', slot: 'weapon', price: 0, starter: true, weapon: { kind: 'melee', dmg: 'phys', mul: 1.3, speed: 0.95, range: 36, arc: 2.2, skill: 'slam' }, stats: { vit: 3 }, tags: [] },
   handAxe: { name: '손도끼', slot: 'weapon', price: 0, starter: true, weapon: { kind: 'melee', dmg: 'phys', mul: 1.15, speed: 1.3, range: 30, arc: 2.0, skill: 'spin' }, stats: { str: 2 }, tags: [] },
@@ -190,12 +192,12 @@ Object.assign(ITEMS, {
 // ── 무기 갈래: 스킬이 이 무기로 되는지 · 얼마나 잘 되는지 (skills.js FIT) ──
 // blade 한손 칼 · great 대검 · axe 도끼 · blunt 둔기 · polearm 창 · fist 주먹 · bow 활 · tube 바람총 · throw 던지는 무기 · staff 지팡이 · tome 마도서 · shield 검과 방패 · whip 채찍 · scythe 낫
 const WCAT = {
-  blade: ['knightSword', 'rustySword', 'dagger', 'heavySword', 'dualBlades', 'katana', 'rotDagger', 'copperDagger', 'copperSword', 'ironSword', 'silverRapier', 'twinDaggers', 'nightPiercer', 'guardSword', 'bastionBlade'],
+  blade: ['ironLongsword', 'knightSword', 'rustySword', 'dagger', 'heavySword', 'dualBlades', 'katana', 'rotDagger', 'copperDagger', 'copperSword', 'ironSword', 'silverRapier', 'twinDaggers', 'nightPiercer', 'guardSword', 'bastionBlade'],
   great: ['riftGreatsword', 'steelGreatsword', 'mountainCleaver', 'obsidianBlade'],
   axe: ['handAxe', 'battleAxe', 'doubleAxe', 'ironWaraxe', 'twoHandAxe', 'bloodthirstAxe', 'throwHatchet', 'twinReturnAxe'],
   blunt: ['mace', 'stoneClub', 'tectonicHammer'],
   polearm: ['spear', 'coralTrident', 'dragonSpear', 'wyrmFang'],
-  fist: ['boneKnuckle', 'predatorFang'],
+  fist: ['boneKnuckle', 'predatorFang', 'bareHands'],
   bow: ['huntBow', 'longbow', 'huntersBow', 'rangerBow', 'galeLongbow', 'spiritBow', 'worldTreeBow'],
   tube: ['blowgun', 'viperBlowgun'],
   throw: ['throwingAxe'],

@@ -42,6 +42,23 @@ const TINT = {
 
 // 무기 목록: base(종류) · t(단계) · r(등급) · s(그림) · tint · name · lore · w(무기 값 덮어쓰기) · st(능력치) · fx(효과) · sk(우클릭 기술)
 export const TOWER_WEAPONS = {
+  // ═══ 숨은 각인 「혈귀」의 칼: 층의 주인이 드물게 떨군다 (뽑기에는 나오지 않는다) ═══
+  bloodEater: { base: 'sword', t: 3, r: 3, special: true, s: 'weapon_saw_sword', tint: TINT.blood, name: '피를 먹는 칼', lore: '쥔 손의 피부터 먹는다. 주인 셋의 피를 먹으면 깨어난다고 한다.',
+    w: { crit: 0.08 }, st: { str: 6, lifesteal: 6 }, fx: [flag('bloodHunger', '깨어나기 전: 들고 있으면 초당 체력 1%를 먹고 회복을 막는다 (이 칼로 층의 주인 셋을 쓰러뜨리면 깨어난다)')],
+    sk: { name: '피의 일격', cd: 7, desc: '피를 먹은 칼날로 앞을 크게 벤다. 맞힌 적마다 체력 2% 회복.', mo: 'overhead', do: [{ op: 'cone', range: 50, angle: 2.2, mul: 2.4, healPerHit: 0.02, fx: 'sweep' }] } },
+  // ═══ 장검 (두 손 · 한손검과 대검 사이) — 2026-11-18 ═══
+  pilgrimLong: { base: 'longsword', t: 2, r: 1, s: 'weapon_duel_sword', name: '순례자의 장검', lore: '탑을 오르던 순례자들이 지팡이 삼아 짚던 칼. 날은 아직 곧다.',
+    st: { str: 3, sen: 2 },
+    sk: { name: '찌르고 베기', cd: 6, desc: '앞으로 길게 찌른 뒤 넓게 벤다.', mo: 'dashSlash', do: [{ op: 'dash', dist: 60, mul: 1.4 }, { op: 'cone', range: 50, angle: 2.2, mul: 1.6, fx: 'sweep', delay: 0.15 }] } },
+  oathLong: { base: 'longsword', t: 4, r: 2, s: 'weapon_knight_sword', tint: TINT.frost, name: '서리 맹세 장검', lore: '서리 회랑의 기사들이 맹세를 새긴 칼. 벤 자리가 하얗게 언다.',
+    w: { onHit: onHit('chill', 0.3) }, st: { str: 4, pres: 3, iceAff: 3 },
+    sk: { name: '맹세의 일격', cd: 8, elem: 'ice', desc: '두 손으로 내리쳐 앞쪽을 얼린다. 냉기 3중첩.', mo: 'overhead', do: [{ op: 'aoe', at: 'front', dist: 30, r: 48, mul: 2.4, stacks: 3, fx: 'ice' }] } },
+  wardenLong: { base: 'longsword', t: 6, r: 3, s: 'weapon_anime_sword', tint: TINT.gold, name: '왕성 수호 장검', lore: '무너진 왕성의 마지막 근위대가 들던 장검. 칼끝이 늘 문을 향한다.',
+    w: { crit: 0.08, critDmg: 0.3 }, st: { str: 6, sen: 4, pres: 3 },
+    sk: { name: '수호의 원', cd: 9, desc: '장검을 크게 두 번 돌려 둘레를 벤다. 두 번째가 더 세다.', mo: 'spin', do: [{ op: 'comboSpin', n: 2, every: 0.28, step: 10, r: 58, mul: 1.5, last: 2.6, knock: 120 }] } },
+  vowLong: { base: 'longsword', t: 8, r: 4, s: 'weapon_lavish_sword', tint: TINT.star, name: '별을 벤 장검', lore: '별의 서고 꼭대기에서 떨어진 별을 두 동강 냈다는 칼. 칼날에 빛이 고여 있다.',
+    w: { critDmg: 0.5, range: 40 }, st: { str: 8, sen: 6, agi: 4 },
+    sk: { name: '별 가르기', cd: 10, desc: '빛이 고인 칼날로 앞을 가른다. 일직선 모든 적에게 큰 피해.', mo: 'overhead', do: [{ op: 'line', len: 200, w: 30, mul: 4.2, delay: 0.12, fx: 'skyfall' }] } },
   // ═══ 1단계 · 1~10층 (이끼 굴) ═══
   mossFang: { base: 'dagger', t: 1, r: 0, tint: TINT.moss, name: '이끼 송곳니', lore: '이끼 굴 거미의 송곳니를 깎아 만든 단검. 독이 아직 마르지 않았다.',
     w: { onHit: onHit('poison', 0.3) }, st: { agi: 3 },
@@ -416,7 +433,7 @@ for (const [id, x] of Object.entries(TOWER_WEAPONS)) {
   const theme = themeOf(x, T); retheme(x.fx, theme); retheme(x.sk?.do, theme);
   const fx = x.fx || [];
   ITEMS[id] = {
-    name: x.name, slot: 'weapon', price: 0, towerWeapon: true, tier: x.t, rarity: x.r, rarityColor: R.color, cat: T.cat, weapon, stats, tags: x.tags || [],
+    name: x.name, slot: 'weapon', price: 0, towerWeapon: true, tier: x.t, rarity: x.r, rarityColor: R.color, cat: T.cat, hands: T.hands, base: x.base, weapon, stats, tags: x.tags || [],
     effects: fx, art: { ...T.art, s: x.s || T.art.s, tint: x.tint || '', glow: R.glow }, desc: x.lore,
     lines: [`${R.name} · ${x.t}단계 (${x.t * 10 - 9}~${x.t * 10}층) · 위력 ×${weapon.mul}`, ...fx.map((f) => f.text)],
   };
@@ -431,7 +448,7 @@ const R_WEIGHT = [10, 6, 3, 1.4, 0.6];
 export function rollTowerWeapon(f, rnd) {
   const band = Math.max(1, Math.min(10, Math.ceil(f / 10)));
   const tier = band > 1 && rnd() < 0.3 ? band - 1 : band;
-  const pool = TOWER_WEAPON_IDS.filter((id) => TOWER_WEAPONS[id].t === tier);
+  const pool = TOWER_WEAPON_IDS.filter((id) => TOWER_WEAPONS[id].t === tier && !TOWER_WEAPONS[id].special);
   const total = pool.reduce((a, id) => a + R_WEIGHT[TOWER_WEAPONS[id].r], 0);
   let u = rnd() * total;
   for (const id of pool) { u -= R_WEIGHT[TOWER_WEAPONS[id].r]; if (u <= 0) return id; }

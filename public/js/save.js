@@ -14,7 +14,7 @@ const KEY = 'engrave-tower-save-v1';
 export function newSave(race) {
   return {
     v: 1, gated: 1, race, level: 1, xp: 0, points: 0, alloc: {}, gold: 30, // gated: 탑을 올라 지역 · 체계를 해방한다 (data/unlocks.js)
-    echoes: {}, owned: {}, slots: {}, items: ['rustySword'], gear: { weapon: 'rustySword' },
+    echoes: {}, owned: {}, slots: {}, items: ['rustySword', 'bareHands'], gear: { weapon: 'rustySword' },
     codex: { kills: {}, echoes: {}, reactions: {}, condSeen: {}, places: {}, journals: {}, lore: [] },
     story: newStory(),
     runs: 0, seed: (Date.now() % 1e9) | 0,
@@ -78,7 +78,7 @@ export function clearSave() {
 }
 
 export function toLoadout(s) {
-  return { race: s.race, level: s.level, alloc: s.alloc, engravings: s.slots, gear: s.gear, skills: s.skills, cls: s.cls, engLv: s.engLv, sanctum: s.sanctum, reinforce: s.reinforce, learned: s.learned, abilities: s.abilities, spirit: s.race === 'elf' && s.spirits?.main ? { /* 정령은 엘프만 */ id: s.spirits.main, star: s.spirits.owned?.[s.spirits.main]?.star || 1, lv: spiritLevel(s.spirits.owned?.[s.spirits.main]?.xp) } : null, spirits2: s.cls === 'spiritcaller' ? (s.spirits?.extra || []).filter((id) => s.spirits.owned?.[id] && id !== s.spirits.main).slice(0, 2).map((id) => ({ id, star: s.spirits.owned[id].star || 1, lv: spiritLevel(s.spirits.owned[id].xp) })) : [], train: Object.fromEntries(Object.entries(s.story?.sanct || {}).map(([r, v]) => [r, v.train || 0])) };
+  return { bloodAwake: !!s.hidden?.bloodBlade, race: s.race, level: s.level, alloc: s.alloc, engravings: s.slots, gear: s.gear, skills: s.skills, cls: s.cls, engLv: s.engLv, sanctum: s.sanctum, reinforce: s.reinforce, learned: s.learned, abilities: s.abilities, spirit: s.race === 'elf' && s.spirits?.main ? { /* 정령은 엘프만 */ id: s.spirits.main, star: s.spirits.owned?.[s.spirits.main]?.star || 1, lv: spiritLevel(s.spirits.owned?.[s.spirits.main]?.xp) } : null, spirits2: s.cls === 'spiritcaller' ? (s.spirits?.extra || []).filter((id) => s.spirits.owned?.[id] && id !== s.spirits.main).slice(0, 2).map((id) => ({ id, star: s.spirits.owned[id].star || 1, lv: spiritLevel(s.spirits.owned[id].xp) })) : [], train: Object.fromEntries(Object.entries(s.story?.sanct || {}).map(([r, v]) => [r, v.train || 0])) };
 }
 
 // 사냥 결과 반영. keep = 잔향 보존 비율

@@ -72,6 +72,7 @@ export class SkillAnims {
     if (fx === 'doom' || fx === 'corpse') return this.add('portal', { x, y, r });
     if (fx === 'spikes' || fx === 'vines') return this.add('vines', { x, y, r, col: el === 'phys' ? '#c8b088' : '#5fbf4a' });
     if (fx === 'rain') return this.add('arrowRain', { x, y, r, col: ELEM_COL[el] || '#e8dcc8' });
+    if (fx === 'lightRain') return this.add('lightRain', { x, y, r }); // 천궁: 화살이 빛줄기로 떨어진다
     if (fx === 'rocks') return this.add('rockRain', { x, y, r, col: el === 'ice' ? '#cfefff' : '#9a8a72' });
     if (fx === 'fog' || fx === 'miasma') return this.add('cloud', { x, y, r, col: '#9be15d' });
     if (fx === 'thorns') return this.add('bloodThorns', { x, y, r });
@@ -130,8 +131,9 @@ export class SkillAnims {
 }
 // 등급 표식 (탑의 무기 · 장비): 희귀 반짝임 · 영웅 수정 파편 · 전설 금빛 깃털 · 신화 붉은 꽃잎과 빛살
 export const RARITY_ANIM = [null, 'glint', 'shardBurst', 'featherBurst', 'mythBloom'];
-const DUR = { glint: 0.6, shardBurst: 0.9, featherBurst: 1.4, mythBloom: 1.3, bloodThorns: 1.4, boneSpikes: 1.3, starfall: 1.0, gale: 0.8, explosion: 1.3, lightning: 0.5, iceSpikes: 1.3, lightPillar: 0.9, portal: 1.4, vines: 1.8, arrowRain: 0.9, rockRain: 1.0, cloud: 2.2, runeBurst: 0.8, cracks: 1.4, fissure: 1.3, bladeArc: 0.28, meteorFall: 0.8, pillarCharge: 0.6 };
+const DUR = { lightRain: 1.0, glint: 0.6, shardBurst: 0.9, featherBurst: 1.4, mythBloom: 1.3, bloodThorns: 1.4, boneSpikes: 1.3, starfall: 1.0, gale: 0.8, explosion: 1.3, lightning: 0.5, iceSpikes: 1.3, lightPillar: 0.9, portal: 1.4, vines: 1.8, arrowRain: 0.9, rockRain: 1.0, cloud: 2.2, runeBurst: 0.8, cracks: 1.4, fissure: 1.3, bladeArc: 0.28, meteorFall: 0.8, pillarCharge: 0.6 };
 
+const glows = (c) => !!c && c !== '#ffd890' && c !== '#f4f0ff' && c !== '#e8dcc8'; // 속성(불 · 얼음 …)이 있는 갈라짐만 빛난다 · 물리는 어두운 틈과 깨진 가장자리만 (2026-11-18)
 const DRAW = {
   // 떨어지는 운석 / 얼음덩이: 비스듬히 내려오며 꼬리를 끌고, 땅의 그림자가 커진다
   meteorFall(R, g, a, k) {
@@ -253,6 +255,24 @@ const DRAW = {
     }
   },
   // 화살비: 하늘에서 비스듬히 쏟아져 땅에 꽂힌다
+  // 빛 화살비 (천궁): 하늘에서 비스듬히 꽂히는 빛줄기 · 꽂힌 자리에 빛 조각
+  lightRain(R, g, a, k) {
+    const rr = rnd(a.seed), n = Math.round(10 + a.r / 5);
+    g.save(); g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < n; i++) {
+      const tx = a.x + (rr() - 0.5) * a.r * 1.8, ty = a.y + (rr() - 0.5) * a.r * 0.9, d = rr() * 0.4, kk = Math.min(1, Math.max(0, (k - d) / 0.14));
+      if (kk <= 0) continue;
+      const len = 26, hx = tx - 40 * (1 - kk), hy = ty - 120 * (1 - kk), ux = 40 / 126.5, uy = 120 / 126.5;
+      if (kk < 1) { // 떨어지는 빛줄기: 머리는 희고 꼬리는 금빛으로 옅어진다
+        for (let s2 = 0; s2 < len; s2 += 1) { const q = 1 - s2 / len; g.globalAlpha = 0.9 * q; g.fillStyle = s2 < 3 ? '#ffffff' : s2 < 10 ? '#fff6c8' : '#ffd860'; g.fillRect(Math.round(hx - ux * s2), Math.round(hy - uy * s2), s2 < 4 ? 2 : 1, 1); }
+      } else {
+        const f = 1 - Math.min(1, (k - d - 0.14) / 0.3); if (f <= 0) continue;
+        if (!a['h' + i]) { a['h' + i] = true; for (let j = 0; j < 3; j++) R.parts.push({ x: tx, y: ty, vx: (rr() - 0.5) * 50, vy: -20 - rr() * 30, t: 0.4, max: 0.4, color: j ? '#fff0a0' : '#ffffff', g: 40, size: 1 }); }
+        g.globalAlpha = f; g.fillStyle = '#fff6c8'; g.fillRect(Math.round(tx) - 2, Math.round(ty), 5, 1); g.fillRect(Math.round(tx), Math.round(ty) - 2, 1, 5);
+      }
+    }
+    g.restore();
+  },
   arrowRain(R, g, a, k) {
     const rr = rnd(a.seed), n = Math.round(8 + a.r / 5), img = sprite('weapon_arrow');
     for (let i = 0; i < n; i++) {
@@ -305,7 +325,8 @@ const DRAW = {
       const an = (i / n) * Math.PI * 2 + rr() * 0.6, L = a.r * (0.7 + rr() * 0.5) * spread; let x = a.x, y = a.y; const pts = [[x, y]];
       for (let j = 1; j <= 4; j++) { const u = j / 4, aa = an + (rr() - 0.5) * 0.7; x = a.x + Math.cos(aa) * L * u; y = a.y + Math.sin(aa) * L * u * 0.55; pts.push([x, y]); }
       g.strokeStyle = `rgba(30,20,14,${0.8 * fade})`; g.lineWidth = 3; g.beginPath(); pts.forEach(([px, py], j) => (j ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke();
-      g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = hexA(a.col, 0.8 * fade); g.lineWidth = 1.2; g.beginPath(); pts.forEach(([px, py], j) => (j ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke(); g.restore();
+      if (glows(a.col)) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = hexA(a.col, 0.8 * fade); g.lineWidth = 1.2; g.beginPath(); pts.forEach(([px, py], j) => (j ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke(); g.restore(); }
+      else { g.strokeStyle = `rgba(200,186,160,${0.35 * fade})`; g.lineWidth = 1; g.beginPath(); pts.forEach(([px, py], j) => (j ? g.lineTo(px, py + 1.5) : g.moveTo(px, py + 1.5))); g.stroke(); } // 물리: 빛나는 줄 없이 깨진 가장자리만
       const [sx, sy] = pts[2], lift = Math.sin(Math.min(1, k / 0.3) * Math.PI) * 5; // 들썩이는 돌판
       g.fillStyle = `rgba(110,96,78,${fade})`; g.fillRect(Math.round(sx - 3), Math.round(sy - 2 - lift), 6, 3); g.fillStyle = `rgba(160,146,120,${fade})`; g.fillRect(Math.round(sx - 3), Math.round(sy - 2 - lift), 6, 1);
     }
@@ -316,7 +337,8 @@ const DRAW = {
     const pts = []; for (let j = 0; j <= 12; j++) { const u = (j / 12) * run, off = Math.sin(j * 1.7 + a.seed) * a.w * 0.12 + (rr() - 0.5) * a.w * 0.06; pts.push([a.x1 + dx * u - uy * off, a.y1 + dy * u + ux * off]); }
     g.lineCap = 'round'; g.lineJoin = 'round';
     g.strokeStyle = `rgba(24,16,12,${0.85 * fade})`; g.lineWidth = Math.max(3, a.w * 0.22); g.beginPath(); pts.forEach(([px, py], j) => (j ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke();
-    g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = hexA(a.col, 0.9 * fade); g.lineWidth = Math.max(1.5, a.w * 0.09); g.beginPath(); pts.forEach(([px, py], j) => (j ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke(); g.restore();
+    if (glows(a.col)) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = hexA(a.col, 0.9 * fade); g.lineWidth = Math.max(1.5, a.w * 0.09); g.beginPath(); pts.forEach(([px, py], j) => (j ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke(); g.restore(); }
+    else { g.strokeStyle = `rgba(200,186,160,${0.35 * fade})`; g.lineWidth = 1; g.beginPath(); pts.forEach(([px, py], j) => (j ? g.lineTo(px, py + 2) : g.moveTo(px, py + 2))); g.stroke(); }
     for (let j = 1; j < pts.length; j += 2) { // 길 양옆의 돌판
       const [px, py] = pts[j], lift = Math.sin(Math.min(1, Math.max(0, (k - j * 0.012) / 0.3)) * Math.PI) * (a.big ? 9 : 6), side = j % 4 === 1 ? 1 : -1, ox = -uy * a.w * 0.4 * side, oy = ux * a.w * 0.4 * side;
       g.fillStyle = `rgba(100,86,70,${fade})`; g.beginPath(); g.moveTo(px + ox - 4, py + oy); g.lineTo(px + ox - 2, py + oy - 4 - lift); g.lineTo(px + ox + 4, py + oy - 3 - lift); g.lineTo(px + ox + 4, py + oy); g.closePath(); g.fill();

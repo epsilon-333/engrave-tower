@@ -25,10 +25,8 @@ parts = [
         Shape('line', 'trim', P(11.2, 16), P(11.2, 20), 0.8, flat=True), Shape('line', 'belt', P(6, 20.6), P(14.2, 20.6), 0.9, flat=True),
         Shape('ellipse', 'buckle', *P(11.2, 20.6), 0.6, 0.5, flat=True), Shape('poly', 'trim', [P(8, 15.4), P(12.4, 15.4), P(10.2, 17.2)], flat=True)]),
     Part('head', 'torso', P(10, 15), 3, [
-        Shape('ellipse', 'skin', *P(10.6, 11), 4.6, 4.1),
-        Shape('ellipse', 'eyeW', *P(9.3, 11.3), 0.9, 1.25, flat=True), Shape('ellipse', 'eyeW', *P(12.9, 11.3), 0.9, 1.25, flat=True),
-        Shape('ellipse', 'eye', *P(9.6, 11.6), 0.55, 0.9, flat=True), Shape('ellipse', 'eye', *P(13.2, 11.6), 0.55, 0.9, flat=True),
-        Shape('line', 'mouth', P(11, 13.8), P(12, 13.8), 0.6, flat=True)]),
+        Shape('ellipse', 'skin', *P(10.6, 11), 5.2, 4.6),
+        ]),  # 입은 그리지 않는다 (0x72 캐릭터처럼 눈만 · 눈을 아래로 내리며 겹치지 않게)
     Part('hair', 'head', P(10, 9), 3.2, [
         Shape('poly', 'hair', [P(5, 12.5), P(3.6, 9), P(4.6, 7), P(3.6, 4.8), P(6.6, 5.4), P(7.2, 2.6), P(9.6, 4.2), P(11.6, 2.2), P(12.8, 4.8), P(15.8, 4.2), P(15, 6.8), P(16.4, 8.8), P(15, 9.6), P(14, 8), P(11.4, 8.6), P(9.2, 8), P(7.2, 9.8), P(6.6, 13.2)]),
         Shape('poly', 'hair', [P(5, 9), P(3.6, 14.2), P(6.6, 12.4)])], sep=False),
@@ -42,22 +40,27 @@ ramps = {
     'wingfar': ['#c8482a', '#a8341e', '#7c2214', '#561208'],
 }
 flats = {'eye': '#ffb020', 'eyeW': '#3a1a10', 'mouth': '#a85a40', 'trim': '#c8302a', 'belt': '#7a4a2a', 'buckle': '#ffd060', 'bone': '#6a1410', 'bonefar': '#4a0e0a'}
-model = Model(W, H, parts, ramps, '#1c1012', flats)
+EYE_X, EYE_Y = 8.6, 10.6  # 기준: 달리기 그림의 눈 자리 (2026-11-18 사용자 확정)
+GSCALE = (0.74, 0.74, 10 + O, 27.4)  # 다른 종족(0x72 캐릭터 · 키 약 20px)과 비율을 맞춘다: 발밑을 기준으로 몸 전체를 줄인다 (2026-11-18)
+model = Model(W, H, parts, ramps, '#1c1012', flats, gscale=GSCALE)
+model.stamps = [{'part': 'head', 'x': P(EYE_X, 0)[0], 'y': EYE_Y, 'w': 1, 'h': 2, 'gap': 2, 'color': '#2a120c'}]  # 눈: 가로 1 · 세로 2 도트 한 쌍 · 사이 2도트 · 다른 종족처럼 발끝에서 11~12도트 위 (2026-11-18)
 S = math.sin
 
 def idle(n=4):
-    return [{'torso': (0, 0, [0, 0, 1, 1][i]), 'head': (0, 0, [0, 0, 0, 0][i]), 'hair': (2 * S(i / n * 6.28),), 'tail1': (6 * S(i / n * 6.28),), 'tail2': (10 * S(i / n * 6.28 + 1),), '_hide': ('wingN', 'wingF')} for i in range(n)]
+    return [{'torso': (0, 0, [0, 0, 1, 1][i]), 'head': (0, 0, [0, 0, 0, 0][i]), 'hair': (2 * S(i / n * 6.28),), 'tail1': (6 * S(i / n * 6.28),), 'tail2': (10 * S(i / n * 6.28 + 1),), '_hide': ('wingN', 'wingF'), '_sdx': 1} for i in range(n)]  # _sdx: 눈 한 칸 오른쪽 (사용자 확정)
+
+L = lambda f: 30 * abs(S(f))  # 달리기: 모임 → 벌림 → 모임 → 벌림 (다리가 엇갈리면 한 점으로 모여 뾰족해 보여서 · 0x72 캐릭터처럼)
 
 def run(n=4):
     out = []
     for i in range(n):
         f = i / n * math.pi * 2
-        out.append({'torso': (3, 0, -round(abs(S(f)))), 'legL': (30 * S(f),), 'legR': (-30 * S(f),), 'hair': (-4,), 'tail1': (-10 + 8 * S(f),), 'tail2': (-12 + 10 * S(f + 1),), '_hide': ('wingN', 'wingF')})
+        out.append({'torso': (3, 0, -round(abs(S(f)))), 'legL': (L(f),), 'legR': (-L(f),), 'hair': (0,), 'tail1': (-10 + 8 * S(f),), 'tail2': (-12 + 10 * S(f + 1),), '_hide': ('wingN', 'wingF'), '_sdx': 1})
     return out
 
 def soar(n=4):
     seq = [30, 8, -26, -6]
-    return [{'torso': (0, 0, -1), 'wingN': (a,), 'wingF': (-a * 0.8,), 'legL': (12,), 'legR': (-8,), 'hair': (-3,), 'tail1': (14,), 'tail2': (12 * S(i),)} for i, a in enumerate(seq)]
+    return [{'torso': (0, 0, -1), 'wingN': (a,), 'wingF': (-a * 0.8,), 'legL': (12,), 'legR': (-8,), 'hair': (-3,), 'tail1': (14,), 'tail2': (12 * S(i),), '_sdx': 1} for i, a in enumerate(seq)]
 
 if __name__ == '__main__':
     out = sys.argv[1]

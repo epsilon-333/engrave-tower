@@ -9,6 +9,7 @@ export const WTYPES = {
   sword: { name: '검', cat: 'blade', art: { s: 'weapon_regular_sword' }, mats: ALL, need: 4, handle: 1, gold: 20, desc: '한 손으로 휘두르는 검. 무난하다.', weapon: { kind: 'melee', dmg: 'phys', mul: 1.0, speed: 1.6, range: 30, arc: 1.9, skill: 'spin' } },
   dagger: { name: '단검', cat: 'blade', art: { s: 'weapon_knife' }, mats: ALL, need: 2, handle: 1, gold: 15, desc: '빠르게 찌르고 벤다. 민첩으로 세진다.', weapon: { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.72, speed: 2.9, range: 24, arc: 1.5, skill: 'dashStab' } },
   greatsword: { name: '대검', cat: 'great', art: { s: 'weapon_greatsword', great: true }, mats: METAL, need: 7, handle: 2, gold: 40, desc: '몸 둘레를 크게 돌려 벤다. 느리지만 묵직하다.', weapon: { kind: 'melee', dmg: 'phys', mul: 1.45, speed: 0.9, range: 40, arc: 2.4, skill: 'slam', great: true } },
+  longsword: { name: '장검', cat: 'blade', hands: 2, art: { s: 'weapon_duel_sword' }, mats: METAL, need: 5, handle: 2, gold: 35, desc: '두 손으로 쥐는 긴 칼. 한손검보다 멀리 · 세게 베고, 대검보다 빠르다.', weapon: { kind: 'melee', dmg: 'phys', mul: 1.25, speed: 1.15, range: 36, arc: 2.1, skill: 'spin' } },
   axe: { name: '도끼', cat: 'axe', art: { s: 'weapon_axe' }, mats: ALL, need: 4, handle: 2, gold: 20, desc: '찍어 내리는 도끼. 던지는 기술과도 잘 맞는다.', weapon: { kind: 'melee', dmg: 'phys', mul: 1.2, speed: 1.3, range: 30, arc: 2.0, skill: 'spin' } },
   hammer: { name: '망치', cat: 'blunt', art: { s: 'weapon_hammer' }, mats: METAL, need: 6, handle: 2, gold: 30, desc: '맞힐 때마다 갑옷을 부순다 (방어 -5%씩, 최대 5중첩).', weapon: { kind: 'melee', dmg: 'phys', mul: 1.4, speed: 0.95, range: 32, arc: 2.2, armorBreak: true, skill: 'slam' } },
   club: { name: '곤봉', cat: 'blunt', art: { s: 'weapon_baton_with_spikes' }, mats: ['wood', 'hardwood', 'bone', 'stone', 'copper', 'iron'], need: 4, handle: 0, gold: 10, desc: '투박하지만 세게 때린다.', weapon: { kind: 'melee', dmg: 'phys', mul: 1.2, speed: 1.15, range: 30, arc: 2.0, skill: 'slam' } },
@@ -145,7 +146,7 @@ export function craftCost(type, mat, parts = []) {
   return { mats, gold: T.gold + M.tier * M.tier * 12 };
 }
 
-const CRAFT_HANDS = { greatsword: 2, hammer: 2, spear: 2, halberd: 2, scythe: 2, knuckle: 2, bow: 2, crossbow: 2, staff: 2 }; // 양손 무기 (나머지는 한손)
+const CRAFT_HANDS = { greatsword: 2, longsword: 2, hammer: 2, spear: 2, halberd: 2, scythe: 2, knuckle: 2, bow: 2, crossbow: 2, staff: 2 }; // 양손 무기 (나머지는 한손)
 // 만든 무기 정보 → 장비 (items.js 와 같은 모양)
 export function craftItem(rec) {
   const T = WTYPES[rec.type], M = WMATS[rec.mat];

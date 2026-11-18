@@ -1,3 +1,4 @@
+import { HIDDEN_ART } from './hidden.js';
 // 데이터 ↔ 스프라이트 연결 (렌더 전용). tint 는 CSS filter
 export const RACE_ART = {
   elf: { base: 'elf_m' },
@@ -143,6 +144,7 @@ export const MONSTER_ART = {
   highPriest: { base: 'p_cultist', scale: 1.9, tint: 'saturate(1.5) brightness(0.85) contrast(1.25)' },
   lastKing: { base: 'p_king', scale: 2.3, tint: 'sepia(0.5) saturate(1.4) brightness(1.4) contrast(1.1)' },
 };
+Object.assign(MONSTER_ART, HIDDEN_ART); // 숨은 각인의 몬스터 (data/hidden.js)
 // 탑 보스 20명: 사용자가 준 시트에서 자세마다 통째로 (tools/cut_bosses.py · 서기 두 자세 · 공격 · 기술) — 위 줄의 예전 그림을 덮는다
 const BOSS_SHEET = { climbChief: {}, mossLord: {}, bogHag: {}, climbQueen: {}, demonCaptain: {}, climbRift: {}, frostOgre: {}, climbWitch: {}, wraithLord: {}, engraveKing: {}, stormHarpy: {}, skyWhale: {}, mirrorSelf: {}, shardQueen: {}, foreman: {}, clockKeeper: {}, archivist: {}, starReader: {}, highPriest: {}, lastKing: {} };
 // 80층(뼈 용)은 보내 주신 동작 시트 하나로 (예전 시계지기의 3단계 그림은 쓰지 않는다)
@@ -280,6 +282,8 @@ export const WEAPON_ART = {
   dragonTome: { s: 'weapon_red_magic_staff', tint: 'saturate(1.5)' },
   elderHeartstone: { s: 'weapon_red_magic_staff', tint: 'hue-rotate(-20deg) saturate(2) brightness(1.15)' },
   rustySword: { s: 'weapon_rusty_sword' },
+  ironLongsword: { s: 'weapon_duel_sword' },
+  bareHands: { s: 'cw_knuckle', fist: true, metal: '#e8b48a' }, // 맨손: 주먹을 살빛으로
   knightSword: { s: 'weapon_knight_sword' },
   heavySword: { s: 'weapon_anime_sword' },
   handAxe: { s: 'weapon_throwing_axe' },

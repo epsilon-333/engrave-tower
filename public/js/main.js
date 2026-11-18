@@ -54,6 +54,8 @@ import { SHIPS, cargoCap, GUILD_RANKS, guildRank } from './data/trade.js';
 import { econOf, econTick, planCaravan, deliver, caravanLost, taxArrived, taxLost, marketGossip, TOWNS } from './data/econ.js';
 import { ENG_STEP, ENG_MAX } from './sim/build.js';
 import { createClimb } from './ui/climb.js';
+import { grantHidden, setHiddenSource } from './sim/hidden.js';
+import { HIDDEN_BY_ID, TEACHERS, HIDDEN_COUNTS } from './data/hidden.js';
 import { CLASS_STATS } from './data/statscale.js';
 import { JOURNEY, journeyNow, rewardText as journeyReward } from './data/journey.js';
 import { oathScore, newClimbSave } from './data/climb.js';
@@ -827,8 +829,42 @@ const climbUi = createClimb({
   leave: () => { returnTo = null; enterWorld('tower'); },
   beforeClimb: () => { if (world?.zone?.id === 'world') { save.zoneMemory ||= {}; save.zoneMemory.world = world.exportMemory(); } },
   partyLeader: () => isPartyLeader() && net.party.members.length > 1,
+  awardHidden: (id) => awardHidden(id),
   onEvent: (k, d) => { journeyEvent(k, d); if (k === 'cleared' && coRun?.role === 'host') netSend({ t: 'co', k: 'cclear', f: d.f }); if (k === 'cleared') { if (world?.player?.down) world.coRevive?.(0.3); checkCcMissions(); } },
 });
+
+setHiddenSource(() => save?.hidden || {}); // 이미 얻은 숨은 각인 (전설 몬스터 · 그림자는 다시 나오지 않는다)
+// 숨은 각인: 위업을 채웠다 → 증표 · 칭호 (data/hidden.js · sim/hidden.js). 무엇을 했는지 이때 처음 알려 준다
+function awardHidden(id) {
+  if (!save) return;
+  if (id.startsWith('count:')) { hiddenCount(id.slice(6)); return; }
+  if (id.startsWith('teacher:')) { // 40층의 주인: 그 무기 갈래의 스승이 탑 문 옆 방에 나타난다
+    const fam = id.slice(8), T = TEACHERS[fam]; save.hidden ||= {};
+    if (!T || save.hidden[T.id] || save.hidden.teacher === fam) return;
+    save.hidden.teacher = fam; writeSave(save);
+    renderer.banner = { text: '누군가 탑 문 앞에서 기다린다', sub: `${T.name} · 탑 문의 「스승의 방」`, t: 6, color: '#ffe8a8' };
+    return;
+  }
+  if (!grantHidden(save, id)) return;
+  const h = HIDDEN_BY_ID[id];
+  writeSave(save); cloudSaveNow(save);
+  sfx('levelup', { vol: 0.8 });
+  renderer.banner = { text: `숨은 각인 · 「${h.title}」`, sub: `${h.cond} · 공명 제단에서 「${h.name}」을 새길 수 있다`, t: 6, color: h.color };
+  if (world) world.emit({ t: 'text', x: world.player.x, y: world.player.y - 34, text: `칭호 「${h.title}」`, color: h.color, big: true });
+}
+
+// 일부러 쌓는 것 (사람 쓰러뜨리기 · 바닷속 숨 막힘 · 피를 먹는 칼로 벤 주인): 다 차면 숨은 각인
+function hiddenCount(key) {
+  const c = ((save.hidden ||= {}).c ||= {}); c[key] = (c[key] || 0) + 1;
+  const [n, id] = HIDDEN_COUNTS[key] || [];
+  if (id && c[key] >= n) awardHidden(id); else writeSave(save);
+}
+// 스승의 시련이 끝났다
+function trialDone(s) {
+  const T = TEACHERS[s.fam];
+  if (s.ok && T) { awardHidden(T.id); if (save.hidden?.teacher === s.fam) delete save.hidden.teacher; writeSave(save); }
+  showModal(`<h2>${esc(T?.name || '스승')}의 시련</h2><p>${s.ok ? `시련을 넘었다. 공명 제단에서 「${esc(HIDDEN_BY_ID[T.id].name)}」을 새길 수 있다.` : '쓰러졌다. 스승은 탑 문 옆 방에서 계속 기다린다.'}</p><p class="muted">${esc(T?.rule || '')}</p><div class="actions"><button data-close>탑 문 앞으로</button></div>`, () => { overlay.hidden = true; paused = false; modal = null; returnTo = null; enterWorld('tower'); });
+}
 
 function resetGame() { clearSave(); cloudDelete(); save = null; world = null; showRaceSelect(); }
 
@@ -873,7 +909,7 @@ function startAs(race) {
   }
   save = newSave(race);
   save.cls = cs[0]; save.style = c0.style; save.journeySkills = 1; // 스킬 없이 시작: 첫 각인은 여정 1 · 2로 만든다
-  save.items = ['rustySword']; give(save);
+  save.items = ['rustySword', 'bareHands']; give(save);
   save.gear = { weapon: c0.weapons[0], ...(c0.off ? { off: c0.off } : {}) };
   save.tutorial = { step: 0 }; // 처음 시작하는 사람은 튜토리얼부터
   refreshQuests(save); writeSave(save); titleEl.hidden = true; enterWorld(null, true);
@@ -1110,6 +1146,7 @@ function migrateSave(sv) {
   }
   sv.items = (sv.items || []).filter((id) => ITEMS[id]);
   if (!sv.items.includes('rustySword')) sv.items.push('rustySword');
+  if (!sv.items.includes('bareHands')) sv.items.push('bareHands'); // 맨손: 누구나 늘 가진다
   if (!sv.gear?.weapon || !ITEMS[sv.gear.weapon]) sv.gear = { ...(sv.gear || {}), weapon: 'rustySword' };
   for (const k of Object.keys(sv.gear)) if (sv.gear[k] && !ITEMS[sv.gear[k]]) delete sv.gear[k];
   if (!sv.cls || CLASSES[sv.cls]?.race !== sv.race) {
@@ -2213,6 +2250,9 @@ function talkTo(id) {
 function handleSignals() {
   // 먼저 비워 둔다: 창을 띄우고 중간에 돌아가도 같은 신호가 다시 처리되지 않게
   for (const s of world.signals.splice(0)) {
+    if (s.t === 'hiddenFeat') { awardHidden(s.id); continue; } // 숨은 각인 (학살자 등 어디서나 채우는 위업)
+    if (s.t === 'hiddenCount') { hiddenCount(s.key); continue; }
+    if (s.t === 'trialDone') { trialDone(s); return; }
     if (world.climb && climbUi.signal(s)) { if (s.t === 'climbCleared') continue; return; } // 탑 등반
     if (s.t === 'openPanel') openPanel(s.panel, true);
     if (s.t === 'tower') { showTower(); return; }
@@ -2354,6 +2394,7 @@ function handleSignals() {
     } else if (s.t === 'happeningHit') { // 벌어지는 일을 공격했다
       const h = HAPPEN_LIST.find((q) => q.id === s.id); if (h) happeningAct(h, { caravan: 'raid', taxWagon: 'rob', patrol: 'stop', cult: 'stop' }[h.type]);
     } else if (s.t === 'npcHostile' || s.t === 'npcDown') {
+      if (s.t === 'npcDown') hiddenCount('npcDown'); // 숨은 각인 「사령군주」
       npcStruck(s);
     } else if (s.t === 'npc') {
       talkNpc = world.near?.home && world.near.mem ? world.near : null; // 말 거는 사람 (돈을 건넬 수 있다)

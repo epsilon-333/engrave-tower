@@ -8,6 +8,7 @@ import { SANCTUMS as SANCT_ALL } from '../data/sanctums.js';
 import { codexPoints, levelFor, codexTotals, monsterStage, STAGE_KILLS, STAGE_MAX, zonePlaces, placeKey, PLACE_ZONES } from '../data/codex.js';
 import { JOURNALS, PEOPLE, STORY_ITEMS } from '../data/story.js';
 import { ENGRAVINGS, TAGS, REACTIONS } from '../data/engravings.js';
+import { HIDDEN, hiddenEngId, hiddenEcho } from '../data/hidden.js';
 import { engravingWeapons } from '../data/engweapons.js';
 import { monsterWhere, whereText, towerOnly, echoSources } from '../data/where.js';
 import { ITEMS, STYLES, WEAPON_SKILLS, weaponHands, WCAT_NAME, weaponCat, addItem, baseId } from '../data/items.js';
@@ -218,12 +219,18 @@ export class Hub {
     // 정리: 몬스터별(기본) · 태그별 · 등급으로 거르기 (부위는 없다: 어느 각인이든 어느 칸에)
     const view = this.altarView === 'tag' ? 'tag' : 'mon', grade = this.altarGrade || 0;
     const wf = this.altarWeapon || 'all'; // 무기 종류로 찾기: 한 각인이 여러 무기에 들어간다 (그 무기로 스킬을 80% 이상 힘으로 쓸 때)
-    const passAll = (id) => pass(id) && (!grade || ENGRAVINGS[id].grade === grade) && (wf === 'all' || engravingWeapons(id).includes(wf === 'mine' ? b.wcat : wf));
+    const passAll = (id) => !ENGRAVINGS[id].hidden && pass(id) && (!grade || ENGRAVINGS[id].grade === grade) && (wf === 'all' || engravingWeapons(id).includes(wf === 'mine' ? b.wcat : wf));
     // 두 단 (PoE 2처럼): 왼쪽은 한 줄짜리 목록, 오른쪽은 고른 각인의 자세한 카드
     const row = (id) => this.engravingRow(id, s);
     const block = (title, sub, ids) => ids.length ? `<h4>${title} <small>${sub ? sub + ' · ' : ''}${ids.length}종</small></h4><div class="cards eng-rows">${ids.map(row).join('')}</div>` : '';
     const byGrade = (ids) => ids.sort((x, y) => ENGRAVINGS[x].grade - ENGRAVINGS[y].grade);
     let groups = '';
+    // 숨은 각인: 얻은(증표를 가진 · 새긴) 것만 보이고 나머지는 ??? 칸 · 힌트 한 줄 (data/hidden.js)
+    {
+      const got = HIDDEN.filter((h) => (s.hidden || {})[h.id] || (s.owned[hiddenEngId(h.id)] || 0) > 0 || (s.echoes[hiddenEcho(h.id)] || 0) > 0);
+      const unk = HIDDEN.length - got.length;
+      groups += `<h4>숨은 각인 <small>${got.length} / ${HIDDEN.length}</small></h4><div class="cards eng-rows">${got.map((h) => row(hiddenEngId(h.id))).join('')}${HIDDEN.filter((h) => !got.includes(h)).map((h) => `<div class="eng-row unknown" data-q="???" style="--g:#5a5068"><span class="er-name">??? <small class="muted">${esc(h.hint)}</small></span></div>`).join('')}</div>${unk ? '<p class="muted">얻는 방법은 알려 주지 않는다. 무언가를 이루면 그 증표가 온다.</p>' : ''}`;
+    }
     if (view === 'mon') {
       // 몬스터 각인: 그 몬스터가 사는 지역 → 몬스터 순 / 문양 각인: 계열 잔향 지역
       // 몬스터 각인: 그 몬스터를 처음 만나는 곳으로 묶는다 (바깥 지역 · 던전 · 각인의 탑 · 레이드)
@@ -404,11 +411,12 @@ export class Hub {
       <div class="cs-meta">재사용 ${SK.cd}초${SK.cost ? ` · 자원 ${SK.cost}` : SK.costAll ? ` · 자원 전부(${SK.costAll.min} 이상)` : SK.mana ? ` · 마나 ${SK.mana}` : ''} · ${KIND_NAME[SK.kind || 'body'] || '몸'}으로 쓴다</div>
       <div class="cs-desc">${termify(esc(SK.desc || ''))}</div>
       ${skId !== orig ? `<div class="cs-meta muted">원래 스킬 「${esc(SKILLS[orig].name)}」(궁극)은 그 종족만 · 다른 종족은 이 기술을 쓴다</div>` : ''}</div>` : '';
+    const hd = e.hidden && HIDDEN.find((h) => h.id === e.hidden), hiddenLine = hd ? `<div class="c-meta" style="color:${hd.color}"><b>숨은 각인 · 칭호 「${esc(hd.title)}」</b> · ${esc(hd.cond)}</div>` : '';
     const fromLine = e.from && MONSTERS[e.from] ? `<div class="c-meta">${s.codex.kills?.[e.from] ? MONSTERS[e.from].name : '???'}의 부산물로 새긴다</div>` : '';
     return `<div class="card ${goal ? 'goal' : ''}" data-q="${esc(this.engSearchText(id, s))}" style="--g:${GRADES[e.grade].color}">
       <div class="c-head"><b>${e.name}</b><span><button class="star ${goal ? 'on' : ''}" data-act="goal" data-id="${id}" title="목표로 찜">★</button> <span class="grade">${GRADES[e.grade].name}</span></span></div>
       <div class="c-meta">${(() => { const sk = engravingSkillFor(id, s.race), orig = ENGRAVING_SKILLS[id]; return sk ? `<b style="color:#f0c878">스킬: ${SKILLS[sk].name}</b>${sk !== orig ? ` <small class="muted">(궁극기 「${SKILLS[orig].name}」는 그 종족만)</small>` : ''} · ` : ''; })()}부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
-      ${fromLine}
+      ${hiddenLine}${fromLine}
       ${weaponLine}
       ${skillBox}
       <div class="badges">${this.badges(id, s, b)}</div>
@@ -546,7 +554,7 @@ export class Hub {
         const where = srcs.map((id) => seenM(id) ? `<b>${MONSTERS[id].name}</b>: ${whereText(id, 4)}${towerOnly(id) ? ' <b style="color:#f0c878">(탑 전용)</b>' : ''}` : `??? <small class="muted">(${whereText(id, 2)})</small>`);
         return `<div class="li ${s.echoes?.[eid] ? 'on' : ''}"><b style="color:${E.color}">◆ ${E.name}</b> <small>가진 것 ${s.echoes?.[eid] || 0}</small><br><small>${where.join('<br>')}</small><br><small class="muted">쓰는 각인: ${uses.slice(0, 8).map((k) => ENGRAVINGS[k].name).join(' · ')}${uses.length > 8 ? ` 외 ${uses.length - 8}개` : ''}</small></div>`;
       };
-      const fams = Object.keys(ECHOES).filter((k) => !ECHOES[k].part), parts = Object.keys(ECHOES).filter((k) => ECHOES[k].part);
+      const fams = Object.keys(ECHOES).filter((k) => !ECHOES[k].part && !ECHOES[k].hidden), parts = Object.keys(ECHOES).filter((k) => ECHOES[k].part);
       body = `
         <h4>계열 잔향 <small>${fams.length}종</small></h4><div class="list">${fams.map(row).join('')}</div>
         <h4>몬스터 부산물 <small>${parts.length}종</small></h4><div class="list">${parts.map(row).join('')}</div>`;
