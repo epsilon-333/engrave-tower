@@ -77,6 +77,7 @@ import { SkillMethods } from './skillrun.js';
 import { AllyMethods } from './allies.js';
 import { TraitMethods } from './montraits.js';
 import { HiddenMethods } from './hidden.js';
+import { TeacherMethods } from './teacher.js';
 // 레벨 lv의 기준 캐릭터(스탯 60% 공격 · 40% 체력)가 1레벨보다 몇 배 세게 때리고 · 몇 배 버티나 → 바깥 몬스터가 지역 레벨만큼 그대로 따라 세진다
 const GROWTH = new Map();
 export function levelGrowth(lv) {
@@ -630,7 +631,7 @@ export class World {
     if (p.swim) { p.swimAcc = (p.swimAcc || 0) + DT; if (p.swimAcc >= 1) { p.swimAcc = 0; this.knack('swim'); } }
     p.wasSwim = p.swim;
     if (!this.map.underwater) { p.breath = null; return; }
-    const inf = !!p.buffs.waterBreath, max = ((this.b.abilities?.waterBlessing ? BREATH.blessing : this.b.available?.includes('dive') ? BREATH.dive : BREATH.free) + (this.hasKnack('swimmer') ? 6 : 0)) * this.mod('breath'); // 아무것도 없으면 숨이 짧다
+    const inf = !!p.buffs.waterBreath || this.f.has('deepBreath'), max = ((this.b.abilities?.waterBlessing ? BREATH.blessing : this.b.available?.includes('dive') ? BREATH.dive : BREATH.free) + (this.hasKnack('swimmer') ? 6 : 0)) * this.mod('breath'); // 아무것도 없으면 숨이 짧다
     p.breathMax = max; if (p.breath == null) p.breath = max;
     const vent = this.objects.some((o) => o.kind === 'vent' && Math.hypot(o.x - p.x, o.y - p.y) < 24);
     if (inf) p.breath = max;
@@ -2275,6 +2276,7 @@ export class World {
 
   damageEnemy(e, amount, type, opt = {}) {
     if (e.dead || e.hidden || e.under || e.begging) return 0;
+    if (e.def.trial) return this.trialHit(e, amount, type, opt); // 숨은 스승의 시련: 피해 대신 「맞는 공격」만 센다 (sim/teacher.js)
     if (e.mv?.k === 'channel' && !opt.fromDot) e.mv.taken = (e.mv.taken || 0) + amount; // 늪의 마녀: 의식 중 받은 피해 (대략)
     if (e.invulnT > 0) { if (!opt.fromDot) this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '무적', color: '#c8a8ff' }); return 0; } // 망령: 순간이동 뒤 잠깐 무적
     if (e.dormant) { e.dormant = false; e.state = 'chase'; this.aggro(e); this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '미믹!', color: '#ff5a3a' }); }
@@ -2529,7 +2531,7 @@ export class World {
   }
   heal(amount, kind) {
     const p = this.player, d = this.d;
-    if (amount <= 0 || this.state === 'dead' || this.f.has('noHeal') || this.player.down) return;
+    if (amount <= 0 || this.state === 'dead' || this.f.has('noHeal') || this.f.has('bloodHunger') || this.player.down) return; // 피를 먹는 칼(깨어나기 전): 회복 막힘
     if (this.pvp) amount *= PVP.heal; // 대전: 회복 절반
     amount *= d.healMul ?? 1; // 서약 「메마른 샘」
     // 물약 · 샘 말고는 회복이 1초에 최대 체력 3%씩만 들어온다 (한꺼번에 쌓아 둘 수 있는 몫은 5%). 회복 수치는 적힌 그대로 (숨은 배율 없음)
@@ -2630,7 +2632,7 @@ export class World {
     p.lastFight = this.t;
     if (!opt.direct) p.invuln = 0.3;
     this.hurtLanded = true;
-    this.hidHurt(shieldBlock || (front && !!(this.b.weapon.guard || this.b.offItem?.guard)));
+    this.hidHurt(shieldBlock || (front && !!(this.b.weapon.guard || this.b.offItem?.guard)), dmg);
     if (dmg >= 0.5) this.emit({ t: 'dmg', x: p.x, y: p.y - 16, v: dmg, color: '#ff5a5a', who: 'p' });
     else if (absorbed > 0) this.emit({ t: 'text', x: p.x, y: p.y - 16, text: '보호막', color: '#a8d8ff' }); // 보호막이 다 막으면 0.0 대신
     this.emit({ t: 'shake', v: Math.min(5, 1.5 + dmg / 12) });
@@ -2661,6 +2663,7 @@ export class World {
 
   applyPlayerStatus(kind, power) {
     if (this.f.has('statusImmune') || this.mode === 'plaza') return;
+    if (kind === 'poison' && this.f.has('venomImmune')) return; // 만독불침
     if (RACE_IMMUNE[this.b.race]?.includes(kind)) return; // 언데드: 독 · 저주 · 출혈 · 용족: 화상 · 냉기
     const dur = (PLAYER_STATUS_DUR[kind] ?? 3) * (1 - this.d.statusRes); // 표에 없는 상태도 끝이 있다 (예전: 저주 · 감전은 NaN이라 영영 안 풀렸다)
     if (!(dur > 0.05)) return;
@@ -2671,6 +2674,13 @@ export class World {
   checkDeath() {
     const p = this.player;
     if (p.hp > 0 || this.state !== 'play') return;
+    if (this.trial && !this.trial.done) return this.trialDown(); // 스승의 방: 쓰러지면 실패 (죽지는 않는다)
+    if (!p.skyDead && this.f.has('lichRise') && !(this.climb ? this.climb.run.lichUsed : this.lichUsed)) { // 숨은 각인 「리치」: 탑은 한 등반에 한 번 · 바깥은 나갈 때마다 한 번
+      if (this.climb) this.climb.run.lichUsed = true; else this.lichUsed = true;
+      p.hp = 1; p.invuln = 3; p.buffs.hLich = { t: 10, max: 10, mods: { dmgMul: 2 }, color: '#c45cff', name: '리치' };
+      this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '죽음을 거부한다', color: '#c45cff', big: true }); this.emit({ t: 'skillAoe', x: p.x, y: p.y, r: 60, elem: 'dark', fx: 'doom' });
+      return;
+    }
     if (!p.skyDead && this.f.has('undying') && !p.undyingUsed) { // 하늘로 떨어진 것은 불사 · 불굴로도 버틸 수 없다
       p.undyingUsed = true; p.hp = this.d.maxHp * 0.3; p.invuln = 1;
       this.emit({ t: 'text', x: p.x, y: p.y - 18, text: '불사!', color: '#fff' });
@@ -2703,6 +2713,7 @@ export class World {
       return;
     }
     if (this.pvp) { this.state = 'pvpDown'; this.signals.push({ t: 'pvpDown' }); this.emit({ t: 'death', x: p.x, y: p.y, color: '#ff4040', big: true }); return; } // 결투: 쓰러져도 잃는 것은 없다
+    if (this.map.underwater && (p.breath ?? 1) <= 0) this.signals.push({ t: 'hiddenCount', key: 'drown' }); // 숨은 각인 「심해의 마녀」: 바닷속에서 숨이 막혀 쓰러졌다
     this.state = 'dead';
     this.emit({ t: 'death', x: p.x, y: p.y, color: '#ff4040', big: true });
   }
@@ -2711,7 +2722,7 @@ export class World {
   makeEnemy(id, x, y, opt = {}) {
     const def = ALL_MONSTERS[id];
     const tm = this.climb ? climbMul(this.climb.f, this.zone?.id, this.climb.oath) : this.tower ? towerMul(this.tower.f) : null; // 탑: 층마다 강해진다
-    const soft = !tm && !def.elite && !def.raid && def.ai !== 'dummy' && def.ai !== 'target' ? 1.7 : 1; // 바깥 · 던전의 보통 몬스터: 한 대에 쓰러지지 않게 (두세 번은 때려야)
+    const soft = !tm && !def.elite && !def.raid && def.ai !== 'dummy' && def.ai !== 'target' && def.ai !== 'trial' ? 1.7 : 1; // 바깥 · 던전의 보통 몬스터: 한 대에 쓰러지지 않게 (두세 번은 때려야)
     // 등반: 난이도 표(data/curve.js)가 체력 · 공격력을 그대로 정한다 (예전엔 여기서 공격 ×3.8이 한 번 더 붙어 표보다 4배 아팠다)
     // 바깥 · 던전 · 예전 탑: 공격은 낮추고 체력은 높여 서로 덜 죽게 (예전 체력 ×0.8 · 공격 ×3.8)
     const dm = this.climb ? tm.hp : 1.4 * soft * (tm ? tm.hp : 1 + 0.4 * this.depth), am = this.climb ? tm.atk : AM_FIELD * (tm ? tm.atk : 1 + 0.25 * this.depth);
@@ -2924,6 +2935,7 @@ export class World {
       const boss = e === this.tower.boss, rnd = () => this.rng.range(0, 1);
       const ch = boss ? (this.climb?.kind === 'lord' ? 0.125 : 0.06) : def.elite || e.champion ? 0.0125 : 0.0015; // 보통 0.15% · 정예 1.25% · 수호자 6% · 주인 12.5%
       if (this.rng.chance(ch)) this.spawnDrop(e.x, e.y, 'tweapon', rnd() < 0.45 ? rollTowerGear(this.tower.f, rnd) : rollTowerWeapon(this.tower.f, rnd)); // 45%는 방어구 · 장신구 · 왼손
+      if (boss && this.climb?.kind === 'lord' && this.rng.chance(0.05)) this.spawnDrop(e.x, e.y, 'tweapon', 'bloodEater'); // 숨은 각인 「혈귀」의 칼: 층의 주인이 드물게 (5%)
     }
     if (def.condEcho && def.condEcho.when === 'burning' && st.burn && this.rng.chance(def.condEcho.rate)) this.spawnDrop(e.x, e.y, 'echo', def.condEcho.id);
     if (def.onDeath?.cloud) { const c = def.onDeath.cloud, x = e.x, y = e.y; this.emit({ t: 'telegraphCircle', x, y, r: c.r, dur: 0.6 }); this.delayed.push({ t: 0.6, run: () => this.addCloud(x, y, c.r, c.dps, c.dur, 'e') }); } // 독구름은 0.6초 예고 뒤에 피어난다 (쓰러뜨린 근접이 피할 틈)
@@ -3355,6 +3367,10 @@ export class World {
             const dist = pr.ox != null ? Math.hypot(e.x - pr.ox, e.y - pr.oy) : 100;
             const range = pr.boomerang || this.b.wcat === 'bow' ? 1 : dist < 40 ? 0.7 : dist > 70 ? 1.1 : 1; // 활은 거리와 상관없이 같다 (멀리서 세지는 것은 엘프의 특성)
             this.hitEnemy(e, pr.dmg * range, pr.type, pr.heavy, true, { dist, weapon: pr.weaponHit });
+            if (pr.weaponHit && this.f.has('ricochet') && (pr.bounce || 0) < 2) { // 숨은 각인 「천궁」: 가까운 다른 적에게 튕긴다
+              const nx = this.enemies.filter((o) => !o.dead && !o.hidden && o !== e && !pr.hit.has(o.id) && Math.hypot(o.x - e.x, o.y - e.y) < 130).sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y))[0];
+              if (nx) { const vx = nx.x - e.x, vy = nx.y - 4 - e.y, l = Math.hypot(vx, vy) || 1, sp = Math.hypot(pr.vx, pr.vy) || 300; this.projs.push({ ...pr, x: e.x, y: e.y - 4, vx: vx / l * sp, vy: vy / l * sp, life: 0.7, maxLife: 0.7, dmg: pr.dmg * 0.7, pierce: 0, hit: new Set([...pr.hit]), bounce: (pr.bounce || 0) + 1, ox: e.x, oy: e.y, sent: 0 }); }
+            }
           }
           if (pr.splash) { this.emit({ t: 'ring', x: pr.x, y: pr.y, r: pr.splash, color: pr.color }); for (const o of this.enemiesNear(pr.x, pr.y, pr.splash)) if (o !== e) this.damageEnemy(o, pr.dmg * 0.7, pr.type, { src: 'aoe' }); }
           if (pr.elem === 'fire' || pr.ench === 'fire') this.igniteArea(e.x, e.y, pr.splash ? Math.max(12, pr.splash * 0.6) : 10); // 맞은 적의 발밑에도 불
@@ -3418,4 +3434,4 @@ export function distToSeg(px, py, x1, y1, x2, y2) {
 export { ECHOES, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP };
 
 // 나눠 둔 메서드를 World 에 붙인다
-Object.assign(World.prototype, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods);
+Object.assign(World.prototype, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods, TeacherMethods);

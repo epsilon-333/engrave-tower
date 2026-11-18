@@ -292,7 +292,8 @@ export const HudMethods = {
       }
     }
     // 각인의 탑: 층 · 걸린 시간 / 기준 시간 (넘기면 붉게)
-    if (w.tower && !w.climb) {
+    if (w.trial) this.text(`스승의 방 · ${w.trial.T.rule}`, W / 2, topY, u, '#e8d8a8', 'center', true, true); // 숨은 스승의 시련: 무엇이 제대로 들어가는지
+    else if (w.tower && !w.climb) {
       const par = 60 + w.tower.f * 2 + (w.tower.f % 5 === 0 ? 45 : 0), tt = w.tower.t, over = tt > par;
       const fmt = (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;
       this.text(`각인의 탑 ${w.tower.f}층 · ${fmt(tt)} / ${fmt(par)}`, W / 2, topY, u, over ? '#ff8a7a' : '#e8d8a8', 'center', true, true);

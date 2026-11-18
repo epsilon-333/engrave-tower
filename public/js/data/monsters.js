@@ -1,5 +1,5 @@
 import { registerParts } from './monsterparts.js';
-import { registerHiddenEchoes } from './hidden.js';
+import { registerHiddenEchoes, registerHiddenMonsters } from './hidden.js';
 // 몬스터와 문양 잔향. 원하는 각인을 만들려면 그 잔향을 남기는 몬스터를 골라 사냥해야 한다.
 
 export const ECHOES = {
@@ -318,6 +318,7 @@ export const DUMMIES = {
   trainPost: { name: '근위대 허수아비', shape: 'dummy', pal: { a: '#9aa0b0', b: '#5a6070', c: '#e0e4f0', e: '#1a1a2a' }, hp: 1e9, atk: 0, type: 'phys', speed: 0, ai: 'target', r: 8, xp: 0, gold: 0, pres: 0, mres: 0, echo: { id: 'goo', rate: 0 } },
   dummyM: { name: '룬석 허수아비', shape: 'dummy', pal: { a: '#6a5aa8', b: '#3a2e6a', c: '#b8a8ff', e: '#00e0ff' }, hp: 1e9, atk: 0, type: 'mag', speed: 0, ai: 'dummy', r: 7, xp: 0, gold: 0, pres: 0, mres: 100, echo: { id: 'goo', rate: 0 } },
 };
+registerHiddenMonsters(DUMMIES); // 숨은 각인: 시련의 스승 · 나의 그림자 · 전설 몬스터 (도감에 넣지 않는다)
 
 // 고대 석판 (탐험 보상: 숨은 조합 힌트)
 export const LORES = [

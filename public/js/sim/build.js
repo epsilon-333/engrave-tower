@@ -104,6 +104,7 @@ export function computeBuild(lo) {
   const effects = [];
   for (const src of active) {
     for (const e of src.def.effects || []) {
+      if (e.type === 'flag' && e.flag === 'bloodHunger' && lo.bloodAwake) continue; // 깨어난 「피를 먹는 칼」: 체력을 먹지 않는다
       const ok = evalCond(e.when, ctx);
       if (e.when) notes.push({ kind: ok ? 'on' : 'off', text: `${src.def.name}: ${condText(e.when)} → ${e.text}` });
       if (ok) effects.push(src.elv ? scaleEffect(e, src.mul) : e);

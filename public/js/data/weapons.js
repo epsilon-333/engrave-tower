@@ -42,6 +42,10 @@ const TINT = {
 
 // 무기 목록: base(종류) · t(단계) · r(등급) · s(그림) · tint · name · lore · w(무기 값 덮어쓰기) · st(능력치) · fx(효과) · sk(우클릭 기술)
 export const TOWER_WEAPONS = {
+  // ═══ 숨은 각인 「혈귀」의 칼: 층의 주인이 드물게 떨군다 (뽑기에는 나오지 않는다) ═══
+  bloodEater: { base: 'sword', t: 3, r: 3, special: true, s: 'weapon_saw_sword', tint: TINT.blood, name: '피를 먹는 칼', lore: '쥔 손의 피부터 먹는다. 주인 셋의 피를 먹으면 깨어난다고 한다.',
+    w: { crit: 0.08 }, st: { str: 6, lifesteal: 6 }, fx: [flag('bloodHunger', '깨어나기 전: 들고 있으면 초당 체력 1%를 먹고 회복을 막는다 (이 칼로 층의 주인 셋을 쓰러뜨리면 깨어난다)')],
+    sk: { name: '피의 일격', cd: 7, desc: '피를 먹은 칼날로 앞을 크게 벤다. 맞힌 적마다 체력 2% 회복.', mo: 'overhead', do: [{ op: 'cone', range: 50, angle: 2.2, mul: 2.4, healPerHit: 0.02, fx: 'sweep' }] } },
   // ═══ 장검 (두 손 · 한손검과 대검 사이) — 2026-11-18 ═══
   pilgrimLong: { base: 'longsword', t: 2, r: 1, s: 'weapon_duel_sword', name: '순례자의 장검', lore: '탑을 오르던 순례자들이 지팡이 삼아 짚던 칼. 날은 아직 곧다.',
     st: { str: 3, sen: 2 },
@@ -444,7 +448,7 @@ const R_WEIGHT = [10, 6, 3, 1.4, 0.6];
 export function rollTowerWeapon(f, rnd) {
   const band = Math.max(1, Math.min(10, Math.ceil(f / 10)));
   const tier = band > 1 && rnd() < 0.3 ? band - 1 : band;
-  const pool = TOWER_WEAPON_IDS.filter((id) => TOWER_WEAPONS[id].t === tier);
+  const pool = TOWER_WEAPON_IDS.filter((id) => TOWER_WEAPONS[id].t === tier && !TOWER_WEAPONS[id].special);
   const total = pool.reduce((a, id) => a + R_WEIGHT[TOWER_WEAPONS[id].r], 0);
   let u = rnd() * total;
   for (const id of pool) { u -= R_WEIGHT[TOWER_WEAPONS[id].r]; if (u <= 0) return id; }
