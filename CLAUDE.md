@@ -75,7 +75,7 @@
 - 디버그: 브라우저 콘솔의 `window.__game` (world · dbg.climb · dbg.save), `window.__bot = (input, w) => {...}` 로 자동 플레이. localhost 또는 주소에 `?debug`가 있을 때만 열린다(배포판에서는 없음)
 - 처음 시작 · 튜토리얼은 `tools/tests/starttest.mjs`(시작 자리 · 허수아비 · 상태이상 풀림 · 맵 밖 거리장). 튜토리얼 단계는 `public/js/ui/tutorial.js`
 - 키 바꾸기는 `public/js/settings.js`(KEY_ACTIONS · logicalKey): 게임 입력은 눌린 키를 「기본 키」로 바꿔 읽는다. 새 단축키를 넣으면 KEY_ACTIONS에도 넣는다
-- 용족 플레이어(`tools/dragonkin.py`)는 다른 종족(0x72 · 키 약 20px)과 비율을 맞춰 `GSCALE` 0.74로 줄이고 얼굴을 키우고 앞머리를 올렸다 · 눈은 가로 1 · 세로 2 도트 한 쌍 · 사이 2도트 · 보이는 얼굴의 가운데(`EYE_X · EYE_Y` · `model.stamps` · `gap`, 줄여도 도트 크기 그대로 · pixelrig) (2026-11-18). 다시 만들 때 `python3 tools/dragonkin.py public/assets/custom`
+- 용족 플레이어(`tools/dragonkin.py`)는 다른 종족(0x72 · 키 약 20px)과 비율을 맞춰 `GSCALE` 0.74로 줄이고 머리를 키웠다 · 눈은 가로 1 · 세로 2 도트 한 쌍 · 사이 2도트 · 사용자가 고른 달리기 그림의 눈 자리를 모든 동작에(`EYE_X · EYE_Y` · 입 없음 · `model.stamps` · `gap`, 줄여도 도트 크기 그대로 · pixelrig) (2026-11-18). 다시 만들 때 `python3 tools/dragonkin.py public/assets/custom`
 - `tools/cut_sheet.py art/source/sheet_dragon_kings.webp public/assets/custom`: 사용자가 준 시트에서 용·정령왕 프레임을 만든다(Pillow·numpy·opencv 필요). 자른 뒤 반드시 `cd tools && python3 pixelfit.py king_fire` 처럼 그림체 맞추기(게임 크기 1:1 · 28색 · 외곽선)를 돌린다.
 - `python3 tools/cut_bosses.py build`: 사용자가 준 보스 시트(`art/source/sheet_tower_bosses.png`, 보스 20명 × 자세 4)를 자세마다 통째로 잘라 `public/assets/custom/bosses.png`로 (조각으로 나눠 움직이지 않는다 · 서기 두 자세 · 공격 · 기술 · 시계지기 3단계는 따로 그린 모습).
 - `python3 tools/cut_boss_sheets.py --write`: 보내 주신 보스 동작 시트(`art/source/boss_*.png`: 서기 · 걷기 · 공격 · 기술 · 맞음 · 쓰러짐을 장면마다 통째로 그린 것)를 잘라 넣는다. `cut_bosses.py build` 뒤에 돌린다. 공격은 준비 자세를 예고 동안 멈춰 보여 주고 끝나면 내려치기를 한 번.
