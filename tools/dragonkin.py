@@ -47,7 +47,7 @@ model.stamps = [{'part': 'head', 'x': P(EYE_X, 0)[0], 'y': EYE_Y, 'w': 1, 'h': 2
 S = math.sin
 
 def idle(n=4):
-    return [{'torso': (0, 0, [0, 0, 1, 1][i]), 'head': (0, 0, [0, 0, 0, 0][i]), 'hair': (2 * S(i / n * 6.28),), 'tail1': (6 * S(i / n * 6.28),), 'tail2': (10 * S(i / n * 6.28 + 1),), '_hide': ('wingN', 'wingF')} for i in range(n)]
+    return [{'torso': (0, 0, [0, 0, 1, 1][i]), 'head': (0, 0, [0, 0, 0, 0][i]), 'hair': (2 * S(i / n * 6.28),), 'tail1': (6 * S(i / n * 6.28),), 'tail2': (10 * S(i / n * 6.28 + 1),), '_hide': ('wingN', 'wingF'), '_sdx': 1} for i in range(n)]  # _sdx: 눈 한 칸 오른쪽 (사용자 확정)
 
 def run(n=4):
     out = []
@@ -58,7 +58,7 @@ def run(n=4):
 
 def soar(n=4):
     seq = [30, 8, -26, -6]
-    return [{'torso': (0, 0, -1), 'wingN': (a,), 'wingF': (-a * 0.8,), 'legL': (12,), 'legR': (-8,), 'hair': (-3,), 'tail1': (14,), 'tail2': (12 * S(i),)} for i, a in enumerate(seq)]
+    return [{'torso': (0, 0, -1), 'wingN': (a,), 'wingF': (-a * 0.8,), 'legL': (12,), 'legR': (-8,), 'hair': (-3,), 'tail1': (14,), 'tail2': (12 * S(i),), '_sdx': 1} for i, a in enumerate(seq)]
 
 if __name__ == '__main__':
     out = sys.argv[1]

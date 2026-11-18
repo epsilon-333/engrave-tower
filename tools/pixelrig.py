@@ -159,6 +159,7 @@ class Model:
             m = world(self.by[st['part']])
             X = m[0][0] * st['x'] + m[0][1] * st['y'] + m[0][2]; Y = m[1][0] * st['x'] + m[1][1] * st['y'] + m[1][2]
             x0, y0 = int(math.floor(X - st['w'] / 2 + 0.5)), int(math.floor(Y - st['h'] / 2 + 0.5))
+            x0 += pose.get('_sdx', 0)  # 동작마다 도트 찍기 자리를 옮긴다 (예: 서기 · 날기만 눈 한 칸 오른쪽)
             xs = [x0] + ([x0 + st['w'] + st['gap']] if 'gap' in st else [])  # gap: 한 쌍 (두 눈 사이가 언제나 같은 도트 수)
             self.placed.append((xs, y0))
             for xa in xs:
