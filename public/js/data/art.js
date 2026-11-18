@@ -188,7 +188,7 @@ export const NPC_ART = {
   store: { base: 'p_store' },
   trainer: { base: 'p_trainer' },
   merchant: { base: 'p_merchant' },
-  pino: { base: 'p_pino' },
+  chief: { base: 'p_chief' }, // 바람결 마을 촌장
   farmer: { base: 'p_farmer' },
   farmer2: { base: 'p_farmer2' },
   innkeeper: { base: 'p_innkeeper' },

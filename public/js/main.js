@@ -10,7 +10,7 @@ import { Hub, renderRaceSelect } from './ui/hub.js';
 import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
 import { padState, applyPad, padMenu } from './gamepad.js';
 import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, grantRaceSkills, grantRaceMats, raceSkills, classEngravingFor, setStaleHook, onLocalSave, isStale } from './save.js';
-import { JOURNALS, STORY_ITEMS, pinoTalk, pinoPlazaTalk, newStory } from './data/story.js';
+import { JOURNALS, STORY_ITEMS, newStory } from './data/story.js';
 import { codexPoints } from './data/codex.js';
 import { TILE, generateField } from './sim/mapgen.js';
 import { ENTRANCES, BIOME_LIST } from './data/maps/overworld.js';
@@ -57,7 +57,7 @@ import { createClimb } from './ui/climb.js';
 import { grantHidden, setHiddenSource } from './sim/hidden.js';
 import { HIDDEN_BY_ID, TEACHERS, HIDDEN_COUNTS } from './data/hidden.js';
 import { CLASS_STATS } from './data/statscale.js';
-import { JOURNEY, journeyNow, rewardText as journeyReward } from './data/journey.js';
+import { JOURNEY, journeyNow, rewardText as journeyReward, GIVERS } from './data/journey.js';
 import { oathScore, newClimbSave } from './data/climb.js';
 import { createTutorial, tutFlags } from './ui/tutorial.js';
 import { lockText, SYSTEM_NAME, makeLocks, openedBetween, towerBest, isOpen } from './data/unlocks.js';
@@ -752,42 +752,54 @@ function journeyEvent(k, d) {
   journeyT = 0;
 }
 let journeyT = 0;
+// 여정 보상 받기: 지금 것(알리러 온 것이면 끝난 것으로) · 그 뒤 이미 끝난 것까지 한꺼번에
+function claimJourney() {
+  let J = journeyNow(save);
+  if (J && J.stage === 'report') J = { ...J, done: true };
+  if (!J?.done) return;
+  const titles = [], sum = { gold: 0 };
+  while (J && J.done) {
+    const r = J.step.reward || {};
+    (save.journey ||= {})[J.step.id] = Date.now();
+    if (r.gold) { save.gold += r.gold; sum.gold += r.gold; }
+    if (r.potion) { bagAdd(lifeOf(), r.potion, 1); sum.potion = r.potion; }
+    if (r.firstMats) { // 첫 각인: 종족의 처음 스킬 각인을 새길 재료를 준다 (새기는 것은 여정 2)
+      const sk = raceSkills(save.race).find((id) => SKILLS[id] && (SKILLS[id].unlock || 1) <= 1), eid = sk && classEngravingFor(sk);
+      if (eid) { (save.flags ||= {}).firstEng = eid; (save.classEng ||= {})[sk] = eid; for (const [k, n] of Object.entries(ENGRAVINGS[eid].recipe || {})) save.echoes[k] = (save.echoes[k] || 0) + n; sum.names = [...(sum.names || []), `${ENGRAVINGS[eid].name} 재료`]; sum.firstMats = true; }
+    }
+    if (r.mats) { const eid = grantRaceMats(save, r.mats, world.b.cls); if (eid) sum.names = [...(sum.names || []), `${ENGRAVINGS[eid].name} 재료`]; } // 종족 스킬 각인 재료 (공명 제단에서 새긴다)
+    if (r.skill) { const got = grantRaceSkills(save, r.skill); if (got.length) { sum.skill = (sum.skill || 0) + got.length; if (r.skill === 'ult') sum.ult = 1; sum.names = [...(sum.names || []), ...got.map((e) => ENGRAVINGS[e]?.name)]; } } // 종족 스킬 각인
+    titles.push(J.step.title);
+    const wasFollowing = save.follow === J.step.id;
+    J = journeyNow(save);
+    if (wasFollowing) save.follow = J?.step.to ? J.step.id : null; // 따라가기는 다음 여정으로 이어진다
+  }
+  writeSave(save);
+  renderer.banner = { text: titles.length > 1 ? `여정 완료 ×${titles.length}` : `여정 완료 · ${titles[0]}`, sub: `${journeyReward(sum)}${sum.names ? ` · 각인 「${sum.names.join('」 「')}」` : ''}${J ? ` · 다음: ${J.step.title}` : ' · 모든 여정을 마쳤다!'}`, t: 4, color: '#e9b85c' };
+  sfx('levelup', { vol: 0.6 });
+
+  }
 function journeyTick(dt) {
   renderer.tutActive = !!(save?.tutorial && !save.tutorial.done && world?.zone?.id === 'world'); // 튜토리얼 중에는 작은 지도도 숨긴다 (조작에만 집중)
   if (!save || !world) { renderer.journey = null; return; }
+  { // 머리 위 「!」 · 「?」: 지금 여정을 맡기는 사람 (튜토리얼 중에도 보인다)
+    const J0 = save.npcJourney ? journeyNow(save) : null, G0 = J0 && J0.stage !== 'do' && GIVERS[J0.step.giver];
+    world.questMarks = G0 ? { [G0.mark]: J0.stage === 'talk' ? '!' : '?', ...(G0.station ? { ['station:' + G0.station]: J0.stage === 'talk' ? '!' : '?' } : {}) } : null;
+  }
   if (save.tutorial && !save.tutorial.done) { renderer.journey = null; return; } // 튜토리얼 중에는 여정을 숨긴다 (할 일 안내가 한 화면에 여럿 뜨지 않게)
   if ((journeyT -= dt) > 0) return;
   journeyT = 0.5;
   if (world.zone?.id === 'world' && world.near?.kind === 'towerDoor' && !save.flags?.towerSeen) (save.flags ||= {}).towerSeen = 1;
   let J = journeyNow(save);
   if (!J) { renderer.journey = null; return; }
-  if (J.done && !paused && world.state === 'play') { // 끝냈다: 보상 · 다음 목표 (한꺼번에 여럿을 끝냈으면 한 번에 알린다)
-    const titles = [], sum = { gold: 0 };
-    while (J && J.done) {
-      const r = J.step.reward || {};
-      (save.journey ||= {})[J.step.id] = Date.now();
-      if (r.gold) { save.gold += r.gold; sum.gold += r.gold; }
-      if (r.potion) { bagAdd(lifeOf(), r.potion, 1); sum.potion = r.potion; }
-      if (r.firstMats) { // 첫 각인: 종족의 처음 스킬 각인을 새길 재료를 준다 (새기는 것은 여정 2)
-        const sk = raceSkills(save.race).find((id) => SKILLS[id] && (SKILLS[id].unlock || 1) <= 1), eid = sk && classEngravingFor(sk);
-        if (eid) { (save.flags ||= {}).firstEng = eid; (save.classEng ||= {})[sk] = eid; for (const [k, n] of Object.entries(ENGRAVINGS[eid].recipe || {})) save.echoes[k] = (save.echoes[k] || 0) + n; sum.names = [...(sum.names || []), `${ENGRAVINGS[eid].name} 재료`]; sum.firstMats = true; }
-      }
-      if (r.mats) { const eid = grantRaceMats(save, r.mats, world.b.cls); if (eid) sum.names = [...(sum.names || []), `${ENGRAVINGS[eid].name} 재료`]; } // 종족 스킬 각인 재료 (공명 제단에서 새긴다)
-      if (r.skill) { const got = grantRaceSkills(save, r.skill); if (got.length) { sum.skill = (sum.skill || 0) + got.length; if (r.skill === 'ult') sum.ult = 1; sum.names = [...(sum.names || []), ...got.map((e) => ENGRAVINGS[e]?.name)]; } } // 종족 스킬 각인
-      titles.push(J.step.title);
-      const wasFollowing = save.follow === J.step.id;
-      J = journeyNow(save);
-      if (wasFollowing) save.follow = J?.step.to ? J.step.id : null; // 따라가기는 다음 여정으로 이어진다
-    }
-    writeSave(save);
-    renderer.banner = { text: titles.length > 1 ? `여정 완료 ×${titles.length}` : `여정 완료 · ${titles[0]}`, sub: `${journeyReward(sum)}${sum.names ? ` · 각인 「${sum.names.join('」 「')}」` : ''}${J ? ` · 다음: ${J.step.title}` : ' · 모든 여정을 마쳤다!'}`, t: 4, color: '#e9b85c' };
-    sfx('levelup', { vol: 0.6 });
-    if (!J) { renderer.journey = null; return; }
-  }
+  if (J.done && !paused && world.state === 'play') { claimJourney(); J = journeyNow(save); if (!J) { renderer.journey = null; return; } } // 끝냈다: 보상 · 다음 목표
   let target = null;
-  const to = J.step.to, following = save.follow === J.step.id; // 따라가기를 켠 여정만 화살표
+  const G = J.stage !== 'do' && GIVERS[J.step.giver]; // 맡기는 사람에게 가야 하는 때: 화살표는 그 사람에게 (늘)
+  const to = G ? G.to : J.step.to, following = G || save.follow === J.step.id; // 따라가기를 켠 여정만 화살표
   if (to && following && world.zone?.id === 'world') target = journeyTarget(to);
-  renderer.journey = { n: J.i + 1, total: JOURNEY.length, title: J.step.title, hint: J.step.hint, done: J.done, reward: journeyReward(J.step.reward), target, canFollow: !!to };
+  const title = J.stage === 'talk' ? `${G.name}에게 말 걸기` : J.stage === 'report' ? `${G.name}에게 알리기` : J.step.title;
+  const hint = J.stage === 'talk' ? `${G.name}이(가) 맡길 일이 있다 (머리 위 「!」 · G로 말 걸기)` : J.stage === 'report' ? `끝냈다: ${J.step.title} · 돌아가서 알리자 (머리 위 「?」)` : J.step.hint;
+  renderer.journey = { n: J.i + 1, total: JOURNEY.length, title, hint, done: J.done, reward: journeyReward(J.step.reward), target, canFollow: !!to };
 }
 // 여정 목적지 → 화살표 자리 (바깥 세계에서만)
 const HOUSE_NAME = { altar: '공명 제단', forge: '대장간', library: '서고', guild: '의뢰소', shop: '잡화점', dojo: '수련장', home: '내 집' };
@@ -805,8 +817,8 @@ function journeyTarget(to) {
     const L = BIOME_LIST.filter((b) => names.includes(b.name)).map((b) => ({ x: b.x * 16 + 8, y: b.y * 16 + 8, label: b.name }));
     return L.sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0] || null;
   }
-  const o = world.objects.find((x) => x.kind === to.kind && (!to.house || x.house === to.house) && (!to.mine || x.race === save.race));
-  return o ? { x: o.x, y: o.y, label: to.kind === 'towerDoor' ? '탑' : to.kind === 'sanctum' ? '성지' : to.kind === 'raidAltar' ? '레이드' : HOUSE_NAME[to.house] || '' } : null;
+  const o = world.objects.find((x) => x.kind === to.kind && (!to.id || x.id === to.id) && (!to.house || x.house === to.house) && (!to.mine || x.race === save.race));
+  return o ? { x: o.x, y: o.y, label: to.kind === 'towerDoor' ? '탑' : to.kind === 'npc' ? (GIVERS[to.id]?.name || '') : to.kind === 'sanctum' ? '성지' : to.kind === 'raidAltar' ? '레이드' : HOUSE_NAME[to.house] || '' } : null;
 }
 // 탑 등반 (본편): 화면과 흐름은 ui/climb.js
 const climbUi = createClimb({
@@ -912,6 +924,7 @@ function startAs(race) {
   save.items = ['rustySword', 'bareHands']; give(save);
   save.gear = { weapon: c0.weapons[0], ...(c0.off ? { off: c0.off } : {}) };
   save.tutorial = { step: 0 }; // 처음 시작하는 사람은 튜토리얼부터
+  save.npcJourney = 1; // 여정은 사람에게서 받는다 (촌장 · 루네 · 브론 · 토비 — 2026-11-18)
   refreshQuests(save); writeSave(save); titleEl.hidden = true; enterWorld(null, true);
 }
 
@@ -1219,7 +1232,8 @@ function enterWorld(at = null, first = false) {
   renderer.setWorld(world);
   startMusic('plaza'); regionMusic.last = null;
   startLoop();
-  if (first || !save.owTutorial) showWorldIntro();
+  if (first && save.npcJourney) showDream();
+  else if (first || !save.owTutorial) showWorldIntro();
   else if (!save.lifeIntro) showLifeIntro();
 }
 // 마을의 집: 문으로 들어가면 방 안 (바깥 세계는 그대로 멈춰 둔다)
@@ -1281,6 +1295,23 @@ function exitHouse() {
   sfx('close', { vol: 0.5 });
   startLoop();
 }
+// 새 게임: 꿈 → 바람결 마을 내 집에서 눈을 뜬다 (촌장이 문 앞에서 기다린다)
+function showDream() {
+  save.owTutorial = 1; save.lifeIntro = 1; writeSave(save);
+  const lines = ['…꿈속에서 탑 꼭대기의 빛이 심장처럼 고동친다.', '빛이 울릴 때마다 팔에 희미한 문양이 떠올라 타오른다.', '누군가 부르는 소리. 눈을 떴다. 바람결 마을, 내 방이다.'];
+  let i = 0;
+  const show = () => {
+    const last = i >= lines.length - 1;
+    showModal(`<div class="dream"><p class="big">${esc(lines[i])}</p>${last ? '<p class="keys muted">WASD 이동 · G 상호작용 · 집 아래쪽 문으로 나간다</p>' : ''}</div><button data-next>${last ? '일어난다' : '▸'}</button>`, () => {
+      if (!last) { i++; show(); return; }
+      overlay.hidden = true; paused = false; modal = null;
+      const hd = world.objects.find((o) => o.kind === 'door' && o.house === 'home');
+      if (hd) enterHouse('home', hd);
+    });
+    overlay.querySelector('[data-next]').onclick = () => modal();
+  };
+  show();
+}
 function showWorldIntro() {
   save.owTutorial = 1; writeSave(save);
   showModal(`<h2>각인의 탑</h2>
@@ -1323,7 +1354,7 @@ function enterInterior(id, depth = 0, carry = null, co = null) { // co: 파티 �
   world = new World({ build: buildNow(), mode: 'field', zone, zoneId: base.id, seed, depth, map, memory: depth || co ? null : save.zoneMemory[memKeyOf(id)], coop: co ? { role: co.role } : null, story: save.story, codex: save.codex, ...shared() });
   if (co?.role === 'member') { world.enemies = []; world.camps = []; } // 몬스터는 파티가 함께 본다 (상자 · 채집은 각자)
   coRun = co ? { role: co.role, host: co.role === 'host' ? net.id : co.host, party: net.party?.id || 0, key: `d${net.party?.id || 0}${id.slice(0, 10)}${depth}`, zone: id, depth, snapT: 0, flushT: 0, meT: 0, lastSnap: performance.now() } : null;
-  world.mapKnown = id === 'mossCave' && !depth && !!save.story.flags.pinoMap;
+  world.mapKnown = false;
   world.bossRelicTaken = !!(def.relic && save.relicSrc?.[`${def.relic}_boss`]);
   world.codexStart = carry?.codexStart ?? codexPoints(save);
   if (carry) {
@@ -1817,7 +1848,7 @@ function enterZone(id, depth = 0, carry = null) {
   // 지하층은 매번 새로 생성 (기억은 1층만)
   const seed = depth ? (save.zoneSeeds[id] + depth * 104729 + Math.floor(Math.random() * 1e6)) >>> 0 : save.zoneSeeds[id];
   world = new World({ build: buildNow(), mode: 'field', zoneId: id, seed, depth, memory: depth ? null : save.zoneMemory[id], story: save.story, codex: save.codex, ...shared() });
-  world.mapKnown = id === 'cave' && !depth && !!save.story.flags.pinoMap;
+  world.mapKnown = false;
   world.codexStart = carry?.codexStart ?? codexPoints(save);
   if (carry) {
     world.loot = carry.loot; world.discovered = carry.discovered;
@@ -2221,31 +2252,50 @@ function showWaterSpirit() {
 }
 
 // 사람과 이야기: 대사를 한 줄씩 넘기고, 끝나면 물건을 주고받고 사연이 나아간다
-function talkTo(id) {
-  const st = save.story;
-  const talk = id === 'pinoPlaza' ? pinoPlazaTalk() : pinoTalk(st);
+// 말 걸기 (여정을 맡기는 사람 · data/journey.js GIVERS): 맡길 일이 있으면 맡기고, 끝낸 일이면 듣고 보상을 준다
+function talkLines(name, lines, done) {
   let i = 0;
-  const finish = () => {
-    for (const [k, n] of Object.entries(talk.take || {})) st.items[k] = Math.max(0, (st.items[k] || 0) - n);
-    for (const [k, n] of Object.entries(talk.give || {})) st.items[k] = (st.items[k] || 0) + n;
-    if (talk.set) {
-      st.flags[talk.set] = true;
-      if (talk.set === 'pinoMap') { world.mapKnown = true; renderer.knowMap(world); }
-      if (talk.set === 'pinoDone') { const o = world.objects.find((x) => x.kind === 'npc' && x.id === 'pino'); if (o) { o.leaving = 1; o.reusable = false; o.opened = true; } }
-      for (const k of Object.keys(talk.give || {})) renderer.banner = { text: `${josa(STORY_ITEMS[k].name, '을', '를')} 받았다`, sub: STORY_ITEMS[k].desc, t: 3.5, color: STORY_ITEMS[k].color };
-      world.signals.push({ t: 'codex' });
-    }
-    writeSave(save);
-  };
   const show = () => {
-    const last = i >= talk.lines.length - 1;
+    const last = i >= lines.length - 1;
     sfx('select', { vol: 0.4 });
-    showModal(`<div class="talk"><div class="who">지도 제작자 피노</div><p>${esc(talk.lines[i])}</p></div>
-      <button data-next>${last ? (talk.take ? '건네준다' : '알겠다') : '계속 ▸'}</button>`, () => { if (!last) { i++; show(); } else { overlay.hidden = true; paused = false; modal = null; finish(); } });
+    showModal(`<div class="talk"><div class="who">${esc(name)}</div><p>${esc(lines[i])}</p></div>
+      <button data-next>${last ? '알겠다' : '계속 ▸'}</button>`, () => { if (!last) { i++; show(); } else { overlay.hidden = true; paused = false; modal = null; done?.(); } });
     overlay.querySelector('[data-next]').onclick = () => modal();
   };
   show();
 }
+const IDLE_TALK = {
+  chief: ['탑 꼭대기의 빛이 오늘도 고동치는구나.', '세린 그 아이는 일기를 쓰는 버릇이 있었지. 어디에 두었는지는 모르겠다만.', '조급해하지 마라. 탑은 도망가지 않는다.'],
+};
+// 맡기는 사람과 이야기: 처리했으면 true (after: 그 뒤에 할 일 · 예: 상점 창 열기)
+function giverTalk(gid, after) {
+  const J = save?.npcJourney ? journeyNow(save) : null, G = GIVERS[gid];
+  if (!G) { after?.(); return false; }
+  if (J && J.step.giver === gid && (J.stage === 'talk' || J.stage === 'report')) {
+    const step = J.step, report = J.stage === 'report';
+    talkLines(G.name, (report ? step.report : step.talk) || ['…'], () => {
+      save.story.flags ||= {};
+      if (!report) {
+        (save.jAccept ||= {})[step.id] = Date.now();
+        for (const f of (step.autoReport ? step.set : step.set?.slice(0, 1)) || []) save.story.flags[f] = true; // 알리러 오지 않는 여정은 이때 모두
+        if (step.to) save.follow = step.id; // 맡은 일은 바로 따라가기 (화살표)
+        renderer.banner = { text: `여정 · ${step.title}`, sub: step.hint, t: 4, color: '#f6dfae' };
+        sfx('open', { vol: 0.5 });
+      } else {
+        for (const f of step.set || []) save.story.flags[f] = true;
+        claimJourney();
+      }
+      world.signals.push({ t: 'codex' });
+      writeSave(save);
+      after?.();
+    });
+    return true;
+  }
+  if (IDLE_TALK[gid]) { const L = IDLE_TALK[gid]; talkLines(G.name, [L[Math.floor(Math.random() * L.length)]], after); return true; }
+  after?.();
+  return false;
+}
+function talkTo(id) { giverTalk(id); }
 
 function handleSignals() {
   // 먼저 비워 둔다: 창을 띄우고 중간에 돌아가도 같은 신호가 다시 처리되지 않게
@@ -2254,7 +2304,7 @@ function handleSignals() {
     if (s.t === 'hiddenCount') { hiddenCount(s.key); continue; }
     if (s.t === 'trialDone') { trialDone(s); return; }
     if (world.climb && climbUi.signal(s)) { if (s.t === 'climbCleared') continue; return; } // 탑 등반
-    if (s.t === 'openPanel') openPanel(s.panel, true);
+    if (s.t === 'openPanel') { const gid = s.station && Object.keys(GIVERS).find((k) => GIVERS[k].station === s.station); const J = gid && save.npcJourney ? journeyNow(save) : null; if (J && J.step.giver === gid && J.stage !== 'do') { giverTalk(gid, () => openPanel(s.panel, true)); return; } openPanel(s.panel, true); } // 집 안 사람이 맡길 일 · 들을 일이 있으면 먼저 이야기
     if (s.t === 'tower') { showTower(); return; }
     if (s.t === 'raid') { if (!lockedMsg('systems', 'raid:golem')) showRaid(); return; }
     if (s.t === 'raidClear') { raidClear(s); return; }
@@ -2817,6 +2867,10 @@ function worldExtras(w) {
   w.title = titleOf(save); lastTitle = w.title.text;
   w.mountKind = save.mount ? 'raptor' : null;
   if (save.whelp && !w.allies.some((a) => a.whelp)) w.allies.push({ id: w.nextId++, kind: 'spirit', elem: 'fire', whelp: true, x: w.player.x + 12, y: w.player.y - 10, t: 1e9, max: 1e9, atk: w.skillAtk('best') * 0.35, cd: 1, phase: 0, dir: 1 });
+  if (w.zoneId === 'world' && !w.objects.some((o) => o.kind === 'npc' && o.id === 'chief')) { // 촌장: 내 집 문 앞 (여정을 맡긴다 · data/journey.js GIVERS)
+    const hd = w.objects.find((o) => o.kind === 'door' && o.house === 'home');
+    if (hd) { const at = w.openSpot(hd.x + 30, hd.y + 22); w.objects.push({ kind: 'npc', id: 'chief', art: 'chief', x: at.x, y: at.y, label: '촌장과 이야기', reusable: true }); }
+  }
   if (w.zoneId === 'world') {
     const ow = overworldBase(), kd = ow.villages?.knight?.door || (ow.sanctums?.knight && { x: ow.sanctums.knight.x * TILE + 8, y: ow.sanctums.knight.y * TILE + 8 });
     if (kd) {

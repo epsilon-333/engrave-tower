@@ -46,7 +46,6 @@ const PATHS = [
 
 // 길을 막는 것: 통로를 가로지르는 줄 (from: 열 수 있는 쪽)
 const BARRIERS = [
-  { id: 'thornGate', x: 43, y: 35, axis: 'h' },
   { id: 'ironGate', x: 30, y: 80, axis: 'v' },
   { id: 'rubble', x: 23, y: 18, axis: 'h', from: 'north' },
 ];
@@ -168,7 +167,7 @@ export function buildCave1(zone) {
   const regionInfo = ROOMS.map((R, r) => ({ name: R.name, x: R.x, y: R.y, place: true, vista: !!R.vista, types: [...new Set(camps.filter((c) => c.region === r).map((c) => c.type))] }));
   for (const ri of regionInfo) if (!ri.types.length) ri.types = ['bat'];
 
-  // 9) 장식: 지역 장식 + 버섯 숲의 빛버섯 + 세린의 분필 화살표(v: 0 오른쪽 · 1 위 · 2 왼쪽 · 3 아래)
+  // 9) 장식: 지역 장식 + 버섯 숲의 빛버섯 + 분필 화살표(v: 0 오른쪽 · 1 위 · 2 왼쪽 · 3 아래)
   const deco = [];
   for (let i = 0; i < t.length; i++) {
     if (t[i] !== T_FLOOR) continue;
@@ -191,7 +190,5 @@ export function buildCave1(zone) {
     lores: [P(35, 46), P(61, 36)], secrets, deco, regions, regionInfo,
     camp: [P(87, 66), P(94, 25)], merchant: [P(78, 47)], shrines: [P(48, 84)], goblins: [P(53, 76)],
     barriers,
-    journals: [{ id: 'serin1', x: 20, y: 30 }, { id: 'serin2', x: 22, y: 79 }, { id: 'serin3', x: 33, y: 6 }],
-    npcs: [{ id: 'pino', x: 75, y: 63 }],
   };
 }

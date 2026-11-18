@@ -192,11 +192,12 @@ export class World {
         this.objects.push(o);
         if (this.story?.flags[`open:${b.id}`]) this.openBarrier(o, true);
       }
+      if (m.veil?.length) this.veil = new Set(m.veil); // 금 간 벽 너머 숨은 방 (깨면 걷힌다)
       for (const j of m.journals || []) {
         const def = JOURNALS[j.id];
-        this.objects.push({ kind: 'journal', id: j.id, look: def.look, x: j.x * TILE + 8, y: j.y * TILE + 8, label: def.look === 'campfire' ? '꺼진 모닥불 · 일지 읽기' : `${def.title} 읽기`, reusable: true, read: !!this.codex?.journals?.[j.id] });
+        this.objects.push({ kind: 'journal', id: j.id, veiled: !!j.veiled, look: def.look, x: j.x * TILE + 8, y: j.y * TILE + 8, label: def.look === 'campfire' ? '꺼진 모닥불 · 일지 읽기' : `${def.title} 읽기`, reusable: true, read: !!this.codex?.journals?.[j.id] });
       }
-      for (const n of m.npcs || []) if (!(n.id === 'pino' && this.story?.flags.pinoDone)) this.objects.push({ kind: 'npc', id: n.id, art: n.id, x: n.x * TILE + 8, y: n.y * TILE + 8, label: '지도 제작자 피노와 이야기', reusable: true });
+      for (const n of m.npcs || []) this.objects.push({ kind: 'npc', id: n.id, art: n.id, x: n.x * TILE + 8, y: n.y * TILE + 8, label: n.label || '이야기', reusable: true });
       this.memObjCount = this.objects.length; // 기억(열어 본 것)은 이 순번까지의 오브젝트에만
       if (memory) this.applyMemory(memory);
       // 이동 포탈: 기억(오브젝트 순번) 뒤에 붙인다. 깨어났는지는 이야기 기록(story.flags)에 남는다 (마을 포탈은 처음부터 깨어 있다)
@@ -1289,7 +1290,7 @@ export class World {
     if (o.kind === 'node' || o.kind === 'dig') { startAction(this, o); return; }
     if (o.kind === 'gate') { this.signals.push({ t: 'enterZone', zone: o.zone }); return; }
     if (o.kind === 'station' && o.station === 'bed') { this.signals.push({ t: 'sleep' }); return; }
-    if (o.kind === 'station') { this.signals.push({ t: 'openPanel', panel: o.panel }); return; }
+    if (o.kind === 'station') { this.signals.push({ t: 'openPanel', panel: o.panel, station: o.station }); return; }
     if (o.kind === 'camp') {
       // 야영지: 지금까지 모은 잔향과 골드를 맡긴다 (죽어도 잃지 않음) + 처음 한 번 체력 회복
       this.loot.banked = { echoes: { ...this.loot.echoes }, gold: this.loot.gold };
@@ -2038,6 +2039,7 @@ export class World {
       (this.broken ||= new Set()).add(i);
       this.emit({ t: 'crackBreak', x: tx * TILE + 8, y: ty * TILE + 8, tile: i });
       this.emit({ t: 'text', x: tx * TILE + 8, y: ty * TILE - 4, text: '숨겨진 통로!', color: '#ffe080' });
+      if (this.veil?.size) { this.veil.clear(); for (const o of this.objects) if (o.veiled) o.veiled = false; } // 숨은 방이 드러난다
     } else this.crackHp.set(i, hp);
   }
 
