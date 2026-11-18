@@ -964,7 +964,7 @@ export class Renderer {
     const art = MONSTER_ART[e.defId] || { base: 'goblin' };
     if (art.mirrorPlayer) return { ...art, base: (RACE_ART[e.mirrorRace || w.b?.race] || RACE_ART.knight).base };
     if (art.raceLook) return { ...art, base: RACE_LOOK[e.raceLook] || RACE_LOOK.knight };
-    if (art.teacherLook) return { ...art, base: `p_lead_${e.raceLook || w.b?.race || 'knight'}` }; // 숨은 스승: 내 종족 성지 우두머리의 모습 (색 · 크기는 sim/teacher.js)
+    if (art.teacherLook) { const ra = RACE_ART[e.raceLook || w.b?.race] || RACE_ART.knight; return { ...art, base: ra.base, tint: ra.tint }; } // 숨은 스승: 플레이어와 같은 종족 캐릭터 그림 (색 · 크기는 sim/teacher.js)
     return art;
   }
   // 보스 시트: 지금 하는 일에 맞는 자세 그림 하나를 통째로 (조각을 움직이지 않는다)

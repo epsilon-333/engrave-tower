@@ -244,7 +244,7 @@ export const HIDDEN_MONSTERS = {
   bellWraith: { name: '종지기 망령', shape: 'flyer', ghost: true, pal: { a: '#c8a8ff', b: '#6a4a9a', c: '#ffffff', e: '#ffe066' }, hp: 1500, atk: 30, type: 'mag', speed: 60, ai: 'ranged', range: 140, proj: { speed: 150, color: '#c8a8ff', status: 'curse' }, moves: ['spiral', 'retreat'], r: 8, xp: 0, gold: 200, pres: 40, mres: 80, echo: { id: 'goo', rate: 0 }, elite: true },
 };
 export const HIDDEN_ART = {
-  // 스승: 내 종족의 성지 우두머리 모습 (p_lead_<종족>) + 종족 상징색 · 무기 갈래마다 크기와 명암을 조금씩 (sim/teacher.js TEACHER_LOOK)
+  // 스승: 플레이어와 같은 종족 캐릭터 그림 (RACE_ART) + 종족 상징색 외곽선 · 무기 갈래마다 크기와 명암을 조금씩 (sim/teacher.js teacherLook)
   tchSword: { teacherLook: true }, tchHeavy: { teacherLook: true }, tchMagic: { teacherLook: true }, tchScythe: { teacherLook: true },
   tchDagger: { teacherLook: true }, tchBow: { teacherLook: true }, tchFist: { teacherLook: true }, tchSpear: { teacherLook: true },
   myShadow: { raceLook: true, ghost: true, tint: 'brightness(0.35) saturate(0.4) hue-rotate(220deg)' },

@@ -5,6 +5,7 @@
 // · 스승의 공격은 내 최대 체력 비율로 들어온다 (내가 세져도 똑같이 아프다). 내 체력이 다하면 실패 (죽지는 않는다)
 // TeacherMethods 는 World.prototype 에 붙는다 (sim/world.js 끝) — 메서드 안의 this 는 World
 import { TEACHERS } from '../data/hidden.js';
+import { RACE_ART } from '../data/art.js';
 const DT = 1 / 60; // sim/world.js 의 DT 와 같다 (world.js 를 가져오면 서로 물린다)
 
 // 무기 → 스승 갈래
@@ -28,7 +29,7 @@ const RACE_HUE = { wizard: '#b58aff', elf: '#7be38a', knight: '#ffd76a', orc: '#
 const FAM_LOOK = { sword: [1.25, 1.05, 1.2], heavy: [1.38, 0.9, 1.3], magic: [1.2, 1.12, 1.1], scythe: [1.25, 0.8, 1.35], dagger: [1.15, 0.85, 1.25], bow: [1.2, 1.05, 1.15], fist: [1.32, 0.95, 1.25], spear: [1.3, 1.0, 1.2] }; // 크기 · 밝기 · 대비
 export function teacherLook(race, fam) {
   const [scale, br, ct] = FAM_LOOK[fam] || FAM_LOOK.sword;
-  return { scale, outline: RACE_HUE[race] || RACE_HUE.knight, tint: `saturate(1.2) brightness(${(br * 0.92).toFixed(2)}) contrast(${(ct + 0.1).toFixed(2)})` }; // 원래 그림의 색은 그대로(피부색이 바뀌지 않게) · 명암만 진하게 · 종족 색은 외곽선과 불티로
+  return { scale, outline: RACE_HUE[race] || RACE_HUE.knight, tint: `${RACE_ART[race]?.tint ? RACE_ART[race].tint + ' ' : ''}saturate(1.2) brightness(${(br * 0.92).toFixed(2)}) contrast(${(ct + 0.1).toFixed(2)})` }; // 원래 그림의 색은 그대로(피부색이 바뀌지 않게) · 명암만 진하게 · 종족 색은 외곽선과 불티로
 }
 
 export const TR = {
