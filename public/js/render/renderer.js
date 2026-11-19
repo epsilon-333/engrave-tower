@@ -1167,6 +1167,7 @@ export class Renderer {
     this.shadow(e.x, e.y + 3, Math.max(5, img.width * sc * 0.32) * (ip ? Math.max(0.2, ip.shadow) : 1));
     if (art.ghost) g.globalAlpha = 0.65 + 0.15 * Math.sin(w.t * 3 + e.phase);
     if (e.fakeGhost) g.globalAlpha = 0.42 + 0.1 * Math.sin(w.t * 4 + e.id); // 얼굴 없는 자의 가짜 분신: 흐리다
+    if (e.veilPull) g.globalAlpha = Math.max(0.35, 1 - (e.veilPull.t / e.veilPull.dur) * 0.6); // 그림자 손: 장막에 빨려 들며 흐려진다
     if (def.veil && !(e.revealT > 0)) g.globalAlpha = 0.13 + 0.05 * Math.sin(w.t * 5 + e.phase); // 지워진 기록: 맞기 전에는 거의 보이지 않는다
     if (e.cloak && !(e.revealT > 0)) g.globalAlpha = 0.16 + 0.06 * Math.sin(w.t * 4 + e.phase); // 은신 특성: 일렁이는 윤곽만
     const carryLift = e.carried > 0 ? 18 + (w.player.air || 0) : 0;

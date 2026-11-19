@@ -195,7 +195,7 @@ export const HIDDEN_SKILLS = {
     desc: '앞쪽을 크게 베어 낸다. 공격력 280% · 맞은 적마다 체력 3% 회복.',
     do: [{ op: 'cone', range: 72, angle: 2.6, mul: 2.8, healPerHit: 0.03, fx: 'sweep' }] },
   hShadowHands: { name: '그림자 손', role: '제어', cd: 14, scale: 'phys', fx: 'doom', mo: 'cast', hidden: true,
-    desc: '몸에서 그림자가 뻗어 둘레 적 다섯까지 끌고 와 최대 체력의 50%를 깎는다 (한 적에게 공격력 200% ~ 600% 사이 · 보스도 600%까지).',
+    desc: '내 앞에 그림자 장막이 펼쳐져 둘레 적 다섯까지 빨려 들고 최대 체력의 50%를 깎는다 (한 적에게 공격력 200% ~ 600% 사이 · 보스도 600%까지). 살아남은 적은 1.5초 경직.',
     do: [{ op: 'shadowHands', r: 170, n: 5, frac: 0.5, minMul: 2, maxMul: 6 }] },
   hLightRain: { name: '천궁의 화살비', role: '공격', cd: 9, scale: 'phys', fx: 'lightRain', mo: 'aim', aim: 'cluster', hidden: true,
     desc: '하늘로 쏜 화살이 빛줄기가 되어 조준한 곳에 네 번 쏟아진다 (한 번에 공격력 150%).',

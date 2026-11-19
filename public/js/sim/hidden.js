@@ -77,6 +77,11 @@ export const HiddenMethods = {
     if (!H.slaughterSent && H.kills.length >= HID.slaughterN) { H.slaughterSent = true; this.signals.push({ t: 'hiddenFeat', id: 'slaughter' }); }
   },
   hidTick(DT) {
+    for (const e of this.enemies) if (e.veilPull) { // 그림자 손: 장막으로 빨려 든다 (점점 빨라지며) → 도착하면 피해 · 살아남으면 1.5초 경직
+      const P = e.veilPull; P.t += DT; const k = Math.min(1, P.t / P.dur), q = k * k;
+      if (!e.dead) { e.x = P.x0 + (P.x1 - P.x0) * q; e.y = P.y0 + (P.y1 - P.y0) * q; e.kbx = e.kby = 0; }
+      if (k >= 1) { e.veilPull = null; if (!e.dead) { this.damageEnemy(e, P.dmg, 'phys', { src: 'aoe', color: '#8a6aff' }); if (!e.dead) { this.stunE(e, P.stun); this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '경직', color: '#b89aff' }); } } }
+    }
     { const p = this.player; if (p.buffs.hSurge) { p.surgeAcc = (p.surgeAcc || 0) + DT; while (p.surgeAcc >= 0.1) { p.surgeAcc -= 0.1; this.addRes(1); } } else p.surgeAcc = 0; } // 마력 폭주: 0.1초마다 자원 +1
     const H = this.hid, p = this.player; if (!H) return;
     if (this.trial) this.trialTick();
@@ -155,13 +160,12 @@ export const HiddenMethods = {
       case 'shadowHands': {
         const list = this.enemiesNear(p.x, p.y, op.r).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)).slice(0, op.n);
         if (!list.length) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '닿는 적이 없다', color: '#a8b0c0' }); break; }
+        { const a0 = Math.atan2(p.aimY, p.aimX); this.emit({ t: 'shadowVeil', x: p.x + Math.cos(a0) * 36, y: p.y + Math.sin(a0) * 36, r: 16 + 4 * list.length }); } // 그림자 장막: 내 앞에 장막이 펼쳐지고 적이 빨려 든다
         list.forEach((e, i) => {
           let x = e.x, y = e.y; // 내 앞 빈자리로 끌어온다 (막혀 있으면 다른 방향 · 더 가까이)
           for (const [da, dd] of [[0, 18], [0.6, 18], [-0.6, 18], [Math.PI, 16], [1.6, 14], [-1.6, 14], [0, 8]]) { const a = Math.atan2(p.aimY, p.aimX) + (i - (list.length - 1) / 2) * 0.5 + da, cx = p.x + Math.cos(a) * (dd + e.r), cy = p.y + Math.sin(a) * (dd + e.r); if (!this.blocked(cx, cy, e.r)) { x = cx; y = cy; break; } }
-          this.emit({ t: 'skillDash', x1: e.x, y1: e.y, x2: x, y2: y, elem: 'dark' });
-          if (!e.def.boss) { e.x = x; e.y = y; e.kbx = e.kby = 0; }
           const atk = this.skillAtk('phys'), dmg = Math.max(atk * op.minMul, Math.min(atk * op.maxMul, e.maxHp * op.frac)); // 최대 체력의 50% · 공격력 200% ~ 600% 사이
-          this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 16, elem: 'dark', fx: 'doom' }); this.damageEnemy(e, dmg, 'phys', { src: 'aoe', color: '#8a6aff' });
+          e.veilPull = { x0: e.x, y0: e.y, x1: e.def.boss ? e.x : x, y1: e.def.boss ? e.y : y, t: 0, dur: 0.32, dmg, stun: 1.5 }; e.kbx = e.kby = 0; // 0.32초에 걸쳐 빨려 들고 → 도착하면 피해 · 못 죽였으면 1.5초 경직 (hidTick)
         });
         break;
       }

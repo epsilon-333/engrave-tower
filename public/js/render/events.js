@@ -246,6 +246,7 @@ export const EventMethods = {
           if (ev.kind === 'trap' || ev.kind === 'bait') { this.burst(ev.x, ev.y, ev.kind === 'trap' ? '#8a7a5a' : '#c8504a', 8, 40); sfx('step', { vol: 0.5, rate: 0.8 }); break; }
           this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r * 1.1, color: ev.kind === 'slow' ? '#b98aff' : ev.kind === 'frost' ? '#c8f0ff' : ev.kind === 'trap' ? '#9be15d' : ev.kind === 'arrows' ? '#ffe080' : '#ff8a3a', t: 0.4, max: 0.4, w: 3 }); break;
         case 'arrowDrop': this.fx.push({ k: 'arrowDrop', x: ev.x, y: ev.y, t: 0.18, max: 0.18 }); if (Math.random() < 0.3) sfx('shoot', { vol: 0.25, rate: 1.6 }); break;
+        case 'shadowVeil': this.fx.push({ k: 'veil', x: ev.x, y: ev.y, r: ev.r || 30, t: 0.9, max: 0.9, seed: Math.random() * 10 }); sfx('skill', { vol: 0.5, rate: 0.7 }); break; // 그림자 장막 (그림자 손)
         case 'skillDash': {
           const col = ELEM[ev.elem]?.color || '#ffffff';
           this.fx.push({ k: 'trail', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, color: col, t: 0.3, max: 0.3, w: 10 });
