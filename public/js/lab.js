@@ -46,6 +46,7 @@ root.innerHTML = `
 <div class="row"><label>세트</label><select id="preset">${Object.entries(PRESETS).map(([k, v]) => `<option value="${k}">${esc(v[0])}</option>`).join('')}</select></div>
 ${SLOTS.map((sl) => `<div class="row"><label>${SLOT_NAME[sl] || sl}</label><select data-slot="${sl}"><option value="">(비움)</option>${engBySlot(sl).map(([id, e]) => `<option value="${id}">★${e.grade} ${esc(e.name)}</option>`).join('')}</select></div>`).join('')}
 <label class="chk"><input type="checkbox" id="allHidden"> 숨은 각인 24개 전부 얻은 상태</label>
+<div class="muted" id="cur"></div>
 <div class="row"><button class="go" data-a="build">이 캐릭터로 마을에 서기</button><button data-a="home">마을로</button></div>
 <div class="muted">각인은 모두 5개씩 가지고 있어서, 게임 안 공명 제단에서도 바꿔 끼울 수 있어요.</div>
 
@@ -77,11 +78,17 @@ const selVal = (id) => $('#' + id).value;
 const fillSlots = (m) => { for (const el of root.querySelectorAll('[data-slot]')) el.value = m[el.dataset.slot] || ''; };
 $('#preset').onchange = () => { const k = selVal('preset'); fillSlots(k === 'hidden' ? hiddenSlots() : PRESETS[k][1]); if (k === 'hidden') $('#allHidden').checked = true; };
 const cfg = () => ({ race: selVal('race'), level: +selVal('level'), weapon: selVal('weapon'), off: selVal('off') || null, hidden: $('#allHidden').checked, slots: Object.fromEntries([...root.querySelectorAll('[data-slot]')].map((el) => [el.dataset.slot, el.value])) });
-// 캐릭터가 아직 없으면 지금 고른 설정으로 먼저 만든다 (「마을에 서기」를 안 눌러도 장면 버튼이 바로 된다)
-const needSave = () => { if (!lab()?.save) lab().build(cfg()); return true; };
+// 장면 버튼을 누를 때: 캐릭터가 없거나 위에서 고른 설정(종족 · 레벨 · 무기 · 각인)이 지금 캐릭터와 다르면 새로 만든 뒤 연다
+let built = null;
+const status = () => { const el = $('#cur'); if (!el) return; const c = built; el.textContent = c ? `지금 캐릭터: ${RACES[c.race]?.name || c.race} · Lv ${c.level} · ${ITEMS[c.weapon]?.name || '종족 기본 무기'}` : '아직 캐릭터가 없어요 (장면 버튼을 누르면 위 설정으로 만들어요)'; };
+const needSave = () => {
+  const c = cfg();
+  if (!lab()?.save || !built || JSON.stringify(c) !== JSON.stringify(built)) { lab().build(c); built = JSON.parse(JSON.stringify(c)); status(); }
+  return true;
+};
 const A = {
   min: () => { root.classList.toggle('min'); $('[data-a=min]').textContent = root.classList.contains('min') ? '체험실 열기' : '접기'; },
-  build: () => { lab().build(cfg()); toast('마을에 섰어요'); },
+  build: () => { const c = cfg(); lab().build(c); built = JSON.parse(JSON.stringify(c)); status(); toast('마을에 섰어요'); },
   home: () => { if (needSave()) lab().home(); },
   trial: (v) => { if (needSave()) { lab().trial(v); toast('스승의 방'); } },
   tower: (v) => { if (!needSave()) return; const f = +(v || selVal('floor')); lab().tower(f); toast(`탑 ${f}층`); },
@@ -104,3 +111,5 @@ setInterval(() => {
   if (cheat.res) p.res = 100;
   if (cheat.cd) p.cds = {};
 }, 100);
+
+status();
