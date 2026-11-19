@@ -309,8 +309,13 @@ export const HudMethods = {
       this.text(boss.champion || boss.def.name, W / 2, by2 - 9 * u, u, '#e8907c', 'center', true, true);
       this.panel(bx2, by2, bw2, 8 * u);
       g.fillStyle = '#3a1016'; g.fillRect(bx2 + u, by2 + u, bw2 - 2 * u, 6 * u);
-      g.fillStyle = '#e8483a'; g.fillRect(bx2 + u, by2 + u, (bw2 - 2 * u) * boss.hp / boss.maxHp, 6 * u);
-      { // 회복: 되찾은 몫은 밝은 초록으로 · 회복 의식 중에는 회복될 몫을 깜빡이고, 끊으려면 얼마나 더 때려야 하는지
+      if (boss.trialOf) { // 스승: 체력 막대를 다섯 겹으로 (한 겹이 한 대에 크게 줄어 보이게) · 오른쪽에 남은 겹 수
+        const LN = 5, LC = ['#e8483a', '#e8903a', '#d8c84a', '#5ac85a', '#4a9ae8'], per = boss.maxHp / LN, cur = Math.max(1, Math.ceil(boss.hp / per - 1e-9)), fr = Math.max(0, (boss.hp - (cur - 1) * per) / per), bw = bw2 - 2 * u;
+        if (cur > 1) { g.fillStyle = LC[(cur - 2) % LN]; g.fillRect(bx2 + u, by2 + u, bw, 6 * u); }
+        g.fillStyle = LC[(cur - 1) % LN]; g.fillRect(bx2 + u, by2 + u, bw * fr, 6 * u);
+        this.text(`×${cur}`, bx2 + bw2 + 4 * u, by2 + 4 * u, u, LC[(cur - 1) % LN], 'left', true, true);
+      } else { g.fillStyle = '#e8483a'; g.fillRect(bx2 + u, by2 + u, (bw2 - 2 * u) * boss.hp / boss.maxHp, 6 * u); }
+      if (!boss.trialOf) { // 회복: 되찾은 몫은 밝은 초록으로 · 회복 의식 중에는 회복될 몫을 깜빡이고, 끊으려면 얼마나 더 때려야 하는지
         const bw = bw2 - 2 * u, hf = this.healFx.get(boss.id), k0 = boss.hp / boss.maxHp;
         if (hf) { g.globalAlpha = Math.min(1, hf.t / hf.max * 1.5); g.fillStyle = '#9ff0a8'; g.fillRect(bx2 + u + bw * Math.max(0, hf.from), by2 + u, bw * Math.max(0, Math.min(k0, hf.to) - hf.from), 6 * u); g.globalAlpha = 1; }
         if (boss.mv?.k === 'channel') {

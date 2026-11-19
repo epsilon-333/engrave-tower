@@ -6,6 +6,7 @@
 // TeacherMethods 는 World.prototype 에 붙는다 (sim/world.js 끝) — 메서드 안의 this 는 World
 import { WCOMBO, comboFam } from '../data/wcombo.js';
 import { computeBuild } from './build.js';
+import { RACES } from '../data/races.js';
 import { TEACHERS } from '../data/hidden.js';
 import { SIG_SKILL } from './teacherskills.js';
 import { RACE_ART, weaponArt } from '../data/art.js';
@@ -37,7 +38,7 @@ export function teacherLook(race, fam) {
 }
 
 export const TR = {
-  hpMul: 25,      // 스승 체력 = 내 공격력 × 25 (제대로 든 평타 약 스물다섯 번)
+  hpMul: 50,      // 스승 체력 = 내 레벨 기준 공격력 × 50 (평타 약 쉰 번 · 체력 막대는 다섯 겹)
   okCap: 0.04,    // 무기를 이해한 공격: 한 대에 스승 체력의 4%까지
   badCap: 0.004,  // 그 밖의 공격: 0.4%까지
   hit: 0.08,      // 스승의 보통 공격: 내 최대 체력의 8%
@@ -97,7 +98,8 @@ const REF = new Map();
 export function teacherRef(lv = 40) {
   lv = Math.max(1, Math.min(100, Math.round(lv || 40))); if (REF.has(lv)) return REF.get(lv);
   const pts = Math.floor((lv - 1) * 1.75), b = computeBuild({ race: 'orc', level: lv, alloc: { str: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings: {}, gear: {} }), d = b.derived;
-  const r = { atk: Math.max(d.physAtk, d.dexAtk, d.magAtk), hp: d.maxHp }; REF.set(lv, r); return r;
+  let hs = 0, hn = 0; for (const race of Object.keys(RACES)) { hs += computeBuild({ race, level: lv, alloc: { str: pts }, engravings: {}, gear: {} }).derived.maxHp; hn++; } // 맞는 쪽 기준 체력: 종족 평균 · 체력에 하나도 안 찍은 몸 (보통 공격 열 대쯤에 쓰러진다)
+  const r = { atk: Math.max(d.physAtk, d.dexAtk, d.magAtk), hp: hs / hn }; REF.set(lv, r); return r;
 }
 export const teacherLvK = (lv = 40) => 1 + Math.max(0, Math.min(60, (lv || 40) - 40)) / 60;
 export const teacherStatsAt = (fam, lv = 40) => { const B = TEACHER_STATS[fam] || TEACHER_STATS.sword, up = Math.max(0, Math.min(60, (lv || 40) - 40)) * 0.6; return Object.fromEntries(Object.entries(B).map(([k, v]) => [k, Math.round(v + up)])); };
@@ -380,7 +382,7 @@ export const TeacherMethods = {
     if (this.blocked(x, y, 6)) { x = this.trial.cx; y = this.trial.cy; }
     this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: x, y2: y }); e.x = x; e.y = y;
   },
-  trialDmg(k) { const Tr = this.trial, cs = Tr.pCurse && Tr.pCurse.until > this.t ? Tr.pCurse.n : 0, S = Tr.st || {}, crit = this.rng.chance((S.sen || 0) / 400); if (crit) this.emit({ t: 'text', x: this.player.x, y: this.player.y - 30, text: '치명타', color: '#ff7a5a' }); return teacherRef(this.b.level).hp * k * (1 + (Math.max(S.str || 50, S.mag || 50) - 60) / 250) * (crit ? 1.5 : 1) * 1.2 * Math.sqrt(Tr.lvK || 1) * (Tr.lichMul || 1) * (Tr.powT > 0 ? 1.3 : 1) * (1 + 0.02 * cs); }, // 내 최대 체력 비율 (리치가 일어난 뒤 2배)
+  trialDmg(k) { const Tr = this.trial, cs = Tr.pCurse && Tr.pCurse.until > this.t ? Tr.pCurse.n : 0, S = Tr.st || {}, crit = this.rng.chance((S.sen || 0) / 400); if (crit) this.emit({ t: 'text', x: this.player.x, y: this.player.y - 30, text: '치명타', color: '#ff7a5a' }); return teacherRef(this.b.level).hp * k * (1 + (Math.max(S.str || 50, S.mag || 50) - 60) / 250) * (crit ? 1.5 : 1) * 1.2 * (Tr.lichMul || 1) * (Tr.powT > 0 ? 1.3 : 1) * (1 + 0.02 * cs); }, // 내 최대 체력 비율 (리치가 일어난 뒤 2배)
   // 예고 원 뒤 한 대
   trialStrike(e, x, y, wind = 0.7, r = 34, k = TR.hit, fx = 'quake') {
     this.emit({ t: 'windup', id: e.id }); this.emit({ t: 'telegraphCircle', x, y, r, dur: wind });
