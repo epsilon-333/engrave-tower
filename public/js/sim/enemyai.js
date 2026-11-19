@@ -19,6 +19,8 @@ export const EnemyAiMethods = {
     for (const e of this.enemies) {
       if (e.dead) continue;
       if (e.puppet) { this.updatePuppet(e); continue; }
+      if (e.hitFreeze > 0) { e.hitFreeze -= DT; e.hitFlash = Math.max(0, e.hitFlash - DT); continue; } // 히트스톱: 맞은 몬스터만 잠깐 굳는다 (그림 쪽 addStop이 정한다)
+      if (!host && !e.def.boss && e.state !== 'chase' && (Math.abs(e.x - P.x) > 520 || Math.abs(e.y - P.y) > 400)) { e.moving = false; continue; } // 혼자 하기: 멀리(화면 밖) 있는 몬스터는 멈춰 둔다 (렉)
       const p = this.coPick(e); // 이 적이 노리는 대상: 처음 어그로를 끈 사람 · 동료 · 소환체
       this.coTgt = p === P ? null : p;
       const def = e.def;

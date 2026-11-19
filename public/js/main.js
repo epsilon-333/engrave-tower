@@ -9,7 +9,7 @@ import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
 import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
 import { padState, applyPad, padMenu } from './gamepad.js';
-import { newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, grantRaceSkills, grantRaceMats, raceSkills, classEngravingFor, setStaleHook, onLocalSave, isStale } from './save.js';
+import { LAB, newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, grantRaceSkills, grantRaceMats, raceSkills, classEngravingFor, setStaleHook, onLocalSave, isStale } from './save.js';
 import { JOURNALS, STORY_ITEMS, newStory } from './data/story.js';
 import { codexPoints } from './data/codex.js';
 import { TILE, generateField } from './sim/mapgen.js';
@@ -55,10 +55,10 @@ import { econOf, econTick, planCaravan, deliver, caravanLost, taxArrived, taxLos
 import { ENG_STEP, ENG_MAX } from './sim/build.js';
 import { createClimb } from './ui/climb.js';
 import { grantHidden, setHiddenSource } from './sim/hidden.js';
-import { HIDDEN_BY_ID, TEACHERS, HIDDEN_COUNTS } from './data/hidden.js';
+import { HIDDEN_BY_ID, TEACHERS, HIDDEN_COUNTS, HIDDEN } from './data/hidden.js';
 import { CLASS_STATS } from './data/statscale.js';
 import { JOURNEY, journeyNow, rewardText as journeyReward, GIVERS } from './data/journey.js';
-import { oathScore, newClimbSave } from './data/climb.js';
+import { oathScore, newClimbSave, newRun } from './data/climb.js';
 import { createTutorial, tutFlags } from './ui/tutorial.js';
 import { lockText, SYSTEM_NAME, makeLocks, openedBetween, towerBest, isOpen } from './data/unlocks.js';
 // 디버그 핸들: 내 컴퓨터(localhost)나 주소에 ?debug 가 있을 때만 (배포판에서 콘솔 치트가 쉽지 않게)
@@ -68,7 +68,7 @@ function lockedMsg(kind, id) {
   renderer.banner = { text: `${SYSTEM_NAME[id] || id} · 아직 잠겨 있다`, sub: t, t: 2.6, color: '#c8b0ff' }; sfx('error', { vol: 0.4 });
   return true;
 }
-const DEBUG = /^(localhost|127\.|192\.168\.|\[::1\])/.test(location.hostname) || new URLSearchParams(location.search).has('debug');
+const DEBUG = /^(localhost|127\.|192\.168\.|\[::1\])/.test(location.hostname) || new URLSearchParams(location.search).has('debug') || globalThis.__LAB === true;
 
 let save = loadSave();
 const titleEl = document.getElementById('title');
@@ -875,7 +875,7 @@ function hiddenCount(key) {
 function trialDone(s) {
   const T = TEACHERS[s.fam];
   if (s.ok && T) { awardHidden(T.id); if (save.hidden?.teacher === s.fam) delete save.hidden.teacher; writeSave(save); }
-  showModal(`<h2>${esc(T?.name || '스승')}의 시련</h2><p>${s.ok ? `시련을 넘었다. 공명 제단에서 「${esc(HIDDEN_BY_ID[T.id].name)}」을 새길 수 있다.` : '쓰러졌다. 스승은 탑 문 옆 방에서 계속 기다린다.'}</p><p class="muted">${esc(T?.rule || '')}</p><div class="actions"><button data-close>탑 문 앞으로</button></div>`, () => { overlay.hidden = true; paused = false; modal = null; returnTo = null; enterWorld('tower'); });
+  showModal(`<h2>${esc(T?.name || '스승')}의 시련</h2><p>${s.ok ? `시련을 넘었다. 공명 제단에서 「${esc(HIDDEN_BY_ID[T.id].name)}」을 새길 수 있다.` : '쓰러졌다. 스승은 탑 문 옆 방에서 계속 기다린다.'}</p><div class="actions"><button data-close>탑 문 앞으로</button></div>`, () => { overlay.hidden = true; paused = false; modal = null; returnTo = null; enterWorld('tower'); });
 }
 
 function resetGame() { clearSave(); cloudDelete(); save = null; world = null; showRaceSelect(); }
@@ -1869,6 +1869,7 @@ function enterZone(id, depth = 0, carry = null) {
 // ───── 연습 모드: 모든 클래스의 모든 스킬을 자원·체력 걱정 없이 써 본다 (저장 안 됨) ─────
 const practice = { cls: null, skills: null, infRes: true, noCd: false, arena: 'weak', refill: true };
 function practiceBuild() {
+  if (practice.useSave) return buildNow(); // 체험실: 고른 캐릭터 그대로 연습장에 선다
   const c = CLASSES[practice.cls];
   const sp = save.spirits?.main ? { id: save.spirits.main, star: save.spirits.owned[save.spirits.main]?.star || 1 } : { id: 'fire2', star: 1 }; // 연습장: 계약한 정령이 없으면 화염 여우를 빌려 준다
   return computeBuild({ race: c.race, cls: practice.cls, level: 20, allSkills: true, alloc: { str: 18, mag: 18, agi: 10, vit: 10 }, engravings: {}, gear: { weapon: c.weapons[1], off: c.off }, skills: practice.skills, spirit: sp });
@@ -3824,6 +3825,43 @@ function tick(ts) {
 
 if (DEBUG) window.__game = { get world() { return world; }, get paused() { return paused; }, get coRun() { return coRun; }, get modal() { return !!modal; }, renderer, hub, dbg: { climb: climbUi, spawnHappening: () => spawnHappening(), enterIsland: (id) => enterIsland(id), save: () => save, talk: (id) => sanctTalk(id), talkId: (id) => arcTalk(id) || portTalk(id), capExec } }; // 디버그용
 
+// ───── 체험실(lab.html?lab): 저장은 따로, 서버는 쓰지 않는다. 캐릭터를 꾸미고 장면(스승 · 보스 · 층 · 지역 · 몬스터)을 바로 연다 ─────
+if (LAB) window.__lab = {
+  get save() { return save; },
+  // 종족 · 레벨 · 무기 · 각인 칸을 정해 새 캐릭터로 마을에 선다
+  build(cfg) {
+    const race = cfg.race, cs = RACE_CLASSES(race), c0 = CLASSES[cs[0]];
+    save = newSave(race); save.cls = cs[0]; save.style = c0.style; save.journeySkills = 1; save.gated = 0; save.gold = 99999;
+    save.level = cfg.level; save.points = 0; save.alloc = {};
+    const keys = ['str', 'mag', 'agi', 'vit', 'sen', 'spi', 'pres'], pts = pointsAt(cfg.level);
+    for (const k of keys) save.alloc[k] = Math.floor(pts / keys.length);
+    save.items = [...new Set(['rustySword', 'bareHands', ...cs.map((id) => CLASSES[id].weapons[0]), cfg.weapon].filter(Boolean))];
+    save.gear = { weapon: cfg.weapon || c0.weapons[0], ...(cfg.off ? { off: cfg.off } : c0.off ? { off: c0.off } : {}) };
+    if (!save.items.includes(save.gear.off) && save.gear.off) save.items.push(save.gear.off);
+    save.owned = {}; for (const id of Object.keys(ENGRAVINGS)) save.owned[id] = 5;
+    if (cfg.hidden) for (const h of HIDDEN) grantHidden(save, h.id);
+    save.slots = {}; for (const [sl, id] of Object.entries(cfg.slots || {})) if (id && ENGRAVINGS[id]) save.slots[sl] = id;
+    save.owTutorial = 1; save.lifeIntro = 1;
+    refreshQuests(save); writeSave(save); titleEl.hidden = true; closePanel?.(); enterWorld(null, false);
+  },
+  dream(race) { startAs(race); }, // 새 게임: 꿈 → 내 집 → 촌장 (처음 시작하는 사람이 보는 그대로)
+  trial(fam) { if (!save) return; climbUi.startTrial(fam); },
+  tower(f) { // f층 앞에 바로 선다
+    if (!save) return;
+    save.run = newRun({ startF: 1, seed: (Math.random() * 1e9) >>> 0, oath: (save.climb || {}).oath });
+    save.run.f = f - 1; climbUi.enterFloor('fight');
+  },
+  zone(id) { if (!save) return; enterZone(id); },
+  practice() { if (!save) return; practice.useSave = true; enterPractice(); },
+  home() { if (!save) return; enterWorld(null, false); },
+  hidden(id) { if (!save) return false; const ok = grantHidden(save, id); writeSave(save); return ok; },
+  spawn(id, n = 1) { // 지금 세계에 몬스터를 부른다
+    if (!world) return;
+    const p = world.player;
+    for (let i = 0; i < n; i++) { const a = (i / Math.max(1, n)) * Math.PI * 2, e = world.makeEnemy(id, p.x + Math.cos(a) * 70, p.y + Math.sin(a) * 70, { noAffix: true }); if (e) { e.state = 'chase'; world.enemies.push(e); } }
+  },
+};
+
 // 로그인·저장 상태 표시
 const chip = document.createElement('div');
 chip.id = 'cloudChip';
@@ -3860,6 +3898,6 @@ if (isTouch()) {
   setSaveHook(cloudSave);
   if (save && remote !== save) cloudSave(save);
   setupSaveGuards(startStamp);
-  showTitle(); // 게임을 켜면 타이틀부터 (로그인은 원할 때만)
+  if (LAB) { titleEl.hidden = true; gameEl.hidden = true; } else showTitle(); // 게임을 켜면 타이틀부터 (로그인은 원할 때만) — 체험실(lab.html)은 자기 화면에서 시작
   requestAnimationFrame(frame);
 })();

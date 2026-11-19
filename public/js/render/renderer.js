@@ -1,6 +1,7 @@
 // 캔버스 렌더러: world 상태를 읽어서 그리기만 한다 (게임 로직 없음)
 // 화면 크기에 맞춰 정수 배율(S)로 도트를 키우고, 글씨는 실제 해상도로 따로 그린다.
 import { hexA } from './color.js';
+import { WCOMBO } from '../data/wcombo.js';
 export { hexA };
 import { opts } from '../settings.js';
 import { TILE, T_LIQUID, T_WALL, T_CRACK, T_BUILD, T_DEEP } from '../sim/mapgen.js';
@@ -91,6 +92,7 @@ function bendDragon(src, tilt, R, key) {
 const greatSpinSpeed = (k) => (k < 0.3 ? 0 : k < 0.72 ? Math.pow((k - 0.3) / 0.42, 1.2) : Math.pow(1 - (k - 0.72) / 0.28, 3));
 // 무기를 쥔 손 색 (종족별)
 // 종족별 입 높이 (발 기준, 바람총을 대는 자리)
+const GUARD_Y = { wizard: -2, assassin: -3, orc: -2, dino: -3, undead: -3 }; // 복서 가드의 주먹 높이 (가슴 앞 · 키가 작은 종족은 낮게 — 얼굴을 가리지 않게)
 const MOUTH_Y = { assassin: -6, dragon: -9, knight: -10, wizard: -9, elf: -9, orc: -8, dino: -9, undead: -9, golem: -12 };
 const HAND_COLOR = { knight: '#c8d8e8', wizard: '#d8a878', elf: '#f0c8a0', orc: '#6a9a4a', dino: '#5aa84a', undead: '#b8b0c8', assassin: '#3a3040', golem: '#8a8478', dragon: '#e8b48a' };
 // 클래스별 마법 색 (속성이 없는 마법)
@@ -173,6 +175,30 @@ import { HudMethods } from './hud.js';
 import { FxMethods } from './fxdraw.js';
 import { EventMethods } from './events.js';
 import { AtmosMethods } from './atmosphere.js';
+const DILATE = new WeakMap(), NOBUFF = Object.freeze({});
+const NOCOMBO = new Set(['fist', 'great', 'whip', 'bow', 'crossbow', 'orb', 'tome', 'staff', 'tube']);
+const PI = Math.PI;
+// 콤보 동작의 두 자세: A = 다 들어 올린(준비) 자세 · B = 다 휘두른 자세 (data/wcombo.js의 m)
+const CPOSE = {
+  down: { heavy: true, hold: 0.45, A: { a: -2.6, hx: 0, hy: -14, lean: -2.2, sy: 1.05, f: -1, behind: true }, B: { a: 1.45, hx: 7, hy: -3, lean: 3.6, sy: 0.9, f: 3 } },
+  side: { heavy: true, A: { th: PI - 0.4, r: 4, hy: -7, lean: -2.6, f: -1 }, B: { th: -1.3, r: 6, hy: -7, lean: 3, f: 2 } },
+  up: { heavy: true, hold: 0.4, A: { a: 1.5, hx: -3, hy: -1, lean: -1.6, sy: 0.88, f: -1, behind: true }, B: { a: -2.1, hx: 5, hy: -14, lean: -1, sy: 1.06, f: 2 } },
+  diag: { A: { a: -2.3, hx: -1, hy: -12, lean: -1.8, f: -1, behind: true }, B: { a: 1.3, hx: 7, hy: -4, lean: 3, f: 3 } },
+  rdiag: { A: { a: 1.4, hx: -1, hy: -3, lean: -1.2, sy: 0.95 }, B: { a: -1.9, hx: 6, hy: -12, lean: 2, f: 2 } },
+  slash: { A: { a: -2.2, hx: 0, hy: -11, lean: -1.2, behind: true }, B: { a: 1.2, hx: 6, hy: -5, lean: 2.2, f: 2 } },
+  rslash: { A: { a: 1.3, hx: 0, hy: -4, lean: -0.8 }, B: { a: -1.9, hx: 6, hy: -11, lean: 1.8, f: 1.5 } },
+  thrust: { A: { a: 'aim', hx: -6, hy: -7, lean: -2, f: -2 }, B: { a: 'aim', hx: 15, hy: -7, lean: 3.5, f: 4 } },
+  lunge: { hold: 0.3, A: { a: 'aim', hx: -9, hy: -7, lean: -2.8, sy: 0.93, f: -3 }, B: { a: 'aim', hx: 19, hy: -7, lean: 4.2, f: 6 } },
+  stab: { hold: 0.2, A: { a: 'aim', hx: -2, hy: -6, lean: -1, f: -1 }, B: { a: 'aim', hx: 11, hy: -6, lean: 2.5, f: 3 } },
+  reap: { A: { th: PI + 0.6, r: 3, hy: -10, lean: -2.2, f: -1 }, B: { th: -0.6, r: 7, hy: -6, lean: 3, f: 2 } },
+  rreap: { A: { th: -1.2, r: 4, hy: -8, lean: -1.5 }, B: { th: PI * 0.7, r: 6, hy: -6, lean: 2.5, f: 1 } },
+  whirl: { A: { th: PI, r: 2, hy: -12, lean: -1.2, sy: 1.04 }, B: { th: PI - 4 * PI, r: 6, hy: -11, lean: 2, f: 1 } },
+  chop: { heavy: true, hold: 0.45, A: { a: -2.5, hx: -2, hy: -13, lean: -1.6, f: -1, behind: true }, B: { a: 1.2, hx: 7, hy: -5, lean: 3, sy: 0.94, f: 2.5 } },
+  hack: { hold: 0.4, A: { a: -0.6, hx: -4, hy: -9, lean: -2, behind: true }, B: { a: 1.5, hx: 6, hy: -3, lean: 2.5, f: 2 } },
+  aside: { heavy: true, A: { th: PI - 0.5, r: 3, hy: -8, lean: -2.4, f: -1 }, B: { th: -1.2, r: 7, hy: -7, lean: 3, f: 2 } },
+  sweep: { A: { th: PI - 0.3, r: 5, hy: -7, lean: -2.2, f: -1 }, B: { th: -1.2, r: 7, hy: -7, lean: 3, f: 2 } },
+};
+const TEXT_CACHE = new Map();
 export class Renderer {
   constructor(canvas) {
     this.c = canvas;
@@ -195,7 +221,7 @@ export class Renderer {
   }
 
   resize(cssW, cssH, dpr) {
-    const k = Math.min(dpr, Math.sqrt((1920 * 1080) / Math.max(1, cssW * cssH))); // 화면 그림은 1920×1080칸까지 (고해상도 · 전체 화면에서 큰 판을 매 프레임 칠하느라 느렸다 · 브라우저가 늘려 보여 준다)
+    const cap = (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 1100 * 620 : 1920 * 1080, k = Math.min(dpr, Math.sqrt(cap / Math.max(1, cssW * cssH))); // 휴대폰은 화면 그림을 더 작게 (도트라 흐려지지 않는다 · 렉) // 화면 그림은 1920×1080칸까지 (고해상도 · 전체 화면에서 큰 판을 매 프레임 칠하느라 느렸다 · 브라우저가 늘려 보여 준다)
     const W = Math.round(cssW * k), H = Math.round(cssH * k);
     this.c.width = W; this.c.height = H;
     this.baseS = Math.max(2, Math.round(Math.min(W, H) / 270)); // 짧은 변 기준: 어느 화면비든 짧은 쪽으로 약 270칸이 보인다 (긴 변 기준이면 휴대폰 세로 · 21:9에서 시야가 좁아졌다)
@@ -363,7 +389,7 @@ export class Renderer {
     if (ev.ult) {
       this.ultName = { text: ev.name, color: col === '#ffffff' ? '#ffd27a' : col, t: 1.4, max: 1.4 };
       this.flash = { color: '255,255,255', t: 0.18, max: 0.18 };
-      this.hitstop = Math.max(this.hitstop, 0.12); this.shake = Math.max(this.shake, 6);
+      this.addStop(0.12); this.shake = Math.max(this.shake, 6);
       this.rimFlash = { color: col === '#ffffff' ? '#ffd27a' : col, t: 0.8, max: 0.8 };
       this.shockwave(ev.x, ev.y, 90, col === '#ffffff' ? '#ffd27a' : col, 48);
       this.burst(ev.x, ev.y - 6, col, 40, 200);
@@ -371,7 +397,7 @@ export class Renderer {
       return;
     }
     if (ev.fx === 'charge') this.fx.push({ k: 'chargeGlow', t: 1.0, max: 1.0 });
-    if (ev.charge >= 3) { this.flash = { color: '255,240,190', t: 0.12, max: 0.12 }; this.shake = Math.max(this.shake, 5); this.hitstop = Math.max(this.hitstop, 0.06); }
+    if (ev.charge >= 3) { this.flash = { color: '255,240,190', t: 0.12, max: 0.12 }; this.shake = Math.max(this.shake, 5); this.addStop(0.06); }
     if (ev.elem && ev.elem !== 'phys') { const c2 = ELEM[ev.elem]?.color || col; this.fx.push({ k: 'glow', x: ev.x + Math.cos(ev.ang) * 14, y: ev.y - 10 + Math.sin(ev.ang) * 10, r: 26, color: c2, t: 0.25, max: 0.25 }); }
     if (ev.fx === 'wind') { for (let i = 0; i < 24; i++) { const a = Math.random() * Math.PI * 2; this.parts.push({ x: ev.x + Math.cos(a) * 20, y: ev.y - 6 + Math.sin(a) * 12, vx: -Math.sin(a) * 90, vy: Math.cos(a) * 50, t: 0.6, max: 0.6, color: '#d8ffe0', g: 0 }); } sfx('dash', { vol: 0.5, rate: 1.3 }); }
     if (ev.fx === 'roar') { this.shockwave(ev.x, ev.y, 70, '#ffcf8a', 36); this.shake = 4; sfx('hitHeavy', { vol: 0.8, rate: 0.55 }); }
@@ -384,7 +410,7 @@ export class Renderer {
     const r = ev.rar, rc = ['#c8c0d0', '#7ac4ff', '#c890ff', '#ffc84a', '#ff5a7a'][r], R = Math.max(24, ev.r || 30);
     this.anims.add(RARITY_ANIM[r], { x: ev.x, y: ev.y, r: R * (0.8 + 0.12 * r), col: rc });
     if (r >= 3) this.shake = Math.max(this.shake, r);
-    if (r >= 4) this.hitstop = Math.max(this.hitstop, 0.05);
+    if (r >= 4) this.addStop(0.05);
   }
 
   // 범위 스킬 연출 (맞는 쪽)
@@ -408,7 +434,7 @@ export class Renderer {
     // 등급이 높을수록: 표식이 커지고(+12%/등급) · 영웅부터 한 번 더 · 전설부터 등급 색 충격파와 불티 · 신화는 화면이 번쩍이고 테두리가 물든다
     if (rar >= 2) setTimeout(() => { if (this.world) this.weaponSig({ ...ev, rar: 0, r: (ev.r || 30) * 0.8 }); }, 140);
     if (rar >= 3) { const rc = ['#c8c0d0', '#7ac4ff', '#c890ff', '#ffc84a', '#ff5a7a'][rar]; this.shockwave(x, y, r * 1.1, rc, 36); this.burst(x, y - 6, rc, 24, 170); }
-    if (rar >= 4) { this.flash = { color: '255,220,230', t: 0.16, max: 0.16 }; this.rimFlash = { color: '#ff5a7a', t: 0.5, max: 0.5 }; this.hitstop = Math.max(this.hitstop, 0.06); this.shockwave(x, y, r * 1.5, '#ffffff', 44); }
+    if (rar >= 4) { this.flash = { color: '255,220,230', t: 0.16, max: 0.16 }; this.rimFlash = { color: '#ff5a7a', t: 0.5, max: 0.5 }; this.addStop(0.06); this.shockwave(x, y, r * 1.5, '#ffffff', 44); }
     switch (c) {
       case 'blade': A.add('bladeArc', { x, y, ang: -0.7, range: r, angle: 2.4, col }); A.add('bladeArc', { x, y, ang: Math.PI + 0.7, range: r, angle: 2.4, col, max: 0.34 }); break;
       case 'great': A.add('bladeArc', { x, y, ang: Math.PI / 2, range: r * 1.15, angle: 3.4, col }); break;
@@ -428,7 +454,7 @@ export class Renderer {
   // 거대 화염구 착탄: 섬광 → 솟구치는 불길 · 사방으로 튀는 불똥 → 날아가 떨어진 돌 조각이 달아올랐다 식는다 → 연기 · 그을린 땅이 사라진다
   fireballBoom(x, y, r) {
     this.flash = { color: '255,200,140', t: 0.3, max: 0.3 };
-    this.shake = Math.max(this.shake, 14); this.hitstop = Math.max(this.hitstop, 0.12);
+    this.shake = Math.max(this.shake, 14); this.addStop(0.12);
     this.fx.push({ k: 'glow', x, y: y - 10, r: r * 1.6, color: '#ffb040', t: 0.6, max: 0.6 });
     this.fx.push({ k: 'scorch', x, y, r: r * 0.75, t: 4.5, max: 4.5 });
     this.fx.push({ k: 'fireColumn', x, y, r, t: 0.55, max: 0.55 });
@@ -472,7 +498,7 @@ export class Renderer {
   juice(x, y, col, tier) {
     const big = tier === 'ult' || tier === 'ultCast';
     if (tier === 'cast' || tier === 'pop') return;
-    this.shake = Math.max(this.shake, big ? 9 : 3); this.hitstop = Math.max(this.hitstop, big ? 0.1 : 0.035);
+    this.shake = Math.max(this.shake, big ? 9 : 3); this.addStop(big ? 0.1 : 0.035);
   }
   hitPop(x, y, col, lv) { // 맞는 자리: 평타 · 보통 스킬은 작은 타격 불꽃(절반 크기), 치명타는 큰 불꽃
     if (lv === 2) { this.anims.px.add('impacts/hit-spark', x, y + 4, { scale: 0.95, max: 0.5, floor: 0, rot: (Math.random() - 0.5) * 0.6 }); this.sparkBurst(x, y - 4, '#fff09a', 5); } // 치명타: 큰 타격 불꽃 (예전 crit-hit은 둘레에 큰 고리가 퍼져 싸울 때마다 내 둘레에 원이 생겼다)
@@ -1033,6 +1059,11 @@ export class Renderer {
   }
   digHole(x, y, r) { const g = this.g; g.fillStyle = '#7a6448'; ellipse(g, x, y + 3, r + 2, (r + 2) * 0.42); g.fillStyle = '#2a1e14'; ellipse(g, x, y + 3, r, r * 0.38); g.fillStyle = '#4a3828'; ellipse(g, x, y + 2, r * 0.8, r * 0.18); }
   digPose(w, e, dt) {
+    if (e.shadowSink) { // 얼굴 없는 자: 그림자 속으로 가라앉았다가 다른 자리에서 솟는다
+      const S = e.shadowSink, s = S.t < S.sink ? Math.pow(S.t / S.sink, 1.5) : 1 - Math.min(1, (S.t - S.sink) / S.rise);
+      if (dt > 0 && Math.random() < 0.6) this.parts.push({ x: e.x + (Math.random() - 0.5) * 14, y: e.y + 2, vx: 0, vy: -10 - Math.random() * 14, t: 0.4, max: 0.4, color: Math.random() < 0.5 ? '#2a1844' : '#6a4ab8', g: 0, size: 1 });
+      return { alpha: 1 - 0.3 * s, sink: Math.min(1, s), lift: 0, shadow: 1 - s };
+    }
     const R = e.r || 8;
     const sinkK = e.digInT > 0 ? 1 - e.digInT / 0.5 : e.mv?.k === 'burrow' && e.mv.ph === 'dig' ? 1 - Math.max(0, e.mv.t) / 0.5 : -1;
     if (sinkK >= 0) {
@@ -1048,6 +1079,25 @@ export class Renderer {
       return { alpha: 1, sink: u < 0.12 ? (1 - u / 0.12) * 0.7 : 0, lift: 30 * Math.sin(Math.min(1, u / 0.9) * Math.PI), shadow: 1 - 0.5 * Math.sin(Math.min(1, u / 0.9) * Math.PI) };
     }
     return null;
+  }
+  // 숨은 스승: 플레이어와 똑같이 그린다 — 플레이어의 자세표(playerPose) · 몸 그리기(drawBody) · 무기 그리기(drawWeapon)를 그대로 쓴다.
+  // 스승의 상태(e.held: 휘두름 · 겨눔 · 대시)를 「플레이어 모양의 상태」로 바꿔 넘긴다
+  heldFighter(w, e, img, name, gs, sinkY = 0) { // 그리기마다 새 객체를 만들지 않는다 (렉)
+    const H = e.held, it = ITEMS[H.id], dir = e.dir || 1, tw = H.toward || 0;
+    const fw = (e._fw ||= { projs: [], f: new Set(), pvp: null, state: 'play' });
+    fw.t = w.t; fw.map = w.map;
+    fw.b = { weapon: it.weapon, weaponId: H.id, weaponItem: it, race: e.raceLook, cls: null, offItem: null, offId: null, wcat: it.cat };
+    const st = Object.assign(e._st ||= {}, { dir, aimX: Math.cos(tw), aimY: Math.sin(tw), moving: !!e.moving && !(H.swingT > 0), walkT: w.t, hitFlash: e.hitFlash || 0, dashT: H.dash ? 1 : 0, swingMax: H.swingMax || 0, swingT: H.swingT || 0, swingAng: H.swingAng ?? tw, swingDir: H.swingDir || 1, boxN: H.boxN || 0, swingMove: H.swingMove || null, cmbFam: H.cmbFam, cmbN: H.cmbN, cmbDur: H.cmbDur, motion: H.motion || null, charging: null, attackHeld: !!H.aim, atkPeriod: H.atkPeriod || 1, atkCd: H.atkCd || 0, castT: 0, castSkill: null, buffs: NOBUFF, down: false });
+    const fp = (e._fp ||= new Proxy(st, { get: (t, k) => (k in t ? t[k] : typeof k === 'string' ? 0 : undefined) })); // 안 적은 칸은 0 (플레이어 모양의 빈 상태)
+    const P = this.playerPose(fw, fp), g = this.g, bx = e.x + P.ox, by = e.y - 1 + P.oy + sinkY, wart = weaponArt(H.id, ITEMS);
+    if (e.outline) { // 종족 색 1도트 외곽선
+      const sil = sprite(name, e.tintX || '', e.outline, dir < 0), o = Math.max(1, Math.round(gs));
+      if (sil) { let fat = DILATE.get(sil); if (!fat) { fat = document.createElement('canvas'); fat.width = sil.width + 2; fat.height = sil.height + 2; const c = fat.getContext('2d'); for (const [ox, oy] of [[0, 1], [2, 1], [1, 0], [1, 2]]) c.drawImage(sil, ox, oy); DILATE.set(sil, fat); } this.drawBody(fat, bx, by + gs, gs, P, dir); } // 외곽선은 한 번 부풀려 둔 그림 한 장으로 (렉)
+    }
+    if (P.kind === 'fist') { const back = P.punch > 0.05 && P.offhand; this.fistAt(fw, bx + dir * (back ? 3 : 1) * gs, by + (GUARD_Y[fw.b.race] ?? -4) * gs, this.fistMetal(wart), dir); }
+    if (P.behind) this.drawWeapon(fw, fp, P, bx, by, gs);
+    this.drawBody(img, bx, by, gs, P, dir);
+    if (!P.behind) this.drawWeapon(fw, fp, P, bx, by, gs);
   }
   drawEnemy(w, e, dt) {
     const g = this.g, def = e.def;
@@ -1167,6 +1217,9 @@ export class Renderer {
       g.drawImage(img, Math.round(-w0 / 2), Math.round(-h0), Math.round(w0), Math.round(h0)); g.restore();
       if (e.pose.k === 'dizzy') for (let i = 0; i < 3; i++) { const a = w.t * 7 + i * 2.1; g.fillStyle = '#ffe060'; g.fillRect(Math.round(e.x + Math.cos(a) * 8), Math.round(dy - 5 + Math.sin(a) * 2), 2, 2); }
       if ((e.pose.k === 'crouch' && e.mv?.k === 'headbutt') && dt > 0 && Math.random() < 0.35) this.parts.push({ x: e.x - (e.dir || 1) * e.r, y: e.y + 3, vx: -(e.dir || 1) * (30 + Math.random() * 40), vy: -20 - Math.random() * 20, t: 0.45, max: 0.45, color: '#a89880', g: 200, puff: true, size: 2 }); // 뒷발로 땅을 긁는 흙먼지
+    } else if (e.held && !art.beast && !art.sheet) {
+      this.heldFighter(w, e, img, name, sc, (ip?.sink || 0) * h0); // 숨은 스승: 플레이어와 같은 자세 · 같은 무기 그리기
+      if (dt > 0 && e.outline && Math.random() < 0.22) this.parts.push({ x: e.x + (Math.random() - 0.5) * w0 * 0.7, y: dy + h0 * (0.3 + Math.random() * 0.6), vx: (Math.random() - 0.5) * 6, vy: -18 - Math.random() * 10, t: 0.5, max: 0.5, color: e.outline, g: -4, glow: true, size: 1 });
     } else {
       if (e.outline && !art.beast && !art.sheet) { // 숨은 스승: 종족 색 1도트 외곽선 (몸 둘레 고리 없이 윤곽만) · 종족 색 불티가 가끔 오른다
         const sil = sprite(name, e.tintX || '', e.outline, e.dir < 0), o = Math.max(1, Math.round(sc));
@@ -1415,8 +1468,8 @@ export class Renderer {
     if (w.map.underwater && dt > 0 && Math.random() < dt * 1.6) this.parts.push({ x: bx + p.dir * 3, y: by - 14, vx: (Math.random() - 0.5) * 6, vy: -26 - Math.random() * 14, t: 1.4, max: 1.4, color: '#e0f6ff', g: -6, bubble: true });
     const wart = weaponArt(w.b.weaponId, ITEMS);
     if (wart.shield && !hideW) this.drawShield(w, p, pose, bx, by, gs);
-    else if (w.b.offItem && !hideW) this.drawOffhand(w, p, pose, bx, by, gs); // 왼손 도구 (한손 무기일 때)
-    if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx - p.dir * (back ? -1 : 4) * gs, by - (back ? 7 : 5) * gs, this.fistMetal(wart), p.dir); }
+    else if (w.b.offItem && !hideW && (p.offShowT || 0) > w.t) this.drawOffhand(w, p, pose, bx, by, gs); // 왼손 도구: 평소엔 숨기고 쓸 때만 보인다 (p.offShowT)
+    if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx + p.dir * (back ? 3 : 1) * gs, by + (GUARD_Y[w.b.race] ?? -4) * gs, this.fistMetal(wart), p.dir); }
     if (pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
     let rideY = 0;
     if (p.riding) { // 탄 랩터: 달리면 달리기 동작, 서 있으면 숨쉬기 · 위로 들썩인다
@@ -1438,7 +1491,7 @@ export class Renderer {
     }
     if (!blink && admin) this.drawAdminFigure(bx, by + 2, p.dir, moving, p.walkT || w.t, p.swingT > 0, gs);
     else if (!blink && img) this.drawBody(img, bx, by, gs, pose, p.dir);
-    if (!blink && w.b.offItem && !hideW && OFF_LOOK[String(w.b.offId).split('#')[0]] === 'xbow') this.drawOffhand(w, p, pose, bx, by, gs, 'front'); // 손쇠뇌는 몸 앞에
+    if (!blink && w.b.offItem && !hideW && (p.offShowT || 0) > w.t && OFF_LOOK[String(w.b.offId).split('#')[0]] === 'xbow') this.drawOffhand(w, p, pose, bx, by, gs, 'front'); // 손쇠뇌는 몸 앞에
     if (sink != null) g.restore();
     if (p.swim) this.drawSwimLine(w, p, bx, by, dt);
     if (p.boat) this.drawBoat(w, p.x, p.y, p.dir, p.moving, 'front');
@@ -1652,6 +1705,32 @@ export class Renderer {
   }
 
   // 몸 그리기: 줄마다 정수 칸만큼 밀어서 기울인다 (도트 격자를 깨지 않는 기울임) + 눌림/늘어남
+  // 무기 콤보 자세: 준비(A)까지 천천히 → 맞는 순간 직전에 빠르게 B로 → 잠깐 머물렀다가 평소 자세로
+  // th가 있는 동작은 몸 둘레를 수평으로 도는 휘두름 (0 앞 · π/2 화면 앞쪽 · π 뒤 · -π/2 몸 너머 — 대검과 같은 셈)
+  comboPose(p, P, k, aimF) {
+    const mv = WCOMBO[p.cmbFam]?.list[p.cmbN]; if (!mv) return;
+    const pose = CPOSE[mv.m]; if (!pose) return;
+    const h = mv.hit, dur = p.cmbDur || p.swingMax || 0.5, W0 = Math.max(0.05, h - 0.075 / dur), S1 = Math.min(0.97, h + 0.02 / dur); // 휘두름은 0.075초 안에 (준비는 길게 · 내려칠 때는 순식간에)
+    const I = { a: P.a, hx: P.hx, hy: P.hy, lean: P.lean, sy: P.sy, f: 0, len: 1, behind: P.behind };
+    const conv = (X, th) => { if (th == null) return { a: X.a === 'aim' ? aimF : X.a, hx: X.hx, hy: X.hy, lean: X.lean, sy: X.sy ?? 1, f: X.f || 0, len: 1, behind: !!X.behind };
+      const c = Math.cos(th), sn = Math.sin(th); return { a: Math.atan2(sn * 0.3 + 0.1, c), len: Math.sqrt(c * c + 0.09 * sn * sn), hx: X.r * c, hy: X.hy + 1.5 * sn, lean: X.lean, sy: X.sy ?? 1, f: X.f || 0, behind: sn < -0.15 }; };
+    const A = conv(pose.A, pose.A.th), B = conv(pose.B, pose.B.th);
+    const mix = (X, Y, q) => ({ a: X.a + (Y.a - X.a) * q, hx: X.hx + (Y.hx - X.hx) * q, hy: X.hy + (Y.hy - X.hy) * q, lean: X.lean + (Y.lean - X.lean) * q, sy: X.sy + (Y.sy - X.sy) * q, f: X.f + (Y.f - X.f) * q, len: X.len + (Y.len - X.len) * q, behind: q < 0.5 ? X.behind : Y.behind });
+    let R;
+    if (k < W0) { const q = k / W0; R = mix(I, A, q * q * (3 - 2 * q)); if (q > 0.75 && pose.heavy) R.ox2 = (Math.random() - 0.5) * 0.8; } // 들어 올리는 막바지엔 힘이 들어가 떨린다
+    else if (k < S1) { const q = (k - W0) / (S1 - W0), e = q * (0.35 + 0.65 * q); // 순식간에 · 끝으로 갈수록 더 빠르게
+      if (pose.A.th != null) { const th = pose.A.th + (pose.B.th - pose.A.th) * e; R = mix(A, B, e); Object.assign(R, conv({ ...pose.B, r: pose.A.r + (pose.B.r - pose.A.r) * e, hy: pose.A.hy + (pose.B.hy - pose.A.hy) * e }, th), { lean: R.lean, sy: R.sy, f: R.f }); P.whoosh = 1; }
+      else { R = mix(A, B, e); P.whoosh = q; } }
+    else { const q = (k - S1) / (1 - S1), hold = pose.hold ?? 0.25, r = q < hold ? 0 : (q - hold) / (1 - hold); R = mix(B, I, r * r * (3 - 2 * r)); }
+    if (pose.A.a === 'aim') { // 찌르기: 손이 창대를 따라 조준 방향으로만 앞뒤로 (옆으로 밀지 않는다 · 창끝이 앞)
+      const dA = pose.A.hx, dB = pose.B.hx, q = (R.hx - dA) / ((dB - dA) || 1), d = dA + (dB - dA) * q;
+      R.hx = 3 + Math.cos(aimF) * d; R.hy = -7 + Math.sin(aimF) * d;
+      R.a = aimF; R.behind = Math.sin(Math.atan2(p.aimY, p.aimX)) < -0.5; // 창은 처음부터 끝까지 창끝이 조준 방향 (돌아가지 않는다)
+    }
+    P.a = R.a; P.hx = R.hx; P.hy = R.hy; P.lean = R.lean; P.sy = R.sy; P.behind = R.behind; if (R.len !== 1) P.len = R.len;
+    P.ox = Math.cos(p.swingAng) * R.f + (R.ox2 || 0); P.oy = Math.sin(p.swingAng) * R.f * 0.5;
+  }
+
   drawBody(img, x, y, gs, pose, dir) {
     const g = this.g;
     const W = img.width * gs * pose.sx, H = img.height * gs * pose.sy;
@@ -1680,7 +1759,7 @@ export class Renderer {
     else if (kind === 'axe') { P.a = 0.9 + breathe; P.hx = 4; P.hy = -5; }
     else if (kind === 'bow') { P.a = 0.04 + breathe * 0.4; P.hx = 9; P.hy = -8; P.bowIdle = true; } // 활: 옆으로 쏠 때처럼 앞에 세워 든다 (시위는 당기지 않는다)
     else if (kind === 'crossbow') { P.a = 0.35 + breathe * 0.5; P.hx = 4; P.hy = -5; } // 석궁: 허리춤에 앞을 낮춰 든다
-    else if (kind === 'fist') { P.a = 0; P.hx = 5; P.hy = -5 + Math.sin(w.t * 3) * 0.6; } // 주먹: 가볍게 쥐고 선다
+    else if (kind === 'fist') { const bob = Math.sin(w.t * 7.5); P.a = -0.3; P.hx = 5; P.hy = (GUARD_Y[w.b.race] ?? -4) + bob * 0.5; P.oy = bob > 0.4 ? -1 : 0; P.lean = 0.8; } // 주먹: 복서의 가드 — 두 주먹을 가슴 앞에 (머리를 가리지 않게) · 발끝으로 가볍게 들썩인다
     else if (kind === 'whip') { P.a = 1.25 + breathe; P.hx = 4; P.hy = -5; } // 채찍: 손잡이를 아래로 쥐고 줄은 감아 둔다
     else if (kind === 'orb') { P.a = -1.5; P.hx = 6; P.hy = -11 + Math.sin(w.t * 2.4) * 1.2; } // 구슬: 손 위에 떠 있다
     else if (kind === 'tome') { P.a = 0.15 + breathe; P.hx = 5; P.hy = -6; } // 마도서: 옆구리에 끼고 다닌다
@@ -1693,9 +1772,23 @@ export class Renderer {
     // 평타
     const k = p.swingMax && p.swingT > 0 ? 1 - p.swingT / p.swingMax : -1;
     if (k >= 0 && !p.motion) {
-      if (kind === 'fist') { // 주먹: 조준 쪽으로 곧게 내지른다 (왼손 · 오른손 번갈아)
-        const out = k < 0.45 ? easeOut(k / 0.45) : 1 - (k - 0.45) / 0.55;
-        P.a = aimF; P.hx = 5 + 8 * out; P.hy = -6 + Math.sin(aimF) * 3 * out; P.lean = 2.5 * out; P.ox = Math.cos(p.swingAng) * 2 * out; P.punch = out; P.offhand = p.swingDir > 0;
+      if (p.swingMove && !NOCOMBO.has(kind)) this.comboPose(p, P, k, aimF); // 무기마다 고유한 콤보 (data/wcombo.js)
+      else if (kind === 'fist') { // 주먹: 복싱 콤보 (sim p.boxN) — 잽 · 잽 · 스트레이트 · 훅 · 어퍼컷. 빠르게 뻗고(앞 30%) 빠르게 거둔다
+        const n = p.boxN || 0, out = k < 0.3 ? easeOut(k / 0.3) : 1 - easeOut((k - 0.3) / 0.7);
+        if (n === 3) { // 훅: 옆에서 둥글게 돌아 들어온다 · 어깨와 허리를 비튼다
+          const q = Math.min(1, k / 0.35), ret = k > 0.35 ? (k - 0.35) / 0.65 : 0;
+          P.a = aimF - 1.4 + 1.6 * q; P.hx = 2 + 10 * Math.sin(q * Math.PI * 0.5) * (1 - ret); P.hy = (GUARD_Y[w.b.race] ?? -4) - 1 - 2 * Math.sin(q * Math.PI) * (1 - ret);
+          P.lean = 3.2 * out; P.ox = Math.cos(p.swingAng) * 2.5 * out; P.sx = 1 + 0.06 * out; P.punch = out; P.offhand = false;
+        } else if (n === 4) { // 어퍼컷: 무릎을 굽혀 가라앉았다가 아래에서 위로 솟구친다
+          const dip = k < 0.22 ? k / 0.22 : Math.max(0, 1 - (k - 0.22) / 0.12), up = k < 0.22 ? 0 : easeOut(Math.min(1, (k - 0.22) / 0.26)), ret = k > 0.62 ? (k - 0.62) / 0.38 : 0;
+          P.a = aimF * 0.25 - 1.25; P.hx = 3 + 6 * up * (1 - ret); P.hy = -2 + 2 * dip - 9 * up * (1 - ret);
+          P.sy = 1 - 0.12 * dip + 0.06 * up * (1 - ret); P.sx = 1 + 0.08 * dip; P.oy = 2 * dip - 1.5 * up * (1 - ret); P.lean = -1.5 * dip + 2.5 * up * (1 - ret);
+          P.punch = up * (1 - ret); P.offhand = true;
+        } else { // 잽(앞손 · 짧고 빠르게) · 스트레이트(뒷손 · 멀리 · 몸을 실어)
+          const cross = n === 2, reach = cross ? 13 : 9;
+          P.a = aimF; P.hx = 5 + reach * out; P.hy = (GUARD_Y[w.b.race] ?? -4) - 1 + Math.sin(aimF) * 3 * out; P.lean = (cross ? 3.6 : 1.6) * out; P.ox = Math.cos(p.swingAng) * (cross ? 3 : 1.2) * out; P.sx = 1 + (cross ? 0.05 : 0) * out;
+          P.punch = out; P.offhand = cross;
+        }
       } else if (kind === 'whip') { // 채찍: 머리 위로 들었다가 앞으로 내리친다 (줄이 뒤따라 뻗는다)
         const up = Math.min(1, k / 0.3), dn = k < 0.3 ? 0 : easeOut(Math.min(1, (k - 0.3) / 0.25));
         P.a = k < 0.3 ? 1.25 - 3.6 * up : -2.35 + (aimF + 2.35) * dn; P.hx = k < 0.3 ? 2 : 2 + 6 * dn; P.hy = k < 0.3 ? -8 - 5 * up : -13 + 7 * dn; P.lean = k < 0.3 ? -1.5 * up : 2.5 * dn; P.lash = k; P.behind = k < 0.2;
@@ -1723,10 +1816,11 @@ export class Renderer {
         P.behind = sn < -0.15;
         P.whoosh = v;
       } else if (kind === 'melee') {
-        const down = p.swingDir > 0, big = kind === 'great';
-        const wind = big ? 0.3 : 0.2;
-        const from = big ? -2.7 : down ? -2.2 : 1.3, to = big ? 1.4 : down ? 1.2 : -1.9;
-        if (k < wind) { const q = k / wind; P.a = from + (down || big ? -0.25 : 0.25) * q; P.lean = -1.5 * q; P.hx = 1; P.hy = big ? -15 : -11; P.sy = 1 + 0.04 * q; }
+        const blunt = w.b.wcat === 'blunt', down = blunt || p.swingDir > 0, big = kind === 'great';
+        const wind = big ? 0.3 : blunt ? 0.8 : 0.2; // 둔기: 머리 위로 천천히 들어 올리고(80%) · 한 번에 빠르게 내려친다
+        const from = big ? -2.7 : blunt ? -2.6 : down ? -2.2 : 1.3, to = big ? 1.4 : blunt ? 1.35 : down ? 1.2 : -1.9;
+        if (blunt && k < wind) { const q = k / wind, e2 = q * q * (3 - 2 * q); P.a = 0.55 + (from - 0.55) * e2; P.hx = 4 - 4 * e2; P.hy = -6 - 8 * e2; P.lean = -2 * e2; P.sy = 1 + 0.05 * e2; P.behind = P.a < -1.6; }
+        else if (k < wind) { const q = k / wind; P.a = from + (down || big ? -0.25 : 0.25) * q; P.lean = -1.5 * q; P.hx = 1; P.hy = big ? -15 : -11; P.sy = 1 + 0.04 * q; }
         else { const q = easeOut((k - wind) / (1 - wind)); P.a = from + (to - from) * q; P.lean = (big ? 3.5 : 2.5) * Math.sin(Math.min(1, q * 1.4) * Math.PI * 0.9); P.ox = Math.cos(p.swingAng) * 2.5 * (1 - q * 0.5); P.oy = Math.sin(p.swingAng) * 1.5; P.hx = 2 + 5 * q; P.hy = (big ? -15 : -11) + (big ? 11 : 6) * q; if (big && q > 0.6) P.sy = 0.9 + 0.1 * (q - 0.6) / 0.4; }
         P.behind = P.a < -1.6 || P.a > 2.2;
         if (wpn.shape === 'thrust') { const back = easeOut(Math.min(1, k / 0.36)), fw = k < 0.36 ? 0 : easeOut(Math.min(1, (k - 0.36) / 0.16)), ret = k < 0.7 ? 0 : (k - 0.7) / 0.3; P.a = aimF; P.hx = k < 0.36 ? 2 - 7 * back : -5 + 17 * fw - 7 * ret; P.hy = -7; P.lean = k < 0.36 ? -2 * back : 3 * fw * (1 - ret); P.ox = Math.cos(p.swingAng) * (k < 0.36 ? -2 * back : 4 * fw * (1 - ret)); P.behind = false; } // 찌르기: 당겼다가 곧게
@@ -2041,6 +2135,11 @@ export class Renderer {
     const g = this.g, dir = p.dir, t = w.t;
     const metal = this.fistMetal(wa);
     if (P.kind === 'fist') { // 주먹 장갑: 내지르는 손 (반대 손은 몸 뒤에서 따로 그린다)
+      if (P.punch > 0.25 && p.swingT > 0) { // 뻗는 주먹 뒤로 속도선 두 줄 (빠르게 보이게)
+        const ux = Math.cos(ang), uy = Math.sin(ang), nx = -uy, ny = ux, L = 4 + 7 * P.punch;
+        g.strokeStyle = hexA('#ffffff', 0.55 * P.punch); g.lineWidth = 1;
+        for (const o of [-1.5, 1.5]) { g.beginPath(); g.moveTo(Math.round(hx - ux * 3 + nx * o), Math.round(hy - uy * 3 + ny * o)); g.lineTo(Math.round(hx - ux * (3 + L) + nx * o), Math.round(hy - uy * (3 + L) + ny * o)); g.stroke(); }
+      }
       this.fistAt(w, hx, hy, metal, dir);
       if (P.punch > 0.6) for (let i = 0; i < 2; i++) this.parts.push({ x: hx + Math.cos(ang) * 4, y: hy + Math.sin(ang) * 4, vx: Math.cos(ang) * 60 + (Math.random() - 0.5) * 30, vy: Math.sin(ang) * 60 + (Math.random() - 0.5) * 30, t: 0.12, max: 0.12, color: '#ffffff', g: 0, line: true });
       return true;
@@ -3219,7 +3318,7 @@ export class Renderer {
   // 분노 폭발: 몸에서 붉은 기운이 뾰족하게 터져 나가고, 땅이 붉게 갈라지며 돌 조각 · 흙먼지가 튄다. 터진 뒤에도 한동안 몸에서 열기가 피어오른다
   rageBlast(x, y, r) {
     this.flash = { color: '255,60,30', t: 0.28, max: 0.28 };
-    this.shake = Math.max(this.shake, 13); this.hitstop = Math.max(this.hitstop, 0.14);
+    this.shake = Math.max(this.shake, 13); this.addStop(0.14);
     this.rimFlash = { color: '#ff3a1a', t: 1.1, max: 1.1 };
     const list = [];
     for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2 + Math.random() * 0.4; let px = 0, py = 0; const cr = [[0, 0]]; const len = r * (0.7 + Math.random() * 0.35); for (let s2 = 0; s2 < 7; s2++) { const aa = a + (Math.random() - 0.5) * 0.7; px += Math.cos(aa) * len / 7; py += Math.sin(aa) * len / 7 * 0.6; cr.push([px, py]); } list.push(cr); }
@@ -3245,7 +3344,26 @@ export class Renderer {
     while (out.length > 2 && g.measureText(out).width > maxW) out = out.slice(0, -1);
     return out;
   }
-  text(s, x, y, n, color, align = 'left', outline = true, bold = false) {
+  text(s, x, y, n, color, align = 'left', outline = true, bold = false) { // 한 번 그린 글씨(외곽선 포함)는 그림으로 저장해 다시 쓴다 (렉: 글씨마다 9번 쓰던 것)
+    if (s == null || s === '') return;
+    const key = `${s}|${n}|${color}|${outline ? 1 : 0}|${bold ? 1 : 0}`;
+    let c = TEXT_CACHE.get(key);
+    if (!c) {
+      const size = 11 * n, o = outline ? Math.max(1, Math.round(n)) : 0, font = `${bold ? 'bold ' : ''}${size}px ${FONT}`;
+      const g0 = this.g; g0.font = font; const w = Math.ceil(g0.measureText(String(s)).width) + o * 2 + 2, h = Math.ceil(size * 1.5) + o * 2;
+      c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = h;
+      const q = c.getContext('2d'); q.font = font; q.textAlign = 'left'; q.textBaseline = 'middle';
+      const cx = o + 1, cy = Math.round(h / 2);
+      if (outline) { q.fillStyle = '#0c0a0b'; for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, o], [-o, o], [o, -o]]) q.fillText(s, cx + dx, cy + dy); }
+      q.fillStyle = color; q.fillText(s, cx, cy);
+      c._ox = cx; c._oy = cy; c._tw = w - o * 2 - 2;
+      if (TEXT_CACHE.size > 800) TEXT_CACHE.delete(TEXT_CACHE.keys().next().value);
+      TEXT_CACHE.set(key, c);
+    }
+    const ax = align === 'center' ? c._tw / 2 : align === 'right' ? c._tw : 0;
+    this.g.drawImage(c, Math.round(x - ax) - c._ox, Math.round(y) - c._oy);
+  }
+  textSlow(s, x, y, n, color, align = 'left', outline = true, bold = false) {
     const g = this.g, size = 11 * n;
     g.font = `${bold ? 'bold ' : ''}${size}px ${FONT}`;
     g.textAlign = align; g.textBaseline = 'middle';

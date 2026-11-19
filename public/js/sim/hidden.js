@@ -77,6 +77,7 @@ export const HiddenMethods = {
     if (!H.slaughterSent && H.kills.length >= HID.slaughterN) { H.slaughterSent = true; this.signals.push({ t: 'hiddenFeat', id: 'slaughter' }); }
   },
   hidTick(DT) {
+    { const p = this.player; if (p.buffs.hSurge) { p.surgeAcc = (p.surgeAcc || 0) + DT; while (p.surgeAcc >= 0.1) { p.surgeAcc -= 0.1; this.addRes(1); } } else p.surgeAcc = 0; } // 마력 폭주: 0.1초마다 자원 +1
     const H = this.hid, p = this.player; if (!H) return;
     if (this.trial) this.trialTick();
     if (this.f.has('oozeHeal') && p.oozeT > 0) this.heal(this.d.maxHp * 0.02 * DT, 'regen');
@@ -157,11 +158,10 @@ export const HiddenMethods = {
         list.forEach((e, i) => {
           let x = e.x, y = e.y; // 내 앞 빈자리로 끌어온다 (막혀 있으면 다른 방향 · 더 가까이)
           for (const [da, dd] of [[0, 18], [0.6, 18], [-0.6, 18], [Math.PI, 16], [1.6, 14], [-1.6, 14], [0, 8]]) { const a = Math.atan2(p.aimY, p.aimX) + (i - (list.length - 1) / 2) * 0.5 + da, cx = p.x + Math.cos(a) * (dd + e.r), cy = p.y + Math.sin(a) * (dd + e.r); if (!this.blocked(cx, cy, e.r)) { x = cx; y = cy; break; } }
-          this.emit({ t: 'skillDash', x1: e.x, y1: e.y, x2: x, y2: y, elem: 'dark' });
-          if (!e.def.boss) { e.x = x; e.y = y; e.kbx = e.kby = 0; }
-          if (e.def.boss || e.trialOf) this.skillHit(e, { mul: op.bossMul }, ctx);
-          else if (e.hp < p.hp) { this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 16, elem: 'dark', fx: 'doom' }); this.damageEnemy(e, e.hp + 1, 'true', { src: 'aoe', color: '#8a6aff' }); }
-          else this.skillHit(e, { mul: 1.5, stun: 0.6 }, ctx);
+          const atk = this.skillAtk('phys'), dmg = Math.max(atk * op.minMul, Math.min(atk * op.maxMul, e.maxHp * op.frac)); // 최대 체력의 50% · 공격력 200% ~ 600% 사이
+          if (!e.def.boss) { e.x = x; e.y = y; e.kbx = e.kby = 0; } // 내 앞으로 끌어온다 (촉수 줄은 그리지 않는다)
+          this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 16, elem: 'dark', fx: 'doom' }); this.damageEnemy(e, dmg, 'phys', { src: 'aoe', color: '#8a6aff' });
+          if (!e.dead) { this.stunE(e, 1.5); this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '경직', color: '#b89aff' }); } // 살아남으면 1.5초 경직
         });
         break;
       }

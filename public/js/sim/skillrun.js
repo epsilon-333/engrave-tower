@@ -684,7 +684,7 @@ export const SkillMethods = {
     if (id === 'weapon') { if (p.skillCd <= 0) { this.breakStealth(); this.useSkill(); } return; }
     const def = SKILLS[id];
     if (!def || p.cds[id] > 0) return;
-    const surge = p.buffs.hSurge && def.kind === 'spell'; // 숨은 각인 「마력 폭주」: 10초 동안 마법은 자원 없이 · 쿨타임 1초
+    const surge = false; // (마력 폭주는 2026-11-19부터 0.1초마다 자원 +1 — sim/hidden.js hidTick)
     const fit = handFit(def, this.b).fit;
     if (fit <= 0) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: (CANT_TEXT[def.kind] || '이 무기로는 쓸 수 없다') + (this.b.hands < 2 ? ' · 왼손 도구로도 쓸 수 있다' : '') }); p.cds[id] = 0.4; return; }    if (p.swim && !['dive', 'waterBreath'].includes(id)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: '헤엄치는 중에는 쓸 수 없다' }); p.cds[id] = 0.3; return; }
     if (def.needSpirit && !p.spirits.length) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: '깃든 정령', text: '깃든 정령이 없다' }); p.cds[id] = 0.3; return; }
@@ -743,11 +743,12 @@ export const SkillMethods = {
     const ctxBal = this.skillBalOff === id ? 1 : SKILL_BAL[id] ?? 1; // 각인 등급 보정 (tools/skillbal.mjs)
     const ctx = { bal: ctxBal, def, id, spent, elem, bonus: bonus * boost * fit * cross * ctxBal * (sc?.dmg ?? 1), // SKILL_BAL: 종족 스킬 밸런스 보정
       fit, hand: hf.hand, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot, tier: this._tier };
+    if (hf.hand === 'off') p.offShowT = this.t + Math.max(0.6, (def.cast || 0) + 0.5); // 왼손 장비로 쓰는 스킬: 그동안만 왼손 장비가 보인다
     if (fit < 0.95 && fit > 0) this.emit({ t: 'text', x: p.x, y: p.y - 26, text: `무기가 맞지 않다 · 피해 ${Math.round(fit * 100)}%`, color: '#c8b8a0' });
     if (this.autoAim) {
       const tg = this.pickTarget(def);
       if (tg) {
-        ctx.auto = true; ctx.target = tg.e; ctx.point = tg.e ? null : { x: tg.x, y: tg.y }; ctx.tp = tg.tp;
+        ctx.auto = true; ctx.target = tg.e; ctx.point = tg.e ? null : { x: tg.x, y: tg.y }; ctx.tp = tg.tp; // 스킬 자동 조준은 예전 그대로 (10%로 줄인 건 평타 유도탄)
         this.faceTo(tg.x, tg.y);
         if (tg.kind !== 'none') this.emit({ t: 'lockOn', x: tg.x, y: tg.y, kind: tg.kind, ult: def.ult });
       }

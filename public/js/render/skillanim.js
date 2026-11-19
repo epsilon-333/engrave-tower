@@ -453,6 +453,13 @@ const DRAW = {
 // ── 땅 갈라짐: 도트로 바닥에 직접 판다 (매끈한 그라데이션 없이 · 사라질 때는 도트를 듬성듬성 지워 간다) ──
 const SPLIT_GLOW = { fire: ['#ffe080', '#ff8a2a', '#c8401a'], ice: ['#ffffff', '#9fe3ff', '#3f86c0'], dark: ['#e8b8ff', '#9a4ad8', '#4a1a78'], arcane: ['#ffffff', '#b98aff', '#5e45c0'], lightning: ['#ffffff', '#f8f070', '#b8a020'] };
 const GROUND_TYPES = new Set(['cracks', 'fissure']); // 땅에 새기는 것: 사람 · 건물 아래에 그리고, 벽 · 물 · 허공에서는 잘린다
+const C32 = new Map();
+function col32(c) { // '#rrggbb' · '#rgb' → 그림판 한 점 (불투명)
+  let v = C32.get(c); if (v != null) return v;
+  let h = String(c).replace('#', ''); if (h.length === 3) h = h.split('').map((q) => q + q).join('');
+  const n = parseInt(h.slice(0, 6), 16) || 0, r = (n >> 16) & 255, gg = (n >> 8) & 255, b = n & 255;
+  v = ((255 << 24) | (b << 16) | (gg << 8) | r) >>> 0; C32.set(c, v); return v;
+}
 const GROUND_DRAW = {
   cracks: (R, g, a, k) => DRAW.cracks(R, g, a, k), fissure: (R, g, a, k) => DRAW.fissure(R, g, a, k),
   skid(R, g, a, k) { // 미끄러진 자국: 두 줄의 패인 흙 자국 → 시작점부터 끝 쪽으로 메워진다 (도트 · 반투명 없음)
@@ -471,7 +478,12 @@ const GROUND_DRAW = {
   split(R, g, a, k) {
     const rr = rnd(a.seed), dx = a.x2 - a.x1, dy = a.y2 - a.y1, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
     const open = Math.min(1, a.t / 0.2), settle = Math.max(0, Math.min(1, (a.t - 0.25) / 0.5)), close = k > 0.55 ? Math.min(1, (k - 0.55) / 0.35) : 0, fade = 0;
-    const px = (x, y, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1); };
+    // 점을 하나씩 그리면(한 화면 수천 번) 렉 → 작은 그림판에 점을 모아 찍고 한 번에 그린다
+    const pad = Math.ceil(a.w + 14), X0 = Math.floor(Math.min(a.x1, a.x2)) - pad, Y0 = Math.floor(Math.min(a.y1, a.y2)) - pad;
+    const BW = Math.ceil(Math.abs(dx)) + pad * 2 + 1, BH = Math.ceil(Math.abs(dy)) + pad * 2 + 1;
+    if (!a._cv || a._cv.width !== BW || a._cv.height !== BH) { a._cv = document.createElement('canvas'); a._cv.width = BW; a._cv.height = BH; a._img = a._cv.getContext('2d').createImageData(BW, BH); a._buf = new Uint32Array(a._img.data.buffer); }
+    const buf = a._buf; buf.fill(0);
+    const px = (x, y, c) => { const ix = Math.round(x) - X0, iy = Math.round(y) - Y0; if (ix < 0 || iy < 0 || ix >= BW || iy >= BH) return; buf[iy * BW + ix] = col32(c); };
     // 금의 길: 들쭉날쭉한 점들 (이웃 점을 1도트 선으로 잇는다)
     const N = Math.max(8, Math.round(L / 6)), pts = [];
     let off = 0;
@@ -518,6 +530,7 @@ const GROUND_DRAW = {
       R.parts.push({ x: P.x + (Math.random() - 0.5) * 6, y: P.y - 1, vx: (Math.random() - 0.5) * 16, vy: -10 - Math.random() * 8, t: 0.6, max: 0.6, color: '#b8a890', g: 0, puff: true, size: 2.5 });
       if (Math.random() < 0.4) R.parts.push({ x: P.x, y: P.y, vx: (Math.random() - 0.5) * 40, vy: -30 - Math.random() * 30, t: 0.4, max: 0.4, color: '#7a6448', g: 380, chunk: true, floor: P.y + 1 });
     }
+    a._cv.getContext('2d').putImageData(a._img, 0, 0); g.drawImage(a._cv, X0, Y0); // 모은 점을 한 번에
     if (glow && open >= 1 && !close && Math.random() < 0.5) { const P = pts[Math.floor(Math.random() * pts.length)]; R.parts.push({ x: P.x, y: P.y, vx: 0, vy: -18, t: 0.5, max: 0.5, color: glow[1], g: -6, glow: true, size: 1 }); }
   },
 };

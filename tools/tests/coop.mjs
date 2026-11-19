@@ -30,7 +30,7 @@ for (let fr = 0; fr < 60 * 25; fr++) {
   mate.x = M.player.x; mate.y = M.player.y; mate.dead = !!M.player.down;
   const near = M.enemies.filter((e) => !e.dead).sort((a, b) => Math.hypot(a.x - M.player.x, a.y - M.player.y) - Math.hypot(b.x - M.player.x, b.y - M.player.y))[0];
   const aim = near ? { aimX: near.x, aimY: near.y } : { aimX: M.player.x + 10, aimY: M.player.y };
-  M.step({ moveX: 0, moveY: 0, attack: fr % 2 === 0, ...aim, autoAim: true });
+  M.step({ moveX: 0, moveY: 0, attack: fr % 2 === 0 && fr > 60 * 3, ...aim, autoAim: true });
   H.step({ moveX: 0, moveY: 0, attack: false, aimX: H.player.x + 10, aimY: H.player.y });
   for (const m of M.coFlush()) { H.coRecv(m, 2); if (m.k === 'hit') hits++; }
   for (const m of H.coop.out.splice(0)) if (m.k === 'hurt' && m.to === 2) { M.coHurt(m); hurts++; }

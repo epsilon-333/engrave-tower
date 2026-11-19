@@ -157,20 +157,19 @@ ok(feats(50, 'lord', {}, {}, { oath: maxOath }).includes('rebel') && !feats(50, 
   // 리치: 쓰러지면 체력 1로 · 한 번만
   const wl = mk(3, { engravings: { head: hiddenEngId('lich') } }); wl.player.hp = 0; wl.checkDeath();
   ok(wl.state === 'play' && wl.player.hp === 1 && wl.player.buffs.hLich?.mods.dmgMul === 2, '리치: 체력 1로 일어나 공격 2배'); wl.player.invuln = 0; wl.player.hp = 0; wl.checkDeath(); ok(wl.state === 'dead', '리치: 한 번만');
-  // 대마도사: 마력 폭주 중 마법은 자원 없이 · 쿨타임 1초
-  const wm = mk(3, { race: 'wizard', engravings: { head: hiddenEngId('archmage'), arm: 'sEmber' } });
-  const spell = wm.b.skills.find((id) => id && id !== 'hManaSurge');
-  wm.castSkillId('hManaSurge', 0); for (let i = 0; i < 30; i++) wm.step(idle);
-  wm.player.res = 7; wm.castSkillId(spell, 1); const cd1 = wm.player.cds[spell];
-  ok(cd1 != null && cd1 <= 1.01 && wm.player.res === 7, `마력 폭주: ${spell} 쿨타임 ${cd1} · 자원 ${wm.player.res}`);
+  // 대마도사: 마력 폭주 = 10초 동안 0.1초마다 자원 +1
+  const wm = mk(3, { race: 'wizard', engravings: { head: hiddenEngId('archmage') } });
+  wm.player.res = 100; wm.castSkillId('hManaSurge', 0); wm.player.res = 0;
+  for (let i = 0; i < 60; i++) wm.step(idle);
+  ok(wm.player.buffs.hSurge && wm.player.res >= 10.5 && wm.player.res <= 13.5, `마력 폭주: 1초에 자원 +10 (+기본 2) → ${wm.player.res.toFixed(1)}`);
   // 대족장: 스킬을 쓰면 받은 피해를 터뜨린다
   const wc = mk(3, { engravings: { head: hiddenEngId('warchief') } }); const e2 = wc.makeEnemy('slime', wc.player.x + 30, wc.player.y); e2.hp = e2.maxHp = 1e6; wc.enemies.push(e2);
   wc.hid.pay.push([wc.t, 200]); wc.castSkillId('hChiefCall', 0); ok(e2.hp < 1e6 - 300, `피로 쓴 함성: 받은 피해를 되갚는다 (${Math.round(1e6 - e2.hp)})`);
   // 그림자 왕: 나보다 체력이 낮은 적은 쓰러진다
   const wk = mk(3, { engravings: { head: hiddenEngId('shadowKing') } }); wk.enemies.forEach((o) => (o.dead = true));
   const lo2 = wk.makeEnemy('slime', wk.player.x + 80, wk.player.y); lo2.hp = 10; const hi2 = wk.makeEnemy('slime', wk.player.x + 120, wk.player.y); hi2.hp = hi2.maxHp = 1e6; wk.enemies.push(lo2, hi2);
-  wk.castSkillId('hShadowHands', 0); for (let i = 0; i < 30; i++) wk.step(idle);
-  ok(lo2.dead && !hi2.dead && Math.hypot(hi2.x - wk.player.x, hi2.y - wk.player.y) < 50, '그림자 손: 약한 적은 쓰러지고 센 적은 끌려온다');
+  wk.castSkillId('hShadowHands', 0); for (let i = 0; i < 45; i++) wk.step(idle); // 끌려와 피해 · 살아남으면 경직
+  ok(lo2.dead && !hi2.dead && Math.hypot(hi2.x - wk.player.x, hi2.y - wk.player.y) < 50 && (hi2.st?.stun || hi2.stunT || 0) > 0.5, '그림자 손: 약한 적은 쓰러지고 센 적은 끌려와 경직');
   // 천궁: 평타 화살이 튕긴다
   const wr = mk(3, { race: 'elf', engravings: { head: hiddenEngId('skyBow') }, gear: { weapon: 'huntBow' } }); wr.enemies.forEach((o) => (o.dead = true));
   const t1 = wr.makeEnemy('slime', wr.player.x + 50, wr.player.y), t2 = wr.makeEnemy('slime', wr.player.x + 100, wr.player.y); t1.hp = t1.maxHp = t2.hp = t2.maxHp = 1e6; wr.enemies.push(t1, t2);
@@ -212,20 +211,24 @@ for (const [fam, weapon] of Object.entries(WEAPON)) {
   ok(b.trial.maxHp > a.trial.maxHp * 2, `스승 체력이 내 공격력을 따라간다 (${a.trial.maxHp} → ${b.trial.maxHp})`);
 }
 { // 제대로 든 공격은 크게, 아닌 것은 아주 조금
-  const big = 1e9, took = (w, fn) => { const h = w.trial.hp; fn(); return (h - w.trial.hp) / w.trial.maxHp; };
-  const ws = trialWorld('sword', { weapon: 'ironLongsword' }); ws.trial.s = 'move'; ok(took(ws, () => ws.damageEnemy(ws.trial.main, big, 'phys', {})) <= TR.badCap + 1e-6, '검: 빈틈이 아니면 0.4%');
+  const big = 1e9, took = (w, fn) => { const T = w.trial; T.shoutT = 0; T.counterT = 0; T.invulnT = 0; T.evadeT = 1e9; T.st = { ...T.st, pres: 0, mres: 0 }; const h = T.hp; fn(); return (h - T.hp) / T.maxHp; }; // 외침(-30%) · 받아치기는 끄고 잰다
+  const ws = trialWorld('sword', { weapon: 'ironLongsword' }); ws.trial.s = 'move'; ok(took(ws, () => ws.damageEnemy(ws.trial.main, big, 'phys', {})) >= TR.okCap - 1e-6, '검: 빈틈이 아니면 0.4% → 규칙 없앰: 모두 제대로');
   ws.trial.s = 'open'; ok(took(ws, () => ws.damageEnemy(ws.trial.main, big, 'phys', {})) >= TR.okCap - 1e-6, '검: 빈틈에는 4%');
   const wh = trialWorld('heavy', { weapon: 'battleAxe' }), H = wh.trial; let g = 0; for (let i = 0; i < 4; i++) { wh.t += 0.3; g = took(wh, () => wh.damageEnemy(H.main, big, 'phys', {})); } ok(g >= TR.okCap - 1e-6, '도끼: 막기를 부순 뒤 제대로');
-  const wg = trialWorld('magic', { weapon: 'apprenticeStaff' }), G = wg.trial; G.s = 'cast'; ok(took(wg, () => wg.damageEnemy(G.main, big, 'phys', {})) <= TR.badCap + 1e-6, '마법: 물리는 조금'); ok(took(wg, () => wg.damageEnemy(G.main, big, 'mag', {})) >= TR.okCap - 1e-6, '마법: 외는 동안 마법은 제대로');
-  const wc = trialWorld('scythe', { weapon: 'rustySword' }), S = wc.trial; wc.curTok = 77; took(wc, () => wc.damageEnemy(S.bodies[0], big, 'phys', {})); ok(took(wc, () => wc.damageEnemy(S.bodies[1], big, 'phys', {})) >= TR.okCap - 1e-6, '낫: 한 번에 둘을 베면 제대로'); wc.curTok = null;
-  const wd = trialWorld('dagger', { weapon: 'dagger' }), D = wd.trial, fake = D.bodies.find((b) => b !== D.main); ok(took(wd, () => wd.damageEnemy(fake, big, 'phys', {})) === 0 && fake.dead, '단검: 가짜는 사라지고 안 들어간다'); ok(took(wd, () => wd.damageEnemy(D.main, big, 'phys', {})) >= TR.okCap - 1e-6, '단검: 진짜는 제대로');
+  const wg = trialWorld('magic', { weapon: 'apprenticeStaff' }), G = wg.trial; G.s = 'cast'; ok(took(wg, () => wg.damageEnemy(G.main, big, 'phys', {})) >= TR.okCap - 1e-6, '마법: 물리는 조금 → 규칙 없앰: 모두 제대로'); ok(took(wg, () => wg.damageEnemy(G.main, big, 'mag', {})) >= TR.okCap - 1e-6, '마법: 외는 동안 마법은 제대로');
+  const wc = trialWorld('scythe', { weapon: 'rustySword' }), S = wc.trial, M = S.main, PL = wc.player;
+  ok(S.bodies.length === 1, '낫: 첫 번째 망자는 한 명');
+  PL.x = M.x - 12; PL.y = M.y; ok(took(wc, () => wc.damageEnemy(M, big, 'phys', {})) >= TR.okCap - 1e-6, '낫: 너무 가까우면 0.4% → 규칙 없앰: 모두 제대로');
+  PL.x = M.x - (M.r + 40); PL.y = M.y; ok(took(wc, () => wc.damageEnemy(M, big, 'phys', {})) >= TR.okCap - 1e-6, '낫: 낫 끝으로 베면 제대로');
+  S.hp = 1; wc.damageEnemy(M, big, 'phys', {}); ok(!S.done && S.revived && Math.abs(S.hp / S.maxHp - 0.3) < 0.01 && S.lichMul === 1.5, '낫: 한 번은 체력 30%로 일어나 공격 1.5배');
+  const wd = trialWorld('dagger', { weapon: 'dagger' }), D = wd.trial; D.pMobT = -9; ok(took(wd, () => wd.damageEnemy(D.main, big, 'phys', {})) >= TR.okCap - 1e-6, '단검: 그냥 때리면 조금 → 규칙 없앰: 모두 제대로'); D.pMobT = wd.t; ok(took(wd, () => wd.damageEnemy(D.main, big, 'phys', {})) >= TR.okCap - 1e-6, '단검: 대시 · 순간이동 직후는 제대로');
   const wf = trialWorld('fist', { weapon: 'bareHands' }), F = wf.trial; let last = 0; for (let i = 0; i < 3; i++) { wf.t += 0.3; last = took(wf, () => wf.damageEnemy(F.main, big, 'phys', {})); } ok(last >= TR.okCap - 1e-6, '주먹: 이어진 세 번째부터 제대로');
-  const wp = trialWorld('spear', { weapon: 'spear' }), P = wp.trial; P.main.x = wp.player.x + 10; P.main.y = wp.player.y; ok(took(wp, () => wp.damageEnemy(P.main, big, 'phys', {})) <= TR.badCap + 1e-6, '창: 가까우면 조금'); P.main.x = wp.player.x + wp.b.weapon.range * 0.8 + P.main.r; ok(took(wp, () => wp.damageEnemy(P.main, big, 'phys', {})) >= TR.okCap - 1e-6, '창: 창끝 거리는 제대로');
+  const wp = trialWorld('spear', { weapon: 'spear' }), P = wp.trial; P.main.x = wp.player.x + 40; P.main.y = wp.player.y; P.pv = { x: -60, y: 0 }; ok(took(wp, () => wp.damageEnemy(P.main, big, 'phys', {})) >= TR.okCap - 1e-6, '창: 물러나며 찌르면 조금 → 규칙 없앰: 모두 제대로'); P.pv = { x: 60, y: 0 }; ok(took(wp, () => wp.damageEnemy(P.main, big, 'phys', {})) >= TR.okCap - 1e-6, '창: 다가가며 찌르면 제대로');
   const wq = trialWorld('bow', { weapon: 'huntBow' }), B = wq.trial; B.main.x = wq.player.x + 120; B.main.y = wq.player.y; ok(took(wq, () => wq.damageEnemy(B.main, big, 'phys', {})) >= TR.okCap - 1e-6, '활: 멀리서 쏜 것은 제대로');
   // 이기기 · 지기
-  const ww = trialWorld('sword', { weapon: 'ironLongsword' }); for (let i = 0; i < 30 && !ww.trial.done; i++) { ww.trial.s = 'open'; ww.damageEnemy(ww.trial.main, big, 'phys', {}); }
+  const ww = trialWorld('sword', { weapon: 'ironLongsword' }); for (let i = 0; i < 80 && !ww.trial.done; i++) { ww.trial.s = 'open'; ww.trial.evadeT = 1e9; ww.damageEnemy(ww.trial.main, big, 'phys', {}); }
   for (let i = 0; i < 60 * 3; i++) ww.step(idle); ok(ww.signals.some((s) => s.t === 'trialDone' && s.ok), '스승의 체력이 다하면 시련을 넘는다');
-  const wl = trialWorld('scythe', { weapon: 'rustySword' }); wl.trial.hp = 1; wl.curTok = 5; wl.damageEnemy(wl.trial.bodies[0], big, 'phys', {}); wl.damageEnemy(wl.trial.bodies[1], big, 'phys', {}); wl.curTok = null;
+  const wl = trialWorld('scythe', { weapon: 'rustySword' }), WM = wl.trial.main; wl.player.x = WM.x - (WM.r + 40); wl.player.y = WM.y; wl.trial.hp = 1; wl.damageEnemy(WM, big, 'phys', {}); // 낫 끝으로
   ok(!wl.trial.done && wl.trial.revived && wl.trial.hp > 0, '첫 번째 망자: 한 번은 죽음을 거부한다');
   const wx = trialWorld('sword', { weapon: 'ironLongsword' }); wx.player.hp = 0; wx.checkDeath(); for (let i = 0; i < 60 * 3; i++) wx.step(idle);
   ok(wx.state === 'play' && wx.signals.some((s) => s.t === 'trialDone' && !s.ok), '내가 쓰러지면 실패 · 죽지는 않는다');
@@ -259,6 +262,62 @@ for (const [fam, weapon] of Object.entries(WEAPON)) {
     w2.player.x = at.x; w2.player.y = at.y; w2.player.stillT = 99; for (let i = 0; i < 5; i++) w2.step(idle);
     ok(!w2.enemies.some((o) => o.legend), `${legend}: 한낮에는 안 나온다`);
   }
+}
+
+// 10) 스승은 무기를 들고 싸운다 · 대시 · 회복 (2026-11-19)
+{
+  const { teacherWeaponId } = await import(root + '/sim/teacher.js');
+  const { ITEMS } = await import(root + '/data/items.js');
+  const stepN = (w, n, each) => { for (let i = 0; i < n; i++) { w.player.hp = w.d.maxHp; w.player.invuln = 0.5; each?.(i); w.step(idle); } };
+  for (const fam of Object.keys(WEAPON)) {
+    const w = trialWorld(fam, { weapon: WEAPON[fam] }), Tr = w.trial;
+    ok(!!ITEMS[Tr.wid]?.weapon && Tr.bodies.every((b) => b.held?.id === Tr.wid), `${fam}: 스승이 무기를 든다 (${Tr.wid})`);
+    // 회복: 체력이 줄면 자세를 잡고 6%를 되찾는다 (최대 3번)
+    Tr.s = 'move'; Tr.t = 0.5; Tr.hp = Tr.maxHp * 0.7; const h0 = Tr.hp;
+    stepN(w, 60 * 3);
+    ok(Tr.heals >= 1 && Tr.hp > h0, `${fam}: 체력이 줄면 회복한다 (${Math.round((h0 / Tr.maxHp) * 100)}% → ${Math.round((Tr.hp / Tr.maxHp) * 100)}%, ${Tr.heals}번)`);
+    Tr.hp = Tr.maxHp * 0.01; stepN(w, 60 * 14);
+    ok(Tr.heals <= 3, `${fam}: 회복은 세 번까지 (${Tr.heals}번)`);
+  }
+  // 회복은 제대로 든 공격이 들어오면 끊긴다 (검: 자세를 잡는 동안은 틈)
+  {
+    const w = trialWorld('sword', { weapon: WEAPON.sword }), Tr = w.trial;
+    Tr.s = 'move'; Tr.t = 0.5; Tr.hp = Tr.maxHp * 0.7; const h0 = Tr.hp;
+    let k = 0; while (Tr.s !== 'heal' && k++ < 200) { w.player.hp = w.d.maxHp; w.player.invuln = 0.5; w.step(idle); }
+    ok(Tr.s === 'heal', '검: 회복 자세에 들어간다');
+    w.damageEnemy(Tr.main, 1e6, 'phys', {}); const h1 = Tr.hp; stepN(w, 60 * 3);
+    ok(Tr.s !== 'heal' && Tr.hp <= h1 + 1 && h1 < h0, `검: 회복 중에 제대로 치면 끊긴다 (${Math.round((h0 / Tr.maxHp) * 100)}% → ${Math.round((Tr.hp / Tr.maxHp) * 100)}%)`);
+  }
+  // 대시: 멀면 붙는다
+  for (const fam of ['sword', 'heavy', 'fist']) {
+    const w = trialWorld(fam, { weapon: WEAPON[fam] }), Tr = w.trial; Tr.dashCd = 0; Tr.s = 'move'; Tr.t = 1;
+    const p = w.player, e = Tr.main; p.x = e.x + 150; p.y = e.y; if (w.blocked(p.x, p.y, 6)) { p.x = e.x - 150; }
+    const d0 = Math.hypot(p.x - e.x, p.y - e.y); let dashed = false;
+    for (let i = 0; i < 40; i++) { w.player.hp = w.d.maxHp; w.player.invuln = 0.5; w.step(idle); if (Tr.dash) dashed = true; }
+    ok(dashed && Math.hypot(p.x - e.x, p.y - e.y) < d0 - 50, `${fam}: 멀면 대시로 붙는다 (${Math.round(d0)} → ${Math.round(Math.hypot(p.x - e.x, p.y - e.y))})`);
+  }
+  // 근접 평타는 무기 동작(휘두름 사건)이고 예고 원이 아니다
+  {
+    const w = trialWorld('sword', { weapon: WEAPON.sword }), Tr = w.trial; let swings = 0, circles = 0; Tr.sigT = 999; // 각인 스킬은 따로 (예고 선 · 원을 쓴다)
+    const p = w.player, e = Tr.main; p.x = e.x + 30; p.y = e.y;
+    for (let i = 0; i < 60 * 4; i++) { w.player.hp = w.d.maxHp; w.player.invuln = 0.5; w.step(idle); for (const ev of w.events) { if (ev.t === 'swing') swings++; if (ev.t === 'telegraphCircle') circles++; } w.events.length = 0; }
+    ok(swings >= 2 && circles === 0, `검: 평타는 휘두름 ${swings}번 · 예고 원 ${circles}`);
+  }
+}
+
+// 10.5) 스승의 회피: 얼굴 없는 자는 자주 피한다 (피하면 피해 0)
+{
+  const w = trialWorld('dagger', { weapon: 'dagger' }), T = w.trial; let ev = 0;
+  for (let i = 0; i < 200; i++) { T.evadeT = -9; T.main.tatk = null; T.s = 'move'; T.invulnT = 0; T.counterT = 0; const h = T.hp; w.damageEnemy(T.main, 1e9, 'phys', {}); if (T.hp === h) ev++; T.hp = T.maxHp; }
+  ok(ev > 30 && ev < 100, `얼굴 없는 자 회피 ${ev}/200`);
+}
+
+// 11) 얼굴 없는 자: 분신 셋이 튀어나와 교차해 베고 사라진다
+{
+  const w = trialWorld('dagger', { weapon: 'dagger' }), Tr = w.trial; Tr.skT = 99; Tr.sigT = 99; let crossed = 0, hurt = 0, maxB = 0;
+  w.beginCross(Tr.main);
+  for (let i = 0; i < 180; i++) { const h = w.player.hp; w.player.invuln = 0; w.step(idle); if (w.player.hp < h) hurt++; w.player.hp = w.d.maxHp; maxB = Math.max(maxB, Tr.bodies.length); if (Tr.cross) crossed = Math.max(crossed, Tr.cross.list.length); }
+  ok(crossed === 4 && hurt >= 1 && Tr.bodies.length === 1, `얼굴 없는 자: 본체+분신 ${crossed} · 맞음 ${hurt} · 끝나면 ${Tr.bodies.length}`);
 }
 
 console.log(bad ? `${bad} FAIL` : 'ALL OK');
