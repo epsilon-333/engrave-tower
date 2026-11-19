@@ -9,7 +9,7 @@ import { G, BIOME_LIST } from '../data/maps/overworld.js';
 import { sprite, frames } from './assets.js';
 import { ECHOES, AFFIXES } from '../data/monsters.js';
 import { WEAPON_SKILLS } from '../data/items.js';
-import { SKILLS, ELEM, ROLE_COLOR } from '../data/skills.js';
+import { SKILLS, ELEM, ROLE_COLOR, gradeCost } from '../data/skills.js';
 import { RACES } from '../data/races.js';
 import { RACE_ART } from '../data/art.js';
 import { storyObjective } from '../data/story.js';
@@ -487,7 +487,7 @@ export const HudMethods = {
       const sk = SKILLS[id];
       const cd = p.cds[id] || 0, max = p.cdMax?.[id] || sk.cd;
       const k = cd > 0 ? 1 - cd / max : 1;
-      const need = sk.costAll ? sk.costAll.min : sk.cost || 0;
+      const need = sk.costAll ? sk.costAll.min : gradeCost(sk, w.skillTier(id)) * (w.d.costMul || 1);
       const lack = need > p.res;
       this.cooldownBox(x, y0, box, k, keys[i], '', ROLE_COLOR[sk.role], cd, sk);
       if (lack && k >= 1) { g.fillStyle = 'rgba(40,0,0,0.55)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); }

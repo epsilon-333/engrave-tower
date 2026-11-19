@@ -37,7 +37,7 @@ function gearIco(id) {
   }
   return `<img class="gear-ico" src="${url}" alt="">`;
 }
-import { engravingSkillFor, KIND_NAME, SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS } from '../data/skills.js';
+import { costTxt, gradeCost, engravingSkillFor, KIND_NAME, SKILLS, ROLE_COLOR, ENGRAVING_SKILLS, CLASSES, RACE_CLASSES, CLASS_TAGS } from '../data/skills.js';
 import { getAutoAim, setAutoAim } from '../settings.js';
 import { skillScale, weaponStat, SKILL_PERKS, WEAPON_PERKS, CLASS_STATS } from '../data/statscale.js';
 import { bagTab, tradeTab, forgeTab, lifeClick, fishCodex, artifactCodex } from './life.js';
@@ -282,7 +282,7 @@ export class Hub {
     const scaleLine = (id) => { const sc = skillScale(id, b); return `<div class="sk-scale">${sn(sc.stat)} 계수 <b>×${sc.dmg.toFixed(2)}</b> <small>(${sn(sc.stat)} ${Math.round(sc.v)} · 1마다 +0.6%)</small> ${SKILL_PERKS.map((pk) => `<span class="${sc.v >= pk.at ? 'on' : ''}">${sn(sc.stat)} ${pk.at}: ${pk.text}</span>`).join(' ')}</div>`; };
     const card = (id, sk, locked) => {
       const i = b.skills.indexOf(id), on = i >= 0;
-      const cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
+      const cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${costTxt(sk, ENGRAVINGS[s.classEng?.[id]]?.grade)}` : sk.gain ? `${resName} +${sk.gain}` : '';
       const eid = s.classEng?.[id], has = eid && (s.owned?.[eid] || 0) > 0;
       const btn = on ? '<span class="ok">끼우고 있다</span>' : has ? `<span class="muted">각인 「${ENGRAVINGS[eid]?.name || ''}」 · 공명 제단에서 끼운다</span>` : `<span class="muted">${sk.ult ? '여정 「레벨 20」 보상' : '여정 보상'}으로 받는다</span>`;
       return `<div class="skc ${on ? 'on' : ''} ${locked ? 'locked' : ''}" style="--c:${ROLE_COLOR[sk.role]}">
@@ -408,7 +408,7 @@ export class Hub {
     const skId = engravingSkillFor(id, s.race), SK = SKILLS[skId], orig = ENGRAVING_SKILLS[id];
     const skillBox = SK ? `<div class="c-skill" style="--c:${ROLE_COLOR[SK.role] || '#f0c878'}">
       <div class="cs-head"><b>${SK.ult ? '궁극 · ' : ''}${esc(SK.name)}</b><span>${SK.role}</span></div>
-      <div class="cs-meta">재사용 ${SK.cd}초${SK.cost ? ` · 자원 ${SK.cost}` : SK.costAll ? ` · 자원 전부(${SK.costAll.min} 이상)` : SK.mana ? ` · 마나 ${SK.mana}` : ''} · ${KIND_NAME[SK.kind || 'body'] || '몸'}으로 쓴다</div>
+      <div class="cs-meta">재사용 ${SK.cd}초${SK.cost ? ` · 자원 ${gradeCost(SK, e.grade)}` : SK.costAll ? ` · 자원 전부(${SK.costAll.min} 이상)` : SK.mana ? ` · 마나 ${SK.mana}` : ''} · ${KIND_NAME[SK.kind || 'body'] || '몸'}으로 쓴다</div>
       <div class="cs-desc">${termify(esc(SK.desc || ''))}</div>
       ${skId !== orig ? `<div class="cs-meta muted">원래 스킬 「${esc(SKILLS[orig].name)}」(궁극)은 그 종족만 · 다른 종족은 이 기술을 쓴다</div>` : ''}</div>` : '';
     const hd = e.hidden && HIDDEN.find((h) => h.id === e.hidden), hiddenLine = hd ? `<div class="c-meta" style="color:${hd.color}"><b>숨은 각인 · 칭호 「${esc(hd.title)}」</b> · ${esc(hd.cond)}</div>` : '';

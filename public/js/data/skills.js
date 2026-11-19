@@ -503,6 +503,10 @@ export const FIT = { // 제 무기면 1 (더 세지지는 않는다), 맞지 않
   shield: { shield: 1 },
   body: { _: 1 },
 };
+// 자원 소모는 스킬을 준 각인의 등급을 따른다 (2026-11-19). 궁극기(costAll)는 그대로
+export const GRADE_COST = { 1: 10, 2: 15, 3: 22, 4: 32, 5: 45 };
+export const gradeCost = (def, tier) => (def.cost ? GRADE_COST[tier] || def.cost : 0);
+export const costTxt = (def, grade) => (grade && GRADE_COST[grade] ? `${GRADE_COST[grade]}` : `${GRADE_COST[1]}~${GRADE_COST[5]} (각인 등급)`);
 export const KIND_NAME = { slash: '베기', smash: '내려찍기', thrust: '찌르기', shoot: '쏘기', throw: '던지기', spell: '마법', parry: '받아치기', shield: '방패', body: '몸' };
 export const CANT_TEXT = { shoot: '활 · 석궁 · 바람총이 있어야 쏠 수 있다', throw: '던질 무기(도끼 · 창 · 단검 · 부메랑)가 있어야 한다', shield: '방패가 있어야 쓸 수 있다', slash: '이 무기로는 벨 수 없다', smash: '이 무기로는 내려찍을 수 없다', thrust: '이 무기로는 찌를 수 없다' };
 export function skillFit(def, wcat) {

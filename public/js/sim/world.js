@@ -823,7 +823,7 @@ export class World {
     // 종족 자원: 시간 회복, 전투 밖 감소
     const R = this.raceRes;
     if (R) {
-      if (R.regen) this.addRes(R.regen * (this.b.race === 'wizard' ? 1 + (this.s.spi || 0) / 60 : 1) * DT, true);
+      if (R.regen) this.addRes(R.regen * DT, true);
       if (R.decay && this.t - p.lastFight > 3 && !p.buffs.berserk) p.res = Math.max(0, p.res - R.decay * DT);
     }
     // 버프·시전·받아치기

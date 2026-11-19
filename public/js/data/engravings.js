@@ -408,7 +408,7 @@ export const ENGRAVINGS = {
     name: '오러 증폭 문양', slot: 'heart', grade: 3, load: 5, tags: ['brawl'],
     stats: { str: 4, pres: 4 },
     effects: [
-      { when: { race: 'knight' }, type: 'add', key: 'hurtRes', v: 0.5, text: '맞아서 얻는 오러 +50%' },
+      { when: { race: 'knight' }, type: 'mul', key: 'resGain', v: 1.5, text: '얻는 오러 +50%' },
       { when: { race: 'knight' }, type: 'flag', flag: 'resGuard', text: '오러 50 이상이면 받는 피해 -10%' },
     ],
     recipe: { chief: 1, rust: 4 },

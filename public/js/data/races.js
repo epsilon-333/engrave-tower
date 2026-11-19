@@ -19,7 +19,7 @@ export const RACES = {
     growth: { mag: 1 },
     mult: { mag: 1.2, spi: 1.1, str: 0.7, vit: 0.85, pres: 0.8 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '주문 증폭',
-    res: { key: 'mana', name: '마력', color: '#4a8aff', regen: 9, kill: 4, start: 100 },
+    res: { key: 'mana', name: '마력', color: '#4a8aff', regen: 3, kill: 4, start: 100 },
   },
   knight: {
     name: '기사', origin: '인간',
@@ -29,7 +29,7 @@ export const RACES = {
     growth: { str: 1 },
     mult: { pres: 1.15, vit: 1.1, agi: 0.85, mag: 0.75 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '수호의 맹세',
-    res: { key: 'grit', name: '오러', color: '#ffd84a', hit: 3, kill: 5, hurt: 120, decay: 1 },
+    res: { key: 'grit', name: '오러', color: '#ffd84a', hit: 3, kill: 5, decay: 1 },
   },
   orc: {
     name: '오크', origin: '황야',
