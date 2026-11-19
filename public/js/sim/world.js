@@ -3311,7 +3311,8 @@ export class World {
         for (const e of this.enemies) { if (e.dead || pr.hit.has(e.id)) continue; const dd = Math.hypot(e.x - pr.x, e.y - pr.y); if (dd < bd) { bd = dd; best = e; } }
         if (best) {
           const a = Math.atan2(best.y - pr.y, best.x - pr.x), sp = Math.hypot(pr.vx, pr.vy);
-          pr.vx += (Math.cos(a) * sp - pr.vx) * 0.12; pr.vy += (Math.sin(a) * sp - pr.vy) * 0.12;
+          const k = pr.weaponHit && pr.owner === 'p' ? 0.012 : 0.12; // 내 평타 유도탄은 예전의 10%만 휜다 (2026-11-19)
+          pr.vx += (Math.cos(a) * sp - pr.vx) * k; pr.vy += (Math.sin(a) * sp - pr.vy) * k;
         }
       }
       else if (pr.owner === 'p' && !pr.boomerang && !pr.ghost && this.f.has('aimAssist')) { // 각인 「바람 읽기」: 앞쪽 3.5칸 안의 적에게 살짝 휜다 (초당 최대 2.5라디안)
