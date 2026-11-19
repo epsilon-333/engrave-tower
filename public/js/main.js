@@ -875,7 +875,7 @@ function hiddenCount(key) {
 function trialDone(s) {
   const T = TEACHERS[s.fam];
   if (s.ok && T) { awardHidden(T.id); if (save.hidden?.teacher === s.fam) delete save.hidden.teacher; writeSave(save); }
-  showModal(`<h2>${esc(T?.name || '스승')}의 시련</h2><p>${s.ok ? `시련을 넘었다. 공명 제단에서 「${esc(HIDDEN_BY_ID[T.id].name)}」을 새길 수 있다.` : '쓰러졌다. 스승은 탑 문 옆 방에서 계속 기다린다.'}</p><p class="muted">${esc(T?.rule || '')}</p><div class="actions"><button data-close>탑 문 앞으로</button></div>`, () => { overlay.hidden = true; paused = false; modal = null; returnTo = null; enterWorld('tower'); });
+  showModal(`<h2>${esc(T?.name || '스승')}의 시련</h2><p>${s.ok ? `시련을 넘었다. 공명 제단에서 「${esc(HIDDEN_BY_ID[T.id].name)}」을 새길 수 있다.` : '쓰러졌다. 스승은 탑 문 옆 방에서 계속 기다린다.'}</p><div class="actions"><button data-close>탑 문 앞으로</button></div>`, () => { overlay.hidden = true; paused = false; modal = null; returnTo = null; enterWorld('tower'); });
 }
 
 function resetGame() { clearSave(); cloudDelete(); save = null; world = null; showRaceSelect(); }
