@@ -18,11 +18,13 @@ import { CLASS_MAGIC, WORD_NAME, sentenceLine, WORD_COLOR, fmt } from './rendere
 const TIER_EV = new Set(['skillAoe', 'skillCone', 'skillLine', 'skillSingle', 'skillDash', 'meleeStep', 'skillFx', 'slam', 'land']); // 등급에 맞춰 다듬는 사건
 
 export const EventMethods = {
-  // 히트스톱: 너무 자주 멈추면 끊겨(렉처럼) 보인다 — 한 번 멈춘 뒤 0.3초 안에는 큰 것(0.1초 넘게)만 다시 멈춘다
-  addStop(v) {
+  // 히트스톱은 맞은 적에게: 작은 타격은 맞은 몬스터만 잠깐 굳는다(나와 세계는 그대로 움직인다 · e.hitFreeze)
+  // 화면 전체가 멈추는 것은 큰 순간(0.1초 넘게 · 궁극기 · 보스 쓰러짐 등)만, 그것도 한 번 멈춘 뒤 0.5초 안엔 다시 멈추지 않는다
+  addStop(v, id) {
+    if (v < 0.1) { const e = id != null ? this.world?.enemies?.find((x) => x.id === id) : null; if (e && !e.dead) e.hitFreeze = Math.max(e.hitFreeze || 0, v * 1.6); return; }
     const now = performance.now() / 1000;
-    if (this.hitstop <= 0 && now < (this._stopNext || 0) && v < 0.1) return;
-    if (this.hitstop <= 0) this._stopNext = now + v + 0.3;
+    if (this.hitstop <= 0 && now < (this._stopNext || 0)) return;
+    if (this.hitstop <= 0) this._stopNext = now + v + 0.5;
     this.hitstop = Math.max(this.hitstop, v);
   },
   consume(w) {
@@ -46,7 +48,7 @@ export const EventMethods = {
             else this.texts.push({ tid: ev.id, val: ev.v, x: ev.x + (Math.random() - 0.5) * 6, y: ev.y, text: fmt(ev.v), color: ev.color, t: 0.75, crit: ev.crit, heavy: ev.heavy, small: ev.small, vy: -34, vx: (Math.random() - 0.5) * 24, pop: ev.crit || ev.heavy ? 0.14 : 0.07 });
           }
           if (ev.id != null) { this.squash.set(ev.id, 0.14); this.hpShow.set(ev.id, (this.world?.t ?? 0) + 3); }
-          if (ev.src === 'attack' || ev.src === 'skill') this.addStop(ev.crit ? 0.07 : ev.heavy ? 0.055 : 0.035); // 히트스톱: 맞힌 순간 아주 잠깐 멈춘다
+          if (ev.src === 'attack' || ev.src === 'skill') this.addStop(ev.crit ? 0.07 : ev.heavy ? 0.055 : 0.035, ev.id); // 히트스톱: 맞힌 순간 아주 잠깐 멈춘다
           if (!ev.small && ev.src !== 'dot' && ev.src !== 'linked') this.hitPop(ev.x, ev.y + 6, ev.color === '#ffffff' ? '#fff2c0' : ev.color, ev.crit ? 2 : ev.heavy || ev.src === 'aoe' || ev.src === 'skill' ? 1 : 0);
           if (ev.src === 'attack') {
             this.sparkBurst(ev.x, ev.y + 8, ev.crit ? '#ffe060' : '#ffffff', ev.crit ? 10 : 5);

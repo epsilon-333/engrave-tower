@@ -387,7 +387,7 @@ export class Renderer {
     if (ev.ult) {
       this.ultName = { text: ev.name, color: col === '#ffffff' ? '#ffd27a' : col, t: 1.4, max: 1.4 };
       this.flash = { color: '255,255,255', t: 0.18, max: 0.18 };
-      this.hitstop = Math.max(this.hitstop, 0.12); this.shake = Math.max(this.shake, 6);
+      this.addStop(0.12); this.shake = Math.max(this.shake, 6);
       this.rimFlash = { color: col === '#ffffff' ? '#ffd27a' : col, t: 0.8, max: 0.8 };
       this.shockwave(ev.x, ev.y, 90, col === '#ffffff' ? '#ffd27a' : col, 48);
       this.burst(ev.x, ev.y - 6, col, 40, 200);
@@ -395,7 +395,7 @@ export class Renderer {
       return;
     }
     if (ev.fx === 'charge') this.fx.push({ k: 'chargeGlow', t: 1.0, max: 1.0 });
-    if (ev.charge >= 3) { this.flash = { color: '255,240,190', t: 0.12, max: 0.12 }; this.shake = Math.max(this.shake, 5); this.hitstop = Math.max(this.hitstop, 0.06); }
+    if (ev.charge >= 3) { this.flash = { color: '255,240,190', t: 0.12, max: 0.12 }; this.shake = Math.max(this.shake, 5); this.addStop(0.06); }
     if (ev.elem && ev.elem !== 'phys') { const c2 = ELEM[ev.elem]?.color || col; this.fx.push({ k: 'glow', x: ev.x + Math.cos(ev.ang) * 14, y: ev.y - 10 + Math.sin(ev.ang) * 10, r: 26, color: c2, t: 0.25, max: 0.25 }); }
     if (ev.fx === 'wind') { for (let i = 0; i < 24; i++) { const a = Math.random() * Math.PI * 2; this.parts.push({ x: ev.x + Math.cos(a) * 20, y: ev.y - 6 + Math.sin(a) * 12, vx: -Math.sin(a) * 90, vy: Math.cos(a) * 50, t: 0.6, max: 0.6, color: '#d8ffe0', g: 0 }); } sfx('dash', { vol: 0.5, rate: 1.3 }); }
     if (ev.fx === 'roar') { this.shockwave(ev.x, ev.y, 70, '#ffcf8a', 36); this.shake = 4; sfx('hitHeavy', { vol: 0.8, rate: 0.55 }); }
@@ -408,7 +408,7 @@ export class Renderer {
     const r = ev.rar, rc = ['#c8c0d0', '#7ac4ff', '#c890ff', '#ffc84a', '#ff5a7a'][r], R = Math.max(24, ev.r || 30);
     this.anims.add(RARITY_ANIM[r], { x: ev.x, y: ev.y, r: R * (0.8 + 0.12 * r), col: rc });
     if (r >= 3) this.shake = Math.max(this.shake, r);
-    if (r >= 4) this.hitstop = Math.max(this.hitstop, 0.05);
+    if (r >= 4) this.addStop(0.05);
   }
 
   // 범위 스킬 연출 (맞는 쪽)
@@ -432,7 +432,7 @@ export class Renderer {
     // 등급이 높을수록: 표식이 커지고(+12%/등급) · 영웅부터 한 번 더 · 전설부터 등급 색 충격파와 불티 · 신화는 화면이 번쩍이고 테두리가 물든다
     if (rar >= 2) setTimeout(() => { if (this.world) this.weaponSig({ ...ev, rar: 0, r: (ev.r || 30) * 0.8 }); }, 140);
     if (rar >= 3) { const rc = ['#c8c0d0', '#7ac4ff', '#c890ff', '#ffc84a', '#ff5a7a'][rar]; this.shockwave(x, y, r * 1.1, rc, 36); this.burst(x, y - 6, rc, 24, 170); }
-    if (rar >= 4) { this.flash = { color: '255,220,230', t: 0.16, max: 0.16 }; this.rimFlash = { color: '#ff5a7a', t: 0.5, max: 0.5 }; this.hitstop = Math.max(this.hitstop, 0.06); this.shockwave(x, y, r * 1.5, '#ffffff', 44); }
+    if (rar >= 4) { this.flash = { color: '255,220,230', t: 0.16, max: 0.16 }; this.rimFlash = { color: '#ff5a7a', t: 0.5, max: 0.5 }; this.addStop(0.06); this.shockwave(x, y, r * 1.5, '#ffffff', 44); }
     switch (c) {
       case 'blade': A.add('bladeArc', { x, y, ang: -0.7, range: r, angle: 2.4, col }); A.add('bladeArc', { x, y, ang: Math.PI + 0.7, range: r, angle: 2.4, col, max: 0.34 }); break;
       case 'great': A.add('bladeArc', { x, y, ang: Math.PI / 2, range: r * 1.15, angle: 3.4, col }); break;
@@ -452,7 +452,7 @@ export class Renderer {
   // 거대 화염구 착탄: 섬광 → 솟구치는 불길 · 사방으로 튀는 불똥 → 날아가 떨어진 돌 조각이 달아올랐다 식는다 → 연기 · 그을린 땅이 사라진다
   fireballBoom(x, y, r) {
     this.flash = { color: '255,200,140', t: 0.3, max: 0.3 };
-    this.shake = Math.max(this.shake, 14); this.hitstop = Math.max(this.hitstop, 0.12);
+    this.shake = Math.max(this.shake, 14); this.addStop(0.12);
     this.fx.push({ k: 'glow', x, y: y - 10, r: r * 1.6, color: '#ffb040', t: 0.6, max: 0.6 });
     this.fx.push({ k: 'scorch', x, y, r: r * 0.75, t: 4.5, max: 4.5 });
     this.fx.push({ k: 'fireColumn', x, y, r, t: 0.55, max: 0.55 });
@@ -496,7 +496,7 @@ export class Renderer {
   juice(x, y, col, tier) {
     const big = tier === 'ult' || tier === 'ultCast';
     if (tier === 'cast' || tier === 'pop') return;
-    this.shake = Math.max(this.shake, big ? 9 : 3); this.hitstop = Math.max(this.hitstop, big ? 0.1 : 0.035);
+    this.shake = Math.max(this.shake, big ? 9 : 3); this.addStop(big ? 0.1 : 0.035);
   }
   hitPop(x, y, col, lv) { // 맞는 자리: 평타 · 보통 스킬은 작은 타격 불꽃(절반 크기), 치명타는 큰 불꽃
     if (lv === 2) { this.anims.px.add('impacts/hit-spark', x, y + 4, { scale: 0.95, max: 0.5, floor: 0, rot: (Math.random() - 0.5) * 0.6 }); this.sparkBurst(x, y - 4, '#fff09a', 5); } // 치명타: 큰 타격 불꽃 (예전 crit-hit은 둘레에 큰 고리가 퍼져 싸울 때마다 내 둘레에 원이 생겼다)
@@ -3311,7 +3311,7 @@ export class Renderer {
   // 분노 폭발: 몸에서 붉은 기운이 뾰족하게 터져 나가고, 땅이 붉게 갈라지며 돌 조각 · 흙먼지가 튄다. 터진 뒤에도 한동안 몸에서 열기가 피어오른다
   rageBlast(x, y, r) {
     this.flash = { color: '255,60,30', t: 0.28, max: 0.28 };
-    this.shake = Math.max(this.shake, 13); this.hitstop = Math.max(this.hitstop, 0.14);
+    this.shake = Math.max(this.shake, 13); this.addStop(0.14);
     this.rimFlash = { color: '#ff3a1a', t: 1.1, max: 1.1 };
     const list = [];
     for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2 + Math.random() * 0.4; let px = 0, py = 0; const cr = [[0, 0]]; const len = r * (0.7 + Math.random() * 0.35); for (let s2 = 0; s2 < 7; s2++) { const aa = a + (Math.random() - 0.5) * 0.7; px += Math.cos(aa) * len / 7; py += Math.sin(aa) * len / 7 * 0.6; cr.push([px, py]); } list.push(cr); }

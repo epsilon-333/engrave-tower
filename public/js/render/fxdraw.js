@@ -606,7 +606,7 @@ export const FxMethods = {
         } else { // 땅에 새겨진 글자: 납작하게 눕힌 세 글자가 빛나다가 스러진다
           if (!f.landed) {
             f.landed = true;
-            this.shake = Math.max(this.shake, f.same ? 9 : 6); this.hitstop = Math.max(this.hitstop, 0.06);
+            this.shake = Math.max(this.shake, f.same ? 9 : 6); this.addStop(0.06);
             for (let i = 0; i < 36; i++) { const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 170; this.parts.push({ x: f.tx, y: f.ty - 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6 - 40, t: 0.4 + Math.random() * 0.4, max: 0.8, color: cols[i % 3], g: 90, glow: true, size: 1.4 }); }
           }
           const fade = Math.max(0, 1 - (age - HIT) / (f.max - HIT));
