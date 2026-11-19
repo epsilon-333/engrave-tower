@@ -25,7 +25,7 @@ const run = (w, n) => { for (let f = 0; f < n; f++) { w.player.hp = w.d.maxHp; w
 // 1) 데이터 규칙
 for (const [id, name, , grade, , effects, skill] of RES_ENGS) {
   ok(ENGRAVINGS[id] && ENGRAVINGS[id].grade === grade, `${name}: 각인이 있다`);
-  if (skill) ok(effects.length === 0 && SKILLS[skill] && ENGRAVING_SKILLS[id] === skill, `${name}: 스킬 각인엔 패시브 효과가 없다`);
+  if (skill) ok((effects.length === 0 || id === 'rFlame') && SKILLS[skill] && ENGRAVING_SKILLS[id] === skill, `${name}: 스킬 각인엔 패시브 효과가 없다`);
   else ok(effects.length > 0 && !ENGRAVING_SKILLS[id], `${name}: 패시브 각인엔 딸린 스킬이 없다`);
 }
 ok(Object.values(RACES).every((r) => r.res.regen === 2 && r.res.kill === 5 && !r.res.hit && !r.res.decay), '모든 종족: 처치 +5 · 초당 2 · 적중 없음 · 줄어듦 없음');
@@ -72,9 +72,11 @@ const cast = (w, id) => { w.player.cds = {}; w.player.res = 100; w.castSkillId(i
   e.hp = 1; run(w, 40); ok(!e.absorb || e.dead, '흡수의 화살: 쓰러지면 끝난다');
 }
 {
-  const w = mk(['rFlame']), e = spawn(w, 'goblin', 40, 0); e.hp = e.maxHp = 1e9; w.player.cds = {}; w.player.res = 100; w.castSkillId('resFlame', 0); w.player.res = 0; run(w, 130);
-  ok(w.player.resFlame || w.player.res > 6, `자원의 불꽃: 불타는 적이 있으면 초당 +4 (${w.player.res.toFixed(1)})`);
-  ok(w.player.res > 6, `자원의 불꽃: 2초 동안 얻은 양 (${w.player.res.toFixed(1)})`);
+  const w = mk(['rFlame']), e1 = spawn(w, 'goblin', 40, 0), e2 = spawn(w, 'goblin', 50, 20); for (const e of [e1, e2]) e.hp = e.maxHp = 1e9;
+  w.player.cds = {}; w.player.res = 100; w.castSkillId('resFlame', 0); run(w, 12); ok(w.player.buffs.enchant?.elem === 'fire' && w.player.buffs.enchant.t > 9, '자원의 불꽃(화염 부여): 10초 동안 공격에 불이 붙는다');
+  w.player.res = 0; run(w, 60); const base = w.player.res; ok(Math.abs(base - 2) < 0.3, `불타는 적이 없으면 기본 수입만 (${base.toFixed(2)})`);
+  w.applyStatus(e1, 'burn', 1); w.applyStatus(e2, 'burn', 1); w.player.res = 0; run(w, 60);
+  ok(w.player.res > 5.5 && w.player.res < 7, `불타는 적 둘이면 초당 +4 (+기본 2 = ${w.player.res.toFixed(2)})`);
 }
 {
   const w = mk(['rBlood']), e = spawn(w, 'goblin', 30, 0); e.hp = 1; w.player.cds = {}; w.player.res = 60; w.castSkillId('bloodDraw', 0); run(w, 40);

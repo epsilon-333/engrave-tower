@@ -28,18 +28,9 @@ export const ResMethods = {
         this.emit({ t: 'buff', x: e.x, y: e.y - 6, color: '#c8a0ff' });
       }
     }
-    // 자원의 불꽃: 둘레를 태우고, 불타는 적이 있으면 자원
-    const fl = p.resFlame;
-    if (fl) {
-      fl.t -= DT; fl.tick -= DT;
-      if (fl.tick <= 0) {
-        fl.tick += 1; let any = false;
-        for (const e of this.enemiesNear(p.x, p.y, fl.r)) { this.applyStatus(e, 'burn', 1); any = true; }
-        if (any) this.addRes(fl.rate);
-        this.emit({ t: 'ring', x: p.x, y: p.y, r: fl.r, color: '#ff8a3a' });
-      }
-      if (fl.t <= 0) p.resFlame = null;
-    }
+    // 자원의 불꽃: 불타는 적(소환수가 붙인 불도) 한 마리당 초당 +N
+    const fr = this.d.flameRes;
+    if (fr) { let n = 0; for (const e of this.enemies) if (!e.dead && e.st?.burn) n++; if (n) this.addRes(fr * n * DT, true); }
   },
   // 공명의 표식을 단 적이 피해를 입을 때마다 (0.1초에 한 번까지)
   resMarkHit(e) {
@@ -60,7 +51,6 @@ export const ResMethods = {
         this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 18, fx: 'rune', lite: true });
         break;
       }
-      case 'resFlame': p.resFlame = { t: op.dur, r: op.r, rate: op.rate, tick: 0 }; this.emit({ t: 'buff', x: p.x, y: p.y, color: '#ff8a3a' }); break;
     }
   },
 };

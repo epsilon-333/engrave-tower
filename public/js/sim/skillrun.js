@@ -327,7 +327,7 @@ export const SkillMethods = {
         else run();
         break;
       }
-      case 'resGain': case 'resMark': case 'resFlame': this.resOp(op, ctx); break; // 자원 각인 (sim/resource.js)
+      case 'resGain': case 'resMark': this.resOp(op, ctx); break; // 자원 각인 (sim/resource.js)
       case 'soulCall': case 'bubble': case 'shadowHands': case 'ram': this.hidOp(op, ctx); break; // 숨은 각인 (sim/hidden.js)
       case 'blastSummons': {
         let mine = this.allies.filter((a) => a.kind !== 'spirit' && a.kind !== 'spiritKing');
