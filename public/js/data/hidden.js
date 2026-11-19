@@ -113,7 +113,7 @@ export const HIDDEN = [
     effects: [add('knockback', 60, '넉백 +60'), mul('moveSpeed', 1.1, '이동 속도 +10%')],
     skill: 'hRam' },
   { id: 'elderDragon', title: '고룡', name: '잠든 용의 비늘', kind: 'teacher', fam: 'spear', color: '#ff8a3a',
-    cond: '「스승의 방」에서 「용암 균열」을 쓰는 잠든 고룡을 쓰러뜨린다 (창끝이 닿는 거리에서만)', hint: '창끝의 거리',
+    cond: '「스승의 방」에서 「용암 균열」을 쓰는 잠든 고룡을 쓰러뜨린다 (다가가며 찔러야 한다)', hint: '물러서지 않는 창',
     stats: { str: 12, vit: 12, pres: 6 },
     effects: [flag('burnSpread', '화상 걸린 적이 쓰러지면 둘레 적에게 화상 2중첩이 옮는다'), mul('burnMul', 1.25, '화상 피해 +25%')],
     skill: 'hLavaRift' },
@@ -224,10 +224,10 @@ export const TEACHERS = {
   heavy: { id: 'warchief', name: '피 묻은 사슬의 챔피언', mon: 'tchHeavy', hint: '「내 방패를 부숴 봐라. 쉬지 말고.」', rule: '2.5초 안에 세 번 몰아쳐 막기를 부수면 2초 동안 제대로 들어간다 · 그동안 받은 만큼 「피로 쓴 함성」이 세진다' },
   magic: { id: 'archmage', name: '봉인된 대마법사', mon: 'tchMagic', hint: '「주문을 외는 자는 무방비다.」', rule: '주문을 외는 동안의 마법 피해만 제대로 들어간다' },
   scythe: { id: 'lich', name: '첫 번째 망자', mon: 'tchScythe', hint: '「낫은 끝으로 거둔다.」', rule: '낫 끝(무기 사거리의 60% 너머)으로 벤 것만 제대로 들어간다 · 한 번은 체력 30%로 일어나 공격이 1.5배가 된다 · 낫에 맞거나 「저주」를 받으면 저주가 쌓인다' },
-  dagger: { id: 'shadowKing', name: '얼굴 없는 자', mon: 'tchDagger', hint: '「그림자가 진한 것이 나다.」', rule: '분신 다섯 가운데 진짜(흐리지 않은 것)만 · 가짜를 베면 반격' },
+  dagger: { id: 'shadowKing', name: '얼굴 없는 자', mon: 'tchDagger', hint: '「그림자에서 나오는 순간을 노려라.」', rule: '그림자에서 솟아난 직후(1.2초)에 벤 것만 제대로 들어간다' },
   bow: { id: 'skyBow', name: '노궁수', mon: 'tchBow', hint: '「멀리서 쏘아라. 가까이 온 화살은 화살이 아니다.」', rule: '90 넘는 거리에서 쏜 것만 제대로 들어간다' },
   fist: { id: 'primal', name: '태고의 포식자', mon: 'tchFist', hint: '「끊기면 처음부터다.」', rule: '0.6초 안에 이어지는 연타의 세 번째부터 제대로 들어간다' },
-  spear: { id: 'elderDragon', name: '잠든 고룡', mon: 'tchSpear', hint: '「내 발톱이 닿는 곳에선 아무것도 닿지 않는다.」', rule: '창끝(무기 사거리의 70% 너머)에서 찌른 것만 제대로 들어간다' },
+  spear: { id: 'elderDragon', name: '잠든 고룡', mon: 'tchSpear', hint: '「내 발톱이 닿는 곳에선 아무것도 닿지 않는다.」', rule: '다가가며(돌진하며) 찌른 것만 제대로 들어간다 · 물러나며 찌르면 가볍다' },
 };
 export const HIDDEN_COUNTS = { npcDown: [100, 'necro'], drown: [50, 'seaWitch'], bloodLords: [3, 'bloodBlade'] }; // 일부러 쌓는 것
 

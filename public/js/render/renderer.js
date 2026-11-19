@@ -174,6 +174,7 @@ import { HudMethods } from './hud.js';
 import { FxMethods } from './fxdraw.js';
 import { EventMethods } from './events.js';
 import { AtmosMethods } from './atmosphere.js';
+const DILATE = new WeakMap(), NOBUFF = Object.freeze({});
 export class Renderer {
   constructor(canvas) {
     this.c = canvas;
@@ -1034,6 +1035,11 @@ export class Renderer {
   }
   digHole(x, y, r) { const g = this.g; g.fillStyle = '#7a6448'; ellipse(g, x, y + 3, r + 2, (r + 2) * 0.42); g.fillStyle = '#2a1e14'; ellipse(g, x, y + 3, r, r * 0.38); g.fillStyle = '#4a3828'; ellipse(g, x, y + 2, r * 0.8, r * 0.18); }
   digPose(w, e, dt) {
+    if (e.shadowSink) { // 얼굴 없는 자: 그림자 속으로 가라앉았다가 다른 자리에서 솟는다
+      const S = e.shadowSink, s = S.t < S.sink ? Math.pow(S.t / S.sink, 1.5) : 1 - Math.min(1, (S.t - S.sink) / S.rise);
+      if (dt > 0 && Math.random() < 0.6) this.parts.push({ x: e.x + (Math.random() - 0.5) * 14, y: e.y + 2, vx: 0, vy: -10 - Math.random() * 14, t: 0.4, max: 0.4, color: Math.random() < 0.5 ? '#2a1844' : '#6a4ab8', g: 0, size: 1 });
+      return { alpha: 1 - 0.3 * s, sink: Math.min(1, s), lift: 0, shadow: 1 - s };
+    }
     const R = e.r || 8;
     const sinkK = e.digInT > 0 ? 1 - e.digInT / 0.5 : e.mv?.k === 'burrow' && e.mv.ph === 'dig' ? 1 - Math.max(0, e.mv.t) / 0.5 : -1;
     if (sinkK >= 0) {
@@ -1052,17 +1058,17 @@ export class Renderer {
   }
   // 숨은 스승: 플레이어와 똑같이 그린다 — 플레이어의 자세표(playerPose) · 몸 그리기(drawBody) · 무기 그리기(drawWeapon)를 그대로 쓴다.
   // 스승의 상태(e.held: 휘두름 · 겨눔 · 대시)를 「플레이어 모양의 상태」로 바꿔 넘긴다
-  heldFighter(w, e, img, name, gs) {
+  heldFighter(w, e, img, name, gs, sinkY = 0) { // 그리기마다 새 객체를 만들지 않는다 (렉)
     const H = e.held, it = ITEMS[H.id], dir = e.dir || 1, tw = H.toward || 0;
     const fw = (e._fw ||= { projs: [], f: new Set(), pvp: null, state: 'play' });
     fw.t = w.t; fw.map = w.map;
     fw.b = { weapon: it.weapon, weaponId: H.id, weaponItem: it, race: e.raceLook, cls: null, offItem: null, offId: null, wcat: it.cat };
-    const st = { dir, aimX: Math.cos(tw), aimY: Math.sin(tw), moving: !!e.moving && !(H.swingT > 0), walkT: w.t, hitFlash: e.hitFlash || 0, dashT: H.dash ? 1 : 0, swingMax: H.swingMax || 0, swingT: H.swingT || 0, swingAng: H.swingAng ?? tw, swingDir: H.swingDir || 1, boxN: H.boxN || 0, motion: H.motion || null, charging: null, attackHeld: !!H.aim, atkPeriod: H.atkPeriod || 1, atkCd: H.atkCd || 0, castT: 0, castSkill: null, buffs: {}, down: false };
-    const fp = new Proxy(st, { get: (t, k) => (k in t ? t[k] : typeof k === 'string' ? 0 : undefined) }); // 안 적은 칸은 0 (플레이어 모양의 빈 상태)
-    const P = this.playerPose(fw, fp), g = this.g, bx = e.x + P.ox, by = e.y - 1 + P.oy, wart = weaponArt(H.id, ITEMS);
+    const st = Object.assign(e._st ||= {}, { dir, aimX: Math.cos(tw), aimY: Math.sin(tw), moving: !!e.moving && !(H.swingT > 0), walkT: w.t, hitFlash: e.hitFlash || 0, dashT: H.dash ? 1 : 0, swingMax: H.swingMax || 0, swingT: H.swingT || 0, swingAng: H.swingAng ?? tw, swingDir: H.swingDir || 1, boxN: H.boxN || 0, motion: H.motion || null, charging: null, attackHeld: !!H.aim, atkPeriod: H.atkPeriod || 1, atkCd: H.atkCd || 0, castT: 0, castSkill: null, buffs: NOBUFF, down: false });
+    const fp = (e._fp ||= new Proxy(st, { get: (t, k) => (k in t ? t[k] : typeof k === 'string' ? 0 : undefined) })); // 안 적은 칸은 0 (플레이어 모양의 빈 상태)
+    const P = this.playerPose(fw, fp), g = this.g, bx = e.x + P.ox, by = e.y - 1 + P.oy + sinkY, wart = weaponArt(H.id, ITEMS);
     if (e.outline) { // 종족 색 1도트 외곽선
       const sil = sprite(name, e.tintX || '', e.outline, dir < 0), o = Math.max(1, Math.round(gs));
-      if (sil) for (const [ox, oy] of [[-o, 0], [o, 0], [0, -o], [0, o]]) this.drawBody(sil, bx + ox, by + oy, gs, P, dir);
+      if (sil) { let fat = DILATE.get(sil); if (!fat) { fat = document.createElement('canvas'); fat.width = sil.width + 2; fat.height = sil.height + 2; const c = fat.getContext('2d'); for (const [ox, oy] of [[0, 1], [2, 1], [1, 0], [1, 2]]) c.drawImage(sil, ox, oy); DILATE.set(sil, fat); } this.drawBody(fat, bx, by + gs, gs, P, dir); } // 외곽선은 한 번 부풀려 둔 그림 한 장으로 (렉)
     }
     if (P.kind === 'fist') { const back = P.punch > 0.05 && P.offhand; this.fistAt(fw, bx + dir * (back ? 3 : 1) * gs, by + (GUARD_Y[fw.b.race] ?? -4) * gs, this.fistMetal(wart), dir); }
     if (P.behind) this.drawWeapon(fw, fp, P, bx, by, gs);
@@ -1188,7 +1194,7 @@ export class Renderer {
       if (e.pose.k === 'dizzy') for (let i = 0; i < 3; i++) { const a = w.t * 7 + i * 2.1; g.fillStyle = '#ffe060'; g.fillRect(Math.round(e.x + Math.cos(a) * 8), Math.round(dy - 5 + Math.sin(a) * 2), 2, 2); }
       if ((e.pose.k === 'crouch' && e.mv?.k === 'headbutt') && dt > 0 && Math.random() < 0.35) this.parts.push({ x: e.x - (e.dir || 1) * e.r, y: e.y + 3, vx: -(e.dir || 1) * (30 + Math.random() * 40), vy: -20 - Math.random() * 20, t: 0.45, max: 0.45, color: '#a89880', g: 200, puff: true, size: 2 }); // 뒷발로 땅을 긁는 흙먼지
     } else if (e.held && !art.beast && !art.sheet) {
-      this.heldFighter(w, e, img, name, sc); // 숨은 스승: 플레이어와 같은 자세 · 같은 무기 그리기
+      this.heldFighter(w, e, img, name, sc, (ip?.sink || 0) * h0); // 숨은 스승: 플레이어와 같은 자세 · 같은 무기 그리기
       if (dt > 0 && e.outline && Math.random() < 0.22) this.parts.push({ x: e.x + (Math.random() - 0.5) * w0 * 0.7, y: dy + h0 * (0.3 + Math.random() * 0.6), vx: (Math.random() - 0.5) * 6, vy: -18 - Math.random() * 10, t: 0.5, max: 0.5, color: e.outline, g: -4, glow: true, size: 1 });
     } else {
       if (e.outline && !art.beast && !art.sheet) { // 숨은 스승: 종족 색 1도트 외곽선 (몸 둘레 고리 없이 윤곽만) · 종족 색 불티가 가끔 오른다

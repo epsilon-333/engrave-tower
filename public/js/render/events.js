@@ -81,7 +81,7 @@ export const EventMethods = {
         }
         case 'shoot': sfx(ev.type === 'mag' ? 'cast' : 'shoot', { vol: 0.4, rate: ev.type === 'mag' ? 1.6 : 1.3 }); break;
         case 'spin': {
-          const pl = this.world?.player, own = !!pl && Math.hypot(ev.x - pl.x, ev.y - pl.y) < 40; // 내가 도는 베기: 칼 잔상이 그린다
+          const pl = this.world?.player, own = !!pl && !ev.foe && Math.hypot(ev.x - pl.x, ev.y - pl.y) < 40; // 내가 도는 베기: 칼 잔상이 그린다
           if (own) this.trailStyle = { col: ev.heavy ? '#ffd870' : ev.type === 'mag' ? '#c9a8ff' : '#dcecff', reach: ev.r || 40, until: (this.world?.t || 0) + 0.45 };
           this.fx.push({ k: 'spin', ...ev, own, a0: ev.ang ?? Math.random() * 6.28, dir: ev.dir || (Math.random() < 0.5 ? 1 : -1), t: 0.3, max: 0.3 });
           // 발밑 흙먼지가 바깥으로 튄다
@@ -94,7 +94,7 @@ export const EventMethods = {
         case 'afterimage': this.fx.push({ k: 'line', ...ev, t: 0.3, max: 0.3 }); break;
         case 'meleeStep': { // 근접 스킬의 내딛기: 박찬 자리에 흙이 차이고 몸의 잔상이 따라온다 (등급만큼 늘어난다: tierPolish)
           const dx = ev.x2 - ev.x1, dy = ev.y2 - ev.y1, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
-          this.fx.push({ k: 'ghost', x: ev.x1 + dx * 0.35, y: ev.y1 + dy * 0.35, t: 0.16, max: 0.22, dir: dx > 0 ? 1 : -1 });
+          if (!ev.foe) this.fx.push({ k: 'ghost', x: ev.x1 + dx * 0.35, y: ev.y1 + dy * 0.35, t: 0.16, max: 0.22, dir: dx > 0 ? 1 : -1 }); // 내 몸 잔상 (스승 것은 그리지 않는다)
           for (let i = 0; i < 4; i++) this.parts.push({ x: ev.x1 - ux * 2, y: ev.y1 + 4, vx: -ux * (26 + Math.random() * 30) + (Math.random() - 0.5) * 16, vy: -uy * 14 - 8 - Math.random() * 12, t: 0.4, max: 0.4, color: '#a89880', g: 60, puff: true, size: 2 });
           this.shake = Math.max(this.shake, 1.5); sfx('dash', { vol: 0.35, rate: 1.3 });
           break;

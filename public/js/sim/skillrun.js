@@ -718,7 +718,7 @@ export const SkillMethods = {
     if (def.cast) {
       const ct = def.cast * (this.d.castMul || 1);
       p.castT = ct; p.castMax = ct; p.castSkill = { def, spent, id };
-      if (this.autoAim) { const tg0 = this.pickTarget(def); if (tg0 && tg0.kind !== 'none') this.faceTo(tg0.x, tg0.y); }
+      if (this.autoAim) { const tg0 = this.pickTarget(def); if (tg0 && tg0.kind !== 'none') { const ax = p.aimX, ay = p.aimY, l0 = Math.hypot(ax, ay) || 1, tx = tg0.x - p.x, ty = tg0.y - p.y, l1 = Math.hypot(tx, ty) || 1; this.faceTo(p.x + (ax / l0 * 0.9 + tx / l1 * 0.1) * 60, p.y + (ay / l0 * 0.9 + ty / l1 * 0.1) * 60); } } // 자동 조준 10%
       this.motion(def.mo === 'castBig' ? 'castBigHold' : 'castHold', def.cast + 0.05);
       if (this.autoAim) { const tg = this.pickTarget(def); if (tg) this.emit({ t: 'lockOn', x: tg.x, y: tg.y, kind: tg.kind, dur: def.cast }); }
       this.emit({ t: 'cast', x: p.x, y: p.y, dur: def.cast, elem: def.elem === 'current' ? p.elem : def.elem });
@@ -747,8 +747,10 @@ export const SkillMethods = {
     if (this.autoAim) {
       const tg = this.pickTarget(def);
       if (tg) {
-        ctx.auto = true; ctx.target = tg.e; ctx.point = tg.e ? null : { x: tg.x, y: tg.y }; ctx.tp = tg.tp;
-        this.faceTo(tg.x, tg.y);
+        // 자동 조준은 10%만 돕는다 (2026-11-19 · 휴대폰): 내가 겨눈 쪽에서 적 쪽으로 10%만 틀고, 땅을 찍는 스킬은 내 조준 자리 그대로
+        const needT = ['near', 'tank', 'stack', 'fresh'].includes(def.aim); ctx.tp = tg.tp;
+        if (needT) { ctx.auto = true; ctx.target = tg.e; }
+        { const ax = p.aimX, ay = p.aimY, l0 = Math.hypot(ax, ay) || 1, tx = tg.x - p.x, ty = tg.y - p.y, l1 = Math.hypot(tx, ty) || 1, K = 0.1; const nx = ax / l0 * (1 - K) + tx / l1 * K, ny = ay / l0 * (1 - K) + ty / l1 * K; this.faceTo(p.x + nx * 60, p.y + ny * 60); }
         if (tg.kind !== 'none') this.emit({ t: 'lockOn', x: tg.x, y: tg.y, kind: tg.kind, ult: def.ult });
       }
     }

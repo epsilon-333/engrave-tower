@@ -29,12 +29,13 @@ export const TEACHER_SKILLS = {
     S('warCry', '전투 함성', 15, 0, 999, ({ w, Tr, e }) => w.tsPower(Tr, e, 5, '전투 함성')),
   ],
   magic: [
-    S('flameBurst', '화염 작렬', 4, 0, 260, ({ w, e, p }) => w.tsCircle(e, p.x, p.y, { r: 34, k: 0.1, wind: 0.6, elem: 'fire', fx: 'burst' })),
+    S('flameBurst', '화염 작렬', 4, 0, 260, ({ w, e }) => { const L = w.trialLead(0.6); w.tsCircle(e, L.x, L.y, { r: 51, k: 0.1, wind: 0.6, elem: 'fire', fx: 'burst' }); }),
     S('frostChain', '서리 사슬', 6, 0, 230, ({ w, e, a }) => w.tsRays(e, [a], { len: 230, w: 16, k: 0.08, wind: 0.45, fx: 'arrowBeam', tele: true, slow: 1.2, elem: 'ice' })),
-    S('lightningChain', '번개 사슬', 6, 0, 260, ({ w, e, p }) => { w.tsCircle(e, p.x, p.y, { r: 28, k: 0.08, wind: 0.4, elem: 'lightning', fx: 'burst' }); w.tsLater(0.45, () => w.tsCircle(e, w.player.x, w.player.y, { r: 28, k: 0.08, wind: 0.35, elem: 'lightning', fx: 'burst' })); }),
-    S('blinkBlast', '점멸', 7, 0, 70, ({ w, e }) => { const x = e.x, y = e.y; w.trialBlink(e, 110); w.tsCircle(e, x, y, { r: 52, k: 0.08, wind: 0.3, elem: 'arcane', fx: 'burst' }); }),
-    S('slowField', '시간 감속장', 12, 0, 260, ({ w, Tr, p }) => w.tsZone(Tr, p.x, p.y, { r: 62, dur: 6, slow: true, color: '#9fd8ff' })),
-    S('grandFireball', '거대 화염구', 14, 0, 300, ({ w, e, p }) => w.tsCircle(e, p.x, p.y, { r: 80, k: 0.24, wind: 1.4, elem: 'fire', fx: 'meteor', shake: 6 })),
+    S('lightningChain', '번개 사슬', 6, 0, 260, ({ w, e }) => { const L = w.trialLead(0.4); w.tsCircle(e, L.x, L.y, { r: 42, k: 0.08, wind: 0.4, elem: 'lightning', fx: 'burst' }); w.tsLater(0.45, () => { const L2 = w.trialLead(0.35); w.tsCircle(e, L2.x, L2.y, { r: 42, k: 0.08, wind: 0.35, elem: 'lightning', fx: 'burst' }); }); }),
+    S('blinkBlast', '점멸', 7, 0, 70, ({ w, e }) => { const x = e.x, y = e.y; w.trialBlink(e, 110); w.tsCircle(e, x, y, { r: 78, k: 0.08, wind: 0.3, elem: 'arcane', fx: 'burst' }); }),
+    S('slowField', '시간 감속장', 12, 0, 260, ({ w, Tr, p }) => w.tsZone(Tr, p.x, p.y, { r: 93, dur: 6, slow: true, color: '#9fd8ff' })),
+    S('grandFireball', '거대 화염구', 14, 0, 300, ({ w, e }) => { const L = w.trialLead(1.0); w.tsCircle(e, L.x, L.y, { r: 120, k: 0.24, wind: 1.4, elem: 'fire', fx: 'meteor', shake: 6 }); }),
+    S('meteor', '메테오', 12, 0, 330, ({ w, Tr, e }) => { for (let i = 0; i < 3; i++) w.tsLater(i * 0.45, () => { const L = w.trialLead(1.1); w.tsCircle(e, L.x, L.y, { r: 66, k: 0.12, wind: 1.1, elem: 'fire', fx: 'meteor', shake: 4 }); }); Tr.t = 1.4; }), // 메테오 셋이 내 갈 길에 떨어진다
   ],
   scythe: [
     S('skeletons', '해골 병사', 10, 0, 999, ({ w, Tr, e }) => w.tsSummon(Tr, e)),
@@ -89,7 +90,7 @@ export const TeacherSkillMethods = {
     if (!surge && (Tr.skCd.weapon || 0) <= this.t && dist < (WS_MAX[Tr.fam] || 170)) pool.push({ id: 'weapon', cd: 6.5 });
     if (!pool.length) { Tr.skT = 0.5; return false; }
     const s = pool[this.rng.int(0, pool.length - 1)];
-    Tr.skCd[s.id] = this.t + s.cd; Tr.skT = surge ? 1.0 : 2.2; // 스킬과 스킬 사이 2.2초 (평타 · 움직임이 그 사이에)
+    Tr.skCd[s.id] = this.t + s.cd; Tr.skT = surge ? 1.0 : 1.3; // 스킬과 스킬 사이 1.3초 (몰아친다) (평타 · 움직임이 그 사이에)
     this.trialPayback(e); // 대족장: 스킬을 쓸 때마다 받은 피해를 되갚는다
     if (s.id === 'weapon') { this.trialWeaponSkill(); return true; }
     Tr.s = 'wskill'; Tr.t = 0.8;
