@@ -44,7 +44,7 @@ export const TR = {
 // 스승의 평타 = 든 무기의 실제 동작 (2026-11-19): 준비(무기를 치켜든다) → 휘두른다 → 빈틈. 피해는 내 최대 체력 비율
 const ATK = {
   sword: { wind: 0.5, range: 38, arc: 2.0, k: 0.08, kind: 'slash' },
-  heavy: { wind: 0.95, range: 44, arc: 2.3, k: 0.11, kind: 'smash' },
+  heavy: { wind: 0.85, range: 44, arc: 2.3, k: 0.11, kind: 'smash' },
   fist: { wind: 0.32, range: 30, arc: 1.5, k: 0.06, kind: 'punch', n: 2 },
   spear: { wind: 0.55, range: 64, arc: 0.45, k: 0.08, kind: 'thrust' },
   scythe: { wind: 0.8, range: 46, arc: 2.8, k: 0.08, kind: 'reap' },
@@ -170,10 +170,10 @@ export const TeacherMethods = {
   },
   beginAtk(e, fam) {
     const A = ATK[fam] || { wind: 0.7, range: 190, arc: 0, k: TR.hit, kind: 'shoot' }, p = this.player;
-    const wind = fam === 'bow' ? 0.8 : A.wind, wf = WIND_FRAC[heldKind(e.held?.id)] ?? 0.2;
-    // 총 길이: 휘두름이 시작되는 순간(= 준비 끝)이 플레이어 자세표의 준비 비율에 오도록 (준비 시간 ÷ 준비 비율)
-    const total = fam === 'bow' ? wind + 0.14 : wf > 0 ? wind / wf : wind + 0.28;
-    e.tatk = { fam, cfg: A, t0: this.t, wind, total: Math.min(total, wind + 0.55), ang: Math.atan2(p.y - e.y, p.x - e.x), hit: false, n: 1 };
+    const wind = fam === 'bow' ? 0.8 : A.wind, wf = ITEMS[e.held?.id]?.cat === 'blunt' ? 0.8 : WIND_FRAC[heldKind(e.held?.id)] ?? 0.2; // 둔기는 천천히 들고(80%) 빠르게 내려친다
+    // 준비는 준비 시간대로(자세표의 준비 구간을 그 시간에 맞춰 늘린다) · 휘두름은 짧고 빠르게 (sd초)
+    const sd = fam === 'bow' ? 0.14 : fam === 'fist' ? 0.18 : 0.2;
+    e.tatk = { fam, cfg: A, t0: this.t, wind, wf, sd, total: wind + sd, ang: Math.atan2(p.y - e.y, p.x - e.x), hit: false, n: 1 };
     this.emit({ t: 'windup', id: e.id });
   },
   // 준비(겨누는 쪽을 따라간다) → 휘두름(맞는 자리가 정해진다) → 거두기. 모양은 그리는 쪽이 플레이어와 같은 자세표로 그린다 (e.held 에 휘두름 상태만 적는다)
@@ -193,10 +193,13 @@ export const TeacherMethods = {
     if (shoot) {
       if (!A.hit) { H.aim = true; H.swingT = 0; H.swingMax = 0; H.atkPeriod = A.wind; H.atkCd = Math.max(0, A.wind - el); }
       else { H.aim = false; H.swingMax = 0.1; H.swingT = Math.max(0.001, 0.1 - (el - A.wind)); }
-    } else { H.aim = false; H.swingMax = A.total; H.swingT = Math.max(0.001, A.total - el); }
+    } else { // 자세표의 진행(k): 준비 동안은 0 → 준비 비율, 휘두름 동안은 준비 비율 → 1
+      const k = el < A.wind ? A.wf * (el / A.wind) : Math.min(1, A.wf + (1 - A.wf) * ((el - A.wind) / A.sd));
+      H.aim = false; H.swingMax = 1; H.swingT = Math.max(0.001, 1 - k);
+    }
     if (!A.hit && el >= A.wind) { A.hit = true; this.trialSwingHit(e, A); }
     if (el >= A.total) { // 주먹은 두 번 이어 친다
-      if (A.cfg.n > A.n) { A.n++; A.t0 = this.t; A.wind = 0.28; A.total = 0.55; A.hit = false; A.ang = toward; this.emit({ t: 'windup', id: e.id }); }
+      if (A.cfg.n > A.n) { A.n++; A.t0 = this.t; A.wind = 0.28; A.total = A.wind + A.sd; A.hit = false; A.ang = toward; this.emit({ t: 'windup', id: e.id }); }
       else e.tatk = null;
     }
   },

@@ -1509,6 +1509,8 @@ export class World {
       const box = this.b.wcat === 'fist' ? (p.boxN = this.t - (p.boxLast ?? -9) > 0.7 ? 0 : ((p.boxN ?? -1) + 1) % 5) : -1;
       if (box >= 0) { p.boxLast = this.t; if (box === 4) heavy = true; }
       p.swingMax = great ? Math.max(0.85, 1.15 / (d.atkSpeed * this.mod('atkSpeed'))) /* 대검: 무겁게 (예전 0.7초) */ : thrust ? Math.max(0.3, Math.min(0.36, 0.9 / (w.speed * d.atkSpeed))) /* 창: 당겼다가 찌른다 */ : Math.min(0.2, 0.6 / (w.speed * d.atkSpeed)); p.swingT = p.swingMax; p.swingAng = ang;
+      const blunt = this.b.wcat === 'blunt' && !great && !thrust; // 둔기: 천천히 들어 올렸다가(80%) 빠르게 내려친다 — 맞는 순간은 내려칠 때
+      if (blunt) { p.swingMax = p.swingT = Math.max(0.38, Math.min(0.6, 0.62 / (w.speed * d.atkSpeed))); p.swingDir = 1; }
       if (box >= 0) {
         p.swingMax = p.swingT = [0.13, 0.13, 0.15, 0.17, 0.21][box] / Math.min(1.6, Math.max(1, d.atkSpeed));
         if (box === 2 || box === 4) { p.dashT = 0.06; p.dvx = Math.cos(ang) * 85; p.dvy = Math.sin(ang) * 85; } // 체중을 실어 한 걸음
@@ -1554,6 +1556,7 @@ export class World {
         this.delayed.push({ t: p.swingMax * 0.5, run: () => { p.dashT = 0.16; p.dvx = Math.cos(ang) * 70; p.dvy = Math.sin(ang) * 70; } }); // 던지는 힘에 몸이 끌려 나간다
         this.delayed.push({ t: p.swingMax * 0.68, run: () => { strike(true, 1.6); /* 대검: 느린 만큼 한 방이 크다 (예전 1.3) */ this.emit({ t: 'hitstop', v: 0.07 }); this.emit({ t: 'shake', v: 5 }); } });
       } else if (thrust) this.delayed.push({ t: p.swingMax * 0.38, run: () => { if (!p.dead) strike(); } }); // 창: 뒤로 당긴 뒤 내지르는 순간에 맞는다
+      else if (blunt) this.delayed.push({ t: p.swingMax * 0.8, run: () => { if (!p.dead) { strike(); this.emit({ t: 'hitstop', v: 0.04 }); this.emit({ t: 'shake', v: 2 }); } } });
       else if (box >= 0) { strike(false, [0.8, 0.8, 1.05, 1.15, 1.6][box]); if (box === 4) { this.emit({ t: 'hitstop', v: 0.05 }); this.emit({ t: 'shake', v: 2 }); } }
       else strike();
       // 도끼 군단: 휘두를 때마다 돌아오는 도끼 3자루를 함께 던진다
@@ -2102,7 +2105,7 @@ export class World {
     if (!e.def.elite && e.def.ai !== 'dummy') {
       const dx = e.x - p.x, dy = e.y - p.y, l = Math.hypot(dx, dy) || 1;
       const blunt = !proj && this.b.wcat === 'blunt' && !opt.skill; // 둔기 평타: 묵직하게 밀어낸다
-      const kb = d.knockback * (heavy ? 2 : 1) * (blunt ? 3.2 : 1);
+      const kb = d.knockback * (heavy ? 2 : 1) * (blunt ? 4.5 : 1); // 둔기 평타 넉백 (2026-11-19 3.2 → 4.5)
       e.kbx += (dx / l) * kb * 3; e.kby += (dy / l) * kb * 3;
     }
     if (e.def.ai === 'dummy') e.wobble = 0.3;

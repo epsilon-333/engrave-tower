@@ -1759,10 +1759,11 @@ export class Renderer {
         P.behind = sn < -0.15;
         P.whoosh = v;
       } else if (kind === 'melee') {
-        const down = p.swingDir > 0, big = kind === 'great';
-        const wind = big ? 0.3 : 0.2;
-        const from = big ? -2.7 : down ? -2.2 : 1.3, to = big ? 1.4 : down ? 1.2 : -1.9;
-        if (k < wind) { const q = k / wind; P.a = from + (down || big ? -0.25 : 0.25) * q; P.lean = -1.5 * q; P.hx = 1; P.hy = big ? -15 : -11; P.sy = 1 + 0.04 * q; }
+        const blunt = w.b.wcat === 'blunt', down = blunt || p.swingDir > 0, big = kind === 'great';
+        const wind = big ? 0.3 : blunt ? 0.8 : 0.2; // 둔기: 머리 위로 천천히 들어 올리고(80%) · 한 번에 빠르게 내려친다
+        const from = big ? -2.7 : blunt ? -2.6 : down ? -2.2 : 1.3, to = big ? 1.4 : blunt ? 1.35 : down ? 1.2 : -1.9;
+        if (blunt && k < wind) { const q = k / wind, e2 = q * q * (3 - 2 * q); P.a = 0.55 + (from - 0.55) * e2; P.hx = 4 - 4 * e2; P.hy = -6 - 8 * e2; P.lean = -2 * e2; P.sy = 1 + 0.05 * e2; P.behind = P.a < -1.6; }
+        else if (k < wind) { const q = k / wind; P.a = from + (down || big ? -0.25 : 0.25) * q; P.lean = -1.5 * q; P.hx = 1; P.hy = big ? -15 : -11; P.sy = 1 + 0.04 * q; }
         else { const q = easeOut((k - wind) / (1 - wind)); P.a = from + (to - from) * q; P.lean = (big ? 3.5 : 2.5) * Math.sin(Math.min(1, q * 1.4) * Math.PI * 0.9); P.ox = Math.cos(p.swingAng) * 2.5 * (1 - q * 0.5); P.oy = Math.sin(p.swingAng) * 1.5; P.hx = 2 + 5 * q; P.hy = (big ? -15 : -11) + (big ? 11 : 6) * q; if (big && q > 0.6) P.sy = 0.9 + 0.1 * (q - 0.6) / 0.4; }
         P.behind = P.a < -1.6 || P.a > 2.2;
         if (wpn.shape === 'thrust') { const back = easeOut(Math.min(1, k / 0.36)), fw = k < 0.36 ? 0 : easeOut(Math.min(1, (k - 0.36) / 0.16)), ret = k < 0.7 ? 0 : (k - 0.7) / 0.3; P.a = aimF; P.hx = k < 0.36 ? 2 - 7 * back : -5 + 17 * fw - 7 * ret; P.hy = -7; P.lean = k < 0.36 ? -2 * back : 3 * fw * (1 - ret); P.ox = Math.cos(p.swingAng) * (k < 0.36 ? -2 * back : 4 * fw * (1 - ret)); P.behind = false; } // 찌르기: 당겼다가 곧게
