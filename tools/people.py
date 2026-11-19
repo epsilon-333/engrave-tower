@@ -15,7 +15,7 @@ FIT_0X72 = True
 import os
 GX, GY = float(os.environ.get('PGX', 0.9)), float(os.environ.get('PGY', 0.58))
 GSCALE = (GX, GY, CX, FOOT + 0.5) if FIT_0X72 else None
-COLORS = 11 if FIT_0X72 else None
+COLORS = 7 if FIT_0X72 else None
 HEAD_K = float(os.environ.get('PHK', 1.5)) if FIT_0X72 else 1  # 머리는 덜 줄인다 → 눈 · 입이 남는다 (세로는 몸이 더 눌린 만큼 되돌려 둥글게)
 SAT = float(os.environ.get('PSAT', 1.25))  # 색을 이만큼 더 진하게 (0x72 캐릭터의 맑은 색)
 
@@ -44,7 +44,7 @@ def saturate(h, k):
 
 def ramp(h):
     h = saturate(h, SAT)
-    return [shade(h, 0.22), h, shade(h, -0.22), shade(h, -0.48)]
+    return [h, h, shade(h, -0.25), shade(h, -0.25)]  # 단순하게: 기본색 + 어두운 색 두 단
 
 
 SKIN = {'fair': '#f8d0a8', 'tan': '#d8a070', 'dark': '#9a6440', 'elf': '#f4dcc0', 'orc': '#7aa04a', 'lizard': '#6aa04a', 'undead': '#a8b0b8', 'dragon': '#f8c8a0', 'bone': '#e8e0cc', 'grey': '#b8b0a8'}
@@ -170,8 +170,7 @@ def build(spec):
         if spec.get('closedEyes'):
             h_sh += [Shape('line', 'eye', S(ex1 - 0.5, ey), S(ex1 + 0.6, ey), 0.6 * k, flat=True), Shape('line', 'eye', S(ex2 - 0.5, ey), S(ex2 + 0.6, ey), 0.6 * k, flat=True)]
         else:
-            h_sh += [Shape('ellipse', 'eyeW', *S(ex1, ey), 0.95 * k * eyeW, 1.3 * k, flat=True), Shape('ellipse', 'eyeW', *S(ex2, ey), 0.95 * k * eyeW, 1.3 * k, flat=True),
-                     Shape('ellipse', 'eye', *S(ex1 + 0.3, ey + 0.3), 0.55 * k * eyeW, 0.9 * k, flat=True), Shape('ellipse', 'eye', *S(ex2 + 0.3, ey + 0.3), 0.55 * k * eyeW, 0.9 * k, flat=True)]
+            h_sh += [Shape('ellipse', 'eye', *S(ex1, ey), 0.8 * k * eyeW, 1.15 * k, flat=True), Shape('ellipse', 'eye', *S(ex2, ey), 0.8 * k * eyeW, 1.15 * k, flat=True)]  # 흰자 없이 까만 눈만 (공룡 그림처럼)
         if race == 'undead': h_sh += [Shape('ellipse', 'socket', *S(ex1, ey + 1.4), 1.0 * k, 0.4 * k, flat=True), Shape('ellipse', 'socket', *S(ex2, ey + 1.4), 1.0 * k, 0.4 * k, flat=True)]
         if spec.get('blush'): h_sh += [Shape('ellipse', 'cheek', *S(hx - 2.2, hy + 2.2), 0.9 * k, 0.5 * k, flat=True), Shape('ellipse', 'cheek', *S(hx + 3.4, hy + 2.2), 0.8 * k, 0.5 * k, flat=True)]
         if race != 'lizard': h_sh.append(Shape('line', 'mouth', S(hx + 0.9, hy + 3.1), S(hx + 2.0, hy + 3.1), 0.6 * k, flat=True))
@@ -318,6 +317,8 @@ def anims(spec, item):
             work.append({'torso': (hunch - 2, 0, -[0, 1, 1, 0][i]), 'armN': ([-40, -95, -100, -50][i],), 'head': (-4,), 'armF': ([0, -20, -20, 0][i],)})
         else:  # 손짓하며 말하기
             work.append({'torso': (hunch, 0, [0, 0, 1, 0][i]), 'armN': ([-20, -60, -40, -10][i],), 'head': ([0, 4, 2, 0][i],), 'armF': (6 * sn(f),)})
+    for fr in idle + run + work: fr['torso'] = (fr['torso'][0], fr['torso'][1], 0)  # 위아래 흔들림도 뺀다: 얼굴 픽셀이 같아야 한다
+    for fr in idle + run + work: fr['head'] = (-fr['torso'][0],)  # 머리는 늘 똑바로(몸통 기울기를 되돌림): 돌면 눈이 프레임마다 돌아가고 픽셀이 깨진다
     return [('idle', idle), ('run', run), ('work', work)]
 
 
@@ -525,6 +526,9 @@ HATS = {
     'helm': (['....kkkkkk....', '..kkccwccckk..', '.kccwcccccccck', '.kddddddddddk.', '.k.........k..'], 1, -2, None),
     'horns': (['.k........k...', 'kck......kck..', 'kck......kck..', '.kck....kck...'], 2, -3, None),
     'flower': (['.kk.', 'kcck', 'cbbc', 'kcck', '.kk.'], 2, -3, None),
+    'crown': (['.b.b.b.b.', '.bbbbbbb.', '.bbbbbbb.'], 4, -2, None),
+    'cap': (['..kkkkk..', '.kcccccck', 'kccccccck', 'kdddddddk'], 4, -3, None),
+    'iron': (['..kkkkk..', '.kcccccck', 'kcwccccck', 'kdddddddk'], 4, -3, '#9a9aa8'),
     'crest': (['.k..k..k.', 'kak.kbk.kck', 'kak.kbk.kck', 'kak.kbk.kck', '.k..k..k.'], 2, -4, None),
 }
 def put_hat(px, hat, color, ox, top):
@@ -547,13 +551,27 @@ def put_band(px, color, ox, top):  # 머리띠: 머리 위쪽 두 줄을 띠 색
     for (dx, dy) in ((0, 2), (-1, 3), (0, 3), (-1, 4)):
         x, y = ox + 1 + dx, top + dy
         if 0 <= x < W: px[x, y] = rgb
-def put_item(px, item, ox, oy):  # 손에 든 막대 (오른손 쪽)
+class _Safe:  # 그림 밖으로 나가는 칸은 무시
+    def __init__(s, px): s.px = px
+    def __setitem__(s, k, v):
+        if 0 <= k[0] < W and 0 <= k[1] < H: s.px[k] = v
+
+def put_item(px, item, ox, oy, glow=(120, 220, 255, 255)):  # 손에 든 막대 (오른손 쪽)
     if not item: return
+    px = _Safe(px)
     wood, dark, tip = (138, 90, 50, 255), (34, 34, 34, 255), (200, 208, 220, 255)
     x = ox + 15
     top = oy + (8 if item == 'spear' else 13 if item == 'crook' else 16)
     for y in range(top, oy + 28):
         px[x, y] = wood; px[x + 1, y] = dark
+    if item in ('staff', 'scepter', 'lantern', 'flask', 'wand'):
+        for (dx, dy) in ((-1, -1), (0, -1), (-1, -2), (0, -2)): px[x + dx, top + dy] = glow
+    elif item in ('sword', 'dagger', 'axe', 'hammer', 'gavel', 'tongs', 'pitchfork', 'shovel', 'drumstick'):
+        for y in range(top - 5, top): px[x, y] = tip; px[x + 1, y] = dark
+        px[x - 1, top - 1] = dark; px[x + 2, top - 1] = dark
+    elif item not in ('spear', 'crook'):
+        for yy in range(top + 2, top + 6):
+            for xx in (x - 1, x, x + 1): px[xx, yy] = (200, 90, 60, 255) if yy < top + 5 else dark
     if item == 'spear':
         for (dx, dy) in ((0, -1), (0, -2), (-1, -1), (1, -1), (0, -3)): px[x + dx, top + dy] = tip
     if item == 'crook':
@@ -594,6 +612,74 @@ def dino_rows(cid):
     return [('idle', idle), ('run', run), ('work', [run[0], idle[1], run[2], idle[3]])]
 
 
+# ── 그 밖의 사람: 0x72 도트(기사 · 엘프 · 마법사 · 드워프 · 오크 · 해골)를 그대로 쓰고 옷 · 머리 · 피부 색만 바꾼다 (둥근 그림 · 세부 장식 없음) ──
+X72_BASE = {  # 그림 → {색: (재질, 밝기)}
+    'elf': {'#4ba747': ('cloth', 0), '#3d734f': ('cloth', -0.3), '#facb3e': ('hair', 0), '#ee8e2e': ('hair', -0.25), '#fccba3': ('skin', 0), '#e2b694': ('skin', -0.12)},
+    'knight': {'#72d6ce': ('cloth', 0), '#417089': ('cloth', -0.3), '#da4e38': ('hair', 0), '#ee8e2e': ('hair', -0.25), '#dc4a7b': ('hair', 0), '#f78697': ('hair', 0.2)},
+    'wizzard': {'#5698cc': ('cloth', 0), '#5956bd': ('cloth', -0.25), '#b58057': ('skin', 0), '#8a503e': ('skin', -0.2), '#d3bfa9': ('hair', -0.1)},
+    'dwarf': {'#da4e38': ('hair', 0), '#e46e33': ('hair', -0.2), '#facb3e': ('hair', 0), '#ee8e2e': ('hair', -0.25), '#d8a57d': ('skin', 0), '#c38d70': ('skin', -0.12), '#7b8994': ('cloth', 0), '#775c55': ('cloth', -0.3), '#dc4a7b': ('cloth', 0), '#9f294e': ('cloth', -0.3)},
+    'orc_warrior': {'#3d734f': ('skin', 0), '#8f4029': ('cloth', 0), '#62232f': ('cloth', -0.35)},
+    'skelet': {},
+}
+HATMAP = {'crown': 'crown', 'circlet': 'crown', 'cap': 'cap', 'hood': 'cap', 'turban': 'cap', 'bandana': 'cap', 'beanie': 'cap', 'helm': 'iron', 'fullhelm': 'iron', 'horns': 'horns', 'straw': 'straw'}
+def x72_pick(spec):
+    race, outfit, body = spec.get('race', 'human'), spec.get('outfit', 'tunic'), spec.get('body', 'normal')
+    sex = 'f' if spec.get('hairStyle') in ('long', 'braids', 'bun') or outfit == 'dress' else 'm'
+    if race in ('skeleton', 'undead'): return 'skelet', ''
+    if race == 'orc': return 'orc_warrior', ''
+    if outfit == 'armor': return 'knight', '_' + sex
+    if outfit in ('robe', 'dress'): return 'wizzard', '_' + sex
+    if body in ('elder', 'stout') or spec.get('beard'): return 'dwarf', '_' + sex
+    return 'elf', '_' + sex
+def x72_rows(cid):
+    spec = P[cid]
+    if spec.get('race') == 'dragon':  # 용족: 플레이어 용인족과 같은 그림 (dragonkin.py), 비늘 · 옷 색만 사람마다
+        import dragonkin
+        hc = spec.get('hair', '#d8442a'); gl = spec.get('glowc')
+        fr = dragonkin.sheet_frames(scale=hc if len(hc) == 7 else '#d8442a', cloth=spec.get('cloth', '#6a3a2a'))
+        res = []
+        for name in ('idle', 'run'):
+            row = []
+            for im in fr[name]:
+                o = Image.new('RGBA', (W, H), (0, 0, 0, 0)); o.alpha_composite(im.crop((5, 0, 31, 28)), (0, FOOT + 1 - 28))
+                put_item(o.load(), spec.get('item'), 4, FOOT + 1 - 28, tuple(int(gl[i:i + 2], 16) for i in (1, 3, 5)) + (255,) if gl else (120, 220, 255, 255))
+                row.append(o)
+            res.append((name, row))
+        return res + [('work', [res[1][1][0], res[0][1][1], res[1][1][2], res[0][1][3]])]
+    base, sx = x72_pick(spec)
+    sheet = Image.open(os.path.join(X72, 'sheet.png')).convert('RGBA')
+    tl = {l.split()[0]: list(map(int, l.split()[1:5])) for l in open(os.path.join(X72, 'tile_list.txt'), encoding='utf-8') if len(l.split()) >= 5}
+    sk = spec.get('skin', 'fair'); skin = SKIN.get(sk, sk) if not sk.startswith('#') else sk
+    col = {'cloth': spec.get('metal') if base == 'knight' and spec.get('metal') else spec.get('cloth', '#6a7a9a'), 'hair': spec.get('hair', '#8a5a2a'), 'skin': skin}
+    if base == 'orc_warrior': col['skin'] = spec.get('skin') if str(spec.get('skin', '')).startswith('#') else SKIN['orc']
+    swap = {tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)): v for h, v in X72_BASE[base].items()}
+    k = 0.8 if spec.get('body') == 'child' else 1.0
+    def frame(name):
+        x, y, w, h = tl[name]
+        fr = sheet.crop((x, y, x + w, y + h)); px = fr.load()
+        for yy in range(h):
+            for xx in range(w):
+                c = px[xx, yy]
+                if c[3] and c[:3] in swap:
+                    key, d = swap[c[:3]]; hx = shade(col[key], d)
+                    px[xx, yy] = tuple(int(hx[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
+        if k != 1: fr = fr.resize((max(1, round(w * k)), max(1, round(h * k))), Image.NEAREST)
+        out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+        ox, oy = CX - fr.size[0] // 2, FOOT + 1 - fr.size[1]
+        out.alpha_composite(fr, (ox, oy))
+        o = out.load()
+        top = next((yy for yy in range(H) if o[min(W - 1, ox + 8), yy][3]), oy + 4)
+        hat = HATMAP.get(spec.get('hat'))
+        if hat and (base in ('elf', 'dwarf', 'orc_warrior', 'skelet') or hat == 'crown'): put_hat(o, hat, spec.get('hatc') or spec.get('trim') or spec.get('cloth'), ox, top)
+        gl = spec.get('glowc'); put_item(o, spec.get('item'), ox, oy, tuple(int(gl[i:i + 2], 16) for i in (1, 3, 5)) + (255,) if gl else (120, 220, 255, 255))
+        return out
+    nm = base + sx
+    if nm + '_idle_anim_f0' not in tl: nm = base
+    idle = [frame(f'{nm}_idle_anim_f{i}') for i in range(4)]
+    run = [frame(f'{nm}_run_anim_f{i}') for i in range(4)]
+    return [('idle', idle), ('run', run), ('work', [run[0], idle[1], run[2], idle[3]])]
+
+
 if __name__ == '__main__':
     out = sys.argv[1]
     only = sys.argv[2:] or None
@@ -604,6 +690,10 @@ if __name__ == '__main__':
         base = len(rows)
         if cid in DINO_0X72:  # 공룡수인: 플레이어 그림 그대로
             an = dino_rows(cid)
+            meta['chars'][cid] = {'anims': {name: {'row': base + r, 'n': len(fr)} for r, (name, fr) in enumerate(an)}}
+            rows.extend([fr for name, fr in an]); continue
+        if not os.environ.get('OLDPEOPLE'):
+            an = x72_rows(cid)
             meta['chars'][cid] = {'anims': {name: {'row': base + r, 'n': len(fr)} for r, (name, fr) in enumerate(an)}}
             rows.extend([fr for name, fr in an]); continue
         model, item = build(P[cid])

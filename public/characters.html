@@ -1,0 +1,26 @@
+<!doctype html><meta charset=utf-8><title>캐릭터 도감</title>
+<style>body{background:#1b1b22;color:#ddd;font:13px sans-serif;margin:12px}h2{margin:18px 0 6px;border-bottom:1px solid #444}
+.g{display:flex;flex-wrap:wrap;gap:8px}.c{background:#26262f;padding:6px;text-align:center;width:130px;border-radius:6px}
+canvas{image-rendering:pixelated;max-width:120px;height:auto;min-height:90px;object-fit:contain;display:block;margin:0 auto 4px}.n{font-weight:bold;color:#ffd878}.i{font-size:10px;color:#888}</style>
+<h1>각인의 탑 캐릭터 도감</h1><div id=o></div>
+<script>
+(async()=>{
+const S=await (await fetch('assets/custom/sprites.json')).json(), N=await (await fetch('npcnames.json')).json();
+const imgs={};const load=f=>imgs[f]??=new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src='assets/custom/'+f});
+const groups=[['사람 (NPC · 종족 · 지도자 · 몬스터 인간형)',s=>s.prefix.startsWith('p_')],['보스',s=>s.prefix.startsWith('b_')],['크리처',s=>s.prefix.startsWith('c_')],['용 · 왕 · 기타',s=>!/^[pbc]_/.test(s.prefix)]];
+const anims=[];
+for(const [t,f] of groups){const h=document.createElement('h2');h.textContent=t;o.append(h);const g=document.createElement('div');g.className='g';o.append(g);
+ for(const s of S.sheets.filter(f)){const im=await load(s.img);const a=s.anims.idle||Object.values(s.anims)[0];
+  const id=s.prefix.replace(/^[pbc]_/,'');const c=document.createElement('canvas');c.width=s.w;c.height=s.h;c.style.width=Math.max(1,Math.min(3,Math.floor(120/s.w)))*s.w+"px";c.style.minHeight=0;
+  const d=document.createElement('div');d.className='c';d.append(c);d.insertAdjacentHTML('beforeend',`<div class=n>${N[id]||''}</div><div class=i>${s.prefix}</div>`);g.append(d);
+  anims.push([c,im,s,a]);}}
+{const h=document.createElement('h2');h.textContent='0x72 도트 (플레이어 종족 · 기본 몬스터)';o.append(h);const g=document.createElement('div');g.className='g';o.append(g);
+const TL={};(await (await fetch('assets/0x72/tile_list.txt')).text()).split(String.fromCharCode(10)).forEach(l=>{const a=l.trim().split(/\s+/);if(a.length>=5)TL[a[0]]=a.slice(1,5).map(Number)});
+const im=await load('../0x72/sheet.png');
+for(const base of Object.keys(TL).filter(n=>n.endsWith('_idle_anim_f0')).map(n=>n.replace('_idle_anim_f0',''))){
+ const [,,w,hh]=TL[base+'_idle_anim_f0'];const c=document.createElement('canvas');c.width=w;c.height=hh;c.style.width=Math.max(1,Math.min(4,Math.floor(120/w)))*w+'px';
+ const d=document.createElement('div');d.className='c';d.append(c);d.insertAdjacentHTML('beforeend',`<div class=n>${N['x72:'+base]||''}</div><div class=i>${base}</div>`);g.append(d);
+ anims.push([c,im,{w,h:hh,y0:0},{row:0,n:4,rect:i=>TL[base+'_idle_anim_f'+i]}]);}}
+let k=0;setInterval(()=>{k++;for(const [c,im,s,a] of anims){const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);if(a.rect){const [rx,ry,rw,rh]=a.rect(k%a.n);x.drawImage(im,rx,ry,rw,rh,0,0,rw,rh)}else x.drawImage(im,(k%a.n)*s.w,s.y0+a.row*s.h,s.w,s.h,0,0,s.w,s.h)}},200);
+})();
+</script>

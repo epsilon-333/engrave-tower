@@ -44,9 +44,12 @@ def build_manifest(out=OUT):
         for k in ('fire', 'wind', 'forest'):
             if 'king_' + k in sm: add(f'king_{k}.png', 'king_' + k, sm['king_' + k]); king[k] = sm['king_' + k]
         if king: meta['king'] = king
+    px = _load('boss_pixel') or {} # 0x72 그림체로 새로 그린 보스 (tools/boss_pixel.py): 같은 이름의 옛 시트 그림을 대신한다
     bs = _load('bosses') # 탑 보스 20명 (tools/cut_bosses.py · 사용자가 준 시트)
     if bs:
-        for pre, m in bs.items(): add('bosses.png', pre, m, m['y0'])
+        for pre, m in bs.items():
+            if pre not in px: add('bosses.png', pre, m, m['y0'])
+    for pre, m in px.items(): add(m['img'], pre, m, m.get('y0', 0))
     json.dump({'sheets': sheets, 'meta': meta}, open(os.path.join(out, 'sprites.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     print('sprites.json:', len(sheets), 'sheets')
 
