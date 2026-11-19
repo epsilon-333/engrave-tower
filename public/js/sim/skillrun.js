@@ -684,14 +684,13 @@ export const SkillMethods = {
     if (id === 'weapon') { if (p.skillCd <= 0) { this.breakStealth(); this.useSkill(); } return; }
     const def = SKILLS[id];
     if (!def || p.cds[id] > 0) return;
-    const surge = p.buffs.hSurge && def.kind === 'spell'; // 숨은 각인 「마력 폭주」: 마법은 쿨타임 없이 · 하나 쓰면 0.5초 쉰다
-    if (surge && (p.surgeGate || 0) > this.t) return;
+    const surge = p.buffs.hSurge && def.kind === 'spell'; // 숨은 각인 「마력 폭주」: 10초 동안 마법은 자원 없이 · 쿨타임 1초
     const fit = handFit(def, this.b).fit;
     if (fit <= 0) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: (CANT_TEXT[def.kind] || '이 무기로는 쓸 수 없다') + (this.b.hands < 2 ? ' · 왼손 도구로도 쓸 수 있다' : '') }); p.cds[id] = 0.4; return; }    if (p.swim && !['dive', 'waterBreath'].includes(id)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: '헤엄치는 중에는 쓸 수 없다' }); p.cds[id] = 0.3; return; }
     if (def.needSpirit && !p.spirits.length) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: '깃든 정령', text: '깃든 정령이 없다' }); p.cds[id] = 0.3; return; }
     if (def.do.some((o) => SPIRIT_OPS.has(o.op)) && !SPIRITS[this.b.spirit?.id]) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: '계약한 정령이 없다 · 세계수 성지의 「정령 계약」' }); p.cds[id] = 0.5; return; }
     let spent = 0;
-    if (def.costAll) {
+    if (surge) { /* 마력 폭주: 마법은 자원을 쓰지 않는다 */ } else if (def.costAll) {
       if (p.res < def.costAll.min) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
       spent = p.res; p.res = 0;
     } else if (def.cost) {
@@ -703,7 +702,7 @@ export const SkillMethods = {
     let cd = def.cd * this.d.skillCdMul * (1 - this.d.cdr) * skillScale(id, this.b).cd; // 스탯 70: 재사용 -20%
     if (id === 'breath' && p.buffs.dragonForm) cd = 0.3;
     if (this.practice?.noCd) cd = Math.min(cd, 0.25);
-    if (surge) { cd = 0.5; p.surgeGate = this.t + 0.5; }
+    if (surge) cd = 1; // 마력 폭주 중 마법의 쿨타임은 1초
     p.cds[id] = cd; p.cdMax ||= {}; p.cdMax[id] = cd;
     p.lastFight = this.t;
     if (this.pvp) this.pvp.out.push({ t: 'dskill', id });

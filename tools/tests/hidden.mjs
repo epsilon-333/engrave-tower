@@ -157,12 +157,12 @@ ok(feats(50, 'lord', {}, {}, { oath: maxOath }).includes('rebel') && !feats(50, 
   // 리치: 쓰러지면 체력 1로 · 한 번만
   const wl = mk(3, { engravings: { head: hiddenEngId('lich') } }); wl.player.hp = 0; wl.checkDeath();
   ok(wl.state === 'play' && wl.player.hp === 1 && wl.player.buffs.hLich?.mods.dmgMul === 2, '리치: 체력 1로 일어나 공격 2배'); wl.player.invuln = 0; wl.player.hp = 0; wl.checkDeath(); ok(wl.state === 'dead', '리치: 한 번만');
-  // 대마도사: 마력 폭주 중 마법은 0.5초 간격
+  // 대마도사: 마력 폭주 중 마법은 자원 없이 · 쿨타임 1초
   const wm = mk(3, { race: 'wizard', engravings: { head: hiddenEngId('archmage'), arm: 'sEmber' } });
   const spell = wm.b.skills.find((id) => id && id !== 'hManaSurge');
   wm.castSkillId('hManaSurge', 0); for (let i = 0; i < 30; i++) wm.step(idle);
-  wm.player.res = 999; wm.castSkillId(spell, 1); const cd1 = wm.player.cds[spell];
-  ok(cd1 != null && cd1 <= 0.5, `마력 폭주: ${spell} 쿨타임 ${cd1}`);
+  wm.player.res = 7; wm.castSkillId(spell, 1); const cd1 = wm.player.cds[spell];
+  ok(cd1 != null && cd1 <= 1.01 && wm.player.res === 7, `마력 폭주: ${spell} 쿨타임 ${cd1} · 자원 ${wm.player.res}`);
   // 대족장: 스킬을 쓰면 받은 피해를 터뜨린다
   const wc = mk(3, { engravings: { head: hiddenEngId('warchief') } }); const e2 = wc.makeEnemy('slime', wc.player.x + 30, wc.player.y); e2.hp = e2.maxHp = 1e6; wc.enemies.push(e2);
   wc.hid.pay.push([wc.t, 200]); wc.castSkillId('hChiefCall', 0); ok(e2.hp < 1e6 - 300, `피로 쓴 함성: 받은 피해를 되갚는다 (${Math.round(1e6 - e2.hp)})`);
