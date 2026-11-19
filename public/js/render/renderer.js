@@ -188,6 +188,7 @@ const CPOSE = {
   slash: { A: { a: -2.2, hx: 0, hy: -11, lean: -1.2, behind: true }, B: { a: 1.2, hx: 6, hy: -5, lean: 2.2, f: 2 } },
   rslash: { A: { a: 1.3, hx: 0, hy: -4, lean: -0.8 }, B: { a: -1.9, hx: 6, hy: -11, lean: 1.8, f: 1.5 } },
   thrust: { A: { a: 'aim', hx: -6, hy: -7, lean: -2, f: -2 }, B: { a: 'aim', hx: 15, hy: -7, lean: 3.5, f: 4 } },
+  lunge: { hold: 0.3, A: { a: 'aim', hx: -9, hy: -7, lean: -2.8, sy: 0.93, f: -3 }, B: { a: 'aim', hx: 19, hy: -7, lean: 4.2, f: 6 } },
   stab: { hold: 0.2, A: { a: 'aim', hx: -2, hy: -6, lean: -1, f: -1 }, B: { a: 'aim', hx: 11, hy: -6, lean: 2.5, f: 3 } },
   reap: { A: { th: PI + 0.6, r: 3, hy: -10, lean: -2.2, f: -1 }, B: { th: -0.6, r: 7, hy: -6, lean: 3, f: 2 } },
   rreap: { A: { th: -1.2, r: 4, hy: -8, lean: -1.5 }, B: { th: PI * 0.7, r: 6, hy: -6, lean: 2.5, f: 1 } },
@@ -1721,6 +1722,11 @@ export class Renderer {
       if (pose.A.th != null) { const th = pose.A.th + (pose.B.th - pose.A.th) * e; R = mix(A, B, e); Object.assign(R, conv({ ...pose.B, r: pose.A.r + (pose.B.r - pose.A.r) * e, hy: pose.A.hy + (pose.B.hy - pose.A.hy) * e }, th), { lean: R.lean, sy: R.sy, f: R.f }); P.whoosh = 1; }
       else { R = mix(A, B, e); P.whoosh = q; } }
     else { const q = (k - S1) / (1 - S1), hold = pose.hold ?? 0.25, r = q < hold ? 0 : (q - hold) / (1 - hold); R = mix(B, I, r * r * (3 - 2 * r)); }
+    if (pose.A.a === 'aim') { // 찌르기: 손이 창대를 따라 조준 방향으로만 앞뒤로 (옆으로 밀지 않는다 · 창끝이 앞)
+      const dA = pose.A.hx, dB = pose.B.hx, q = (R.hx - dA) / ((dB - dA) || 1), d = dA + (dB - dA) * q;
+      R.hx = 3 + Math.cos(aimF) * d; R.hy = -7 + Math.sin(aimF) * d;
+      R.a = aimF; R.behind = Math.sin(Math.atan2(p.aimY, p.aimX)) < -0.5; // 창은 처음부터 끝까지 창끝이 조준 방향 (돌아가지 않는다)
+    }
     P.a = R.a; P.hx = R.hx; P.hy = R.hy; P.lean = R.lean; P.sy = R.sy; P.behind = R.behind; if (R.len !== 1) P.len = R.len;
     P.ox = Math.cos(p.swingAng) * R.f + (R.ox2 || 0); P.oy = Math.sin(p.swingAng) * R.f * 0.5;
   }

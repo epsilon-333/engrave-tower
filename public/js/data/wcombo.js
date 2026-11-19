@@ -36,10 +36,10 @@ export const WCOMBO = {
     { m: 'stab', t: 0.9, hit: 0.35, mul: 0.9, thrust: true, step: 4 },
     { m: 'rslash', t: 1.2, hit: 0.35, mul: 1.25, arc: 2.2 },
   ] },
-  spear: { min: 0.32, list: [ // 창: 찌르기 → 찌르기 → 창대로 크게 휘둘러 치기
+  spear: { min: 0.32, list: [ // 창: 찌르기 → 찌르기 → 몸을 던져 깊게 찌르기 (언제나 창끝으로 · 옆으로 휘두르지 않는다)
     { m: 'thrust', t: 1.0, hit: 0.42, mul: 1.0, thrust: true },
     { m: 'thrust', t: 1.0, hit: 0.42, mul: 1.0, thrust: true, step: 6 },
-    { m: 'sweep', t: 1.2, hit: 0.55, mul: 1.2, arc: 2.6, range: 0.9, kb: 1.5 },
+    { m: 'lunge', t: 1.25, hit: 0.6, mul: 1.25, thrust: true, range: 1.25, step: 16, kb: 1.5 }, // 몸을 던져 깊게 찌르기 (창은 언제나 창끝으로)
   ] },
 };
 
