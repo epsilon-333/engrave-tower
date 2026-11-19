@@ -10,7 +10,7 @@ import { ENGRAVINGS } from './data/engravings.js';
 import { LV_GRADE } from './data/skillengs.js';
 
 // 체험실(lab.html?lab)은 따로 저장한다 — 진짜 저장 · 서버 저장에 닿지 않는다
-export const LAB = typeof location !== 'undefined' && new URLSearchParams(location.search).has('lab');
+export const LAB = (typeof location !== 'undefined' && new URLSearchParams(location.search).has('lab')) || globalThis.__LAB === true; // __LAB: 주소 대신 페이지가 직접 켠다(Artifact 등)
 const KEY = LAB ? 'engrave-tower-lab-v1' : 'engrave-tower-save-v1';
 
 export function newSave(race) {

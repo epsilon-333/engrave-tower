@@ -68,7 +68,7 @@ function lockedMsg(kind, id) {
   renderer.banner = { text: `${SYSTEM_NAME[id] || id} · 아직 잠겨 있다`, sub: t, t: 2.6, color: '#c8b0ff' }; sfx('error', { vol: 0.4 });
   return true;
 }
-const DEBUG = /^(localhost|127\.|192\.168\.|\[::1\])/.test(location.hostname) || new URLSearchParams(location.search).has('debug');
+const DEBUG = /^(localhost|127\.|192\.168\.|\[::1\])/.test(location.hostname) || new URLSearchParams(location.search).has('debug') || globalThis.__LAB === true;
 
 let save = loadSave();
 const titleEl = document.getElementById('title');
