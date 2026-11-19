@@ -289,7 +289,7 @@ export const WEAPON_ART = {
   handAxe: { s: 'weapon_throwing_axe' },
   dualBlades: { s: 'weapon_duel_sword' },
   katana: { s: 'weapon_katana' },
-  spear: { s: 'weapon_spear' },
+  spear: { s: 'weapon_spear', spear: true }, // 두 손으로 쥐고 조준한 쪽으로 찌른다 (예전엔 한손 칼처럼 들렸다)
   doubleAxe: { s: 'weapon_double_axe' },
   mace: { s: 'weapon_mace' },
   longbow: { s: 'weapon_bow_2', bow: true },

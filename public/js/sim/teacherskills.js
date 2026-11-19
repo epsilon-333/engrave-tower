@@ -40,7 +40,7 @@ export const TEACHER_SKILLS = {
     S('skeletons', '해골 병사', 10, 0, 999, ({ w, Tr, e }) => w.tsSummon(Tr, e)),
     S('graspWraith', '망령 소환', 8, 0, 240, ({ w, e, p }) => w.tsCircle(e, p.x, p.y, { r: 30, k: 0.05, wind: 0.8, elem: 'dark', fx: 'doom', root: 1.0 })),
     S('boneSpear', '뼈 창', 5, 40, 260, ({ w, e, a }) => w.tsRays(e, [a], { len: 250, w: 14, k: 0.1, wind: 0.4, fx: 'arrowBeam', tele: true })),
-    S('curse', '저주', 12, 0, 240, ({ w, Tr, e, p }) => w.tsCircle(e, p.x, p.y, { r: 42, k: 0, wind: 0.5, elem: 'dark', fx: 'doom', curse: 6 })),
+    S('curse', '저주', 8, 0, 240, ({ w, Tr, e, p }) => w.tsCircle(e, p.x, p.y, { r: 50, k: 0, wind: 0.5, elem: 'dark', fx: 'doom', curse: 3 })), // 언데드의 저주 3중첩
     S('deathFog', '죽음의 안개', 12, 0, 240, ({ w, Tr, p }) => w.tsZone(Tr, p.x, p.y, { r: 56, dur: 5, k: 0.03, color: '#8a6aa8' })),
     S('corpseBlast', '시체 폭발', 6, 0, 999, ({ w, Tr, e }) => w.tsCorpses(Tr, e), (Tr) => Tr.corpses?.length > 0),
   ],
@@ -85,7 +85,8 @@ export const TeacherSkillMethods = {
     Tr.skCd ||= {};
     const surge = Tr.surgeT > 0; // 마력 폭주: 주문은 쿨타임 없이 · 하나 쓰면 1초
     const pool = list.filter((s) => (surge || (Tr.skCd[s.id] || 0) <= this.t) && dist >= s.min && dist <= s.max && (!s.need || s.need(Tr)) && !(surge && s.id === 'slowField'));
-    if (!surge && (Tr.skCd.weapon || 0) <= this.t && dist < 170) pool.push({ id: 'weapon', cd: 6.5 });
+    const WS_MAX = { sword: 55, heavy: 70, scythe: 60, magic: 90 }; // 무기 능력도 닿는 거리에서만
+    if (!surge && (Tr.skCd.weapon || 0) <= this.t && dist < (WS_MAX[Tr.fam] || 170)) pool.push({ id: 'weapon', cd: 6.5 });
     if (!pool.length) { Tr.skT = 0.5; return false; }
     const s = pool[this.rng.int(0, pool.length - 1)];
     Tr.skCd[s.id] = this.t + s.cd; Tr.skT = surge ? 1.0 : 2.2; // 스킬과 스킬 사이 2.2초 (평타 · 움직임이 그 사이에)
@@ -103,7 +104,6 @@ export const TeacherSkillMethods = {
     if (Tr.powT > 0) Tr.powT -= DT;
     if (Tr.shoutT > 0) Tr.shoutT -= DT;
     if (Tr.surgeT > 0) Tr.surgeT -= DT;
-    if (Tr.curseT > 0) Tr.curseT -= DT;
     if (Tr.counterT > 0) { Tr.counterT -= DT; if (Math.random() < 0.3) this.emit({ t: 'spark', x: Tr.main.x, y: Tr.main.y - 10, color: '#fff0a0' }); }
     for (const z of Tr.zones || []) {
       if ((z.next -= DT) > 0) continue;
@@ -176,7 +176,7 @@ export const TeacherSkillMethods = {
       if (o.knock) this.knockPlayer(x, y, o.knock);
       if (o.slow) this.ccPlayer({ slow: o.slow });
       if (o.root) this.ccPlayer({ root: o.root, say: '붙잡혔다' });
-      if (o.curse) { Tr.curseT = o.curse; this.trialSay(e, '저주 · 받는 피해 +20%', '#c45cff'); }
+      if (o.curse) this.addPlayerCurse(o.curse);
     });
     Tr.t = Math.max(Tr.t, o.wind + 0.4);
   },
