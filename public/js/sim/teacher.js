@@ -321,18 +321,17 @@ export const TeacherMethods = {
     } else if (f === 'heavy') { // 대족장의 외침: 5초 동안 받는 피해 -30% (함성 · 몸이 붉게)
       Tr.shoutT = 5; this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 60, elem: 'fire', fx: 'roar' }); this.emit({ t: 'bossHeal', id: e.id, x: e.x, y: e.y, from: 1, to: 1, big: false });
       this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '받는 피해 -30%', color: '#ff7a5a' }); Tr.t = 0.6;
-    } else if (f === 'magic') { // 마력 폭주: 10초 동안 주문을 쿨타임 없이 (1초에 하나)
+    } else if (f === 'magic') { // 마력 폭주 (스승판): 10초 동안 주문을 빠르게 (쿨타임 없이 1초에 하나)
       Tr.surgeT = 10; Tr.skT = 0.3; this.emit({ t: 'buff', x: e.x, y: e.y, color: '#b58aff' }); this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '10초 동안 주문이 쉬지 않는다', color: '#b58aff' }); Tr.s = 'move'; Tr.t = 0.2;
     } else if (f === 'scythe') { // 망자의 낫: 앞쪽 크게 (거리 72 · 각 2.6) · 280% · 맞히면 체력 3% 회복
       this.tsMelee(e, 'scythe', 0.35, { range: 72, arc: 2.6, k: 2.8 * SIG_K, heal: 0.03 });
-    } else if (f === 'dagger') { // 그림자 손: 둘레 170 안의 나를 끌고 온다 · 남은 체력이 스승보다 낮으면 그 자리에서 쓰러진다 · 아니면 150% · 0.6초 기절
+    } else if (f === 'dagger') { // 그림자 손: 둘레 170 안의 나를 끌고 와 최대 체력 50% (공격력 200%~600% 사이)
       this.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 170, dur: 1.0 }); Tr.t = 1.3;
       this.tsLater(1.0, () => {
         const q = this.player; if (Math.hypot(q.x - e.x, q.y - e.y) > 170 || q.invuln > 0) return;
         const a2 = Math.atan2(q.y - e.y, q.x - e.x), nx = e.x + Math.cos(a2) * 20, ny = e.y + Math.sin(a2) * 20;
         this.emit({ t: 'skillDash', x1: q.x, y1: q.y, x2: nx, y2: ny, elem: 'dark' }); if (!this.blocked(nx, ny, 5)) { q.x = nx; q.y = ny; }
-        if (q.hp / this.d.maxHp < Tr.hp / Tr.maxHp) { this.emit({ t: 'skillAoe', x: q.x, y: q.y, r: 16, elem: 'dark', fx: 'doom' }); this.hurtPlayer(this.d.maxHp * 10, 'phys', e, { direct: true }); }
-        else { this.hurtPlayer(this.trialDmg(1.5 * SIG_K), 'phys', e, { fromX: e.x, fromY: e.y, direct: true }); this.ccPlayer({ stun: 0.6 }); }
+        this.hurtPlayer(this.trialDmg(Math.max(2 * SIG_K, Math.min(6 * SIG_K, 0.5))), 'phys', e, { fromX: e.x, fromY: e.y, direct: true }); // 최대 체력의 50% (공격력 200% ~ 600% 사이 → 내 최대 체력 11% ~ 33%)
       });
     } else if (f === 'bow') { // 천궁의 화살비: 내 자리에 빛줄기 네 번 (반경 72 · 0.3 · 0.5 · 0.7 · 0.9초 · 한 번에 150%)
       const x = p.x, y = p.y; for (let i = 0; i < 4; i++) this.tsCircle(e, x, y, { r: 72, k: 1.5 * SIG_K, wind: 0.3 + i * 0.2, fx: 'lightRain', elem: 'holy' });
@@ -347,11 +346,11 @@ export const TeacherMethods = {
         if (onPath) this.tsLater(0.22, () => {
           const ex = x1 + ax * (dist + 10), ey = y1 + ay * (dist + 10); if (!this.blocked(ex, ey, 5)) { q.x = ex; q.y = ey; }
           if (wall) { this.emit({ t: 'skillAoe', x: q.x, y: q.y, r: 30, elem: 'phys', fx: 'quake' }); this.emit({ t: 'shake', v: 5 }); this.emit({ t: 'text', x: q.x, y: q.y - 24, text: '벽에 박혔다!', color: '#ff9a7a' }); }
-          this.hurtPlayer(this.trialDmg((wall ? 4.5 : 1.8) * SIG_K), 'phys', e, { fromX: x1, fromY: y1, direct: true }); this.ccPlayer({ stun: wall ? 1.5 : 0.4 });
+          this.hurtPlayer(this.trialDmg((wall ? 5 : 2.8) * SIG_K), 'phys', e, { fromX: x1, fromY: y1, direct: true }); this.ccPlayer({ stun: wall ? 1.5 : 0.4 });
         });
       });
     } else if (f === 'spear') { // 용암 균열: 앞으로 땅을 가른다 (길이 190 · 폭 30 · 260% · 화상 2중첩) · 갈라진 자리는 3초 동안 용암
-      this.tsRays(e, [a], { len: 190, w: 30, k: 2.6 * SIG_K, wind: 0.35, fx: 'quake', tele: true, burn: 2 });
+      this.tsRays(e, [a], { len: 190, w: 30, k: 3.6 * SIG_K, wind: 0.35, fx: 'quake', tele: true, burn: 2 });
       this.tsLater(0.35, () => { for (let i = 1; i <= 5; i++) { const zx = e.x + Math.cos(a) * 190 * i / 5, zy = e.y + Math.sin(a) * 190 * i / 5; if (!this.blocked(zx, zy, 4)) (Tr.zones ||= []).push({ x: zx, y: zy, r: 16, until: this.t + 3, k: 0.02, lava: true, next: 0 }); } });
     }
   },

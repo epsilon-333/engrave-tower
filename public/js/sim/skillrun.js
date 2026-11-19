@@ -684,7 +684,7 @@ export const SkillMethods = {
     if (id === 'weapon') { if (p.skillCd <= 0) { this.breakStealth(); this.useSkill(); } return; }
     const def = SKILLS[id];
     if (!def || p.cds[id] > 0) return;
-    const surge = p.buffs.hSurge && def.kind === 'spell'; // 숨은 각인 「마력 폭주」: 10초 동안 마법은 자원 없이 · 쿨타임 1초
+    const surge = false; // (마력 폭주는 2026-11-19부터 0.1초마다 자원 +1 — sim/hidden.js hidTick)
     const fit = handFit(def, this.b).fit;
     if (fit <= 0) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: (CANT_TEXT[def.kind] || '이 무기로는 쓸 수 없다') + (this.b.hands < 2 ? ' · 왼손 도구로도 쓸 수 있다' : '') }); p.cds[id] = 0.4; return; }    if (p.swim && !['dive', 'waterBreath'].includes(id)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: '헤엄치는 중에는 쓸 수 없다' }); p.cds[id] = 0.3; return; }
     if (def.needSpirit && !p.spirits.length) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: '깃든 정령', text: '깃든 정령이 없다' }); p.cds[id] = 0.3; return; }
