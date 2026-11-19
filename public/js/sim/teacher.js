@@ -4,6 +4,7 @@
 //   그 무기를 이해한 공격(검은 빈틈 · 창은 창끝 거리 …)만 제대로 들어가고, 나머지는 0.4%까지만 (TR.okCap · TR.badCap)
 // · 스승의 공격은 내 최대 체력 비율로 들어온다 (내가 세져도 똑같이 아프다). 내 체력이 다하면 실패 (죽지는 않는다)
 // TeacherMethods 는 World.prototype 에 붙는다 (sim/world.js 끝) — 메서드 안의 this 는 World
+import { WCOMBO, comboFam } from '../data/wcombo.js';
 import { TEACHERS } from '../data/hidden.js';
 import { SIG_SKILL } from './teacherskills.js';
 import { RACE_ART, weaponArt } from '../data/art.js';
@@ -133,7 +134,7 @@ export const TeacherMethods = {
       good = Math.hypot(e.x - p.x, e.y - p.y) - e.r >= (this.b.weapon?.range || 40) * 0.6; why = '너무 가깝다 · 낫 끝으로 거둬라'; // 낫 끝(무기 사거리의 60% 너머)
     } else if (f === 'dagger') {
       if (e !== Tr.main) { e.hitFlash = 0.08; this.trialNo(e, '분신이다'); return 0; } // 분신: 피해만 안 들어간다
-      good = this.t - Tr.emergeT <= 1.2; why = '그림자에서 나온 직후를 노려라';
+      good = this.t - (Tr.pMobT ?? -9) <= 1.2; why = '움직임을 숨긴 채 다가가라 (순간이동 · 돌진 · 대시 · 은신 뒤에)';
     } else if (f === 'bow') { good = Math.hypot(e.x - p.x, e.y - p.y) >= 90; why = '너무 가깝다 · 멀리서 쏘아라'; }
     else if (f === 'fist') { Tr.chain = this.t - Tr.lastHit <= 0.6 ? Tr.chain + 1 : 1; Tr.lastHit = this.t; good = Tr.chain >= 3; why = `${Tr.chain}연타 · 끊기지 말고 이어라`; }
     else if (f === 'spear') { const v = Tr.pv || { x: 0, y: 0 }, dx = e.x - p.x, dy = e.y - p.y, dd = Math.hypot(dx, dy) || 1, ap = (v.x * dx + v.y * dy) / dd; good = ap > 25 || (p.dashT > 0 && ap > 0); why = ap < -10 ? '물러나며 찌른 창은 가볍다' : '다가가며 찔러라'; } // 창: 다가가며(돌진하며) 찌른 것만
@@ -143,7 +144,7 @@ export const TeacherMethods = {
     Tr.hp -= v; Tr.took.push([this.t, v]); e.hitFlash = 0.08;
     this.emit({ t: 'dmg', x: e.x, y: e.y - e.r - 10, v, color: good ? '#ffe066' : '#8a8f9a', small: !good, id: e.id });
     if (good) { Tr.lastOk = this.t; Tr.okHits.push(this.t); Tr.okHits = Tr.okHits.filter((t) => this.t - t < 3);
-      if (Tr.s === 'heal') { Tr.s = ['sword', 'heavy', 'fist', 'spear'].includes(f) ? 'open' : 'move'; Tr.t = 0.8; this.trialSay(e, '회복이 끊겼다!', '#ffb070'); this.emit({ t: 'shake', v: 3 }); } if (f === 'dagger') this.delayed.push({ t: 0.15, run: () => { if (!Tr.done && !e.shadowSink && !Tr.cross) this.beginShadowSink(Tr.main); } }); } // 제대로 맞으면 그림자 속으로 빠진다
+      if (Tr.s === 'heal') { Tr.s = ['sword', 'heavy', 'fist', 'spear'].includes(f) ? 'open' : 'move'; Tr.t = 0.8; this.trialSay(e, '회복이 끊겼다!', '#ffb070'); this.emit({ t: 'shake', v: 3 }); } }
     else if (why) this.trialNo(e, why);
     if (Tr.hp <= 0) {
       if (f === 'scythe' && !Tr.revived) { // 리치: 한 번은 죽음을 거부한다
@@ -183,7 +184,10 @@ export const TeacherMethods = {
     const wind = over.wind ?? (fam === 'bow' ? 0.8 : A.wind), wf = ITEMS[e.held?.id]?.cat === 'blunt' ? 0.8 : WIND_FRAC[heldKind(e.held?.id)] ?? 0.2; // 둔기는 천천히 들고(80%) 빠르게 내려친다
     // 준비는 준비 시간대로(자세표의 준비 구간을 그 시간에 맞춰 늘린다) · 휘두름은 짧고 빠르게 (sd초)
     const sd = fam === 'bow' ? 0.14 : fam === 'fist' ? 0.1 : 0.12; // 휘두름은 빠르게 (준비는 그대로)
-    e.tatk = { fam, cfg: A, t0: this.t, wind, wf, sd, total: wind + sd, ang: Math.atan2(p.y - e.y, p.x - e.x), hit: false, n: 1, combo: over.combo, cw: over.cw };
+    const it = ITEMS[e.held?.id], cf = A.kind !== 'shoot' && fam !== 'fist' && it ? comboFam({ weaponItem: it, weapon: it.weapon, wcat: it.cat }) : null; // 플레이어와 같은 무기 콤보
+    let mv = null, wf2 = wf, sd2 = sd;
+    if (cf) { e.cmbN = e.cmbFam === cf && this.t - (e.cmbLast ?? -9) < 1.6 ? ((e.cmbN ?? -1) + 1) % WCOMBO[cf].list.length : 0; e.cmbFam = cf; e.cmbLast = this.t; mv = WCOMBO[cf].list[e.cmbN]; wf2 = mv.hit; sd2 = 0.3; }
+    e.tatk = { fam, cfg: A, t0: this.t, wind, wf: wf2, sd: sd2, total: wind + sd2, mv, ang: Math.atan2(p.y - e.y, p.x - e.x), hit: false, n: 1, combo: over.combo, cw: over.cw };
     this.emit({ t: 'windup', id: e.id });
   },
   // 준비(겨누는 쪽을 따라간다) → 휘두름(맞는 자리가 정해진다) → 거두기. 모양은 그리는 쪽이 플레이어와 같은 자세표로 그린다 (e.held 에 휘두름 상태만 적는다)
@@ -200,7 +204,7 @@ export const TeacherMethods = {
     const el = this.t - A.t0, shoot = A.cfg.kind === 'shoot';
     if (!A.hit && el < A.wind * 0.65) A.ang = toward; // 겨누는 것은 준비의 앞쪽만 · 뒤에는 고정(피할 수 있다)
     e.dir = Math.cos(A.ang) >= 0 ? 1 : -1;
-    H.swingAng = A.ang; H.swingDir = A.n % 2 ? 1 : -1; H.boxN = A.combo ? A.combo[A.n - 1] : (A.n - 1) % 5;
+    H.swingAng = A.ang; H.swingDir = A.n % 2 ? 1 : -1; H.swingMove = A.mv?.m || null; H.cmbFam = e.cmbFam; H.cmbN = e.cmbN; H.boxN = A.combo ? A.combo[A.n - 1] : (A.n - 1) % 5;
     if (shoot) {
       if (!A.hit) { H.aim = true; H.swingT = 0; H.swingMax = 0; H.atkPeriod = A.wind; H.atkCd = Math.max(0, A.wind - el); }
       else { H.aim = false; H.swingMax = 0.1; H.swingT = Math.max(0.001, 0.1 - (el - A.wind)); }
@@ -211,7 +215,7 @@ export const TeacherMethods = {
     if (!A.hit && el >= A.wind) { A.hit = true; this.trialSwingHit(e, A); }
     if (el >= A.total) { // 주먹은 두 번 이어 친다
       if ((A.combo ? A.combo.length : A.cfg.n || 1) > A.n) { A.n++; A.t0 = this.t; A.wind = A.cw ?? 0.28; A.total = A.wind + A.sd; A.hit = false; A.ang = toward; this.emit({ t: 'windup', id: e.id }); }
-      else e.tatk = null;
+      else { e.tatk = null; H.swingMove = null; }
     }
   },
   trialSwingHit(e, A) {
@@ -438,7 +442,7 @@ export const TeacherMethods = {
     if (Tr.rageT > 0) Tr.rageT -= DT;
     Tr.t -= DT; Tr.sigT -= DT;
     const dist = Math.hypot(p.x - e.x, p.y - e.y), toward = () => this.stepToward(e, p.x, p.y, SPD[f] || 70);
-    { const vx = (p.x - (Tr.ppx ?? p.x)) / DT, vy = (p.y - (Tr.ppy ?? p.y)) / DT, pv = Tr.pv || { x: 0, y: 0 }; Tr.pv = { x: pv.x + (vx - pv.x) * 0.2, y: pv.y + (vy - pv.y) * 0.2 }; Tr.ppx = p.x; Tr.ppy = p.y; } // 내 움직임 (예측 · 창 판정)
+    { const vx = (p.x - (Tr.ppx ?? p.x)) / DT, vy = (p.y - (Tr.ppy ?? p.y)) / DT, pv = Tr.pv || { x: 0, y: 0 }; Tr.pv = { x: pv.x + (vx - pv.x) * 0.2, y: pv.y + (vy - pv.y) * 0.2 }; if (p.dashT > 0 || p.stealthT > 0 || Math.hypot(p.x - (Tr.ppx ?? p.x), p.y - (Tr.ppy ?? p.y)) > 12) Tr.pMobT = this.t; Tr.ppx = p.x; Tr.ppy = p.y; } // 내 움직임 (대시 · 돌진 · 순간이동 · 은신 = 얼굴 없는 자 판정) (예측 · 창 판정)
     for (const b of Tr.bodies) this.tickAtk(b);                  // 무기를 휘두르는 동작 (준비 → 휘두름)
     if (e.shadowSink) { this.tickShadowSink(e); return; }         // 얼굴 없는 자: 그림자로 가라앉았다 나온다
     for (const b of Tr.bodies) if (b.kbx || b.kby) { // 넉백: 스승도 밀린다 (벽에서 멈춘다)
@@ -523,18 +527,20 @@ export const TeacherMethods = {
     } else if (f === 'dagger') { // 얼굴 없는 자: 대시로 좌우를 오가다 → 갑자기 파고들어 찌르고 빠진다 · 그림자로 가라앉았다 다른 자리에서 나온다 · 가끔 분신 셋을 꺼내 함께 벤다
       if (this.tickCross()) return;
       const a2 = Math.atan2(p.y - e.y, p.x - e.x);
-      Tr.blinkT = (Tr.blinkT ?? 3) - DT; Tr.crossT = (Tr.crossT ?? 5) - DT;
+      Tr.blinkT = (Tr.blinkT ?? 5) - DT; Tr.crossT = (Tr.crossT ?? 5) - DT;
       if (e.tatk) return;
-      if (Tr.crossT <= 0) { Tr.crossT = this.rng.range(6, 8); this.beginCross(); return; }
-      if (Tr.blinkT <= 0) { Tr.blinkT = this.rng.range(3, 4.5); this.beginShadowSink(e); return; }
-      if (Tr.t <= 0 && Tr.dashCd <= 0) { // 갑자기 돌진해 찌르고 → 바로 빠진다
-        Tr.t = this.rng.range(1.6, 2.4); this.trialDash(e, a2, Math.max(0, dist - 20), 0.11, 0.2);
-        this.tsLater(0.12, () => { this.beginAtk(e, 'dagger', { wind: 0.12 }); this.tsLater(0.4, () => this.trialDash(e, Math.atan2(e.y - this.player.y, e.x - this.player.x) + this.rng.range(-0.6, 0.6), 70, 0.13, 0.5)); });
+      if (Tr.crossT <= 0) { Tr.crossT = this.rng.range(9, 12); this.beginCross(); return; }
+      if (Tr.blinkT <= 0) { Tr.blinkT = this.rng.range(6, 8); this.beginShadowSink(e); return; }
+      if (Tr.t <= 0 && Tr.dashCd <= 0 && dist < 120) { // 가끔 갑자기 돌진해 찌르고 → 바로 빠진다
+        Tr.t = this.rng.range(3.2, 4.5); Tr.dashCd = 2.4; this.trialDash(e, a2, Math.max(0, dist - 20), 0.11, 0.2);
+        this.tsLater(0.12, () => { this.beginAtk(e, 'dagger', { wind: 0.12 }); this.tsLater(0.4, () => this.trialDash(e, Math.atan2(e.y - this.player.y, e.x - this.player.x) + this.rng.range(-0.6, 0.6), 70, 0.13, 2.4)); });
         return;
       }
-      if (Tr.dashCd <= 0) { // 와리가리: 나를 사이에 두고 옆으로 짧게 대시
+      if (dist > 60) { const aa = Math.atan2(e.y - p.y, e.x - p.x) + Tr.strafe * 0.5; this.stepToward(e, p.x + Math.cos(aa) * 70, p.y + Math.sin(aa) * 70, 62); } // 평소엔 걸어서 거리를 잰다
+      if ((Tr.strafeT -= DT) <= 0) { Tr.strafe = -Tr.strafe; Tr.strafeT = this.rng.range(1.2, 2.2); }
+      if (Tr.dashCd <= 0 && this.rng.chance(0.25)) { // 가끔 옆으로 짧게 대시
         Tr.strafe = -Tr.strafe; const want = dist < 60 ? 1.9 : dist > 110 ? 1.1 : Math.PI / 2;
-        this.trialDash(e, a2 + Tr.strafe * want, 48, 0.12, this.rng.range(0.45, 0.75)); return;
+        this.trialDash(e, a2 + Tr.strafe * want, 44, 0.14, this.rng.range(1.6, 2.4)); return;
       }
     } else if (f === 'bow') { // 노궁수: 거리를 두고 좌우로 오가며(와리가리) 쏜다 · 날아오는 내 화살은 옆으로 대시해 피한다 · 붙으면 여러 방향으로 빠진다
       if (Tr.dodgeCd <= 0 && !e.tatk) for (const pr of this.projs) {

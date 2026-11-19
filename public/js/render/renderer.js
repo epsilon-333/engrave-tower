@@ -1,6 +1,7 @@
 // 캔버스 렌더러: world 상태를 읽어서 그리기만 한다 (게임 로직 없음)
 // 화면 크기에 맞춰 정수 배율(S)로 도트를 키우고, 글씨는 실제 해상도로 따로 그린다.
 import { hexA } from './color.js';
+import { WCOMBO } from '../data/wcombo.js';
 export { hexA };
 import { opts } from '../settings.js';
 import { TILE, T_LIQUID, T_WALL, T_CRACK, T_BUILD, T_DEEP } from '../sim/mapgen.js';
@@ -175,6 +176,26 @@ import { FxMethods } from './fxdraw.js';
 import { EventMethods } from './events.js';
 import { AtmosMethods } from './atmosphere.js';
 const DILATE = new WeakMap(), NOBUFF = Object.freeze({});
+const NOCOMBO = new Set(['fist', 'great', 'whip', 'bow', 'crossbow', 'orb', 'tome', 'staff', 'tube']);
+const PI = Math.PI;
+// 콤보 동작의 두 자세: A = 다 들어 올린(준비) 자세 · B = 다 휘두른 자세 (data/wcombo.js의 m)
+const CPOSE = {
+  down: { heavy: true, hold: 0.45, A: { a: -2.6, hx: 0, hy: -14, lean: -2.2, sy: 1.05, f: -1, behind: true }, B: { a: 1.45, hx: 7, hy: -3, lean: 3.6, sy: 0.9, f: 3 } },
+  side: { heavy: true, A: { th: PI - 0.4, r: 4, hy: -7, lean: -2.6, f: -1 }, B: { th: -1.3, r: 6, hy: -7, lean: 3, f: 2 } },
+  up: { heavy: true, hold: 0.4, A: { a: 1.5, hx: -3, hy: -1, lean: -1.6, sy: 0.88, f: -1, behind: true }, B: { a: -2.1, hx: 5, hy: -14, lean: -1, sy: 1.06, f: 2 } },
+  diag: { A: { a: -2.3, hx: -1, hy: -12, lean: -1.8, f: -1, behind: true }, B: { a: 1.3, hx: 7, hy: -4, lean: 3, f: 3 } },
+  rdiag: { A: { a: 1.4, hx: -1, hy: -3, lean: -1.2, sy: 0.95 }, B: { a: -1.9, hx: 6, hy: -12, lean: 2, f: 2 } },
+  slash: { A: { a: -2.2, hx: 0, hy: -11, lean: -1.2, behind: true }, B: { a: 1.2, hx: 6, hy: -5, lean: 2.2, f: 2 } },
+  rslash: { A: { a: 1.3, hx: 0, hy: -4, lean: -0.8 }, B: { a: -1.9, hx: 6, hy: -11, lean: 1.8, f: 1.5 } },
+  thrust: { A: { a: 'aim', hx: -6, hy: -7, lean: -2, f: -2 }, B: { a: 'aim', hx: 15, hy: -7, lean: 3.5, f: 4 } },
+  stab: { hold: 0.2, A: { a: 'aim', hx: -2, hy: -6, lean: -1, f: -1 }, B: { a: 'aim', hx: 11, hy: -6, lean: 2.5, f: 3 } },
+  reap: { A: { th: PI + 0.6, r: 3, hy: -10, lean: -2.2, f: -1 }, B: { th: -0.6, r: 7, hy: -6, lean: 3, f: 2 } },
+  rreap: { A: { th: -1.2, r: 4, hy: -8, lean: -1.5 }, B: { th: PI * 0.7, r: 6, hy: -6, lean: 2.5, f: 1 } },
+  whirl: { A: { th: PI, r: 2, hy: -12, lean: -1.2, sy: 1.04 }, B: { th: PI - 4 * PI, r: 6, hy: -11, lean: 2, f: 1 } },
+  chop: { heavy: true, hold: 0.45, A: { a: -2.5, hx: -2, hy: -13, lean: -1.6, f: -1, behind: true }, B: { a: 1.2, hx: 7, hy: -5, lean: 3, sy: 0.94, f: 2.5 } },
+  hack: { hold: 0.4, A: { a: -0.6, hx: -4, hy: -9, lean: -2, behind: true }, B: { a: 1.5, hx: 6, hy: -3, lean: 2.5, f: 2 } },
+  sweep: { A: { th: PI - 0.3, r: 5, hy: -7, lean: -2.2, f: -1 }, B: { th: -1.2, r: 7, hy: -7, lean: 3, f: 2 } },
+};
 export class Renderer {
   constructor(canvas) {
     this.c = canvas;
@@ -1063,7 +1084,7 @@ export class Renderer {
     const fw = (e._fw ||= { projs: [], f: new Set(), pvp: null, state: 'play' });
     fw.t = w.t; fw.map = w.map;
     fw.b = { weapon: it.weapon, weaponId: H.id, weaponItem: it, race: e.raceLook, cls: null, offItem: null, offId: null, wcat: it.cat };
-    const st = Object.assign(e._st ||= {}, { dir, aimX: Math.cos(tw), aimY: Math.sin(tw), moving: !!e.moving && !(H.swingT > 0), walkT: w.t, hitFlash: e.hitFlash || 0, dashT: H.dash ? 1 : 0, swingMax: H.swingMax || 0, swingT: H.swingT || 0, swingAng: H.swingAng ?? tw, swingDir: H.swingDir || 1, boxN: H.boxN || 0, motion: H.motion || null, charging: null, attackHeld: !!H.aim, atkPeriod: H.atkPeriod || 1, atkCd: H.atkCd || 0, castT: 0, castSkill: null, buffs: NOBUFF, down: false });
+    const st = Object.assign(e._st ||= {}, { dir, aimX: Math.cos(tw), aimY: Math.sin(tw), moving: !!e.moving && !(H.swingT > 0), walkT: w.t, hitFlash: e.hitFlash || 0, dashT: H.dash ? 1 : 0, swingMax: H.swingMax || 0, swingT: H.swingT || 0, swingAng: H.swingAng ?? tw, swingDir: H.swingDir || 1, boxN: H.boxN || 0, swingMove: H.swingMove || null, cmbFam: H.cmbFam, cmbN: H.cmbN, motion: H.motion || null, charging: null, attackHeld: !!H.aim, atkPeriod: H.atkPeriod || 1, atkCd: H.atkCd || 0, castT: 0, castSkill: null, buffs: NOBUFF, down: false });
     const fp = (e._fp ||= new Proxy(st, { get: (t, k) => (k in t ? t[k] : typeof k === 'string' ? 0 : undefined) })); // 안 적은 칸은 0 (플레이어 모양의 빈 상태)
     const P = this.playerPose(fw, fp), g = this.g, bx = e.x + P.ox, by = e.y - 1 + P.oy + sinkY, wart = weaponArt(H.id, ITEMS);
     if (e.outline) { // 종족 색 1도트 외곽선
@@ -1681,6 +1702,27 @@ export class Renderer {
   }
 
   // 몸 그리기: 줄마다 정수 칸만큼 밀어서 기울인다 (도트 격자를 깨지 않는 기울임) + 눌림/늘어남
+  // 무기 콤보 자세: 준비(A)까지 천천히 → 맞는 순간 직전에 빠르게 B로 → 잠깐 머물렀다가 평소 자세로
+  // th가 있는 동작은 몸 둘레를 수평으로 도는 휘두름 (0 앞 · π/2 화면 앞쪽 · π 뒤 · -π/2 몸 너머 — 대검과 같은 셈)
+  comboPose(p, P, k, aimF) {
+    const mv = WCOMBO[p.cmbFam]?.list[p.cmbN]; if (!mv) return;
+    const pose = CPOSE[mv.m]; if (!pose) return;
+    const h = mv.hit, W0 = Math.max(0.06, h - (mv.m === 'down' || mv.m === 'up' ? 0.08 : 0.12)), S1 = Math.min(0.95, h + 0.05);
+    const I = { a: P.a, hx: P.hx, hy: P.hy, lean: P.lean, sy: P.sy, f: 0, len: 1, behind: P.behind };
+    const conv = (X, th) => { if (th == null) return { a: X.a === 'aim' ? aimF : X.a, hx: X.hx, hy: X.hy, lean: X.lean, sy: X.sy ?? 1, f: X.f || 0, len: 1, behind: !!X.behind };
+      const c = Math.cos(th), sn = Math.sin(th); return { a: Math.atan2(sn * 0.3 + 0.1, c), len: Math.sqrt(c * c + 0.09 * sn * sn), hx: X.r * c, hy: X.hy + 1.5 * sn, lean: X.lean, sy: X.sy ?? 1, f: X.f || 0, behind: sn < -0.15 }; };
+    const A = conv(pose.A, pose.A.th), B = conv(pose.B, pose.B.th);
+    const mix = (X, Y, q) => ({ a: X.a + (Y.a - X.a) * q, hx: X.hx + (Y.hx - X.hx) * q, hy: X.hy + (Y.hy - X.hy) * q, lean: X.lean + (Y.lean - X.lean) * q, sy: X.sy + (Y.sy - X.sy) * q, f: X.f + (Y.f - X.f) * q, len: X.len + (Y.len - X.len) * q, behind: q < 0.5 ? X.behind : Y.behind });
+    let R;
+    if (k < W0) { const q = k / W0; R = mix(I, A, q * q * (3 - 2 * q)); if (q > 0.75 && pose.heavy) R.ox2 = (Math.random() - 0.5) * 0.8; } // 들어 올리는 막바지엔 힘이 들어가 떨린다
+    else if (k < S1) { const q = (k - W0) / (S1 - W0), e = q * q; // 처음엔 무겁게 · 갈수록 빠르게
+      if (pose.A.th != null) { const th = pose.A.th + (pose.B.th - pose.A.th) * e; R = mix(A, B, e); Object.assign(R, conv({ ...pose.B, r: pose.A.r + (pose.B.r - pose.A.r) * e, hy: pose.A.hy + (pose.B.hy - pose.A.hy) * e }, th), { lean: R.lean, sy: R.sy, f: R.f }); P.whoosh = 1; }
+      else { R = mix(A, B, e); P.whoosh = q; } }
+    else { const q = (k - S1) / (1 - S1), hold = pose.hold ?? 0.35, r = q < hold ? 0 : (q - hold) / (1 - hold); R = mix(B, I, r * r * (3 - 2 * r)); }
+    P.a = R.a; P.hx = R.hx; P.hy = R.hy; P.lean = R.lean; P.sy = R.sy; P.behind = R.behind; if (R.len !== 1) P.len = R.len;
+    P.ox = Math.cos(p.swingAng) * R.f + (R.ox2 || 0); P.oy = Math.sin(p.swingAng) * R.f * 0.5;
+  }
+
   drawBody(img, x, y, gs, pose, dir) {
     const g = this.g;
     const W = img.width * gs * pose.sx, H = img.height * gs * pose.sy;
@@ -1722,7 +1764,8 @@ export class Renderer {
     // 평타
     const k = p.swingMax && p.swingT > 0 ? 1 - p.swingT / p.swingMax : -1;
     if (k >= 0 && !p.motion) {
-      if (kind === 'fist') { // 주먹: 복싱 콤보 (sim p.boxN) — 잽 · 잽 · 스트레이트 · 훅 · 어퍼컷. 빠르게 뻗고(앞 30%) 빠르게 거둔다
+      if (p.swingMove && !NOCOMBO.has(kind)) this.comboPose(p, P, k, aimF); // 무기마다 고유한 콤보 (data/wcombo.js)
+      else if (kind === 'fist') { // 주먹: 복싱 콤보 (sim p.boxN) — 잽 · 잽 · 스트레이트 · 훅 · 어퍼컷. 빠르게 뻗고(앞 30%) 빠르게 거둔다
         const n = p.boxN || 0, out = k < 0.3 ? easeOut(k / 0.3) : 1 - easeOut((k - 0.3) / 0.7);
         if (n === 3) { // 훅: 옆에서 둥글게 돌아 들어온다 · 어깨와 허리를 비튼다
           const q = Math.min(1, k / 0.35), ret = k > 0.35 ? (k - 0.35) / 0.65 : 0;

@@ -1,5 +1,6 @@
 // 전투·탐험 시뮬레이션. 고정 틱(60Hz) + 시드 난수 + 입력만으로 진행 → 서버 권한 방식으로 옮기기 쉽다.
 // 렌더러는 world 상태와 world.events 만 읽고, main 은 world.signals 로 화면 전환을 한다.
+import { WCOMBO, comboFam } from '../data/wcombo.js';
 import { MONSTERS, ALL_ZONES, DUMMIES, ECHOES, LORES, AFFIXES } from '../data/monsters.js';
 import { zoneInit, zoneTick, zoneTakeMul, zoneHitMul, mirrorBounce, lightPillar, shiftShelves, arenaShift, shardHit, shardFakeDie, startIntro, introTick } from './towerzone.js';
 import { REACTIONS } from '../data/engravings.js';
@@ -1516,33 +1517,44 @@ export class World {
         p.swingMax = p.swingT = [0.13, 0.13, 0.15, 0.17, 0.21][box] / Math.min(1.6, Math.max(1, d.atkSpeed));
         if (box === 2 || box === 4) { p.dashT = 0.06; p.dvx = Math.cos(ang) * 85; p.dvy = Math.sin(ang) * 85; } // 체중을 실어 한 걸음
       }
+      // 무기마다 고유한 콤보 (data/wcombo.js): 둔기 · 장검 · 낫 · 도끼 · 한손검 · 단검 · 창
+      const cf = box < 0 && !great ? comboFam(this.b) : null, CB = cf && WCOMBO[cf];
+      let mv = null;
+      if (CB) {
+        p.cmbN = p.cmbFam !== cf || this.t - (p.cmbLast ?? -9) > (p.cmbDur || 0.5) * 1.6 + 0.1 ? 0 : ((p.cmbN ?? -1) + 1) % CB.list.length;
+        p.cmbFam = cf; mv = CB.list[p.cmbN];
+        const dur = Math.max(CB.min, p.atkPeriod || CB.min) * mv.t;
+        p.swingMax = p.swingT = dur; p.swingMove = mv.m; p.swingAng = ang; p.cmbLast = this.t; p.cmbDur = dur;
+        p.atkCd = Math.max(p.atkCd, dur); p.atkPeriod = Math.max(p.atkPeriod || 0, dur);
+      } else p.swingMove = null;
       const hits = w.hits || 1;
-      const strike = (slam = false, mulK = 1) => {
+      const strike = (slam = false, mulK = 1, ov = null) => {
+      const RG = w.range * (ov?.range || 1), AR = ov?.arc ?? w.arc, TH = ov ? !!ov.thrust : thrust, FULL = !!ov?.full || great;
       { // 탄 쳐내기: 휘두른 범위 안의 적 탄은 사라진다 (근접이 원거리 몬스터에게 일방적으로 맞지 않게)
-        const R = w.range + 10;
+        const R = RG + 10;
         for (const pr of this.projs) {
           if (pr.owner !== 'e' || pr.life <= 0) continue;
           const dx = pr.x - p.x, dy = pr.y - p.y, dd = Math.hypot(dx, dy); if (dd > R) continue;
           let da = Math.atan2(dy, dx) - ang; da = Math.atan2(Math.sin(da), Math.cos(da));
-          if (great || Math.abs(da) <= Math.max(thrust ? 0.5 : w.arc, 1.2) / 2 + 0.3 || dd < 14) { pr.life = 0; this.emit({ t: 'spark', x: pr.x, y: pr.y, color: pr.color || '#ffe8a0' }); this.emit({ t: 'deflect', x: pr.x, y: pr.y }); }
+          if (FULL || Math.abs(da) <= Math.max(TH ? 0.5 : AR, 1.2) / 2 + 0.3 || dd < 14) { pr.life = 0; this.emit({ t: 'spark', x: pr.x, y: pr.y, color: pr.color || '#ffe8a0' }); this.emit({ t: 'deflect', x: pr.x, y: pr.y }); }
         }
       }
-      this.emit({ t: 'swing', x: p.x, y: p.y, ang, range: w.range, arc: thrust ? 0.3 : w.arc, heavy: heavy || great, type, dir: great ? (slam ? -1 : 1) : p.swingDir, dur: great ? 0.28 : p.swingMax, thrust, aura: p.auraT > 0, whip: w.shape === 'whip', fist: this.b.wcat === 'fist', box, enchant: p.buffs.enchant?.elem });
+      this.emit({ t: 'swing', x: p.x, y: p.y, ang, range: RG, arc: TH ? 0.3 : FULL ? 6.3 : AR, move: ov?.m, heavy: heavy || great, type, dir: great ? (slam ? -1 : 1) : p.swingDir, dur: great ? 0.28 : p.swingMax, thrust: TH, aura: p.auraT > 0, whip: w.shape === 'whip', fist: this.b.wcat === 'fist', box, enchant: p.buffs.enchant?.elem });
       for (const e of this.enemies) {
         if (e.dead || e.hidden) continue;
         const dx = e.x - p.x, dy = e.y - p.y, dist = Math.hypot(dx, dy);
-        if (dist > w.range + e.r) continue;
+        if (dist > RG + e.r) continue;
         let ok;
         let tip = 1;
-        if (great) ok = dist < w.range + e.r + 6; // 몸 둘레로 돌리는 칼: 주변 모두
-        else if (thrust) ok = distToSeg(e.x, e.y, p.x, p.y, p.x + Math.cos(ang) * w.range, p.y + Math.sin(ang) * w.range) < e.r + (w.width || 8);
+        if (FULL) ok = dist < RG + e.r + 6; // 몸 둘레로 돌리는 칼: 주변 모두
+        else if (TH) ok = distToSeg(e.x, e.y, p.x, p.y, p.x + Math.cos(ang) * RG, p.y + Math.sin(ang) * RG) < e.r + (w.width || 8);
         else if (w.shape === 'whip') { // 채찍: 가늘고 길게. 끝에 맞으면 1.5배
           ok = distToSeg(e.x, e.y, p.x, p.y, p.x + Math.cos(ang) * w.range, p.y + Math.sin(ang) * w.range) < e.r + (w.width || 8);
           if (ok && dist > w.range * 0.7) { tip = 1.5; this.emit({ t: 'whipCrack', x: e.x, y: e.y - 6 }); }
         }
         else {
           let da = Math.atan2(dy, dx) - ang; da = Math.atan2(Math.sin(da), Math.cos(da));
-          ok = Math.abs(da) <= w.arc / 2 || dist < e.r + 6;
+          ok = Math.abs(da) <= AR / 2 || dist < e.r + 6;
         }
         if (!ok) continue;
         for (let h = 0; h < hits; h++) this.hitEnemy(e, base * mulK * tip, type, heavy || slam || tip > 1, false, { weapon: true });
@@ -1553,7 +1565,11 @@ export class World {
       };
       // 대검은 힘을 모으는 동안은 아직 맞지 않고, 칼이 지나가는 순간 맞는다
       // 대검: 퍼올리는 순간 한 번(약하게), 무게로 땅에 떨어지는 순간 한 번 더(강하게)
-      if (great) {
+      if (mv) {
+        const dur = p.swingMax, th = dur * mv.hit;
+        if (mv.step) this.delayed.push({ t: Math.max(0, th - 0.07), run: () => { if (!p.dead) { p.dashT = 0.07; p.dvx = Math.cos(ang) * mv.step / 0.07; p.dvy = Math.sin(ang) * mv.step / 0.07; } } });
+        this.delayed.push({ t: th, run: () => { if (p.dead) return; strike(false, mv.mul, mv); if (mv.stop) { this.emit({ t: 'hitstop', v: mv.stop * 0.4 }); this.emit({ t: 'shake', v: cf === 'blunt' ? 2.5 : 1.5 }); } } });
+      } else if (great) {
         this.delayed.push({ t: p.swingMax * 0.5, run: () => { p.dashT = 0.16; p.dvx = Math.cos(ang) * 70; p.dvy = Math.sin(ang) * 70; } }); // 던지는 힘에 몸이 끌려 나간다
         this.delayed.push({ t: p.swingMax * 0.68, run: () => { strike(true, 1.6); /* 대검: 느린 만큼 한 방이 크다 (예전 1.3) */ this.emit({ t: 'hitstop', v: 0.07 }); this.emit({ t: 'shake', v: 5 }); } });
       } else if (thrust) this.delayed.push({ t: p.swingMax * 0.38, run: () => { if (!p.dead) strike(); } }); // 창: 뒤로 당긴 뒤 내지르는 순간에 맞는다
