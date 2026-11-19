@@ -5,6 +5,7 @@
 // · 스승의 공격은 내 최대 체력 비율로 들어온다 (내가 세져도 똑같이 아프다). 내 체력이 다하면 실패 (죽지는 않는다)
 // TeacherMethods 는 World.prototype 에 붙는다 (sim/world.js 끝) — 메서드 안의 this 는 World
 import { TEACHERS } from '../data/hidden.js';
+import { SIG_SKILL } from './teacherskills.js';
 import { RACE_ART, weaponArt } from '../data/art.js';
 import { ITEMS, WEAPON_SKILLS } from '../data/items.js';
 const DT = 1 / 60; // sim/world.js 의 DT 와 같다 (world.js 를 가져오면 서로 물린다)
@@ -41,6 +42,7 @@ export const TR = {
   sig: 0.22,      // 스승의 각인 스킬: 22%
   sigEvery: 7,    // 각인 스킬 간격 (초)
 };
+const SIG_K = 0.055; // 이기면 받는 스킬의 피해: 플레이어 공격력 100%당 → 스승판은 내 최대 체력 5.5%
 // 스승의 평타 = 든 무기의 실제 동작 (2026-11-19): 준비(무기를 치켜든다) → 휘두른다 → 빈틈. 피해는 내 최대 체력 비율
 const ATK = {
   sword: { wind: 0.5, range: 38, arc: 2.0, k: 0.08, kind: 'slash' },
@@ -137,7 +139,8 @@ export const TeacherMethods = {
     } else if (f === 'bow') { good = Math.hypot(e.x - p.x, e.y - p.y) >= 90; why = '너무 가깝다 · 멀리서 쏘아라'; }
     else if (f === 'fist') { Tr.chain = this.t - Tr.lastHit <= 0.6 ? Tr.chain + 1 : 1; Tr.lastHit = this.t; good = Tr.chain >= 3; why = `${Tr.chain}연타 · 끊기지 말고 이어라`; }
     else if (f === 'spear') { good = Math.hypot(e.x - p.x, e.y - p.y) - e.r >= (this.b.weapon?.range || 40) * 0.7; why = '발톱 안쪽이다 · 창끝으로 찔러라'; }
-    const v = Math.min(amount, Tr.maxHp * (good ? TR.okCap : TR.badCap));
+    let v = Math.min(amount, Tr.maxHp * (good ? TR.okCap : TR.badCap));
+    if (Tr.shoutT > 0) v *= 0.7; // 대족장의 외침: 받는 피해 -30%
     Tr.hp -= v; Tr.took.push([this.t, v]); e.hitFlash = 0.08;
     this.emit({ t: 'dmg', x: e.x, y: e.y - e.r - 10, v, color: good ? '#ffe066' : '#8a8f9a', small: !good, id: e.id });
     if (good) { Tr.lastOk = this.t; Tr.okHits.push(this.t); Tr.okHits = Tr.okHits.filter((t) => this.t - t < 3);
@@ -189,6 +192,7 @@ export const TeacherMethods = {
     const Tr = this.trial, p = this.player, H = e.held; if (!H) return;
     const toward = Math.atan2(p.y - e.y, p.x - e.x), A = e.tatk;
     H.toward = toward; H.dash = !!(Tr.dash && e === Tr.main);
+    if (H.motion) { H.motion.t += DT; if (H.motion.t >= H.motion.dur) H.motion = null; } // 스킬 동작 (플레이어의 p.motion 과 같다)
     if (!A) {
       H.swingT = 0; H.swingMax = 0; H.aim = false;
       if (H.kind === 'magic' && Tr.s === 'cast') { H.swingMax = 0.7; H.swingT = 0.7 - ((this.t - (Tr.castT0 || this.t)) % 0.7); H.swingAng = toward; } // 주문을 외는 동안 지팡이를 휘두르며 빛을 모은다
@@ -230,6 +234,7 @@ export const TeacherMethods = {
     const da = Math.abs(((Math.atan2(dy, dx) - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
     const hit = d <= C.range + 6 && da <= C.arc / 2 + 0.25;
     if (hit) this.hurtPlayer(this.trialDmg(C.k), 'phys', e, { fromX: e.x, fromY: e.y });
+    if (hit && C.heal) { const T2 = this.trial, from = T2.hp / T2.maxHp; T2.hp = Math.min(T2.maxHp, T2.hp + T2.maxHp * C.heal); this.emit({ t: 'bossHeal', id: e.id, x: e.x, y: e.y, from, to: T2.hp / T2.maxHp, big: false }); } // 망자의 낫: 맞히면 체력 3%
     const knock = C.knock ?? (C.kind === 'smash' ? 26 : 0) + (A.combo && A.n === A.combo.length && A.combo[A.n - 1] === 4 ? 22 : 0); // 내려찍기 · 어퍼컷은 나를 밀어낸다
     if (hit && knock) this.knockPlayer(e.x, e.y, knock);
     if (C.fx) this.emit({ t: 'skillAoe', x: e.x + Math.cos(a) * C.range * 0.6, y: e.y + Math.sin(a) * C.range * 0.6, r: C.range * 0.6, elem: 'phys', fx: C.fx });
@@ -304,31 +309,60 @@ export const TeacherMethods = {
       after?.(x2, y2);
     } });
   },
-  // 스승의 각인 스킬 (이기면 받는 것과 같은 것)
+  // 스승의 각인 스킬 = 이기면 받는 스킬을 플레이어가 쓸 때와 똑같이 (범위 · 폭 · 지연 · 효과 그대로, 피해는 공격력 100%당 내 최대 체력 5.5% `SIG_K`)
   trialSig() {
-    const Tr = this.trial, e = Tr.main, p = this.player, f = Tr.fam;
+    const Tr = this.trial, e = Tr.main, p = this.player, f = Tr.fam, a = Math.atan2(p.y - e.y, p.x - e.x);
     this.trialSay(e, `「${SIG_NAME[f]}」`, '#ffe8a8');
-    if (f === 'sword') { Tr.s = 'sig'; Tr.t = 1.2; this.trialLine(e, 200, 30, 0.6, TR.sig, 'skyfall'); } // 칼집에 손을 얹고 0.6초 뒤 한 칼
-    else if (f === 'heavy') { // 최근 8초 동안 받은 피해만큼 세게 터뜨린다 → 몰아친 뒤에는 물러나라
-      Tr.s = 'sig'; Tr.t = 1.1;
-      Tr.took = Tr.took.filter(([t]) => this.t - t <= 8);
-      const stored = Tr.took.reduce((a, [, v]) => a + v, 0) / Tr.maxHp; Tr.took = [];
-      this.trialStrike(e, e.x, e.y, 0.9, 96, TR.hit + Math.min(0.3, stored * 4), 'rage');
-    } else if (f === 'magic') { Tr.s = 'surge'; Tr.t = 3.2; for (let i = 0; i < 6; i++) this.delayed.push({ t: i * 0.5, run: () => { if (!Tr.done) this.trialStrike(e, this.player.x, this.player.y, 0.55, 28, 0.08, 'burst'); } }); } // 마력 폭주: 0.5초마다 주문
-    else if (f === 'scythe') { const b = Tr.bodies[this.rng.int(0, Tr.bodies.length - 1)]; this.trialStrike(b, b.x + (p.x - b.x) * 0.5, b.y + (p.y - b.y) * 0.5, 0.8, 70, TR.sig, 'sweep'); }
-    else if (f === 'dagger') { // 그림자 손: 둘레를 끌어당긴다 · 내 체력 비율이 스승보다 낮으면 훨씬 아프다
-      this.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 170, dur: 1.0 });
-      this.delayed.push({ t: 1.0, run: () => {
-        if (Tr.done) return; const q = this.player;
-        if (Math.hypot(q.x - e.x, q.y - e.y) > 170 || q.invuln > 0) return;
-        this.emit({ t: 'skillDash', x1: q.x, y1: q.y, x2: e.x, y2: e.y, elem: 'dark' });
-        const nx = e.x + (q.x > e.x ? 18 : -18); if (!this.blocked(nx, e.y, 5)) { q.x = nx; q.y = e.y; }
-        this.hurtPlayer(this.trialDmg(q.hp / this.d.maxHp < Tr.hp / Tr.maxHp ? 0.45 : TR.sig), 'phys', e, { fromX: e.x, fromY: e.y, direct: true });
-      } });
-    } else if (f === 'bow') { for (let i = 0; i < 4; i++) this.delayed.push({ t: i * 0.3, run: () => { if (!Tr.done) this.trialStrike(e, this.player.x + this.rng.range(-30, 30), this.player.y + this.rng.range(-20, 20), 0.7, 40, 0.12, 'lightRain'); } }); }
-    else if (f === 'fist') { Tr.s = 'sig'; Tr.t = 1.0; this.trialLine(e, 170, 28, 0.55, TR.sig, 'dash', (x2, y2) => { let x = x2, y = y2; while (this.blocked(x, y, 6) && Math.hypot(x - e.x, y - e.y) > 6) { x -= (x2 - e.x) / 20; y -= (y2 - e.y) / 20; } this.emit({ t: 'skillDash', x1: e.x, y1: e.y, x2: x, y2: y }); e.x = x; e.y = y; }); }
-    else if (f === 'spear') { Tr.s = 'sig'; Tr.t = 1.4; this.trialLine(e, 190, 30, 0.7, TR.sig, 'lava', () => this.delayed.push({ t: 0.5, run: () => { if (!Tr.done) this.trialLine(e, 190, 30, 0.5, 0.12, 'lava'); } })); } // 갈라진 땅이 한 번 더 터진다
-    Tr.sigT = TR.sigEvery;
+    this.trialMotion(e, SIG_SKILL[f]); // 플레이어가 이 스킬을 쓸 때와 같은 동작
+    this.trialPayback(e);
+    Tr.sigT = TR.sigEvery; Tr.s = 'wskill'; Tr.t = 0.8;
+    if (f === 'sword') { // 발도: 0.3초 숨을 고른 뒤 앞으로 뻗는 한 칼 · 길이 200 · 폭 30 · 400%
+      this.tsRays(e, [a], { len: 200, w: 30, k: 4 * SIG_K, wind: 0.3, fx: 'skyfall', tele: true, shake: 4 });
+    } else if (f === 'heavy') { // 대족장의 외침: 5초 동안 받는 피해 -30% (함성 · 몸이 붉게)
+      Tr.shoutT = 5; this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 60, elem: 'fire', fx: 'roar' }); this.emit({ t: 'bossHeal', id: e.id, x: e.x, y: e.y, from: 1, to: 1, big: false });
+      this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '받는 피해 -30%', color: '#ff7a5a' }); Tr.t = 0.6;
+    } else if (f === 'magic') { // 마력 폭주: 10초 동안 주문을 쿨타임 없이 (1초에 하나)
+      Tr.surgeT = 10; Tr.skT = 0.3; this.emit({ t: 'buff', x: e.x, y: e.y, color: '#b58aff' }); this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '10초 동안 주문이 쉬지 않는다', color: '#b58aff' }); Tr.s = 'move'; Tr.t = 0.2;
+    } else if (f === 'scythe') { // 망자의 낫: 앞쪽 크게 (거리 72 · 각 2.6) · 280% · 맞히면 체력 3% 회복
+      this.tsMelee(e, 'scythe', 0.35, { range: 72, arc: 2.6, k: 2.8 * SIG_K, heal: 0.03 });
+    } else if (f === 'dagger') { // 그림자 손: 둘레 170 안의 나를 끌고 온다 · 남은 체력이 스승보다 낮으면 그 자리에서 쓰러진다 · 아니면 150% · 0.6초 기절
+      this.emit({ t: 'telegraphCircle', x: e.x, y: e.y, r: 170, dur: 1.0 }); Tr.t = 1.3;
+      this.tsLater(1.0, () => {
+        const q = this.player; if (Math.hypot(q.x - e.x, q.y - e.y) > 170 || q.invuln > 0) return;
+        const a2 = Math.atan2(q.y - e.y, q.x - e.x), nx = e.x + Math.cos(a2) * 20, ny = e.y + Math.sin(a2) * 20;
+        this.emit({ t: 'skillDash', x1: q.x, y1: q.y, x2: nx, y2: ny, elem: 'dark' }); if (!this.blocked(nx, ny, 5)) { q.x = nx; q.y = ny; }
+        if (q.hp / this.d.maxHp < Tr.hp / Tr.maxHp) { this.emit({ t: 'skillAoe', x: q.x, y: q.y, r: 16, elem: 'dark', fx: 'doom' }); this.hurtPlayer(this.d.maxHp * 10, 'phys', e, { direct: true }); }
+        else { this.hurtPlayer(this.trialDmg(1.5 * SIG_K), 'phys', e, { fromX: e.x, fromY: e.y, direct: true }); this.ccPlayer({ stun: 0.6 }); }
+      });
+    } else if (f === 'bow') { // 천궁의 화살비: 내 자리에 빛줄기 네 번 (반경 72 · 0.3 · 0.5 · 0.7 · 0.9초 · 한 번에 150%)
+      const x = p.x, y = p.y; for (let i = 0; i < 4; i++) this.tsCircle(e, x, y, { r: 72, k: 1.5 * SIG_K, wind: 0.3 + i * 0.2, fx: 'lightRain', elem: 'holy' });
+      Tr.t = 1.2;
+    } else if (f === 'fist') { // 원시의 돌진: 앞으로 170 들이받아 나를 밀고 간다 · 벽에 박으면 450% · 1.5초 기절, 아니면 180% · 0.4초 기절
+      Tr.t = 0.8; this.emit({ t: 'windup', id: e.id });
+      this.tsLater(0.25, () => {
+        const q = this.player, ax = Math.cos(a), ay = Math.sin(a), x1 = e.x, y1 = e.y;
+        let dist = 170; while (dist > 0 && this.blocked(x1 + ax * dist, y1 + ay * dist, 5)) dist -= 6;
+        const wall = dist < 170 - 6, t = (q.x - x1) * ax + (q.y - y1) * ay, onPath = t > 0 && t < dist + 12 && Math.hypot(q.x - (x1 + ax * t), q.y - (y1 + ay * t)) < 16;
+        this.trialDash(e, a, dist, 0.22, Tr.dashCd); this.emit({ t: 'skillDash', x1, y1, x2: x1 + ax * dist, y2: y1 + ay * dist, elem: 'phys' });
+        if (onPath) this.tsLater(0.22, () => {
+          const ex = x1 + ax * (dist + 10), ey = y1 + ay * (dist + 10); if (!this.blocked(ex, ey, 5)) { q.x = ex; q.y = ey; }
+          if (wall) { this.emit({ t: 'skillAoe', x: q.x, y: q.y, r: 30, elem: 'phys', fx: 'quake' }); this.emit({ t: 'shake', v: 5 }); this.emit({ t: 'text', x: q.x, y: q.y - 24, text: '벽에 박혔다!', color: '#ff9a7a' }); }
+          this.hurtPlayer(this.trialDmg((wall ? 4.5 : 1.8) * SIG_K), 'phys', e, { fromX: x1, fromY: y1, direct: true }); this.ccPlayer({ stun: wall ? 1.5 : 0.4 });
+        });
+      });
+    } else if (f === 'spear') { // 용암 균열: 앞으로 땅을 가른다 (길이 190 · 폭 30 · 260% · 화상 2중첩) · 갈라진 자리는 3초 동안 용암
+      this.tsRays(e, [a], { len: 190, w: 30, k: 2.6 * SIG_K, wind: 0.35, fx: 'quake', tele: true, burn: 2 });
+      this.tsLater(0.35, () => { for (let i = 1; i <= 5; i++) { const zx = e.x + Math.cos(a) * 190 * i / 5, zy = e.y + Math.sin(a) * 190 * i / 5; if (!this.blocked(zx, zy, 4)) (Tr.zones ||= []).push({ x: zx, y: zy, r: 16, until: this.t + 3, k: 0.02, lava: true, next: 0 }); } });
+    }
+  },
+  // 대족장의 「피로 쓴 함성」 패시브: 스킬을 쓰면 최근 8초 동안 받은 피해를 둘레(96)로 터뜨린다 (플레이어는 받은 피해 ×2 · 스승은 받은 몫만큼 내 최대 체력 비율로, 60%까지)
+  trialPayback(e) {
+    const Tr = this.trial; if (Tr.fam !== 'heavy') return;
+    Tr.took = Tr.took.filter(([t]) => this.t - t <= 8);
+    const frac = Math.min(0.6, (Tr.took.reduce((a, [, v]) => a + v, 0) / Tr.maxHp) * 2); Tr.took = [];
+    if (frac < 0.01) return;
+    this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 96, elem: 'fire', fx: 'rage' }); this.emit({ t: 'text', x: e.x, y: e.y - 30, text: `되갚기 ${Math.round(frac * 100)}%`, color: '#ff7a5a' });
+    const p = this.player; if (Math.hypot(p.x - e.x, p.y - e.y) <= 96) this.hurtPlayer(this.trialDmg(frac), 'phys', e, { fromX: e.x, fromY: e.y });
   },
   stepToward(e, tx, ty, spd) {
     const dx = tx - e.x, dy = ty - e.y, l = Math.hypot(dx, dy) || 1, s = Math.min(l, spd * DT);

@@ -1,7 +1,12 @@
 // 숨은 스승의 스킬 (2026-11-19) — 스승은 그 무기를 완전히 다룬 자. 각인 스킬 가운데 그 무기에 맞는 것 여섯 + 원래 쓰던 무기 능력(trialWeaponSkill)을
 // 거리와 쿨타임에 맞춰 골라 쓴다. 이름 · 모양은 플레이어의 그 스킬을 따르고, 피해는 내 최대 체력 비율(trialDmg). 큰 기술은 예고(준비 자세 · 예고 선 · 예고 원)가 있다.
 // TeacherSkillMethods 는 World.prototype 에 붙는다 (sim/world.js 끝) — 메서드 안의 this 는 World
+import { SKILLS } from '../data/skills.js';
+import { MOTION_DUR } from './world.js'; // 함수 안에서만 쓴다 (서로 가져오는 파일이라 맨 위에서 쓰면 안 된다)
 const DT = 1 / 60;
+// 스승이 스킬을 쓸 때 몸 동작은 플레이어가 그 스킬을 쓸 때와 같은 동작(SKILLS[].mo · MOTION_DUR · renderer motionPose)
+const MO_OF = { counter: 'braceForIt', berserk: 'berserkSkill', firePillar: 'eFirePillar', spinThrust: 'comboSlash' };
+export const SIG_SKILL = { sword: 'hIaido', heavy: 'hChiefCall', magic: 'hManaSurge', scythe: 'hReaper', dagger: 'hShadowHands', bow: 'hLightRain', fist: 'hRam', spear: 'hLavaRift' };
 const SUMMON_MAX = 3; // 리치의 해골 병사 (몬스터 소환 규칙: 한 소환사당 3)
 
 // [아이디, 이름, 쿨타임(초), 쓰는 거리 [최소, 최대], 실행]  — 실행(ctx): ctx = { w, Tr, e, p, a(나를 향한 각), d(거리) }
@@ -78,14 +83,17 @@ export const TeacherSkillMethods = {
   trialUseSkill(dist) {
     const Tr = this.trial, e = Tr.main, p = this.player, list = TEACHER_SKILLS[Tr.fam] || [];
     Tr.skCd ||= {};
-    const pool = list.filter((s) => (Tr.skCd[s.id] || 0) <= this.t && dist >= s.min && dist <= s.max && (!s.need || s.need(Tr)));
-    if ((Tr.skCd.weapon || 0) <= this.t && dist < 170) pool.push({ id: 'weapon', cd: 6.5 });
+    const surge = Tr.surgeT > 0; // 마력 폭주: 주문은 쿨타임 없이 · 하나 쓰면 1초
+    const pool = list.filter((s) => (surge || (Tr.skCd[s.id] || 0) <= this.t) && dist >= s.min && dist <= s.max && (!s.need || s.need(Tr)) && !(surge && s.id === 'slowField'));
+    if (!surge && (Tr.skCd.weapon || 0) <= this.t && dist < 170) pool.push({ id: 'weapon', cd: 6.5 });
     if (!pool.length) { Tr.skT = 0.5; return false; }
     const s = pool[this.rng.int(0, pool.length - 1)];
-    Tr.skCd[s.id] = this.t + s.cd; Tr.skT = 2.2; // 스킬과 스킬 사이 2.2초 (평타 · 움직임이 그 사이에)
+    Tr.skCd[s.id] = this.t + s.cd; Tr.skT = surge ? 1.0 : 2.2; // 스킬과 스킬 사이 2.2초 (평타 · 움직임이 그 사이에)
+    this.trialPayback(e); // 대족장: 스킬을 쓸 때마다 받은 피해를 되갚는다
     if (s.id === 'weapon') { this.trialWeaponSkill(); return true; }
     Tr.s = 'wskill'; Tr.t = 0.8;
     this.trialSay(e, `「${s.name}」`, '#ffe0a0');
+    this.trialMotion(e, MO_OF[s.id] || s.id);
     s.run({ w: this, Tr, e, p, a: Math.atan2(p.y - e.y, p.x - e.x), d: dist });
     return true;
   },
@@ -93,19 +101,29 @@ export const TeacherSkillMethods = {
   trialSkillTick() {
     const Tr = this.trial, p = this.player;
     if (Tr.powT > 0) Tr.powT -= DT;
+    if (Tr.shoutT > 0) Tr.shoutT -= DT;
+    if (Tr.surgeT > 0) Tr.surgeT -= DT;
     if (Tr.curseT > 0) Tr.curseT -= DT;
     if (Tr.counterT > 0) { Tr.counterT -= DT; if (Math.random() < 0.3) this.emit({ t: 'spark', x: Tr.main.x, y: Tr.main.y - 10, color: '#fff0a0' }); }
     for (const z of Tr.zones || []) {
       if ((z.next -= DT) > 0) continue;
       z.next = 0.5;
-      this.emit({ t: 'skillAoe', x: z.x, y: z.y, r: z.r, elem: z.slow ? 'ice' : 'dark', fx: z.slow ? 'ice' : 'fog', lite: true });
-      if (Math.hypot(p.x - z.x, p.y - z.y) <= z.r) { if (z.k) this.hurtPlayer(this.trialDmg(z.k), 'mag', Tr.main, { direct: true }); if (z.slow) this.ccPlayer({ slow: 0.6 }); }
+      this.emit({ t: 'skillAoe', x: z.x, y: z.y, r: z.r, elem: z.lava ? 'fire' : z.slow ? 'ice' : 'dark', fx: z.lava ? 'burst' : z.slow ? 'ice' : 'fog', lite: true });
+      if (Math.hypot(p.x - z.x, p.y - z.y) <= z.r) { if (z.k) this.hurtPlayer(this.trialDmg(z.k), z.lava ? 'phys' : 'mag', Tr.main, { direct: true, status: z.lava ? 'burn' : undefined }); if (z.slow) this.ccPlayer({ slow: 0.6 }); }
     }
     if (Tr.zones) Tr.zones = Tr.zones.filter((z) => z.until > this.t);
     if (Tr.minions?.length) { // 쓰러진 해골은 시체로 남는다 (시체 폭발)
       for (const m of Tr.minions) if (m.dead && !m.corpsed) { m.corpsed = true; (Tr.corpses ||= []).push({ x: m.x, y: m.y }); }
       Tr.minions = Tr.minions.filter((m) => !m.dead);
     }
+  },
+  // 플레이어가 그 스킬을 쓸 때와 같은 몸 동작을 건다 (그리는 쪽은 e.held.motion 을 플레이어의 p.motion 처럼 쓴다)
+  trialMotion(e, id) {
+    const def = SKILLS[id], H = e?.held; if (!H) return;
+    const mo = def?.mo || (def?.kind === 'spell' ? 'cast' : null); if (!mo) return;
+    const p = this.player;
+    H.motion = { kind: mo, t: 0, dur: (MOTION_DUR[mo] || 0.35) * (def?.cast ? 1 : 1), ang: Math.atan2(p.y - e.y, p.x - e.x), dir: p.x >= e.x ? 1 : -1, lock: true };
+    e.dir = H.motion.dir;
   },
   trialSkillEnd() { const Tr = this.trial; for (const m of Tr?.minions || []) m.dead = true; },
 
@@ -139,6 +157,7 @@ export const TeacherSkillMethods = {
         if (o.pull) { const d = Math.hypot(p.x - e.x, p.y - e.y); if (d > 30) this.knockPlayer(e.x, e.y, Math.min(d - 26, 140), { ang: Math.atan2(e.y - p.y, e.x - p.x) }); this.trialSay(e, '이리 와라', '#ffb070'); } // 작살: 끌어당긴다
         if (o.slow) this.ccPlayer({ slow: o.slow });
         if (o.root) this.ccPlayer({ root: o.root, say: '묶였다' });
+        if (o.burn) for (let i = 0; i < o.burn; i++) this.applyPlayerStatus?.('burn', this.d.maxHp * 0.02);
       }
       if (o.shake) this.emit({ t: 'shake', v: o.shake });
     });
