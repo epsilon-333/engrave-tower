@@ -60,7 +60,7 @@ export const TEACHER_SKILLS = {
     S('pushArrow', '밀쳐내기 화살', 7, 0, 160, ({ w, e, a }) => w.tsRays(e, [a], { len: 240, w: 18, k: 0.07, wind: 0.4, fx: 'arrowBeam', tele: true, knock: 44 })),
     S('volley', '일제 사격', 7, 40, 300, ({ w, e, a }) => w.tsRays(e, [-0.4, -0.2, 0, 0.2, 0.4].map((o) => a + o), { len: 280, w: 12, k: 0.06, wind: 0.5, fx: 'arrowBeam', tele: true })),
     S('spiritArrow', '정령의 화살', 6, 60, 320, ({ w, e }) => { w.trialSay(e, '「정령의 화살」', '#9be8a0'); w.tsLater(0.7, () => w.tsRays(e, [Math.atan2(w.player.y - e.y, w.player.x - e.x)], { len: 320, w: 16, k: 0.09, wind: 0.05, fx: 'arrowBeam' })); }), // 날아가기 직전에 다시 겨눈다 (따라오는 화살)
-    S('skyPiercer', '천공의 한 발', 14, 60, 330, ({ w, Tr, e, a }) => { w.beginAtk(e, 'bow', { wind: 1.2, cfg: { k: 0.26, big: true } }); w.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx: Math.cos(a), dy: Math.sin(a), len: 330, w: 30 }); w.trialSay(e, '차지…', '#ffe8a8'); Tr.t = 1.5; }),
+    S('skyPiercer', '천공의 한 발', 14, 60, 330, ({ w, Tr, e, a }) => { w.beginAtk(e, 'bow', { wind: 1.2, cfg: { k: 0.26, big: true } }); w.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx: Math.cos(a), dy: Math.sin(a), len: w.rayLen(e.x, e.y, a, 330), w: 30 }); w.trialSay(e, '차지…', '#ffe8a8'); Tr.t = 1.5; }),
   ],
   fist: [
     S('counter', '맞받기', 8, 0, 60, ({ w, Tr }) => w.tsCounter(Tr, 0.8, 0.12)),
@@ -150,7 +150,7 @@ export const TeacherSkillMethods = {
   tsRays(e, angs, o) {
     const Tr = this.trial; o = { ...o, wind: o.wind * TELE_K / Math.pow(Tr.lvK || 1, 0.25) };
     { const p = this.player, L = this.trialLead(o.wind + 0.1), da = Math.atan2(L.y - e.y, L.x - e.x) - Math.atan2(p.y - e.y, p.x - e.x); angs = angs.map((x) => x + da); } // 내가 갈 자리를 읽고 겨눈다
-    if (o.tele) for (const a of angs) this.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx: Math.cos(a), dy: Math.sin(a), len: o.len, w: o.w });
+    if (o.tele) for (const a of angs) this.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx: Math.cos(a), dy: Math.sin(a), len: this.rayLen(e.x, e.y, a, o.len), w: o.w }); // 예고 선도 벽에서 끊긴다
     this.emit({ t: 'windup', id: e.id });
     this.tsLater(o.wind, () => {
       this.emit({ t: 'shoot', x: e.x, y: e.y, ang: angs[0], type: 'phys' });

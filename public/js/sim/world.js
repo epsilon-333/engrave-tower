@@ -3384,6 +3384,7 @@ export class World {
         if (hx || !hy) pr.vx = -pr.vx; if (hy || !hx) pr.vy = -pr.vy; pr.x += pr.vx * DT * 2; pr.y += pr.vy * DT * 2; pr.life = Math.max(pr.life, 1);
         this.emit({ t: 'spark', x: pr.x, y: pr.y, color: pr.color });
       }
+      else if (this.wallAt(pr.x, pr.y) && pr.returning) { this.emit({ t: 'spark', x: pr.x - pr.vx * DT, y: pr.y - pr.vy * DT, color: pr.color }); pr.life = 0; } // 돌아오는 도끼도 벽에 막힌다 (손으로 바로 돌아온다)
       else if (this.wallAt(pr.x, pr.y) && !pr.returning) {
         if (pr.owner === 'p' && this.tileAt(pr.x, pr.y) === T_CRACK) this.hitCrack(pr.x, pr.y, pr.dmg);
         this.emit({ t: 'spark', x: pr.x - pr.vx * DT, y: pr.y - pr.vy * DT, color: pr.color });

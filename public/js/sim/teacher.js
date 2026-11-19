@@ -327,9 +327,11 @@ export const TeacherMethods = {
     Tr.pCurse = { n: Math.min(10, c + n), until: this.t + 6 };
     this.emit({ t: 'text', x: p.x, y: p.y - 26, text: `저주 ${Tr.pCurse.n}중첩`, color: '#c45cff' });
   },
+  // 일직선이 벽에 막히는 거리: 시작점에서 앞으로 나가며 처음 벽을 만나는 곳까지 (화살 · 검기 · 뼈 창이 벽을 뚫지 않는다)
+  rayLen(x1, y1, a, len) { const dx = Math.cos(a), dy = Math.sin(a); for (let d = 6; d < len; d += 4) if (this.wallAt(x1 + dx * d, y1 + dy * d)) return Math.max(4, d - 4); return len; },
   trialRay(e, a, len, w, k, fx) {
     const dx = Math.cos(a), dy = Math.sin(a), x1 = e.x, y1 = e.y;
-    let L = len; while (L > 20 && this.blocked(x1 + dx * L, y1 + dy * L, 2)) L -= 10; // 벽 앞에서 끊긴다
+    const L = this.rayLen(x1, y1, a, len); // 벽 앞에서 끊긴다
     const x2 = x1 + dx * L, y2 = y1 + dy * L;
     this.emit({ t: 'skillLine', x1, y1, x2, y2, w, elem: 'phys', fx });
     const q = this.player, t = Math.max(0, Math.min(1, ((q.x - x1) * dx + (q.y - y1) * dy) / L)), cx = x1 + dx * L * t, cy = y1 + dy * L * t;
@@ -354,7 +356,7 @@ export const TeacherMethods = {
       this.delayed.push({ t: 0.4, run: () => { if (Tr.done) return; const a0 = this.rng.range(0, Math.PI / 4); for (let i = 0; i < 8; i++) this.trialRay(e, a0 + (i / 8) * Math.PI * 2, 150, 12, 0.07, 'arrowBeam'); } });
     } else if (f === 'bow') { // 차지 사격: 1.2초 동안 시위를 끝까지 당겼다가 굵고 센 한 발 (예고 선이 보인다)
       Tr.t = 1.5; this.beginAtk(e, 'bow', { wind: 1.2, cfg: { k: 0.26, big: true } });
-      this.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx: Math.cos(a), dy: Math.sin(a), len: 330, w: 30 }); this.trialSay(e, '차지…', '#ffe8a8');
+      this.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx: Math.cos(a), dy: Math.sin(a), len: this.rayLen(e.x, e.y, a, 330), w: 30 }); this.trialSay(e, '차지…', '#ffe8a8');
     } else if (f === 'fist') { // 난타: 파고들어 여섯 번 몰아친다 · 마지막 주먹은 나를 밀어낸다
       Tr.t = 1.1; if (Math.hypot(p.x - e.x, p.y - e.y) > 30) this.trialDash(e, a, Math.hypot(p.x - e.x, p.y - e.y) - 22, 0.1, Tr.dashCd);
       this.beginAtk(e, 'fist', { wind: 0.12, cw: 0.07, combo: [0, 1, 0, 1, 2, 4], cfg: { k: 0.035 } });
@@ -382,14 +384,14 @@ export const TeacherMethods = {
   },
   // 예고 선 뒤 일직선 (발도 · 돌진 · 용암 균열 · 화살)
   trialLine(e, len, w, wind, k, fx, after) {
-    const p = this.player, a = Math.atan2(p.y - e.y, p.x - e.x), dx = Math.cos(a), dy = Math.sin(a);
+    const p = this.player, a = Math.atan2(p.y - e.y, p.x - e.x), dx = Math.cos(a), dy = Math.sin(a); len = this.rayLen(e.x, e.y, a, len);
     if (wind >= 0.1) { // 각인 스킬(예고 선) · 활의 화살은 준비 자세가 예고라서 선을 그리지 않는다
       this.emit({ t: 'windup', id: e.id }); this.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx, dy, len, w });
       for (let i = 1; i <= 4; i++) this.emit({ t: 'telegraphCircle', x: e.x + dx * len * i / 4, y: e.y + dy * len * i / 4, r: w / 2, dur: wind });
     }
     this.delayed.push({ t: wind, run: () => {
       if (!this.trial || this.trial.done || e.dead) return;
-      const x1 = e.x, y1 = e.y, x2 = x1 + dx * len, y2 = y1 + dy * len;
+      const x1 = e.x, y1 = e.y; len = this.rayLen(x1, y1, a, len); const x2 = x1 + dx * len, y2 = y1 + dy * len;
       this.emit({ t: 'skillLine', x1, y1, x2, y2, w, elem: fx === 'lava' ? 'fire' : 'phys', fx: fx === 'lava' ? 'quake' : fx });
       const q = this.player, t = Math.max(0, Math.min(1, ((q.x - x1) * dx + (q.y - y1) * dy) / len)), cx = x1 + dx * len * t, cy = y1 + dy * len * t;
       if (Math.hypot(q.x - cx, q.y - cy) < w / 2 + 5) this.hurtPlayer(this.trialDmg(k), 'phys', e, { fromX: e.x, fromY: e.y });
