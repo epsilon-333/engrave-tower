@@ -2102,10 +2102,11 @@ export class World {
     }
     if (this.b.race === 'orc') this.addRage(f.has('rageFast') ? 6 : 4);
     p.lastFight = this.t;
-    if (!e.def.elite && e.def.ai !== 'dummy') {
+    if (e.def.ai !== 'dummy' && !e.stoneT) { // 넉백: 정예 · 스승도 밀린다 · 보스는 살짝만 (2026-11-19)
       const dx = e.x - p.x, dy = e.y - p.y, l = Math.hypot(dx, dy) || 1;
       const blunt = !proj && this.b.wcat === 'blunt' && !opt.skill; // 둔기 평타: 묵직하게 밀어낸다
-      const kb = d.knockback * (heavy ? 2 : 1) * (blunt ? 4.5 : 1); // 둔기 평타 넉백 (2026-11-19 3.2 → 4.5)
+      const weight = e.def.boss || e.lair ? 0.25 : 1;
+      const kb = d.knockback * (heavy ? 2 : 1) * (blunt ? 4.5 : 1) * weight; // 둔기 평타 넉백 (2026-11-19 3.2 → 4.5)
       e.kbx += (dx / l) * kb * 3; e.kby += (dy / l) * kb * 3;
     }
     if (e.def.ai === 'dummy') e.wobble = 0.3;
