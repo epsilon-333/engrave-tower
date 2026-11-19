@@ -134,7 +134,7 @@ export const TeacherMethods = {
       set.add(e.id); Tr.tok.set(tok, set); if (Tr.tok.size > 40) Tr.tok.clear();
       good = set.size >= 2; why = '하나로는 부족하다 · 둘 이상을 함께 베라';
     } else if (f === 'dagger') {
-      if (e !== Tr.main) { e.dead = true; this.emit({ t: 'death', x: e.x, y: e.y, color: '#3a2e48', defId: e.defId }); this.trialSay(Tr.main, '가짜다', '#c8a8ff'); this.trialStrike(Tr.main, p.x, p.y, 0.25, 28); return 0; }
+      if (e !== Tr.main) { e.hitFlash = 0.08; this.trialNo(e, '가짜다'); return 0; } // 가짜: 피해만 안 들어간다 (반격 · 사라짐 없음)
       good = true;
     } else if (f === 'bow') { good = Math.hypot(e.x - p.x, e.y - p.y) >= 90; why = '너무 가깝다 · 멀리서 쏘아라'; }
     else if (f === 'fist') { Tr.chain = this.t - Tr.lastHit <= 0.6 ? Tr.chain + 1 : 1; Tr.lastHit = this.t; good = Tr.chain >= 3; why = `${Tr.chain}연타 · 끊기지 말고 이어라`; }
@@ -239,6 +239,36 @@ export const TeacherMethods = {
     if (hit && knock) this.knockPlayer(e.x, e.y, knock);
     if (C.fx) this.emit({ t: 'skillAoe', x: e.x + Math.cos(a) * C.range * 0.6, y: e.y + Math.sin(a) * C.range * 0.6, r: C.range * 0.6, elem: 'phys', fx: C.fx });
     if (C.kind === 'smash') this.emit({ t: 'shake', v: C.knock ? 5 : 3 });
+  },
+  // 얼굴 없는 자: 다섯이 한꺼번에 몸을 낮췄다가(0.35초) 나를 꿰뚫고 반대편까지 달리며 벤다 · 길이 나를 지나면 맞는다 (진짜 8% · 가짜 4%)
+  beginCross() {
+    const Tr = this.trial, p = this.player;
+    Tr.cross = { t: 0, wind: 0.35, dur: 0.28, list: [] };
+    for (const b of Tr.bodies) {
+      if (b.dead) continue;
+      const a = Math.atan2(p.y - b.y, p.x - b.x), d = Math.hypot(p.x - b.x, p.y - b.y);
+      let L = Math.min(170, d + 44); while (L > 20 && this.blocked(b.x + Math.cos(a) * L, b.y + Math.sin(a) * L, 5)) L -= 8;
+      Tr.cross.list.push({ b, x0: b.x, y0: b.y, x1: b.x + Math.cos(a) * L, y1: b.y + Math.sin(a) * L, a, hit: false, k: b === Tr.main ? 0.08 : 0.04 });
+      this.emit({ t: 'windup', id: b.id }); this.trialMotion(b, 'ambush'); b.dir = Math.cos(a) >= 0 ? 1 : -1;
+    }
+    this.trialSay(Tr.main, '…', '#c8a8ff');
+  },
+  tickCross() {
+    const Tr = this.trial, C = Tr.cross; if (!C) return false;
+    C.t += DT; const q = this.player;
+    if (C.t < C.wind) return true;
+    const k = Math.min(1, (C.t - C.wind) / C.dur);
+    for (const o of C.list) {
+      if (o.b.dead) continue;
+      if (!o.started) { o.started = true; this.emit({ t: 'meleeStep', x1: o.x0, y1: o.y0, x2: o.x1, y2: o.y1, elem: 'dark' }); }
+      const px = o.b.x, py = o.b.y; o.b.x = o.x0 + (o.x1 - o.x0) * k; o.b.y = o.y0 + (o.y1 - o.y0) * k; o.b.moving = true;
+      if (!o.hit) { // 지나온 짧은 길이 내 몸에 닿으면 한 번 벤다
+        const dx = o.b.x - px, dy = o.b.y - py, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((q.x - px) * dx + (q.y - py) * dy) / L2));
+        if (Math.hypot(q.x - (px + dx * t), q.y - (py + dy * t)) < 14) { o.hit = true; this.emit({ t: 'swing', x: o.b.x, y: o.b.y, ang: o.a, range: 26, arc: 1.4, type: 'phys', dir: 1, dur: 0.12 }); this.hurtPlayer(this.trialDmg(o.k), 'phys', o.b, { fromX: o.x0, fromY: o.y0 }); }
+      }
+    }
+    if (k >= 1) { Tr.cross = null; this.tsLater(0.5, () => this.trialShuffle()); } // 지나간 뒤 다시 흩어져 진짜를 감춘다
+    return true;
   },
   trialRay(e, a, len, w, k, fx) {
     const dx = Math.cos(a), dy = Math.sin(a), x1 = e.x, y1 = e.y;
@@ -443,8 +473,9 @@ export const TeacherMethods = {
       for (const b of Tr.bodies) { b.ang += DT * 0.7; if (!b.tatk) this.stepToward(b, p.x + Math.cos(b.ang) * 44, p.y + Math.sin(b.ang) * 30, 90); }
       if (Tr.t <= 0) { const b = Tr.bodies[this.rng.int(0, Tr.bodies.length - 1)]; this.beginAtk(b, 'scythe'); Tr.t = 1.8; }
     } else if (f === 'dagger') { // 분신 다섯 중 하나가 진짜 · 가까이 파고들어 빠르게 찌른다
+      if (this.tickCross()) return; // 다섯이 교차하며 베는 중
       if ((Tr.shufT -= DT) <= 0) this.trialShuffle();
-      if (Tr.t <= 0) { if (Math.hypot(p.x - e.x, p.y - e.y) > 36) this.trialDash(e, Math.atan2(p.y - e.y, p.x - e.x), Math.hypot(p.x - e.x, p.y - e.y) - 24); this.beginAtk(e, 'dagger'); Tr.t = 2.1; }
+      if (Tr.t <= 0) { this.beginCross(); Tr.t = 2.4; } // 다섯이 동시에 달려들며 교차해 벤다
     } else if (f === 'bow') { // 노궁수: 거리를 두고 좌우로 오가며(와리가리) 쏜다 · 날아오는 내 화살은 옆으로 대시해 피한다 · 붙으면 여러 방향으로 빠진다
       if (Tr.dodgeCd <= 0 && !e.tatk) for (const pr of this.projs) {
         if (pr.owner !== 'p' || pr.life <= 0) continue;

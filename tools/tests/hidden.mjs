@@ -217,7 +217,7 @@ for (const [fam, weapon] of Object.entries(WEAPON)) {
   const wh = trialWorld('heavy', { weapon: 'battleAxe' }), H = wh.trial; let g = 0; for (let i = 0; i < 4; i++) { wh.t += 0.3; g = took(wh, () => wh.damageEnemy(H.main, big, 'phys', {})); } ok(g >= TR.okCap - 1e-6, '도끼: 막기를 부순 뒤 제대로');
   const wg = trialWorld('magic', { weapon: 'apprenticeStaff' }), G = wg.trial; G.s = 'cast'; ok(took(wg, () => wg.damageEnemy(G.main, big, 'phys', {})) <= TR.badCap + 1e-6, '마법: 물리는 조금'); ok(took(wg, () => wg.damageEnemy(G.main, big, 'mag', {})) >= TR.okCap - 1e-6, '마법: 외는 동안 마법은 제대로');
   const wc = trialWorld('scythe', { weapon: 'rustySword' }), S = wc.trial; wc.curTok = 77; took(wc, () => wc.damageEnemy(S.bodies[0], big, 'phys', {})); ok(took(wc, () => wc.damageEnemy(S.bodies[1], big, 'phys', {})) >= TR.okCap - 1e-6, '낫: 한 번에 둘을 베면 제대로'); wc.curTok = null;
-  const wd = trialWorld('dagger', { weapon: 'dagger' }), D = wd.trial, fake = D.bodies.find((b) => b !== D.main); ok(took(wd, () => wd.damageEnemy(fake, big, 'phys', {})) === 0 && fake.dead, '단검: 가짜는 사라지고 안 들어간다'); ok(took(wd, () => wd.damageEnemy(D.main, big, 'phys', {})) >= TR.okCap - 1e-6, '단검: 진짜는 제대로');
+  const wd = trialWorld('dagger', { weapon: 'dagger' }), D = wd.trial, fake = D.bodies.find((b) => b !== D.main); ok(took(wd, () => wd.damageEnemy(fake, big, 'phys', {})) === 0 && !fake.dead && wd.player.hp === wd.d.maxHp, '단검: 가짜는 피해만 안 들어간다 (사라지지 않고 반격도 없다)'); ok(took(wd, () => wd.damageEnemy(D.main, big, 'phys', {})) >= TR.okCap - 1e-6, '단검: 진짜는 제대로');
   const wf = trialWorld('fist', { weapon: 'bareHands' }), F = wf.trial; let last = 0; for (let i = 0; i < 3; i++) { wf.t += 0.3; last = took(wf, () => wf.damageEnemy(F.main, big, 'phys', {})); } ok(last >= TR.okCap - 1e-6, '주먹: 이어진 세 번째부터 제대로');
   const wp = trialWorld('spear', { weapon: 'spear' }), P = wp.trial; P.main.x = wp.player.x + 10; P.main.y = wp.player.y; ok(took(wp, () => wp.damageEnemy(P.main, big, 'phys', {})) <= TR.badCap + 1e-6, '창: 가까우면 조금'); P.main.x = wp.player.x + wp.b.weapon.range * 0.8 + P.main.r; ok(took(wp, () => wp.damageEnemy(P.main, big, 'phys', {})) >= TR.okCap - 1e-6, '창: 창끝 거리는 제대로');
   const wq = trialWorld('bow', { weapon: 'huntBow' }), B = wq.trial; B.main.x = wq.player.x + 120; B.main.y = wq.player.y; ok(took(wq, () => wq.damageEnemy(B.main, big, 'phys', {})) >= TR.okCap - 1e-6, '활: 멀리서 쏜 것은 제대로');
@@ -299,6 +299,15 @@ for (const [fam, weapon] of Object.entries(WEAPON)) {
     for (let i = 0; i < 60 * 4; i++) { w.player.hp = w.d.maxHp; w.player.invuln = 0.5; w.step(idle); for (const ev of w.events) { if (ev.t === 'swing') swings++; if (ev.t === 'telegraphCircle') circles++; } w.events.length = 0; }
     ok(swings >= 2 && circles === 0, `검: 평타는 휘두름 ${swings}번 · 예고 원 ${circles}`);
   }
+}
+
+// 11) 얼굴 없는 자: 다섯이 동시에 달려들며 교차해 벤다
+{
+  const w = trialWorld('dagger', { weapon: 'dagger' }), Tr = w.trial; Tr.sigT = 99; Tr.skT = 99; Tr.t = 0;
+  const xs = Tr.bodies.map((b) => [b.x, b.y]); let crossed = 0, hurt = 0;
+  for (let i = 0; i < 60; i++) { const h = w.player.hp; w.player.invuln = 0; w.step(idle); if (w.player.hp < h) hurt++; w.player.hp = w.d.maxHp; if (Tr.cross) crossed = Math.max(crossed, Tr.cross.list.length); }
+  const moved = Tr.bodies.filter((b, i) => Math.hypot(b.x - xs[i][0], b.y - xs[i][1]) > 30).length;
+  ok(crossed >= 4 && moved >= 4 && hurt >= 1, `얼굴 없는 자: ${crossed}명이 함께 달려든다 (움직인 몸 ${moved} · 맞음 ${hurt})`);
 }
 
 console.log(bad ? `${bad} FAIL` : 'ALL OK');
