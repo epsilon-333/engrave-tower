@@ -87,7 +87,7 @@ const ITEM_DEFS = {
   manaGem: { name: '공명석 목걸이', slot: 'acc', price: 120, stats: { spi: 4 }, tags: [],
     effects: [{ type: 'mul', key: 'resGain', v: 1.15, text: '얻는 종족 자원 +15%' }, { type: 'mul', key: 'skillCdMul', v: 0.95, text: '스킬 쿨타임 -5%' }] },
   auraSeal: { name: '기사단 인장', slot: 'acc', price: 140, stats: { pres: 4 }, tags: [],
-    effects: [{ when: { race: 'knight' }, type: 'add', key: 'hurtRes', v: 0.3, text: '맞아서 얻는 오러 +30%' }] },
+    effects: [{ when: { race: 'knight' }, type: 'mul', key: 'resGain', v: 1.3, text: '얻는 오러 +30%' }] },
 
   // ── 성지의 보물: 한 성지의 축복을 5단계까지 받으면 그 성지가 내어 준다 (상점에 없다) ──
   starOrb: { name: '별의 보주', slot: 'acc', price: 0, treasure: 'wizard', stats: { mag: 6, spi: 6 }, tags: [],

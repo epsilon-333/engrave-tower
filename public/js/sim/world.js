@@ -77,6 +77,7 @@ import { SkillMethods } from './skillrun.js';
 import { AllyMethods } from './allies.js';
 import { TraitMethods } from './montraits.js';
 import { HiddenMethods } from './hidden.js';
+import { ResMethods } from './resource.js';
 import { TeacherMethods } from './teacher.js';
 // 레벨 lv의 기준 캐릭터(스탯 60% 공격 · 40% 체력)가 1레벨보다 몇 배 세게 때리고 · 몇 배 버티나 → 바깥 몬스터가 지역 레벨만큼 그대로 따라 세진다
 const GROWTH = new Map();
@@ -823,7 +824,7 @@ export class World {
     // 종족 자원: 시간 회복, 전투 밖 감소
     const R = this.raceRes;
     if (R) {
-      if (R.regen) this.addRes(R.regen * (this.b.race === 'wizard' ? 1 + (this.s.spi || 0) / 60 : 1) * DT, true);
+      this.resTick();
       if (R.decay && this.t - p.lastFight > 3 && !p.buffs.berserk) p.res = Math.max(0, p.res - R.decay * DT);
     }
     // 버프·시전·받아치기
@@ -2278,6 +2279,7 @@ export class World {
 
   damageEnemy(e, amount, type, opt = {}) {
     if (e.dead || e.hidden || e.under || e.begging) return 0;
+    if (e.resMark) this.resMarkHit(e); // 공명의 표식 (sim/resource.js)
     if (e.def.trial) return this.trialHit(e, amount, type, opt); // 숨은 스승의 시련: 피해 대신 「맞는 공격」만 센다 (sim/teacher.js)
     if (e.mv?.k === 'channel' && !opt.fromDot) e.mv.taken = (e.mv.taken || 0) + amount; // 늪의 마녀: 의식 중 받은 피해 (대략)
     if (e.invulnT > 0) { if (!opt.fromDot) this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '무적', color: '#c8a8ff' }); return 0; } // 망령: 순간이동 뒤 잠깐 무적
@@ -2527,7 +2529,8 @@ export class World {
     this.chainShown = depth; this.chainShowT = this.t + 0.4;
     const p = this.player; this.emit({ t: 'text', x: p.x, y: p.y - 52, text: `연쇄 ×${depth}`, color: depth >= 8 ? '#ff5a5a' : depth >= 4 ? '#ffb040' : '#ffe08a' });
   }
-  trig(tr) { // 각인 · 무기 효과가 일어날지: every면 N번째마다 꼭, 아니면 확률
+  trig(tr) { // 각인 · 무기 효과가 일어날지: every면 N번째마다 꼭, 아니면 확률 · cd면 그 초 동안은 다시 안 깨어난다
+    if (tr.cd) { const m = (this.trCd ||= new WeakMap()); if ((m.get(tr) || 0) > this.t) return false; m.set(tr, this.t + tr.cd); }
     if (tr.every) { tr.n = (tr.n || 0) + 1; return tr.n % tr.every === 0; }
     return this.rng.chance(tr.chance ?? 1);
   }
@@ -2569,7 +2572,6 @@ export class World {
       const vx = fx - p.x, vy = fy - p.y, l = Math.hypot(vx, vy) || 1;
       front = (vx * p.aimX + vy * p.aimY) / l > 0.25;
       if (front && p.buffs.ironWall && p.parryT <= 0) {
-        this.addRes(8);
         if (attacker && !attacker.dead) this.damageEnemy(attacker, amount * 0.8, 'phys', { src: 'reflect', color: '#a8c8ff' }); // 철벽: 막은 피해를 되돌린다
         this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8 });
         p.invuln = 0.2;
@@ -2583,7 +2585,7 @@ export class World {
       this.emit({ t: 'parry', x: p.x, y: p.y });
       this.emit({ t: 'hitstop', v: 0.12 });
       this.knack('block');
-      this.addRes(pr.gain);
+      if (pr.gain) this.addRes(pr.gain);
       for (const e of this.enemiesNear(p.x, p.y, pr.r)) { this.hitEnemy(e, this.skillAtk('phys') * pr.mul, 'phys', true); if (pr.stun && !e.dead) this.stunE(e, e.def.elite ? pr.stun * 0.35 : pr.stun); }
       this.motion('bash', 0.35);
       p.invuln = 0.4;
@@ -2609,7 +2611,7 @@ export class World {
     if (this.b.race === 'knight' && type === 'phys') dmg *= RACE_FX.knightPhys;
     if (p.stillT >= 1 && this.f.has('stillGuard')) dmg *= 0.5; // 각인 「바위의 인내」: 1초 동안 가만히 있으면 다시 움직일 때까지 받는 피해 -50%
     if (this.f.has('resGuard') && p.res >= 50) dmg *= 0.9;
-    if (front) { dmg *= 0.75; this.addRes(4); this.knack('block'); if (attacker && !attacker.dead) this.damageEnemy(attacker, raw * 0.25, 'phys', { src: 'reflect', color: '#a8c8ff' }); /* 수호기사: 정면으로 막으면 25%를 되갚는다 */ this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
+    if (front) { dmg *= 0.75; this.knack('block'); if (attacker && !attacker.dead) this.damageEnemy(attacker, raw * 0.25, 'phys', { src: 'reflect', color: '#a8c8ff' }); /* 수호기사: 정면으로 막으면 25%를 되갚는다 */ this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
     else if ((this.b.weapon.guard || this.b.offItem?.guard) && fx != null && !opt.direct) { // 방패(무기 · 왼손): 앞에서 오는 피해를 줄인다
       const vx = fx - p.x, vy = fy - p.y, l = Math.hypot(vx, vy) || 1;
       if ((vx * p.aimX + vy * p.aimY) / l > 0.25) { dmg *= 1 - Math.min(0.9, Math.max(this.b.weapon.guard || 0, this.b.offItem?.guard || 0) * (f.has('shieldX2') ? 2 : 1)); shieldBlock = true; this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); } // 철벽(숨은 각인): 방패가 줄이는 피해 2배
@@ -3436,4 +3438,4 @@ export function distToSeg(px, py, x1, y1, x2, y2) {
 export { ECHOES, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP };
 
 // 나눠 둔 메서드를 World 에 붙인다
-Object.assign(World.prototype, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods, TeacherMethods);
+Object.assign(World.prototype, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods, TeacherMethods, ResMethods);

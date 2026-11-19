@@ -2,6 +2,7 @@ import { registerPartEngravings } from './monsterparts.js';
 import { MONSTERS } from './monsters.js';
 import { registerSkillEngravings } from './skillengs.js';
 import { registerHiddenEngravings } from './hidden.js';
+import { registerResEngravings } from './resengs.js';
 // 각인: 신체 부위에 새기는 고대 문양. 잔향을 모아 공명 제단에서 새긴다.
 // grade 1~5, load = 각인 부하. 고등급은 부하가 크고 태그가 적다 → 많이 끼우면 과부하.
 // effects[].when = 발동 조건 (conditions.js 형식)
@@ -408,7 +409,7 @@ export const ENGRAVINGS = {
     name: '오러 증폭 문양', slot: 'heart', grade: 3, load: 5, tags: ['brawl'],
     stats: { str: 4, pres: 4 },
     effects: [
-      { when: { race: 'knight' }, type: 'add', key: 'hurtRes', v: 0.5, text: '맞아서 얻는 오러 +50%' },
+      { when: { race: 'knight' }, type: 'mul', key: 'resGain', v: 1.5, text: '얻는 오러 +50%' },
       { when: { race: 'knight' }, type: 'flag', flag: 'resGuard', text: '오러 50 이상이면 받는 피해 -10%' },
     ],
     recipe: { chief: 1, rust: 4 },
@@ -718,6 +719,7 @@ export const REACTIONS = {
 registerPartEngravings(ENGRAVINGS, MONSTERS);
 registerSkillEngravings(ENGRAVINGS); // 각인이 없던 스킬마다 각인 하나 (data/skillengs.js)
 registerHiddenEngravings(ENGRAVINGS); // 숨은 각인 (data/hidden.js)
+registerResEngravings(ENGRAVINGS); // 자원 각인 (data/resengs.js)
 
 // 효과 문구에 숫자가 없으면 실제 수치를 붙인다 (설계 규칙: 효과는 숫자로 분명하게)
 // 피해는 「공격력의 몇 %」, 범위는 칸(16px) 단위, 상태이상은 중첩 수

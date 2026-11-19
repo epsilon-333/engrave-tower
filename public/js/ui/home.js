@@ -4,7 +4,7 @@ import { GOODS, GOOD_CATS, BAG_START, BAG_UPGRADES, bagUsed, bagFits } from '../
 import { FOOD, FOOD_EFFECTS, KIND_NAME, cookPreview, registerDish, parseDish, dishName, dishEffectText, eatInfo, RECIPES } from '../data/cooking.js';
 import { WTYPES, WMATS, PART_FX, SYNERGY, craftCost, craftItem } from '../data/crafting.js';
 import { ITEMS, WEAPON_SKILLS, WCAT_NAME } from '../data/items.js';
-import { SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, handFit, fitText } from '../data/skills.js';
+import { costTxt, SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, handFit, fitText } from '../data/skills.js';
 import { SPIRITS } from '../data/spirits.js';
 import { LEARN, TABLET_BIOME_NAME } from '../data/learn.js';
 import { RACES } from '../data/races.js';
@@ -117,7 +117,7 @@ export function learnTab(s, ui, b) {
   const resName = RACES[s.race].res.name;
   const cards = ids.map((id) => {
     const sk = SKILLS[id], L = LEARN[id], known = (s.learned || []).includes(id) || b.available.includes(id);
-    const fit = handFit(sk, b).fit, cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
+    const fit = handFit(sk, b).fit, cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${costTxt(sk)}` : sk.gain ? `${resName} +${sk.gain}` : '';
     const btn = known ? '<span class="muted">배움 ✔</span>' : s.level < L.lv ? `<span class="muted">Lv ${L.lv}부터</span>` : `<button class="sm" data-act="learn" data-id="${id}" ${s.gold >= L.gold ? '' : 'disabled'}>배우기 ◆ ${L.gold}</button>`;
     return `<div class="skc ${known ? 'on' : ''}" style="--c:${ROLE_COLOR[sk.role]}"><div class="c-head"><b>${sk.name}</b><span class="role">${SKILL_KIND[sk.kind]}</span></div>
       <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''} · 지금 무기로: <b class="${fit <= 0 ? 'warn' : ''}">${fitText(fit)}</b></div><div class="c-sum">${esc(sk.desc)}</div><div class="c-act">${btn}</div></div>`;

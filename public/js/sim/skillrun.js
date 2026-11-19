@@ -2,7 +2,7 @@
 // World.prototype 에 그대로 붙는다 (sim/world.js 끝). 메서드 안의 this 는 World
 
 import { WEAPON_SKILLS } from '../data/items.js';
-import { SKILLS, ELEM, ELEM_CYCLE, handFit, crossMul, CANT_TEXT, SKILL_BAL, engravingSkillFor } from '../data/skills.js';
+import { SKILLS, ELEM, ELEM_CYCLE, handFit, crossMul, CANT_TEXT, SKILL_BAL, engravingSkillFor, gradeCost } from '../data/skills.js';
 import { ENGRAVINGS } from '../data/engravings.js';
 import { SPIRITS, SPIRIT_GRADES } from '../data/spirits.js';
 import { skillScale } from '../data/statscale.js';
@@ -168,6 +168,7 @@ export const SkillMethods = {
               this.skillHit(e, op, ctx);
               this.projHitDist = null;
               if (op.onHitGain) this.addRes(op.onHitGain);
+              if (op.absorb) this.absorbStart(e, op.absorb); // 흡수의 화살
               if (op.onHitHeal) this.heal(this.d.maxHp * op.onHitHeal, 'skill');
               if (op.splash) {
                 this.emit({ t: 'skillAoe', x: pr.x, y: pr.y, r: op.splash, elem: ctx.elem, fromProj: true, fx: op.kind === 'rock' ? 'rocks' : op.kind === 'icerock' ? 'ice' : op.kind === 'plague' ? 'fog' : 'pop' });
@@ -326,6 +327,7 @@ export const SkillMethods = {
         else run();
         break;
       }
+      case 'resGain': case 'resMark': this.resOp(op, ctx); break; // 자원 각인 (sim/resource.js)
       case 'soulCall': case 'bubble': case 'shadowHands': case 'ram': this.hidOp(op, ctx); break; // 숨은 각인 (sim/hidden.js)
       case 'blastSummons': {
         let mine = this.allies.filter((a) => a.kind !== 'spirit' && a.kind !== 'spiritKing');
@@ -693,7 +695,7 @@ export const SkillMethods = {
       if (p.res < def.costAll.min) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
       spent = p.res; p.res = 0;
     } else if (def.cost) {
-      const cost = def.cost * (this.d.costMul || 1); // 정신 70: 쓰는 자원 -30%
+      const cost = gradeCost(def, this.skillTier(id)) * (this.d.costMul || 1); // 각인 등급에 맞춘 소모 · 정신 70: -30%
       if (p.res < cost && !this.bloodPay(cost - p.res)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
       p.res = Math.max(0, p.res - cost); spent = cost;
     }

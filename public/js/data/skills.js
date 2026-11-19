@@ -2,9 +2,10 @@ import { SKILL_BAL_GEN } from './skillbal.js';
 import { registerPartSkills } from './monsterparts.js';
 import { registerSkillEngravingSkills } from './skillengs.js';
 import { registerHiddenSkills } from './hidden.js';
+import { registerResSkills } from './resengs.js';
 // 클래스와 액티브 스킬. 종족마다 클래스 2개, 클래스마다 스킬 6개(1·1·3·6·10·15레벨에 배움). 최대 4개 장착(Q·E·R·F).
 // 콤보 역할: 준비(자원·약화) → 강화(버프) → 마무리(자원 소모 큰 한 방), 궁극(15레벨, 자원 전부)
-// cost: 자원 소모, costAll: 자원 전부 소모(min 이상 필요, 소모량만큼 강해짐), gain: 자원 획득
+// cost: 자원 소모 (값은 자리표시 — 실제 소모량은 스킬을 준 각인 등급이 정한다, GRADE_COST), costAll: 자원 전부 소모(min 이상 필요, 소모량만큼 강해짐). 자원 얻기는 각인 효과로(스킬 자체는 얻지 않는다)
 // cast: 시전 시간(초, 시전 중 이동 불가), scale: 피해 기준 공격력(phys/mag/best)
 // elem: fire/ice/lightning/poison/dark/phys/current(현재 속성)
 // aim: 자동 조준 규칙 (생략하면 동작을 보고 정한다)
@@ -48,7 +49,7 @@ export const CLASSES = {
     skills: ['flameBurst', 'frostChain', 'lightningChain', 'elemMark', 'elemSurge', 'grandFireball'] },
   chronomancer: { race: 'wizard', name: '시공술사', desc: '시간을 늦추고, 되감고, 공간을 접는다.', trait: '느려지거나 얼어 있는 적에게 주는 피해 +20%.', weapons: ['hourglassStaff', 'aeonPendulum'], style: 'frost',
     skills: ['arcaneBarrage', 'blinkBlast', 'slowField', 'rewind', 'gravityCollapse', 'timeStop'] },
-  guardian: { race: 'knight', name: '수호기사', desc: '정면을 방패로 막고 받아친다.', trait: '정면에서 오는 피해 -25%, 정면으로 막을 때마다 오러 +4 · 받은 피해의 25%를 때린 적에게 되갚는다.', weapons: ['guardSword', 'bastionBlade'], off: 'buckler', style: 'mirror',
+  guardian: { race: 'knight', name: '수호기사', desc: '정면을 방패로 막고 받아친다.', trait: '정면에서 오는 피해 -25%, 받은 피해의 25%를 때린 적에게 되갚는다.', weapons: ['guardSword', 'bastionBlade'], off: 'buckler', style: 'mirror',
     skills: ['riposte', 'shieldCharge', 'provoke', 'ironWall', 'shieldBash', 'undying'] },
   greatsword: { race: 'knight', name: '대검술사', desc: '느리지만 묵직하다. 힘을 모을수록 강해진다.', trait: '「차지」 스킬은 길게 누르면 1~3단계로 힘을 모은다. 모으는 동안 받는 피해 -25%.', weapons: ['steelGreatsword', 'mountainCleaver'], style: 'giant',
     skills: ['comboSlash', 'dashSlash', 'swordWave', 'steadfast', 'crushBlow', 'skyfall'] },
@@ -78,9 +79,9 @@ export const UNLOCKS = [1, 1, 3, 6, 10, 20]; // 마지막(궁극기)은 레벨 2
 
 export const SKILLS = {
   // ══════ 공룡 수인 · 포식자 ══════
-  pounce: { name: '덮치기', role: '이동', cd: 5, gain: 8, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'leap',
+  pounce: { name: '덮치기', role: '이동', cd: 5, cost: 1, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'leap',
     desc: '적에게 날아들어 출혈 2중첩을 걸고 0.5초 기절시킨다. 본능 +8.', do: [{ op: 'dash', dist: 110, mul: 1.3, status: 'bleed', stacks: 2, stun: 0.5 }] },
-  rakeRetreat: { name: '할퀴고 빠지기', role: '공격', cd: 4, gain: 6, scale: 'phys', fx: 'claws', mo: 'claw',
+  rakeRetreat: { name: '할퀴고 빠지기', role: '공격', cd: 4, cost: 1, scale: 'phys', fx: 'claws', mo: 'claw',
     desc: '앞쪽을 할퀴어 출혈 2중첩을 걸고 뒤로 뛰어 물러난다. 본능 +6.',
     do: [{ op: 'cone', range: 42, angle: 1.8, mul: 1.2, status: 'bleed', stacks: 2, fx: 'claws' }, { op: 'dash', dist: -80, mul: 0, delay: 0.08 }] },
   maul: { name: '물어 흔들기', role: '제어', cd: 9, cost: 15, scale: 'phys', fx: 'bite', aim: 'tank', mo: 'bite',
@@ -95,7 +96,7 @@ export const SKILLS = {
     do: [{ op: 'aoe', at: 'self', r: 90, mul: 1.0, status: 'bleed', stacks: 2, fx: 'roar' }, { op: 'buff', id: 'apex', dur: 12, mods: { moveSpeed: 1.4, lifesteal: 4, dmgMul: 1.1 }, color: '#e0445a', scaleRes: true }] },
 
   // ══════ 공룡 수인 · 대지 거수 ══════
-  tailSwipe: { name: '꼬리 휘두르기', role: '공격', cd: 4, gain: 10, scale: 'phys', fx: 'spin', mo: 'spin',
+  tailSwipe: { name: '꼬리 휘두르기', role: '공격', cd: 4, cost: 1, scale: 'phys', fx: 'spin', mo: 'spin',
     desc: '꼬리로 주변을 한 바퀴 쳐서 밀쳐낸다. 본능 +10.', do: [{ op: 'aoe', at: 'self', r: 54, mul: 1.1, knock: 190, fx: 'spin' }] },
   rush: { name: '돌격', role: '이동', cd: 8, cost: 10, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'charge', hold: true,
     desc: '누르고 있는 동안 최대 2초 달린다. 앞의 적을 밀고 가며, 오래 달릴수록 부딪히는 피해가 커진다. 본능 10.', do: [{ op: 'rush', dur: 2, speed: 230, mul: 0.8 }] },
@@ -103,7 +104,7 @@ export const SKILLS = {
     desc: '적 하나를 멀리 날려 보낸다. 날아간 적이 부딪힌 적도 함께 기절한다. 본능 15.', do: [{ op: 'single', range: 46, mul: 1.6, knock: 460, launch: true }] },
   tremor: { name: '지축 울림', role: '제어', cd: 11, cost: 25, scale: 'phys', fx: 'quake', mo: 'stomp',
     desc: '발을 굴러 주변 적을 1.5초 기절시킨다. 본능 25.', do: [{ op: 'aoe', at: 'self', r: 80, mul: 1.3, stun: 1.5 }] },
-  hardenShell: { name: '껍질 굳히기', role: '방어', cd: 14, gain: 15, scale: 'phys', fx: 'bubble', mo: 'guard',
+  hardenShell: { name: '껍질 굳히기', role: '방어', cd: 14, cost: 1, scale: 'phys', fx: 'bubble', mo: 'guard',
     desc: '6초 동안 받는 피해 -35%, 나에게 닿는 적을 튕겨낸다. 본능 +15.',
     do: [{ op: 'buff', id: 'shell', dur: 6, mods: { dmgTakenMul: 0.65 }, color: '#c8b088', bubble: true }] },
   extinction: { name: '대멸종', role: '궁극', cd: 32, costAll: { min: 60 }, scale: 'phys', fx: 'quake', ult: true, mo: 'stomp',
@@ -146,10 +147,10 @@ export const SKILLS = {
     do: [{ op: 'aoe', at: 'self', r: 150, mul: 0.5, stun: 3, freezeTime: 3, fx: 'timestop' }, { op: 'aoe', at: 'self', r: 150, mul: 2.5, scaleRes: true, delay: 3, fx: 'arcane' }] },
 
   // ══════ 기사 · 수호기사 (오러) ══════
-  riposte: { name: '받아치기', role: '방어', cd: 7, scale: 'phys', fx: 'parry', mo: 'guard',
-    desc: '0.8초 동안 막기 자세. 그사이 공격받으면 무효로 하고 반격, 주변 적 1.5초 기절, 오러 +30.', do: [{ op: 'parry', dur: 0.8, mul: 2.6, r: 54, gain: 30, stun: 1.5 }] },
-  shieldCharge: { name: '방패 돌진', role: '이동', cd: 6, gain: 10, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'charge',
-    desc: '방패를 들고 멀리 돌진해 길 위의 적에게 공격력 160% 피해, 밀쳐내고 0.8초 기절시킨다. 오러 +10.', do: [{ op: 'dash', dist: 125, mul: 1.6, knock: 220, stun: 0.8 }] },
+  riposte: { name: '받아치기', role: '방어', cd: 7, cost: 1, scale: 'phys', fx: 'parry', mo: 'guard',
+    desc: '0.8초 동안 막기 자세. 그사이 공격받으면 무효로 하고 반격, 주변 적 1.5초 기절.', do: [{ op: 'parry', dur: 0.8, mul: 2.6, r: 54, stun: 1.5 }] },
+  shieldCharge: { name: '방패 돌진', role: '이동', cd: 6, cost: 1, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'charge',
+    desc: '방패를 들고 멀리 돌진해 길 위의 적에게 공격력 160% 피해, 밀쳐내고 0.8초 기절시킨다.', do: [{ op: 'dash', dist: 125, mul: 1.6, knock: 220, stun: 0.8 }] },
   provoke: { name: '도발', role: '제어', cd: 10, cost: 10, scale: 'phys', fx: 'roar', aim: 'none', mo: 'roar',
     desc: '주변 적이 6초 동안 나만 노린다. 원거리 적도 거리를 두지 않고 다가온다. 오러 10.', do: [{ op: 'provoke', r: 130, dur: 6 }] },
   ironWall: { name: '철벽', role: '방어', cd: 14, cost: 15, scale: 'phys', fx: 'bubble', mo: 'guard',
@@ -162,13 +163,13 @@ export const SKILLS = {
     do: [{ op: 'aoe', at: 'self', r: 90, mul: 2.2, scaleRes: true, knock: 200, fx: 'holy' }, { op: 'buff', id: 'undying', dur: 8, mods: { dmgTakenMul: 0.7 }, color: '#ffd84a', bubble: true }] },
 
   // ══════ 기사 · 대검술사 (차지) ══════
-  sweep: { name: '횡베기', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'sweep', mo: 'sweep', charge: true,
-    desc: '[차지] 넓은 반원을 베어 밀쳐낸다. 모을수록 범위와 피해가 커진다. 오러 +12.', do: [{ op: 'cone', range: 62, angle: 3.0, mul: 1.5, knock: 150, fx: 'sweep', chargeRange: 0.25 }] },
-  comboSlash: { name: '연속베기', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'spin', mo: 'spin',
-    desc: '앞으로 나아가며 몸을 돌려 세 번 벤다. 한 바퀴마다 둘레의 적을 베고 밀쳐내며, 세 번째가 가장 세다. 오러 +12.',
+  sweep: { name: '횡베기', role: '공격', cd: 5, cost: 1, scale: 'phys', fx: 'sweep', mo: 'sweep', charge: true,
+    desc: '[차지] 넓은 반원을 베어 밀쳐낸다. 모을수록 범위와 피해가 커진다.', do: [{ op: 'cone', range: 62, angle: 3.0, mul: 1.5, knock: 150, fx: 'sweep', chargeRange: 0.25 }] },
+  comboSlash: { name: '연속베기', role: '공격', cd: 5, cost: 1, scale: 'phys', fx: 'spin', mo: 'spin',
+    desc: '앞으로 나아가며 몸을 돌려 세 번 벤다. 한 바퀴마다 둘레의 적을 베고 밀쳐내며, 세 번째가 가장 세다.',
     do: [{ op: 'comboSpin', n: 3, every: 0.22, step: 24, r: 54, mul: 0.95, last: 1.7, knock: 120 }] },
-  dashSlash: { name: '돌진 베기', role: '이동', cd: 7, gain: 8, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'dashSlash', charge: true,
-    desc: '[차지] 앞으로 돌진하며 벤다. 모을수록 멀리 간다. 오러 +8.', do: [{ op: 'dash', dist: 90, mul: 1.4, chargeDist: 40 }] },
+  dashSlash: { name: '돌진 베기', role: '이동', cd: 7, cost: 1, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'dashSlash', charge: true,
+    desc: '[차지] 앞으로 돌진하며 벤다. 모을수록 멀리 간다.', do: [{ op: 'dash', dist: 90, mul: 1.4, chargeDist: 40 }] },
   swordWave: { name: '검기 날리기', role: '공격', cd: 6, cost: 15, scale: 'phys', fx: 'wave', mo: 'overhead', charge: true,
     desc: '[차지] 거대한 검기를 날린다. 3단계까지 모으면 모든 적을 관통한다. 오러 15.', do: [{ op: 'proj', n: 1, speed: 300, range: 240, mul: 1.8, pierce: 1, kind: 'wave', fullPierce: true }] },
   steadfast: { name: '버티기 자세', role: '방어', cd: 15, cost: 10, scale: 'phys', fx: 'charge', mo: 'guard',
@@ -182,14 +183,14 @@ export const SKILLS = {
     do: [{ op: 'line', len: 260, w: 40, mul: 5.0, scaleRes: true, stun: 0.8, delay: 0.15, fx: 'skyfall' }] },
 
   // ══════ 오크 · 광전사 (분노) ══════
-  warCry: { name: '전투 함성', role: '준비', cd: 12, gain: 30, scale: 'phys', fx: 'roar', mo: 'roar',
-    desc: '분노 +30. 주변 적을 약화시킨다(받는 피해 +20%, 5초).', do: [{ op: 'aoe', at: 'self', r: 84, mul: 0.3, weak: 5, weakK: 1.2 }] },
-  chargeSmash: { name: '돌진 강타', role: '이동', cd: 6, gain: 10, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'leap',
-    desc: '돌진한 뒤 도착한 곳을 내려찍는다. 분노 +10.', do: [{ op: 'dash', dist: 110, mul: 0.8 }, { op: 'aoe', at: 'self', r: 50, mul: 1.6, delay: 0.18, fx: 'slam' }] },
+  warCry: { name: '전투 함성', role: '준비', cd: 12, cost: 1, scale: 'phys', fx: 'roar', mo: 'roar',
+    desc: '주변 적을 약화시킨다(받는 피해 +20%, 5초).', do: [{ op: 'aoe', at: 'self', r: 84, mul: 0.3, weak: 5, weakK: 1.2 }] },
+  chargeSmash: { name: '돌진 강타', role: '이동', cd: 6, cost: 1, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'leap',
+    desc: '돌진한 뒤 도착한 곳을 내려찍는다.', do: [{ op: 'dash', dist: 110, mul: 0.8 }, { op: 'aoe', at: 'self', r: 50, mul: 1.6, delay: 0.18, fx: 'slam' }] },
   crushingBlows: { name: '분쇄 연타', role: '연타', cd: 7, cost: 15, scale: 'phys', fx: 'smash', mo: 'chop',
     desc: '세 번 연달아 내려친다. 마지막 타격이 0.7초 기절시킨다. 분노 15.',
     do: [{ op: 'channel', dur: 0.4, every: 0.2, sub: { op: 'aoe', at: 'front', dist: 26, r: 34, mul: 0.9, fx: 'slam' } }, { op: 'aoe', at: 'front', dist: 26, r: 40, mul: 1.4, stun: 0.7, delay: 0.45, fx: 'quake' }] },
-  braceForIt: { name: '맞받기', role: '방어', cd: 14, scale: 'phys', fx: 'bubble', mo: 'guard',
+  braceForIt: { name: '맞받기', role: '방어', cd: 14, cost: 1, scale: 'phys', fx: 'bubble', mo: 'guard',
     desc: '4초 동안 받는 피해 -30%, 맞을 때 얻는 분노 2배.', do: [{ op: 'buff', id: 'brace', dur: 4, mods: { dmgTakenMul: 0.7 }, color: '#ff8a5a', bubble: true }] },
   berserkSkill: { name: '광전사화', role: '강화', cd: 18, cost: 20, scale: 'phys', fx: 'buff', mo: 'power',
     desc: '8초 동안 분노가 저절로 줄지 않고 공격 속도 +35%. 분노 20.',
@@ -207,8 +208,8 @@ export const SKILLS = {
     desc: '느리게 날아가는 큰 도끼. 모든 적을 관통하고 갑옷 부수기 3중첩. 분노 20.', do: [{ op: 'proj', n: 1, speed: 150, range: 230, mul: 2.2, pierce: 99, armorBreak: 3, kind: 'bigaxe' }] },
   groundSmash: { name: '지면 분쇄', role: '제어', cd: 9, cost: 25, scale: 'phys', fx: 'quake', mo: 'stomp',
     desc: '땅을 깨뜨려 주변 적에게 피해와 0.7초 기절, 둔화. 분노 25.', do: [{ op: 'aoe', at: 'self', r: 74, mul: 1.6, stun: 0.7, status: 'chill', stacks: 2 }] },
-  leap: { name: '도약', role: '이동', cd: 7, gain: 15, scale: 'phys', fx: 'slam', aim: 'cluster', mo: 'leap',
-    desc: '조준한 곳으로 뛰어올라 착지하며 주변 적을 밀쳐낸다. 공중에서는 무적. 분노 +15.', do: [{ op: 'leap', dist: 130, air: 0.38, r: 52, mul: 1.3, knock: 170 }] },
+  leap: { name: '도약', role: '이동', cd: 7, cost: 1, scale: 'phys', fx: 'slam', aim: 'cluster', mo: 'leap',
+    desc: '조준한 곳으로 뛰어올라 착지하며 주변 적을 밀쳐낸다. 공중에서는 무적.', do: [{ op: 'leap', dist: 130, air: 0.38, r: 52, mul: 1.3, knock: 170 }] },
   axeLegion: { name: '도끼 군단', role: '궁극', cd: 28, costAll: { min: 50 }, scale: 'phys', fx: 'throw', ult: true, aim: 'none', mo: 'power',
     desc: '8초 동안 도끼 6자루가 내 주위를 돌며 적을 베고, 평타를 휘두를 때마다 도끼 3자루가 함께 날아간다. 분노가 많을수록 강하다.',
     do: [{ op: 'buff', id: 'axeLegion', dur: 8, mods: {}, color: '#e8e0f4', scaleRes: true }, { op: 'orbit', n: 6, dur: 8, r: 30, mul: 0.6 }] },
@@ -224,7 +225,7 @@ export const SKILLS = {
     desc: '쓰러질 때까지 싸우는 해골 병사 2마리를 부른다 (최대 4마리). 체력이 있어서 적의 공격을 받아낼 수 있다.', do: [{ op: 'summon', kind: 'skeleton', n: 2, dur: 20, mul: 0.55, perm: true, max: 4 }] },
   wraiths: { name: '망령 소환', role: '소환', cd: 14, cost: 20, scale: 'mag', fx: 'summon',
     desc: '10초 동안 적을 쫓는 망령 2마리를 부른다.', do: [{ op: 'summon', kind: 'ghost', n: 2, dur: 10, mul: 0.5 }] },
-  soulDrain: { name: '영혼 흡수', role: '준비', cd: 3, scale: 'mag', elem: 'dark', fx: 'soul',
+  soulDrain: { name: '영혼 흡수', role: '준비', cd: 3, cost: 1, scale: 'mag', elem: 'dark', fx: 'soul',
     desc: '영혼을 빨아들이는 탄. 맞히면 영혼 +12, 체력 1.2% 회복.', do: [{ op: 'proj', n: 1, speed: 240, range: 210, mul: 1.5, kind: 'soul', onHitGain: 12, onHitHeal: 0.012 }] },
   boneCage: { name: '뼈 감옥', role: '제어', cd: 11, cost: 15, scale: 'mag', fx: 'bones', aim: 'tank',
     desc: '뼈 우리로 적을 2.5초 가둔다. 갇힌 적은 받는 피해 +30%.', do: [{ op: 'aoe', at: 'aim', r: 36, mul: 0.4, stun: 2.5, prison: true, fx: 'bones' }] },
@@ -241,8 +242,8 @@ export const SKILLS = {
     do: [{ op: 'summon', kind: 'lichMage', n: 1, dur: 15, mul: 1.5, scaleRes: true, perm: true, max: 1 }] },
 
   // ══════ 언데드 · 저주술사 ══════
-  curse: { name: '저주', role: '준비', cd: 4, gain: 8, scale: 'mag', elem: 'dark', fx: 'rune', aim: 'cluster', mo: 'cast',
-    desc: '적이 모인 곳에 저주 3중첩(중첩마다 받는 피해 +2% · 주는 피해 -3%). 영혼 +8.', do: [{ op: 'aoe', at: 'aim', r: 50, mul: 0.3, stacks: 3 }] },
+  curse: { name: '저주', role: '준비', cd: 4, cost: 1, scale: 'mag', elem: 'dark', fx: 'rune', aim: 'cluster', mo: 'cast',
+    desc: '적이 모인 곳에 저주 3중첩(중첩마다 받는 피해 +2% · 주는 피해 -3%)..', do: [{ op: 'aoe', at: 'aim', r: 50, mul: 0.3, stacks: 3 }] },
   painLink: { name: '고통 연결', role: '제어', cd: 12, cost: 15, scale: 'mag', elem: 'dark', fx: 'rune', aim: 'cluster', mo: 'cast',
     desc: '조준한 곳의 적 최대 3마리를 6초 동안 사슬로 잇는다. 한 마리가 받은 피해의 50%를 나머지도 받는다. 영혼 15.', do: [{ op: 'link', r: 80, n: 3, dur: 6, share: 0.5 }] },
   retribution: { name: '응보의 저주', role: '제어', cd: 10, cost: 12, scale: 'mag', elem: 'dark', fx: 'rune', aim: 'cluster', mo: 'cast',
@@ -258,16 +259,16 @@ export const SKILLS = {
   // ══════ 암살자 · 그림자 칼날 ══════
   shadowStep: { name: '그림자 이동', role: '이동', cd: 4, cost: 15, scale: 'phys', fx: 'blink', aim: 'back', mo: 'dash',
     desc: '가장 위협적인 적의 등 뒤로 순간이동한다. 그림자 15.', do: [{ op: 'teleport', dist: 110 }] },
-  weakMark: { name: '약점 표식', role: '준비', cd: 7, gain: 10, scale: 'phys', fx: 'rune', aim: 'fresh', mo: 'point',
+  weakMark: { name: '약점 표식', role: '준비', cd: 7, cost: 1, scale: 'phys', fx: 'rune', aim: 'fresh', mo: 'point',
     desc: '적의 약점을 드러낸다. 8초 동안 받는 피해 +35%. 그림자 +10.', do: [{ op: 'single', range: 180, mul: 0.2, weak: 8 }] },
-  ambush: { name: '급습', role: '연타', cd: 6, gain: 10, scale: 'phys', fx: 'dash', mo: 'stab',
+  ambush: { name: '급습', role: '연타', cd: 6, cost: 1, scale: 'phys', fx: 'dash', mo: 'stab',
     desc: '겨눈 적(없으면 가장 가까운 적)의 등 뒤로 순식간에 옮겨 가 3번 찌른다. 등 뒤에서 치니 1.5배, 출혈, 1초 경직(정예 · 보스는 0.35초). 그림자 +10.',
     do: [{ op: 'behind', range: 220 }, { op: 'channel', dur: 0.36, every: 0.12, sub: { op: 'single', range: 40, mul: 0.8, backstab: true, status: 'bleed', stacks: 1, stun: 1, fx: 'stab' } }] },
   stealth: { name: '은신', role: '방어', cd: 14, cost: 20, scale: 'phys', fx: 'smoke', aim: 'none', mo: 'crouch',
     desc: '6초 동안 모습을 감춘다. 적이 나를 놓치고, 은신 중 첫 공격은 2배. 공격하면 풀린다. 그림자 20.', do: [{ op: 'stealth', dur: 6 }] },
-  shadowEvade: { name: '그림자 회피', role: '방어', cd: 9, gain: 25, scale: 'phys', fx: 'blink', aim: 'away', mo: 'dash',
+  shadowEvade: { name: '그림자 회피', role: '방어', cd: 9, cost: 1, scale: 'phys', fx: 'blink', aim: 'away', mo: 'dash',
     desc: '적이 없는 쪽으로 물러나며 0.8초 무적. 그림자 +25.', do: [{ op: 'dash', dist: 80, mul: 0, invuln: 0.8 }] },
-  shadowBind: { name: '그림자 꿰기', role: '제어', cd: 12, gain: 20, scale: 'phys', fx: 'ink', aim: 'none', mo: 'stab',
+  shadowBind: { name: '그림자 꿰기', role: '제어', cd: 12, cost: 1, scale: 'phys', fx: 'ink', aim: 'none', mo: 'stab',
     desc: '발밑 그림자에 칼을 꽂으면 그림자 먹물이 둘레(반경 90)로 확 번진다. 먹물에 닿은 적은 3초 동안 움직이지도 공격하지도 못하고(정예 · 보스는 1초), 그 3초 동안 받은 피해의 30%가 끝날 때 한 번 더 터진다. 그림자 +20.',
     do: [{ op: 'aoe', at: 'self', r: 90, mul: 0.6, stun: 3, bind: 3, fx: 'ink' }] },
   shadowDance: { name: '그림자 춤', role: '궁극', cd: 24, costAll: { min: 50 }, scale: 'phys', fx: 'slashX', ult: true, aim: 'none', mo: 'stab',
@@ -277,13 +278,13 @@ export const SKILLS = {
   // ══════ 암살자 · 독침 사냥꾼 ══════
   snare: { name: '덫 설치', role: '제어', cd: 4, cost: 10, scale: 'phys', fx: 'trap', aim: 'none', mo: 'crouch',
     desc: '내가 선 자리에 덫을 놓는다. 밟은 적은 공격력 150% 피해를 받고 2초 묶이며 독 4중첩. 최대 3개. 그림자 10.', do: [{ op: 'zone', kind: 'trap', r: 18, dur: 30, at: 'self', max: 3 }] },
-  retreatShot: { name: '후퇴 사격', role: '이동', cd: 6, gain: 15, scale: 'phys', fx: 'dart', aim: 'near', mo: 'shoot',
+  retreatShot: { name: '후퇴 사격', role: '이동', cd: 6, cost: 1, scale: 'phys', fx: 'dart', aim: 'near', mo: 'shoot',
     desc: '뒤로 뛰면서 독침 5발을 분다. 그림자 +15.', do: [{ op: 'dash', dist: -80, mul: 0 }, { op: 'proj', n: 5, spread: 0.18, speed: 340, range: 210, mul: 0.7, status: 'poison', stacks: 1, kind: 'dart' }] },
   bait: { name: '미끼', role: '제어', cd: 14, cost: 15, scale: 'phys', fx: 'trap', aim: 'cluster', mo: 'throw',
     desc: '고기를 던진다. 6초 동안 주변 몬스터가 미끼로 몰려간다. 나를 쫓던 적은 50%, 아니면 75% 확률 (정예는 짧게). 깔아 둔 덫이 있으면 미끼를 덫 위에 놓는다. 그림자 15.', do: [{ op: 'zone', kind: 'bait', r: 150, dur: 6, at: 'aim' }] },
   dartFan: { name: '독침 난사', role: '공격', cd: 6, cost: 18, scale: 'phys', fx: 'dart', mo: 'blow3',
     desc: '바람총을 세 번 연달아 불어 독침 3발씩, 모두 9발을 흩뿌린다. 맞을 때마다 독 2중첩. 그림자 18.', do: [{ op: 'channel', dur: 0.6, every: 0.2, sub: { op: 'proj', n: 3, spread: 0.16, speed: 360, range: 200, mul: 0.55, status: 'poison', stacks: 2, kind: 'dart' } }] },
-  smokeBomb: { name: '연막탄', role: '방어', cd: 14, gain: 20, scale: 'phys', fx: 'smoke', aim: 'none', mo: 'crouch',
+  smokeBomb: { name: '연막탄', role: '방어', cd: 14, cost: 1, scale: 'phys', fx: 'smoke', aim: 'none', mo: 'crouch',
     desc: '발밑에 연막을 터뜨린다. 6초 동안 연기가 퍼진 자리에 있으면 적이 나를 놓친다 (바로 붙어 있는 적은 그래도 친다). 4초 동안 회피 +50%. 그림자 +20.',
     do: [{ op: 'zone', kind: 'smoke', r: 66, dur: 6, at: 'self', max: 2 }, { op: 'buff', id: 'smoke', dur: 4, mods: { dodge: 0.5 }, color: '#8a8aa0' }] },
   venomBurst: { name: '맹독 폭발', role: '궁극', cd: 16, costAll: { min: 40 }, scale: 'phys', elem: 'poison', fx: 'burst', ult: true, aim: 'none', mo: 'power',
@@ -296,7 +297,7 @@ export const SKILLS = {
     desc: '함께하는 정령이 8초 동안 강해진다: 공격이 2배 빠르고 피해 +60%, 버프 1.5배. 정령이 나와 있지 않으면 강해진 채로 불러낸다(20초). 정령력 20.', do: [{ op: 'spiritEmpower', dur: 8 }] },
   spiritGuard: { name: '정령의 품', role: '방어', cd: 14, cost: 20, scale: 'best', fx: 'spiritIn', aim: 'none', mo: 'castBig',
     desc: '함께하는 정령이 나를 감싸 4초 동안 받는 피해 -40%, 다가온 적을 밀쳐낸다. 정령이 나와 있지 않으면 불러낸다(20초). 정령력 20.', do: [{ op: 'spiritGuard', dur: 4 }] },
-  spiritAbsorb: { name: '정령 흡수', role: '준비', cd: 7, scale: 'best', fx: 'absorb', mo: 'channel',
+  spiritAbsorb: { name: '정령 흡수', role: '준비', cd: 7, cost: 1, scale: 'best', fx: 'absorb', mo: 'channel',
     desc: '1.2초 동안 주변 적의 생기를 빨아들인다 (0.3초마다 공격력 45%). 맞힌 적 하나마다 정령력 +4.',
     do: [{ op: 'channel', dur: 1.2, every: 0.3, sub: { op: 'aoe', at: 'self', r: 80, mul: 0.45, gainPerHit: 4, fx: 'absorb' } }] },
   spiritArrow: { name: '정령의 화살', role: '공격', cd: 3.5, cost: 15, scale: 'best', fx: 'bolt', mo: 'shoot',
@@ -306,9 +307,9 @@ export const SKILLS = {
     do: [{ op: 'kingDescend', dur: 15, mul: 1.1, scaleRes: true }] },
 
   // ══════ 엘프 · 숲의 사수 ══════
-  pierceArrow: { name: '관통 화살', role: '공격', cd: 3, gain: 8, scale: 'phys', fx: 'arrow', mo: 'shoot',
+  pierceArrow: { name: '관통 화살', role: '공격', cd: 3, cost: 1, scale: 'phys', fx: 'arrow', mo: 'shoot',
     desc: '일직선의 적을 모두 꿰뚫는 강한 화살. 정령력 +8.', do: [{ op: 'proj', n: 1, speed: 420, range: 280, mul: 2.0, pierce: 99, kind: 'arrow', focus: true }] },
-  windStep: { name: '바람 걸음', role: '이동', cd: 5, gain: 10, scale: 'phys', fx: 'dash', aim: 'away', mo: 'dash',
+  windStep: { name: '바람 걸음', role: '이동', cd: 5, cost: 1, scale: 'phys', fx: 'dash', aim: 'away', mo: 'dash',
     desc: '적이 없는 쪽으로 미끄러진다. 집중 1단계를 바로 얻는다. 정령력 +10.', do: [{ op: 'dash', dist: 90, mul: 0, focusGain: 1 }] },
   vineSnare: { name: '덩굴 속박', role: '제어', cd: 9, cost: 15, scale: 'phys', fx: 'vines', aim: 'cluster', mo: 'cast',
     desc: '고른 자리에서 덩굴이 솟아 범위 안의 적을 2초 묶는다. 정령력 15.', do: [{ op: 'aoe', at: 'aim', r: 58, mul: 0.6, stun: 2.0, root: true, fx: 'vines' }] },
@@ -322,10 +323,10 @@ export const SKILLS = {
     do: [{ op: 'line', len: 420, w: 26, mul: 4.2, scaleRes: true, fx: 'arrowBeam' }] },
 
   // ══════ 용족 · 화룡 전사 ══════
-  breath: { name: '화염 숨결', role: '공격', cd: 7, scale: 'best', elem: 'fire', fx: 'breath', mo: 'breath',
+  breath: { name: '화염 숨결', role: '공격', cd: 7, cost: 1, scale: 'best', elem: 'fire', fx: 'breath', mo: 'breath',
     desc: '1.2초 동안 앞쪽에 불을 뿜어 화상을 계속 쌓는다. 맞힐 때마다 용기 +1.',
-    do: [{ op: 'channel', dur: 1.2, every: 0.1, sub: { op: 'cone', range: 86, angle: 0.8, mul: 0.3, stacks: 1, gainPerHit: 1, fx: 'breath' } }] },
-  dragonClaw: { name: '용 발톱', role: '공격', cd: 4, gain: 8, scale: 'best', elem: 'fire', fx: 'claws', mo: 'claw',
+    do: [{ op: 'channel', dur: 1.2, every: 0.1, sub: { op: 'cone', range: 86, angle: 0.8, mul: 0.3, stacks: 1, fx: 'breath' } }] },
+  dragonClaw: { name: '용 발톱', role: '공격', cd: 4, cost: 1, scale: 'best', elem: 'fire', fx: 'claws', mo: 'claw',
     desc: '크게 두 번 할퀸다. 불타는 적에게 1.5배. 용기 +8.', do: [{ op: 'channel', dur: 0.24, every: 0.12, sub: { op: 'cone', range: 50, angle: 1.8, mul: 1.1, bonusIf: 'burning', fx: 'claws' } }] },
   soar: { name: '비상', role: '이동', cd: 8, cost: 15, scale: 'best', elem: 'fire', fx: 'pillar', aim: 'cluster', mo: 'leap',
     desc: '날아올라 1.2초 동안 공격을 받지 않고 빠르게 움직인다. 다시 누르거나 시간이 다 되면 그 자리에 불길과 함께 내리꽂힌다. 용기 15.', do: [{ op: 'soar', dur: 1.2, r: 58, mul: 1.9, stacks: 2 }] },
@@ -340,7 +341,7 @@ export const SKILLS = {
   // ══════ 용족 · 용언 술사 (단어 → 문장) ══════
   wordFire: { name: '용언: 불', role: '공격', cd: 2, cost: 10, scale: 'mag', elem: 'fire', fx: 'bolt', mo: 'cast', word: 'fire',
     desc: '화염구를 쏜다. 마력 언령 「불」: 문장의 몸통이면 조준한 곳이 폭발한다. 하늘 다음이면 「떨어지는 태양」. 용기 10.', do: [{ op: 'proj', n: 1, speed: 270, range: 220, mul: 1.2, splash: 30, stacks: 1, kind: 'fireball' }] },
-  wordWing: { name: '용언: 날개', role: '이동', cd: 5, gain: 10, scale: 'mag', fx: 'blink', aim: 'away', mo: 'cast', word: 'wing',
+  wordWing: { name: '용언: 날개', role: '이동', cd: 5, cost: 1, scale: 'mag', fx: 'blink', aim: 'away', mo: 'cast', word: 'wing',
     desc: '짧게 순간이동한다. 정신 언령 「날개」: 몸통이면 사방으로 바람 칼날. 날개 → 하늘은 「하늘 걸음」. 용기 +10.', do: [{ op: 'teleport', dist: 90 }] },
   wordSky: { name: '용언: 하늘', role: '공격', cd: 4, cost: 16, scale: 'mag', elem: 'fire', fx: 'meteor', aim: 'cluster', mo: 'castBig', word: 'sky',
     desc: '작은 운석을 떨어뜨린다. 마력 언령 「하늘」: 몸통이면 운석이 여러 개 떨어진다. 불 다음이면 「불비」. 용기 16.', do: [{ op: 'aoe', at: 'aim', r: 40, mul: 1.5, stacks: 1, delay: 0.5, fall: 'meteor', fx: 'meteor' }] },
@@ -352,29 +353,29 @@ export const SKILLS = {
     desc: '용의 말로 침묵을 명한다. 주변의 모든 적이 4초 동안 공격하지 못한다. 용기가 많을수록 오래(최대 8초).', do: [{ op: 'silence', r: 150, dur: 4 }] },
 
   // ══════ 골렘족 · 바위 수호자 ══════
-  stoneSkin: { name: '암석 갑옷', role: '방어', cd: 14, gain: 15, scale: 'phys', fx: 'bubble',
+  stoneSkin: { name: '암석 갑옷', role: '방어', cd: 14, cost: 1, scale: 'phys', fx: 'bubble',
     desc: '6초 동안 물리 저항 +60, 받는 피해 -20%. 끝날 때 주변으로 파편이 튄다.',
     do: [{ op: 'buff', id: 'stoneSkin', dur: 6, mods: { pres: 60, dmgTakenMul: 0.8 }, color: '#b8a888', bubble: true }, { op: 'aoe', at: 'self', r: 64, mul: 1.4, delay: 6, fx: 'rocks' }] },
   reflectCrystal: { name: '반사 결정', role: '방어', cd: 15, cost: 15, scale: 'phys', fx: 'crystal',
     desc: '5초 동안 받는 피해의 80%를 되돌려준다.', do: [{ op: 'buff', id: 'reflect', dur: 5, mods: { reflect: 80 }, color: '#c8f0ff', bubble: true }] },
-  quake: { name: '지진 강타', role: '공격', cd: 6, gain: 10, scale: 'phys', fx: 'quake',
+  quake: { name: '지진 강타', role: '공격', cd: 6, cost: 1, scale: 'phys', fx: 'quake',
     desc: '땅을 내리쳐 주변 적에게 피해와 둔화.', do: [{ op: 'aoe', at: 'self', r: 66, mul: 1.6, stun: 0.4, status: 'chill', stacks: 1 }] },
   crystalPrison: { name: '결정 감옥', role: '제어', cd: 12, cost: 20, scale: 'phys', fx: 'crystal', aim: 'tank',
     desc: '적을 결정에 2.5초 가둔다. 갇힌 적은 받는 피해 +30%.', do: [{ op: 'aoe', at: 'aim', r: 36, mul: 0.3, stun: 2.5, prison: true }] },
-  rockTremor: { name: '바위 진동', role: '제어', cd: 10, gain: 20, scale: 'phys', fx: 'roar',
+  rockTremor: { name: '바위 진동', role: '제어', cd: 10, cost: 1, scale: 'phys', fx: 'roar',
     desc: '주변 적을 끌어당기고, 5초 동안 반사 +40%.', do: [{ op: 'aoe', at: 'self', r: 100, mul: 0.3, pull: true }, { op: 'buff', id: 'tremorReflect', dur: 5, mods: { reflect: 40 }, color: '#c8b088' }] },
   colossus: { name: '거신화', role: '궁극', cd: 34, costAll: { min: 60 }, scale: 'phys', fx: 'quake', ult: true,
     desc: '12초 동안 거대해진다. 받는 피해 -40%, 공격력 +35%, 변신하며 큰 지진.',
     do: [{ op: 'aoe', at: 'self', r: 120, mul: 2.6, scaleRes: true, stun: 1, fx: 'quake' }, { op: 'buff', id: 'giant', dur: 12, mods: { dmgTakenMul: 0.6, dmgMul: 1.35 }, color: '#c8b088' }] },
 
   // ══════ 골렘족 · 얼음 골렘 ══════
-  iceChunk: { name: '얼음 덩이 투척', role: '준비', cd: 3, gain: 12, scale: 'phys', elem: 'ice', fx: 'throw',
+  iceChunk: { name: '얼음 덩이 투척', role: '준비', cd: 3, cost: 1, scale: 'phys', elem: 'ice', fx: 'throw',
     desc: '얼음 덩이를 던진다. 맞은 자리에 서리가 퍼져 냉기 2중첩.', do: [{ op: 'proj', n: 1, speed: 220, range: 200, mul: 2.0, splash: 40, stacks: 2, kind: 'icerock' }] },
   frostField: { name: '서리 장판', role: '장판', cd: 11, cost: 15, scale: 'phys', elem: 'ice', fx: 'ice', aim: 'cluster',
     desc: '6초 동안 서리 장판. 위의 적이 점점 느려지다 얼어붙는다.', do: [{ op: 'zone', kind: 'frost', r: 70, dur: 6, at: 'aim' }] },
-  frostCharge: { name: '빙결 돌진', role: '이동', cd: 7, gain: 10, scale: 'phys', elem: 'ice', fx: 'dash', aim: 'crowd',
+  frostCharge: { name: '빙결 돌진', role: '이동', cd: 7, cost: 1, scale: 'phys', elem: 'ice', fx: 'dash', aim: 'crowd',
     desc: '돌진해 경로의 적에게 냉기 3중첩. 지나간 길은 얼음으로 덮인다.', do: [{ op: 'dash', dist: 120, mul: 1.3, stacks: 3, iceTrail: true }] },
-  iceArmor: { name: '얼음 갑옷', role: '방어', cd: 14, scale: 'phys', fx: 'bubble',
+  iceArmor: { name: '얼음 갑옷', role: '방어', cd: 14, cost: 1, scale: 'phys', fx: 'bubble',
     desc: '8초 동안 받는 피해 -25%. 나를 때린 적은 냉기 3중첩.', do: [{ op: 'buff', id: 'iceArmor', dur: 8, mods: { dmgTakenMul: 0.75 }, color: '#9fe3ff', bubble: true }] },
   glacialSpikes: { name: '빙하 가시', role: '마무리', cd: 7, cost: 30, scale: 'phys', elem: 'ice', fx: 'spikes', aim: 'cluster',
     desc: '앞으로 얼음 가시가 줄지어 솟는다. 얼어 있는 적은 산산조각 나며 2.5배 피해.', do: [{ op: 'line', len: 200, w: 30, mul: 2.4, bonusIf: 'frozen', stacks: 2, fx: 'spikes' }] },
@@ -383,23 +384,23 @@ export const SKILLS = {
     do: [{ op: 'aoe', at: 'self', r: 140, mul: 0.6, stacks: 10, fx: 'zero' }, { op: 'aoe', at: 'self', r: 140, mul: 3.0, scaleRes: true, bonusIf: 'frozen', delay: 2.8, fx: 'shatter' }] },
 
   // ══════ 각인 스킬 (어느 종족이든 각인을 새기면 사용) ══════
-  eFirePillar: { engraving: true, name: '화염 기둥', role: '공격', cd: 9, scale: 'best', elem: 'fire', fx: 'pillar',
+  eFirePillar: { engraving: true, name: '화염 기둥', role: '공격', cd: 9, cost: 1, scale: 'best', elem: 'fire', fx: 'pillar',
     desc: '조준한 곳에 불기둥. 화상 3중첩.', do: [{ op: 'aoe', at: 'aim', r: 36, mul: 2.0, stacks: 3, delay: 0.3 }] },
-  eFrostNova: { engraving: true, name: '서리 파동', role: '제어', cd: 10, scale: 'best', elem: 'ice', fx: 'ice',
+  eFrostNova: { engraving: true, name: '서리 파동', role: '제어', cd: 10, cost: 1, scale: 'best', elem: 'ice', fx: 'ice',
     desc: '주변에 냉기 2중첩과 피해.', do: [{ op: 'aoe', at: 'self', r: 62, mul: 1.0, stacks: 2 }] },
-  ePoisonBurst: { engraving: true, name: '독 분출', role: '준비', cd: 10, scale: 'best', elem: 'poison', fx: 'fog',
+  ePoisonBurst: { engraving: true, name: '독 분출', role: '준비', cd: 10, cost: 1, scale: 'best', elem: 'poison', fx: 'fog',
     desc: '조준한 곳에 진한 독 웅덩이.', do: [{ op: 'zone', kind: 'poison', r: 50, dur: 5, at: 'aim' }] },
-  eBloodPact: { engraving: true, name: '피의 계약', role: '준비', cd: 15, scale: 'best', fx: 'buff', aim: 'none',
+  eBloodPact: { engraving: true, name: '피의 계약', role: '준비', cd: 15, cost: 1, scale: 'best', fx: 'buff', aim: 'none',
     desc: '체력 15%를 바쳐 종족 자원 +40. 마무리 스킬 직전에 쓰자.', do: [{ op: 'hpToRes', hp: 0.15, gain: 40 }] },
-  eMirrorWall: { engraving: true, name: '거울 방벽', role: '방어', cd: 14, scale: 'best', fx: 'bubble',
+  eMirrorWall: { engraving: true, name: '거울 방벽', role: '방어', cd: 14, cost: 1, scale: 'best', fx: 'bubble',
     desc: '4초 동안 받는 피해 -20%, 반사 +50%.', do: [{ op: 'buff', id: 'mirror', dur: 4, mods: { dmgTakenMul: 0.8, reflect: 50 }, color: '#e6f3ff', bubble: true }] },
-  eShadowStep: { engraving: true, name: '그림자 걸음', role: '이동', cd: 6, scale: 'best', fx: 'blink',
+  eShadowStep: { engraving: true, name: '그림자 걸음', role: '이동', cd: 6, cost: 1, scale: 'best', fx: 'blink',
     desc: '짧게 순간이동하고 다음 공격 확정 치명타.', do: [{ op: 'teleport', dist: 80 }, { op: 'buff', id: 'nextCrit', dur: 3, mods: {} }] },
-  eChainBolt: { engraving: true, name: '공명 번개', role: '공격', cd: 8, scale: 'best', elem: 'lightning', fx: 'bolt',
+  eChainBolt: { engraving: true, name: '공명 번개', role: '공격', cd: 8, cost: 1, scale: 'best', elem: 'lightning', fx: 'bolt',
     desc: '번개가 적 사이를 4번 튄다.', do: [{ op: 'chain', jumps: 4, range: 85, mul: 1.2 }] },
-  eWarHorn: { engraving: true, name: '전쟁 나팔', role: '강화', cd: 16, gain: 20, scale: 'best', fx: 'roar',
-    desc: '6초 동안 공격력 +20%, 종족 자원 +20.', do: [{ op: 'buff', id: 'warHorn', dur: 6, mods: { dmgMul: 1.2 }, color: '#ffcf5a' }] },
-  eSoulHarvest: { engraving: true, name: '영혼 수확', role: '마무리', cd: 12, scale: 'best', elem: 'dark', fx: 'burst',
+  eWarHorn: { engraving: true, name: '전쟁 나팔', role: '강화', cd: 16, cost: 1, scale: 'best', fx: 'roar',
+    desc: '6초 동안 공격력 +20%.', do: [{ op: 'buff', id: 'warHorn', dur: 6, mods: { dmgMul: 1.2 }, color: '#ffcf5a' }] },
+  eSoulHarvest: { engraving: true, name: '영혼 수확', role: '마무리', cd: 12, cost: 1, scale: 'best', elem: 'dark', fx: 'burst',
     desc: '주변을 베어 거둔다. 처치한 적마다 종족 자원 +10.', do: [{ op: 'aoe', at: 'self', r: 62, mul: 1.6, gainPerKill: 10 }] },
 
   // ══════ 세상에서 배우는 기술 (클래스와 상관없이 누구나: 석판 · 스승 · 정령) ══════
@@ -503,6 +504,10 @@ export const FIT = { // 제 무기면 1 (더 세지지는 않는다), 맞지 않
   shield: { shield: 1 },
   body: { _: 1 },
 };
+// 자원 소모는 스킬을 준 각인의 등급을 따른다 (2026-11-19). 궁극기(costAll)는 그대로
+export const GRADE_COST = { 1: 10, 2: 15, 3: 22, 4: 32, 5: 45 };
+export const gradeCost = (def, tier) => (def.cost ? GRADE_COST[tier] || def.cost : 0);
+export const costTxt = (def, grade) => (grade && GRADE_COST[grade] ? `${GRADE_COST[grade]}` : `${GRADE_COST[1]}~${GRADE_COST[5]} (각인 등급)`);
 export const KIND_NAME = { slash: '베기', smash: '내려찍기', thrust: '찌르기', shoot: '쏘기', throw: '던지기', spell: '마법', parry: '받아치기', shield: '방패', body: '몸' };
 export const CANT_TEXT = { shoot: '활 · 석궁 · 바람총이 있어야 쏠 수 있다', throw: '던질 무기(도끼 · 창 · 단검 · 부메랑)가 있어야 한다', shield: '방패가 있어야 쓸 수 있다', slash: '이 무기로는 벨 수 없다', smash: '이 무기로는 내려찍을 수 없다', thrust: '이 무기로는 찌를 수 없다' };
 export function skillFit(def, wcat) {
@@ -597,6 +602,7 @@ export const ENGRAVING_SKILLS = {
 registerPartSkills(ENGRAVING_SKILLS); // 몬스터 부산물 각인의 스킬
 registerSkillEngravingSkills(ENGRAVING_SKILLS); // 스킬 각인
 registerHiddenSkills(SKILLS, ENGRAVING_SKILLS); // 숨은 각인의 스킬 (data/hidden.js)
+registerResSkills(SKILLS, ENGRAVING_SKILLS); // 자원 각인의 스킬 (data/resengs.js)
 
 // 궁극기는 그 종족만: 다른 종족이 궁극기 각인을 새기면 같은 계열의 마무리 기술을 쓴다
 export const ULT_ALT = {
@@ -646,19 +652,19 @@ export const ZONE_ELEM = {
 // ══════ 더 배우는 기술: 클래스마다 둘 (15레벨 · 30레벨) ══════
 const MORE_SKILLS = {
   necromancer: {
-    boneSpear: { name: '뼈 창', role: '공격', cd: 5, cost: 14, elem: 'dark', scale: 'mag', fx: 'bones', unlock: 15,
-      desc: '일직선의 적을 모두 꿰뚫는 뼈 창을 날린다. 맞히면 영혼 +6. 영혼 14.', do: [{ op: 'proj', n: 1, speed: 340, range: 260, mul: 2.0, pierce: 99, kind: 'soul', onHitGain: 6 }] },
+    boneSpear: { name: '뼈 창', role: '공격', cd: 5, cost: 1, elem: 'dark', scale: 'mag', fx: 'bones', unlock: 15,
+      desc: '일직선의 적을 모두 꿰뚫는 뼈 창을 날린다. ', do: [{ op: 'proj', n: 1, speed: 340, range: 260, mul: 2.0, pierce: 99, kind: 'soul' }] },
     deathNova: { name: '죽음의 파동', role: '마무리', cd: 15, cost: 35, elem: 'dark', scale: 'mag', fx: 'doom', unlock: 30,
       desc: '내 둘레로 죽음의 기운이 터져 큰 피해 · 1초 기절. 영혼 35.', do: [{ op: 'aoe', at: 'self', r: 100, mul: 2.6, stun: 1.0, fx: 'doom' }] },
   },
   predator: {
-    frenzyClaws: { name: '광란의 발톱', role: '연타', cd: 7, gain: 12, scale: 'phys', fx: 'claws', mo: 'claw', unlock: 15,
+    frenzyClaws: { name: '광란의 발톱', role: '연타', cd: 7, cost: 1, scale: 'phys', fx: 'claws', mo: 'claw', unlock: 15,
       desc: '앞을 네 번 연달아 할퀸다. 한 번마다 출혈 1중첩. 본능 +12.', do: [0, 0.12, 0.24, 0.36].map((d, i) => ({ op: 'cone', range: i === 3 ? 52 : 46, angle: 2.0, mul: i === 3 ? 1.1 : 0.7, status: 'bleed', stacks: 1, fx: 'claws', delay: d })) },
     huntersLeap: { name: '사냥꾼의 도약', role: '마무리', cd: 12, cost: 25, scale: 'phys', fx: 'smash', mo: 'leap', unlock: 30, aim: 'cluster',
       desc: '조준한 곳으로 뛰어 내리찍는다. 범위 피해 · 0.8초 기절. 본능 25.', do: [{ op: 'leap', dist: 130, air: 0.4, r: 58, mul: 2.4, stun: 0.8 }] },
   },
   behemoth: {
-    boulderToss: { name: '바위 던지기', role: '공격', cd: 6, gain: 12, scale: 'phys', fx: 'throw', mo: 'headbutt', unlock: 15,
+    boulderToss: { name: '바위 던지기', role: '공격', cd: 6, cost: 1, scale: 'phys', fx: 'throw', mo: 'headbutt', unlock: 15,
       desc: '땅을 뜯어 바위를 던진다. 맞은 자리에서 부서져 둘레에도 피해. 본능 +12.', do: [{ op: 'proj', n: 1, speed: 230, range: 220, mul: 1.8, splash: 40, kind: 'rock' }] },
     stampede: { name: '대폭주', role: '마무리', cd: 14, cost: 30, scale: 'phys', fx: 'quake', mo: 'charge', unlock: 30,
       desc: '땅을 울리며 멀리 들이받고, 멈춘 자리에서 땅을 구른다. 본능 30.', do: [{ op: 'dash', dist: 150, mul: 1.6, stun: 0.6 }, { op: 'aoe', at: 'self', r: 70, mul: 2.0, knock: 180, fx: 'quake', delay: 0.25 }] },
@@ -676,20 +682,20 @@ const MORE_SKILLS = {
       desc: '조준한 곳의 적을 짓누른 뒤 터뜨린다. 마력 40.', do: [{ op: 'aoe', at: 'aim', r: 90, mul: 0.6, stun: 0.6, fx: 'implode' }, { op: 'aoe', at: 'aim', r: 64, mul: 3.0, fx: 'arcane', delay: 0.6 }] },
   },
   guardian: {
-    holyStrike: { name: '성스러운 일격', role: '공격', cd: 6, gain: 12, scale: 'phys', fx: 'smash', mo: 'bash', unlock: 15,
+    holyStrike: { name: '성스러운 일격', role: '공격', cd: 6, cost: 1, scale: 'phys', fx: 'smash', mo: 'bash', unlock: 15,
       desc: '방패로 앞을 크게 후려친다. 투지 +12.', do: [{ op: 'cone', range: 56, angle: 1.6, mul: 1.8, knock: 120, fx: 'sweep' }] },
     judgement: { name: '심판', role: '마무리', cd: 14, cost: 30, scale: 'phys', fx: 'pillar', mo: 'power', unlock: 30, aim: 'cluster',
       desc: '빛기둥을 내려 범위 피해 · 1초 기절. 투지 30.', do: [{ op: 'aoe', at: 'aim', r: 56, mul: 3.0, stun: 1.0, delay: 0.3, fx: 'holy' }] },
   },
   greatsword: {
-    crossCut: { name: '십자 베기', role: '연타', cd: 6, gain: 12, scale: 'phys', fx: 'sweep', mo: 'overhead', unlock: 15,
-      desc: '가로로 한 번 크게 벤 뒤 앞으로 길게 내리벤다. 두 번째가 더 세다. 오러 +12.', do: [{ op: 'cone', range: 60, angle: 2.4, mul: 1.1, fx: 'sweep' }, { op: 'line', len: 100, w: 30, mul: 1.6, delay: 0.18, fx: 'skyfall' }] },
+    crossCut: { name: '십자 베기', role: '연타', cd: 6, cost: 1, scale: 'phys', fx: 'sweep', mo: 'overhead', unlock: 15,
+      desc: '가로로 한 번 크게 벤 뒤 앞으로 길게 내리벤다. 두 번째가 더 세다.', do: [{ op: 'cone', range: 60, angle: 2.4, mul: 1.1, fx: 'sweep' }, { op: 'line', len: 100, w: 30, mul: 1.6, delay: 0.18, fx: 'skyfall' }] },
     bladeStorm: { name: '칼날 폭풍', role: '마무리', cd: 14, cost: 35, scale: 'phys', fx: 'spin', mo: 'spin', unlock: 30,
       desc: '대검을 휘돌리며 앞으로 나아가 다섯 번 벤다. 마지막 회전이 가장 세다. 오러 35.', do: [{ op: 'comboSpin', n: 5, every: 0.18, step: 18, r: 60, mul: 0.8, last: 2.2, knock: 90 }] },
   },
   berserker: {
-    bloodSpin: { name: '피의 회전', role: '공격', cd: 6, gain: 14, scale: 'phys', fx: 'spin', mo: 'chop', unlock: 15,
-      desc: '도끼를 크게 돌려 둘레를 벤다. 출혈 2중첩. 분노 +14.', do: [{ op: 'aoe', at: 'self', r: 58, mul: 1.6, status: 'bleed', stacks: 2, fx: 'spin' }] },
+    bloodSpin: { name: '피의 회전', role: '공격', cd: 6, cost: 1, scale: 'phys', fx: 'spin', mo: 'chop', unlock: 15,
+      desc: '도끼를 크게 돌려 둘레를 벤다. 출혈 2중첩.', do: [{ op: 'aoe', at: 'self', r: 58, mul: 1.6, status: 'bleed', stacks: 2, fx: 'spin' }] },
     earthSplitter: { name: '대지 쪼개기', role: '마무리', cd: 13, cost: 30, scale: 'phys', fx: 'skyfall', mo: 'overhead', unlock: 30,
       desc: '땅을 쪼개는 일격이 앞으로 길게 뻗는다. 0.55초 기절. 분노 30.', do: [{ op: 'line', len: 200, w: 34, mul: 3.4, stun: 0.55, delay: 0.15, fx: 'skyfall' }] },
   },
@@ -706,13 +712,13 @@ const MORE_SKILLS = {
       desc: '내 둘레 6칸에 역병이 퍼져 마법 공격력의 240% 피해 · 독 3중첩. 마력 35.', do: [{ op: 'aoe', at: 'self', r: 100, mul: 2.4, status: 'poison', stacks: 3, fx: 'doom' }] },
   },
   shadowblade: {
-    shurikenFan: { name: '수리검 부채', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'dart', mo: 'stab', unlock: 15,
+    shurikenFan: { name: '수리검 부채', role: '공격', cd: 5, cost: 1, scale: 'phys', fx: 'dart', mo: 'stab', unlock: 15,
       desc: '수리검 일곱 개(하나에 공격력의 60%)를 부채꼴로 던진다. 그림자 +12.', do: [{ op: 'proj', n: 7, spread: 0.16, speed: 360, range: 200, mul: 0.6, kind: 'shuriken' }] },
     thousandCuts: { name: '천 갈래 베기', role: '마무리', cd: 14, cost: 35, scale: 'phys', fx: 'slashX', mo: 'stab', unlock: 30, aim: 'none',
       desc: '1.2초 동안 무적으로 둘레의 적 사이를 달려 지나가며 여섯 번 벤다 (한 번에 공격력의 150%). 그림자 35.', do: [{ op: 'channel', dur: 1.2, every: 0.2, invuln: true, sub: { op: 'danceStrike', r: 120, mul: 1.5 } }] },
   },
   venomHunter: {
-    toxicArrow: { name: '맹독 화살', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'dart', mo: 'shoot', unlock: 15,
+    toxicArrow: { name: '맹독 화살', role: '공격', cd: 5, cost: 1, scale: 'phys', fx: 'dart', mo: 'shoot', unlock: 15,
       desc: '적 셋까지 꿰뚫는 독화살. 독 3중첩. 집중 +12.', do: [{ op: 'proj', n: 1, speed: 380, range: 260, mul: 1.5, pierce: 3, status: 'poison', stacks: 3, kind: 'arrow' }] },
     acidRain: { name: '산성비', role: '마무리', cd: 14, cost: 30, scale: 'phys', fx: 'fog', mo: 'power', unlock: 30, aim: 'cluster',
       desc: '조준한 곳에 산성비가 내려 큰 피해 · 독 4중첩, 6초 동안 독안개. 집중 30.', do: [{ op: 'aoe', at: 'aim', r: 64, mul: 2.0, status: 'poison', stacks: 4, fx: 'fog' }, { op: 'zone', kind: 'fog', r: 64, dur: 6, at: 'aim' }] },
@@ -730,17 +736,17 @@ const MORE_SKILLS = {
       desc: '모두 꿰뚫는 화살 다섯 발을 부채꼴로 쏜다. 정령력 30.', do: [{ op: 'proj', n: 5, spread: 0.08, speed: 440, range: 280, mul: 1.0, pierce: 99, kind: 'arrow' }] },
   },
   wild: { // 야생 스킬 (부산물 각인으로)
-    stoneFist: { name: '바위 주먹', role: '공격', cd: 5, gain: 12, scale: 'phys', fx: 'smash', unlock: 15,
+    stoneFist: { name: '바위 주먹', role: '공격', cd: 5, cost: 1, scale: 'phys', fx: 'smash', unlock: 15,
       desc: '바위 주먹으로 앞을 내리친다. 0.5초 기절. 단단함 +12.', do: [{ op: 'cone', range: 52, angle: 1.6, mul: 1.9, stun: 0.5, fx: 'sweep' }] },
     meteorFall: { name: '운석 낙하', role: '마무리', cd: 15, cost: 35, scale: 'phys', fx: 'meteor', unlock: 30, aim: 'cluster',
       desc: '하늘에서 바위가 떨어져 넓은 범위에 큰 피해 · 0.8초 기절. 단단함 35.', do: [{ op: 'aoe', at: 'aim', r: 70, mul: 3.2, stun: 0.8, delay: 0.5, fx: 'quake' }] },
-    iceShards: { name: '얼음 파편', role: '공격', cd: 5, gain: 12, elem: 'ice', scale: 'phys', fx: 'ice', unlock: 15,
+    iceShards: { name: '얼음 파편', role: '공격', cd: 5, cost: 1, elem: 'ice', scale: 'phys', fx: 'ice', unlock: 15,
       desc: '얼음 파편 다섯 개를 부채꼴로 쏜다. 냉기 1중첩. 냉기 +12.', do: [{ op: 'proj', n: 5, spread: 0.2, speed: 300, range: 190, mul: 0.7, stacks: 1, kind: 'ice' }] },
     blizzard: { name: '눈보라', role: '마무리', cd: 15, cost: 35, elem: 'ice', scale: 'phys', fx: 'zero', unlock: 30,
       desc: '내 둘레에 눈보라가 몰아쳐 큰 피해 · 냉기 4중첩 · 1.2초 빙결. 냉기 35.', do: [{ op: 'aoe', at: 'self', r: 100, mul: 2.4, stacks: 4, stun: 1.2, fx: 'zero' }] },
   },
   dragoon: {
-    flameLance: { name: '화염 창', role: '공격', cd: 6, gain: 12, elem: 'fire', scale: 'phys', fx: 'dash', mo: 'claw', unlock: 15,
+    flameLance: { name: '화염 창', role: '공격', cd: 6, cost: 1, elem: 'fire', scale: 'phys', fx: 'dash', mo: 'claw', unlock: 15,
       desc: '불꽃을 두르고 앞으로 찌르며 돌진한다. 화상 2중첩. 용혈 +12.', do: [{ op: 'dash', dist: 100, mul: 1.7, stacks: 2 }] },
     infernoDive: { name: '지옥불 강하', role: '마무리', cd: 14, cost: 35, elem: 'fire', scale: 'phys', fx: 'meteor', mo: 'leap', unlock: 30, aim: 'cluster',
       desc: '높이 뛰어올라 불덩이처럼 내리꽂힌다. 화상 4중첩 · 0.6초 기절. 용혈 35.', do: [{ op: 'leap', dist: 140, air: 0.45, r: 66, mul: 2.8, stacks: 4, stun: 0.6 }] },
