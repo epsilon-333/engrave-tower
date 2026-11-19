@@ -2,6 +2,7 @@ import { SKILL_BAL_GEN } from './skillbal.js';
 import { registerPartSkills } from './monsterparts.js';
 import { registerSkillEngravingSkills } from './skillengs.js';
 import { registerHiddenSkills } from './hidden.js';
+import { registerResSkills } from './resengs.js';
 // 클래스와 액티브 스킬. 종족마다 클래스 2개, 클래스마다 스킬 6개(1·1·3·6·10·15레벨에 배움). 최대 4개 장착(Q·E·R·F).
 // 콤보 역할: 준비(자원·약화) → 강화(버프) → 마무리(자원 소모 큰 한 방), 궁극(15레벨, 자원 전부)
 // cost: 자원 소모 (값은 자리표시 — 실제 소모량은 스킬을 준 각인 등급이 정한다, GRADE_COST), costAll: 자원 전부 소모(min 이상 필요, 소모량만큼 강해짐). 자원 얻기는 각인 효과로(스킬 자체는 얻지 않는다)
@@ -601,6 +602,7 @@ export const ENGRAVING_SKILLS = {
 registerPartSkills(ENGRAVING_SKILLS); // 몬스터 부산물 각인의 스킬
 registerSkillEngravingSkills(ENGRAVING_SKILLS); // 스킬 각인
 registerHiddenSkills(SKILLS, ENGRAVING_SKILLS); // 숨은 각인의 스킬 (data/hidden.js)
+registerResSkills(SKILLS, ENGRAVING_SKILLS); // 자원 각인의 스킬 (data/resengs.js)
 
 // 궁극기는 그 종족만: 다른 종족이 궁극기 각인을 새기면 같은 계열의 마무리 기술을 쓴다
 export const ULT_ALT = {

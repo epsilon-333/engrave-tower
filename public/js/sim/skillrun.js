@@ -168,6 +168,7 @@ export const SkillMethods = {
               this.skillHit(e, op, ctx);
               this.projHitDist = null;
               if (op.onHitGain) this.addRes(op.onHitGain);
+              if (op.absorb) this.absorbStart(e, op.absorb); // 흡수의 화살
               if (op.onHitHeal) this.heal(this.d.maxHp * op.onHitHeal, 'skill');
               if (op.splash) {
                 this.emit({ t: 'skillAoe', x: pr.x, y: pr.y, r: op.splash, elem: ctx.elem, fromProj: true, fx: op.kind === 'rock' ? 'rocks' : op.kind === 'icerock' ? 'ice' : op.kind === 'plague' ? 'fog' : 'pop' });
@@ -326,6 +327,7 @@ export const SkillMethods = {
         else run();
         break;
       }
+      case 'resGain': case 'resMark': case 'resFlame': this.resOp(op, ctx); break; // 자원 각인 (sim/resource.js)
       case 'soulCall': case 'bubble': case 'shadowHands': case 'ram': this.hidOp(op, ctx); break; // 숨은 각인 (sim/hidden.js)
       case 'blastSummons': {
         let mine = this.allies.filter((a) => a.kind !== 'spirit' && a.kind !== 'spiritKing');
