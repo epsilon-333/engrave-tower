@@ -172,8 +172,10 @@ export const TeacherMethods = {
     const Tr = this.trial, p = this.player, H = e.held; if (!H) return;
     const A = e.tatk, toward = Math.atan2(p.y - e.y, p.x - e.x), dir = Math.cos(toward) >= 0 ? 1 : -1;
     H.off = 0;
-    if (!A) { // 서 있을 때: 무기를 비스듬히 든다
-      H.ang = toward - dir * (H.kind === 'magic' ? 1.25 : H.kind === 'spear' ? 0.5 : 0.95); H.pull = 0; return;
+    if (!A) { // 서 있을 때: 무기를 위로 세워 든다 (플레이어가 아래에 있어도 거꾸로 들리지 않게) · 활과 창은 겨눈다 · 주문을 외는 동안 지팡이는 플레이어를 겨눈다
+      const up = -Math.PI / 2 + dir * 0.4;
+      H.ang = H.kind === 'bow' ? toward : H.kind === 'spear' ? (Math.sin(toward) > 0.5 ? up : toward - dir * 0.3) : H.kind === 'magic' && Tr.s === 'cast' ? toward : up;
+      H.pull = 0; return;
     }
     const el = this.t - A.t0, k = A.cfg.kind;
     if (!A.hit && el < A.wind * 0.65) A.ang = toward; // 겨누는 것은 준비의 앞쪽만 · 뒤에는 고정(피할 수 있다)
