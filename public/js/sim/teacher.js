@@ -330,9 +330,10 @@ export const TeacherMethods = {
       this.tsLater(1.0, () => {
         const q = this.player; if (Math.hypot(q.x - e.x, q.y - e.y) > 170 || q.invuln > 0) return;
         const a2 = Math.atan2(q.y - e.y, q.x - e.x), d2 = Math.hypot(q.x - e.x, q.y - e.y);
-        this.emit({ t: 'shadowVeil', x: e.x + Math.cos(a2) * 30, y: e.y + Math.sin(a2) * 30, r: 22 }); // 그림자 장막에 빨려 든다
-        if (d2 > 26) this.knockPlayer(q.x, q.y, d2 - 22, { ang: Math.atan2(e.y - q.y, e.x - q.x) });
-        this.tsLater(0.3, () => { this.hurtPlayer(this.trialDmg(Math.max(2 * SIG_K, Math.min(6 * SIG_K, 0.5))), 'phys', e, { fromX: e.x, fromY: e.y, direct: true }); this.ccPlayer({ stun: 1.5 }); }); // 최대 체력 50%(공격력 200%~600% → 내 최대 체력 11%~33%) · 1.5초 경직
+        const gx = e.x + Math.cos(a2) * 30, gy = e.y + Math.sin(a2) * 30;
+        this.emit({ t: 'shadowVeil', x: q.x, y: q.y, r: 12, small: true }); this.emit({ t: 'shadowVeil', x: gx, y: gy, r: 22 }); // 내 자리에서 장막에 삼켜졌다가 → 스승 앞 장막에서 나온다
+        this.tsLater(0.35, () => { if (!this.blocked(gx, gy, 5)) { this.emit({ t: 'blink', x1: q.x, y1: q.y, x2: gx, y2: gy }); q.x = gx; q.y = gy; } });
+        this.tsLater(0.6, () => { this.hurtPlayer(this.trialDmg(Math.max(2 * SIG_K, Math.min(6 * SIG_K, 0.5))), 'phys', e, { fromX: e.x, fromY: e.y, direct: true }); this.ccPlayer({ stun: 1.5 }); }); // 최대 체력 50%(공격력 200%~600% → 내 최대 체력 11%~33%) · 1.5초 경직
       });
     } else if (f === 'bow') { // 천궁의 화살비: 내 자리에 빛줄기 네 번 (반경 72 · 0.3 · 0.5 · 0.7 · 0.9초 · 한 번에 150%)
       const x = p.x, y = p.y; for (let i = 0; i < 4; i++) this.tsCircle(e, x, y, { r: 72, k: 1.5 * SIG_K, wind: 0.3 + i * 0.2, fx: 'lightRain', elem: 'holy' });

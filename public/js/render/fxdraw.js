@@ -135,7 +135,7 @@ export const FxMethods = {
         continue;
       }
       if (f.k === 'veil') { // 그림자 장막: 땅에서 솟아 흔들리는 먹빛 장막 (고리 없이) · 둘레의 그림자 알갱이가 안으로 빨려 든다
-        const life = f.t / f.max, a = Math.min(1, (1 - life) * 6, life * 3), W = f.r * 2, H = 30 + f.r * 0.4;
+        const life = f.t / f.max, a = Math.min(1, (1 - life) * 6, life * 3), W = f.r * 2, H = f.small ? 16 + f.r * 0.4 : 30 + f.r * 0.4;
         g.save();
         for (let c = 0; c < W; c += 2) {
           const u = c / W, h = H * (0.55 + 0.45 * Math.sin(u * Math.PI)) * (0.85 + 0.15 * Math.sin(w.t * 9 + u * 12 + f.seed));
@@ -145,7 +145,7 @@ export const FxMethods = {
           if (c % 6 === 0) { g.fillStyle = hexA('#8a6aff', 0.35 * a); g.fillRect(x, Math.round(y0 - h * (0.3 + 0.4 * Math.abs(Math.sin(w.t * 5 + c)))), 1, 2); } // 장막 속 보랏빛 결
         }
         g.restore();
-        if (dt > 0 && life > 0.25) for (let i = 0; i < 3; i++) { const an = Math.random() * Math.PI * 2, rr = f.r + 30 + Math.random() * 40, px = f.x + Math.cos(an) * rr, py = f.y - 6 + Math.sin(an) * rr * 0.6, T = 0.35; this.parts.push({ x: px, y: py, vx: (f.x - px) / T, vy: (f.y - 8 - py) / T, t: T, max: T, color: Math.random() < 0.5 ? '#2a1844' : '#6a4ab8', g: 0, size: 1 }); }
+        if (dt > 0 && life > 0.25 && !f.small) for (let i = 0; i < 3; i++) { const an = Math.random() * Math.PI * 2, rr = f.r + 30 + Math.random() * 40, px = f.x + Math.cos(an) * rr, py = f.y - 6 + Math.sin(an) * rr * 0.6, T = 0.35; this.parts.push({ x: px, y: py, vx: (f.x - px) / T, vy: (f.y - 8 - py) / T, t: T, max: T, color: Math.random() < 0.5 ? '#2a1844' : '#6a4ab8', g: 0, size: 1 }); }
         continue;
       }
       if (f.k === 'ring') {

@@ -1034,6 +1034,11 @@ export class Renderer {
   }
   digHole(x, y, r) { const g = this.g; g.fillStyle = '#7a6448'; ellipse(g, x, y + 3, r + 2, (r + 2) * 0.42); g.fillStyle = '#2a1e14'; ellipse(g, x, y + 3, r, r * 0.38); g.fillStyle = '#4a3828'; ellipse(g, x, y + 2, r * 0.8, r * 0.18); }
   digPose(w, e, dt) {
+    if (e.veilPull) { // 그림자 손: 장막 속으로 가라앉았다가(흡수) → 내 앞 장막에서 솟아난다
+      const P = e.veilPull, s = P.t < P.sink ? Math.pow(P.t / P.sink, 1.6) : 1 - Math.min(1, (P.t - P.sink) / P.rise);
+      if (dt > 0 && Math.random() < 0.6) this.parts.push({ x: e.x + (Math.random() - 0.5) * (e.r || 8) * 2, y: e.y + 2, vx: 0, vy: -10 - Math.random() * 14, t: 0.4, max: 0.4, color: Math.random() < 0.5 ? '#2a1844' : '#6a4ab8', g: 0, size: 1 });
+      return { alpha: 1 - 0.3 * s, sink: Math.min(1, s), lift: 0, shadow: 1 - s };
+    }
     const R = e.r || 8;
     const sinkK = e.digInT > 0 ? 1 - e.digInT / 0.5 : e.mv?.k === 'burrow' && e.mv.ph === 'dig' ? 1 - Math.max(0, e.mv.t) / 0.5 : -1;
     if (sinkK >= 0) {
@@ -1167,7 +1172,6 @@ export class Renderer {
     this.shadow(e.x, e.y + 3, Math.max(5, img.width * sc * 0.32) * (ip ? Math.max(0.2, ip.shadow) : 1));
     if (art.ghost) g.globalAlpha = 0.65 + 0.15 * Math.sin(w.t * 3 + e.phase);
     if (e.fakeGhost) g.globalAlpha = 0.42 + 0.1 * Math.sin(w.t * 4 + e.id); // 얼굴 없는 자의 가짜 분신: 흐리다
-    if (e.veilPull) g.globalAlpha = Math.max(0.35, 1 - (e.veilPull.t / e.veilPull.dur) * 0.6); // 그림자 손: 장막에 빨려 들며 흐려진다
     if (def.veil && !(e.revealT > 0)) g.globalAlpha = 0.13 + 0.05 * Math.sin(w.t * 5 + e.phase); // 지워진 기록: 맞기 전에는 거의 보이지 않는다
     if (e.cloak && !(e.revealT > 0)) g.globalAlpha = 0.16 + 0.06 * Math.sin(w.t * 4 + e.phase); // 은신 특성: 일렁이는 윤곽만
     const carryLift = e.carried > 0 ? 18 + (w.player.air || 0) : 0;
