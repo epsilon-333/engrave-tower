@@ -159,21 +159,8 @@ export const TeacherMethods = {
       this.hurtPlayer(this.trialDmg(Tr.counterK || 0.12), 'phys', e, { fromX: e.x, fromY: e.y }); this.knockPlayer(e.x, e.y, 26); return 0;
     }
     const f = Tr.fam;
-    let good = false, why = '';
-    if (opt.fromDot) good = false;
-    else if (f === 'sword') { good = Tr.s === 'open' || Tr.s === 'heal'; why = '칼로 받아냈다 · 휘두른 뒤를 노려라'; }
-    else if (f === 'heavy') {
-      if (Tr.brokenT > 0) good = true;
-      else { Tr.guardN = this.t - Tr.guardT > 2.5 ? 1 : Tr.guardN + 1; Tr.guardT = this.t; if (Tr.guardN >= 3) { Tr.brokenT = 2; Tr.guardN = 0; this.trialSay(e, '막기가 부서졌다!', '#ffb070'); this.emit({ t: 'shake', v: 4 }); good = true; } else why = `막았다 ${Tr.guardN}/3`; }
-    } else if (f === 'magic') { good = (Tr.s === 'cast' || Tr.s === 'heal') && type === 'mag'; why = type !== 'mag' ? '마법이 아니면 닿지 않는다' : '마력의 벽 · 외는 동안을 노려라'; }
-    else if (f === 'scythe') {
-      good = Math.hypot(e.x - p.x, e.y - p.y) - e.r >= (this.b.weapon?.range || 40) * 0.6; why = '너무 가깝다 · 낫 끝으로 거둬라'; // 낫 끝(무기 사거리의 60% 너머)
-    } else if (f === 'dagger') {
-      if (e !== Tr.main) { e.hitFlash = 0.08; this.trialNo(e, '분신이다'); return 0; } // 분신: 피해만 안 들어간다
-      good = this.t - (Tr.pMobT ?? -9) <= 1.2; why = '움직임을 숨긴 채 다가가라 (순간이동 · 돌진 · 대시 · 은신 뒤에)';
-    } else if (f === 'bow') { good = Math.hypot(e.x - p.x, e.y - p.y) >= 90; why = '너무 가깝다 · 멀리서 쏘아라'; }
-    else if (f === 'fist') { Tr.chain = this.t - Tr.lastHit <= 0.6 ? Tr.chain + 1 : 1; Tr.lastHit = this.t; good = Tr.chain >= 3; why = `${Tr.chain}연타 · 끊기지 말고 이어라`; }
-    else if (f === 'spear') { const v = Tr.pv || { x: 0, y: 0 }, dx = e.x - p.x, dy = e.y - p.y, dd = Math.hypot(dx, dy) || 1, ap = (v.x * dx + v.y * dy) / dd; good = ap > 25 || (p.dashT > 0 && ap > 0); why = ap < -10 ? '물러나며 찌른 창은 가볍다' : '다가가며 찔러라'; } // 창: 다가가며(돌진하며) 찌른 것만
+    if (f === 'dagger' && e !== Tr.main) { e.hitFlash = 0.08; this.trialNo(e, '분신이다'); return 0; } // 분신: 피해만 안 들어간다
+    const good = true, why = ''; // 「제대로 든 공격」 규칙은 없앴다 (2026-11-19): 모든 공격이 같이 들어간다 (한 대 상한 4%)
     let v = Math.min(amount, Tr.maxHp * (good ? TR.okCap : TR.badCap));
     if (Tr.shoutT > 0) v *= 0.7; // 대족장의 외침: 받는 피해 -30%
     { const S = Tr.st || {}, R = type === 'mag' ? S.mres || 0 : S.pres || 0; v *= 1 - R / (R + 200); } // 물리 · 마법 저항

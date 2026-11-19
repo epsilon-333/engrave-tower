@@ -212,18 +212,18 @@ for (const [fam, weapon] of Object.entries(WEAPON)) {
 }
 { // 제대로 든 공격은 크게, 아닌 것은 아주 조금
   const big = 1e9, took = (w, fn) => { const T = w.trial; T.shoutT = 0; T.counterT = 0; T.invulnT = 0; T.evadeT = 1e9; T.st = { ...T.st, pres: 0, mres: 0 }; const h = T.hp; fn(); return (h - T.hp) / T.maxHp; }; // 외침(-30%) · 받아치기는 끄고 잰다
-  const ws = trialWorld('sword', { weapon: 'ironLongsword' }); ws.trial.s = 'move'; ok(took(ws, () => ws.damageEnemy(ws.trial.main, big, 'phys', {})) <= TR.badCap + 1e-6, '검: 빈틈이 아니면 0.4%');
+  const ws = trialWorld('sword', { weapon: 'ironLongsword' }); ws.trial.s = 'move'; ok(took(ws, () => ws.damageEnemy(ws.trial.main, big, 'phys', {})) >= TR.okCap - 1e-6, '검: 빈틈이 아니면 0.4% → 규칙 없앰: 모두 제대로');
   ws.trial.s = 'open'; ok(took(ws, () => ws.damageEnemy(ws.trial.main, big, 'phys', {})) >= TR.okCap - 1e-6, '검: 빈틈에는 4%');
   const wh = trialWorld('heavy', { weapon: 'battleAxe' }), H = wh.trial; let g = 0; for (let i = 0; i < 4; i++) { wh.t += 0.3; g = took(wh, () => wh.damageEnemy(H.main, big, 'phys', {})); } ok(g >= TR.okCap - 1e-6, '도끼: 막기를 부순 뒤 제대로');
-  const wg = trialWorld('magic', { weapon: 'apprenticeStaff' }), G = wg.trial; G.s = 'cast'; ok(took(wg, () => wg.damageEnemy(G.main, big, 'phys', {})) <= TR.badCap + 1e-6, '마법: 물리는 조금'); ok(took(wg, () => wg.damageEnemy(G.main, big, 'mag', {})) >= TR.okCap - 1e-6, '마법: 외는 동안 마법은 제대로');
+  const wg = trialWorld('magic', { weapon: 'apprenticeStaff' }), G = wg.trial; G.s = 'cast'; ok(took(wg, () => wg.damageEnemy(G.main, big, 'phys', {})) >= TR.okCap - 1e-6, '마법: 물리는 조금 → 규칙 없앰: 모두 제대로'); ok(took(wg, () => wg.damageEnemy(G.main, big, 'mag', {})) >= TR.okCap - 1e-6, '마법: 외는 동안 마법은 제대로');
   const wc = trialWorld('scythe', { weapon: 'rustySword' }), S = wc.trial, M = S.main, PL = wc.player;
   ok(S.bodies.length === 1, '낫: 첫 번째 망자는 한 명');
-  PL.x = M.x - 12; PL.y = M.y; ok(took(wc, () => wc.damageEnemy(M, big, 'phys', {})) <= TR.badCap + 1e-6, '낫: 너무 가까우면 0.4%');
+  PL.x = M.x - 12; PL.y = M.y; ok(took(wc, () => wc.damageEnemy(M, big, 'phys', {})) >= TR.okCap - 1e-6, '낫: 너무 가까우면 0.4% → 규칙 없앰: 모두 제대로');
   PL.x = M.x - (M.r + 40); PL.y = M.y; ok(took(wc, () => wc.damageEnemy(M, big, 'phys', {})) >= TR.okCap - 1e-6, '낫: 낫 끝으로 베면 제대로');
   S.hp = 1; wc.damageEnemy(M, big, 'phys', {}); ok(!S.done && S.revived && Math.abs(S.hp / S.maxHp - 0.3) < 0.01 && S.lichMul === 1.5, '낫: 한 번은 체력 30%로 일어나 공격 1.5배');
-  const wd = trialWorld('dagger', { weapon: 'dagger' }), D = wd.trial; D.pMobT = -9; ok(took(wd, () => wd.damageEnemy(D.main, big, 'phys', {})) <= TR.badCap + 1e-6, '단검: 그냥 때리면 조금'); D.pMobT = wd.t; ok(took(wd, () => wd.damageEnemy(D.main, big, 'phys', {})) >= TR.okCap - 1e-6, '단검: 대시 · 순간이동 직후는 제대로');
+  const wd = trialWorld('dagger', { weapon: 'dagger' }), D = wd.trial; D.pMobT = -9; ok(took(wd, () => wd.damageEnemy(D.main, big, 'phys', {})) >= TR.okCap - 1e-6, '단검: 그냥 때리면 조금 → 규칙 없앰: 모두 제대로'); D.pMobT = wd.t; ok(took(wd, () => wd.damageEnemy(D.main, big, 'phys', {})) >= TR.okCap - 1e-6, '단검: 대시 · 순간이동 직후는 제대로');
   const wf = trialWorld('fist', { weapon: 'bareHands' }), F = wf.trial; let last = 0; for (let i = 0; i < 3; i++) { wf.t += 0.3; last = took(wf, () => wf.damageEnemy(F.main, big, 'phys', {})); } ok(last >= TR.okCap - 1e-6, '주먹: 이어진 세 번째부터 제대로');
-  const wp = trialWorld('spear', { weapon: 'spear' }), P = wp.trial; P.main.x = wp.player.x + 40; P.main.y = wp.player.y; P.pv = { x: -60, y: 0 }; ok(took(wp, () => wp.damageEnemy(P.main, big, 'phys', {})) <= TR.badCap + 1e-6, '창: 물러나며 찌르면 조금'); P.pv = { x: 60, y: 0 }; ok(took(wp, () => wp.damageEnemy(P.main, big, 'phys', {})) >= TR.okCap - 1e-6, '창: 다가가며 찌르면 제대로');
+  const wp = trialWorld('spear', { weapon: 'spear' }), P = wp.trial; P.main.x = wp.player.x + 40; P.main.y = wp.player.y; P.pv = { x: -60, y: 0 }; ok(took(wp, () => wp.damageEnemy(P.main, big, 'phys', {})) >= TR.okCap - 1e-6, '창: 물러나며 찌르면 조금 → 규칙 없앰: 모두 제대로'); P.pv = { x: 60, y: 0 }; ok(took(wp, () => wp.damageEnemy(P.main, big, 'phys', {})) >= TR.okCap - 1e-6, '창: 다가가며 찌르면 제대로');
   const wq = trialWorld('bow', { weapon: 'huntBow' }), B = wq.trial; B.main.x = wq.player.x + 120; B.main.y = wq.player.y; ok(took(wq, () => wq.damageEnemy(B.main, big, 'phys', {})) >= TR.okCap - 1e-6, '활: 멀리서 쏜 것은 제대로');
   // 이기기 · 지기
   const ww = trialWorld('sword', { weapon: 'ironLongsword' }); for (let i = 0; i < 80 && !ww.trial.done; i++) { ww.trial.s = 'open'; ww.trial.evadeT = 1e9; ww.damageEnemy(ww.trial.main, big, 'phys', {}); }
