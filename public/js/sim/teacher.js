@@ -196,7 +196,7 @@ export const TeacherMethods = {
   },
   // ───── 무기를 든 스승의 동작 ─────
   trialDash(e, ang, dist, dur = DASH.dur, cd = DASH.cd) {
-    const Tr = this.trial; let d = Math.max(12, dist);
+    const Tr = this.trial; let d = Math.max(12, Math.min(dist * 0.6, 90)); // 스승 대시는 짧게 (2026-11-19 · 0.6배 · 최대 90)
     while (d > 12 && this.blocked(e.x + Math.cos(ang) * d, e.y + Math.sin(ang) * d, 6)) d -= 8;
     if (d <= 8) { Tr.dashCd = Math.min(cd, 1); return; }
     const x1 = e.x + Math.cos(ang) * d, y1 = e.y + Math.sin(ang) * d;
@@ -371,7 +371,7 @@ export const TeacherMethods = {
     if (this.blocked(x, y, 6)) { x = this.trial.cx; y = this.trial.cy; }
     this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: x, y2: y }); e.x = x; e.y = y;
   },
-  trialDmg(k) { const Tr = this.trial, cs = Tr.pCurse && Tr.pCurse.until > this.t ? Tr.pCurse.n : 0, S = Tr.st || {}, crit = this.rng.chance((S.sen || 0) / 400); if (crit) this.emit({ t: 'text', x: this.player.x, y: this.player.y - 30, text: '치명타', color: '#ff7a5a' }); return teacherRef(this.b.level).hp * k * (1 + (Math.max(S.str || 50, S.mag || 50) - 60) / 250) * (crit ? 1.5 : 1) * 1.2 * (Tr.lichMul || 1) * (Tr.powT > 0 ? 1.3 : 1) * (1 + 0.02 * cs); }, // 내 최대 체력 비율 (리치가 일어난 뒤 2배)
+  trialDmg(k) { const Tr = this.trial, cs = Tr.pCurse && Tr.pCurse.until > this.t ? Tr.pCurse.n : 0, S = Tr.st || {}, crit = this.rng.chance((S.sen || 0) / 400); if (crit) this.emit({ t: 'text', x: this.player.x, y: this.player.y - 30, text: '치명타', color: '#ff7a5a' }); return teacherRef(this.b.level).hp * k * (1 + (Math.max(S.str || 50, S.mag || 50) - 60) / 250) * (crit ? 1.5 : 1) * 0.9 * /* 2026-11-19 · 1.2 → 0.9 (75%) */ (Tr.lichMul || 1) * (Tr.powT > 0 ? 1.3 : 1) * (1 + 0.02 * cs); }, // 내 최대 체력 비율 (리치가 일어난 뒤 2배)
   // 예고 원 뒤 한 대
   trialStrike(e, x, y, wind = 0.7, r = 34, k = TR.hit, fx = 'quake') {
     this.emit({ t: 'windup', id: e.id }); this.emit({ t: 'telegraphCircle', x, y, r, dur: wind });
@@ -542,10 +542,10 @@ export const TeacherMethods = {
         if ((Tr.strafeT -= DT) <= 0) { Tr.strafe = -Tr.strafe; Tr.strafeT = this.rng.range(0.7, 1.3); }
         const aa = Math.atan2(e.y - p.y, e.x - p.x) + Tr.strafe * 0.6; this.stepToward(e, p.x + Math.cos(aa) * 130, p.y + Math.sin(aa) * 130, 75);
         if (Tr.t <= 0) {
-          Tr.s = 'cast'; Tr.t = 1.6; Tr.castT0 = this.t; e.moving = false; this.trialSay(e, '주문을 왼다…', '#c8a8ff');
-          for (const dt of [0.15, 0.75, 1.35]) this.tsLater(dt, () => { if (Tr.s !== 'cast') return; const L = this.trialLead(0.6); this.trialStrike(e, L.x, L.y, 0.6, 45, 0.08, 'burst'); });
+          Tr.s = 'cast'; Tr.t = 3.2; // 주문은 두 배 느리게 (2026-11-19) Tr.castT0 = this.t; e.moving = false; this.trialSay(e, '주문을 왼다…', '#c8a8ff');
+          for (const dt of [0.3, 1.5, 2.7]) this.tsLater(dt, () => { if (Tr.s !== 'cast') return; const L = this.trialLead(1.2); this.trialStrike(e, L.x, L.y, 1.2, 45, 0.08, 'burst'); });
         }
-      } else if (Tr.s === 'cast') { e.moving = false; if (Tr.t <= 0) { Tr.s = 'move'; Tr.t = 1.3; const L = this.trialLead(0.8); this.trialStrike(e, L.x, L.y, 0.8, 60, TR.hit, 'burst'); } }
+      } else if (Tr.s === 'cast') { e.moving = false; if (Tr.t <= 0) { Tr.s = 'move'; Tr.t = 1.3; const L = this.trialLead(1.6); this.trialStrike(e, L.x, L.y, 1.6, 60, TR.hit, 'burst'); } }
       else Tr.s = 'move';
     } else if (f === 'scythe') { // 첫 번째 망자: 둘레를 돌다가 닿을 때만 낫을 크게 휘두른다
       for (const b of Tr.bodies) { b.ang = (b.ang ?? Math.atan2(b.y - p.y, b.x - p.x)) + DT * 0.7; if (!b.tatk) this.stepToward(b, p.x + Math.cos(b.ang) * 44, p.y + Math.sin(b.ang) * 30, 90); }
