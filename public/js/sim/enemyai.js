@@ -19,6 +19,7 @@ export const EnemyAiMethods = {
     for (const e of this.enemies) {
       if (e.dead) continue;
       if (e.puppet) { this.updatePuppet(e); continue; }
+      if (!host && !e.def.boss && e.state !== 'chase' && (Math.abs(e.x - P.x) > 520 || Math.abs(e.y - P.y) > 400)) { e.moving = false; continue; } // 혼자 하기: 멀리(화면 밖) 있는 몬스터는 멈춰 둔다 (렉)
       const p = this.coPick(e); // 이 적이 노리는 대상: 처음 어그로를 끈 사람 · 동료 · 소환체
       this.coTgt = p === P ? null : p;
       const def = e.def;

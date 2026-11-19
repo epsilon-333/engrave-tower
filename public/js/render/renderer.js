@@ -196,6 +196,7 @@ const CPOSE = {
   hack: { hold: 0.4, A: { a: -0.6, hx: -4, hy: -9, lean: -2, behind: true }, B: { a: 1.5, hx: 6, hy: -3, lean: 2.5, f: 2 } },
   sweep: { A: { th: PI - 0.3, r: 5, hy: -7, lean: -2.2, f: -1 }, B: { th: -1.2, r: 7, hy: -7, lean: 3, f: 2 } },
 };
+const TEXT_CACHE = new Map();
 export class Renderer {
   constructor(canvas) {
     this.c = canvas;
@@ -3336,7 +3337,26 @@ export class Renderer {
     while (out.length > 2 && g.measureText(out).width > maxW) out = out.slice(0, -1);
     return out;
   }
-  text(s, x, y, n, color, align = 'left', outline = true, bold = false) {
+  text(s, x, y, n, color, align = 'left', outline = true, bold = false) { // 한 번 그린 글씨(외곽선 포함)는 그림으로 저장해 다시 쓴다 (렉: 글씨마다 9번 쓰던 것)
+    if (s == null || s === '') return;
+    const key = `${s}|${n}|${color}|${outline ? 1 : 0}|${bold ? 1 : 0}`;
+    let c = TEXT_CACHE.get(key);
+    if (!c) {
+      const size = 11 * n, o = outline ? Math.max(1, Math.round(n)) : 0, font = `${bold ? 'bold ' : ''}${size}px ${FONT}`;
+      const g0 = this.g; g0.font = font; const w = Math.ceil(g0.measureText(String(s)).width) + o * 2 + 2, h = Math.ceil(size * 1.5) + o * 2;
+      c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = h;
+      const q = c.getContext('2d'); q.font = font; q.textAlign = 'left'; q.textBaseline = 'middle';
+      const cx = o + 1, cy = Math.round(h / 2);
+      if (outline) { q.fillStyle = '#0c0a0b'; for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, o], [-o, o], [o, -o]]) q.fillText(s, cx + dx, cy + dy); }
+      q.fillStyle = color; q.fillText(s, cx, cy);
+      c._ox = cx; c._oy = cy; c._tw = w - o * 2 - 2;
+      if (TEXT_CACHE.size > 800) TEXT_CACHE.delete(TEXT_CACHE.keys().next().value);
+      TEXT_CACHE.set(key, c);
+    }
+    const ax = align === 'center' ? c._tw / 2 : align === 'right' ? c._tw : 0;
+    this.g.drawImage(c, Math.round(x - ax) - c._ox, Math.round(y) - c._oy);
+  }
+  textSlow(s, x, y, n, color, align = 'left', outline = true, bold = false) {
     const g = this.g, size = 11 * n;
     g.font = `${bold ? 'bold ' : ''}${size}px ${FONT}`;
     g.textAlign = align; g.textBaseline = 'middle';
