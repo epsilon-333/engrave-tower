@@ -78,6 +78,7 @@ import { AllyMethods } from './allies.js';
 import { TraitMethods } from './montraits.js';
 import { HiddenMethods } from './hidden.js';
 import { ResMethods } from './resource.js';
+import { TeacherSkillMethods } from './teacherskills.js';
 import { TeacherMethods } from './teacher.js';
 // 레벨 lv의 기준 캐릭터(스탯 60% 공격 · 40% 체력)가 1레벨보다 몇 배 세게 때리고 · 몇 배 버티나 → 바깥 몬스터가 지역 레벨만큼 그대로 따라 세진다
 const GROWTH = new Map();
@@ -3450,4 +3451,4 @@ export function distToSeg(px, py, x1, y1, x2, y2) {
 export { ECHOES, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP };
 
 // 나눠 둔 메서드를 World 에 붙인다
-Object.assign(World.prototype, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods, TeacherMethods, ResMethods);
+Object.assign(World.prototype, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods, TeacherMethods, ResMethods, TeacherSkillMethods);

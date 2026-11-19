@@ -89,7 +89,7 @@ export const TeacherMethods = {
     if (fam === 'scythe') for (let i = 0; i < 3; i++) mk(lx + Math.cos(i * 2.1) * 50, ly + Math.sin(i * 2.1) * 30, { ang: i * 2.1 });
     else if (fam === 'dagger') { for (let i = 0; i < 5; i++) mk(lx, ly, { ang: (i / 5) * Math.PI * 2 }); }
     else mk(lx, ly);
-    Tr.wid = teacherWeaponId(this.b, fam); Tr.wsT = 4.5; Tr.dodgeCd = 0; Tr.strafe = 1; Tr.strafeT = 0.8; Tr.dashCd = 2.5; Tr.okHits = []; Tr.heals = 0; Tr.dash = null;
+    Tr.wid = teacherWeaponId(this.b, fam); Tr.skT = 2.5; Tr.skCd = {}; Tr.zones = []; Tr.minions = []; Tr.corpses = []; Tr.powT = 0; Tr.curseT = 0; Tr.counterT = 0; Tr.wsT = 4.5; Tr.dodgeCd = 0; Tr.strafe = 1; Tr.strafeT = 0.8; Tr.dashCd = 2.5; Tr.okHits = []; Tr.heals = 0; Tr.dash = null;
     for (const b of Tr.bodies) b.held = { id: Tr.wid, kind: fam, toward: 0, swingT: 0, swingMax: 0, swingAng: 0, swingDir: 1, aim: false, dash: false };
     Tr.main = Tr.bodies[0];
     this.tower = { f: 40, t: 0, hurt: 0, boss: Tr.main }; // 보스 체력 줄을 보여 준다
@@ -101,7 +101,7 @@ export const TeacherMethods = {
   trialSay(e, text, color = '#e8e2cf') { this.emit({ t: 'text', x: e.x, y: e.y - 26, text, color }); },
   trialEnd(ok) {
     const Tr = this.trial; if (!Tr || Tr.done) return;
-    Tr.done = true;
+    Tr.done = true; this.trialSkillEnd();
     if (ok) for (const b of Tr.bodies) { b.dead = true; this.emit({ t: 'death', x: b.x, y: b.y, color: '#e8e2cf', defId: b.defId, dir: b.dir }); }
     this.emit({ t: 'banner', text: ok ? `${Tr.T.name}: 「…됐다. 가져가라.」` : `${Tr.T.name}: 「아직이다.」`, sub: ok ? '시련을 넘었다' : `스승의 남은 체력 ${Math.round((Tr.hp / Tr.maxHp) * 100)}%`, color: ok ? '#fff0a0' : '#ff9a7a' });
     this.delayed.push({ t: 2.2, run: () => this.signals.push({ t: 'trialDone', ok, fam: Tr.fam }) });
@@ -113,7 +113,12 @@ export const TeacherMethods = {
   trialHit(e, amount, type, opt = {}) {
     const Tr = this.trial, p = this.player;
     if (!Tr || Tr.done || Tr.s === 'intro' || e.dead) return 0;
-    if (Tr.invulnT > 0) { this.trialNo(e, '죽음을 거부한다'); return 0; }
+    if (Tr.invulnT > 0) { this.trialNo(e, Tr.invulnMsg || '죽음을 거부한다'); return 0; }
+    if (Tr.counterT > 0 && !opt.fromDot && e === Tr.main) { // 받아치기 · 맞받기: 그 사이에 친 공격은 막히고 되돌아온다
+      Tr.counterT = 0; const p0 = this.player, a0 = Math.atan2(p0.y - e.y, p0.x - e.x);
+      this.trialSay(e, '받아쳤다!', '#fff0a0'); this.emit({ t: 'block', x: e.x, y: e.y - 6 }); this.emit({ t: 'swing', x: e.x, y: e.y, ang: a0, range: 40, arc: 1.8, type: 'phys', dir: 1, dur: 0.12, heavy: true });
+      this.hurtPlayer(this.trialDmg(Tr.counterK || 0.12), 'phys', e, { fromX: e.x, fromY: e.y }); this.knockPlayer(e.x, e.y, 26); return 0;
+    }
     const f = Tr.fam;
     let good = false, why = '';
     if (opt.fromDot) good = false;
@@ -272,7 +277,7 @@ export const TeacherMethods = {
     if (this.blocked(x, y, 6)) { x = this.trial.cx; y = this.trial.cy; }
     this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: x, y2: y }); e.x = x; e.y = y;
   },
-  trialDmg(k) { return this.d.maxHp * k * (this.trial.rageT > 0 ? 2 : 1); }, // 내 최대 체력 비율 (리치가 일어난 뒤 2배)
+  trialDmg(k) { const Tr = this.trial; return this.d.maxHp * k * (Tr.rageT > 0 ? 2 : 1) * (Tr.powT > 0 ? 1.3 : 1) * (Tr.curseT > 0 ? 1.2 : 1); }, // 내 최대 체력 비율 (리치가 일어난 뒤 2배)
   // 예고 원 뒤 한 대
   trialStrike(e, x, y, wind = 0.7, r = 34, k = TR.hit, fx = 'quake') {
     this.emit({ t: 'windup', id: e.id }); this.emit({ t: 'telegraphCircle', x, y, r, dur: wind });
@@ -348,6 +353,7 @@ export const TeacherMethods = {
       b.kbx *= 0.85; b.kby *= 0.85; if (Math.abs(b.kbx) < 2) b.kbx = 0; if (Math.abs(b.kby) < 2) b.kby = 0;
     }
     Tr.dashCd -= DT; Tr.wsT -= DT; Tr.dodgeCd -= DT;
+    this.trialSkillTick();
     if (Tr.dash) { const D = Tr.dash, k = Math.min(1, (this.t - D.t0) / D.dur); e.x = D.x0 + (D.x1 - D.x0) * k; e.y = D.y0 + (D.y1 - D.y0) * k; e.moving = true; if (k >= 1) { Tr.dash = null; Tr.t = Math.min(Tr.t, 0.1); } return; }
     const free = Tr.s === 'move' || Tr.s === 'rest';
     // 회복: 체력이 25%씩 줄 때마다 한 번, 자세를 잡는 1.5초 동안 제대로 든 공격이 들어오면 끊긴다
@@ -367,7 +373,8 @@ export const TeacherMethods = {
     }
     if (Tr.sigT <= 0 && free && !e.tatk) return this.trialSig();
     if (Tr.s === 'sig' || Tr.s === 'surge') { if (Tr.t <= 0) { Tr.s = 'move'; Tr.t = 0.6; } return; }
-    if (Tr.wsT <= 0 && free && !e.tatk && dist < 170) return this.trialWeaponSkill();
+    Tr.skT -= DT; // 스킬: 원래 쓰던 무기 능력 + 그 무기의 각인 스킬 여섯 (sim/teacherskills.js)
+    if (Tr.skT <= 0 && free && !e.tatk && this.trialUseSkill(dist)) return;
     if (Tr.s === 'wskill') { if (Tr.t <= 0 && !e.tatk) { Tr.s = 'move'; Tr.t = 0.4; } return; }
     // 복서 (주먹): 짧은 대시로 파고들고 · 옆으로 피하고 · 콤보를 넣고 · 한 걸음 빠진다
     if (f === 'fist') {
