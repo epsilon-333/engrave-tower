@@ -5,6 +5,7 @@
 // · 스승의 공격은 내 최대 체력 비율로 들어온다 (내가 세져도 똑같이 아프다). 내 체력이 다하면 실패 (죽지는 않는다)
 // TeacherMethods 는 World.prototype 에 붙는다 (sim/world.js 끝) — 메서드 안의 this 는 World
 import { WCOMBO, comboFam } from '../data/wcombo.js';
+import { computeBuild } from './build.js';
 import { TEACHERS } from '../data/hidden.js';
 import { SIG_SKILL } from './teacherskills.js';
 import { RACE_ART, weaponArt } from '../data/art.js';
@@ -91,6 +92,13 @@ const TEACHER_STATS = {
 export const teacherStats = (fam) => TEACHER_STATS[fam];
 // 내 레벨에 맞춘 난이도 (쉬우면 안 된다): 레벨 40(스승이 처음 나오는 즈음)이 기준 1, 레벨 100이면 2
 //  · 스승의 여덟 스탯이 레벨 40 넘는 만큼 0.6씩 오른다 · 주는 피해 ×(1.2 × √배율) · 준비 · 스킬 사이가 짧아진다
+// 레벨 lv의 기준 캐릭터(오크 · 스탯 60% 근력 · 40% 체력 · 맨몸): 스승 체력 = 기준 공격력 × 25, 스승 피해 = 기준 최대 체력 비율
+const REF = new Map();
+export function teacherRef(lv = 40) {
+  lv = Math.max(1, Math.min(100, Math.round(lv || 40))); if (REF.has(lv)) return REF.get(lv);
+  const pts = Math.floor((lv - 1) * 1.75), b = computeBuild({ race: 'orc', level: lv, alloc: { str: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings: {}, gear: {} }), d = b.derived;
+  const r = { atk: Math.max(d.physAtk, d.dexAtk, d.magAtk), hp: d.maxHp }; REF.set(lv, r); return r;
+}
 export const teacherLvK = (lv = 40) => 1 + Math.max(0, Math.min(60, (lv || 40) - 40)) / 60;
 export const teacherStatsAt = (fam, lv = 40) => { const B = TEACHER_STATS[fam] || TEACHER_STATS.sword, up = Math.max(0, Math.min(60, (lv || 40) - 40)) * 0.6; return Object.fromEntries(Object.entries(B).map(([k, v]) => [k, Math.round(v + up)])); };
 const SPD = { sword: 72, heavy: 60, magic: 0, scythe: 0, dagger: 0, bow: 60, fist: 92, spear: 112 };
@@ -102,7 +110,7 @@ export const TeacherMethods = {
     const p = this.player, d = this.d, lx = (this.map.lair?.x ?? Math.floor(this.tw / 2)) * 16 + 8, ly = (this.map.lair?.y ?? Math.floor(this.th / 2)) * 16 + 8;
     for (const e of this.enemies) e.dead = true;
     this.enemies = [];
-    const power = Math.max(d.physAtk, d.dexAtk, d.magAtk) * (this.b.wScale?.dmg ?? 1); // 내 공격력에 맞춘다
+    const ref = teacherRef(this.b.level), power = ref.atk; // 내 공격력 · 체력이 아니라 내 레벨의 기준 캐릭터에 맞춘다 (무기 · 공속 · 원거리 · 근거리와 상관없이)
     const Tr = this.trial = { fam, T, s: 'intro', t: 2.6, bodies: [], chain: 0, lastHit: -9, lastOk: -9, guardN: 0, guardT: 0, brokenT: 0, tok: new Map(), msgT: 0, done: false, cx: lx, cy: ly,
       lvK: teacherLvK(this.b.level), st: teacherStatsAt(fam, this.b.level), maxHp: Math.round(power * TR.hpMul * (1 + (teacherStatsAt(fam, this.b.level).vit - 50) / 200)), hp: 0, sigT: 4, took: [], revived: false, invulnT: 0, rageT: 0 };
     Tr.hp = Tr.maxHp;
@@ -372,7 +380,7 @@ export const TeacherMethods = {
     if (this.blocked(x, y, 6)) { x = this.trial.cx; y = this.trial.cy; }
     this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: x, y2: y }); e.x = x; e.y = y;
   },
-  trialDmg(k) { const Tr = this.trial, cs = Tr.pCurse && Tr.pCurse.until > this.t ? Tr.pCurse.n : 0, S = Tr.st || {}, crit = this.rng.chance((S.sen || 0) / 400); if (crit) this.emit({ t: 'text', x: this.player.x, y: this.player.y - 30, text: '치명타', color: '#ff7a5a' }); return this.d.maxHp * k * (1 + (Math.max(S.str || 50, S.mag || 50) - 60) / 250) * (crit ? 1.5 : 1) * 1.2 * Math.sqrt(Tr.lvK || 1) * (Tr.lichMul || 1) * (Tr.powT > 0 ? 1.3 : 1) * (1 + 0.02 * cs); }, // 내 최대 체력 비율 (리치가 일어난 뒤 2배)
+  trialDmg(k) { const Tr = this.trial, cs = Tr.pCurse && Tr.pCurse.until > this.t ? Tr.pCurse.n : 0, S = Tr.st || {}, crit = this.rng.chance((S.sen || 0) / 400); if (crit) this.emit({ t: 'text', x: this.player.x, y: this.player.y - 30, text: '치명타', color: '#ff7a5a' }); return teacherRef(this.b.level).hp * k * (1 + (Math.max(S.str || 50, S.mag || 50) - 60) / 250) * (crit ? 1.5 : 1) * 1.2 * Math.sqrt(Tr.lvK || 1) * (Tr.lichMul || 1) * (Tr.powT > 0 ? 1.3 : 1) * (1 + 0.02 * cs); }, // 내 최대 체력 비율 (리치가 일어난 뒤 2배)
   // 예고 원 뒤 한 대
   trialStrike(e, x, y, wind = 0.7, r = 34, k = TR.hit, fx = 'quake') {
     this.emit({ t: 'windup', id: e.id }); this.emit({ t: 'telegraphCircle', x, y, r, dur: wind });

@@ -1,7 +1,7 @@
 // 숨은 스승의 스킬 (2026-11-19) — 스승은 그 무기를 완전히 다룬 자. 각인 스킬 가운데 그 무기에 맞는 것 여섯 + 원래 쓰던 무기 능력(trialWeaponSkill)을
 // 거리와 쿨타임에 맞춰 골라 쓴다. 이름 · 모양은 플레이어의 그 스킬을 따르고, 피해는 내 최대 체력 비율(trialDmg). 큰 기술은 예고(준비 자세 · 예고 선 · 예고 원)가 있다.
 // TeacherSkillMethods 는 World.prototype 에 붙는다 (sim/world.js 끝) — 메서드 안의 this 는 World
-import { TELE_K } from './teacher.js';
+import { TELE_K, teacherRef } from './teacher.js';
 import { SKILLS } from '../data/skills.js';
 import { MOTION_DUR } from './world.js'; // 함수 안에서만 쓴다 (서로 가져오는 파일이라 맨 위에서 쓰면 안 된다)
 const DT = 1 / 60;
@@ -160,7 +160,7 @@ export const TeacherSkillMethods = {
         if (o.pull) { const d = Math.hypot(p.x - e.x, p.y - e.y); if (d > 30) this.knockPlayer(e.x, e.y, Math.min(d - 26, 140), { ang: Math.atan2(e.y - p.y, e.x - p.x) }); this.trialSay(e, '이리 와라', '#ffb070'); } // 작살: 끌어당긴다
         if (o.slow) this.ccPlayer({ slow: o.slow });
         if (o.root) this.ccPlayer({ root: o.root, say: '묶였다' });
-        if (o.burn) for (let i = 0; i < o.burn; i++) this.applyPlayerStatus?.('burn', this.d.maxHp * 0.02);
+        if (o.burn) for (let i = 0; i < o.burn; i++) this.applyPlayerStatus?.('burn', teacherRef(this.b.level).hp * 0.02);
       }
       if (o.shake) this.emit({ t: 'shake', v: o.shake });
     });
@@ -211,11 +211,11 @@ export const TeacherSkillMethods = {
   tsSummon(Tr, e) { // 해골 병사: 한 번에 셋까지 (약해서 몇 대면 쓰러진다 · 쓰러지면 시체가 남는다)
     Tr.minions = (Tr.minions || []).filter((m) => !m.dead);
     const n = SUMMON_MAX - Tr.minions.length; if (n <= 0) { Tr.t = 0.2; return; }
-    const power = Math.max(this.d.physAtk, this.d.dexAtk, this.d.magAtk);
+    const power = teacherRef(this.b.level).atk; // 내 레벨의 기준 캐릭터
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2, x = e.x + Math.cos(a) * 34, y = e.y + Math.sin(a) * 26; if (this.blocked(x, y, 6)) continue;
       const m = this.makeEnemy('skeleton', x, y, { noAffix: true }); if (!m) continue;
-      m.hp = m.maxHp = Math.round(power * 2.5); m.atk = this.d.maxHp * 0.05; m.state = 'chase'; m.trialMinion = true;
+      m.hp = m.maxHp = Math.round(power * 2.5); m.atk = teacherRef(this.b.level).hp * 0.05; m.state = 'chase'; m.trialMinion = true;
       this.enemies.push(m); Tr.minions.push(m); this.emit({ t: 'skillAoe', x, y, r: 16, elem: 'dark', fx: 'doom', lite: true });
     }
     Tr.t = 0.8;
