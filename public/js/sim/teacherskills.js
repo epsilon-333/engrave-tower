@@ -91,7 +91,7 @@ export const TeacherSkillMethods = {
     if (!surge && (Tr.skCd.weapon || 0) <= this.t && dist < (WS_MAX[Tr.fam] || 170)) pool.push({ id: 'weapon', cd: 6.5 });
     if (!pool.length) { Tr.skT = 0.5; return false; }
     const s = pool[this.rng.int(0, pool.length - 1)];
-    Tr.skCd[s.id] = this.t + s.cd * (1 - (Tr.st?.spi || 0) / 400); // 정신 → 쿨타임 Tr.skT = surge ? 1.0 : 1.3; // 스킬과 스킬 사이 1.3초 (몰아친다) (평타 · 움직임이 그 사이에)
+    Tr.skCd[s.id] = this.t + s.cd * (1 - (Tr.st?.spi || 0) / 400); // 정신 → 쿨타임 Tr.skT = (surge ? 1.0 : 1.3) / Math.pow(Tr.lvK || 1, 0.4); // 내 레벨이 높을수록 몰아친다 // 스킬과 스킬 사이 1.3초 (몰아친다) (평타 · 움직임이 그 사이에)
     this.trialPayback(e); // 대족장: 스킬을 쓸 때마다 받은 피해를 되갚는다
     if (s.id === 'weapon') { this.trialWeaponSkill(); return true; }
     Tr.s = 'wskill'; Tr.t = 0.8;
@@ -134,7 +134,7 @@ export const TeacherSkillMethods = {
   tsMelee(e, fam, wind, cfg, over = {}) { this.beginAtk(e, fam, { wind, cfg, ...over }); this.trial.t = wind + 0.5; },
   tsDash(e, a, dist, dur = 0.18) { const Tr = this.trial; this.trialDash(e, a, dist, dur, Tr.dashCd); },
   tsDashHit(e, dist, wind, k, knock = 0) { // 겨눴다가 일직선으로 뚫고 지나간다 (지나간 길에 있으면 맞는다)
-    const Tr = this.trial; wind *= TELE_K; this.emit({ t: 'windup', id: e.id });
+    const Tr = this.trial; wind *= TELE_K / Math.pow(Tr.lvK || 1, 0.25); this.emit({ t: 'windup', id: e.id });
     this.tsLater(wind, () => {
       const L = this.trialLead(0.16), a = Math.atan2(L.y - e.y, L.x - e.x), x0 = e.x, y0 = e.y; // 내가 갈 자리로
       this.trialDash(e, a, dist, 0.16, Tr.dashCd);
@@ -148,7 +148,7 @@ export const TeacherSkillMethods = {
   },
   // 일직선 여러 줄 (화살 · 검기 · 뼈 창 · 작살): 예고 선 → wind초 뒤에 날아간다
   tsRays(e, angs, o) {
-    const Tr = this.trial; o = { ...o, wind: o.wind * TELE_K };
+    const Tr = this.trial; o = { ...o, wind: o.wind * TELE_K / Math.pow(Tr.lvK || 1, 0.25) };
     { const p = this.player, L = this.trialLead(o.wind + 0.1), da = Math.atan2(L.y - e.y, L.x - e.x) - Math.atan2(p.y - e.y, p.x - e.x); angs = angs.map((x) => x + da); } // 내가 갈 자리를 읽고 겨눈다
     if (o.tele) for (const a of angs) this.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx: Math.cos(a), dy: Math.sin(a), len: o.len, w: o.w });
     this.emit({ t: 'windup', id: e.id });
@@ -168,7 +168,7 @@ export const TeacherSkillMethods = {
   },
   // 원: 예고 원 → wind초 뒤에 터진다
   tsCircle(e, x, y, o) {
-    const Tr = this.trial; o = { ...o, wind: o.wind * TELE_K };
+    const Tr = this.trial; o = { ...o, wind: o.wind * TELE_K / Math.pow(Tr.lvK || 1, 0.25) };
     { const p = this.player; if (o.wind > 0.05 && Math.hypot(x - p.x, y - p.y) < 4) { const L = this.trialLead(o.wind * 0.7); x = L.x; y = L.y; } } // 내 자리를 노린 원은 내가 갈 자리로
     if (o.wind > 0.05) this.emit({ t: 'telegraphCircle', x, y, r: o.r, dur: o.wind });
     if (o.windup) this.emit({ t: 'windup', id: e.id });

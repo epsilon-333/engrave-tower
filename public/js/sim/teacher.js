@@ -89,6 +89,10 @@ const TEACHER_STATS = {
   spear: { str: 75, mag: 40, agi: 50, vit: 60, sen: 55, spi: 45, pres: 50, mres: 50 },
 };
 export const teacherStats = (fam) => TEACHER_STATS[fam];
+// 내 레벨에 맞춘 난이도 (쉬우면 안 된다): 레벨 40(스승이 처음 나오는 즈음)이 기준 1, 레벨 100이면 2
+//  · 스승의 여덟 스탯이 레벨 40 넘는 만큼 0.6씩 오른다 · 주는 피해 ×(1.2 × √배율) · 준비 · 스킬 사이가 짧아진다
+export const teacherLvK = (lv = 40) => 1 + Math.max(0, Math.min(60, (lv || 40) - 40)) / 60;
+export const teacherStatsAt = (fam, lv = 40) => { const B = TEACHER_STATS[fam] || TEACHER_STATS.sword, up = Math.max(0, Math.min(60, (lv || 40) - 40)) * 0.6; return Object.fromEntries(Object.entries(B).map(([k, v]) => [k, Math.round(v + up)])); };
 const SPD = { sword: 72, heavy: 60, magic: 0, scythe: 0, dagger: 0, bow: 60, fist: 92, spear: 112 };
 const SIG_NAME = { sword: '발도', heavy: '피로 쓴 함성', magic: '마력 폭주', scythe: '망자의 낫', dagger: '그림자 손', bow: '천궁의 화살비', fist: '원시의 돌진', spear: '용암 균열' };
 
@@ -100,7 +104,7 @@ export const TeacherMethods = {
     this.enemies = [];
     const power = Math.max(d.physAtk, d.dexAtk, d.magAtk) * (this.b.wScale?.dmg ?? 1); // 내 공격력에 맞춘다
     const Tr = this.trial = { fam, T, s: 'intro', t: 2.6, bodies: [], chain: 0, lastHit: -9, lastOk: -9, guardN: 0, guardT: 0, brokenT: 0, tok: new Map(), msgT: 0, done: false, cx: lx, cy: ly,
-      st: TEACHER_STATS[fam] || TEACHER_STATS.sword, maxHp: Math.round(power * TR.hpMul * (1 + ((TEACHER_STATS[fam] || TEACHER_STATS.sword).vit - 50) / 200)), hp: 0, sigT: 4, took: [], revived: false, invulnT: 0, rageT: 0 };
+      lvK: teacherLvK(this.b.level), st: teacherStatsAt(fam, this.b.level), maxHp: Math.round(power * TR.hpMul * (1 + (teacherStatsAt(fam, this.b.level).vit - 50) / 200)), hp: 0, sigT: 4, took: [], revived: false, invulnT: 0, rageT: 0 };
     Tr.hp = Tr.maxHp;
     const look = teacherLook(this.b.race, fam);
     const mk = (x, y, extra = {}) => { const e = this.makeEnemy(T.mon, x, y, { noAffix: true }); Object.assign(e, { state: 'idle', home: { x, y }, trialOf: fam, champion: T.name, maxHp: Tr.maxHp, hp: Tr.maxHp, raceLook: this.b.race, tintX: look.tint, scale: look.scale, outline: look.outline }, extra); this.enemies.push(e); Tr.bodies.push(e); return e; };
@@ -204,7 +208,7 @@ export const TeacherMethods = {
   },
   beginAtk(e, fam, over = {}) {
     const A0 = ATK[fam] || { wind: 0.7, range: 190, arc: 0, k: TR.hit, kind: 'shoot' }, A = over.cfg ? { ...A0, ...over.cfg } : A0, p = this.player;
-    const wind = (over.wind ?? (fam === 'bow' ? 0.8 : A.wind)) * TELE_K / (1 + 0.4 * (this.trial?.st?.agi || 0) / ((this.trial?.st?.agi || 0) + 90)) * 1.15 /* 민첩 → 공격 속도 (민첩 50 언저리가 예전 그대로) */, wf = ITEMS[e.held?.id]?.cat === 'blunt' ? 0.8 : WIND_FRAC[heldKind(e.held?.id)] ?? 0.2; // 둔기는 천천히 들고(80%) 빠르게 내려친다
+    const wind = (over.wind ?? (fam === 'bow' ? 0.8 : A.wind)) * TELE_K / Math.pow(this.trial?.lvK || 1, 0.25) / (1 + 0.4 * (this.trial?.st?.agi || 0) / ((this.trial?.st?.agi || 0) + 90)) * 1.15 /* 민첩 → 공격 속도 (민첩 50 언저리가 예전 그대로) */, wf = ITEMS[e.held?.id]?.cat === 'blunt' ? 0.8 : WIND_FRAC[heldKind(e.held?.id)] ?? 0.2; // 둔기는 천천히 들고(80%) 빠르게 내려친다
     // 준비는 준비 시간대로(자세표의 준비 구간을 그 시간에 맞춰 늘린다) · 휘두름은 짧고 빠르게 (sd초)
     const sd = fam === 'bow' ? 0.14 : fam === 'fist' ? 0.1 : 0.12; // 휘두름은 빠르게 (준비는 그대로)
     const it = ITEMS[e.held?.id], cf = A.kind !== 'shoot' && fam !== 'fist' && it ? comboFam({ weaponItem: it, weapon: it.weapon, wcat: it.cat }) : null; // 플레이어와 같은 무기 콤보
@@ -368,7 +372,7 @@ export const TeacherMethods = {
     if (this.blocked(x, y, 6)) { x = this.trial.cx; y = this.trial.cy; }
     this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: x, y2: y }); e.x = x; e.y = y;
   },
-  trialDmg(k) { const Tr = this.trial, cs = Tr.pCurse && Tr.pCurse.until > this.t ? Tr.pCurse.n : 0, S = Tr.st || {}, crit = this.rng.chance((S.sen || 0) / 400); if (crit) this.emit({ t: 'text', x: this.player.x, y: this.player.y - 30, text: '치명타', color: '#ff7a5a' }); return this.d.maxHp * k * (1 + (Math.max(S.str || 50, S.mag || 50) - 60) / 250) * (crit ? 1.5 : 1) * (Tr.lichMul || 1) * (Tr.powT > 0 ? 1.3 : 1) * (1 + 0.02 * cs); }, // 내 최대 체력 비율 (리치가 일어난 뒤 2배)
+  trialDmg(k) { const Tr = this.trial, cs = Tr.pCurse && Tr.pCurse.until > this.t ? Tr.pCurse.n : 0, S = Tr.st || {}, crit = this.rng.chance((S.sen || 0) / 400); if (crit) this.emit({ t: 'text', x: this.player.x, y: this.player.y - 30, text: '치명타', color: '#ff7a5a' }); return this.d.maxHp * k * (1 + (Math.max(S.str || 50, S.mag || 50) - 60) / 250) * (crit ? 1.5 : 1) * 1.2 * Math.sqrt(Tr.lvK || 1) * (Tr.lichMul || 1) * (Tr.powT > 0 ? 1.3 : 1) * (1 + 0.02 * cs); }, // 내 최대 체력 비율 (리치가 일어난 뒤 2배)
   // 예고 원 뒤 한 대
   trialStrike(e, x, y, wind = 0.7, r = 34, k = TR.hit, fx = 'quake') {
     this.emit({ t: 'windup', id: e.id }); this.emit({ t: 'telegraphCircle', x, y, r, dur: wind });
