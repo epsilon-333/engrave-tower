@@ -1049,22 +1049,24 @@ export class Renderer {
     }
     return null;
   }
-  // 숨은 스승이 든 무기: 손 자리에서 스승이 정한 각도(H.ang)로. 활은 시위를 당긴다 · 창은 찌를 때 앞으로 나간다(H.off)
-  drawHeld(w, e, dy, h0) {
-    const g = this.g, H = e.held, wa = weaponArt(H.id, ITEMS), img = wa && sprite(wa.s, wa.tint || ''); if (!img) return;
-    const dir = e.dir || 1, hx = e.x + dir * 5, hy = dy + h0 * 0.62, ang = H.ang, off = H.off || 0;
-    const fist = (x, y) => { g.fillStyle = '#16121c'; g.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4); g.fillStyle = '#e8b48a'; g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2); };
-    g.save(); g.translate(Math.round(hx + Math.cos(ang) * off), Math.round(hy + Math.sin(ang) * off));
-    if (wa.bow) {
-      g.rotate(ang); g.drawImage(img, -Math.round(img.width * 0.86), -Math.round(img.height / 2));
-      if (H.pull > 0) { g.strokeStyle = '#e8e2cf'; g.lineWidth = 1; const bh = img.height / 2, sx = -H.pull * 7; g.beginPath(); g.moveTo(1, -bh + 1); g.lineTo(sx, 0); g.lineTo(1, bh - 1); g.stroke(); const ar = sprite('weapon_arrow'); if (ar) { g.save(); g.translate(sx, 0); g.rotate(Math.PI / 2); g.drawImage(ar, -Math.round(ar.width / 2), -ar.height + 3); g.restore(); } }
-    } else {
-      const { sc, grip } = this.bladeGeom(wa, { kind: H.kind === 'spear' ? 'spear' : H.kind === 'magic' ? 'staff' : '' }, img, 1);
-      g.rotate(ang + Math.PI / 2);
-      g.drawImage(img, Math.round(-img.width * sc / 2), Math.round(-img.height * sc + grip * sc), Math.round(img.width * sc), Math.round(img.height * sc));
+  // 숨은 스승: 플레이어와 똑같이 그린다 — 플레이어의 자세표(playerPose) · 몸 그리기(drawBody) · 무기 그리기(drawWeapon)를 그대로 쓴다.
+  // 스승의 상태(e.held: 휘두름 · 겨눔 · 대시)를 「플레이어 모양의 상태」로 바꿔 넘긴다
+  heldFighter(w, e, img, name, gs) {
+    const H = e.held, it = ITEMS[H.id], dir = e.dir || 1, tw = H.toward || 0;
+    const fw = (e._fw ||= { projs: [], f: new Set(), pvp: null, state: 'play' });
+    fw.t = w.t; fw.map = w.map;
+    fw.b = { weapon: it.weapon, weaponId: H.id, weaponItem: it, race: e.raceLook, cls: null, offItem: null, offId: null, wcat: it.cat };
+    const st = { dir, aimX: Math.cos(tw), aimY: Math.sin(tw), moving: !!e.moving && !(H.swingT > 0), walkT: w.t, hitFlash: e.hitFlash || 0, dashT: H.dash ? 1 : 0, swingMax: H.swingMax || 0, swingT: H.swingT || 0, swingAng: H.swingAng ?? tw, swingDir: H.swingDir || 1, motion: null, charging: null, attackHeld: !!H.aim, atkPeriod: H.atkPeriod || 1, atkCd: H.atkCd || 0, castT: 0, castSkill: null, buffs: {}, down: false };
+    const fp = new Proxy(st, { get: (t, k) => (k in t ? t[k] : typeof k === 'string' ? 0 : undefined) }); // 안 적은 칸은 0 (플레이어 모양의 빈 상태)
+    const P = this.playerPose(fw, fp), g = this.g, bx = e.x + P.ox, by = e.y - 1 + P.oy, wart = weaponArt(H.id, ITEMS);
+    if (e.outline) { // 종족 색 1도트 외곽선
+      const sil = sprite(name, e.tintX || '', e.outline, dir < 0), o = Math.max(1, Math.round(gs));
+      if (sil) for (const [ox, oy] of [[-o, 0], [o, 0], [0, -o], [0, o]]) this.drawBody(sil, bx + ox, by + oy, gs, P, dir);
     }
-    g.restore();
-    fist(hx + Math.cos(ang) * off, hy + Math.sin(ang) * off);
+    if (P.kind === 'fist') { const back = P.punch > 0.05 && P.offhand; this.fistAt(fw, bx - dir * (back ? -1 : 4) * gs, by - (back ? 7 : 5) * gs, this.fistMetal(wart), dir); }
+    if (P.behind) this.drawWeapon(fw, fp, P, bx, by, gs);
+    this.drawBody(img, bx, by, gs, P, dir);
+    if (!P.behind) this.drawWeapon(fw, fp, P, bx, by, gs);
   }
   drawEnemy(w, e, dt) {
     const g = this.g, def = e.def;
@@ -1184,6 +1186,9 @@ export class Renderer {
       g.drawImage(img, Math.round(-w0 / 2), Math.round(-h0), Math.round(w0), Math.round(h0)); g.restore();
       if (e.pose.k === 'dizzy') for (let i = 0; i < 3; i++) { const a = w.t * 7 + i * 2.1; g.fillStyle = '#ffe060'; g.fillRect(Math.round(e.x + Math.cos(a) * 8), Math.round(dy - 5 + Math.sin(a) * 2), 2, 2); }
       if ((e.pose.k === 'crouch' && e.mv?.k === 'headbutt') && dt > 0 && Math.random() < 0.35) this.parts.push({ x: e.x - (e.dir || 1) * e.r, y: e.y + 3, vx: -(e.dir || 1) * (30 + Math.random() * 40), vy: -20 - Math.random() * 20, t: 0.45, max: 0.45, color: '#a89880', g: 200, puff: true, size: 2 }); // 뒷발로 땅을 긁는 흙먼지
+    } else if (e.held && !art.beast && !art.sheet) {
+      this.heldFighter(w, e, img, name, sc); // 숨은 스승: 플레이어와 같은 자세 · 같은 무기 그리기
+      if (dt > 0 && e.outline && Math.random() < 0.22) this.parts.push({ x: e.x + (Math.random() - 0.5) * w0 * 0.7, y: dy + h0 * (0.3 + Math.random() * 0.6), vx: (Math.random() - 0.5) * 6, vy: -18 - Math.random() * 10, t: 0.5, max: 0.5, color: e.outline, g: -4, glow: true, size: 1 });
     } else {
       if (e.outline && !art.beast && !art.sheet) { // 숨은 스승: 종족 색 1도트 외곽선 (몸 둘레 고리 없이 윤곽만) · 종족 색 불티가 가끔 오른다
         const sil = sprite(name, e.tintX || '', e.outline, e.dir < 0), o = Math.max(1, Math.round(sc));
@@ -1194,7 +1199,6 @@ export class Renderer {
     }
     if (ip?.sink > 0) g.restore();
     g.globalAlpha = 1;
-    if (e.held && !e.dead) this.drawHeld(w, e, dy, h0); // 숨은 스승: 든 무기 (sim/teacher.js 가 각도를 정한다)
     if (e.trait === 'shield' && e.shieldHp > 0 && !(e.feignT > 0)) { // 방패병: 바라보는 쪽에 큰 방패 (방패 체력이 줄면 금이 간다)
       const fx = e.x + Math.cos(e.face) * (e.r + 2), fy = e.y - 8 + Math.sin(e.face) * (e.r * 0.5), k2 = e.shieldHp / (e.maxHp * 2);
       g.fillStyle = '#16121c'; g.fillRect(Math.round(fx - 4), Math.round(fy - 7), 8, 13);
