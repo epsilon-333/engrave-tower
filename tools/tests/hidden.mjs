@@ -211,7 +211,7 @@ for (const [fam, weapon] of Object.entries(WEAPON)) {
   ok(b.trial.maxHp > a.trial.maxHp * 2, `스승 체력이 내 공격력을 따라간다 (${a.trial.maxHp} → ${b.trial.maxHp})`);
 }
 { // 제대로 든 공격은 크게, 아닌 것은 아주 조금
-  const big = 1e9, took = (w, fn) => { const T = w.trial; T.shoutT = 0; T.counterT = 0; T.invulnT = 0; T.evadeT = 1e9; const h = T.hp; fn(); return (h - T.hp) / T.maxHp; }; // 외침(-30%) · 받아치기는 끄고 잰다
+  const big = 1e9, took = (w, fn) => { const T = w.trial; T.shoutT = 0; T.counterT = 0; T.invulnT = 0; T.evadeT = 1e9; T.st = { ...T.st, pres: 0, mres: 0 }; const h = T.hp; fn(); return (h - T.hp) / T.maxHp; }; // 외침(-30%) · 받아치기는 끄고 잰다
   const ws = trialWorld('sword', { weapon: 'ironLongsword' }); ws.trial.s = 'move'; ok(took(ws, () => ws.damageEnemy(ws.trial.main, big, 'phys', {})) <= TR.badCap + 1e-6, '검: 빈틈이 아니면 0.4%');
   ws.trial.s = 'open'; ok(took(ws, () => ws.damageEnemy(ws.trial.main, big, 'phys', {})) >= TR.okCap - 1e-6, '검: 빈틈에는 4%');
   const wh = trialWorld('heavy', { weapon: 'battleAxe' }), H = wh.trial; let g = 0; for (let i = 0; i < 4; i++) { wh.t += 0.3; g = took(wh, () => wh.damageEnemy(H.main, big, 'phys', {})); } ok(g >= TR.okCap - 1e-6, '도끼: 막기를 부순 뒤 제대로');
@@ -226,7 +226,7 @@ for (const [fam, weapon] of Object.entries(WEAPON)) {
   const wp = trialWorld('spear', { weapon: 'spear' }), P = wp.trial; P.main.x = wp.player.x + 40; P.main.y = wp.player.y; P.pv = { x: -60, y: 0 }; ok(took(wp, () => wp.damageEnemy(P.main, big, 'phys', {})) <= TR.badCap + 1e-6, '창: 물러나며 찌르면 조금'); P.pv = { x: 60, y: 0 }; ok(took(wp, () => wp.damageEnemy(P.main, big, 'phys', {})) >= TR.okCap - 1e-6, '창: 다가가며 찌르면 제대로');
   const wq = trialWorld('bow', { weapon: 'huntBow' }), B = wq.trial; B.main.x = wq.player.x + 120; B.main.y = wq.player.y; ok(took(wq, () => wq.damageEnemy(B.main, big, 'phys', {})) >= TR.okCap - 1e-6, '활: 멀리서 쏜 것은 제대로');
   // 이기기 · 지기
-  const ww = trialWorld('sword', { weapon: 'ironLongsword' }); for (let i = 0; i < 30 && !ww.trial.done; i++) { ww.trial.s = 'open'; ww.damageEnemy(ww.trial.main, big, 'phys', {}); }
+  const ww = trialWorld('sword', { weapon: 'ironLongsword' }); for (let i = 0; i < 80 && !ww.trial.done; i++) { ww.trial.s = 'open'; ww.trial.evadeT = 1e9; ww.damageEnemy(ww.trial.main, big, 'phys', {}); }
   for (let i = 0; i < 60 * 3; i++) ww.step(idle); ok(ww.signals.some((s) => s.t === 'trialDone' && s.ok), '스승의 체력이 다하면 시련을 넘는다');
   const wl = trialWorld('scythe', { weapon: 'rustySword' }), WM = wl.trial.main; wl.player.x = WM.x - (WM.r + 40); wl.player.y = WM.y; wl.trial.hp = 1; wl.damageEnemy(WM, big, 'phys', {}); // 낫 끝으로
   ok(!wl.trial.done && wl.trial.revived && wl.trial.hp > 0, '첫 번째 망자: 한 번은 죽음을 거부한다');

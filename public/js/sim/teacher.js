@@ -76,7 +76,19 @@ export function teacherWeaponId(b, fam) {
   return (FAM_WEAPON[fam] = 'rustySword');
 }
 export const TELE_K = 0.7; // 스승 예고(준비) 시간 배율 — 짧게 (2026-11-19)
-const TEACHER_EVADE = { dagger: 0.3, bow: 0.18, fist: 0.18, spear: 0.1, sword: 0.1, magic: 0.08, scythe: 0.05, heavy: 0 }; // 스승의 회피율 (민첩)
+// 스승의 스탯 (플레이어와 같은 여덟 가지) — 근력 · 마력: 주는 피해 · 민첩: 회피 · 공격 속도 · 이동 속도 · 체력: 최대 체력 · 감각: 치명타(감각/400 · 1.5배)
+//  정신: 스킬 쿨타임(정신/400만큼 짧게) · 물리 저항 · 마법 저항: 받는 피해 감소 (저항/(저항+200))
+const TEACHER_STATS = {
+  sword: { str: 70, mag: 10, agi: 45, vit: 55, sen: 60, spi: 45, pres: 45, mres: 30 },
+  heavy: { str: 90, mag: 5, agi: 15, vit: 80, sen: 30, spi: 35, pres: 70, mres: 25 },
+  magic: { str: 10, mag: 95, agi: 40, vit: 35, sen: 45, spi: 80, pres: 15, mres: 70 },
+  scythe: { str: 55, mag: 60, agi: 20, vit: 60, sen: 40, spi: 60, pres: 35, mres: 55 },
+  dagger: { str: 55, mag: 20, agi: 95, vit: 35, sen: 85, spi: 40, pres: 20, mres: 25 },
+  bow: { str: 50, mag: 30, agi: 65, vit: 40, sen: 90, spi: 45, pres: 25, mres: 35 },
+  fist: { str: 80, mag: 5, agi: 65, vit: 70, sen: 50, spi: 40, pres: 55, mres: 30 },
+  spear: { str: 75, mag: 40, agi: 50, vit: 60, sen: 55, spi: 45, pres: 50, mres: 50 },
+};
+export const teacherStats = (fam) => TEACHER_STATS[fam];
 const SPD = { sword: 72, heavy: 60, magic: 0, scythe: 0, dagger: 0, bow: 60, fist: 92, spear: 112 };
 const SIG_NAME = { sword: '발도', heavy: '피로 쓴 함성', magic: '마력 폭주', scythe: '망자의 낫', dagger: '그림자 손', bow: '천궁의 화살비', fist: '원시의 돌진', spear: '용암 균열' };
 
@@ -88,7 +100,7 @@ export const TeacherMethods = {
     this.enemies = [];
     const power = Math.max(d.physAtk, d.dexAtk, d.magAtk) * (this.b.wScale?.dmg ?? 1); // 내 공격력에 맞춘다
     const Tr = this.trial = { fam, T, s: 'intro', t: 2.6, bodies: [], chain: 0, lastHit: -9, lastOk: -9, guardN: 0, guardT: 0, brokenT: 0, tok: new Map(), msgT: 0, done: false, cx: lx, cy: ly,
-      maxHp: Math.round(power * TR.hpMul), hp: 0, sigT: 4, took: [], revived: false, invulnT: 0, rageT: 0 };
+      st: TEACHER_STATS[fam] || TEACHER_STATS.sword, maxHp: Math.round(power * TR.hpMul * (1 + ((TEACHER_STATS[fam] || TEACHER_STATS.sword).vit - 50) / 200)), hp: 0, sigT: 4, took: [], revived: false, invulnT: 0, rageT: 0 };
     Tr.hp = Tr.maxHp;
     const look = teacherLook(this.b.race, fam);
     const mk = (x, y, extra = {}) => { const e = this.makeEnemy(T.mon, x, y, { noAffix: true }); Object.assign(e, { state: 'idle', home: { x, y }, trialOf: fam, champion: T.name, maxHp: Tr.maxHp, hp: Tr.maxHp, raceLook: this.b.race, tintX: look.tint, scale: look.scale, outline: look.outline }, extra); this.enemies.push(e); Tr.bodies.push(e); return e; };
@@ -120,7 +132,7 @@ export const TeacherMethods = {
     if (!Tr || Tr.done || Tr.s === 'intro' || e.dead) return 0;
     if (Tr.invulnT > 0) { this.trialNo(e, Tr.invulnMsg || '죽음을 거부한다'); return 0; }
     { // 스승의 민첩: 갈래마다 회피율이 있다 (휘두르는 중 · 회복 자세 · 지속 피해는 못 피한다 · 한 번 피하면 0.7초 동안은 안 피한다)
-      const ev = TEACHER_EVADE[Tr.fam] || 0;
+      const ev = Math.max(0, ((Tr.st?.agi || 0) - 20) / 250); // 민첩 → 회피
       if (ev > 0 && !opt.fromDot && !e.tatk && Tr.s !== 'heal' && Tr.s !== 'cast' && !e.shadowSink && this.t - (Tr.evadeT ?? -9) > 0.7 && this.rng.chance(ev)) {
         Tr.evadeT = this.t; this.emit({ t: 'text', x: e.x, y: e.y - e.r - 12, text: '회피', color: '#cfe8ff' });
         if (!Tr.dash) { const a = Math.atan2(e.y - p.y, e.x - p.x) + (this.rng.chance(0.5) ? 1.4 : -1.4); this.trialDash(e, a, 26, 0.1, Tr.dashCd); }
@@ -150,6 +162,7 @@ export const TeacherMethods = {
     else if (f === 'spear') { const v = Tr.pv || { x: 0, y: 0 }, dx = e.x - p.x, dy = e.y - p.y, dd = Math.hypot(dx, dy) || 1, ap = (v.x * dx + v.y * dy) / dd; good = ap > 25 || (p.dashT > 0 && ap > 0); why = ap < -10 ? '물러나며 찌른 창은 가볍다' : '다가가며 찔러라'; } // 창: 다가가며(돌진하며) 찌른 것만
     let v = Math.min(amount, Tr.maxHp * (good ? TR.okCap : TR.badCap));
     if (Tr.shoutT > 0) v *= 0.7; // 대족장의 외침: 받는 피해 -30%
+    { const S = Tr.st || {}, R = type === 'mag' ? S.mres || 0 : S.pres || 0; v *= 1 - R / (R + 200); } // 물리 · 마법 저항
     if (Tr.pCurse && Tr.pCurse.until > this.t) v *= Math.max(0.5, 1 - 0.03 * Tr.pCurse.n); // 언데드의 저주: 중첩마다 내가 주는 피해 -3%
     Tr.hp -= v; Tr.took.push([this.t, v]); e.hitFlash = 0.08;
     this.emit({ t: 'dmg', x: e.x, y: e.y - e.r - 10, v, color: good ? '#ffe066' : '#8a8f9a', small: !good, id: e.id });
@@ -191,7 +204,7 @@ export const TeacherMethods = {
   },
   beginAtk(e, fam, over = {}) {
     const A0 = ATK[fam] || { wind: 0.7, range: 190, arc: 0, k: TR.hit, kind: 'shoot' }, A = over.cfg ? { ...A0, ...over.cfg } : A0, p = this.player;
-    const wind = (over.wind ?? (fam === 'bow' ? 0.8 : A.wind)) * TELE_K, wf = ITEMS[e.held?.id]?.cat === 'blunt' ? 0.8 : WIND_FRAC[heldKind(e.held?.id)] ?? 0.2; // 둔기는 천천히 들고(80%) 빠르게 내려친다
+    const wind = (over.wind ?? (fam === 'bow' ? 0.8 : A.wind)) * TELE_K / (1 + 0.4 * (this.trial?.st?.agi || 0) / ((this.trial?.st?.agi || 0) + 90)) * 1.15 /* 민첩 → 공격 속도 (민첩 50 언저리가 예전 그대로) */, wf = ITEMS[e.held?.id]?.cat === 'blunt' ? 0.8 : WIND_FRAC[heldKind(e.held?.id)] ?? 0.2; // 둔기는 천천히 들고(80%) 빠르게 내려친다
     // 준비는 준비 시간대로(자세표의 준비 구간을 그 시간에 맞춰 늘린다) · 휘두름은 짧고 빠르게 (sd초)
     const sd = fam === 'bow' ? 0.14 : fam === 'fist' ? 0.1 : 0.12; // 휘두름은 빠르게 (준비는 그대로)
     const it = ITEMS[e.held?.id], cf = A.kind !== 'shoot' && fam !== 'fist' && it ? comboFam({ weaponItem: it, weapon: it.weapon, wcat: it.cat }) : null; // 플레이어와 같은 무기 콤보
@@ -355,7 +368,7 @@ export const TeacherMethods = {
     if (this.blocked(x, y, 6)) { x = this.trial.cx; y = this.trial.cy; }
     this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: x, y2: y }); e.x = x; e.y = y;
   },
-  trialDmg(k) { const Tr = this.trial, cs = Tr.pCurse && Tr.pCurse.until > this.t ? Tr.pCurse.n : 0; return this.d.maxHp * k * (Tr.lichMul || 1) * (Tr.powT > 0 ? 1.3 : 1) * (1 + 0.02 * cs); }, // 내 최대 체력 비율 (리치가 일어난 뒤 2배)
+  trialDmg(k) { const Tr = this.trial, cs = Tr.pCurse && Tr.pCurse.until > this.t ? Tr.pCurse.n : 0, S = Tr.st || {}, crit = this.rng.chance((S.sen || 0) / 400); if (crit) this.emit({ t: 'text', x: this.player.x, y: this.player.y - 30, text: '치명타', color: '#ff7a5a' }); return this.d.maxHp * k * (1 + (Math.max(S.str || 50, S.mag || 50) - 60) / 250) * (crit ? 1.5 : 1) * (Tr.lichMul || 1) * (Tr.powT > 0 ? 1.3 : 1) * (1 + 0.02 * cs); }, // 내 최대 체력 비율 (리치가 일어난 뒤 2배)
   // 예고 원 뒤 한 대
   trialStrike(e, x, y, wind = 0.7, r = 34, k = TR.hit, fx = 'quake') {
     this.emit({ t: 'windup', id: e.id }); this.emit({ t: 'telegraphCircle', x, y, r, dur: wind });
@@ -451,7 +464,7 @@ export const TeacherMethods = {
     if (Tr.invulnT > 0) Tr.invulnT -= DT;
     if (Tr.rageT > 0) Tr.rageT -= DT;
     Tr.t -= DT; Tr.sigT -= DT;
-    const dist = Math.hypot(p.x - e.x, p.y - e.y), toward = () => this.stepToward(e, p.x, p.y, SPD[f] || 70);
+    const dist = Math.hypot(p.x - e.x, p.y - e.y), toward = () => this.stepToward(e, p.x, p.y, (SPD[f] || 70) * (1 + 0.3 * ((Tr.st?.agi || 0) - 50) / 100));
     { const vx = (p.x - (Tr.ppx ?? p.x)) / DT, vy = (p.y - (Tr.ppy ?? p.y)) / DT, pv = Tr.pv || { x: 0, y: 0 }; Tr.pv = { x: pv.x + (vx - pv.x) * 0.2, y: pv.y + (vy - pv.y) * 0.2 }; if (p.dashT > 0 || p.stealthT > 0 || Math.hypot(p.x - (Tr.ppx ?? p.x), p.y - (Tr.ppy ?? p.y)) > 12) Tr.pMobT = this.t; Tr.ppx = p.x; Tr.ppy = p.y; } // 내 움직임 (대시 · 돌진 · 순간이동 · 은신 = 얼굴 없는 자 판정) (예측 · 창 판정)
     for (const b of Tr.bodies) this.tickAtk(b);                  // 무기를 휘두르는 동작 (준비 → 휘두름)
     if (e.shadowSink) { this.tickShadowSink(e); return; }         // 얼굴 없는 자: 그림자로 가라앉았다 나온다
