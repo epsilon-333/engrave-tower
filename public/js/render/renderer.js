@@ -91,6 +91,7 @@ function bendDragon(src, tilt, R, key) {
 const greatSpinSpeed = (k) => (k < 0.3 ? 0 : k < 0.72 ? Math.pow((k - 0.3) / 0.42, 1.2) : Math.pow(1 - (k - 0.72) / 0.28, 3));
 // 무기를 쥔 손 색 (종족별)
 // 종족별 입 높이 (발 기준, 바람총을 대는 자리)
+const GUARD_Y = { wizard: -2, assassin: -3, orc: -2, dino: -3, undead: -3 }; // 복서 가드의 주먹 높이 (가슴 앞 · 키가 작은 종족은 낮게 — 얼굴을 가리지 않게)
 const MOUTH_Y = { assassin: -6, dragon: -9, knight: -10, wizard: -9, elf: -9, orc: -8, dino: -9, undead: -9, golem: -12 };
 const HAND_COLOR = { knight: '#c8d8e8', wizard: '#d8a878', elf: '#f0c8a0', orc: '#6a9a4a', dino: '#5aa84a', undead: '#b8b0c8', assassin: '#3a3040', golem: '#8a8478', dragon: '#e8b48a' };
 // 클래스별 마법 색 (속성이 없는 마법)
@@ -1063,7 +1064,7 @@ export class Renderer {
       const sil = sprite(name, e.tintX || '', e.outline, dir < 0), o = Math.max(1, Math.round(gs));
       if (sil) for (const [ox, oy] of [[-o, 0], [o, 0], [0, -o], [0, o]]) this.drawBody(sil, bx + ox, by + oy, gs, P, dir);
     }
-    if (P.kind === 'fist') { const back = P.punch > 0.05 && P.offhand; this.fistAt(fw, bx + dir * (back ? 3 : 1) * gs, by - (back ? 8 : 9) * gs, this.fistMetal(wart), dir); }
+    if (P.kind === 'fist') { const back = P.punch > 0.05 && P.offhand; this.fistAt(fw, bx + dir * (back ? 3 : 1) * gs, by + (GUARD_Y[fw.b.race] ?? -4) * gs, this.fistMetal(wart), dir); }
     if (P.behind) this.drawWeapon(fw, fp, P, bx, by, gs);
     this.drawBody(img, bx, by, gs, P, dir);
     if (!P.behind) this.drawWeapon(fw, fp, P, bx, by, gs);
@@ -1438,7 +1439,7 @@ export class Renderer {
     const wart = weaponArt(w.b.weaponId, ITEMS);
     if (wart.shield && !hideW) this.drawShield(w, p, pose, bx, by, gs);
     else if (w.b.offItem && !hideW) this.drawOffhand(w, p, pose, bx, by, gs); // 왼손 도구 (한손 무기일 때)
-    if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx + p.dir * (back ? 3 : 1) * gs, by - (back ? 8 : 9) * gs, this.fistMetal(wart), p.dir); }
+    if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx + p.dir * (back ? 3 : 1) * gs, by + (GUARD_Y[w.b.race] ?? -4) * gs, this.fistMetal(wart), p.dir); }
     if (pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
     let rideY = 0;
     if (p.riding) { // 탄 랩터: 달리면 달리기 동작, 서 있으면 숨쉬기 · 위로 들썩인다
@@ -1702,7 +1703,7 @@ export class Renderer {
     else if (kind === 'axe') { P.a = 0.9 + breathe; P.hx = 4; P.hy = -5; }
     else if (kind === 'bow') { P.a = 0.04 + breathe * 0.4; P.hx = 9; P.hy = -8; P.bowIdle = true; } // 활: 옆으로 쏠 때처럼 앞에 세워 든다 (시위는 당기지 않는다)
     else if (kind === 'crossbow') { P.a = 0.35 + breathe * 0.5; P.hx = 4; P.hy = -5; } // 석궁: 허리춤에 앞을 낮춰 든다
-    else if (kind === 'fist') { const bob = Math.sin(w.t * 7.5); P.a = -0.3; P.hx = 5; P.hy = -8 + bob * 0.6; P.oy = bob > 0.4 ? -1 : 0; P.lean = 0.8; } // 주먹: 복서의 가드 — 두 주먹을 턱 앞에 · 발끝으로 가볍게 들썩인다
+    else if (kind === 'fist') { const bob = Math.sin(w.t * 7.5); P.a = -0.3; P.hx = 5; P.hy = (GUARD_Y[w.b.race] ?? -4) + bob * 0.5; P.oy = bob > 0.4 ? -1 : 0; P.lean = 0.8; } // 주먹: 복서의 가드 — 두 주먹을 가슴 앞에 (머리를 가리지 않게) · 발끝으로 가볍게 들썩인다
     else if (kind === 'whip') { P.a = 1.25 + breathe; P.hx = 4; P.hy = -5; } // 채찍: 손잡이를 아래로 쥐고 줄은 감아 둔다
     else if (kind === 'orb') { P.a = -1.5; P.hx = 6; P.hy = -11 + Math.sin(w.t * 2.4) * 1.2; } // 구슬: 손 위에 떠 있다
     else if (kind === 'tome') { P.a = 0.15 + breathe; P.hx = 5; P.hy = -6; } // 마도서: 옆구리에 끼고 다닌다
@@ -1719,16 +1720,16 @@ export class Renderer {
         const n = p.boxN || 0, out = k < 0.3 ? easeOut(k / 0.3) : 1 - easeOut((k - 0.3) / 0.7);
         if (n === 3) { // 훅: 옆에서 둥글게 돌아 들어온다 · 어깨와 허리를 비튼다
           const q = Math.min(1, k / 0.35), ret = k > 0.35 ? (k - 0.35) / 0.65 : 0;
-          P.a = aimF - 1.4 + 1.6 * q; P.hx = 2 + 10 * Math.sin(q * Math.PI * 0.5) * (1 - ret); P.hy = -8 - 2 * Math.sin(q * Math.PI) * (1 - ret);
+          P.a = aimF - 1.4 + 1.6 * q; P.hx = 2 + 10 * Math.sin(q * Math.PI * 0.5) * (1 - ret); P.hy = (GUARD_Y[w.b.race] ?? -4) - 1 - 2 * Math.sin(q * Math.PI) * (1 - ret);
           P.lean = 3.2 * out; P.ox = Math.cos(p.swingAng) * 2.5 * out; P.sx = 1 + 0.06 * out; P.punch = out; P.offhand = false;
         } else if (n === 4) { // 어퍼컷: 무릎을 굽혀 가라앉았다가 아래에서 위로 솟구친다
           const dip = k < 0.22 ? k / 0.22 : Math.max(0, 1 - (k - 0.22) / 0.12), up = k < 0.22 ? 0 : easeOut(Math.min(1, (k - 0.22) / 0.26)), ret = k > 0.62 ? (k - 0.62) / 0.38 : 0;
-          P.a = aimF * 0.25 - 1.25; P.hx = 3 + 6 * up * (1 - ret); P.hy = -3 + 3 * dip - 12 * up * (1 - ret);
+          P.a = aimF * 0.25 - 1.25; P.hx = 3 + 6 * up * (1 - ret); P.hy = -2 + 2 * dip - 9 * up * (1 - ret);
           P.sy = 1 - 0.12 * dip + 0.06 * up * (1 - ret); P.sx = 1 + 0.08 * dip; P.oy = 2 * dip - 1.5 * up * (1 - ret); P.lean = -1.5 * dip + 2.5 * up * (1 - ret);
           P.punch = up * (1 - ret); P.offhand = true;
         } else { // 잽(앞손 · 짧고 빠르게) · 스트레이트(뒷손 · 멀리 · 몸을 실어)
           const cross = n === 2, reach = cross ? 13 : 9;
-          P.a = aimF; P.hx = 5 + reach * out; P.hy = -8 + Math.sin(aimF) * 3 * out; P.lean = (cross ? 3.6 : 1.6) * out; P.ox = Math.cos(p.swingAng) * (cross ? 3 : 1.2) * out; P.sx = 1 + (cross ? 0.05 : 0) * out;
+          P.a = aimF; P.hx = 5 + reach * out; P.hy = (GUARD_Y[w.b.race] ?? -4) - 1 + Math.sin(aimF) * 3 * out; P.lean = (cross ? 3.6 : 1.6) * out; P.ox = Math.cos(p.swingAng) * (cross ? 3 : 1.2) * out; P.sx = 1 + (cross ? 0.05 : 0) * out;
           P.punch = out; P.offhand = cross;
         }
       } else if (kind === 'whip') { // 채찍: 머리 위로 들었다가 앞으로 내리친다 (줄이 뒤따라 뻗는다)
