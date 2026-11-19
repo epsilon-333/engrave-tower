@@ -2569,7 +2569,6 @@ export class World {
       const vx = fx - p.x, vy = fy - p.y, l = Math.hypot(vx, vy) || 1;
       front = (vx * p.aimX + vy * p.aimY) / l > 0.25;
       if (front && p.buffs.ironWall && p.parryT <= 0) {
-        this.addRes(8);
         if (attacker && !attacker.dead) this.damageEnemy(attacker, amount * 0.8, 'phys', { src: 'reflect', color: '#a8c8ff' }); // 철벽: 막은 피해를 되돌린다
         this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8 });
         p.invuln = 0.2;
@@ -2583,7 +2582,7 @@ export class World {
       this.emit({ t: 'parry', x: p.x, y: p.y });
       this.emit({ t: 'hitstop', v: 0.12 });
       this.knack('block');
-      this.addRes(pr.gain);
+      if (pr.gain) this.addRes(pr.gain);
       for (const e of this.enemiesNear(p.x, p.y, pr.r)) { this.hitEnemy(e, this.skillAtk('phys') * pr.mul, 'phys', true); if (pr.stun && !e.dead) this.stunE(e, e.def.elite ? pr.stun * 0.35 : pr.stun); }
       this.motion('bash', 0.35);
       p.invuln = 0.4;
@@ -2609,7 +2608,7 @@ export class World {
     if (this.b.race === 'knight' && type === 'phys') dmg *= RACE_FX.knightPhys;
     if (p.stillT >= 1 && this.f.has('stillGuard')) dmg *= 0.5; // 각인 「바위의 인내」: 1초 동안 가만히 있으면 다시 움직일 때까지 받는 피해 -50%
     if (this.f.has('resGuard') && p.res >= 50) dmg *= 0.9;
-    if (front) { dmg *= 0.75; this.addRes(4); this.knack('block'); if (attacker && !attacker.dead) this.damageEnemy(attacker, raw * 0.25, 'phys', { src: 'reflect', color: '#a8c8ff' }); /* 수호기사: 정면으로 막으면 25%를 되갚는다 */ this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
+    if (front) { dmg *= 0.75; this.knack('block'); if (attacker && !attacker.dead) this.damageEnemy(attacker, raw * 0.25, 'phys', { src: 'reflect', color: '#a8c8ff' }); /* 수호기사: 정면으로 막으면 25%를 되갚는다 */ this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
     else if ((this.b.weapon.guard || this.b.offItem?.guard) && fx != null && !opt.direct) { // 방패(무기 · 왼손): 앞에서 오는 피해를 줄인다
       const vx = fx - p.x, vy = fy - p.y, l = Math.hypot(vx, vy) || 1;
       if ((vx * p.aimX + vy * p.aimY) / l > 0.25) { dmg *= 1 - Math.min(0.9, Math.max(this.b.weapon.guard || 0, this.b.offItem?.guard || 0) * (f.has('shieldX2') ? 2 : 1)); shieldBlock = true; this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); } // 철벽(숨은 각인): 방패가 줄이는 피해 2배

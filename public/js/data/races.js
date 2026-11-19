@@ -1,5 +1,6 @@
 // 종족: 기본 스탯, 레벨당 자동 성장, 종족 자원(스킬 콤보의 연료), 고유 특성
-// res: 자원 규칙 (max 100) — regen 초당, hit 적중당, kill 처치당, hurt 피격 시 (받은 피해/최대 HP)×값, dodge 회피당, decay 전투 밖 초당 감소
+// res: 자원 규칙 (max 100) — 2026-11-19 통일: 모든 종족 적중 +3 · 처치 +5 · 저절로 줄지 않는다(decay 없음). 마법사만 적중 없이 초당 3(regen). 그 밖의 획득은 각인 효과로
+//   (코드는 hurt 피격 · dodge 회피 · crit · dash 도 읽지만 지금은 쓰지 않는다)
 export const RACES = {
   dino: {
     name: '공룡 수인', origin: '원시림',
@@ -9,7 +10,7 @@ export const RACES = {
     growth: { str: 1 },
     mult: { str: 1.1, agi: 1.1, mag: 0.7, spi: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '사냥의 피',
-    res: { key: 'instinct', name: '본능', color: '#ff9a3a', hit: 3, kill: 6, decay: 4 },
+    res: { key: 'instinct', name: '본능', color: '#ff9a3a', hit: 3, kill: 5 },
   },
   wizard: {
     name: '마법사', origin: '인간',
@@ -19,17 +20,17 @@ export const RACES = {
     growth: { mag: 1 },
     mult: { mag: 1.2, spi: 1.1, str: 0.7, vit: 0.85, pres: 0.8 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '주문 증폭',
-    res: { key: 'mana', name: '마력', color: '#4a8aff', regen: 3, kill: 4, start: 100 },
+    res: { key: 'mana', name: '마력', color: '#4a8aff', regen: 3, kill: 5, start: 100 },
   },
   knight: {
     name: '기사', origin: '인간',
-    desc: '맞을수록 오러가 쌓이고, 오러를 실어 강타한다. 최대 체력 +50%, 받는 물리 피해 -20%.',
+    desc: '때리고 쓰러뜨릴수록 오러가 쌓이고, 오러를 실어 강타한다. 최대 체력 +50%, 받는 물리 피해 -20%.',
     strong: '최대 체력 +50% · 물리 피해 -20%', weak: '마력 낮음 · 마법 저항 낮음',
     base: { str: 13, mag: 3, agi: 6, vit: 16, sen: 6, spi: 7, pres: 15, mres: 7 },
     growth: { str: 1 },
     mult: { pres: 1.15, vit: 1.1, agi: 0.85, mag: 0.75 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '수호의 맹세',
-    res: { key: 'grit', name: '오러', color: '#ffd84a', hit: 3, kill: 5, decay: 1 },
+    res: { key: 'grit', name: '오러', color: '#ffd84a', hit: 3, kill: 5 },
   },
   orc: {
     name: '오크', origin: '황야',
@@ -39,7 +40,7 @@ export const RACES = {
     growth: { vit: 1 },
     mult: { str: 1.2, vit: 1.1, mag: 0.6, mres: 0.8 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '피의 분노',
-    res: { key: 'rage', name: '분노', color: '#ff4a3a', hit: 4, kill: 6, hurt: 160, decay: 6 },
+    res: { key: 'rage', name: '분노', color: '#ff4a3a', hit: 3, kill: 5 },
   },
   undead: {
     name: '언데드', origin: '묘지',
@@ -49,7 +50,7 @@ export const RACES = {
     growth: { pres: 1 },
     mult: { pres: 1.15, mag: 1.1, agi: 0.85, vit: 0.9 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '썩은 몸',
-    res: { key: 'soul', name: '영혼', color: '#c45cff', hit: 5, kill: 25 }, // 맞힐 때마다 · 쓰러뜨리면 많이 오르고, 저절로 줄지 않는다
+    res: { key: 'soul', name: '영혼', color: '#c45cff', hit: 3, kill: 5 }, // 맞힐 때마다 · 쓰러뜨리면 많이 오르고, 저절로 줄지 않는다
   },
   assassin: {
     name: '암살자', origin: '뒷골목',
@@ -59,7 +60,7 @@ export const RACES = {
     growth: { sen: 1 },
     mult: { agi: 1.15, sen: 1.2, vit: 0.85, pres: 0.8 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '그림자 사냥꾼',
-    res: { key: 'shadow', name: '그림자', color: '#8a6aff', hit: 3, kill: 8, dodge: 15, crit: 5, dash: 8, decay: 1 },
+    res: { key: 'shadow', name: '그림자', color: '#8a6aff', hit: 3, kill: 5 },
   },
   elf: {
     name: '엘프', origin: '숲',
@@ -69,7 +70,7 @@ export const RACES = {
     growth: { agi: 1 },
     mult: { agi: 1.1, sen: 1.1, mag: 1.05, str: 0.75, vit: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '먼 사격',
-    res: { key: 'spirit', name: '정령력', color: '#7be38a', regen: 5, hit: 3, kill: 5 },
+    res: { key: 'spirit', name: '정령력', color: '#7be38a', hit: 3, kill: 5 },
   },
   dragon: {
     name: '용족', origin: '화산',
@@ -79,7 +80,7 @@ export const RACES = {
     growth: { mres: 1 },
     mult: { str: 1.05, mag: 1.05, mres: 1.1, agi: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '용의 피',
-    res: { key: 'dragon', name: '용기', color: '#ff6a2a', hit: 3, kill: 6, burnTick: 1, decay: 1 },
+    res: { key: 'dragon', name: '용기', color: '#ff6a2a', hit: 3, kill: 5 },
   },
 };
 
