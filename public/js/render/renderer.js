@@ -197,7 +197,7 @@ export class Renderer {
   }
 
   resize(cssW, cssH, dpr) {
-    const k = Math.min(dpr, Math.sqrt((1920 * 1080) / Math.max(1, cssW * cssH))); // 화면 그림은 1920×1080칸까지 (고해상도 · 전체 화면에서 큰 판을 매 프레임 칠하느라 느렸다 · 브라우저가 늘려 보여 준다)
+    const cap = (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 1100 * 620 : 1920 * 1080, k = Math.min(dpr, Math.sqrt(cap / Math.max(1, cssW * cssH))); // 휴대폰은 화면 그림을 더 작게 (도트라 흐려지지 않는다 · 렉) // 화면 그림은 1920×1080칸까지 (고해상도 · 전체 화면에서 큰 판을 매 프레임 칠하느라 느렸다 · 브라우저가 늘려 보여 준다)
     const W = Math.round(cssW * k), H = Math.round(cssH * k);
     this.c.width = W; this.c.height = H;
     this.baseS = Math.max(2, Math.round(Math.min(W, H) / 270)); // 짧은 변 기준: 어느 화면비든 짧은 쪽으로 약 270칸이 보인다 (긴 변 기준이면 휴대폰 세로 · 21:9에서 시야가 좁아졌다)
