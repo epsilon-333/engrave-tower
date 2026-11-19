@@ -1468,7 +1468,7 @@ export class Renderer {
     if (w.map.underwater && dt > 0 && Math.random() < dt * 1.6) this.parts.push({ x: bx + p.dir * 3, y: by - 14, vx: (Math.random() - 0.5) * 6, vy: -26 - Math.random() * 14, t: 1.4, max: 1.4, color: '#e0f6ff', g: -6, bubble: true });
     const wart = weaponArt(w.b.weaponId, ITEMS);
     if (wart.shield && !hideW) this.drawShield(w, p, pose, bx, by, gs);
-    else if (w.b.offItem && !hideW) this.drawOffhand(w, p, pose, bx, by, gs); // 왼손 도구 (한손 무기일 때)
+    else if (w.b.offItem && !hideW && (p.offShowT || 0) > w.t) this.drawOffhand(w, p, pose, bx, by, gs); // 왼손 도구: 평소엔 숨기고 쓸 때만 보인다 (p.offShowT)
     if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx + p.dir * (back ? 3 : 1) * gs, by + (GUARD_Y[w.b.race] ?? -4) * gs, this.fistMetal(wart), p.dir); }
     if (pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
     let rideY = 0;
@@ -1491,7 +1491,7 @@ export class Renderer {
     }
     if (!blink && admin) this.drawAdminFigure(bx, by + 2, p.dir, moving, p.walkT || w.t, p.swingT > 0, gs);
     else if (!blink && img) this.drawBody(img, bx, by, gs, pose, p.dir);
-    if (!blink && w.b.offItem && !hideW && OFF_LOOK[String(w.b.offId).split('#')[0]] === 'xbow') this.drawOffhand(w, p, pose, bx, by, gs, 'front'); // 손쇠뇌는 몸 앞에
+    if (!blink && w.b.offItem && !hideW && (p.offShowT || 0) > w.t && OFF_LOOK[String(w.b.offId).split('#')[0]] === 'xbow') this.drawOffhand(w, p, pose, bx, by, gs, 'front'); // 손쇠뇌는 몸 앞에
     if (sink != null) g.restore();
     if (p.swim) this.drawSwimLine(w, p, bx, by, dt);
     if (p.boat) this.drawBoat(w, p.x, p.y, p.dir, p.moving, 'front');

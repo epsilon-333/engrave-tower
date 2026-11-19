@@ -1504,6 +1504,7 @@ export class World {
     this.breakStealth();
     mul *= this.hidBasicMul(); this.hidAttack(); // 숨은 각인: 무영 · 공허의 그릇 · 멈추지 않는 팔
     const base = atk * mul;
+    if (this.b.offItem?.slot === 'weapon') p.offShowT = this.t + 0.6; // 왼손에 든 무기는 칠 때 보인다
     if (w.kind === 'melee') {
       p.swingDir = p.atkCount % 2 ? 1 : -1;
       const great = !!w.great, thrust = w.shape === 'thrust';
@@ -2406,7 +2407,7 @@ export class World {
       this.emit({ t: 'dmg', x: e.x, y: e.y - e.r - 10, v: dmg, crit: opt.crit, heavy: opt.heavy, src: opt.src, armored: (type === 'phys' ? e.pres : e.mres) >= 60, id: e.id, color: opt.color || (type === 'mag' ? '#c9a8ff' : '#ffffff') });
     }
     }
-    if ((opt.src === 'attack' || opt.skill) && this.b.offItem?.offCurse && !e.dead && this.rng.chance(this.b.offItem.offCurse.chance)) this.applyStatus(e, 'curse', this.b.offItem.offCurse.stacks);
+    if ((opt.src === 'attack' || opt.skill) && this.b.offItem?.offCurse && !e.dead && this.rng.chance(this.b.offItem.offCurse.chance)) { this.player.offShowT = this.t + 0.6; this.applyStatus(e, 'curse', this.b.offItem.offCurse.stacks); }
     if (opt.src === 'attack' || opt.src === 'aoe') {
       let ls = (this.s.lifesteal || 0) + this.modAdd('lifesteal');
       if (this.f.has('lowHpDrain') && p.hp < d.maxHp / 2) ls *= 2;
@@ -2643,7 +2644,7 @@ export class World {
     if (front) { dmg *= 0.75; this.knack('block'); if (attacker && !attacker.dead) this.damageEnemy(attacker, raw * 0.25, 'phys', { src: 'reflect', color: '#a8c8ff' }); /* 수호기사: 정면으로 막으면 25%를 되갚는다 */ this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
     else if ((this.b.weapon.guard || this.b.offItem?.guard) && fx != null && !opt.direct) { // 방패(무기 · 왼손): 앞에서 오는 피해를 줄인다
       const vx = fx - p.x, vy = fy - p.y, l = Math.hypot(vx, vy) || 1;
-      if ((vx * p.aimX + vy * p.aimY) / l > 0.25) { dmg *= 1 - Math.min(0.9, Math.max(this.b.weapon.guard || 0, this.b.offItem?.guard || 0) * (f.has('shieldX2') ? 2 : 1)); shieldBlock = true; this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); } // 철벽(숨은 각인): 방패가 줄이는 피해 2배
+      if ((vx * p.aimX + vy * p.aimY) / l > 0.25) { if (this.b.offItem?.guard) p.offShowT = this.t + 0.6; dmg *= 1 - Math.min(0.9, Math.max(this.b.weapon.guard || 0, this.b.offItem?.guard || 0) * (f.has('shieldX2') ? 2 : 1)); shieldBlock = true; this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); } // 철벽(숨은 각인): 방패가 줄이는 피해 2배
     }
     if (p.charging) dmg *= 0.75;
     if (p.buffs.stoneSkin && type === 'phys') dmg *= 1 - 60 / (60 + 100 + Math.max(0, this.s.pres));
