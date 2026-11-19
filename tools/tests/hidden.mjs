@@ -261,5 +261,46 @@ for (const [fam, weapon] of Object.entries(WEAPON)) {
   }
 }
 
+// 10) 스승은 무기를 들고 싸운다 · 대시 · 회복 (2026-11-19)
+{
+  const { teacherWeaponId } = await import(root + '/sim/teacher.js');
+  const { ITEMS } = await import(root + '/data/items.js');
+  const stepN = (w, n, each) => { for (let i = 0; i < n; i++) { w.player.hp = w.d.maxHp; w.player.invuln = 0.5; each?.(i); w.step(idle); } };
+  for (const fam of Object.keys(WEAPON)) {
+    const w = trialWorld(fam, { weapon: WEAPON[fam] }), Tr = w.trial;
+    ok(!!ITEMS[Tr.wid]?.weapon && Tr.bodies.every((b) => b.held?.id === Tr.wid), `${fam}: 스승이 무기를 든다 (${Tr.wid})`);
+    // 회복: 체력이 줄면 자세를 잡고 6%를 되찾는다 (최대 3번)
+    Tr.s = 'move'; Tr.t = 0.5; Tr.hp = Tr.maxHp * 0.7; const h0 = Tr.hp;
+    stepN(w, 60 * 3);
+    ok(Tr.heals >= 1 && Tr.hp > h0, `${fam}: 체력이 줄면 회복한다 (${Math.round((h0 / Tr.maxHp) * 100)}% → ${Math.round((Tr.hp / Tr.maxHp) * 100)}%, ${Tr.heals}번)`);
+    Tr.hp = Tr.maxHp * 0.01; stepN(w, 60 * 14);
+    ok(Tr.heals <= 3, `${fam}: 회복은 세 번까지 (${Tr.heals}번)`);
+  }
+  // 회복은 제대로 든 공격이 들어오면 끊긴다 (검: 자세를 잡는 동안은 틈)
+  {
+    const w = trialWorld('sword', { weapon: WEAPON.sword }), Tr = w.trial;
+    Tr.s = 'move'; Tr.t = 0.5; Tr.hp = Tr.maxHp * 0.7; const h0 = Tr.hp;
+    let k = 0; while (Tr.s !== 'heal' && k++ < 200) { w.player.hp = w.d.maxHp; w.player.invuln = 0.5; w.step(idle); }
+    ok(Tr.s === 'heal', '검: 회복 자세에 들어간다');
+    w.damageEnemy(Tr.main, 1e6, 'phys', {}); const h1 = Tr.hp; stepN(w, 60 * 3);
+    ok(Tr.s !== 'heal' && Tr.hp <= h1 + 1 && h1 < h0, `검: 회복 중에 제대로 치면 끊긴다 (${Math.round((h0 / Tr.maxHp) * 100)}% → ${Math.round((Tr.hp / Tr.maxHp) * 100)}%)`);
+  }
+  // 대시: 멀면 붙는다
+  for (const fam of ['sword', 'heavy', 'fist']) {
+    const w = trialWorld(fam, { weapon: WEAPON[fam] }), Tr = w.trial; Tr.dashCd = 0; Tr.s = 'move'; Tr.t = 1;
+    const p = w.player, e = Tr.main; p.x = e.x + 150; p.y = e.y; if (w.blocked(p.x, p.y, 6)) { p.x = e.x - 150; }
+    const d0 = Math.hypot(p.x - e.x, p.y - e.y); let dashed = false;
+    for (let i = 0; i < 40; i++) { w.player.hp = w.d.maxHp; w.player.invuln = 0.5; w.step(idle); if (Tr.dash) dashed = true; }
+    ok(dashed && Math.hypot(p.x - e.x, p.y - e.y) < d0 - 50, `${fam}: 멀면 대시로 붙는다 (${Math.round(d0)} → ${Math.round(Math.hypot(p.x - e.x, p.y - e.y))})`);
+  }
+  // 근접 평타는 무기 동작(휘두름 사건)이고 예고 원이 아니다
+  {
+    const w = trialWorld('sword', { weapon: WEAPON.sword }), Tr = w.trial; let swings = 0, circles = 0; Tr.sigT = 999; // 각인 스킬은 따로 (예고 선 · 원을 쓴다)
+    const p = w.player, e = Tr.main; p.x = e.x + 30; p.y = e.y;
+    for (let i = 0; i < 60 * 4; i++) { w.player.hp = w.d.maxHp; w.player.invuln = 0.5; w.step(idle); for (const ev of w.events) { if (ev.t === 'swing') swings++; if (ev.t === 'telegraphCircle') circles++; } w.events.length = 0; }
+    ok(swings >= 2 && circles === 0, `검: 평타는 휘두름 ${swings}번 · 예고 원 ${circles}`);
+  }
+}
+
 console.log(bad ? `${bad} FAIL` : 'ALL OK');
 process.exit(bad ? 1 : 0);

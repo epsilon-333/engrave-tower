@@ -1049,6 +1049,23 @@ export class Renderer {
     }
     return null;
   }
+  // 숨은 스승이 든 무기: 손 자리에서 스승이 정한 각도(H.ang)로. 활은 시위를 당긴다 · 창은 찌를 때 앞으로 나간다(H.off)
+  drawHeld(w, e, dy, h0) {
+    const g = this.g, H = e.held, wa = weaponArt(H.id, ITEMS), img = wa && sprite(wa.s, wa.tint || ''); if (!img) return;
+    const dir = e.dir || 1, hx = e.x + dir * 5, hy = dy + h0 * 0.62, ang = H.ang, off = H.off || 0;
+    const fist = (x, y) => { g.fillStyle = '#16121c'; g.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4); g.fillStyle = '#e8b48a'; g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2); };
+    g.save(); g.translate(Math.round(hx + Math.cos(ang) * off), Math.round(hy + Math.sin(ang) * off));
+    if (wa.bow) {
+      g.rotate(ang); g.drawImage(img, -Math.round(img.width * 0.86), -Math.round(img.height / 2));
+      if (H.pull > 0) { g.strokeStyle = '#e8e2cf'; g.lineWidth = 1; const bh = img.height / 2, sx = -H.pull * 7; g.beginPath(); g.moveTo(1, -bh + 1); g.lineTo(sx, 0); g.lineTo(1, bh - 1); g.stroke(); const ar = sprite('weapon_arrow'); if (ar) { g.save(); g.translate(sx, 0); g.rotate(Math.PI / 2); g.drawImage(ar, -Math.round(ar.width / 2), -ar.height + 3); g.restore(); } }
+    } else {
+      const { sc, grip } = this.bladeGeom(wa, { kind: H.kind === 'spear' ? 'spear' : H.kind === 'magic' ? 'staff' : '' }, img, 1);
+      g.rotate(ang + Math.PI / 2);
+      g.drawImage(img, Math.round(-img.width * sc / 2), Math.round(-img.height * sc + grip * sc), Math.round(img.width * sc), Math.round(img.height * sc));
+    }
+    g.restore();
+    fist(hx + Math.cos(ang) * off, hy + Math.sin(ang) * off);
+  }
   drawEnemy(w, e, dt) {
     const g = this.g, def = e.def;
     if (e.npcRef) { e._top = null; return; } // 화난 NPC는 NPC 그림으로 그린다
@@ -1177,6 +1194,7 @@ export class Renderer {
     }
     if (ip?.sink > 0) g.restore();
     g.globalAlpha = 1;
+    if (e.held && !e.dead) this.drawHeld(w, e, dy, h0); // 숨은 스승: 든 무기 (sim/teacher.js 가 각도를 정한다)
     if (e.trait === 'shield' && e.shieldHp > 0 && !(e.feignT > 0)) { // 방패병: 바라보는 쪽에 큰 방패 (방패 체력이 줄면 금이 간다)
       const fx = e.x + Math.cos(e.face) * (e.r + 2), fy = e.y - 8 + Math.sin(e.face) * (e.r * 0.5), k2 = e.shieldHp / (e.maxHp * 2);
       g.fillStyle = '#16121c'; g.fillRect(Math.round(fx - 4), Math.round(fy - 7), 8, 13);
