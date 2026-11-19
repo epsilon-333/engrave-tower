@@ -766,3 +766,7 @@ for (const [cls, list] of Object.entries(MORE_SKILLS)) {
 // 대지 거수: 초반에 때리는 스킬이 모자라 10층에서 막혔다 → 바위 던지기를 6레벨로 당기고 지축 울림 10 · 껍질 굳히기 15로 미룬다
 Object.assign(SKILLS.boulderToss, { unlock: 6 }); Object.assign(SKILLS.tremor, { unlock: 10 }); Object.assign(SKILLS.hardenShell, { unlock: 15 });
 
+
+// 임시(2026-11-19): 모든 스킬의 쿨타임을 같은 값으로. 되돌리려면 null — 원래 값은 cd0에 남는다
+export const FLAT_CD = 3;
+if (FLAT_CD) for (const s of Object.values(SKILLS)) { s.cd0 = s.cd; s.cd = FLAT_CD; }
