@@ -168,8 +168,8 @@ ok(feats(50, 'lord', {}, {}, { oath: maxOath }).includes('rebel') && !feats(50, 
   // 그림자 왕: 나보다 체력이 낮은 적은 쓰러진다
   const wk = mk(3, { engravings: { head: hiddenEngId('shadowKing') } }); wk.enemies.forEach((o) => (o.dead = true));
   const lo2 = wk.makeEnemy('slime', wk.player.x + 80, wk.player.y); lo2.hp = 10; const hi2 = wk.makeEnemy('slime', wk.player.x + 120, wk.player.y); hi2.hp = hi2.maxHp = 1e6; wk.enemies.push(lo2, hi2);
-  wk.castSkillId('hShadowHands', 0); for (let i = 0; i < 45; i++) wk.step(idle); // 삼켜지고(0.35초) → 내 앞 장막에서 솟아난다(0.25초)
-  ok(lo2.dead && !hi2.dead && Math.hypot(hi2.x - wk.player.x, hi2.y - wk.player.y) < 50 && (hi2.st?.stun || hi2.stunT || 0) > 1, '그림자 손: 약한 적은 쓰러지고 센 적은 장막에서 나와 경직');
+  wk.castSkillId('hShadowHands', 0); for (let i = 0; i < 45; i++) wk.step(idle); // 끌려와 피해 · 살아남으면 경직
+  ok(lo2.dead && !hi2.dead && Math.hypot(hi2.x - wk.player.x, hi2.y - wk.player.y) < 50 && (hi2.st?.stun || hi2.stunT || 0) > 0.5, '그림자 손: 약한 적은 쓰러지고 센 적은 끌려와 경직');
   // 천궁: 평타 화살이 튕긴다
   const wr = mk(3, { race: 'elf', engravings: { head: hiddenEngId('skyBow') }, gear: { weapon: 'huntBow' } }); wr.enemies.forEach((o) => (o.dead = true));
   const t1 = wr.makeEnemy('slime', wr.player.x + 50, wr.player.y), t2 = wr.makeEnemy('slime', wr.player.x + 100, wr.player.y); t1.hp = t1.maxHp = t2.hp = t2.maxHp = 1e6; wr.enemies.push(t1, t2);
