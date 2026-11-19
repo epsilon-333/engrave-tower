@@ -1505,7 +1505,14 @@ export class World {
     if (w.kind === 'melee') {
       p.swingDir = p.atkCount % 2 ? 1 : -1;
       const great = !!w.great, thrust = w.shape === 'thrust';
+      // 주먹 (맨손 · 너클): 복싱 콤보 — 잽 · 잽 · 스트레이트 · 훅 · 어퍼컷. 0.7초 넘게 쉬면 잽부터. 뒤로 갈수록 세고 · 스트레이트와 어퍼컷은 한 걸음 파고든다
+      const box = this.b.wcat === 'fist' ? (p.boxN = this.t - (p.boxLast ?? -9) > 0.7 ? 0 : ((p.boxN ?? -1) + 1) % 5) : -1;
+      if (box >= 0) { p.boxLast = this.t; if (box === 4) heavy = true; }
       p.swingMax = great ? Math.max(0.85, 1.15 / (d.atkSpeed * this.mod('atkSpeed'))) /* 대검: 무겁게 (예전 0.7초) */ : thrust ? Math.max(0.3, Math.min(0.36, 0.9 / (w.speed * d.atkSpeed))) /* 창: 당겼다가 찌른다 */ : Math.min(0.2, 0.6 / (w.speed * d.atkSpeed)); p.swingT = p.swingMax; p.swingAng = ang;
+      if (box >= 0) {
+        p.swingMax = p.swingT = [0.13, 0.13, 0.15, 0.17, 0.21][box] / Math.min(1.6, Math.max(1, d.atkSpeed));
+        if (box === 2 || box === 4) { p.dashT = 0.06; p.dvx = Math.cos(ang) * 85; p.dvy = Math.sin(ang) * 85; } // 체중을 실어 한 걸음
+      }
       const hits = w.hits || 1;
       const strike = (slam = false, mulK = 1) => {
       { // 탄 쳐내기: 휘두른 범위 안의 적 탄은 사라진다 (근접이 원거리 몬스터에게 일방적으로 맞지 않게)
@@ -1517,7 +1524,7 @@ export class World {
           if (great || Math.abs(da) <= Math.max(thrust ? 0.5 : w.arc, 1.2) / 2 + 0.3 || dd < 14) { pr.life = 0; this.emit({ t: 'spark', x: pr.x, y: pr.y, color: pr.color || '#ffe8a0' }); this.emit({ t: 'deflect', x: pr.x, y: pr.y }); }
         }
       }
-      this.emit({ t: 'swing', x: p.x, y: p.y, ang, range: w.range, arc: thrust ? 0.3 : w.arc, heavy: heavy || great, type, dir: great ? (slam ? -1 : 1) : p.swingDir, dur: great ? 0.28 : p.swingMax, thrust, aura: p.auraT > 0, whip: w.shape === 'whip', fist: w.cat === 'fist', enchant: p.buffs.enchant?.elem });
+      this.emit({ t: 'swing', x: p.x, y: p.y, ang, range: w.range, arc: thrust ? 0.3 : w.arc, heavy: heavy || great, type, dir: great ? (slam ? -1 : 1) : p.swingDir, dur: great ? 0.28 : p.swingMax, thrust, aura: p.auraT > 0, whip: w.shape === 'whip', fist: this.b.wcat === 'fist', box, enchant: p.buffs.enchant?.elem });
       for (const e of this.enemies) {
         if (e.dead || e.hidden) continue;
         const dx = e.x - p.x, dy = e.y - p.y, dist = Math.hypot(dx, dy);
@@ -1547,6 +1554,7 @@ export class World {
         this.delayed.push({ t: p.swingMax * 0.5, run: () => { p.dashT = 0.16; p.dvx = Math.cos(ang) * 70; p.dvy = Math.sin(ang) * 70; } }); // 던지는 힘에 몸이 끌려 나간다
         this.delayed.push({ t: p.swingMax * 0.68, run: () => { strike(true, 1.6); /* 대검: 느린 만큼 한 방이 크다 (예전 1.3) */ this.emit({ t: 'hitstop', v: 0.07 }); this.emit({ t: 'shake', v: 5 }); } });
       } else if (thrust) this.delayed.push({ t: p.swingMax * 0.38, run: () => { if (!p.dead) strike(); } }); // 창: 뒤로 당긴 뒤 내지르는 순간에 맞는다
+      else if (box >= 0) { strike(false, [0.8, 0.8, 1.05, 1.15, 1.6][box]); if (box === 4) { this.emit({ t: 'hitstop', v: 0.05 }); this.emit({ t: 'shake', v: 2 }); } }
       else strike();
       // 도끼 군단: 휘두를 때마다 돌아오는 도끼 3자루를 함께 던진다
       if (p.buffs.axeLegion) for (let i = -1; i <= 1; i++) {

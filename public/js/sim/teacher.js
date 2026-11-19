@@ -16,8 +16,8 @@ export function weaponFam(b) {
   if (it.weapon?.dmg === 'mag' || ['staff', 'tome'].includes(c)) return 'magic';
   if (c === 'blade') return it.weapon?.scale === 'agi' ? 'dagger' : 'sword';
   if (c === 'great' || c === 'shield') return 'sword';
-  if (c === 'axe' || c === 'blunt') return 'heavy';
-  if (c === 'scythe' || c === 'whip') return 'scythe';
+  if (c === 'axe' || c === 'blunt' || c === 'whip') return 'heavy'; // 채찍 → 피 묻은 사슬의 챔피언 (2026-11-19)
+  if (c === 'scythe') return 'scythe';
   if (c === 'throw') return 'dagger';
   if (c === 'bow' || c === 'tube') return 'bow';
   if (c === 'fist') return 'fist';
@@ -63,7 +63,7 @@ const FAM_WEAPON = {};
 export function teacherWeaponId(b, fam) {
   if (b?.weaponId && weaponFam(b) === fam && b.weaponId !== 'bareHands') return b.weaponId;
   if (FAM_WEAPON[fam]) return FAM_WEAPON[fam];
-  const pref = fam === 'scythe' ? 'scythe' : null; // 낫의 스승은 낫을 든다 (채찍도 같은 갈래)
+  const pref = fam === 'scythe' ? 'scythe' : null; // 낫의 스승은 낫을 든다
   const all = Object.entries(ITEMS).filter(([, it]) => it.slot === 'weapon' && it.weapon).sort((x, y) => (x[1].cat === pref ? 0 : 1) - (y[1].cat === pref ? 0 : 1) || (x[1].towerWeapon ? 1 : 0) - (y[1].towerWeapon ? 1 : 0) || (x[1].price || 0) - (y[1].price || 0)); // 일반 무기 먼저 (낫 · 채찍은 탑 무기뿐)
   for (const [id, it] of all) if (weaponFam({ weaponItem: it, wcat: it.cat }) === fam) return (FAM_WEAPON[fam] = id);
   return (FAM_WEAPON[fam] = 'rustySword');

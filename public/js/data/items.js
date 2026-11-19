@@ -27,7 +27,7 @@ const ITEM_DEFS = {
   knightSword: { name: '기사의 검', slot: 'weapon', price: 0, starter: true, weapon: { kind: 'melee', dmg: 'phys', mul: 1.0, speed: 1.5, range: 30, arc: 1.9, skill: 'spin' }, stats: { pres: 3 }, tags: [] },
   rustySword: { name: '녹슨 검', slot: 'weapon', price: 0, weapon: { kind: 'melee', dmg: 'phys', mul: 0.9, speed: 1.6, range: 30, arc: 1.9, skill: 'spin' }, stats: {}, tags: [] },
   ironLongsword: { name: '강철 장검', slot: 'weapon', price: 170, hands: 2, desc: '두 손으로 쥐는 긴 칼. 한손검보다 멀리 · 세게, 대검보다 빠르게 벤다.', weapon: { kind: 'melee', dmg: 'phys', mul: 1.25, speed: 1.15, range: 36, arc: 2.1, skill: 'spin' }, stats: { str: 3, sen: 2 }, tags: [] },
-  bareHands: { name: '맨손', slot: 'weapon', price: 0, desc: '아무것도 쥐지 않은 두 주먹. 누구나 늘 가지고 있다.', weapon: { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.5, hits: 2, speed: 2.6, range: 22, arc: 1.6, skill: 'flurry' }, stats: {}, tags: [] }, // 숨은 각인 「맨몸의 전설」
+  bareHands: { name: '맨손', slot: 'weapon', price: 0, desc: '아무것도 쥐지 않은 두 주먹. 누구나 늘 가지고 있다.', weapon: { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.5, speed: 4.2, range: 24, arc: 1.6, skill: 'flurry' }, stats: {}, tags: [] }, // 숨은 각인 「맨몸의 전설」
   dagger: { name: '단검', slot: 'weapon', price: 0, starter: true, weapon: { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.7, speed: 3.0, range: 24, arc: 1.5, skill: 'dashStab' }, stats: { agi: 3 }, tags: [] },
   heavySword: { name: '무거운 검', slot: 'weapon', price: 0, starter: true, weapon: { kind: 'melee', dmg: 'phys', mul: 1.3, speed: 0.95, range: 36, arc: 2.2, skill: 'slam' }, stats: { vit: 3 }, tags: [] },
   handAxe: { name: '손도끼', slot: 'weapon', price: 0, starter: true, weapon: { kind: 'melee', dmg: 'phys', mul: 1.15, speed: 1.3, range: 30, arc: 2.0, skill: 'spin' }, stats: { str: 2 }, tags: [] },
@@ -155,8 +155,8 @@ Object.assign(ITEMS, {
 // ── 클래스 전용 무기: [시작 무기, 상위 무기]. 상위 무기의 boost는 자기 클래스일 때만 스킬 피해를 올린다 ──
 const W = (cls, name, weapon, stats, extra = {}) => ({ name, slot: 'weapon', cls, price: extra.price ?? 0, starter: !extra.price, weapon, stats, tags: extra.tags || [], boost: extra.boost, bdesc: extra.bdesc });
 Object.assign(ITEMS, {
-  boneKnuckle: W('predator', '뼈 송곳니 너클', { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.72, speed: 2.6, range: 24, arc: 1.5, onHit: { status: 'bleed', stacks: 1, chance: 0.3 }, skill: 'dashStab' }, { agi: 3 }),
-  predatorFang: W('predator', '포식왕의 이빨', { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.9, speed: 2.8, range: 26, arc: 1.6, onHit: { status: 'bleed', stacks: 1, chance: 0.45 }, skill: 'dashStab' }, { agi: 6, str: 3 }, { price: 280, tags: ['bleed'], boost: { devour: 0.4, pounce: 0.4 }, bdesc: '「포식」·「덮치기」 피해 +40%' }),
+  boneKnuckle: W('predator', '뼈 송곳니 너클', { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.72, speed: 3.8, range: 25, arc: 1.5, onHit: { status: 'bleed', stacks: 1, chance: 0.3 }, skill: 'dashStab' }, { agi: 3 }),
+  predatorFang: W('predator', '포식왕의 이빨', { scale: 'agi', kind: 'melee', dmg: 'phys', mul: 0.9, speed: 3.8, range: 26, arc: 1.6, onHit: { status: 'bleed', stacks: 1, chance: 0.45 }, skill: 'dashStab' }, { agi: 6, str: 3 }, { price: 280, tags: ['bleed'], boost: { devour: 0.4, pounce: 0.4 }, bdesc: '「포식」·「덮치기」 피해 +40%' }),
   stoneClub: W('behemoth', '돌 곤봉', { kind: 'melee', dmg: 'phys', mul: 1.3, speed: 1.0, range: 34, arc: 2.2, skill: 'slam' }, { vit: 3 }),
   tectonicHammer: W('behemoth', '지각판 망치', { kind: 'melee', dmg: 'phys', mul: 1.6, speed: 0.95, range: 36, arc: 2.4, armorBreak: true, skill: 'slam' }, { vit: 5, str: 4 }, { price: 280, tags: ['giant'], boost: { tremor: 0.4, headbutt: 0.4 }, bdesc: '「지축 울림」·「박치기」 피해 +40%' }),
   elemStaff: W('elementalist', '원소 지팡이', { kind: 'proj', dmg: 'mag', mul: 1.4, speed: 1.5, projSpeed: 250, range: 190, splash: 24, mana: 5, skill: 'nova' }, { mag: 3 }),

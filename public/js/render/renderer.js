@@ -1063,7 +1063,7 @@ export class Renderer {
       const sil = sprite(name, e.tintX || '', e.outline, dir < 0), o = Math.max(1, Math.round(gs));
       if (sil) for (const [ox, oy] of [[-o, 0], [o, 0], [0, -o], [0, o]]) this.drawBody(sil, bx + ox, by + oy, gs, P, dir);
     }
-    if (P.kind === 'fist') { const back = P.punch > 0.05 && P.offhand; this.fistAt(fw, bx - dir * (back ? -1 : 4) * gs, by - (back ? 7 : 5) * gs, this.fistMetal(wart), dir); }
+    if (P.kind === 'fist') { const back = P.punch > 0.05 && P.offhand; this.fistAt(fw, bx + dir * (back ? 3 : 1) * gs, by - (back ? 8 : 9) * gs, this.fistMetal(wart), dir); }
     if (P.behind) this.drawWeapon(fw, fp, P, bx, by, gs);
     this.drawBody(img, bx, by, gs, P, dir);
     if (!P.behind) this.drawWeapon(fw, fp, P, bx, by, gs);
@@ -1438,7 +1438,7 @@ export class Renderer {
     const wart = weaponArt(w.b.weaponId, ITEMS);
     if (wart.shield && !hideW) this.drawShield(w, p, pose, bx, by, gs);
     else if (w.b.offItem && !hideW) this.drawOffhand(w, p, pose, bx, by, gs); // 왼손 도구 (한손 무기일 때)
-    if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx - p.dir * (back ? -1 : 4) * gs, by - (back ? 7 : 5) * gs, this.fistMetal(wart), p.dir); }
+    if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx + p.dir * (back ? 3 : 1) * gs, by - (back ? 8 : 9) * gs, this.fistMetal(wart), p.dir); }
     if (pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
     let rideY = 0;
     if (p.riding) { // 탄 랩터: 달리면 달리기 동작, 서 있으면 숨쉬기 · 위로 들썩인다
@@ -1702,7 +1702,7 @@ export class Renderer {
     else if (kind === 'axe') { P.a = 0.9 + breathe; P.hx = 4; P.hy = -5; }
     else if (kind === 'bow') { P.a = 0.04 + breathe * 0.4; P.hx = 9; P.hy = -8; P.bowIdle = true; } // 활: 옆으로 쏠 때처럼 앞에 세워 든다 (시위는 당기지 않는다)
     else if (kind === 'crossbow') { P.a = 0.35 + breathe * 0.5; P.hx = 4; P.hy = -5; } // 석궁: 허리춤에 앞을 낮춰 든다
-    else if (kind === 'fist') { P.a = 0; P.hx = 5; P.hy = -5 + Math.sin(w.t * 3) * 0.6; } // 주먹: 가볍게 쥐고 선다
+    else if (kind === 'fist') { const bob = Math.sin(w.t * 7.5); P.a = -0.3; P.hx = 5; P.hy = -8 + bob * 0.6; P.oy = bob > 0.4 ? -1 : 0; P.lean = 0.8; } // 주먹: 복서의 가드 — 두 주먹을 턱 앞에 · 발끝으로 가볍게 들썩인다
     else if (kind === 'whip') { P.a = 1.25 + breathe; P.hx = 4; P.hy = -5; } // 채찍: 손잡이를 아래로 쥐고 줄은 감아 둔다
     else if (kind === 'orb') { P.a = -1.5; P.hx = 6; P.hy = -11 + Math.sin(w.t * 2.4) * 1.2; } // 구슬: 손 위에 떠 있다
     else if (kind === 'tome') { P.a = 0.15 + breathe; P.hx = 5; P.hy = -6; } // 마도서: 옆구리에 끼고 다닌다
@@ -1715,9 +1715,22 @@ export class Renderer {
     // 평타
     const k = p.swingMax && p.swingT > 0 ? 1 - p.swingT / p.swingMax : -1;
     if (k >= 0 && !p.motion) {
-      if (kind === 'fist') { // 주먹: 조준 쪽으로 곧게 내지른다 (왼손 · 오른손 번갈아)
-        const out = k < 0.45 ? easeOut(k / 0.45) : 1 - (k - 0.45) / 0.55;
-        P.a = aimF; P.hx = 5 + 8 * out; P.hy = -6 + Math.sin(aimF) * 3 * out; P.lean = 2.5 * out; P.ox = Math.cos(p.swingAng) * 2 * out; P.punch = out; P.offhand = p.swingDir > 0;
+      if (kind === 'fist') { // 주먹: 복싱 콤보 (sim p.boxN) — 잽 · 잽 · 스트레이트 · 훅 · 어퍼컷. 빠르게 뻗고(앞 30%) 빠르게 거둔다
+        const n = p.boxN || 0, out = k < 0.3 ? easeOut(k / 0.3) : 1 - easeOut((k - 0.3) / 0.7);
+        if (n === 3) { // 훅: 옆에서 둥글게 돌아 들어온다 · 어깨와 허리를 비튼다
+          const q = Math.min(1, k / 0.35), ret = k > 0.35 ? (k - 0.35) / 0.65 : 0;
+          P.a = aimF - 1.4 + 1.6 * q; P.hx = 2 + 10 * Math.sin(q * Math.PI * 0.5) * (1 - ret); P.hy = -8 - 2 * Math.sin(q * Math.PI) * (1 - ret);
+          P.lean = 3.2 * out; P.ox = Math.cos(p.swingAng) * 2.5 * out; P.sx = 1 + 0.06 * out; P.punch = out; P.offhand = false;
+        } else if (n === 4) { // 어퍼컷: 무릎을 굽혀 가라앉았다가 아래에서 위로 솟구친다
+          const dip = k < 0.22 ? k / 0.22 : Math.max(0, 1 - (k - 0.22) / 0.12), up = k < 0.22 ? 0 : easeOut(Math.min(1, (k - 0.22) / 0.26)), ret = k > 0.62 ? (k - 0.62) / 0.38 : 0;
+          P.a = aimF * 0.25 - 1.25; P.hx = 3 + 6 * up * (1 - ret); P.hy = -3 + 3 * dip - 12 * up * (1 - ret);
+          P.sy = 1 - 0.12 * dip + 0.06 * up * (1 - ret); P.sx = 1 + 0.08 * dip; P.oy = 2 * dip - 1.5 * up * (1 - ret); P.lean = -1.5 * dip + 2.5 * up * (1 - ret);
+          P.punch = up * (1 - ret); P.offhand = true;
+        } else { // 잽(앞손 · 짧고 빠르게) · 스트레이트(뒷손 · 멀리 · 몸을 실어)
+          const cross = n === 2, reach = cross ? 13 : 9;
+          P.a = aimF; P.hx = 5 + reach * out; P.hy = -8 + Math.sin(aimF) * 3 * out; P.lean = (cross ? 3.6 : 1.6) * out; P.ox = Math.cos(p.swingAng) * (cross ? 3 : 1.2) * out; P.sx = 1 + (cross ? 0.05 : 0) * out;
+          P.punch = out; P.offhand = cross;
+        }
       } else if (kind === 'whip') { // 채찍: 머리 위로 들었다가 앞으로 내리친다 (줄이 뒤따라 뻗는다)
         const up = Math.min(1, k / 0.3), dn = k < 0.3 ? 0 : easeOut(Math.min(1, (k - 0.3) / 0.25));
         P.a = k < 0.3 ? 1.25 - 3.6 * up : -2.35 + (aimF + 2.35) * dn; P.hx = k < 0.3 ? 2 : 2 + 6 * dn; P.hy = k < 0.3 ? -8 - 5 * up : -13 + 7 * dn; P.lean = k < 0.3 ? -1.5 * up : 2.5 * dn; P.lash = k; P.behind = k < 0.2;
@@ -2063,6 +2076,11 @@ export class Renderer {
     const g = this.g, dir = p.dir, t = w.t;
     const metal = this.fistMetal(wa);
     if (P.kind === 'fist') { // 주먹 장갑: 내지르는 손 (반대 손은 몸 뒤에서 따로 그린다)
+      if (P.punch > 0.25 && p.swingT > 0) { // 뻗는 주먹 뒤로 속도선 두 줄 (빠르게 보이게)
+        const ux = Math.cos(ang), uy = Math.sin(ang), nx = -uy, ny = ux, L = 4 + 7 * P.punch;
+        g.strokeStyle = hexA('#ffffff', 0.55 * P.punch); g.lineWidth = 1;
+        for (const o of [-1.5, 1.5]) { g.beginPath(); g.moveTo(Math.round(hx - ux * 3 + nx * o), Math.round(hy - uy * 3 + ny * o)); g.lineTo(Math.round(hx - ux * (3 + L) + nx * o), Math.round(hy - uy * (3 + L) + ny * o)); g.stroke(); }
+      }
       this.fistAt(w, hx, hy, metal, dir);
       if (P.punch > 0.6) for (let i = 0; i < 2; i++) this.parts.push({ x: hx + Math.cos(ang) * 4, y: hy + Math.sin(ang) * 4, vx: Math.cos(ang) * 60 + (Math.random() - 0.5) * 30, vy: Math.sin(ang) * 60 + (Math.random() - 0.5) * 30, t: 0.12, max: 0.12, color: '#ffffff', g: 0, line: true });
       return true;

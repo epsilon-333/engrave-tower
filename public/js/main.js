@@ -1869,6 +1869,7 @@ function enterZone(id, depth = 0, carry = null) {
 // ───── 연습 모드: 모든 클래스의 모든 스킬을 자원·체력 걱정 없이 써 본다 (저장 안 됨) ─────
 const practice = { cls: null, skills: null, infRes: true, noCd: false, arena: 'weak', refill: true };
 function practiceBuild() {
+  if (practice.useSave) return buildNow(); // 체험실: 고른 캐릭터 그대로 연습장에 선다
   const c = CLASSES[practice.cls];
   const sp = save.spirits?.main ? { id: save.spirits.main, star: save.spirits.owned[save.spirits.main]?.star || 1 } : { id: 'fire2', star: 1 }; // 연습장: 계약한 정령이 없으면 화염 여우를 빌려 준다
   return computeBuild({ race: c.race, cls: practice.cls, level: 20, allSkills: true, alloc: { str: 18, mag: 18, agi: 10, vit: 10 }, engravings: {}, gear: { weapon: c.weapons[1], off: c.off }, skills: practice.skills, spirit: sp });
@@ -3851,7 +3852,7 @@ if (LAB) window.__lab = {
     save.run.f = f - 1; climbUi.enterFloor('fight');
   },
   zone(id) { if (!save) return; enterZone(id); },
-  practice() { if (!save) return; enterPractice(); },
+  practice() { if (!save) return; practice.useSave = true; enterPractice(); },
   home() { if (!save) return; enterWorld(null, false); },
   hidden(id) { if (!save) return false; const ok = grantHidden(save, id); writeSave(save); return ok; },
   spawn(id, n = 1) { // 지금 세계에 몬스터를 부른다
