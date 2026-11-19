@@ -194,6 +194,7 @@ const CPOSE = {
   whirl: { A: { th: PI, r: 2, hy: -12, lean: -1.2, sy: 1.04 }, B: { th: PI - 4 * PI, r: 6, hy: -11, lean: 2, f: 1 } },
   chop: { heavy: true, hold: 0.45, A: { a: -2.5, hx: -2, hy: -13, lean: -1.6, f: -1, behind: true }, B: { a: 1.2, hx: 7, hy: -5, lean: 3, sy: 0.94, f: 2.5 } },
   hack: { hold: 0.4, A: { a: -0.6, hx: -4, hy: -9, lean: -2, behind: true }, B: { a: 1.5, hx: 6, hy: -3, lean: 2.5, f: 2 } },
+  aside: { heavy: true, A: { th: PI - 0.5, r: 3, hy: -8, lean: -2.4, f: -1 }, B: { th: -1.2, r: 7, hy: -7, lean: 3, f: 2 } },
   sweep: { A: { th: PI - 0.3, r: 5, hy: -7, lean: -2.2, f: -1 }, B: { th: -1.2, r: 7, hy: -7, lean: 3, f: 2 } },
 };
 const TEXT_CACHE = new Map();

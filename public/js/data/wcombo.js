@@ -7,8 +7,8 @@
 //  step  맞기 직전에 내딛는 거리 · stop 맞은 뒤 멈춤(박힘) · kb 넉백 배율
 // 1초 평균 피해는 tools/wpnbal.mjs gen 이 다시 맞춘다
 export const WCOMBO = {
-  blunt: { min: 0.75, list: [ // 둔기: 머리 위에서 내려찍기 → 허리를 돌려 옆으로 후려치기 → 아래에서 퍼 올리기
-    { m: 'down', t: 1.0, hit: 0.8, mul: 1.0, arc: 1.4, step: 6, stop: 0.12 },
+  blunt: { min: 0.95, list: [ // 둔기: 머리 위에서 내려찍기 → 허리를 돌려 옆으로 후려치기 → 아래에서 퍼 올리기
+    { m: 'down', t: 1.0, hit: 0.78, mul: 1.0, arc: 1.4, step: 6, stop: 0.12 },
     { m: 'side', t: 0.9, hit: 0.62, mul: 0.9, arc: 2.6, kb: 1.4 },
     { m: 'up', t: 1.0, hit: 0.66, mul: 1.3, arc: 1.6, step: 8, stop: 0.08 },
   ] },
@@ -22,9 +22,9 @@ export const WCOMBO = {
     { m: 'rreap', t: 0.9, hit: 0.5, mul: 1.0, arc: 2.4 },
     { m: 'whirl', t: 1.25, hit: 0.55, mul: 1.15, full: true },
   ] },
-  axe: { min: 0.5, list: [ // 도끼: 어깨 위에서 내리찍기(박혔다 뽑힌다) → 반대쪽에서 비스듬히 찍기
-    { m: 'chop', t: 1.0, hit: 0.6, mul: 1.05, arc: 1.5, stop: 0.12 },
-    { m: 'hack', t: 0.9, hit: 0.55, mul: 0.95, arc: 1.8, stop: 0.08 },
+  axe: { min: 0.6, list: [ // 도끼: 어깨 위에서 내리찍기(박혔다 뽑힌다) → 허리를 돌려 옆으로 베기
+    { m: 'chop', t: 1.0, hit: 0.65, mul: 1.05, arc: 1.5, stop: 0.12 },
+    { m: 'aside', t: 0.95, hit: 0.6, mul: 0.95, arc: 2.6, kb: 1.2 },
   ] },
   blade: { min: 0.22, list: [ // 한손검: 베기 → 되돌려 베기 → 짧게 찌르기
     { m: 'slash', t: 1.0, hit: 0.3, mul: 0.95, arc: 1.9 },
@@ -51,6 +51,6 @@ export function comboFam(b) {
   if (c === 'scythe') return 'scythe';
   if (c === 'axe') return 'axe';
   if (c === 'polearm' || w.shape === 'thrust') return 'spear';
-  if (c === 'blade' || c === 'shield') return (it?.hands === 2 || w.hands === 2) ? 'long' : w.scale === 'agi' ? 'dagger' : 'blade';
+  if (c === 'blade' || c === 'shield') return w.hits === 2 ? 'dagger' : (it?.hands === 2 || w.hands === 2) ? 'long' : w.scale === 'agi' ? 'dagger' : 'blade';
   return 'blade';
 }
