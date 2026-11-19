@@ -77,7 +77,8 @@ const selVal = (id) => $('#' + id).value;
 const fillSlots = (m) => { for (const el of root.querySelectorAll('[data-slot]')) el.value = m[el.dataset.slot] || ''; };
 $('#preset').onchange = () => { const k = selVal('preset'); fillSlots(k === 'hidden' ? hiddenSlots() : PRESETS[k][1]); if (k === 'hidden') $('#allHidden').checked = true; };
 const cfg = () => ({ race: selVal('race'), level: +selVal('level'), weapon: selVal('weapon'), off: selVal('off') || null, hidden: $('#allHidden').checked, slots: Object.fromEntries([...root.querySelectorAll('[data-slot]')].map((el) => [el.dataset.slot, el.value])) });
-const needSave = () => { if (lab()?.save) return true; toast('먼저 「이 캐릭터로 마을에 서기」를 눌러 주세요'); return false; };
+// 캐릭터가 아직 없으면 지금 고른 설정으로 먼저 만든다 (「마을에 서기」를 안 눌러도 장면 버튼이 바로 된다)
+const needSave = () => { if (!lab()?.save) lab().build(cfg()); return true; };
 const A = {
   min: () => { root.classList.toggle('min'); $('[data-a=min]').textContent = root.classList.contains('min') ? '체험실 열기' : '접기'; },
   build: () => { lab().build(cfg()); toast('마을에 섰어요'); },
