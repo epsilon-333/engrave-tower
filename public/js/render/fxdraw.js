@@ -179,20 +179,20 @@ export const FxMethods = {
           const base = 24 + 8 * prog, tipL = base + 10 + 8 * prog;
           g.save(); g.globalCompositeOperation = 'lighter';
           g.fillStyle = hexA(f.aura ? '#ffd84a' : '#fff4d8', 0.85 * a2);
-          g.beginPath(); g.moveTo(p.x + ux * base + nx * 2.5, p.y - 7 + uy * base + ny * 2.5); g.lineTo(p.x + ux * tipL, p.y - 7 + uy * tipL); g.lineTo(p.x + ux * base - nx * 2.5, p.y - 7 + uy * base - ny * 2.5); g.closePath(); g.fill();
-          for (const o of [-5, 5]) { g.strokeStyle = hexA('#ffffff', 0.45 * a2); g.lineWidth = 1; g.beginPath(); g.moveTo(p.x + ux * base * 0.8 + nx * o, p.y - 7 + uy * base * 0.8 + ny * o); g.lineTo(p.x + ux * (base + 8) + nx * o * 0.6, p.y - 7 + uy * (base + 8) + ny * o * 0.6); g.stroke(); }
+          g.beginPath(); g.moveTo(f.x + ux * base + nx * 2.5, f.y - 7 + uy * base + ny * 2.5); g.lineTo(f.x + ux * tipL, f.y - 7 + uy * tipL); g.lineTo(f.x + ux * base - nx * 2.5, f.y - 7 + uy * base - ny * 2.5); g.closePath(); g.fill();
+          for (const o of [-5, 5]) { g.strokeStyle = hexA('#ffffff', 0.45 * a2); g.lineWidth = 1; g.beginPath(); g.moveTo(f.x + ux * base * 0.8 + nx * o, f.y - 7 + uy * base * 0.8 + ny * o); g.lineTo(f.x + ux * (base + 8) + nx * o * 0.6, f.y - 7 + uy * (base + 8) + ny * o * 0.6); g.stroke(); }
           g.restore();
           continue;
         }
         if (f.fist) { // 주먹: 내지른 자리에 짧은 바람 자국과 충격
           const a2 = Math.min(1, k * 2.4), L = f.range + 2, ux = Math.cos(f.ang), uy = Math.sin(f.ang), nx = -uy, ny = ux;
           g.strokeStyle = hexA(f.heavy ? '#ffd050' : '#ffffff', 0.7 * a2); g.lineWidth = 1;
-          for (const o of [-3, 0, 3]) { g.beginPath(); g.moveTo(p.x + ux * (L - 10) + nx * o, p.y - 7 + uy * (L - 10) + ny * o); g.lineTo(p.x + ux * (L - 2) + nx * o * 0.5, p.y - 7 + uy * (L - 2) + ny * o * 0.5); g.stroke(); }
+          for (const o of [-3, 0, 3]) { g.beginPath(); g.moveTo(f.x + ux * (L - 10) + nx * o, f.y - 7 + uy * (L - 10) + ny * o); g.lineTo(f.x + ux * (L - 2) + nx * o * 0.5, f.y - 7 + uy * (L - 2) + ny * o * 0.5); g.stroke(); }
           continue;
         }
         if (f.whip) continue; // 채찍은 줄을 직접 그린다 (무기 그림)
         const R = f.range + 4, r = Math.max(6, f.range * 0.35);
-        const px = p.x, py = p.y - 6;
+        const px = f.x, py = f.y - 6;
         const alpha = Math.min(1, k * 2.2);
         g.fillStyle = hexA(col, 0.55 * alpha);
         smear(g, px, py, R, (f.heavy ? 10 : 7), as, a1);

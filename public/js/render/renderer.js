@@ -1085,7 +1085,7 @@ export class Renderer {
     const fw = (e._fw ||= { projs: [], f: new Set(), pvp: null, state: 'play' });
     fw.t = w.t; fw.map = w.map;
     fw.b = { weapon: it.weapon, weaponId: H.id, weaponItem: it, race: e.raceLook, cls: null, offItem: null, offId: null, wcat: it.cat };
-    const st = Object.assign(e._st ||= {}, { dir, aimX: Math.cos(tw), aimY: Math.sin(tw), moving: !!e.moving && !(H.swingT > 0), walkT: w.t, hitFlash: e.hitFlash || 0, dashT: H.dash ? 1 : 0, swingMax: H.swingMax || 0, swingT: H.swingT || 0, swingAng: H.swingAng ?? tw, swingDir: H.swingDir || 1, boxN: H.boxN || 0, swingMove: H.swingMove || null, cmbFam: H.cmbFam, cmbN: H.cmbN, motion: H.motion || null, charging: null, attackHeld: !!H.aim, atkPeriod: H.atkPeriod || 1, atkCd: H.atkCd || 0, castT: 0, castSkill: null, buffs: NOBUFF, down: false });
+    const st = Object.assign(e._st ||= {}, { dir, aimX: Math.cos(tw), aimY: Math.sin(tw), moving: !!e.moving && !(H.swingT > 0), walkT: w.t, hitFlash: e.hitFlash || 0, dashT: H.dash ? 1 : 0, swingMax: H.swingMax || 0, swingT: H.swingT || 0, swingAng: H.swingAng ?? tw, swingDir: H.swingDir || 1, boxN: H.boxN || 0, swingMove: H.swingMove || null, cmbFam: H.cmbFam, cmbN: H.cmbN, cmbDur: H.cmbDur, motion: H.motion || null, charging: null, attackHeld: !!H.aim, atkPeriod: H.atkPeriod || 1, atkCd: H.atkCd || 0, castT: 0, castSkill: null, buffs: NOBUFF, down: false });
     const fp = (e._fp ||= new Proxy(st, { get: (t, k) => (k in t ? t[k] : typeof k === 'string' ? 0 : undefined) })); // 안 적은 칸은 0 (플레이어 모양의 빈 상태)
     const P = this.playerPose(fw, fp), g = this.g, bx = e.x + P.ox, by = e.y - 1 + P.oy + sinkY, wart = weaponArt(H.id, ITEMS);
     if (e.outline) { // 종족 색 1도트 외곽선
@@ -1708,7 +1708,7 @@ export class Renderer {
   comboPose(p, P, k, aimF) {
     const mv = WCOMBO[p.cmbFam]?.list[p.cmbN]; if (!mv) return;
     const pose = CPOSE[mv.m]; if (!pose) return;
-    const h = mv.hit, W0 = Math.max(0.06, h - (mv.m === 'down' || mv.m === 'up' ? 0.08 : 0.12)), S1 = Math.min(0.95, h + 0.05);
+    const h = mv.hit, dur = p.cmbDur || p.swingMax || 0.5, W0 = Math.max(0.05, h - 0.075 / dur), S1 = Math.min(0.97, h + 0.02 / dur); // 휘두름은 0.075초 안에 (준비는 길게 · 내려칠 때는 순식간에)
     const I = { a: P.a, hx: P.hx, hy: P.hy, lean: P.lean, sy: P.sy, f: 0, len: 1, behind: P.behind };
     const conv = (X, th) => { if (th == null) return { a: X.a === 'aim' ? aimF : X.a, hx: X.hx, hy: X.hy, lean: X.lean, sy: X.sy ?? 1, f: X.f || 0, len: 1, behind: !!X.behind };
       const c = Math.cos(th), sn = Math.sin(th); return { a: Math.atan2(sn * 0.3 + 0.1, c), len: Math.sqrt(c * c + 0.09 * sn * sn), hx: X.r * c, hy: X.hy + 1.5 * sn, lean: X.lean, sy: X.sy ?? 1, f: X.f || 0, behind: sn < -0.15 }; };
@@ -1716,10 +1716,10 @@ export class Renderer {
     const mix = (X, Y, q) => ({ a: X.a + (Y.a - X.a) * q, hx: X.hx + (Y.hx - X.hx) * q, hy: X.hy + (Y.hy - X.hy) * q, lean: X.lean + (Y.lean - X.lean) * q, sy: X.sy + (Y.sy - X.sy) * q, f: X.f + (Y.f - X.f) * q, len: X.len + (Y.len - X.len) * q, behind: q < 0.5 ? X.behind : Y.behind });
     let R;
     if (k < W0) { const q = k / W0; R = mix(I, A, q * q * (3 - 2 * q)); if (q > 0.75 && pose.heavy) R.ox2 = (Math.random() - 0.5) * 0.8; } // 들어 올리는 막바지엔 힘이 들어가 떨린다
-    else if (k < S1) { const q = (k - W0) / (S1 - W0), e = q * q; // 처음엔 무겁게 · 갈수록 빠르게
+    else if (k < S1) { const q = (k - W0) / (S1 - W0), e = q * (0.35 + 0.65 * q); // 순식간에 · 끝으로 갈수록 더 빠르게
       if (pose.A.th != null) { const th = pose.A.th + (pose.B.th - pose.A.th) * e; R = mix(A, B, e); Object.assign(R, conv({ ...pose.B, r: pose.A.r + (pose.B.r - pose.A.r) * e, hy: pose.A.hy + (pose.B.hy - pose.A.hy) * e }, th), { lean: R.lean, sy: R.sy, f: R.f }); P.whoosh = 1; }
       else { R = mix(A, B, e); P.whoosh = q; } }
-    else { const q = (k - S1) / (1 - S1), hold = pose.hold ?? 0.35, r = q < hold ? 0 : (q - hold) / (1 - hold); R = mix(B, I, r * r * (3 - 2 * r)); }
+    else { const q = (k - S1) / (1 - S1), hold = pose.hold ?? 0.25, r = q < hold ? 0 : (q - hold) / (1 - hold); R = mix(B, I, r * r * (3 - 2 * r)); }
     P.a = R.a; P.hx = R.hx; P.hy = R.hy; P.lean = R.lean; P.sy = R.sy; P.behind = R.behind; if (R.len !== 1) P.len = R.len;
     P.ox = Math.cos(p.swingAng) * R.f + (R.ox2 || 0); P.oy = Math.sin(p.swingAng) * R.f * 0.5;
   }

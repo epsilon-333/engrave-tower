@@ -204,7 +204,7 @@ export const TeacherMethods = {
     const el = this.t - A.t0, shoot = A.cfg.kind === 'shoot';
     if (!A.hit && el < A.wind * 0.65) A.ang = toward; // 겨누는 것은 준비의 앞쪽만 · 뒤에는 고정(피할 수 있다)
     e.dir = Math.cos(A.ang) >= 0 ? 1 : -1;
-    H.swingAng = A.ang; H.swingDir = A.n % 2 ? 1 : -1; H.swingMove = A.mv?.m || null; H.cmbFam = e.cmbFam; H.cmbN = e.cmbN; H.boxN = A.combo ? A.combo[A.n - 1] : (A.n - 1) % 5;
+    H.swingAng = A.ang; H.swingDir = A.n % 2 ? 1 : -1; H.swingMove = A.mv?.m || null; H.cmbFam = e.cmbFam; H.cmbN = e.cmbN; H.cmbDur = A.mv ? A.wind / Math.max(0.1, A.wf) : 0; H.boxN = A.combo ? A.combo[A.n - 1] : (A.n - 1) % 5;
     if (shoot) {
       if (!A.hit) { H.aim = true; H.swingT = 0; H.swingMax = 0; H.atkPeriod = A.wind; H.atkCd = Math.max(0, A.wind - el); }
       else { H.aim = false; H.swingMax = 0.1; H.swingT = Math.max(0.001, 0.1 - (el - A.wind)); }
