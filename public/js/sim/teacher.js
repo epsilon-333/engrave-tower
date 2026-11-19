@@ -75,6 +75,8 @@ export function teacherWeaponId(b, fam) {
   for (const [id, it] of all) if (weaponFam({ weaponItem: it, wcat: it.cat }) === fam) return (FAM_WEAPON[fam] = id);
   return (FAM_WEAPON[fam] = 'rustySword');
 }
+export const TELE_K = 0.7; // 스승 예고(준비) 시간 배율 — 짧게 (2026-11-19)
+const TEACHER_EVADE = { dagger: 0.3, bow: 0.18, fist: 0.18, spear: 0.1, sword: 0.1, magic: 0.08, scythe: 0.05, heavy: 0 }; // 스승의 회피율 (민첩)
 const SPD = { sword: 72, heavy: 60, magic: 0, scythe: 0, dagger: 0, bow: 60, fist: 92, spear: 112 };
 const SIG_NAME = { sword: '발도', heavy: '피로 쓴 함성', magic: '마력 폭주', scythe: '망자의 낫', dagger: '그림자 손', bow: '천궁의 화살비', fist: '원시의 돌진', spear: '용암 균열' };
 
@@ -117,6 +119,14 @@ export const TeacherMethods = {
     const Tr = this.trial, p = this.player;
     if (!Tr || Tr.done || Tr.s === 'intro' || e.dead) return 0;
     if (Tr.invulnT > 0) { this.trialNo(e, Tr.invulnMsg || '죽음을 거부한다'); return 0; }
+    { // 스승의 민첩: 갈래마다 회피율이 있다 (휘두르는 중 · 회복 자세 · 지속 피해는 못 피한다 · 한 번 피하면 0.7초 동안은 안 피한다)
+      const ev = TEACHER_EVADE[Tr.fam] || 0;
+      if (ev > 0 && !opt.fromDot && !e.tatk && Tr.s !== 'heal' && Tr.s !== 'cast' && !e.shadowSink && this.t - (Tr.evadeT ?? -9) > 0.7 && this.rng.chance(ev)) {
+        Tr.evadeT = this.t; this.emit({ t: 'text', x: e.x, y: e.y - e.r - 12, text: '회피', color: '#cfe8ff' });
+        if (!Tr.dash) { const a = Math.atan2(e.y - p.y, e.x - p.x) + (this.rng.chance(0.5) ? 1.4 : -1.4); this.trialDash(e, a, 26, 0.1, Tr.dashCd); }
+        return 0;
+      }
+    }
     if (Tr.counterT > 0 && !opt.fromDot && e === Tr.main) { // 받아치기 · 맞받기: 그 사이에 친 공격은 막히고 되돌아온다
       Tr.counterT = 0; const p0 = this.player, a0 = Math.atan2(p0.y - e.y, p0.x - e.x);
       this.trialSay(e, '받아쳤다!', '#fff0a0'); this.emit({ t: 'block', x: e.x, y: e.y - 6 }); this.emit({ t: 'swing', x: e.x, y: e.y, ang: a0, range: 40, arc: 1.8, type: 'phys', dir: 1, dur: 0.12, heavy: true });
@@ -181,7 +191,7 @@ export const TeacherMethods = {
   },
   beginAtk(e, fam, over = {}) {
     const A0 = ATK[fam] || { wind: 0.7, range: 190, arc: 0, k: TR.hit, kind: 'shoot' }, A = over.cfg ? { ...A0, ...over.cfg } : A0, p = this.player;
-    const wind = over.wind ?? (fam === 'bow' ? 0.8 : A.wind), wf = ITEMS[e.held?.id]?.cat === 'blunt' ? 0.8 : WIND_FRAC[heldKind(e.held?.id)] ?? 0.2; // 둔기는 천천히 들고(80%) 빠르게 내려친다
+    const wind = (over.wind ?? (fam === 'bow' ? 0.8 : A.wind)) * TELE_K, wf = ITEMS[e.held?.id]?.cat === 'blunt' ? 0.8 : WIND_FRAC[heldKind(e.held?.id)] ?? 0.2; // 둔기는 천천히 들고(80%) 빠르게 내려친다
     // 준비는 준비 시간대로(자세표의 준비 구간을 그 시간에 맞춰 늘린다) · 휘두름은 짧고 빠르게 (sd초)
     const sd = fam === 'bow' ? 0.14 : fam === 'fist' ? 0.1 : 0.12; // 휘두름은 빠르게 (준비는 그대로)
     const it = ITEMS[e.held?.id], cf = A.kind !== 'shoot' && fam !== 'fist' && it ? comboFam({ weaponItem: it, weapon: it.weapon, wcat: it.cat }) : null; // 플레이어와 같은 무기 콤보
@@ -202,7 +212,7 @@ export const TeacherMethods = {
       return;
     }
     const el = this.t - A.t0, shoot = A.cfg.kind === 'shoot';
-    if (!A.hit && el < A.wind * 0.65) A.ang = toward; // 겨누는 것은 준비의 앞쪽만 · 뒤에는 고정(피할 수 있다)
+    if (!A.hit && el < A.wind * 0.8) { const L = this.trialLead(Math.max(0, A.wind - el) * 0.8); A.ang = Math.atan2(L.y - e.y, L.x - e.x); } // 겨누는 것은 준비의 80%까지 · 내가 갈 자리를 읽고 겨눈다 (마지막 20%는 고정 · 피할 수 있다)
     e.dir = Math.cos(A.ang) >= 0 ? 1 : -1;
     H.swingAng = A.ang; H.swingDir = A.n % 2 ? 1 : -1; H.swingMove = A.mv?.m || null; H.cmbFam = e.cmbFam; H.cmbN = e.cmbN; H.cmbDur = A.mv ? A.wind / Math.max(0.1, A.wf) : 0; H.boxN = A.combo ? A.combo[A.n - 1] : (A.n - 1) % 5;
     if (shoot) {

@@ -1,6 +1,7 @@
 // 숨은 스승의 스킬 (2026-11-19) — 스승은 그 무기를 완전히 다룬 자. 각인 스킬 가운데 그 무기에 맞는 것 여섯 + 원래 쓰던 무기 능력(trialWeaponSkill)을
 // 거리와 쿨타임에 맞춰 골라 쓴다. 이름 · 모양은 플레이어의 그 스킬을 따르고, 피해는 내 최대 체력 비율(trialDmg). 큰 기술은 예고(준비 자세 · 예고 선 · 예고 원)가 있다.
 // TeacherSkillMethods 는 World.prototype 에 붙는다 (sim/world.js 끝) — 메서드 안의 this 는 World
+import { TELE_K } from './teacher.js';
 import { SKILLS } from '../data/skills.js';
 import { MOTION_DUR } from './world.js'; // 함수 안에서만 쓴다 (서로 가져오는 파일이라 맨 위에서 쓰면 안 된다)
 const DT = 1 / 60;
@@ -133,9 +134,9 @@ export const TeacherSkillMethods = {
   tsMelee(e, fam, wind, cfg, over = {}) { this.beginAtk(e, fam, { wind, cfg, ...over }); this.trial.t = wind + 0.5; },
   tsDash(e, a, dist, dur = 0.18) { const Tr = this.trial; this.trialDash(e, a, dist, dur, Tr.dashCd); },
   tsDashHit(e, dist, wind, k, knock = 0) { // 겨눴다가 일직선으로 뚫고 지나간다 (지나간 길에 있으면 맞는다)
-    const Tr = this.trial; this.emit({ t: 'windup', id: e.id });
+    const Tr = this.trial; wind *= TELE_K; this.emit({ t: 'windup', id: e.id });
     this.tsLater(wind, () => {
-      const p = this.player, a = Math.atan2(p.y - e.y, p.x - e.x), x0 = e.x, y0 = e.y;
+      const L = this.trialLead(0.16), a = Math.atan2(L.y - e.y, L.x - e.x), x0 = e.x, y0 = e.y; // 내가 갈 자리로
       this.trialDash(e, a, dist, 0.16, Tr.dashCd);
       this.tsLater(0.16, () => {
         this.emit({ t: 'swing', x: e.x, y: e.y, ang: a, range: 40, arc: 0.4, type: 'phys', dir: 1, dur: 0.14, thrust: true });
@@ -147,7 +148,8 @@ export const TeacherSkillMethods = {
   },
   // 일직선 여러 줄 (화살 · 검기 · 뼈 창 · 작살): 예고 선 → wind초 뒤에 날아간다
   tsRays(e, angs, o) {
-    const Tr = this.trial;
+    const Tr = this.trial; o = { ...o, wind: o.wind * TELE_K };
+    { const p = this.player, L = this.trialLead(o.wind + 0.1), da = Math.atan2(L.y - e.y, L.x - e.x) - Math.atan2(p.y - e.y, p.x - e.x); angs = angs.map((x) => x + da); } // 내가 갈 자리를 읽고 겨눈다
     if (o.tele) for (const a of angs) this.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx: Math.cos(a), dy: Math.sin(a), len: o.len, w: o.w });
     this.emit({ t: 'windup', id: e.id });
     this.tsLater(o.wind, () => {
@@ -166,7 +168,8 @@ export const TeacherSkillMethods = {
   },
   // 원: 예고 원 → wind초 뒤에 터진다
   tsCircle(e, x, y, o) {
-    const Tr = this.trial;
+    const Tr = this.trial; o = { ...o, wind: o.wind * TELE_K };
+    { const p = this.player; if (o.wind > 0.05 && Math.hypot(x - p.x, y - p.y) < 4) { const L = this.trialLead(o.wind * 0.7); x = L.x; y = L.y; } } // 내 자리를 노린 원은 내가 갈 자리로
     if (o.wind > 0.05) this.emit({ t: 'telegraphCircle', x, y, r: o.r, dur: o.wind });
     if (o.windup) this.emit({ t: 'windup', id: e.id });
     this.tsLater(o.wind, () => {

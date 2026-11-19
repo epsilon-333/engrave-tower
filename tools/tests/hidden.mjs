@@ -211,7 +211,7 @@ for (const [fam, weapon] of Object.entries(WEAPON)) {
   ok(b.trial.maxHp > a.trial.maxHp * 2, `스승 체력이 내 공격력을 따라간다 (${a.trial.maxHp} → ${b.trial.maxHp})`);
 }
 { // 제대로 든 공격은 크게, 아닌 것은 아주 조금
-  const big = 1e9, took = (w, fn) => { const T = w.trial; T.shoutT = 0; T.counterT = 0; T.invulnT = 0; const h = T.hp; fn(); return (h - T.hp) / T.maxHp; }; // 외침(-30%) · 받아치기는 끄고 잰다
+  const big = 1e9, took = (w, fn) => { const T = w.trial; T.shoutT = 0; T.counterT = 0; T.invulnT = 0; T.evadeT = 1e9; const h = T.hp; fn(); return (h - T.hp) / T.maxHp; }; // 외침(-30%) · 받아치기는 끄고 잰다
   const ws = trialWorld('sword', { weapon: 'ironLongsword' }); ws.trial.s = 'move'; ok(took(ws, () => ws.damageEnemy(ws.trial.main, big, 'phys', {})) <= TR.badCap + 1e-6, '검: 빈틈이 아니면 0.4%');
   ws.trial.s = 'open'; ok(took(ws, () => ws.damageEnemy(ws.trial.main, big, 'phys', {})) >= TR.okCap - 1e-6, '검: 빈틈에는 4%');
   const wh = trialWorld('heavy', { weapon: 'battleAxe' }), H = wh.trial; let g = 0; for (let i = 0; i < 4; i++) { wh.t += 0.3; g = took(wh, () => wh.damageEnemy(H.main, big, 'phys', {})); } ok(g >= TR.okCap - 1e-6, '도끼: 막기를 부순 뒤 제대로');
@@ -303,6 +303,13 @@ for (const [fam, weapon] of Object.entries(WEAPON)) {
     for (let i = 0; i < 60 * 4; i++) { w.player.hp = w.d.maxHp; w.player.invuln = 0.5; w.step(idle); for (const ev of w.events) { if (ev.t === 'swing') swings++; if (ev.t === 'telegraphCircle') circles++; } w.events.length = 0; }
     ok(swings >= 2 && circles === 0, `검: 평타는 휘두름 ${swings}번 · 예고 원 ${circles}`);
   }
+}
+
+// 10.5) 스승의 회피: 얼굴 없는 자는 자주 피한다 (피하면 피해 0)
+{
+  const w = trialWorld('dagger', { weapon: 'dagger' }), T = w.trial; let ev = 0;
+  for (let i = 0; i < 200; i++) { T.evadeT = -9; T.main.tatk = null; T.s = 'move'; T.invulnT = 0; T.counterT = 0; const h = T.hp; w.damageEnemy(T.main, 1e9, 'phys', {}); if (T.hp === h) ev++; T.hp = T.maxHp; }
+  ok(ev > 30 && ev < 100, `얼굴 없는 자 회피 ${ev}/200`);
 }
 
 // 11) 얼굴 없는 자: 분신 셋이 튀어나와 교차해 베고 사라진다
