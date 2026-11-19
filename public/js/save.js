@@ -9,7 +9,9 @@ import { CLASSES, SKILLS, ENGRAVING_SKILLS, RACE_CLASSES } from './data/skills.j
 import { ENGRAVINGS } from './data/engravings.js';
 import { LV_GRADE } from './data/skillengs.js';
 
-const KEY = 'engrave-tower-save-v1';
+// 체험실(lab.html?lab)은 따로 저장한다 — 진짜 저장 · 서버 저장에 닿지 않는다
+export const LAB = typeof location !== 'undefined' && new URLSearchParams(location.search).has('lab');
+const KEY = LAB ? 'engrave-tower-lab-v1' : 'engrave-tower-save-v1';
 
 export function newSave(race) {
   return {

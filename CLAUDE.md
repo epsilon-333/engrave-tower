@@ -74,6 +74,7 @@
 ## 도구와 테스트
 - `tools/tests/*.mjs`: 2D 시뮬레이션 테스트. 예) `node tools/tests/simtest.mjs` → `ALL OK`, `node tools/tests/storytest.mjs`. 한꺼번에: `node tools/tests/all.mjs` (실패하면 종료 코드 1)
 - 밸런스 (2026-11-14): **같은 등급의 각인이면 딸린 스킬의 힘도 비슷하게.** `node tools/skillbal.mjs gen`이 종족 스킬마다 실제로 싸워 초당 피해를 재고 등급별 목표(2등급 가운데값 × `GRADE_K`)에 맞춘 보정을 `public/js/data/skillbal.js`(→ `SKILL_BAL`)에 쓴다(손으로 고치지 않는다 · 0.5~2배 · 버프 · 소환 · 다른 것이 깔려야 터지는 스킬은 재지 않는다). 소환은 그대로, 몸만 강하게 하는 버프는 평타를 치며 켠 것과 안 켠 것의 차이로 재고 보정은 버프의 「+%」에 걸린다. 갈래 보정(`CLASS_BAL_PVE`)은 없앴다(2026-11-15). 남는 종족 차이는 종족 특성 숫자(`RACE_FX`, data/races.js)로 맞추고, 그래도 남는 것만 임시 종족 보정 `RACE_BAL_PVE`. 확인은 `node tools/tests/climbsim.mjs <종족|갈래> <레벨> <등반 수> <최대 층> <시작 층>` — 종족 이름을 주면 그 종족 각인 전체에서 공격 스킬부터 섞어 끼우고 잰다. 권장 레벨로 60층까지 돌리면 종족마다 약 30층이 목표
+- **체험실 (2026-11-19)**: `http://localhost:5180/lab.html` — 게임과 따로 열리는 검토용 페이지. 종족 · 레벨 · 무기 · 각인 칸을 골라 마을에 서거나, 스승의 방(8) · 탑 보스 층 · 세린의 일지 층 · 지역 · 연습장 · 새 게임(꿈 → 집) · 몬스터 부르기를 바로 연다. 치트(무적 · 자원 · 쿨타임) 체크. 저장은 따로(`LAB` in save.js, 키 `engrave-tower-lab-v1`)라 진짜 저장 · 서버를 건드리지 않는다. 코드는 `public/lab.html` · `public/js/lab.js` · main.js의 `window.__lab`. 새 기능을 만들면 체험실에서 바로 열어 볼 수 있게 버튼을 붙인다
 - 디버그: 브라우저 콘솔의 `window.__game` (world · dbg.climb · dbg.save), `window.__bot = (input, w) => {...}` 로 자동 플레이. localhost 또는 주소에 `?debug`가 있을 때만 열린다(배포판에서는 없음)
 - 처음 시작 · 튜토리얼은 `tools/tests/starttest.mjs`(시작 자리 · 허수아비 · 상태이상 풀림 · 맵 밖 거리장). 튜토리얼 단계는 `public/js/ui/tutorial.js`
 - 키 바꾸기는 `public/js/settings.js`(KEY_ACTIONS · logicalKey): 게임 입력은 눌린 키를 「기본 키」로 바꿔 읽는다. 새 단축키를 넣으면 KEY_ACTIONS에도 넣는다
