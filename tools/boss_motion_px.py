@@ -8,7 +8,7 @@ import sys
 from PIL import Image
 src, src_sp, dst, leg = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 LX = tuple(map(int, sys.argv[5].split('-'))); RX = tuple(map(int, sys.argv[6].split('-')))
-gif = sys.argv[7] if len(sys.argv) > 7 else None
+gif = sys.argv[7] if len(sys.argv) > 7 and not sys.argv[7].startswith('--') else None
 im = Image.open(src).convert('RGBA'); w, h = im.size; px = im.load()
 SPI = Image.open(src_sp).convert('RGBA'); spx = SPI.load()
 K, T = (34, 34, 34, 255), (0, 0, 0, 0)
@@ -16,7 +16,7 @@ G, GD, B = (99, 177, 77, 255), (72, 132, 58, 255), (87, 54, 45, 255)
 TOPM = 5             # 위 여백 (몸이 뜨고 창을 드는 칸)
 FW = max(w, h) + 8   # 한 장 가로 (눕는 장면이 들어가게)
 FH = h + TOPM
-OX = (FW - w) // 2
+OX = FW // 2 - 22  # 얼굴 가운데(몸 그림 22칸)가 한 장의 가운데 오게 (게임은 그림 아래 가운데를 발밑에 놓는다)
 inleg = {(x, y) for y in range(leg, h) for r in (LX, RX) for x in range(r[0], r[1] + 1)}  # 원래 다리 자리는 지우고 새로 그린다
 def is_green(p): return p[1] > 140 and p[0] < 130
 # 창 (도끼 머리 · 장대 · 붉은 술): 왼쪽 끝. 쥔 팔(초록)은 몸에 남긴다
@@ -73,6 +73,12 @@ sheet = Image.new('RGBA', (FW * cols, FH * len(rows)), T)
 for r, (_, _, fr) in enumerate(rows):
     for c, f in enumerate(fr): sheet.alpha_composite(f, (c * FW, r * FH))
 sheet.save(dst)
+if '--game' in sys.argv:  # 게임 목록에 넣는다: 같은 이름(b_climbChief)의 옛 보스 시트 그림을 대신한다 (tools/sprites.py · boss_pixel)
+    import json, os
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from sprites import meta_path, build_manifest
+    json.dump({'b_climbChief': {'img': os.path.basename(dst), 'w': FW, 'h': FH, 'y0': 0, 'anims': {name: {'row': r, 'n': len(fr)} for r, (name, _, fr) in enumerate(rows)}}}, open(meta_path('boss_pixel'), 'w'))
+    build_manifest(os.path.dirname(os.path.abspath(dst)))
 print('frame', FW, 'x', FH, {name: len(fr) for name, _, fr in rows})
 if gif:
     s = 6; seq = []

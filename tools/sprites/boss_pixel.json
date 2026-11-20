@@ -1,0 +1,1 @@
+{"b_climbChief": {"img": "boss_climbChief_motion.png", "w": 45, "h": 42, "y0": 0, "anims": {"idle": {"row": 0, "n": 4}, "run": {"row": 1, "n": 4}, "attack": {"row": 2, "n": 5}, "skill": {"row": 3, "n": 4}, "hit": {"row": 4, "n": 2}, "death": {"row": 5, "n": 4}}}}
