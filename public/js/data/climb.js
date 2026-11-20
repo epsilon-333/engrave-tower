@@ -42,6 +42,7 @@ export const BOSS_STYLE = {
   stormHarpy: [0.8, 1.2], mirrorSelf: [0.75, 1.25], clockKeeper: [0.85, 1.15], highPriest: [0.8, 1.2], // 날카로움
   shardQueen: [1, 1], starReader: [1, 1], lastKing: [1, 1], // 균형
 };
+export const BOSS_DMG = 0.5; // 수호자 · 주인 기술 피해 배율: 보통 몬스터가 열 대에 쓰러뜨리게 세진 만큼(2026-11-16) 보스 큰 기술이 한두 방에 끝내지 않게
 export const BOSS_ATK = { guardian: 1.4, lord: 1.3 }; // 수호자 · 주인은 레벨이 모자라면 벽이 된다 (권장 레벨에서 두 레벨 이상 낮으면 공격 배율을 다 받는다)
 const ZONE_REF = {}; // zone id → { hp, atk } 그 구역 몬스터의 평균
 export function setZoneRef(zoneId, pool) {
@@ -70,7 +71,7 @@ export function rollFloorMod(f, kind, rng) {
   return rng.pick(Object.keys(FLOOR_MODS));
 }
 // 층마다 나오는 적 수 (물결 셋으로 나눠 나온다)
-export const floorFoes = (f, trial = false) => Math.round((8 + f * 0.45) * (trial ? 1.15 : 1));
+export const floorFoes = (f, trial = false) => Math.round((5 + f * 0.28) * (trial ? 1.15 : 1)); // 몬스터 수 (2026-11-15: 8 + 0.45층 → 5 + 0.28층 · 마구 누르지 않고 하나하나 상대하게)
 
 // ───── 문 (층을 깨면 열린다) ─────
 // 탑 안에는 보상 · 상인 · 제단이 없다: 다음 층은 언제나 몬스터 (5층 수호자 · 10층 구역의 주인)

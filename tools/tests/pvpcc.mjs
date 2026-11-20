@@ -5,7 +5,7 @@ const { computeBuild } = await import(root + '/sim/build.js');
 const { CLASSES } = await import(root + '/data/skills.js');
 const { DUEL_ZONE, buildDuelArena } = await import(root + '/data/maps/arena.js');
 const ok = (c, t) => { console.log(c ? 'OK ' : 'FAIL', t); if (!c) process.exitCode = 1; };
-const mk = (learned) => { const c = CLASSES.greatsword, b = computeBuild({ race: 'knight', cls: 'greatsword', level: 15, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] }, learned, skills: learned }); const w = new World({ build: b, mode: 'field', zone: DUEL_ZONE, zoneId: 'duel', seed: 1, map: buildDuelArena(), pvp: { opp: { name: 'x' } } }); w.enemies = []; return w; };
+const mk = (learned) => { const c = CLASSES.greatsword, b = computeBuild({ race: 'knight', cls: 'greatsword', level: 15, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off }, learned, skills: learned }); const w = new World({ build: b, mode: 'field', zone: DUEL_ZONE, zoneId: 'duel', seed: 1, map: buildDuelArena(), pvp: { opp: { name: 'x' } } }); w.enemies = []; return w; };
 for (const [id, check, name] of [['quakeStomp', (B) => B.player.ccT > 0, '기절'], ['fearShout', (B) => B.player.fearT > 0, '공포'], ['silenceSeal', (B) => B.player.silT > 0, '침묵'], ['chainHook', (B, x0) => Math.abs(B.player.x - x0) > 20, '끌어오기']]) {
   const A = mk([id]), B = mk([]);
   A.player.x = 280; B.player.x = id === 'chainHook' ? 380 : 300; A.player.y = B.player.y = 200;

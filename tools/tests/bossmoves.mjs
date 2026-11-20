@@ -12,7 +12,7 @@ const ok = (c, t) => { if (!c) { bad++; console.log('FAIL', t); } };
 const mk = (f, sd = 7) => {
   const act = C.actOf(f), z = ALL_ZONES.find((x) => x.id === act.zone), fk = C.floorKind(f), c = CLASSES.greatsword;
   const run = C.newRun({ seed: 7 }); run.f = f;
-  const b = computeBuild({ race: c.race, cls: 'greatsword', level: 70, alloc: { vit: 60 }, engravings: {}, gear: { weapon: c.weapons[0] }, extraEffects: C.runEffects(run) });
+  const b = computeBuild({ race: c.race, cls: 'greatsword', level: 70, alloc: { vit: 60 }, engravings: {}, gear: { weapon: c.weapons[0], off: c.off }, extraEffects: C.runEffects(run) });
   const map = buildClimbFloor(z, sd + f, f, fk);
   return new World({ build: b, mode: 'field', zone: z, zoneId: z.id, seed: sd + f, map, tower: { f }, climb: { run, f, kind: fk } });
 };

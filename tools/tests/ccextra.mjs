@@ -7,7 +7,7 @@ const { ZONES } = await import(root + '/data/monsters.js');
 let fails = 0;
 for (const [cls, c] of [['greatsword', CLASSES.greatsword], ['spiritcaller', CLASSES.spiritcaller]]) {
   for (const id of Object.keys(CC_EXTRA)) {
-    const b = computeBuild({ race: c.race, cls, level: 15, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] }, learned: [id], skills: [id] });
+    const b = computeBuild({ race: c.race, cls, level: 15, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off }, learned: [id], skills: [id] });
     const w = new World({ build: b, mode: 'field', zoneId: ZONES[0].id, seed: 3 }), p = w.player;
     const e = w.enemies.find((x) => !x.def.elite); e.x = p.x + (SKILLS[id].do[0].op === 'proj' ? 70 : 28); e.y = p.y; e.state = 'chase'; e.speedMul = 0;
     for (const o of w.enemies) if (o !== e) { o.x = -999; o.y = -999; }

@@ -1,4 +1,5 @@
 import { registerParts } from './monsterparts.js';
+import { registerHiddenEchoes, registerHiddenMonsters } from './hidden.js';
 // 몬스터와 문양 잔향. 원하는 각인을 만들려면 그 잔향을 남기는 몬스터를 골라 사냥해야 한다.
 
 export const ECHOES = {
@@ -39,6 +40,7 @@ export const ECHOES = {
   halo: { name: '후광 잔향', color: '#ffe8f8' },
   crown: { name: '마지막 왕의 잔향', color: '#ffd84a', rare: true },
 };
+registerHiddenEchoes(ECHOES); // 숨은 각인의 증표 (data/hidden.js)
 
 // ai: chase | erratic | ranged | charge | boss | kamikaze(다가와 자폭) | summoner(부하 소환) | burrow(땅속 잠복) | flee(도망)
 // shield: 정면 공격 피해 감소
@@ -316,6 +318,7 @@ export const DUMMIES = {
   trainPost: { name: '근위대 허수아비', shape: 'dummy', pal: { a: '#9aa0b0', b: '#5a6070', c: '#e0e4f0', e: '#1a1a2a' }, hp: 1e9, atk: 0, type: 'phys', speed: 0, ai: 'target', r: 8, xp: 0, gold: 0, pres: 0, mres: 0, echo: { id: 'goo', rate: 0 } },
   dummyM: { name: '룬석 허수아비', shape: 'dummy', pal: { a: '#6a5aa8', b: '#3a2e6a', c: '#b8a8ff', e: '#00e0ff' }, hp: 1e9, atk: 0, type: 'mag', speed: 0, ai: 'dummy', r: 7, xp: 0, gold: 0, pres: 0, mres: 100, echo: { id: 'goo', rate: 0 } },
 };
+registerHiddenMonsters(DUMMIES); // 숨은 각인: 시련의 스승 · 나의 그림자 · 전설 몬스터 (도감에 넣지 않는다)
 
 // 고대 석판 (탐험 보상: 숨은 조합 힌트)
 export const LORES = [
@@ -337,3 +340,31 @@ export const LORES = [
 
 // 몬스터 개체마다 고유한 부산물 (data/monsterparts.js)
 registerParts(ECHOES, MONSTERS);
+
+// ── 몬스터 특성: 「이 몬스터는 이렇게 상대한다」 규칙 하나 (sim/montraits.js) ──
+export const MON_TRAIT = {
+  shield: ['shieldDemon', 'boneGuard', 'royalGuard', 'mirrorKnight', 'clockSoldier', 'lizardWarrior'],
+  stone: ['magmaGolem', 'iceGolem', 'rockGolem', 'gargoyle', 'steamGolem', 'archiveKeeper', 'lightWarden'],
+  dig: ['sandScorpion', 'desertScorpion', 'bookworm', 'lavaLizard', 'toxShroom'], // 땅을 파는 짐승 기술(burrow)이 이미 있는 잠복자 · 모래 벌레는 빼다
+  caster: ['wraith', 'stargazer', 'grimoire', 'erasedRecord', 'engravedShade', 'cultShade', 'inkWraith'],
+  feign: ['skeleton', 'ghoul', 'shroom', 'wraithKnight', 'swampTroll'],
+  split: ['slime', 'spikeSlime', 'mirrorSlime', 'leech', 'jellyfish'],
+  callHelp: ['goblin', 'hyena', 'bandit', 'boarRunner', 'harpy'],
+  rammer: ['goblinChief', 'orcRaider', 'ruinSentinel'],
+  healer: ['vineSpirit', 'waterSpirit', 'petalSprite', 'starlightSpirit', 'necroAcolyte'],
+  bomber: ['mossSlug', 'gasBloat', 'pumpkinFiend', 'frostSlug', 'tinyCorpse'],
+  stalker: ['shadowPanther', 'shadeWraith', 'poisonSpider', 'mirrorShade', 'lightEater'],
+  carapace: ['bigBeetle', 'coralCrab', 'glassCrawler', 'gearSpider', 'yeti'],
+};
+for (const [t, ids] of Object.entries(MON_TRAIT)) for (const id of ids) if (MONSTERS[id]) MONSTERS[id].trait = t;
+// ── 센 원거리 몬스터의 탄: 일직선이 아닌 개성 (world.enemyShot) ──
+// split 날아가다 세 갈래 · homing 느리지만 쫓아오는 탄 · bounce 벽에서 두 번 튕김 · helix 두 줄이 꼬이며 날아감 · laser 예고선 뒤 레이저 · burst 끝에서 터짐
+export const MON_SHOT = {
+  split: ['salamander', 'shardBird', 'rockThrower'],
+  homing: ['watcherEye', 'grimoire', 'wingedApostle', 'hourglassSpirit'],
+  bounce: ['iceArcher', 'clockmaker', 'mirrorWitch'],
+  helix: ['waterSpirit', 'windSpirit', 'starlightSpirit'],
+  laser: ['stargazer', 'phantomArcher', 'hawkRider'],
+  burst: ['venomSpitter', 'seaSerpent', 'fireSpirit', 'petalSprite'],
+};
+for (const [k, ids] of Object.entries(MON_SHOT)) for (const id of ids) if (MONSTERS[id]?.proj) MONSTERS[id].proj = { ...MONSTERS[id].proj, pat: k };

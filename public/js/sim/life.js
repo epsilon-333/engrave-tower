@@ -4,6 +4,7 @@ import { TILE, T_FLOOR, T_WALL, T_BUILD, T_DEEP, T_LIQUID } from './mapgen.js';
 import { GOODS, NODES, THEME_NODES, DIG_BASE, DIG_BIOME, ARTIFACTS, CROPS, FISH, FISH_JUNK, TOOLS, bagAdd } from '../data/goods.js';
 import { G, BIOME_LIST, OW } from '../data/maps/overworld.js';
 import { LORES } from '../data/monsters.js';
+import { JOURNALS, SERIN_TREE, SERIN_SAND } from '../data/story.js';
 
 const now = () => Date.now();
 export const toolTier = (w, kind) => w.life?.tools?.[kind] || 0;
@@ -40,6 +41,16 @@ export function initLife(w, life) {
       const until = life.chopped[`${pr.x},${pr.y}`];
       if (until > t) { pr.chopped = until; w.tiles[pr.y * w.tw + pr.x] = T_FLOOR; }
       else if (until) { delete life.chopped[`${pr.x},${pr.y}`]; delete pr.chopped; w.tiles[pr.y * w.tw + pr.x] = T_BUILD; }
+    }
+    // 세린의 일지 (탑 밖 두 장): 이끼 숲 한가운데에서 가장 가까운 큰 나무 속 · 물안개 해안에서 가장 가까운 모래밭의 반짝이는 흙 (data/story.js)
+    if (m.designed === 'overworld') {
+      const forest = BIOME_LIST.find((b) => b.id === 'forest'), coast = BIOME_LIST.find((b) => b.id === 'mistcoast');
+      let best = null, bd = 1e9;
+      for (const pr of m.props) if (pr.kind === 'tree' && !['dead', 'cactus', 'charred'].includes(pr.tree)) { const d = Math.hypot(pr.x - forest.x, pr.y - forest.y); if (d < bd) { bd = d; best = pr; } }
+      if (best) w.serinTree = `${best.x},${best.y}`;
+      let sd = null; bd = 1e9;
+      for (let y = 2; y < w.th - 2; y++) for (let x = 2; x < w.tw - 2; x++) { const k = y * w.tw + x; if (m.ground[k] !== G.SAND || w.tiles[k] !== T_FLOOR) continue; const d = Math.hypot(x - coast.x, y - coast.y); if (d < bd) { bd = d; sd = { x, y }; } }
+      if (sd) { const o = { kind: 'dig', key: 'dSerin', serin: SERIN_SAND, tx: sd.x, ty: sd.y, x: sd.x * TILE + 8, y: sd.y * TILE + 9, label: '반짝이는 흙 파기', reusable: true }; if (life.nodes.dSerin > t) { o.depleted = true; o.respawnAt = life.nodes.dSerin; } w.objects.push(o); }
     }
     // 밭
     if (m.farm) {
@@ -207,6 +218,7 @@ function landHit(w, gth) {
       if (pr.tree === 'oak' && pr.v === 3) addGood(w, 'berry', 2, x, y); // 열매가 달린 나무
     }
     w.emit({ t: 'treeFall', x, y: y - 20, kind: pr.tree, burnt });
+    if (w.serinTree === `${pr.x},${pr.y}`) serinFound(w, SERIN_TREE, x, y + 6, '줄기 속에 끼워 둔 낡은 일지가 떨어졌다');
     w.knack('chop');
     w.signals.push({ t: 'save' });
   } else if (gth.kind === 'shovel') {
@@ -216,6 +228,7 @@ function landHit(w, gth) {
     const found = digLoot(w, tg, gth.power);
     if (w.hasKnack('digger') && rng.chance(0.25)) found.push(...digLoot(w, tg, gth.power)); // 숙련 「발굴가」
     for (const [id, n] of found) addGood(w, id, n, tg.x, tg.y - 2);
+    if (tg.serin) serinFound(w, tg.serin, tg.x, tg.y, '모래 속에서 기름종이에 싼 일지가 나왔다');
     w.knack('dig');
     w.emit({ t: 'digDone', x: tg.x, y: tg.y });
     w.signals.push({ t: 'save' });
@@ -498,4 +511,11 @@ function farmDo(w, act) {
     p.gather = { kind: 'hand', target: act, t: 0, dur: 0.3, done: true, hit: true };
     w.signals.push({ t: 'save' });
   }
+}
+
+// 세린의 일지가 나왔다: 그 자리에 일지 (이미 읽은 장이면 다시 놓지 않는다)
+function serinFound(w, id, x, y, text) {
+  if (w.codex?.journals?.[id] || w.objects.some((o) => o.kind === 'journal' && o.id === id)) return;
+  w.objects.push({ kind: 'journal', id, look: 'book', x, y, label: `${JOURNALS[id].title} 읽기`, reusable: true });
+  w.emit({ t: 'text', x, y: y - 20, text, color: '#ffe8a8' });
 }

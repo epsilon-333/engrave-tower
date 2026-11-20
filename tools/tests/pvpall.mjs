@@ -11,7 +11,7 @@ const list = [...Object.entries(CLASSES).flatMap(([cls, c]) => c.skills.map((id)
 for (const [cls, id] of list) {
   const sk = SKILLS[id], c = CLASSES[cls];
   if (!sk || COND.has(id) || sk.do.every((o) => NO_HIT.has(o.op))) continue;
-  const b = computeBuild({ race: c.race, cls, level: 20, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] }, learned: [id], skills: [id], spirit: { id: 'fire2', star: 1 } });
+  const b = computeBuild({ race: c.race, cls, level: 20, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off }, learned: [id], skills: [id], spirit: { id: 'fire2', star: 1 } });
   const w = new World({ build: b, mode: 'field', zone: DUEL_ZONE, zoneId: 'duel', seed: 3, map: buildDuelArena(), pvp: { opp: { name: 'B' } }, souls: [{ defId: 'goblin', maxHp: 300, atk: 20, r: 6, scale: 1 }] });
   w.enemies = []; const p = w.player; w.autoAim = true;
   const near = sk.do.some((o) => o.op === 'cone' || o.op === 'orbit' || (o.range && o.range < 50)); const e = w.addRemote({ name: 'B', maxHp: 999 }, p.x + (near ? 28 : 55), p.y);

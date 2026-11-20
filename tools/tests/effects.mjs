@@ -7,7 +7,7 @@ const { ZONES } = await import(root + '/data/monsters.js');
 const ok = (cond, text) => { console.log(cond ? 'OK ' : 'FAIL', text); if (!cond) process.exitCode = 1; };
 const mk = (cls, engravings = {}, gear = {}) => {
   const c = CLASSES[cls];
-  const b = computeBuild({ race: c.race, cls, level: 20, allSkills: true, alloc: {}, engravings, gear: { weapon: c.weapons[0], ...gear }, skills: c.skills.slice(0, 4) });
+  const b = computeBuild({ race: c.race, cls, level: 20, allSkills: true, alloc: {}, engravings, gear: { weapon: c.weapons[0], off: c.off, ...gear }, skills: c.skills.slice(0, 4) });
   const w = new World({ build: b, mode: 'field', zoneId: ZONES[0].id, seed: 7 });
   w.enemies.forEach((e) => { e.x = -999; e.y = -999; });
   return w;
@@ -16,8 +16,11 @@ const mk = (cls, engravings = {}, gear = {}) => {
 // 기사: 오러 증폭 문양 → 맞아서 얻는 오러 +50%, 오러 50 이상이면 받는 피해 -10%
 const kn = Object.keys(CLASSES).find((k) => CLASSES[k].race === 'knight');
 const base = mk(kn), sig = mk(kn, { heart: 'auraSigil' });
+// 오러는 맞아도 차지 않는다 (2026-11-19) — 적중 · 처치로 얻는 양만 늘어난다
 for (const w of [base, sig]) { w.player.res = 0; w.hurtPlayer(40, 'phys', null, { direct: true }); }
-ok(sig.player.res > base.player.res * 1.4, `맞아서 얻는 오러 ${base.player.res.toFixed(1)} → ${sig.player.res.toFixed(1)}`);
+ok(base.player.res === 0 && sig.player.res === 0, `맞아도 오러가 차지 않는다 (${base.player.res.toFixed(1)} · ${sig.player.res.toFixed(1)})`);
+for (const w of [base, sig]) { w.player.res = 0; w.addRes(10); }
+ok(sig.player.res > base.player.res * 1.4, `얻는 오러 ${base.player.res.toFixed(1)} → ${sig.player.res.toFixed(1)}`);
 for (const w of [base, sig]) { w.player.res = 80; w.player.hp = w.d.maxHp; w.player.invuln = 0; w.hurtPlayer(40, 'phys', null, { direct: true }); }
 const lostB = base.d.maxHp - base.player.hp, lostS = sig.d.maxHp - sig.player.hp;
 ok(lostS < lostB * 0.95, `오러가 넉넉할 때 받는 피해 ${lostB.toFixed(1)} → ${lostS.toFixed(1)}`);

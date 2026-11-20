@@ -9,7 +9,7 @@ const add = (key, v, text) => ({ type: 'add', key, v, text });
 const on = (event, chance, action, text) => ({ type: 'on', event, chance, action, text });
 const strike = (r, m, elem, fx, rar, extra = {}) => ({ strike: { r, mul: m, elem, fx, rar, type: elem && elem !== 'phys' ? 'mag' : 'phys', ...extra } });
 const buff = (id, dur, mods, name, color) => ({ buff: { id: 'g_' + id, dur, mods, name, color } });
-const SHIELD = { off: { shield: 1, parry: 1 }, odesc: '방패 · 받아치기 스킬을 온전히 쓴다' };
+const SHIELD = { off: { shield: 1, parry: 1 }, guard: 0.2, odesc: '방패 · 앞에서 오는 피해 -20% · 방패 · 받아치기 스킬을 온전히 쓴다' };
 const SPELL = { off: { spell: 1 }, odesc: '마법을 온전한 힘으로 쓴다' };
 const SHOOT = { off: { shoot: 1 }, odesc: '쏘기 스킬을 온전한 힘으로 쓴다' };
 const THROW = { off: { throw: 1 }, odesc: '던지기 스킬을 온전한 힘으로 쓴다' };

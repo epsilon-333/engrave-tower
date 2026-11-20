@@ -1,6 +1,8 @@
 import { registerPartEngravings } from './monsterparts.js';
 import { MONSTERS } from './monsters.js';
 import { registerSkillEngravings } from './skillengs.js';
+import { registerHiddenEngravings } from './hidden.js';
+import { registerResEngravings } from './resengs.js';
 // 각인: 신체 부위에 새기는 고대 문양. 잔향을 모아 공명 제단에서 새긴다.
 // grade 1~5, load = 각인 부하. 고등급은 부하가 크고 태그가 적다 → 많이 끼우면 과부하.
 // effects[].when = 발동 조건 (conditions.js 형식)
@@ -57,7 +59,7 @@ export const ENGRAVINGS = {
     stats: { lifesteal: 6 },
     effects: [
       { type: 'on', event: 'hit', chance: 0.3, action: { status: 'bleed', stacks: 1 }, text: '공격 시 30% 출혈' },
-      { when: { race: 'undead' }, type: 'flag', flag: 'undeadLifesteal', text: '언데드도 흡혈로 회복 가능' },
+      { when: { race: 'undead' }, type: 'stat', stat: 'lifesteal', v: 3, text: '언데드면 흡혈 +3' },
     ],
     recipe: { blood: 5 },
   },
@@ -407,7 +409,7 @@ export const ENGRAVINGS = {
     name: '오러 증폭 문양', slot: 'heart', grade: 3, load: 5, tags: ['brawl'],
     stats: { str: 4, pres: 4 },
     effects: [
-      { when: { race: 'knight' }, type: 'add', key: 'hurtRes', v: 0.5, text: '맞아서 얻는 오러 +50%' },
+      { when: { race: 'knight' }, type: 'mul', key: 'resGain', v: 1.5, text: '얻는 오러 +50%' },
       { when: { race: 'knight' }, type: 'flag', flag: 'resGuard', text: '오러 50 이상이면 받는 피해 -10%' },
     ],
     recipe: { chief: 1, rust: 4 },
@@ -623,6 +625,18 @@ export const ENGRAVINGS = {
     effects: [{ type: 'mul', key: 'dmgTakenMul', v: 0.85, text: '받는 피해 -15%' }, { type: 'flag', flag: 'frozenVuln', text: '얼어붙은 적에게 주는 피해 +50%' }, { type: 'on', event: 'hurt', chance: 1, action: { status: 'chill', stacks: 2 }, text: '나를 때린 적에게 냉기 2중첩' }],
     recipe: { icecore: 6, witch: 1 },
   },
+  stillStone: {
+    name: '바위의 인내', slot: 'leg', grade: 4, load: 7, tags: ['giant'],
+    stats: { vit: 6, pres: 4 },
+    effects: [{ type: 'flag', flag: 'stillGuard', text: '1초 동안 움직이지 않으면 다시 움직일 때까지 받는 피해 -50%' }],
+    recipe: { bone: 8, queen: 1 },
+  },
+  windRead: {
+    name: '바람 읽기', slot: 'head', grade: 3, load: 5, tags: ['wind'],
+    stats: { sen: 4, agi: 3 },
+    effects: [{ type: 'flag', flag: 'aimAssist', text: '명중 보정: 내 투사체가 앞쪽 3.5칸 안의 적에게 살짝 휜다 (초당 최대 143°)' }],
+    recipe: { wing: 6, rust: 4 },
+  },
   plagueKing: {
     name: '역병의 군주', slot: 'head', grade: 5, load: 10, tags: ['poison', 'curse'],
     stats: { toxicity: 10, mag: 6 },
@@ -673,7 +687,7 @@ export const TAGS = {
     { n: 3, text: '회피 +8%', effects: [{ type: 'add', key: 'dodge', v: 0.08 }] },
   ] },
   curse: { name: '저주', color: '#b7a4ff', tiers: [
-    { n: 2, text: '상태이상 피해 +25%', effects: [{ type: 'mul', key: 'statusDmgMul', v: 1.25 }] },
+    { n: 2, text: '저주의 약화 +50% (중첩마다 받는 피해 +3% · 주는 피해 -4.5%)', effects: [{ type: 'mul', key: 'curseMul', v: 1.5 }] },
   ] },
   undying: { name: '불사', color: '#e8e2cf', tiers: [
     { n: 2, text: '사냥마다 1번, 죽으면 HP 30%로 부활', effects: [{ type: 'flag', flag: 'undying' }] },
@@ -704,6 +718,8 @@ export const REACTIONS = {
 // 몬스터 개체마다 하나씩: 그 몬스터의 부산물로 새기는 각인 (data/monsterparts.js)
 registerPartEngravings(ENGRAVINGS, MONSTERS);
 registerSkillEngravings(ENGRAVINGS); // 각인이 없던 스킬마다 각인 하나 (data/skillengs.js)
+registerHiddenEngravings(ENGRAVINGS); // 숨은 각인 (data/hidden.js)
+registerResEngravings(ENGRAVINGS); // 자원 각인 (data/resengs.js)
 
 // 효과 문구에 숫자가 없으면 실제 수치를 붙인다 (설계 규칙: 효과는 숫자로 분명하게)
 // 피해는 「공격력의 몇 %」, 범위는 칸(16px) 단위, 상태이상은 중첩 수
@@ -725,7 +741,6 @@ const FLAG_DETAIL = {
   poisonSpread: '반경 3.8칸 안의 적에게 중독 중첩의 절반',
   poisonBurst: '반경 2.1칸 독 구름 3초 (초당 4 + 독성×0.8)',
   noHeal: '체력 회복 0%',
-  undeadLifesteal: '흡혈 100% 적용',
 };
 for (const e of Object.values(ENGRAVINGS)) for (const x of e.effects || []) {
   const t = x.text || '';

@@ -19,9 +19,6 @@ function steps(touch) {
         t.dummy = e; t.hp = e.hp; t.hits = 0;
       },
       done: (w, t) => { if (!t.dummy) return true; if (t.dummy.hp < t.hp) { t.hits++; t.hp = t.dummy.hp; } return t.hits >= 3; } },
-    { text: T('Q · E 스킬로 허수아비를 맞혀 보자. [차지]라고 적힌 스킬은 길게 눌렀다 놓으면 세진다', '스킬 버튼으로 허수아비를 맞혀 보자. [차지]라고 적힌 스킬은 길게 눌렀다 놓으면 세진다'),
-      setup: (w, t) => { if (t.dummy && !t.dummy.dead) t.dummy.hp = t.dummy.maxHp; t.hp0 = t.dummy?.hp ?? 0; },
-      done: (w, t) => Object.values(w.player.cds || {}).some((v) => v > 0.45) && (!t.dummy || t.dummy.dead || t.dummy.hp < t.hp0) },
     { text: T('우클릭으로 무기 기술을 써 보자', '「무기」 버튼으로 무기 기술을 써 보자'),
       done: (w) => w.player.skillCd > 0 || !!w.player.charging },
     { text: T('무언가 앞에서 G: 표지판을 읽고, 사람에게 말을 걸고, 모닥불에서 쉰다', '무언가 앞에서 나타나는 버튼: 표지판을 읽고, 사람에게 말을 걸고, 모닥불에서 쉰다'),
@@ -42,7 +39,7 @@ export function createTutorial(ctx) {
     if (rt?.dummy && w) { rt.dummy.dead = true; w.enemies = w.enemies.filter((e) => e !== rt.dummy); }
     rt = null;
     if (el) el.hidden = true;
-    if (done) ctx.banner({ text: '튜토리얼 끝!', sub: '이제 화면의 여정과 화살표를 따라 각인의 탑으로!', t: 4.5, color: '#f6dfae' });
+    if (done) ctx.banner({ text: '튜토리얼 끝!', sub: '오른쪽 위의 여정을 따라가자 · 먼저 사냥부터', t: 4.5, color: '#f6dfae' });
     ctx.writeSave();
   }
 

@@ -42,11 +42,28 @@ const TINT = {
 
 // 무기 목록: base(종류) · t(단계) · r(등급) · s(그림) · tint · name · lore · w(무기 값 덮어쓰기) · st(능력치) · fx(효과) · sk(우클릭 기술)
 export const TOWER_WEAPONS = {
+  // ═══ 숨은 각인 「혈귀」의 칼: 층의 주인이 드물게 떨군다 (뽑기에는 나오지 않는다) ═══
+  bloodEater: { base: 'sword', t: 3, r: 3, special: true, s: 'weapon_saw_sword', tint: TINT.blood, name: '피를 먹는 칼', lore: '쥔 손의 피부터 먹는다. 주인 셋의 피를 먹으면 깨어난다고 한다.',
+    w: { crit: 0.08 }, st: { str: 6, lifesteal: 6 }, fx: [flag('bloodHunger', '깨어나기 전: 들고 있으면 초당 체력 1%를 먹고 회복을 막는다 (이 칼로 층의 주인 셋을 쓰러뜨리면 깨어난다)')],
+    sk: { name: '피의 일격', cd: 7, desc: '피를 먹은 칼날로 앞을 크게 벤다. 맞힌 적마다 체력 2% 회복.', mo: 'overhead', do: [{ op: 'cone', range: 50, angle: 2.2, mul: 2.4, healPerHit: 0.02, fx: 'sweep' }] } },
+  // ═══ 장검 (두 손 · 한손검과 대검 사이) — 2026-11-18 ═══
+  pilgrimLong: { base: 'longsword', t: 2, r: 1, s: 'weapon_duel_sword', name: '순례자의 장검', lore: '탑을 오르던 순례자들이 지팡이 삼아 짚던 칼. 날은 아직 곧다.',
+    st: { str: 3, sen: 2 },
+    sk: { name: '찌르고 베기', cd: 6, desc: '앞으로 길게 찌른 뒤 넓게 벤다.', mo: 'dashSlash', do: [{ op: 'dash', dist: 60, mul: 1.4 }, { op: 'cone', range: 50, angle: 2.2, mul: 1.6, fx: 'sweep', delay: 0.15 }] } },
+  oathLong: { base: 'longsword', t: 4, r: 2, s: 'weapon_knight_sword', tint: TINT.frost, name: '서리 맹세 장검', lore: '서리 회랑의 기사들이 맹세를 새긴 칼. 벤 자리가 하얗게 언다.',
+    w: { onHit: onHit('chill', 0.3) }, st: { str: 4, pres: 3, iceAff: 3 },
+    sk: { name: '맹세의 일격', cd: 8, elem: 'ice', desc: '두 손으로 내리쳐 앞쪽을 얼린다. 냉기 3중첩.', mo: 'overhead', do: [{ op: 'aoe', at: 'front', dist: 30, r: 48, mul: 2.4, stacks: 3, fx: 'ice' }] } },
+  wardenLong: { base: 'longsword', t: 6, r: 3, s: 'weapon_anime_sword', tint: TINT.gold, name: '왕성 수호 장검', lore: '무너진 왕성의 마지막 근위대가 들던 장검. 칼끝이 늘 문을 향한다.',
+    w: { crit: 0.08, critDmg: 0.3 }, st: { str: 6, sen: 4, pres: 3 },
+    sk: { name: '수호의 원', cd: 9, desc: '장검을 크게 두 번 돌려 둘레를 벤다. 두 번째가 더 세다.', mo: 'spin', do: [{ op: 'comboSpin', n: 2, every: 0.28, step: 10, r: 58, mul: 1.5, last: 2.6, knock: 120 }] } },
+  vowLong: { base: 'longsword', t: 8, r: 4, s: 'weapon_lavish_sword', tint: TINT.star, name: '별을 벤 장검', lore: '별의 서고 꼭대기에서 떨어진 별을 두 동강 냈다는 칼. 칼날에 빛이 고여 있다.',
+    w: { critDmg: 0.5, range: 40 }, st: { str: 8, sen: 6, agi: 4 },
+    sk: { name: '별 가르기', cd: 10, desc: '빛이 고인 칼날로 앞을 가른다. 일직선 모든 적에게 큰 피해.', mo: 'overhead', do: [{ op: 'line', len: 200, w: 30, mul: 4.2, delay: 0.12, fx: 'skyfall' }] } },
   // ═══ 1단계 · 1~10층 (이끼 굴) ═══
   mossFang: { base: 'dagger', t: 1, r: 0, tint: TINT.moss, name: '이끼 송곳니', lore: '이끼 굴 거미의 송곳니를 깎아 만든 단검. 독이 아직 마르지 않았다.',
     w: { onHit: onHit('poison', 0.3) }, st: { agi: 3 },
     sk: { name: '송곳니 찌르기', cd: 6, desc: '앞으로 미끄러지며 찔러 독 2중첩.', mo: 'stab', do: [{ op: 'dash', dist: 70, mul: 1.6, status: 'poison', stacks: 2 }] } },
-  ironWarden: { base: 'swordShield', t: 1, r: 0, s: 'weapon_knight_sword', name: '견습 파수검', lore: '탑 문지기 견습생이 처음 받는 검과 방패.',
+  ironWarden: { base: 'swordShield', t: 1, r: 0, s: 'weapon_knight_sword', name: '견습 파수검', lore: '탑 문지기 견습생이 처음 받는 기사검.',
     st: { pres: 5, vit: 2 }, fx: [on('hurt', 0.25, { shield: 0.03 }, '맞으면 25% 확률로 보호막(최대 체력 3%)')],
     sk: { name: '방패 밀쳐내기', cd: 7, desc: '방패로 앞을 밀쳐 날려 보내고 0.4초 기절.', mo: 'bash', do: [{ op: 'cone', range: 44, angle: 1.6, mul: 1.3, knock: 180, stun: 0.4, fx: 'sweep' }] } },
   emberClub: { base: 'club', t: 1, r: 0, tint: TINT.ember, name: '불씨 몽둥이', lore: '모닥불 속에서 꺼낸 그대로 휘두르는 몽둥이. 끝이 아직 빨갛다.',
@@ -99,7 +116,7 @@ export const TOWER_WEAPONS = {
   swampKnives: { base: 'knives', t: 2, r: 1, tint: TINT.venom, name: '늪지 투척 단검', lore: '아홉 자루가 한 벌. 모두 독에 담가 둔다.',
     w: { onHit: onHit('poison', 0.25) }, st: { agi: 3 },
     sk: { name: '독 단검 소나기', cd: 7, desc: '독 단검 아홉 자루를 앞으로 흩뿌린다.', mo: 'throw', do: [{ op: 'proj', n: 9, spread: 0.12, speed: 380, range: 190, mul: 0.45, status: 'poison', stacks: 1, kind: 'knife' }] } },
-  shellShield: { base: 'swordShield', t: 2, r: 2, tint: TINT.shell, name: '등껍질 방패검', lore: '맞을수록 단단해지고, 단단해질수록 화가 난다.',
+  shellShield: { base: 'swordShield', t: 2, r: 2, tint: TINT.shell, name: '등껍질 기사검', lore: '맞을수록 단단해지고, 단단해질수록 화가 난다.',
     st: { pres: 8, vit: 3, mres: 3 }, fx: [on('hurt', 1, buff('shellShield', 4, { dmgMul: 1.08 }, null, null, { stack: true, cap: { dmgMul: 1.4 } }), '맞을 때마다 4초 동안 피해 +8% (최대 +40%)')],
     sk: { name: '등껍질 돌진', cd: 9, desc: '방패를 앞세워 돌진해 0.6초 기절, 3초 동안 받는 피해 -30%.', mo: 'bash', do: [{ op: 'dash', dist: 90, mul: 1.5, stun: 0.6 }, { op: 'buff', id: 'wShell', dur: 3, mods: { dmgTakenMul: 0.7 }, color: '#c8b088' }] } },
   queenGlaive: { base: 'halberd', t: 2, r: 3, tint: TINT.queen, name: '늪 여왕의 도끼창', lore: '늪 여왕의 근위대가 들던 도끼창. 상처에서 독이 퍼진다.',
@@ -134,7 +151,7 @@ export const TOWER_WEAPONS = {
   lavaTome: { base: 'tome', t: 3, r: 3, tint: TINT.magma, name: '용암 서판', lore: '돌판에 새긴 화산의 주문. 읽으면 땅이 끓는다.',
     st: { mag: 5, fireAff: 4 }, fx: [flag('burnSpread', '불타는 적이 쓰러지면 불이 옮겨 붙는다')],
     sk: { name: '용암 장막', cd: 10, mana: 26, elem: 'fire', desc: '조준한 곳에 용암이 터지고 4초 동안 느려지는 땅이 남는다.', mo: 'castBig', do: [{ op: 'aoe', at: 'aim', r: 70, mul: 1.6, stacks: 3, fx: 'burst' }, { op: 'zone', kind: 'slow', r: 70, dur: 4, at: 'aim' }] } },
-  riftWarden: { base: 'swordShield', t: 3, r: 3, s: 'weapon_red_gem_sword', tint: TINT.rift, name: '균열 수호검', lore: '균열을 지키던 수호자의 방패. 맞은 힘을 비전으로 되돌린다.',
+  riftWarden: { base: 'swordShield', t: 3, r: 3, s: 'weapon_red_gem_sword', tint: TINT.rift, name: '균열 수호검', lore: '균열을 지키던 수호자의 검. 맞은 힘을 비전으로 되돌린다.',
     st: { pres: 8, mres: 6 }, fx: [on('hurt', 0.3, strike(40, 0.9, 'arcane', 'arcane'), '맞으면 30% 확률로 비전 반격')],
     sk: { name: '균열 방벽', cd: 11, elem: 'arcane', desc: '3초 동안 받는 피해 -45%, 둘레를 밀쳐 낸다.', mo: 'guard', do: [{ op: 'buff', id: 'wRift', dur: 3, mods: { dmgTakenMul: 0.55 }, color: '#b98aff' }, { op: 'aoe', at: 'self', r: 50, mul: 1.2, knock: 200, fx: 'arcane' }] } },
 
@@ -195,7 +212,7 @@ export const TOWER_WEAPONS = {
   hangmanWhip: { base: 'whip', t: 5, r: 3, tint: TINT.grave, name: '교수형 채찍', lore: '목을 감으면 놓지 않는다.',
     st: { agi: 5, str: 3 }, fx: [on('crit', 1, { status: 'bleed', stacks: 3 }, '치명타면 출혈 3중첩')],
     sk: { name: '목조르기', cd: 9, desc: '앞을 휘감아 1.6초 묶고 출혈 2중첩.', mo: 'lash', do: [{ op: 'line', len: 100, w: 16, mul: 2.2, stun: 1.6, status: 'bleed', stacks: 2 }] } },
-  cryptShield: { base: 'swordShield', t: 5, r: 3, tint: TINT.grave, name: '납골당 방패검', lore: '납골당 문을 떼어 만든 방패. 망자들이 같이 막아 준다.',
+  cryptShield: { base: 'swordShield', t: 5, r: 3, tint: TINT.grave, name: '납골당 기사검', lore: '납골당 문의 쇠빗장을 벼린 검. 망자들이 같이 막아 준다.',
     st: { pres: 10, mres: 8, vit: 4 }, fx: [on('hurt', 0.2, buff('crypt', 2, { dmgTakenMul: 0.7 }, '망자의 방패', '#c45cff'), '맞으면 20% 확률로 2초 동안 받는 피해 -30%')],
     sk: { name: '망자의 벽', cd: 12, elem: 'dark', desc: '4초 동안 받는 피해 -50%, 둘레에 저주.', mo: 'guard', do: [{ op: 'buff', id: 'wCrypt', dur: 4, mods: { dmgTakenMul: 0.5 }, color: '#c45cff' }, { op: 'aoe', at: 'self', r: 56, mul: 1.0, stacks: 1, fx: 'doom' }] } },
   kingsEdge: { base: 'greatsword', t: 5, r: 4, s: 'weapon_lavish_sword', tint: TINT.gold, name: '각인왕의 대검', lore: '50층의 왕이 들던 대검. 쓰러뜨린 자의 수만큼 무거워진다.',
@@ -259,7 +276,7 @@ export const TOWER_WEAPONS = {
   reedCrossbow: { base: 'crossbow', t: 7, r: 4, tint: TINT.reed, name: '갈대 연발 석궁', lore: '쏘는 동안 장전된다. 멈추지 않는다.',
     w: { speed: 1.1 }, st: { sen: 9, agi: 5 },
     sk: { name: '연발 사격', cd: 9, desc: '1초 동안 볼트를 열 발 쏟아붓는다.', mo: 'shoot', do: [{ op: 'channel', dur: 1.0, every: 0.1, sub: { op: 'proj', n: 1, speed: 460, range: 260, mul: 0.6, kind: 'bolt' } }] } },
-  mudShield: { base: 'swordShield', t: 7, r: 4, tint: TINT.toad, name: '진흙 방패검', lore: '맞으면 진흙이 튀고, 튄 진흙에는 독이 있다.',
+  mudShield: { base: 'swordShield', t: 7, r: 4, tint: TINT.toad, name: '진흙 기사검', lore: '맞으면 진흙이 튀고, 튄 진흙에는 독이 있다.',
     st: { pres: 12, vit: 8 }, fx: [on('hurt', 0.25, { cloud: { r: 40, dur: 3 } }, '맞으면 25% 확률로 독구름')],
     sk: { name: '진흙 방벽', cd: 12, desc: '3초 동안 받는 피해 -50%, 앞에 4초 동안 느려지는 진흙.', mo: 'guard', do: [{ op: 'buff', id: 'wMud', dur: 3, mods: { dmgTakenMul: 0.5 }, color: '#8a7a4a' }, { op: 'zone', kind: 'slow', r: 80, dur: 4, at: 'aim' }] } },
   queenScepter: { base: 'staff', t: 7, r: 4, s: 'weapon_green_magic_staff', tint: TINT.queen, name: '늪 여왕의 홀', lore: '늪 전체가 이 홀의 말을 듣는다.',
@@ -326,7 +343,7 @@ export const TOWER_WEAPONS = {
   shardWhip: { base: 'whip', t: 9, r: 4, tint: TINT.frost, name: '얼음 조각 채찍', lore: '마디마다 얼음 조각이 박혀 있다.',
     st: { agi: 10, iceAff: 6 },
     sk: { name: '얼음 조각 회오리', cd: 9, elem: 'ice', desc: '채찍을 한 바퀴 휘돌려 둘레를 모두 벤다.', mo: 'spin', do: [{ op: 'cone', range: 96, angle: 6.28, mul: 2.4, stacks: 2, fx: 'sweep' }] } },
-  glacierShield: { base: 'swordShield', t: 9, r: 4, tint: TINT.glacier, name: '빙하 방패검', lore: '방패에 닿은 것은 얼어붙는다.',
+  glacierShield: { base: 'swordShield', t: 9, r: 4, tint: TINT.glacier, name: '빙하 기사검', lore: '칼날에 닿은 것은 얼어붙는다.',
     st: { pres: 18, mres: 14, vit: 10 }, fx: [on('hurt', 0.3, { status: 'chill', stacks: 2 }, '맞으면 30% 확률로 때린 적에게 냉기 2중첩')],
     sk: { name: '빙하 요새', cd: 13, elem: 'ice', desc: '4초 동안 받는 피해 -60%, 둘레를 얼린다.', mo: 'guard', do: [{ op: 'buff', id: 'wGlacier', dur: 4, mods: { dmgTakenMul: 0.4 }, color: '#e8f8ff' }, { op: 'aoe', at: 'self', r: 70, mul: 2.0, stacks: 3, fx: 'zero' }] } },
 
@@ -416,7 +433,7 @@ for (const [id, x] of Object.entries(TOWER_WEAPONS)) {
   const theme = themeOf(x, T); retheme(x.fx, theme); retheme(x.sk?.do, theme);
   const fx = x.fx || [];
   ITEMS[id] = {
-    name: x.name, slot: 'weapon', price: 0, towerWeapon: true, tier: x.t, rarity: x.r, rarityColor: R.color, cat: T.cat, weapon, stats, tags: x.tags || [],
+    name: x.name, slot: 'weapon', price: 0, towerWeapon: true, tier: x.t, rarity: x.r, rarityColor: R.color, cat: T.cat, hands: T.hands, base: x.base, weapon, stats, tags: x.tags || [],
     effects: fx, art: { ...T.art, s: x.s || T.art.s, tint: x.tint || '', glow: R.glow }, desc: x.lore,
     lines: [`${R.name} · ${x.t}단계 (${x.t * 10 - 9}~${x.t * 10}층) · 위력 ×${weapon.mul}`, ...fx.map((f) => f.text)],
   };
@@ -431,7 +448,7 @@ const R_WEIGHT = [10, 6, 3, 1.4, 0.6];
 export function rollTowerWeapon(f, rnd) {
   const band = Math.max(1, Math.min(10, Math.ceil(f / 10)));
   const tier = band > 1 && rnd() < 0.3 ? band - 1 : band;
-  const pool = TOWER_WEAPON_IDS.filter((id) => TOWER_WEAPONS[id].t === tier);
+  const pool = TOWER_WEAPON_IDS.filter((id) => TOWER_WEAPONS[id].t === tier && !TOWER_WEAPONS[id].special);
   const total = pool.reduce((a, id) => a + R_WEIGHT[TOWER_WEAPONS[id].r], 0);
   let u = rnd() * total;
   for (const id of pool) { u -= R_WEIGHT[TOWER_WEAPONS[id].r]; if (u <= 0) return id; }

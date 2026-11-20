@@ -83,6 +83,7 @@ class Model:
         self.flats = {k: hexc(v) for k, v in (flats or {}).items()}
         self.by = {p.name: p for p in parts}
         self.ramps = {k: [hexc(c) for c in v] for k, v in ramps.items()}
+        self.stamps = []  # 정해진 도트 크기로 찍는 것 (눈 2×2 등): {'part', 'x', 'y', 'w', 'h', 'color'} — 줄여도 크기가 그대로
 
     def render(self, pose, hide=()):
         # pose: 부위 이름 → (각도, dx, dy[, sx, sy])
@@ -151,6 +152,20 @@ class Model:
                             if ramp: c = ramp[3]
                             break
                 px[x, y] = c
+        self.placed = []
+        # 도트 찍기: 부위를 따라 움직이되 크기는 화면 도트 그대로 (눈이 줄거나 뭉개지지 않게)
+        for st in self.stamps:
+            if st['part'] in hide: continue
+            m = world(self.by[st['part']])
+            X = m[0][0] * st['x'] + m[0][1] * st['y'] + m[0][2]; Y = m[1][0] * st['x'] + m[1][1] * st['y'] + m[1][2]
+            x0, y0 = int(math.floor(X - st['w'] / 2 + 0.5)), int(math.floor(Y - st['h'] / 2 + 0.5))
+            x0 += pose.get('_sdx', 0)  # 동작마다 도트 찍기 자리를 옮긴다 (예: 서기 · 날기만 눈 한 칸 오른쪽)
+            xs = [x0] + ([x0 + st['w'] + st['gap']] if 'gap' in st else [])  # gap: 한 쌍 (두 눈 사이가 언제나 같은 도트 수)
+            self.placed.append((xs, y0))
+            for xa in xs:
+                for yy in range(y0, y0 + st['h']):
+                    for xx in range(xa, xa + st['w']):
+                        if 0 <= xx < W and 0 <= yy < H and px[xx, yy][3]: px[xx, yy] = hexc(st['color'])
         # 바깥 외곽선
         out = img.copy(); po = out.load()
         for y in range(H):

@@ -5,7 +5,7 @@ const { computeBuild } = await import(root + '/sim/build.js');
 const { DUEL_ZONE, buildDuelArena } = await import(root + '/data/maps/arena.js');
 const { CLASSES } = await import(root + '/data/skills.js');
 const mk = (race, cls, side, oppName) => {
-  const c = CLASSES[cls], b = computeBuild({ race, cls, level: 15, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] } });
+  const c = CLASSES[cls], b = computeBuild({ race, cls, level: 15, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off } });
   const w = new World({ build: b, mode: 'field', zone: DUEL_ZONE, zoneId: 'duel', seed: 9, map: buildDuelArena(), pvp: { opp: { name: oppName } } });
   w.enemies = []; w.camps = [];
   const cy = w.th * 8, cx = w.tw * 8;

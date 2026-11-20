@@ -3,7 +3,8 @@
 
 import { sprite, frames } from './assets.js';
 import { RACE_ART } from '../data/art.js';
-import { GROUND_FX, easeOut, WORD_COLOR, hexA, disc, ellipse, smear } from './renderer.js';
+import { GROUND_FX, GROUND_MARKS, easeOut, WORD_COLOR, hexA, disc, ellipse, smear } from './renderer.js';
+import { sfx } from '../audio.js';
 
 export const FxMethods = {
   // 먹물 얼룩 하나: 가운데 울퉁불퉁한 웅덩이 + 사방으로 튄 줄기(점점 가늘어지다 끝에 방울) + 흩뿌린 작은 방울 (small = 발밑 웅덩이만)
@@ -23,10 +24,60 @@ export const FxMethods = {
     if (!small) for (let i = 0; i < 18; i++) { const a = Math.random() * Math.PI * 2, s = 90 + Math.random() * 120; this.parts.push({ x, y: y - 4, vx: Math.cos(a) * s, vy: Math.sin(a) * s * 0.6 - 40, t: 0.4, max: 0.4, color: i % 3 ? '#1a0f2a' : '#6a42a8', g: 260, floor: y + Math.sin(a) * R * 0.5, size: 2 }); } // 튀어 오르는 먹물 방울
   },
   // 이펙트는 두 층: 바닥에 붙는 것(예고 원 · 예고선 · 갈라짐 · 그을음 · 마법진)은 사람 · 보스 · 소품보다 아래, 나머지는 위
-  drawFx(w, dt, ground = false) {
+  // 화면에 보이는 칸 가운데 그릴 수 있는 칸만 남기고 자른다 (g.save 상태로 돌려준다 → 다 그린 뒤 g.restore)
+  // landOnly: 걸을 수 있는 땅만 (벽 · 건물 · 물 · 깊은 곳 빼고) · 아니면 벽 · 건물만 뺀다
+  // 암살자 그림자 이동 (sim BLINK_T와 같은 시간): 몸이 얼마나 잠겼나 depth 0~1 · 어둡기 dark 0~1
+  shadowBody(sb) {
+    const { sink, travel, rise } = sb, t = sb.t;
+    if (t < sink) { const k = t / sink; return { depth: k * k, dark: Math.min(1, k * 1.4) }; } // 처음엔 천천히 · 빨려 들듯 빨라진다
+    if (t < sink + travel) return { depth: 1, dark: 1 };
+    if (t < sink + travel + rise) { const k = (t - sink - travel) / rise, e = 1 - (1 - k) ** 3; return { depth: 1 - e, dark: Math.max(0, 1 - k * 1.3) }; } // 솟구쳐 나와 천천히 선다
+    return null;
+  },
+  // 웅덩이 · 땅 밑을 미끄러지는 그림자 (걸을 수 있는 땅에만 그린다: 벽 밑을 지나는 동안은 안 보인다)
+  drawShadowWalk(w, dt) {
+    const sb = this.sblink; if (!sb) return;
+    sb.t += dt;
+    const g = this.g, { sink, travel, rise } = sb, end = sink + travel + rise, t = sb.t;
+    if (t > end + 0.3) { this.sblink = null; return; }
+    const pool = (x, y, r, a) => { if (r < 1 || a <= 0) return; x = Math.round(x); y = Math.round(y) + 3;
+      g.fillStyle = `rgba(14,8,24,${0.9 * a})`; g.beginPath(); g.ellipse(x, y, r, r * 0.42, 0, 0, 6.29); g.fill();
+      g.fillStyle = `rgba(90,58,150,${0.55 * a})`; g.beginPath(); g.ellipse(x, y - r * 0.12, r * 0.8, r * 0.26, 0, 3.3, 6.12); g.fill(); // 위쪽 가장자리에 비친 보랏빛
+      g.fillStyle = `rgba(4,2,8,${a})`; g.beginPath(); g.ellipse(x, y + r * 0.05, r * 0.62, r * 0.24, 0, 0, 6.29); g.fill(); };
+    const ease = (k) => k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+    // 떠나는 웅덩이: 가라앉는 동안 벌어지고, 미끄러져 나가면 닫힌다
+    const r1 = t < sink ? 4 + 9 * Math.min(1, t / sink * 1.6) : 13 * Math.max(0, 1 - (t - sink) / (travel * 0.9));
+    pool(sb.x1, sb.y1, r1, 1);
+    // 땅 밑 그림자: 길쭉한 먹물 덩어리가 땅을 미끄러진다 (지나간 자리에 옅은 꼬리)
+    if (t >= sink && t < sink + travel) {
+      const k = ease((t - sink) / travel), x = sb.x1 + (sb.x2 - sb.x1) * k, y = sb.y1 + (sb.y2 - sb.y1) * k, ang = Math.atan2((sb.y2 - sb.y1) * 0.42, sb.x2 - sb.x1);
+      for (let i = 4; i >= 0; i--) { const u = Math.max(0, k - i * 0.06), tx = sb.x1 + (sb.x2 - sb.x1) * u, ty = sb.y1 + (sb.y2 - sb.y1) * u; g.fillStyle = `rgba(14,8,24,${0.18 + 0.14 * (4 - i)})`; g.beginPath(); g.ellipse(Math.round(tx), Math.round(ty) + 3, 9 - i, 3.6 - i * 0.5, ang, 0, 6.29); g.fill(); }
+      g.fillStyle = 'rgba(150,110,230,0.8)'; g.fillRect(Math.round(x) - 1, Math.round(y) + 1, 2, 1); g.fillRect(Math.round(x) + 2, Math.round(y) + 1, 2, 1); // 그림자 속 두 눈
+      if (Math.random() < 0.7) this.parts.push({ x: x + (Math.random() - 0.5) * 8, y: y + 3, vx: 0, vy: -10 - Math.random() * 10, t: 0.25, max: 0.25, color: '#1a1024', g: 0, size: 2 });
+    }
+    // 도착 웅덩이: 그림자가 닿기 직전에 열리고, 몸이 다 솟으면 닫힌다
+    const ta = t - sink - travel * 0.6;
+    if (ta > 0) { const r2 = ta < travel * 0.4 + rise * 0.5 ? 4 + 9 * Math.min(1, ta / (travel * 0.4)) : 13 * Math.max(0, 1 - (ta - travel * 0.4 - rise * 0.5) / (rise * 0.5 + 0.3)); pool(sb.x2, sb.y2, r2, 1); }
+    if (!sb.rose && t >= sink + travel) { sb.rose = true; // 솟을 때 먹물이 튄다
+      for (let i = 0; i < 14; i++) { const a = Math.random() * Math.PI * 2, s = 30 + Math.random() * 50; this.parts.push({ x: sb.x2 + Math.cos(a) * 6, y: sb.y2 + 2, vx: Math.cos(a) * s, vy: -40 - Math.random() * 50, t: 0.4, max: 0.4, color: i % 3 ? '#1a0f2a' : '#7a52c0', g: 260, floor: sb.y2 + 3 + Math.sin(a) * 4, size: 2 }); }
+      this.shake = Math.max(this.shake, 1.5); sfx('dash', { vol: 0.55, rate: 1.2 }); }
+  },
+  clipTiles(w, cx, cy, landOnly) {
+    const g = this.g, T = this.TILE || 16, x0 = Math.max(0, Math.floor(cx / T) - 1), y0 = Math.max(0, Math.floor(cy / T) - 1), x1 = Math.min(w.tw - 1, Math.ceil((cx + this.VW) / T) + 1), y1 = Math.min(w.th - 1, Math.ceil((cy + this.VH) / T) + 1);
+    const ok = (tx, ty) => { const t = w.tiles[ty * w.tw + tx]; return landOnly ? t === 0 && !w.isWaterAt(tx * T + 8, ty * T + 8) : !(t === 1 || t === 3 || t === 4 || t === 5); };
+    g.save(); g.beginPath();
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      if (!ok(tx, ty)) continue;
+      let e = tx; while (e + 1 <= x1 && ok(e + 1, ty)) e++; // 가로로 이어진 칸은 한 덩어리로
+      g.rect(tx * T, ty * T, (e - tx + 1) * T, T); tx = e;
+    }
+    g.clip();
+  },
+  drawFx(w, dt, ground = false, marks = null) {
     const g = this.g, p = w.player;
     for (const f of this.fx) {
       if (GROUND_FX.has(f.k) !== ground) continue;
+      if (marks !== null && GROUND_MARKS.has(f.k) !== marks) continue;
       f.t -= dt;
       const k = Math.max(0, f.t / f.max);
       if (f.k === 'pipes') { // 황금 관: 줄을 따라 14px마다 관이 땅에서 솟았다 들어가며 끝에서 증기를 뿜는다
@@ -83,6 +134,20 @@ export const FxMethods = {
         }
         continue;
       }
+      if (f.k === 'veil') { // 그림자 장막: 땅에서 솟아 흔들리는 먹빛 장막 (고리 없이) · 둘레의 그림자 알갱이가 안으로 빨려 든다
+        const life = f.t / f.max, a = Math.min(1, (1 - life) * 6, life * 3), W = f.r * 2, H = f.small ? 16 + f.r * 0.4 : 30 + f.r * 0.4;
+        g.save();
+        for (let c = 0; c < W; c += 2) {
+          const u = c / W, h = H * (0.55 + 0.45 * Math.sin(u * Math.PI)) * (0.85 + 0.15 * Math.sin(w.t * 9 + u * 12 + f.seed));
+          const x = Math.round(f.x - W / 2 + c), y0 = Math.round(f.y + 4);
+          const gr = g.createLinearGradient(0, y0 - h, 0, y0); gr.addColorStop(0, hexA('#2a1844', 0)); gr.addColorStop(0.5, hexA('#2a1844', 0.55 * a)); gr.addColorStop(1, hexA('#0c0614', 0.9 * a));
+          g.fillStyle = gr; g.fillRect(x, Math.round(y0 - h), 2, Math.round(h));
+          if (c % 6 === 0) { g.fillStyle = hexA('#8a6aff', 0.35 * a); g.fillRect(x, Math.round(y0 - h * (0.3 + 0.4 * Math.abs(Math.sin(w.t * 5 + c)))), 1, 2); } // 장막 속 보랏빛 결
+        }
+        g.restore();
+        if (dt > 0 && life > 0.25 && !f.small) for (let i = 0; i < 3; i++) { const an = Math.random() * Math.PI * 2, rr = f.r + 30 + Math.random() * 40, px = f.x + Math.cos(an) * rr, py = f.y - 6 + Math.sin(an) * rr * 0.6, T = 0.35; this.parts.push({ x: px, y: py, vx: (f.x - px) / T, vy: (f.y - 8 - py) / T, t: T, max: T, color: Math.random() < 0.5 ? '#2a1844' : '#6a4ab8', g: 0, size: 1 }); }
+        continue;
+      }
       if (f.k === 'ring') {
         // 퍼지는 충격: 고리를 그리지 않고, 사방으로 흩어지는 빛 조각 · 흙먼지와 부드러운 빛으로
         const rr = f.r * (1 - k * 0.6), n = Math.max(10, Math.round(f.r / 3));
@@ -114,20 +179,20 @@ export const FxMethods = {
           const base = 24 + 8 * prog, tipL = base + 10 + 8 * prog;
           g.save(); g.globalCompositeOperation = 'lighter';
           g.fillStyle = hexA(f.aura ? '#ffd84a' : '#fff4d8', 0.85 * a2);
-          g.beginPath(); g.moveTo(p.x + ux * base + nx * 2.5, p.y - 7 + uy * base + ny * 2.5); g.lineTo(p.x + ux * tipL, p.y - 7 + uy * tipL); g.lineTo(p.x + ux * base - nx * 2.5, p.y - 7 + uy * base - ny * 2.5); g.closePath(); g.fill();
-          for (const o of [-5, 5]) { g.strokeStyle = hexA('#ffffff', 0.45 * a2); g.lineWidth = 1; g.beginPath(); g.moveTo(p.x + ux * base * 0.8 + nx * o, p.y - 7 + uy * base * 0.8 + ny * o); g.lineTo(p.x + ux * (base + 8) + nx * o * 0.6, p.y - 7 + uy * (base + 8) + ny * o * 0.6); g.stroke(); }
+          g.beginPath(); g.moveTo(f.x + ux * base + nx * 2.5, f.y - 7 + uy * base + ny * 2.5); g.lineTo(f.x + ux * tipL, f.y - 7 + uy * tipL); g.lineTo(f.x + ux * base - nx * 2.5, f.y - 7 + uy * base - ny * 2.5); g.closePath(); g.fill();
+          for (const o of [-5, 5]) { g.strokeStyle = hexA('#ffffff', 0.45 * a2); g.lineWidth = 1; g.beginPath(); g.moveTo(f.x + ux * base * 0.8 + nx * o, f.y - 7 + uy * base * 0.8 + ny * o); g.lineTo(f.x + ux * (base + 8) + nx * o * 0.6, f.y - 7 + uy * (base + 8) + ny * o * 0.6); g.stroke(); }
           g.restore();
           continue;
         }
         if (f.fist) { // 주먹: 내지른 자리에 짧은 바람 자국과 충격
           const a2 = Math.min(1, k * 2.4), L = f.range + 2, ux = Math.cos(f.ang), uy = Math.sin(f.ang), nx = -uy, ny = ux;
           g.strokeStyle = hexA(f.heavy ? '#ffd050' : '#ffffff', 0.7 * a2); g.lineWidth = 1;
-          for (const o of [-3, 0, 3]) { g.beginPath(); g.moveTo(p.x + ux * (L - 10) + nx * o, p.y - 7 + uy * (L - 10) + ny * o); g.lineTo(p.x + ux * (L - 2) + nx * o * 0.5, p.y - 7 + uy * (L - 2) + ny * o * 0.5); g.stroke(); }
+          for (const o of [-3, 0, 3]) { g.beginPath(); g.moveTo(f.x + ux * (L - 10) + nx * o, f.y - 7 + uy * (L - 10) + ny * o); g.lineTo(f.x + ux * (L - 2) + nx * o * 0.5, f.y - 7 + uy * (L - 2) + ny * o * 0.5); g.stroke(); }
           continue;
         }
         if (f.whip) continue; // 채찍은 줄을 직접 그린다 (무기 그림)
         const R = f.range + 4, r = Math.max(6, f.range * 0.35);
-        const px = p.x, py = p.y - 6;
+        const px = f.x, py = f.y - 6;
         const alpha = Math.min(1, k * 2.2);
         g.fillStyle = hexA(col, 0.55 * alpha);
         smear(g, px, py, R, (f.heavy ? 10 : 7), as, a1);
@@ -485,7 +550,7 @@ export const FxMethods = {
         const age = f.max - f.t, fade = Math.min(1, f.t / 1.2);
         for (const pc of f.pieces) {
           const q = Math.min(1, age / pc.fly), x = pc.x0 + (pc.x1 - pc.x0) * q, y = pc.y0 + (pc.y1 - pc.y0) * q - Math.sin(q * Math.PI) * pc.h;
-          const s = pc.s, heat = Math.max(0, 1 - age / 2.6);
+          const s = pc.s, heat = f.cold ? 0 : Math.max(0, 1 - age / 2.6); // cold: 달아오르지 않은 그냥 돌 조각 (등급 높은 스킬이 튀긴 것)
           g.globalAlpha = fade;
           if (q >= 1) { g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, x, y + s * 0.5, s, s * 0.35); }
           g.fillStyle = '#1a1210'; g.beginPath(); for (let i = 0; i < 6; i++) { const a = pc.rot + i * Math.PI / 3, rr = s * (0.75 + ((i * 37) % 5) / 10); g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.8); } g.closePath(); g.fill();
@@ -541,7 +606,7 @@ export const FxMethods = {
         } else { // 땅에 새겨진 글자: 납작하게 눕힌 세 글자가 빛나다가 스러진다
           if (!f.landed) {
             f.landed = true;
-            this.shake = Math.max(this.shake, f.same ? 9 : 6); this.hitstop = Math.max(this.hitstop, 0.06);
+            this.shake = Math.max(this.shake, f.same ? 9 : 6); this.addStop(0.06);
             for (let i = 0; i < 36; i++) { const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 170; this.parts.push({ x: f.tx, y: f.ty - 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6 - 40, t: 0.4 + Math.random() * 0.4, max: 0.8, color: cols[i % 3], g: 90, glow: true, size: 1.4 }); }
           }
           const fade = Math.max(0, 1 - (age - HIT) / (f.max - HIT));

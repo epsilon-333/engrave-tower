@@ -5,7 +5,7 @@ const { CLASSES } = await import(root + '/data/skills.js');
 const { ZONES } = await import(root + '/data/monsters.js');
 for (const silence of [false, true]) {
   const c = CLASSES.dragonSage;
-  const b = computeBuild({ race: c.race, cls: 'dragonSage', level: 20, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] } });
+  const b = computeBuild({ race: c.race, cls: 'dragonSage', level: 20, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off } });
   const w = new World({ build: b, mode: 'field', zoneId: ZONES[0].id, seed: 5 });
   const p = w.player;
   w.enemies.slice(0, 5).forEach((e, i) => { e.x = p.x + 10 + i * 4; e.y = p.y + 4; e.state = 'chase'; e.home = { x: e.x, y: e.y }; });

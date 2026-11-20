@@ -2,7 +2,7 @@
 // DOM을 쓰지 않는 순수 함수라 서버에서도 그대로 돌릴 수 있다.
 import { BASE_STATS, SPECIAL_INFO, AWAKENINGS, EXTREME, eff } from '../data/stats.js';
 import { allSanctums, trainStats } from '../data/sanctums.js';
-import { RACES, RACE_MIGRATE } from '../data/races.js';
+import { RACES, RACE_MIGRATE, RACE_FX } from '../data/races.js';
 import { ENGRAVINGS, TAGS, CANCELS } from '../data/engravings.js';
 import { REINFORCE_STEP, REINFORCE_ARMOR, REINFORCE_GEAR, rfKey } from '../data/goods.js';
 import { ITEMS, weaponCat, weaponHands } from '../data/items.js';
@@ -104,6 +104,7 @@ export function computeBuild(lo) {
   const effects = [];
   for (const src of active) {
     for (const e of src.def.effects || []) {
+      if (e.type === 'flag' && e.flag === 'bloodHunger' && lo.bloodAwake) continue; // 깨어난 「피를 먹는 칼」: 체력을 먹지 않는다
       const ok = evalCond(e.when, ctx);
       if (e.when) notes.push({ kind: ok ? 'on' : 'off', text: `${src.def.name}: ${condText(e.when)} → ${e.text}` });
       if (ok) effects.push(src.elv ? scaleEffect(e, src.mul) : e);
@@ -138,6 +139,12 @@ export function computeBuild(lo) {
   }
 
 
+  // 5.5) 숨은 각인 「맨몸의 전설」: 맨손 · 왼손 · 갑옷 · 장신구 둘이 빈 칸마다 기본 스탯 +8%
+  if (effects.some((e) => e.type === 'flag' && e.flag === 'bareKing')) {
+    const g = lo.gear || {}, n = (!g.weapon || g.weapon === 'bareHands' ? 1 : 0) + ['off', 'armor', 'acc1', 'acc2'].filter((k) => !g[k]).length;
+    for (const k of BASE_STATS) stats[k] = Math.round(stats[k] * (1 + 0.08 * n));
+    if (n) notes.push({ kind: 'on', text: `맨몸의 전설: 빈 칸 ${n} · 기본 스탯 +${8 * n}%` });
+  }
   // 6) 2차 스탯 효과 반영
   for (const e of effects) {
     if (e.type === 'stat') stats[e.stat] = (stats[e.stat] || 0) + e.v;
@@ -164,13 +171,13 @@ export function computeBuild(lo) {
   // 8) 파생 수치
   const E = {}; for (const k of BASE_STATS) E[k] = eff(Math.max(0, stats[k]));
   const d = {
-    maxHp: 260 + 14 * ((lo.level || 1) - 1) + E.vit * 24, // 체력: 레벨마다 +14, 체력 스탯이 더 많이 (공격이 체력보다 빨리 크던 것)
-    physAtk: 4 + E.str * 1.1,                  // 기본 공격력은 조금 낮게 (예전 × 1.3)
-    dexAtk: 4 + E.agi * 1.0 + E.str * 0.2,
-    magAtk: 4 + E.mag * 1.1,
-    atkSpeed: 1 + 0.7 * E.agi / (E.agi + 110),       // 민첩: 공격 속도 (최대 +70%, 갈수록 덜 오른다)
+    maxHp: 260 + 14 * ((lo.level || 1) - 1) + E.vit * 26, // 체력 한 점 (2026-11-16: 36은 공격 스탯보다 너무 세서 26) 체력: 레벨마다 +14, 체력 스탯이 더 많이 (공격이 체력보다 빨리 크던 것)
+    physAtk: 4 + E.str * 1.8,  // 스탯 한 점이 크게 (예전 1.1)                  // 기본 공격력은 조금 낮게 (예전 × 1.3)
+    dexAtk: 4 + E.agi * 1.6 + E.str * 0.3, // (예전 1.0 · 0.2)
+    magAtk: 4 + E.mag * 1.8, // (예전 1.1)
+    atkSpeed: 1 + 1.1 * E.agi / (E.agi + 90),        // 민첩: 공격 속도 (최대 +110%, 갈수록 덜 오른다 · 2026-11-16 예전 최대 +70%)
     moveSpeed: 80 * (1 + 0.3 * E.agi / (E.agi + 90)), // 민첩: 이동 속도 (최대 +30% · 너무 빠르면 어지러워서 갈수록 덜 오른다)
-    dodge: 0.45 * E.agi / (E.agi + 110),                // 민첩: 회피 (민첩 20 → 7% · 60 → 16% · 최대 45%)
+    dodge: 0.6 * E.agi / (E.agi + 80),                  // 민첩: 회피 (민첩 20 → 13% · 60 → 27% · 최대 60% · 2026-11-16 예전 최대 45%)
     crit: 0.05 + E.sen / (E.sen + 140),
     critDmg: 1.5 + E.sen * 0.006,
     sensePen: 0.3 * E.sen / (E.sen + 120),               // 감각: 약점을 찔러 방어 무시 (최대 30%)
@@ -178,18 +185,18 @@ export function computeBuild(lo) {
     statusRes: E.spi / (E.spi + 90),
     cdr: E.spi / (E.spi + 160),
     loadCap: 25 + Math.floor(stats.spi / 10), // 기본 25 · 정신 10마다 1 (넘치게는 장착할 수 없다)
-    physDR: Math.max(0, stats.pres) / (Math.max(0, stats.pres) + 160), // 방어 1점의 값을 낮췄다 (예전 +100)
-    magDR: Math.max(0, stats.mres) / (Math.max(0, stats.mres) + 160),
+    physDR: E.pres / (E.pres + 200), // 저항도 몰아 올릴수록 한 점이 커진다 (구간 배율 · 2026-11-16: 20 → 9% · 60 → 29% · 100 → 46%)
+    magDR: E.mres / (E.mres + 200),
     physPen: 0, magPen: 0, knockback: 30, regen: 0,
     dmgMul: 1, dmgTakenMul: 1, burnMul: 1, bleedMul: 1, chillMul: 1, reactionMul: 1, statusDmgMul: 1, reflectMul: 1,
-    poisonCap: 10, freezeReduce: 0, cloudSize: 0, dashCd: 1.2, goldMul: 1, projMul: lo.race === 'elf' ? 1.3 : 1,
-    resGain: 1, hurtRes: 0, lowHunt: 0, skillCdMul: 1, aimSlow: lo.race === 'elf' ? 0.82 : 0.65,
+    poisonCap: 10, freezeReduce: 0, cloudSize: 0, dashCd: 1.2, goldMul: 1, projMul: 1,
+    resGain: 1, hurtRes: 0, lowHunt: 0, curseMul: 1, skillCdMul: 1, aimSlow: 0.65,
     freezeTime: 1.6, castMul: 1, costMul: 1, healMul: 1,
   };
   // 종족 고유 수치
-  if (lo.race === 'wizard') { d.reactionMul *= 1.5; d.skillCdMul *= 0.75; }
-  if (lo.race === 'knight') d.moveSpeed *= 0.92;
-  if (lo.race === 'undead') d.moveSpeed *= 0.95;
+  if (lo.race === 'wizard') d.maxHp *= RACE_FX.wizardHp;
+  if (lo.race === 'knight') d.maxHp *= RACE_FX.knightHp;
+  if (lo.race === 'assassin') d.dodge += RACE_FX.assassinDodge;
   const flags = new Set();
   const triggers = { hit: [], kill: [], hurt: [], hurtMag: [], dodge: [], crit: [], dash: [], shield: [], awaken: [], cast: [] };
   // 공격 %는 곱하지 않고 더한다: 각성 · 각인 · 장비의 「공격력 +N%」 「모든 피해 +N%」가 서로 곱해져 높은 층에서 폭발하던 것 (+10%와 +15% = +25%)
@@ -223,7 +230,14 @@ export function computeBuild(lo) {
 
   // 액티브 스킬: 각인 칸 Q · E · R · F에 장착한 각인의 스킬 (빈 칸은 비워 둔다). 탑 등반에서 새긴 각인의 스킬은 빈 칸을 채운다
   // allSkills(연습 · 시뮬레이션)일 때만 예전처럼 클래스 스킬에서 고른다
-  const cls = lo.cls && CLASSES[lo.cls]?.race === lo.race ? lo.cls : RACE_CLASSES(lo.race)[0];
+  // 클래스는 고르지 않는다: 끼운 각인의 스킬로 정해진다 (그 종족의 두 갈래 가운데 스킬을 더 많이 끼운 쪽 · 같으면 예전 값). 갈래 특성 · 밸런스 보정이 따라간다
+  const rc = RACE_CLASSES(lo.race);
+  let cls = lo.cls && CLASSES[lo.cls]?.race === lo.race ? lo.cls : rc[0];
+  if (!lo.allSkills) {
+    const eq = SKILL_SLOTS.map((sl) => { const id = lo.engravings?.[sl]; return id && ENGRAVINGS[id] ? engravingSkillFor(id, lo.race) : null; }).filter(Boolean);
+    const n = (c) => eq.filter((sk) => CLASSES[c].skills.includes(sk)).length;
+    for (const c of rc) if (n(c) > n(cls)) cls = c;
+  }
   let skills, available, innateSkills = [];
   if (lo.allSkills) {
     available = CLASSES[cls].skills.slice();
@@ -237,12 +251,7 @@ export function computeBuild(lo) {
   } else {
     skills = SKILL_SLOTS.map((sl) => { const id = lo.engravings?.[sl]; return id && ENGRAVINGS[id] ? engravingSkillFor(id, lo.race) : null; });
     for (const re of lo.runEng || []) { const sk = engravingSkillFor(re.id, lo.race); const i = skills.indexOf(null); if (sk && i >= 0 && !skills.includes(sk)) skills[i] = sk; }
-    // 종족 스킬은 처음부터 그 종족의 것: 각인이 없는 칸은 내 클래스 스킬(레벨에 맞게 열린 것)로 채운다. 각인을 넣으면 그 칸은 각인 스킬로 바뀐다
-    const own = CLASSES[cls].skills.filter((id) => SKILLS[id] && (SKILLS[id].unlock || 1) <= (lo.level || 1) && !skills.includes(id));
-    const pickOwn = (roles) => { const i = own.findIndex((id) => roles.includes(SKILLS[id].role)); return i >= 0 ? own.splice(i, 1)[0] : null; };
-    const order = [['준비', '강화', '전환', '방어'], ['공격', '이동', '연타', '제어', '소환'], ['마무리'], ['궁극']];
-    for (let i = 0; i < skills.length; i++) if (!skills[i]) skills[i] = pickOwn(order[i] || []) || own.shift() || null;
-    innateSkills = skills.filter((id) => id && CLASSES[cls].skills.includes(id));
+    // 빈 칸은 빈 칸 (클래스 스킬로 채우지 않는다): 스킬은 모두 각인에서 나온다
     available = skills.filter(Boolean);
   }
   // 무기 유형 보정: 근접은 붙어 싸우는 만큼 단단하고, 원거리는 쏘는 동안 느려진다
@@ -276,14 +285,13 @@ export function weaponFamily(it) {
   return c;
 }
 export const FAMILY_NAME = { magic: '마법 무기', dagger: '단검', sword: '검', axe: '도끼', blunt: '둔기', throw: '던지는 무기', whip: '채찍' };
-// 양손 무기: 쌍검은 빠르게, 무거운 것은 세게, 활 · 지팡이는 조금 세게 (활은 멀리서 쏠수록 더: world.js 탄 맞음)
+// 양손 무기: 쌍검은 빠르게, 무거운 것은 세게, 활 · 지팡이는 조금 세게
 export function twoHandBonus(id, it) {
   const c = weaponCat(it);
   if (/dual|twin/i.test(id) || it.weapon?.dual) return { atkSpeed: 1.15, text: '양손 쌍검: 공격 속도 +15%' };
-  if (c === 'bow') return { dmgMul: 1.08, text: '활: 피해 +8% · 멀리서 맞힐수록 세다 (가까이 0.8배 → 멀리 1.4배)' };
+  if (c === 'bow') return { dmgMul: 1.08, text: '활: 피해 +8%' };
   if (['tube', 'staff'].includes(c)) return { dmgMul: 1.08, text: '양손 원거리 무기: 피해 +8%' };
   if (c === 'fist') return { atkSpeed: 1.08, dmgMul: 1.05, text: '양손 주먹: 공격 속도 +8% · 피해 +5%' };
-  if (c === 'shield') return { dmgMul: 1.12, text: '검과 방패: 피해 +12%' }; // 왼손은 방패가 차지한다 (양손 무기는 아니다)
   return { dmgMul: 1.12, text: '양손 무기: 피해 +12%' };
 }
 // 같은 계열 한손 무기 둘: 살짝만 강해진다

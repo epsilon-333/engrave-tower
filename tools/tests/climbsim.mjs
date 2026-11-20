@@ -8,7 +8,10 @@ const { computeBuild } = await import(root + '/sim/build.js');
 const { buildClimbFloor } = await import(root + '/sim/climbmap.js');
 const { createRng } = await import(root + '/sim/rng.js');
 const { ZONES, ALL_ZONES } = await import(root + '/data/monsters.js');
-const { CLASSES } = await import(root + '/data/skills.js');
+const { CLASSES, SKILLS, RACE_CLASSES } = await import(root + '/data/skills.js');
+const { classEngravingFor } = await import(root + '/save.js');
+const { ENGRAVINGS } = await import(root + '/data/engravings.js');
+const { SLOTS } = await import(root + '/sim/build.js');
 const { ITEMS } = await import(root + '/data/items.js');
 const C = await import(root + '/data/climb.js');
 const { TOWER_WEAPONS } = await import(root + '/data/weapons.js');
@@ -29,13 +32,21 @@ function towerWeaponFor(cid, f) {
   return pick ? Object.keys(ITEMS).find((k) => ITEMS[k] === pick) : null;
 }
 function loadout(cid, level, f = 1) {
-  const c = CLASSES[cid], R = c.race;
+  const RACE_MODE = !CLASSES[cid]; // 종족 이름이면: 클래스가 없다 — 그 종족 각인 전체에서 섞어 끼운다 (무기는 첫 갈래의 것)
+  const race = RACE_MODE ? cid : CLASSES[cid].race; if (RACE_MODE) cid = RACE_CLASSES(race)[0];
+  const c = CLASSES[cid], R = race;
+  const pool = RACE_MODE ? RACE_CLASSES(race).flatMap((k) => CLASSES[k].skills) : c.skills;
   const tw = towerWeaponFor(cid, f);
   // 주력 스탯 둘에 반씩 (무기 계열에 맞춰)
   const wpn = ITEMS[tw || c.weapons[1] || c.weapons[0]];
   const main = wpn.weapon.dmg === 'mag' ? 'mag' : wpn.weapon.scale === 'agi' ? 'agi' : 'str';
   const pts = level - 1;
-  return { race: R, cls: cid, level, allSkills: false, alloc: { [main]: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings: {}, gear: { weapon: tw || c.weapons[1] || c.weapons[0] }, skills: null };
+  // 클래스가 없다: 그 갈래 스킬의 각인을 레벨에 맞게 Q · E · R · F에 (궁극 · 마무리 먼저) · 다섯째 칸에 갈래 특성 각인
+  const DMG = new Set(['공격', '마무리', '궁극', '연타', '이동', '소환']); // 사람처럼: 때리는 스킬부터 끼운다 (궁극 · 마무리 먼저)
+  const sks = pool.filter((id) => (SKILLS[id].unlock || 1) <= level).sort((a, b) => (DMG.has(SKILLS[b].role) - DMG.has(SKILLS[a].role)) || (!!SKILLS[b].ult - !!SKILLS[a].ult) || ((SKILLS[b].role === '마무리') - (SKILLS[a].role === '마무리')) || ((SKILLS[b].unlock || 1) - (SKILLS[a].unlock || 1)));
+  const engs = sks.map(classEngravingFor).filter(Boolean).slice(0, 4), trait = pool.map(classEngravingFor).find((e) => ENGRAVINGS[e]?.effects?.some((x) => x.type === 'flag' && /갈래 특성/.test(x.text || '')));
+  const engravings = Object.fromEntries(engs.map((e, i) => [SLOTS[i], e])); if (trait && !engs.includes(trait)) engravings[SLOTS[4]] = trait;
+  return { race: R, cls: cid, level, allSkills: false, alloc: { [main]: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings, spirit: { id: 'fire2', star: 1 }, gear: { weapon: tw || c.weapons[1] || c.weapons[0], off: c.off }, skills: null };
 }
 
 function makeWorld(run, lo) {

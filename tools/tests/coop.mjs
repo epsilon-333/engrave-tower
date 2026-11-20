@@ -11,7 +11,7 @@ const ok = (cond, text) => { console.log(cond ? 'OK ' : 'FAIL', text); if (!cond
 
 const f = 3, seed = 4242, zid = towerZoneId(f), z = ZONES.find((x) => x.id === zid);
 const mk = (cls, role) => {
-  const c = CLASSES[cls], b = computeBuild({ race: c.race, cls, level: 12, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] }, skills: c.skills.slice(0, 4) });
+  const c = CLASSES[cls], b = computeBuild({ race: c.race, cls, level: 12, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off }, skills: c.skills.slice(0, 4) });
   const w = new World({ build: b, mode: 'field', zoneId: zid, seed, map: generateField(z, seed, Math.floor(f / 6), towerSize(f)), tower: { f }, coop: { role } });
   if (role === 'member') { w.enemies = []; w.camps = []; }
   return w;
@@ -30,7 +30,7 @@ for (let fr = 0; fr < 60 * 25; fr++) {
   mate.x = M.player.x; mate.y = M.player.y; mate.dead = !!M.player.down;
   const near = M.enemies.filter((e) => !e.dead).sort((a, b) => Math.hypot(a.x - M.player.x, a.y - M.player.y) - Math.hypot(b.x - M.player.x, b.y - M.player.y))[0];
   const aim = near ? { aimX: near.x, aimY: near.y } : { aimX: M.player.x + 10, aimY: M.player.y };
-  M.step({ moveX: 0, moveY: 0, attack: fr % 2 === 0, ...aim, autoAim: true });
+  M.step({ moveX: 0, moveY: 0, attack: fr % 2 === 0 && fr > 60 * 3, ...aim, autoAim: true });
   H.step({ moveX: 0, moveY: 0, attack: false, aimX: H.player.x + 10, aimY: H.player.y });
   for (const m of M.coFlush()) { H.coRecv(m, 2); if (m.k === 'hit') hits++; }
   for (const m of H.coop.out.splice(0)) if (m.k === 'hurt' && m.to === 2) { M.coHurt(m); hurts++; }

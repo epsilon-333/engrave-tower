@@ -4,7 +4,7 @@ import { GOODS, GOOD_CATS, BAG_START, BAG_UPGRADES, bagUsed, bagFits } from '../
 import { FOOD, FOOD_EFFECTS, KIND_NAME, cookPreview, registerDish, parseDish, dishName, dishEffectText, eatInfo, RECIPES } from '../data/cooking.js';
 import { WTYPES, WMATS, PART_FX, SYNERGY, craftCost, craftItem } from '../data/crafting.js';
 import { ITEMS, WEAPON_SKILLS, WCAT_NAME } from '../data/items.js';
-import { SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, handFit, fitText } from '../data/skills.js';
+import { costTxt, SKILLS, ROLE_COLOR, KIND_NAME as SKILL_KIND, handFit, fitText } from '../data/skills.js';
 import { SPIRITS } from '../data/spirits.js';
 import { LEARN, TABLET_BIOME_NAME } from '../data/learn.js';
 import { RACES } from '../data/races.js';
@@ -40,7 +40,7 @@ export function storageTab(s) {
   };
   const quick = Object.entries(GOOD_CATS).filter(([c]) => Object.entries(s.bag || {}).some(([id, n]) => n > 0 && GOODS[id]?.cat === c));
   return `<section class="panel"><h3>보관함 </h3>
-      <p class="muted">${bagLine(s)} · 물건 종류마다 한 칸 (같은 물건은 몇 개든 한 칸). 가방이 가득 차면 새 물건을 주울 수 없다. 잡화점에서 가방을 늘릴 수 있다.</p>
+      <p class="muted">${bagLine(s)} · 종류마다 한 칸 · 늘리기: 잡화점</p>
       <div class="qbtns">${quick.map(([c, n]) => `<button class="sm ghost" data-act="storeCat" data-id="${c}">${n} 모두 넣기</button>`).join('')}</div></section>
     <div class="cols"><section class="panel"><h3>가방</h3>${list(s.bag || {}, 'bag')}</section>
     <section class="panel"><h3>보관함</h3>${list(s.chest, 'chest')}</section></div>`;
@@ -55,7 +55,7 @@ export function cookTab(s, ui) {
   const slots = Array.from({ length: 5 }, (_, i) => pot[i]
     ? `<button class="potslot on" data-act="potOut" data-n="${i}" title="${esc(GOODS[pot[i]].name)}">${ico(pot[i])}</button>`
     : '<span class="potslot"></span>').join('');
-  let result = '<p class="muted">재료를 넣으세요</p>';
+  let result = '<p class="muted">재료를 넣는다</p>';
   if (pv) {
     const d = { recipe: pv.recipe, eff: pv.eff, lvl: pv.lvl, heal: pv.heal };
     result = `<div class="cookres">${ico(pv.key, 'big')}<div><b>${dishName(d)}${pv.lvl ? ' ' + '★'.repeat(pv.lvl) : ''}</b><br>
@@ -117,7 +117,7 @@ export function learnTab(s, ui, b) {
   const resName = RACES[s.race].res.name;
   const cards = ids.map((id) => {
     const sk = SKILLS[id], L = LEARN[id], known = (s.learned || []).includes(id) || b.available.includes(id);
-    const fit = handFit(sk, b).fit, cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${sk.cost}` : sk.gain ? `${resName} +${sk.gain}` : '';
+    const fit = handFit(sk, b).fit, cost = sk.costAll ? `${resName} ${sk.costAll.min}+ 전부` : sk.cost ? `${resName} ${costTxt(sk)}` : sk.gain ? `${resName} +${sk.gain}` : '';
     const btn = known ? '<span class="muted">배움 ✔</span>' : s.level < L.lv ? `<span class="muted">Lv ${L.lv}부터</span>` : `<button class="sm" data-act="learn" data-id="${id}" ${s.gold >= L.gold ? '' : 'disabled'}>배우기 ◆ ${L.gold}</button>`;
     return `<div class="skc ${known ? 'on' : ''}" style="--c:${ROLE_COLOR[sk.role]}"><div class="c-head"><b>${sk.name}</b><span class="role">${SKILL_KIND[sk.kind]}</span></div>
       <div class="muted">재사용 ${sk.cd}초${cost ? ' · ' + cost : ''} · 지금 무기로: <b class="${fit <= 0 ? 'warn' : ''}">${fitText(fit)}</b></div><div class="c-sum">${esc(sk.desc)}</div><div class="c-act">${btn}</div></div>`;

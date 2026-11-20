@@ -1,3 +1,4 @@
+import { HIDDEN_ART } from './hidden.js';
 // 데이터 ↔ 스프라이트 연결 (렌더 전용). tint 는 CSS filter
 export const RACE_ART = {
   elf: { base: 'elf_m' },
@@ -143,6 +144,7 @@ export const MONSTER_ART = {
   highPriest: { base: 'p_cultist', scale: 1.9, tint: 'saturate(1.5) brightness(0.85) contrast(1.25)' },
   lastKing: { base: 'p_king', scale: 2.3, tint: 'sepia(0.5) saturate(1.4) brightness(1.4) contrast(1.1)' },
 };
+Object.assign(MONSTER_ART, HIDDEN_ART); // 숨은 각인의 몬스터 (data/hidden.js)
 // 탑 보스 20명: 사용자가 준 시트에서 자세마다 통째로 (tools/cut_bosses.py · 서기 두 자세 · 공격 · 기술) — 위 줄의 예전 그림을 덮는다
 const BOSS_SHEET = { climbChief: {}, mossLord: {}, bogHag: {}, climbQueen: {}, demonCaptain: {}, climbRift: {}, frostOgre: {}, climbWitch: {}, wraithLord: {}, engraveKing: {}, stormHarpy: {}, skyWhale: {}, mirrorSelf: {}, shardQueen: {}, foreman: {}, clockKeeper: {}, archivist: {}, starReader: {}, highPriest: {}, lastKing: {} };
 // 80층(뼈 용)은 보내 주신 동작 시트 하나로 (예전 시계지기의 3단계 그림은 쓰지 않는다)
@@ -151,7 +153,7 @@ Object.assign(BOSS_SHEET, {
   climbChief: { atk: ['combo', 'leap', 'jumps3', 'quake', 'whirl', 'shove'], skl: ['charge'] }, // 몽둥이 내려치기 · 돌진은 기술 줄의 달려드는 그림
   mossLord: { atk: ['combo', 'quake', 'leap', 'shove'], skl: ['spikeTrail', 'channel', 'pool', 'rain', 'nova', 'mark', 'fan', 'ripple', 'adds'] }, // 주먹 · 뿌리
   bogHag: { atk: ['fan', 'pool', 'split'], skl: ['spiral', 'rain', 'mark', 'ripple', 'clones', 'meteorRain', 'adds'] }, // 지팡이 휘두르기 · 초록 마법진
-  climbQueen: { atk: ['leap', 'fan', 'combo', 'split'], skl: ['pool', 'rain', 'nova', 'mark', 'spiral', 'ritual', 'meteorRain', 'ripple', 'adds'] }, // 주먹 · 독 분출
+  climbQueen: { atk: ['leap', 'fan', 'combo', 'split', 'filth'], skl: ['pool', 'rain', 'nova', 'mark', 'spiral', 'ritual', 'meteorRain', 'ripple', 'adds'] }, // 주먹 · 독 분출
   demonCaptain: { atk: ['combo', 'shove', 'charge', 'whirl', 'cleave', 'grab', 'quake', 'jumps3'], skl: ['mirror', 'pool', 'adds'], mirrorSkill: true }, // 사슬 · 방패 치기 · 방패가 빛나는 반사
   climbRift: { atk: ['quake', 'leap', 'combo', 'charge'], skl: ['fan', 'beam', 'sweep', 'crossBeam', 'nova', 'rain', 'pool', 'mark', 'meteorRain', 'ripple', 'adds'] }, // 주먹 · 가슴 핵 광선
   frostOgre: { atk: ['combo', 'shove', 'grab', 'charge', 'cleave'], skl: ['leap', 'jumps3', 'quake', 'nova'] }, // 얼음 주먹 · 뛰어올라 내려찍기
@@ -186,7 +188,7 @@ export const NPC_ART = {
   store: { base: 'p_store' },
   trainer: { base: 'p_trainer' },
   merchant: { base: 'p_merchant' },
-  pino: { base: 'p_pino' },
+  chief: { base: 'p_chief' }, // 바람결 마을 촌장
   farmer: { base: 'p_farmer' },
   farmer2: { base: 'p_farmer2' },
   innkeeper: { base: 'p_innkeeper' },
@@ -280,12 +282,14 @@ export const WEAPON_ART = {
   dragonTome: { s: 'weapon_red_magic_staff', tint: 'saturate(1.5)' },
   elderHeartstone: { s: 'weapon_red_magic_staff', tint: 'hue-rotate(-20deg) saturate(2) brightness(1.15)' },
   rustySword: { s: 'weapon_rusty_sword' },
+  ironLongsword: { s: 'weapon_duel_sword' },
+  bareHands: { s: 'cw_knuckle', fist: true, metal: '#e8b48a' }, // 맨손: 주먹을 살빛으로
   knightSword: { s: 'weapon_knight_sword' },
   heavySword: { s: 'weapon_anime_sword' },
   handAxe: { s: 'weapon_throwing_axe' },
   dualBlades: { s: 'weapon_duel_sword' },
   katana: { s: 'weapon_katana' },
-  spear: { s: 'weapon_spear' },
+  spear: { s: 'weapon_spear', spear: true }, // 두 손으로 쥐고 조준한 쪽으로 찌른다 (예전엔 한손 칼처럼 들렸다)
   doubleAxe: { s: 'weapon_double_axe' },
   mace: { s: 'weapon_mace' },
   longbow: { s: 'weapon_bow_2', bow: true },

@@ -13,7 +13,7 @@ const levelFor = (f) => Math.min(60, 2 + Math.round(f * 0.55));
 function measure(cls, f, boss) {
   const c = CLASSES[cls];
   const level = levelFor(f);
-  const b = computeBuild({ race: c.race, cls, level, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] }, spirit: { id: 'fire2', star: 1 }, skills: c.skills.slice(0, 4) });
+  const b = computeBuild({ race: c.race, cls, level, allSkills: true, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off }, spirit: { id: 'fire2', star: 1 }, skills: c.skills.slice(0, 4) });
   const w = new World({ build: b, mode: 'field', zoneId: ZONES[0].id, seed: 7, tower: { f } }), p = w.player;
   const pool = w.enemies.filter((e) => !e.def.elite && !e.champion);
   const t = boss ? (w.tower?.boss || w.enemies.find((e) => e.champion) || pool[0]) : pool[0];

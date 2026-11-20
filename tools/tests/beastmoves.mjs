@@ -7,7 +7,7 @@ const { ZONES } = await import(root + '/data/monsters.js');
 const { BEAST, BEAST_KIT } = await import(root + '/sim/beastmoves.js');
 
 const c = CLASSES.guardian;
-const b = computeBuild({ race: c.race, cls: 'guardian', level: 30, alloc: { vit: 30 }, engravings: {}, gear: { weapon: c.weapons[0] } });
+const b = computeBuild({ race: c.race, cls: 'guardian', level: 30, alloc: { vit: 30 }, engravings: {}, gear: { weapon: c.weapons[0], off: c.off } });
 let fails = 0;
 const ok = (v, m) => { if (!v) { fails++; console.log('FAIL', m); } };
 const fresh = () => {

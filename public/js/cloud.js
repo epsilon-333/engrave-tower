@@ -39,7 +39,9 @@ async function rpc(fn, args, keepalive = false) {
 export const isClaudePage = () => !!window.claude?.use;
 
 // 시작 시 호출: 로그인된 상태면 서버 저장을 돌려준다 (없으면 null)
+import { LAB } from './save.js';
 export async function initCloud() {
+  if (LAB) return null; // 체험실: 서버 저장을 쓰지 않는다
   if (isClaudePage()) {
     try {
       const use = window.claude.use;
@@ -124,6 +126,7 @@ export async function logout() {
 
 // 저장 요청이 몰리면 마지막 상태만 1.5초 뒤 한 번에 쓴다
 export function cloudSave(save) {
+  if (LAB) return;
   if (cloud.mode === 'local' || cloud.state === 'readonly' || cloud.state === 'stale') return;
   if (cloud.id) save.acct = cloud.id; // 이 저장이 어느 계정 것인지 (같은 브라우저에서 다른 계정 진행과 섞이지 않게)
   pending = cloneSave(save);
@@ -166,7 +169,7 @@ function cloneSave(save) {
 // 같은 브라우저의 다른 창이 더 새 진행을 저장했다: 이 창은 더 쓰지 않는다
 export function markStale() { cloud.state = 'stale'; pending = null; clearTimeout(timer); emit(); }
 // 즉시 저장 (사냥 결과처럼 중요한 순간)
-export function cloudSaveNow(save) { cloudSave(save); clearTimeout(timer); flush(); }
+export function cloudSaveNow(save) { if (LAB) return; cloudSave(save); clearTimeout(timer); flush(); }
 // 창을 닫거나 다른 앱으로 넘어갈 때: 1.5초 기다리던 저장을 바로 보낸다 (예전엔 기다리는 사이 창을 닫으면 마지막 진행이 서버에 안 올라갔다)
 export function cloudFlushOnHide(save) {
   if (save) cloudSave(save);
@@ -203,6 +206,7 @@ async function flush() {
 }
 
 export async function cloudDelete() {
+  if (LAB) return;
   if (cloud.mode === 'claude' && ref) { try { await ref.delete(); } catch { /* 무시 */ } }
   else if (cloud.mode === 'account' && token) { try { await rpc('game_store', { p_token: token, p_save: null }); } catch { /* 무시 */ } }
 }

@@ -5,15 +5,18 @@ import { codexPoints, levelFor } from './data/codex.js';
 import { newStory } from './data/story.js';
 import { ZONES, MONSTERS, ECHOES } from './data/monsters.js';
 import { newClock } from './sim/time.js';
-import { CLASSES, SKILLS, ENGRAVING_SKILLS } from './data/skills.js';
+import { CLASSES, SKILLS, ENGRAVING_SKILLS, RACE_CLASSES } from './data/skills.js';
 import { ENGRAVINGS } from './data/engravings.js';
+import { LV_GRADE } from './data/skillengs.js';
 
-const KEY = 'engrave-tower-save-v1';
+// 체험실(lab.html?lab)은 따로 저장한다 — 진짜 저장 · 서버 저장에 닿지 않는다
+export const LAB = (typeof location !== 'undefined' && new URLSearchParams(location.search).has('lab')) || globalThis.__LAB === true; // __LAB: 주소 대신 페이지가 직접 켠다(Artifact 등)
+const KEY = LAB ? 'engrave-tower-lab-v1' : 'engrave-tower-save-v1';
 
 export function newSave(race) {
   return {
     v: 1, gated: 1, race, level: 1, xp: 0, points: 0, alloc: {}, gold: 30, // gated: 탑을 올라 지역 · 체계를 해방한다 (data/unlocks.js)
-    echoes: {}, owned: {}, slots: {}, items: ['rustySword'], gear: { weapon: 'rustySword' },
+    echoes: {}, owned: {}, slots: {}, items: ['rustySword', 'bareHands'], gear: { weapon: 'rustySword' },
     codex: { kills: {}, echoes: {}, reactions: {}, condSeen: {}, places: {}, journals: {}, lore: [] },
     story: newStory(),
     runs: 0, seed: (Date.now() % 1e9) | 0,
@@ -77,7 +80,7 @@ export function clearSave() {
 }
 
 export function toLoadout(s) {
-  return { race: s.race, level: s.level, alloc: s.alloc, engravings: s.slots, gear: s.gear, skills: s.skills, cls: s.cls, engLv: s.engLv, sanctum: s.sanctum, reinforce: s.reinforce, learned: s.learned, abilities: s.abilities, spirit: s.race === 'elf' && s.spirits?.main ? { /* 정령은 엘프만 */ id: s.spirits.main, star: s.spirits.owned?.[s.spirits.main]?.star || 1, lv: spiritLevel(s.spirits.owned?.[s.spirits.main]?.xp) } : null, spirits2: s.cls === 'spiritcaller' ? (s.spirits?.extra || []).filter((id) => s.spirits.owned?.[id] && id !== s.spirits.main).slice(0, 2).map((id) => ({ id, star: s.spirits.owned[id].star || 1, lv: spiritLevel(s.spirits.owned[id].xp) })) : [], train: Object.fromEntries(Object.entries(s.story?.sanct || {}).map(([r, v]) => [r, v.train || 0])) };
+  return { bloodAwake: !!s.hidden?.bloodBlade, race: s.race, level: s.level, alloc: s.alloc, engravings: s.slots, gear: s.gear, skills: s.skills, cls: s.cls, engLv: s.engLv, sanctum: s.sanctum, reinforce: s.reinforce, learned: s.learned, abilities: s.abilities, spirit: s.race === 'elf' && s.spirits?.main ? { /* 정령은 엘프만 */ id: s.spirits.main, star: s.spirits.owned?.[s.spirits.main]?.star || 1, lv: spiritLevel(s.spirits.owned?.[s.spirits.main]?.xp) } : null, spirits2: s.cls === 'spiritcaller' ? (s.spirits?.extra || []).filter((id) => s.spirits.owned?.[id] && id !== s.spirits.main).slice(0, 2).map((id) => ({ id, star: s.spirits.owned[id].star || 1, lv: spiritLevel(s.spirits.owned[id].xp) })) : [], train: Object.fromEntries(Object.entries(s.story?.sanct || {}).map(([r, v]) => [r, v.train || 0])) };
 }
 
 // 사냥 결과 반영. keep = 잔향 보존 비율
@@ -111,15 +114,18 @@ export function syncLevel(s) {
 // 고르는 각인: 몬스터 부산물(m_)보다 원래 각인, 그중 낮은 등급. 스킬마다 한 번만 (s.classEng에 적어 둔다)
 export function classEngravingFor(skillId) {
   const L = Object.keys(ENGRAVING_SKILLS).filter((e) => ENGRAVING_SKILLS[e] === skillId && ENGRAVINGS[e]);
-  L.sort((a, b) => (a.startsWith('m_') - b.startsWith('m_')) || (ENGRAVINGS[a].grade - ENGRAVINGS[b].grade));
+  const want = (SKILLS[skillId]?.unlock || 1) <= 1 ? 1 : LV_GRADE(SKILLS[skillId]); // 받는 레벨에 맞는 등급
+  L.sort((a, b) => (!!ENGRAVINGS[b].start - !!ENGRAVINGS[a].start) || (Math.abs(ENGRAVINGS[a].grade - want) - Math.abs(ENGRAVINGS[b].grade - want)) || (!!ENGRAVINGS[b].lvEng - !!ENGRAVINGS[a].lvEng) || (a.startsWith('m_') - b.startsWith('m_')) || (ENGRAVINGS[a].grade - ENGRAVINGS[b].grade)); // 종족 시작 각인 → 등급이 맞는 것
   return L[0] || null;
 }
+// 클래스는 없다: 종족의 스킬(예전 두 클래스의 것 모두)이 그 레벨이 되면 각인으로 온다 · 1레벨 넷이 시작 각인
+export const raceSkills = (race) => [...new Set(RACE_CLASSES(race).flatMap((c) => CLASSES[c].skills))];
 export function grantClassEngravings(s) {
-  const c = CLASSES[s.cls]; if (!c) return [];
+  if (!RACE_CLASSES(s.race).length || s.journeySkills) return []; // 새 저장: 스킬 각인은 모두 여정에서 (시작 각인도)
   s.owned ||= {}; s.classEng ||= {};
   const got = [];
-  for (const sk of c.skills) {
-    if (!SKILLS[sk] || s.classEng[sk] || (SKILLS[sk].unlock || 1) > (s.level || 1)) continue;
+  for (const sk of raceSkills(s.race)) {
+    if (!SKILLS[sk] || s.classEng[sk] || (SKILLS[sk].unlock || 1) > 1) continue; // 레벨업으로는 시작 각인(1레벨 스킬)만 · 나머지는 여정 보상(grantRaceSkills)
     const eid = classEngravingFor(sk); if (!eid) continue;
     s.classEng[sk] = eid;
     if ((s.owned[eid] || 0) > 0) continue; // 이미 가진 각인은 또 주지 않는다 (같은 각인은 하나만)
@@ -128,6 +134,33 @@ export function grantClassEngravings(s) {
   }
   if (got.length) (s.newEng ||= []).push(...got); // 화면에 알릴 것 (보여 주고 비운다)
   return got;
+}
+
+// 여정 보상: 아직 받지 않은 종족 스킬 각인을 열리는 레벨 차례로 n개 (궁극기 빼고) · n === 'ult'면 궁극기만
+export function grantRaceSkills(s, n) {
+  s.owned ||= {}; s.classEng ||= {};
+  const list = raceSkills(s.race).filter((sk) => SKILLS[sk] && !s.classEng[sk] && (n === 'ult' ? SKILLS[sk].ult : !SKILLS[sk].ult)).sort((a, b) => (SKILLS[a].unlock || 1) - (SKILLS[b].unlock || 1));
+  const got = [];
+  for (const sk of n === 'ult' ? list : list.slice(0, n)) {
+    const eid = classEngravingFor(sk); if (!eid) continue;
+    s.classEng[sk] = eid;
+    if ((s.owned[eid] || 0) > 0) continue;
+    s.owned[eid] = 1; got.push(eid);
+  }
+  if (got.length) (s.newEng ||= []).push(...got);
+  return got;
+}
+
+// 여정 보상: 종족 스킬 각인 하나를 새길 재료 (열리는 레벨 차례로 · 'ult'면 그 갈래의 궁극기). 고른 각인은 적어 둬서 다시 고르지 않는다
+export function grantRaceMats(s, kind, cls) {
+  s.classEng ||= {}; s.echoes ||= {};
+  let list = raceSkills(s.race).filter((sk) => SKILLS[sk] && !s.classEng[sk] && (kind === 'ult' ? SKILLS[sk].ult : !SKILLS[sk].ult)).sort((a, b) => (SKILLS[a].unlock || 1) - (SKILLS[b].unlock || 1));
+  if (kind === 'ult' && cls) list = list.sort((a, b) => (CLASSES[cls]?.skills.includes(b) ? 1 : 0) - (CLASSES[cls]?.skills.includes(a) ? 1 : 0));
+  const sk = list[0]; if (!sk) return null;
+  const eid = classEngravingFor(sk); if (!eid) return null;
+  s.classEng[sk] = eid;
+  for (const [k, n] of Object.entries(ENGRAVINGS[eid].recipe || {})) s.echoes[k] = (s.echoes[k] || 0) + n;
+  return eid;
 }
 
 // ───── 의뢰 (광장 게시판) ─────

@@ -2,7 +2,8 @@
 // 들어오는 자리는 아래쪽 가운데, 다음 층으로 가는 문은 위쪽에 한 줄로. 가운데에 보상이 나타난다.
 // 51~100층 구역은 장치가 지도에 들어 있다: 하늘(가장자리 · 구멍 = 하늘) · 시계탑(톱니 바닥) · 서고(책장 · 별자리) · 정상(빛기둥)
 import { createRng } from './rng.js';
-import { TILE, T_FLOOR, T_WALL, T_LIQUID } from './mapgen.js';
+import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_CRACK } from './mapgen.js';
+import { SERIN_FLOORS } from '../data/story.js';
 import { actOf } from '../data/climb.js';
 
 const DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -36,6 +37,27 @@ function finish(M, zone, rng, f, kind, start, center, doors, extra = {}) {
     for (const [dx, dy] of DIRS4) { const nx = x + dx, ny = y + dy; if (!inb(nx, ny)) continue; const j = idx(nx, ny); if (dist[j] < 0 && t[j] !== T_WALL) { dist[j] = dist[i] + 1; q.push(j); } }
   }
   for (let i = 0; i < t.length; i++) if (t[i] !== T_WALL && dist[i] < 0) t[i] = T_WALL;
+  // 세린의 일지: 구역마다 정해진 한 층 · 겉보기엔 거의 같은 금 간 벽 너머의 작은 방 (data/story.js SERIN_FLOORS)
+  const journals = [], veil = []; // veil: 깨기 전에는 가려 두는 칸 (renderer)
+  if (SERIN_FLOORS[f] && kind === 'fight') {
+    const cands = [], wall = (x, y) => inb(x, y) && x >= 2 && y >= 2 && x < tw - 2 && y < th - 2 && (t[idx(x, y)] === T_WALL || (extra.sky && t[idx(x, y)] === T_LIQUID)); // 하늘 정원: 하늘 위에 떠 있는 작은 방
+    for (let i = 0; i < t.length; i++) {
+      if (t[i] !== T_FLOOR || dist[i] < 8) continue;
+      const x = i % tw, y = (i / tw) | 0;
+      if (y <= (doors[0]?.y ?? 0) + 3) continue;
+      for (const [dx, dy] of DIRS4) {
+        let ok = true; // 벽 한 칸(금) + 그 너머 2×3 방 + 방 둘레 한 겹이 모두 벽이어야 (다른 길과 닿지 않게)
+        for (let k = 1; k <= 4 && ok; k++) for (let l = -2; l <= 2 && ok; l++) { if (k === 1 && Math.abs(l) === 2) continue; const cx = x + dx * k + (dy ? l : 0), cy = y + dy * k + (dx ? l : 0); if (!wall(cx, cy)) ok = false; }
+        if (ok) cands.push({ x, y, dx, dy });
+      }
+    }
+    if (cands.length) {
+      const c = cands[rng.int(0, cands.length - 1)];
+      t[idx(c.x + c.dx, c.y + c.dy)] = T_CRACK;
+      for (let k = 2; k <= 3; k++) for (let l = -1; l <= 1; l++) { const i2 = idx(c.x + c.dx * k + (c.dy ? l : 0), c.y + c.dy * k + (c.dx ? l : 0)); t[i2] = T_FLOOR; veil.push(i2); }
+      journals.push({ id: SERIN_FLOORS[f], x: c.x + c.dx * 3, y: c.y + c.dy * 3, veiled: true });
+    }
+  }
   const feats = extra.feats || {};
   const onBelt = (x, y) => (feats.belts || []).some((b) => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1);
   // 몬스터가 나오는 자리: 시작점에서 멀고 둘레가 트인 바닥
@@ -63,6 +85,7 @@ function finish(M, zone, rng, f, kind, start, center, doors, extra = {}) {
     camp: [], merchant: [], shrines: [], goblins: [], objects: [], noPortal: true, nodes: [], digs: [], // 캐기 · 파기 자리는 없다
     palace: extra.palace || null, // 왕좌 · 붉은 비단길 (각인의 왕 · 마지막 왕)
     climb: { kind, spawns, center, doors, dist, ...feats },
+    journals, veil,
   };
 }
 

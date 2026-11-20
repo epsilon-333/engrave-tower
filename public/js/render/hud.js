@@ -9,7 +9,7 @@ import { G, BIOME_LIST } from '../data/maps/overworld.js';
 import { sprite, frames } from './assets.js';
 import { ECHOES, AFFIXES } from '../data/monsters.js';
 import { WEAPON_SKILLS } from '../data/items.js';
-import { SKILLS, ELEM, ROLE_COLOR } from '../data/skills.js';
+import { SKILLS, ELEM, ROLE_COLOR, gradeCost } from '../data/skills.js';
 import { RACES } from '../data/races.js';
 import { RACE_ART } from '../data/art.js';
 import { storyObjective } from '../data/story.js';
@@ -64,6 +64,15 @@ export const HudMethods = {
       let px = Math.round(e.x - (e._pips.length * 6) / 2);
       for (const [, n] of e._pips) { if (n > 1) this.text(String(n), this.sx(px + 2), this.sy(e._top - 17), Math.max(1, u - 1), '#ffffff', 'center'); px += 6; }
     }
+    { // 이름표(+전리품 · 경직 · 회피 …)끼리 겹치면 늦게 뜬 것이 위로 비켜난다 — 한 자리에 글이 쌓여 읽을 수 없던 것
+      const S = this.S || 1, all = this.texts.filter((t) => t.t > 0);
+      g.font = `${11 * u}px ${FONT}`;
+      for (const t of all) t._w ??= g.measureText(t.text).width / S * (t.size > 1 || t.crit ? 1.4 : 1);
+      for (let i = 0; i < all.length; i++) {
+        const a = all[i]; if (!a.label) continue; // 피해 숫자는 그대로 · 이름표만 비켜난다
+        for (let pass = 0; pass < 3; pass++) for (let j = 0; j < all.length; j++) { const b = all[j]; if (b === a || (b.label && j > i)) continue; if (Math.abs(a.x - b.x) < (a._w + b._w) / 2 + 2 && Math.abs(a.y - b.y) < 13 * u / S) a.y = b.y - 13 * u / S; }
+      }
+    }
     for (const t of this.texts) {
       t.t -= dt; t.y += t.vy * dt; t.x += (t.vx || 0) * dt; t.vy *= 0.93;
       if (t.pop) t.pop = Math.max(0, t.pop - dt);
@@ -111,11 +120,12 @@ export const HudMethods = {
     const W = this.c.width, H = this.c.height;
     g.setTransform(1, 0, 0, 1, 0, 0);
     const m = 10 * u;
+    this.rightCol = null; // 오른쪽 위 기둥 (작은 지도 · 정보띠 · 여정): 지역 배너가 피해 간다
     // 데스크톱: 내 상태는 왼쪽 아래 한 덩어리 (Hades · Dead Cells처럼 화면 가운데를 비운다). 모바일: 예전처럼 왼쪽 위 (아래는 조이스틱)
     const desk = !document.body.classList.contains('touch');
     const R = RACES[w.b.race]?.res;
     const pw = (desk ? 24 : 26) * u, bw = (desk ? 120 : 110) * u, bh = (desk ? 9 : 10) * u, gh = desk ? 5 * u : 7 * u;
-    const extra = R && (w.b.cls === 'necromancer' || w.b.race === 'wizard') ? 10 * u : 0;
+    const extra = R && (w.b.race === 'undead' || w.b.race === 'wizard') ? 10 * u : 0;
     const frameH = Math.max(pw, bh + (R ? 3 * u + gh : 0) + extra);
     const fx = m, fy = desk ? H - m - frameH - 6 * u : m;
     this.hudFrameTop = fy;
@@ -146,7 +156,7 @@ export const HudMethods = {
       if (desk) this.text(`${R.name} ${Math.floor(p.res)}`, bx + bw + 4 * u, ry + gh / 2, Math.max(1, u - 1), R.color, 'left'); // 얇은 막대: 이름 · 수치는 막대 오른쪽에
       else this.text(`${R.name} ${Math.floor(p.res)}`, bx + bw / 2, ry + gh / 2, Math.max(1, u - 1), '#ffffff', 'center');
       ry += gh + 2 * u;
-      if (w.b.cls === 'necromancer') { this.text(`거둔 영혼 ${p.souls.length} / 10`, bx, ry + 5 * u, Math.max(1, u - 1), '#7ae8ff'); ry += 10 * u; }
+      if (w.b.race === 'undead') { this.text(`거둔 영혼 ${p.souls.length} / 10`, bx, ry + 5 * u, Math.max(1, u - 1), '#7ae8ff'); ry += 10 * u; }
       if (w.b.race === 'wizard') { const el = ELEM[p.elem]; this.text(`속성: ${el.name}${w.zElem?.weak === p.elem ? ' (약점!)' : w.zElem?.resist === p.elem ? ' (내성)' : ''}`, bx, ry + 5 * u, Math.max(1, u - 1), el.color); ry += 10 * u; }
     }
     // 데스크톱: 버프 · 상태이상은 막대 위쪽 줄에 (위로 쌓인다) / 모바일: 막대 아래
@@ -176,7 +186,7 @@ export const HudMethods = {
     for (const k of Object.keys(p.st)) { const nm = names[k] || ['상태이상', '#ffffff', '']; this.text(nm[0], sxx, ry + 5 * u, u, nm[1]); tips.push({ x: sxx, y: ry, w: 26 * u, h: 10 * u, title: nm[0], color: nm[1], lines: [nm[2]].filter(Boolean), left: p.st[k]?.t }); sxx += 30 * u; }
     this.drawSkillBar(w);
     // 데스크톱: 미니맵 아래 정보띠(시계 · 골드 · 지역)에 시계를 넣고, 여정은 그 밑 오른쪽 (퀘스트 추적 칸)
-    if (desk && w.mode === 'field') { this.drawMinimap(w); this.hudRightY = this.hudRightBottom || 120 * u; }
+    if (desk && w.mode === 'field' && !this.tutActive) { this.drawMinimap(w); this.hudRightY = this.hudRightBottom || 120 * u; }
     else if (w.mode !== 'field') this.drawClock(w); // 바깥(미니맵이 있는 곳)은 미니맵 아래 정보띠에 시계가 있다
     this.journeyBottom = 0;
     if (this.journey && !w.climb && !w.pvp && !w.practice) {
@@ -185,7 +195,7 @@ export const HudMethods = {
     }
     this.drawTip();
 
-    if (w.mode === 'field' && !desk) this.drawMinimap(w);
+    if (w.mode === 'field' && !desk && !this.tutActive) this.drawMinimap(w);
     else if (!document.body.classList.contains('touch') && w.t < 8 && !w.climb && !w.pvp && w.map?.indoor) { // 안내 띠: 집 · 실내에 들어온 뒤 8초만 (탑 · 보스전에는 띄우지 않는다)
       const hint = 'G 상호작용 · I 장비 · B 가방 · C 캐릭터 · 아래쪽 문으로 나가기';
       g.font = `${11 * u}px ${FONT}`;
@@ -282,7 +292,8 @@ export const HudMethods = {
       }
     }
     // 각인의 탑: 층 · 걸린 시간 / 기준 시간 (넘기면 붉게)
-    if (w.tower && !w.climb) {
+    if (false && w.trial) this.text(`스승의 방 · ${w.trial.T.rule}`, W / 2, topY, u, '#e8d8a8', 'center', true, true); // 숨은 스승의 시련: 무엇이 제대로 들어가는지
+    else if (w.tower && !w.climb) {
       const par = 60 + w.tower.f * 2 + (w.tower.f % 5 === 0 ? 45 : 0), tt = w.tower.t, over = tt > par;
       const fmt = (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;
       this.text(`각인의 탑 ${w.tower.f}층 · ${fmt(tt)} / ${fmt(par)}`, W / 2, topY, u, over ? '#ff8a7a' : '#e8d8a8', 'center', true, true);
@@ -291,14 +302,20 @@ export const HudMethods = {
     const tb = w.tower?.boss && !w.tower.boss.dead ? w.tower.boss : null;
     const boss = w.climb?.intro ? null : tb || w.enemies.find((e) => (e.def.elite || e.champion) && e.state === 'chase' && !e.dead);
     this.hudBoss = boss; // 체력바에 이름이 나온 보스 (몸 위 이름은 숨긴다)
+    { const tut = w.enemies?.find((e) => e.tut && !e.dead); if (tut) this.edgeArrow(tut.x, tut.y - 24, '#e9b85c', '허수아비'); } // 튜토리얼: 때릴 허수아비를 가리킨다 (화면 안이면 머리 위에 통통 튀는 표시)
     if (boss && w.climb && !boss.dead) this.edgeArrow(boss.x, (boss._top ?? boss.y - 60) + 20, '#ff7a5a', boss.champion || boss.def.name, false); // 보스가 화면 밖이면 가장자리에 화살표 (보일 때는 그리지 않는다) · 탑: 진짜 보스 체력 (분신 · 가짜 거울이 아니라) · 등장 연출 동안은 감춘다
     if (boss) {
       const bw2 = Math.min(W * 0.5, 260 * u), bx2 = (W - bw2) / 2, by2 = topY + 28 * u; // 화면 위쪽 (아래 스킬 칸 · 위쪽 저장 안내를 가리지 않게)
       this.text(boss.champion || boss.def.name, W / 2, by2 - 9 * u, u, '#e8907c', 'center', true, true);
       this.panel(bx2, by2, bw2, 8 * u);
       g.fillStyle = '#3a1016'; g.fillRect(bx2 + u, by2 + u, bw2 - 2 * u, 6 * u);
-      g.fillStyle = '#e8483a'; g.fillRect(bx2 + u, by2 + u, (bw2 - 2 * u) * boss.hp / boss.maxHp, 6 * u);
-      { // 회복: 되찾은 몫은 밝은 초록으로 · 회복 의식 중에는 회복될 몫을 깜빡이고, 끊으려면 얼마나 더 때려야 하는지
+      if (boss.trialOf) { // 스승: 체력 막대를 다섯 겹으로 (한 겹이 한 대에 크게 줄어 보이게) · 오른쪽에 남은 겹 수
+        const LN = 5, LC = ['#e8483a', '#e8903a', '#d8c84a', '#5ac85a', '#4a9ae8'], per = boss.maxHp / LN, cur = Math.max(1, Math.ceil(boss.hp / per - 1e-9)), fr = Math.max(0, (boss.hp - (cur - 1) * per) / per), bw = bw2 - 2 * u;
+        if (cur > 1) { g.fillStyle = LC[(cur - 2) % LN]; g.fillRect(bx2 + u, by2 + u, bw, 6 * u); }
+        g.fillStyle = LC[(cur - 1) % LN]; g.fillRect(bx2 + u, by2 + u, bw * fr, 6 * u);
+        this.text(`×${cur}`, bx2 + bw2 + 4 * u, by2 + 4 * u, u, LC[(cur - 1) % LN], 'left', true, true);
+      } else { g.fillStyle = '#e8483a'; g.fillRect(bx2 + u, by2 + u, (bw2 - 2 * u) * boss.hp / boss.maxHp, 6 * u); }
+      if (!boss.trialOf) { // 회복: 되찾은 몫은 밝은 초록으로 · 회복 의식 중에는 회복될 몫을 깜빡이고, 끊으려면 얼마나 더 때려야 하는지
         const bw = bw2 - 2 * u, hf = this.healFx.get(boss.id), k0 = boss.hp / boss.maxHp;
         if (hf) { g.globalAlpha = Math.min(1, hf.t / hf.max * 1.5); g.fillStyle = '#9ff0a8'; g.fillRect(bx2 + u + bw * Math.max(0, hf.from), by2 + u, bw * Math.max(0, Math.min(k0, hf.to) - hf.from), 6 * u); g.globalAlpha = 1; }
         if (boss.mv?.k === 'channel') {
@@ -325,18 +342,29 @@ export const HudMethods = {
       this.banner.t -= dt;
       g.globalAlpha = Math.min(1, this.banner.t * 1.5);
       const bY = Math.max(H * 0.22, boss ? topY + 64 * u : w.climb ? topY + 44 * u : 0); // 보스 체력바 · 등반 글 아래로
-      let ts = 3 * u; // 긴 제목은 화면 안에 들어올 때까지 글씨를 줄인다 (좁은 창에서 양옆이 잘렸다)
+      const fight = this.banner.region && w.enemies?.some((e) => !e.dead && !e.npcRef && e.def.ai !== 'dummy' && !e.hidden && Math.hypot(e.x - w.player.x, e.y - w.player.y) < 280) || w.t - (w.player.lastFight ?? -99) < 3;
+      if (fight) { // 싸우는 중: 지역 이름은 위쪽에 한 줄로 작게 (싸움 글과 겹치지 않게)
+        const s1 = this.banner.text + (this.banner.sub ? ' · ' + this.banner.sub : ''), y1 = Math.max(18 * u, boss ? topY + 64 * u : w.climb ? topY + 44 * u : 0), rx = this.rightCol ? Math.min(W / 2, (this.rightCol.x - 10 * u) / 2) : W / 2;
+        this.text(s1, rx, y1, u, this.banner.color, 'center', true);
+        g.globalAlpha = 1; if (this.banner.t <= 0) this.banner = null;
+      } else {
+      let ts = 3 * u, bx = W / 2; // 긴 제목은 화면 안에 들어올 때까지 글씨를 줄인다 (좁은 창에서 양옆이 잘렸다)
       { // 뒤에 옅은 어둠 띠: 세계 위의 이름표 · 글과 겹쳐 읽히지 않게
-        g.font = `bold ${33 * u}px ${FONT}`; let tw = g.measureText(this.banner.text).width;
-        while (ts > 1 && tw > W - 24 * u) { tw *= (ts - 1) / ts; ts--; }
+        g.font = `bold ${33 * u}px ${FONT}`; const tw0 = g.measureText(this.banner.text).width;
         g.font = `${11 * u}px ${FONT}`; const sw = this.banner.sub ? g.measureText(this.banner.sub).width : 0;
-        const bw = Math.min(W - 8 * u, Math.max(tw, sw) + 40 * u), bh = (this.banner.sub ? 52 : 40) * u;
-        const a0 = g.globalAlpha; g.globalAlpha = a0 * 0.55; g.fillStyle = '#0c0a0b'; g.fillRect(Math.round(W / 2 - bw / 2), Math.round(bY - 22 * u), Math.round(bw), Math.round(bh)); g.globalAlpha = a0;
+        const bh = (this.banner.sub ? 52 : 40) * u, fit = (room) => { let t = 3 * u, tw = tw0; while (t > 1 && tw > room - 24 * u) { tw *= (t - 1) / t; t--; } return [t, Math.min(room - 8 * u, Math.max(tw, sw) + 40 * u)]; };
+        let [t1, bw] = fit(W);
+        // 오른쪽 기둥(작은 지도 · 여정)과 겹치면: 기둥 왼쪽 빈 곳 가운데로 옮기고 그 폭에 맞춰 줄인다 (좁은 창 · itch 임베드)
+        const rc = this.rightCol, top = bY - 22 * u;
+        if (rc && top < rc.bottom + 6 * u && W / 2 + bw / 2 > rc.x - 28 * u) { const room = rc.x - 20 * u; [t1, bw] = fit(room); bx = room / 2 + 4 * u; }
+        ts = t1;
+        const a0 = g.globalAlpha; g.globalAlpha = a0 * 0.55; g.fillStyle = '#0c0a0b'; g.fillRect(Math.round(bx - bw / 2), Math.round(top), Math.round(bw), Math.round(bh)); g.globalAlpha = a0;
       }
-      this.text(this.banner.text, W / 2, bY, ts, this.banner.color, 'center', true, true);
-      if (this.banner.sub) this.text(this.banner.sub, W / 2, bY + 26 * u, u, '#dcd2c6', 'center');
+      this.text(this.banner.text, bx, bY, ts, this.banner.color, 'center', true, true);
+      if (this.banner.sub) this.text(this.banner.sub, bx, bY + 26 * u, u, '#dcd2c6', 'center');
       g.globalAlpha = 1;
       if (this.banner.t <= 0) this.banner = null;
+      }
     }
     if (w.climb) drawTowerScreen(this, w, g, W, H, u, dt); // 시간의 종 · 멈춘 시간 · 보스 등장 띠와 이름
   },
@@ -345,18 +373,20 @@ export const HudMethods = {
   drawJourney(w, x, y, right = null) {
     const J = this.journey, u = this.u, tu = Math.max(1, u - 1), g = this.g;
     g.font = `bold ${11 * u}px ${FONT}`;
-    const tw = Math.max(150 * u, g.measureText(J.title).width + 16 * u);
+    const tw = Math.max(130 * u, g.measureText(J.title).width + 16 * u);
+    const fight = w.enemies?.some((e) => !e.dead && !e.npcRef && e.def.ai !== 'dummy' && !e.hidden && Math.hypot(e.x - w.player.x, e.y - w.player.y) < 280) || w.t - (w.player.lastFight ?? -99) < 3; // 싸우는 중에는 세계를 덜 가리게 접는다
     if (right != null) x = right - tw; // 오른쪽 맞춤 (미니맵 아래)
     g.font = `${11 * tu}px ${FONT}`;
     const hint = J.hint || '', lines = [];
     let line = '';
     for (const word of hint.split(' ')) { const t2 = line ? line + ' ' + word : word; if (g.measureText(t2).width > tw - 14 * u && line) { lines.push(line); line = word; } else line = t2; }
     if (line) lines.push(line);
-    const show = lines.slice(0, 3), h = 30 * u + show.length * 12 * tu;
+    const show = fight ? [] : lines.slice(0, 2), h = (show.length ? 30 * u : 26 * u) + show.length * 12 * tu;
     this.panel(x, y, tw, h);
     this.journeyBottom = y + h;
+    if (right != null) this.rightCol = { x: Math.min(this.rightCol?.x ?? x, x), bottom: y + h };
     g.fillStyle = J.done ? '#8fcf7a' : '#e9b85c'; g.fillRect(x, y, 2 * u, h);
-    this.text(`여정 ${J.n} / ${J.total}${J.done ? ' · 완료!' : ''}`, x + 7 * u, y + 7 * u, tu, J.done ? '#8fcf7a' : '#c8b88a', 'left', false);
+    this.text(`여정 ${J.n} / ${J.total}${J.done ? ' · 완료!' : ''}${J.canFollow && !J.target ? ' · J 따라가기' : ''}`, x + 7 * u, y + 7 * u, tu, J.done ? '#8fcf7a' : '#c8b88a', 'left', false);
     this.text(J.title, x + 7 * u, y + 19 * u, u, '#f6dfae', 'left', true, true);
     show.forEach((l, i) => this.text(l, x + 7 * u, y + 31 * u + i * 12 * tu, tu, '#c9beb2', 'left', false));
     this.tipRects.push({ x, y, w: tw, h, title: '여정 (J로 전체 보기)', color: '#e9b85c', lines: ['하나를 마치면 보상을 받고 다음 목표가 보인다', J.reward ? `보상: ${J.reward}` : ''].filter(Boolean) });
@@ -415,14 +445,14 @@ export const HudMethods = {
     const touch = document.body.classList.contains('touch');
     const box = (touch ? 16 : 20) * v, gap = 12 * v;
     const sk4 = (w.b.skills || []).filter((x) => x !== 'weapon'); while (sk4.length < 4) sk4.push(null); // Q · E · R · F 자리는 늘 그대로 (빈 각인 칸은 빈 칸)
-    // 빈 칸 아래 안내: 다음 클래스 스킬이 열리는 레벨, 이미 열렸으면 공명 제단에서 끼운다
-    const nextLv = Math.min(...Object.values(SKILLS).filter((sk) => sk.cls === w.b.cls && (sk.unlock || 1) > w.b.level).map((sk) => sk.unlock));
-    const emptyHint = (w.b.available || []).some((id) => SKILLS[id]?.cls && !sk4.includes(id)) ? '제단에서' : Number.isFinite(nextLv) ? `Lv ${nextLv}` : '빈 칸';
     const slots = [...sk4.slice(0, 4), 'weapon'];
     const keys = [...['KeyQ', 'KeyE', 'KeyR', 'KeyF'].map((k) => keyLabel(keyFor(k))), touch ? '무기' : '우클릭']; // 키 바꾸기를 따른다
     const n = slots.length + 1;
     const total = n * box + (n - 1) * gap;
-    const x0 = touch ? W - total - 8 * u : Math.max((W - total) / 2, 168 * u + (w.life?.quickFood ? box + gap : 0)), y0 = touch ? Math.round(H * 0.2) : H - box - 12 * v; // 모바일: 오른쪽 작은 지도 아래 (체력 · 저장 안내와 겹치지 않게)
+    // 데스크톱: 체력 · 자원 글자(왼쪽 아래 약 210) 오른쪽에. 좁은 창이라 거기에 다 들어가지 않으면 가운데 · 체력 덩어리 위로 올린다
+    const leftMin = 210 * u + (w.life?.quickFood ? box + gap : 0), narrow = !touch && leftMin + total > W - 8 * u;
+    const x0 = touch ? W - total - 8 * u : narrow ? Math.max(8 * u + (w.life?.quickFood ? box + gap : 0), (W - total) / 2) : Math.max((W - total) / 2, leftMin);
+    const y0 = touch ? Math.round(H * 0.2) : narrow ? Math.round((this.hudFrameTop ?? H) - box - 16 * v) : H - box - 12 * v; // 모바일: 오른쪽 작은 지도 아래 (체력 · 저장 안내와 겹치지 않게)
     // 대시
     const dashMax = d.dashCd * (1 - d.cdr), dashK = p.dashCharges > 0 ? 1 : Math.min(1, 1 - p.dashRecharge / dashMax);
     this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : keyLabel(keyFor('Space')), '', null, p.dashCharges > 0 ? 0 : p.dashRecharge);
@@ -452,11 +482,17 @@ export const HudMethods = {
         this.text(this.fitName(WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기', box * 1.3, Math.max(1, u - 1)), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#dcd2c6', 'center');
         return;
       }
-      if (!id) { if (touch) return; this.cooldownBox(x, y0, box, 1, keys[i], '', null, 0); g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); this.text(emptyHint, x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#8c8079', 'center'); return; }
+      if (!id) { // 빈 칸: 각인이 없으면 스킬도 없다 (아무것도 채우지 않는다)
+        if (touch) return;
+        this.cooldownBox(x, y0, box, 1, keys[i], '', null, 0);
+        g.fillStyle = 'rgba(8,6,10,0.62)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u);
+        this.text('빈 칸', x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#8c8079', 'center');
+        return;
+      }
       const sk = SKILLS[id];
       const cd = p.cds[id] || 0, max = p.cdMax?.[id] || sk.cd;
       const k = cd > 0 ? 1 - cd / max : 1;
-      const need = sk.costAll ? sk.costAll.min : sk.cost || 0;
+      const need = sk.costAll ? sk.costAll.min : gradeCost(sk, w.skillTier(id)) * (w.d.costMul || 1);
       const lack = need > p.res;
       this.cooldownBox(x, y0, box, k, keys[i], '', ROLE_COLOR[sk.role], cd, sk);
       if (lack && k >= 1) { g.fillStyle = 'rgba(40,0,0,0.55)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); }
@@ -510,13 +546,14 @@ export const HudMethods = {
   drawMinimap(w) {
     const g = this.g, u = this.u, W = this.c.width;
     let s = u * 0.75, mw = Math.round(w.tw * s), mh = Math.round(w.th * s), ox = 0, oy = 0;
-    if (w.map.outdoor) { // 넓은 세계: 나를 가운데 둔 110×80칸 창
-      const vw = 110, vh = 80; s = Math.min(u * 1.3, (W * 0.22) / vw); mw = Math.round(vw * s); mh = Math.round(vh * s);
+    if (w.map.outdoor) { // 넓은 세계: 나를 가운데 둔 64×48칸 창
+      const vw = 64, vh = 48; s = Math.min(u * 1.6, (W * 0.16) / vw); mw = Math.round(vw * s); mh = Math.round(vh * s); // 나 둘레만 크게 (예전 110×80칸은 대부분이 안 가 본 까만 칸이었다)
       ox = Math.max(0, Math.min(w.tw - vw, Math.floor(w.player.x / TILE) - vw / 2)); oy = Math.max(0, Math.min(w.th - vh, Math.floor(w.player.y / TILE) - vh / 2));
     }
     const mx = W - mw - 10 * u, my = 10 * u;
     this.panel(mx - 2 * u, my - 2 * u, mw + 4 * u, mh + 4 * u);
-    g.fillStyle = '#05040a'; g.fillRect(mx, my, mw, mh);
+    g.fillStyle = '#0c1422'; g.fillRect(mx, my, mw, mh); // 안 가 본 곳: 큰 지도와 같은 밤바다 + 옅은 눈금
+    if (w.map.outdoor) { g.fillStyle = 'rgba(120,150,190,0.08)'; for (let x = (8 - ox % 8) % 8; x < mw / s; x += 8) g.fillRect(Math.round(mx + x * s), my, 1, mh); for (let y = (8 - oy % 8) % 8; y < mh / s; y += 8) g.fillRect(mx, Math.round(my + y * s), mw, 1); }
     g.imageSmoothingEnabled = false;
     if (w.map.outdoor) g.drawImage(this.mini, ox, oy, mw / s, mh / s, mx, my, mw, mh); else g.drawImage(this.mini, mx, my, mw, mh);
     if (w.locks?.regions.size && w.map.regions) g.drawImage(this.sealCanvas(w), ox, oy, mw / s, mh / s, mx, my, mw, mh); // 해방되지 않은 지역
@@ -543,6 +580,7 @@ export const HudMethods = {
     for (const e of w.enemies) if ((e.def.elite || e.champion) && seen(e.x, e.y)) dot(e.x, e.y, '#ff4040', 2);
     if (Math.floor(w.t * 4) % 2 === 0) dot(w.player.x, w.player.y, '#ffffff', 1.5);
     this.minimapBottom = my + mh;
+    this.rightCol = { x: mx - 2 * u, bottom: my + mh + 30 * u };
     if (w.climb) { this.hudRightBottom = my + mh + 8 * this.u; for (const o of w.objects) if (o.kind === 'climbDoor') dot(o.x, o.y, CLIMB_REWARDS[o.next]?.color || '#fff', 2); else if (o.kind === 'climbReward' && !o.opened) dot(o.x, o.y, '#f6dfae', 2.2); return; } // 탑 등반: 아래 글은 등반 HUD 가 그린다
     if (!this.pctT || this.pctT < w.t) { this.pctT = w.t + 0.5; this.pctV = Math.round(w.exploredPct() * 100); }
     // 정보띠: 미니맵 바로 아래 한 상자에 시계 · 골드 / 지역 · 탐험 (따로 떠 있던 글자를 모은다)
@@ -587,24 +625,45 @@ export const HudMethods = {
     for (let y = 40; y < w.th; y += 40) g.fillRect(mx, Math.round(my + y * s), mw, 1);
     g.imageSmoothingEnabled = false;
     g.drawImage(this.mini, mx, my, mw, mh);
-    if (w.locks?.regions.size && w.map.regions) { // 해방되지 않은 지역: 안개 + 「탑 N층」
+    const labels = []; // 이름표는 모아 두었다가 겹치지 않게 놓는다
+    const lab = (text, x, y, color, sub = null, subColor = null) => labels.push({ text, x, y, color, sub, subColor });
+    if (w.locks?.regions.size && w.map.regions) { // 해방되지 않은 지역: 안개 + 「이름 · 탑 N층」 한 줄
       g.drawImage(this.sealCanvas(w), mx, my, mw, mh);
-      BIOME_LIST.forEach((b, i) => { const L = w.locks.regions.get(i); if (L) { this.text(`${b.name} · 잠김`, mx + b.x * s, my + b.y * s - 6 * u, Math.max(1, u - 1), '#c8b0ff', 'center'); this.text(L.text.replace('을 쓰러뜨리면 열린다', ''), mx + b.x * s, my + b.y * s + 6 * u, Math.max(1, u - 1), '#9a88c8', 'center'); } });
+      BIOME_LIST.forEach((b, i) => { const L = w.locks.regions.get(i); if (L) lab(`${b.name} · 잠김`, mx + b.x * s, my + b.y * s, '#c8b0ff', L.text.replace('을 쓰러뜨리면 열린다', '').replace('의 주인', ''), '#9a88c8'); });
     }
     g.strokeStyle = 'rgba(232,220,192,0.6)'; g.lineWidth = 2; g.strokeRect(mx - 2, my - 2, mw + 4, mh + 4);
     // 가 본 지역의 이름
-    for (const b of BIOME_LIST) if (b.id !== 'tower' && w.explored[b.y * w.tw + b.x]) { this.text(b.name, mx + b.x * s, my + b.y * s, Math.max(1, u - 1), 'rgba(255,244,214,0.75)', 'center'); if (b.lv) this.text(`Lv ${b.lv[0]}~${b.lv[1]}`, mx + b.x * s, my + b.y * s + 9 * u, Math.max(1, u - 1), 'rgba(255,214,150,0.7)', 'center'); }
+    for (const b of BIOME_LIST) if (b.id !== 'tower' && w.explored[b.y * w.tw + b.x]) lab(b.name, mx + b.x * s, my + b.y * s, 'rgba(255,244,214,0.9)', b.lv ? `Lv ${b.lv[0]}~${b.lv[1]}` : null, 'rgba(255,214,150,0.8)');
     const seen = (x, y) => w.explored[Math.floor(y / TILE) * w.tw + Math.floor(x / TILE)];
     const P = (x, y) => [mx + (x / TILE) * s, my + (y / TILE) * s];
     for (const o of w.objects) {
       if (!seen(o.x, o.y)) continue;
       const [px, py] = P(o.x, o.y);
-      if (o.kind === 'sanctum') { g.fillStyle = SANCTUMS[o.race]?.color || '#fff'; g.beginPath(); g.arc(px, py, 4 * u, 0, Math.PI * 2); g.fill(); this.text(SANCTUMS[o.race]?.name || '', px, py - 9 * u, Math.max(1, u - 1), '#ffffff', 'center'); }
+      if (o.kind === 'sanctum') { g.fillStyle = SANCTUMS[o.race]?.color || '#fff'; g.beginPath(); g.arc(px, py, 4 * u, 0, Math.PI * 2); g.fill(); lab(SANCTUMS[o.race]?.name || '', px, py - 9 * u, '#ffffff'); }
       else if (o.kind === 'entrance') { g.fillStyle = '#e8dcc0'; g.fillRect(px - 2 * u, py - 2 * u, 4 * u, 4 * u); }
       else if (o.kind === 'waypoint') { g.fillStyle = '#0d0b10'; g.fillRect(px - 3 * u, py - 4 * u, 6 * u, 7 * u); g.fillStyle = o.active ? '#8ad8ff' : '#6a6478'; g.fillRect(px - 2 * u, py - 3 * u, 4 * u, 5 * u); if (o.active) { g.fillStyle = '#e8faff'; g.fillRect(px - u, py - 2 * u, 2 * u, 2 * u); } }
-      else if (o.kind === 'rest') this.text('바람결 마을', px, py - 10 * u, Math.max(1, u - 1), '#ffd76a', 'center');
-      else if (o.kind === 'towerDoor') this.text('각인의 탑', px, py - 26 * u, Math.max(1, u - 1), '#9ff0d8', 'center');
-      else if (o.kind === 'raidAltar') this.text('레이드', px, py - 26 * u, Math.max(1, u - 1), '#ff9aa8', 'center');
+      else if (o.kind === 'rest') lab('바람결 마을', px, py - 10 * u, '#ffd76a');
+      else if (o.kind === 'towerDoor') lab('각인의 탑', px, py - 26 * u, '#9ff0d8');
+      else if (o.kind === 'raidAltar') lab('레이드', px, py - 26 * u, '#ff9aa8');
+    }
+    { // 자리 찾기: 제자리 → 아래 · 위로 한 줄씩 비켜 보고, 지도 밖으로는 나가지 않는다
+      const n = Math.max(1, u - 1), lh = 13 * n, placed = [];
+      g.font = `${11 * n}px ${FONT}`;
+      for (const L of labels) {
+        const tw = Math.max(g.measureText(L.text).width, L.sub ? g.measureText(L.sub).width : 0) + 8 * n, th = (L.sub ? 2 : 1) * lh + 2 * n;
+        let best = null;
+        for (const k of [0, 1, -1, 2, -2, 3, -3, 4, -4]) {
+          const cy = Math.min(my + mh - th / 2, Math.max(my + th / 2, L.y + k * lh * 0.9)), cx = Math.min(mx + mw - tw / 2, Math.max(mx + tw / 2, L.x));
+          const r = { x0: cx - tw / 2, x1: cx + tw / 2, y0: cy - th / 2, y1: cy + th / 2 };
+          if (!placed.some((q) => r.x0 < q.x1 && r.x1 > q.x0 && r.y0 < q.y1 && r.y1 > q.y0)) { best = r; break; }
+          best ||= r;
+        }
+        placed.push(best);
+        g.fillStyle = 'rgba(8,6,14,0.62)'; g.fillRect(Math.round(best.x0), Math.round(best.y0), Math.round(best.x1 - best.x0), Math.round(best.y1 - best.y0));
+        const cx = (best.x0 + best.x1) / 2;
+        this.text(L.text, cx, best.y0 + lh / 2 + n, n, L.color, 'center');
+        if (L.sub) this.text(L.sub, cx, best.y0 + lh * 1.5 + n, n, L.subColor, 'center');
+      }
     }
     const [ppx, ppy] = P(w.player.x, w.player.y);
     if (Math.floor(w.t * 3) % 2 === 0) { g.fillStyle = '#ffffff'; g.beginPath(); g.arc(ppx, ppy, 3.5 * u, 0, Math.PI * 2); g.fill(); g.strokeStyle = '#1a1410'; g.stroke(); }
@@ -614,13 +673,16 @@ export const HudMethods = {
 
   // 왼쪽 알림 (도감 단계 · 이야기 물건)
   drawNotes(dt) {
-    const u = this.u, H = this.c.height;
-    let y = H * 0.5;
-    for (const n of this.notes) {
-      n.t -= dt;
-      this.g.globalAlpha = Math.max(0, Math.min(1, n.t));
+    const u = this.u, H = this.c.height, g = this.g;
+    let y = H - 92 * u; // 체력바 위 (화면 가운데 · 싸우는 자리를 가리지 않게)
+    g.font = `${11 * u}px ${FONT}`;
+    for (let i = this.notes.length - 1; i >= 0; i--) {
+      const n = this.notes[i]; n.t -= dt;
+      const a = Math.max(0, Math.min(1, n.t)), tw = g.measureText(n.text).width;
+      g.globalAlpha = a * 0.6; g.fillStyle = '#0c0a0b'; g.fillRect(6 * u, Math.round(y - 7 * u), Math.round(tw + 12 * u), 14 * u);
+      g.fillStyle = n.color; g.globalAlpha = a; g.fillRect(6 * u, Math.round(y - 7 * u), Math.max(1, u), 14 * u); // 왼쪽 색 줄
       this.text(n.text, 12 * u, y, u, n.color, 'left', true);
-      y += 14 * u;
+      y -= 16 * u;
     }
     this.g.globalAlpha = 1;
     this.notes = this.notes.filter((n) => n.t > 0);

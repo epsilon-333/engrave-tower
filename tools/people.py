@@ -338,6 +338,7 @@ person('merchant', race='human', outfit='coat', cloth='#6a3a8a', inner='#e8c060'
 person('pino', race='elf', body='child', outfit='tunic', cloth='#c87a3a', pants='#5a4a3a', hair='#e8a040', hairStyle='spiky', hat='cap', hatc='#3a6a8a', item='map', blush=True)                         # 지도 제작자 피노
 person('farmer', race='human', outfit='tunic', cloth='#8a9a5a', pants='#5a4a3a', hair='#7a5a30', hairStyle='short', hat='straw', item='pitchfork', skin='tan')                                           # 농부
 person('farmer2', race='human', outfit='dress', cloth='#c87a6a', hair='#a8603a', hairStyle='braids', hat='straw', item='basket', blush=True)                                                             # 농부 아낙
+person('chief', race='human', outfit='robe', cloth='#6a5a3a', trim='#c8b070', hair='#ece8e0', hairStyle='bald', beard='long', item='crook', brows=True)  # 바람결 마을 촌장 (흰 수염 · 지팡이)
 person('innkeeper', race='human', body='stout', outfit='apron', cloth='#8a5a3a', apronc='#f0e6d0', hair='#c8783a', hairStyle='bun', item='mug', blush=True)
 person('smith', race='human', body='stout', outfit='apron', cloth='#5a4a4a', apronc='#4a3428', hair='#3a2820', hairStyle='short', beard='full', item='tongs', skin='tan', brows=True)
 person('rumorer', race='human', outfit='rags', cloth='#6a6058', hair='#5a4a3a', hairStyle='wild', hat='hood', hatc='#4a4038', item='pipe', brows=True)

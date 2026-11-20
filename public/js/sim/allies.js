@@ -210,7 +210,7 @@ export const AllyMethods = {
     const p = this.player, f = p.familiar;
     if (!f) { if (p.buffs.spiritBond) delete p.buffs.spiritBond; if (p.buffs.spiritGuard) delete p.buffs.spiritGuard; delete p.buffs.spiritBond2; delete p.buffs.spiritBond3; p.famExtra = null; return; }
     f.t -= DT; if (f.emp > 0) f.emp -= DT; if (f.guard > 0) f.guard -= DT;
-    if (this.t - (p.lastFight ?? -99) < 5 && !this.practice) { f.xpAcc = (f.xpAcc || 0) + DT * (this.b.cls === 'spiritcaller' ? 1.5 : 1); if (f.xpAcc >= 5) { this.signals.push({ t: 'spiritXp', id: f.id, v: f.xpAcc }); f.xpAcc = 0; } } // 함께 싸운 시간 → 정령 레벨
+    if (this.t - (p.lastFight ?? -99) < 5 && !this.practice) { f.xpAcc = (f.xpAcc || 0) + DT * (this.f.has('spiritBond') ? 1.5 : 1); if (f.xpAcc >= 5) { this.signals.push({ t: 'spiritXp', id: f.id, v: f.xpAcc }); f.xpAcc = 0; } } // 함께 싸운 시간 → 정령 레벨
     if (f.t <= 0 || this.state !== 'play') { this.emit({ t: 'spiritOut', x: f.x, y: f.y + 10, elem: SPIRIT_DMG_ELEM[f.elem] }); p.familiar = null; p.famExtra = null; delete p.buffs.spiritBond; delete p.buffs.spiritGuard; delete p.buffs.spiritBond2; delete p.buffs.spiritBond3; return; }
     // 어깨 위 (내 뒤쪽)로 따라온다
     f.phase += DT * 2.2;

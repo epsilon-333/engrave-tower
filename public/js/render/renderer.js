@@ -1,6 +1,7 @@
 // 캔버스 렌더러: world 상태를 읽어서 그리기만 한다 (게임 로직 없음)
 // 화면 크기에 맞춰 정수 배율(S)로 도트를 키우고, 글씨는 실제 해상도로 따로 그린다.
 import { hexA } from './color.js';
+import { WCOMBO } from '../data/wcombo.js';
 export { hexA };
 import { opts } from '../settings.js';
 import { TILE, T_LIQUID, T_WALL, T_CRACK, T_BUILD, T_DEEP } from '../sim/mapgen.js';
@@ -26,11 +27,14 @@ import { SKILLS, ELEM } from '../data/skills.js';
 import { RACE_ART, MONSTER_ART, NPC_ART, weaponArt, RACE_LOOK } from '../data/art.js';
 import { BOSS_PASSIVES } from '../data/tower.js';
 import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
+// 바닥에 납작하게 깔린 것: 사람 · 몬스터 아래에 그린다 (아래 끝 기준으로 줄 세우면 위쪽에 선 사람의 몸을 덮었다)
+export const FLAT_PROP = new Set(['hole', 'whirlpool']), FLAT_OBJ = new Set(['dig', 'trap']);
+export const GROUND_MARKS = new Set(['ink', 'cracks', 'scorch', 'scrape', 'rageCracks']); // 그 가운데 땅에 새겨지는 것 (벽 · 물 · 허공에는 안 생긴다)
 export const GROUND_FX = new Set(['ink', 'tcircle', 'tdonut', 'lineTele', 'cracks', 'scorch', 'scrape', 'castCircle', 'rune', 'glyphs', 'rageCracks', 'path']); // 바닥에 그리는 이펙트
 const BOSS_MELEE = new Set(['combo', 'cleave', 'whirl', 'shove', 'charge', 'leap', 'jumps3', 'quake', 'grab', 'retreat']);
 const SHEET_LOOKS = ['saturate(1.25) contrast(1.1) brightness(1.08)', 'saturate(1.5) contrast(1.3) brightness(0.92)']; // 보스 시트 2 · 3단계: 색을 돌리지 않고 진하게만
 export const PASSIVE_NAME = Object.fromEntries(Object.entries(BOSS_PASSIVES).map(([k, v]) => [k, v.name]));
-import { STORY_ITEMS, pinoTalk } from '../data/story.js';
+import { STORY_ITEMS } from '../data/story.js';
 import { sfx } from '../audio.js';
 import { drawClimbObject } from './climbfx.js';
 import { drawTowerFloor, drawTowerOver, drawLightPillar, introPose } from './towerfx.js';
@@ -43,7 +47,8 @@ const bowHand = (a) => ({ hx: 1 + Math.cos(a) * 11, hy: -9 + Math.sin(a) * 10 })
 // 대검 회전 진행도: 앞 40%는 세제곱으로 천천히 가속, 뒤 60%는 관성으로 감속 (두 구간의 속도가 이어지게 맞춤)
 // 0~35%: 반대쪽으로 살짝 젖히며 버팀 · 35~60%: 세제곱으로 폭발하듯 가속(던지기) · 60~100%: 관성으로 돌다 급히 느려짐
 // (던지기 끝과 관성 시작의 속도가 같도록 7.7제곱으로 맞춤)
-export const greatSpin = (k) => (k < 0.35 ? -0.04 * Math.sin((k / 0.35) * Math.PI / 2) : k < 0.6 ? -0.04 + 0.64 * Math.pow((k - 0.35) / 0.25, 3) : 0.6 + 0.4 * (1 - Math.pow(1 - (k - 0.6) / 0.4, 7.7)));
+// 대검: 0~30% 뒤로 젖혀 모으고 · 30~72% 무게를 실어 천천히 빨라지며 내려온다 · 72~100% 남은 힘으로 끝까지 (예전엔 칼이 지나가는 구간이 25%뿐이라 휙 지나가 가벼워 보였다)
+export const greatSpin = (k) => (k < 0.3 ? -0.06 * Math.sin((k / 0.3) * Math.PI / 2) : k < 0.72 ? -0.06 + 0.7 * Math.pow((k - 0.3) / 0.42, 2.2) : 0.64 + 0.36 * (1 - Math.pow(1 - (k - 0.72) / 0.28, 4)));
 // 용 브레스 목 굽힘: 머리 쪽으로 갈수록 더 많이 돌린다 (몸통 · 다리 · 날개는 그대로)
 // u = 그림 기준 가로(0 꼬리 ~ 1 머리), v = 세로. 각도별로 한 번 계산해 둔다
 const DRAGON_NECK = { pu: 0.62, pv: 0.6, u0: 0.56, uh: 0.8, vt: 0.21, vb: 0.62 };
@@ -84,9 +89,10 @@ function bendDragon(src, tilt, R, key) {
   BEND.set(ck, c);
   return c;
 }
-const greatSpinSpeed = (k) => (k < 0.35 ? 0 : k < 0.6 ? Math.pow((k - 0.35) / 0.25, 2) : Math.pow(1 - (k - 0.6) / 0.4, 6.7));
+const greatSpinSpeed = (k) => (k < 0.3 ? 0 : k < 0.72 ? Math.pow((k - 0.3) / 0.42, 1.2) : Math.pow(1 - (k - 0.72) / 0.28, 3));
 // 무기를 쥔 손 색 (종족별)
 // 종족별 입 높이 (발 기준, 바람총을 대는 자리)
+const GUARD_Y = { wizard: -2, assassin: -3, orc: -2, dino: -3, undead: -3 }; // 복서 가드의 주먹 높이 (가슴 앞 · 키가 작은 종족은 낮게 — 얼굴을 가리지 않게)
 const MOUTH_Y = { assassin: -6, dragon: -9, knight: -10, wizard: -9, elf: -9, orc: -8, dino: -9, undead: -9, golem: -12 };
 const HAND_COLOR = { knight: '#c8d8e8', wizard: '#d8a878', elf: '#f0c8a0', orc: '#6a9a4a', dino: '#5aa84a', undead: '#b8b0c8', assassin: '#3a3040', golem: '#8a8478', dragon: '#e8b48a' };
 // 클래스별 마법 색 (속성이 없는 마법)
@@ -169,6 +175,30 @@ import { HudMethods } from './hud.js';
 import { FxMethods } from './fxdraw.js';
 import { EventMethods } from './events.js';
 import { AtmosMethods } from './atmosphere.js';
+const DILATE = new WeakMap(), NOBUFF = Object.freeze({});
+const NOCOMBO = new Set(['fist', 'great', 'whip', 'bow', 'crossbow', 'orb', 'tome', 'staff', 'tube']);
+const PI = Math.PI;
+// 콤보 동작의 두 자세: A = 다 들어 올린(준비) 자세 · B = 다 휘두른 자세 (data/wcombo.js의 m)
+const CPOSE = {
+  down: { heavy: true, hold: 0.45, A: { a: -2.6, hx: 0, hy: -14, lean: -2.2, sy: 1.05, f: -1, behind: true }, B: { a: 1.45, hx: 7, hy: -3, lean: 3.6, sy: 0.9, f: 3 } },
+  side: { heavy: true, A: { th: PI - 0.4, r: 4, hy: -7, lean: -2.6, f: -1 }, B: { th: -1.3, r: 6, hy: -7, lean: 3, f: 2 } },
+  up: { heavy: true, hold: 0.4, A: { a: 1.5, hx: -3, hy: -1, lean: -1.6, sy: 0.88, f: -1, behind: true }, B: { a: -2.1, hx: 5, hy: -14, lean: -1, sy: 1.06, f: 2 } },
+  diag: { A: { a: -2.3, hx: -1, hy: -12, lean: -1.8, f: -1, behind: true }, B: { a: 1.3, hx: 7, hy: -4, lean: 3, f: 3 } },
+  rdiag: { A: { a: 1.4, hx: -1, hy: -3, lean: -1.2, sy: 0.95 }, B: { a: -1.9, hx: 6, hy: -12, lean: 2, f: 2 } },
+  slash: { A: { a: -2.2, hx: 0, hy: -11, lean: -1.2, behind: true }, B: { a: 1.2, hx: 6, hy: -5, lean: 2.2, f: 2 } },
+  rslash: { A: { a: 1.3, hx: 0, hy: -4, lean: -0.8 }, B: { a: -1.9, hx: 6, hy: -11, lean: 1.8, f: 1.5 } },
+  thrust: { A: { a: 'aim', hx: -6, hy: -7, lean: -2, f: -2 }, B: { a: 'aim', hx: 15, hy: -7, lean: 3.5, f: 4 } },
+  lunge: { hold: 0.3, A: { a: 'aim', hx: -9, hy: -7, lean: -2.8, sy: 0.93, f: -3 }, B: { a: 'aim', hx: 19, hy: -7, lean: 4.2, f: 6 } },
+  stab: { hold: 0.2, A: { a: 'aim', hx: -2, hy: -6, lean: -1, f: -1 }, B: { a: 'aim', hx: 11, hy: -6, lean: 2.5, f: 3 } },
+  reap: { A: { th: PI + 0.6, r: 3, hy: -10, lean: -2.2, f: -1 }, B: { th: -0.6, r: 7, hy: -6, lean: 3, f: 2 } },
+  rreap: { A: { th: -1.2, r: 4, hy: -8, lean: -1.5 }, B: { th: PI * 0.7, r: 6, hy: -6, lean: 2.5, f: 1 } },
+  whirl: { A: { th: PI, r: 2, hy: -12, lean: -1.2, sy: 1.04 }, B: { th: PI - 4 * PI, r: 6, hy: -11, lean: 2, f: 1 } },
+  chop: { heavy: true, hold: 0.45, A: { a: -2.5, hx: -2, hy: -13, lean: -1.6, f: -1, behind: true }, B: { a: 1.2, hx: 7, hy: -5, lean: 3, sy: 0.94, f: 2.5 } },
+  hack: { hold: 0.4, A: { a: -0.6, hx: -4, hy: -9, lean: -2, behind: true }, B: { a: 1.5, hx: 6, hy: -3, lean: 2.5, f: 2 } },
+  aside: { heavy: true, A: { th: PI - 0.5, r: 3, hy: -8, lean: -2.4, f: -1 }, B: { th: -1.2, r: 7, hy: -7, lean: 3, f: 2 } },
+  sweep: { A: { th: PI - 0.3, r: 5, hy: -7, lean: -2.2, f: -1 }, B: { th: -1.2, r: 7, hy: -7, lean: 3, f: 2 } },
+};
+const TEXT_CACHE = new Map();
 export class Renderer {
   constructor(canvas) {
     this.c = canvas;
@@ -191,7 +221,7 @@ export class Renderer {
   }
 
   resize(cssW, cssH, dpr) {
-    const k = Math.min(dpr, Math.sqrt((1920 * 1080) / Math.max(1, cssW * cssH))); // 화면 그림은 1920×1080칸까지 (고해상도 · 전체 화면에서 큰 판을 매 프레임 칠하느라 느렸다 · 브라우저가 늘려 보여 준다)
+    const cap = (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 1100 * 620 : 1920 * 1080, k = Math.min(dpr, Math.sqrt(cap / Math.max(1, cssW * cssH))); // 휴대폰은 화면 그림을 더 작게 (도트라 흐려지지 않는다 · 렉) // 화면 그림은 1920×1080칸까지 (고해상도 · 전체 화면에서 큰 판을 매 프레임 칠하느라 느렸다 · 브라우저가 늘려 보여 준다)
     const W = Math.round(cssW * k), H = Math.round(cssH * k);
     this.c.width = W; this.c.height = H;
     this.baseS = Math.max(2, Math.round(Math.min(W, H) / 270)); // 짧은 변 기준: 어느 화면비든 짧은 쪽으로 약 270칸이 보인다 (긴 변 기준이면 휴대폰 세로 · 21:9에서 시야가 좁아졌다)
@@ -359,7 +389,7 @@ export class Renderer {
     if (ev.ult) {
       this.ultName = { text: ev.name, color: col === '#ffffff' ? '#ffd27a' : col, t: 1.4, max: 1.4 };
       this.flash = { color: '255,255,255', t: 0.18, max: 0.18 };
-      this.hitstop = Math.max(this.hitstop, 0.12); this.shake = Math.max(this.shake, 6);
+      this.addStop(0.12); this.shake = Math.max(this.shake, 6);
       this.rimFlash = { color: col === '#ffffff' ? '#ffd27a' : col, t: 0.8, max: 0.8 };
       this.shockwave(ev.x, ev.y, 90, col === '#ffffff' ? '#ffd27a' : col, 48);
       this.burst(ev.x, ev.y - 6, col, 40, 200);
@@ -367,7 +397,7 @@ export class Renderer {
       return;
     }
     if (ev.fx === 'charge') this.fx.push({ k: 'chargeGlow', t: 1.0, max: 1.0 });
-    if (ev.charge >= 3) { this.flash = { color: '255,240,190', t: 0.12, max: 0.12 }; this.shake = Math.max(this.shake, 5); this.hitstop = Math.max(this.hitstop, 0.06); }
+    if (ev.charge >= 3) { this.flash = { color: '255,240,190', t: 0.12, max: 0.12 }; this.shake = Math.max(this.shake, 5); this.addStop(0.06); }
     if (ev.elem && ev.elem !== 'phys') { const c2 = ELEM[ev.elem]?.color || col; this.fx.push({ k: 'glow', x: ev.x + Math.cos(ev.ang) * 14, y: ev.y - 10 + Math.sin(ev.ang) * 10, r: 26, color: c2, t: 0.25, max: 0.25 }); }
     if (ev.fx === 'wind') { for (let i = 0; i < 24; i++) { const a = Math.random() * Math.PI * 2; this.parts.push({ x: ev.x + Math.cos(a) * 20, y: ev.y - 6 + Math.sin(a) * 12, vx: -Math.sin(a) * 90, vy: Math.cos(a) * 50, t: 0.6, max: 0.6, color: '#d8ffe0', g: 0 }); } sfx('dash', { vol: 0.5, rate: 1.3 }); }
     if (ev.fx === 'roar') { this.shockwave(ev.x, ev.y, 70, '#ffcf8a', 36); this.shake = 4; sfx('hitHeavy', { vol: 0.8, rate: 0.55 }); }
@@ -380,7 +410,7 @@ export class Renderer {
     const r = ev.rar, rc = ['#c8c0d0', '#7ac4ff', '#c890ff', '#ffc84a', '#ff5a7a'][r], R = Math.max(24, ev.r || 30);
     this.anims.add(RARITY_ANIM[r], { x: ev.x, y: ev.y, r: R * (0.8 + 0.12 * r), col: rc });
     if (r >= 3) this.shake = Math.max(this.shake, r);
-    if (r >= 4) this.hitstop = Math.max(this.hitstop, 0.05);
+    if (r >= 4) this.addStop(0.05);
   }
 
   // 범위 스킬 연출 (맞는 쪽)
@@ -404,7 +434,7 @@ export class Renderer {
     // 등급이 높을수록: 표식이 커지고(+12%/등급) · 영웅부터 한 번 더 · 전설부터 등급 색 충격파와 불티 · 신화는 화면이 번쩍이고 테두리가 물든다
     if (rar >= 2) setTimeout(() => { if (this.world) this.weaponSig({ ...ev, rar: 0, r: (ev.r || 30) * 0.8 }); }, 140);
     if (rar >= 3) { const rc = ['#c8c0d0', '#7ac4ff', '#c890ff', '#ffc84a', '#ff5a7a'][rar]; this.shockwave(x, y, r * 1.1, rc, 36); this.burst(x, y - 6, rc, 24, 170); }
-    if (rar >= 4) { this.flash = { color: '255,220,230', t: 0.16, max: 0.16 }; this.rimFlash = { color: '#ff5a7a', t: 0.5, max: 0.5 }; this.hitstop = Math.max(this.hitstop, 0.06); this.shockwave(x, y, r * 1.5, '#ffffff', 44); }
+    if (rar >= 4) { this.flash = { color: '255,220,230', t: 0.16, max: 0.16 }; this.rimFlash = { color: '#ff5a7a', t: 0.5, max: 0.5 }; this.addStop(0.06); this.shockwave(x, y, r * 1.5, '#ffffff', 44); }
     switch (c) {
       case 'blade': A.add('bladeArc', { x, y, ang: -0.7, range: r, angle: 2.4, col }); A.add('bladeArc', { x, y, ang: Math.PI + 0.7, range: r, angle: 2.4, col, max: 0.34 }); break;
       case 'great': A.add('bladeArc', { x, y, ang: Math.PI / 2, range: r * 1.15, angle: 3.4, col }); break;
@@ -424,7 +454,7 @@ export class Renderer {
   // 거대 화염구 착탄: 섬광 → 솟구치는 불길 · 사방으로 튀는 불똥 → 날아가 떨어진 돌 조각이 달아올랐다 식는다 → 연기 · 그을린 땅이 사라진다
   fireballBoom(x, y, r) {
     this.flash = { color: '255,200,140', t: 0.3, max: 0.3 };
-    this.shake = Math.max(this.shake, 14); this.hitstop = Math.max(this.hitstop, 0.12);
+    this.shake = Math.max(this.shake, 14); this.addStop(0.12);
     this.fx.push({ k: 'glow', x, y: y - 10, r: r * 1.6, color: '#ffb040', t: 0.6, max: 0.6 });
     this.fx.push({ k: 'scorch', x, y, r: r * 0.75, t: 4.5, max: 4.5 });
     this.fx.push({ k: 'fireColumn', x, y, r, t: 0.55, max: 0.55 });
@@ -468,7 +498,7 @@ export class Renderer {
   juice(x, y, col, tier) {
     const big = tier === 'ult' || tier === 'ultCast';
     if (tier === 'cast' || tier === 'pop') return;
-    this.shake = Math.max(this.shake, big ? 9 : 3); this.hitstop = Math.max(this.hitstop, big ? 0.1 : 0.035);
+    this.shake = Math.max(this.shake, big ? 9 : 3); this.addStop(big ? 0.1 : 0.035);
   }
   hitPop(x, y, col, lv) { // 맞는 자리: 평타 · 보통 스킬은 작은 타격 불꽃(절반 크기), 치명타는 큰 불꽃
     if (lv === 2) { this.anims.px.add('impacts/hit-spark', x, y + 4, { scale: 0.95, max: 0.5, floor: 0, rot: (Math.random() - 0.5) * 0.6 }); this.sparkBurst(x, y - 4, '#fff09a', 5); } // 치명타: 큰 타격 불꽃 (예전 crit-hit은 둘레에 큰 고리가 퍼져 싸울 때마다 내 둘레에 원이 생겼다)
@@ -622,26 +652,33 @@ export class Renderer {
         }
       }
     }
-    this.anims.drawGround(g, dt); // 바닥에 새기는 것 (땅 갈라짐): 사람 · 건물 아래
-    this.drawFx(w, dt, true); // 바닥 이펙트: 예고 원 · 예고선 · 갈라짐 (몸 아래로)
+    // 바닥 이펙트는 지형을 따른다: 땅에 새기는 것(갈라짐 · 그을음 · 먹물 · 긁힌 자국)은 걸을 수 있는 땅에만, 예고 원 · 마법진은 벽 위로만 안 보이게
+    this.clipTiles(w, cx, cy, true); this.anims.drawGround(g, dt); this.drawShadowWalk(w, dt); this.drawOoze(w); this.drawFx(w, dt, true, true); g.restore();
+    this.clipTiles(w, cx, cy, false); this.drawFx(w, dt, true, false); g.restore();
+    if (w.veil?.size) { // 금 간 벽 너머 숨은 방: 깨기 전에는 벽 속 어둠처럼 덮어 둔다 (세린의 일지)
+      for (const k of w.veil) { const x = (k % w.tw) * 16, y = ((k / w.tw) | 0) * 16; if (x < cx - 16 || x > cx + VW || y < cy - 16 || y > cy + VH) continue; g.fillStyle = '#0f0c13'; g.fillRect(x, y, 16, 16); g.fillStyle = '#17131c'; for (let q = 0; q < 6; q++) g.fillRect(x + ((k * 7 + q * 5) % 15), y + ((k * 3 + q * 11) % 15), 1, 1); }
+    }
     // 엔티티 (y 정렬)
     const vis = (x, y) => x > cx - 48 && x < cx + VW + 48 && y > cy - 48 && y < cy + VH + 64;
     const list = [];
-    for (const o of w.objects) if (vis(o.x, o.y)) list.push({ o, y: o.kind === 'gate' ? -1e9 : o.sortY ?? o.y }); // sortY: 처형대 위 사람처럼 바닥보다 높이 선 것
+    for (const o of w.objects) if (vis(o.x, o.y) && !o.veiled) list.push({ o, y: o.kind === 'gate' ? -1e9 : FLAT_OBJ.has(o.kind) ? -1e9 + 2 : o.sortY ?? o.y }); // 바닥에 납작한 것(캐낸 자리 · 덫)은 늘 사람 아래 // sortY: 처형대 위 사람처럼 바닥보다 높이 선 것
     for (const dr of w.drops) list.push({ dr, y: dr.y });
     for (const e of w.enemies) if (vis(e.x, e.y)) list.push({ e, y: e.y });
     for (const c of this.corpses) list.push({ c, y: c.y });
     list.push({ p, y: p.y });
     for (const rp of w.remotes || []) if (vis(rp.x, rp.y)) list.push({ rp, y: rp.y }); // 온라인: 같은 지도의 다른 사람
     for (const al of w.allies || []) list.push({ al, y: al.y });
-    if (w.map.props) for (const pr of w.map.props) { const px = (pr.x + pr.w / 2) * TILE, py = (pr.y + pr.h) * TILE, big = pr.kind !== 'tree' && pr.kind !== 'well' && pr.kind !== 'house'; if (pr.big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 240 && py > cy - 40 && py < cy + VH + 460 : big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 140 && py > cy - 40 && py < cy + VH + 260 : vis(px, py - 40)) list.push({ prop: pr, y: py - 2 }); }
+    if (w.map.props) for (const pr of w.map.props) { const px = (pr.x + pr.w / 2) * TILE, py = (pr.y + pr.h) * TILE, big = pr.kind !== 'tree' && pr.kind !== 'well' && pr.kind !== 'house'; if (pr.big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 240 && py > cy - 40 && py < cy + VH + 460 : big ? Math.abs(px - (cx + VW / 2)) < VW / 2 + 140 && py > cy - 40 && py < cy + VH + 260 : vis(px, py - 40)) list.push({ prop: pr, y: FLAT_PROP.has(pr.kind) ? -1e9 + 2 : py - 2 }); }
     if (w.map.plaza) for (const d of w.map.wallDeco) list.push({ wd: d, y: -1e9 + 1 });
     if (w.farmRect && w.life) for (const [key, pl] of Object.entries(w.life.farm)) if (pl.crop) { const [fx, fy] = key.split(',').map(Number); if (vis(fx * TILE + 8, fy * TILE + 8)) list.push({ crop: { x: fx, y: fy, pl }, y: fy * TILE + 13 }); }
     this.anims.px.update(dt); for (const pe of this.anims.px.list) list.push({ pxe: pe, y: (pe.sortY ?? pe.y) + 2 }); // 스킬 이펙트(pixelfx)도 같은 줄에: 앞에 선 건물이 가린다
     list.sort((a, b) => a.y - b.y);
     for (const it of list) {
       if (it.pxe) this.anims.px.drawOne(g, it.pxe);
-      else if (it.p) { this.drawPlayer(w, p, dt); if (p.webT > 0) drawWeb(g, p.x, p.y, w.t, Math.min(1, p.webT * 3)); } // 거미줄에 묶였다: 몸에 감긴 실
+      else if (it.p) {
+        const sb = this.sblink, sp = sb && this.shadowBody(sb); // 암살자 그림자 이동: 가라앉기 · 숨기 · 솟기 (땅 위로 나온 만큼만 · 그림자에 잠긴 만큼 어둡게)
+        if (sp) { if (sp.depth < 1) { g.save(); g.beginPath(); g.rect(p.x - 30, p.y - 60, 60, 64); g.clip(); g.translate(0, Math.round(sp.depth * 24)); g.filter = `brightness(${(1 - sp.dark * 0.85).toFixed(2)}) saturate(${(1 - sp.dark * 0.7).toFixed(2)})`; this.drawPlayer(w, p, dt); g.filter = 'none'; g.restore(); } }
+        else this.drawPlayer(w, p, dt); if (p.webT > 0) drawWeb(g, p.x, p.y, w.t, Math.min(1, p.webT * 3)); if (p.eating) { const k = Math.min(1, p.eating.t / p.eating.dur), bx = Math.round(p.x - 9), by = Math.round(p.y - 30); g.fillStyle = '#16121c'; g.fillRect(bx - 1, by - 1, 20, 4); g.fillStyle = p.eating.kind === 'drink' ? '#e05a6a' : '#e8b85c'; g.fillRect(bx, by, Math.round(18 * k), 2); } } // 먹는 중: 머리 위 진행 막대 // 거미줄에 묶였다: 몸에 감긴 실
       else if (it.e) this.drawEnemy(w, it.e, dt);
       else if (it.o) this.drawObject(w, it.o, dt);
       else if (it.dr) this.drawDrop(w, it.dr);
@@ -956,6 +993,7 @@ export class Renderer {
     const art = MONSTER_ART[e.defId] || { base: 'goblin' };
     if (art.mirrorPlayer) return { ...art, base: (RACE_ART[e.mirrorRace || w.b?.race] || RACE_ART.knight).base };
     if (art.raceLook) return { ...art, base: RACE_LOOK[e.raceLook] || RACE_LOOK.knight };
+    if (art.teacherLook) { const ra = RACE_ART[e.raceLook || w.b?.race] || RACE_ART.knight; return { ...art, base: ra.base, tint: ra.tint }; } // 숨은 스승: 플레이어와 같은 종족 캐릭터 그림 (색 · 크기는 sim/teacher.js)
     return art;
   }
   // 보스 시트: 지금 하는 일에 맞는 자세 그림 하나를 통째로 (조각을 움직이지 않는다)
@@ -970,6 +1008,12 @@ export class Renderer {
       if (d < 48) M.dist += d;
       M.still = d > 0.15 ? 0 : M.still + dtt; M.lx = e.x; M.ly = e.y; M.lt = w.t;
     }
+    { // 바라보는 쪽: 공격 · 기술 · 예고 중에는 돌지 않고, 평소에도 0.15초 넘게 반대쪽이어야 돈다 (몸 밑에 사람이 있어도 좌우로 떨지 않게)
+      const busy = e.mv || e.windT > 0 || w.t - M.kT < 0.25 && (M.kind === 'attack' || M.kind === 'skill');
+      if (M.vd == null) M.vd = e.dir || 1;
+      if (!busy && (e.dir || 1) !== M.vd) { M.flipT = (M.flipT || 0) + Math.max(0, w.t - (M.ft ?? w.t)); if (M.flipT > 0.15) { M.vd = e.dir || 1; M.flipT = 0; } } else M.flipT = 0;
+      M.ft = w.t;
+    }
     const charging = e.mv?.k === 'charge' && e.mv.t <= e.mv.run; // 돌진: 달리는 그림을 빠르게
     let kind;
     if (e.introT > 0) kind = 1 - e.introT / (e.introMax || 1) > 0.55 ? 'skill' : 'idle'; // 등장: 마지막에 포효 자세
@@ -982,18 +1026,78 @@ export class Renderer {
     const full = !!atlas[`${base}_hit_anim_f0`]; // 보내 주신 동작 시트가 있는 보스 (맞음 · 쓰러짐까지)
     if (full && !e.mv && !(e.introT > 0) && (e.exposedT > 0 || e.st?.stun > 0)) kind = 'hit'; // 기절 · 빈틈: 맞은 자세
     // 공격 · 기술이 막 끝났으면 마지막 장면을 0.15초 붙든다 (뚝 끊기지 않게)
-    if ((kind === 'idle' || kind === 'run') && (M.kind === 'attack' || M.kind === 'skill') && M.last) { if (M.endT < 0) M.endT = w.t; if (w.t - M.endT < 0.15) return M.last; }
+    if ((kind === 'idle' || kind === 'run') && (M.kind === 'attack' || M.kind === 'skill') && M.last) { if (M.endT < 0) M.endT = w.t; if (w.t - M.endT < 0.28) return M.last; }
     if (kind !== M.kind) { M.kind = kind; M.kT = w.t; M.endT = -1; if (kind === 'run') M.dist = 0; }
     const fr = frames(base, kind), since = w.t - M.kT;
     let name;
     if (kind === 'run') { const stride = Math.max(8, (e.r || 10) * 0.9) * (charging ? 1.6 : 1) / 2; name = fr[Math.floor(M.dist / stride) % fr.length]; } // 한 장면 = 몇 px 걸음 (사이 그림이 들어가 장면이 두 배: tools/boss_tween.py)
     // 넘기는 빠르기는 사이 그림을 넣은 뒤의 장수 기준 (원래 장면 하나 = 두 장)
-    else if (kind === 'attack') name = full ? (e.windT > 0 || fr.length < 2 ? fr[0] : fr[Math.min(fr.length - 1, 1 + Math.floor(since * 18))]) // 준비 자세는 예고 동안 그대로 → 내려치기 · 따라가기 한 번
+    else if (kind === 'attack') name = full ? (e.windT > 0 || fr.length < 2 ? fr[0] : fr[Math.min(fr.length - 1, 1 + Math.floor((fr.length - 1) * Math.min(1, since / 0.34) ** 1.6))]) // 처음엔 무겁게 · 내려올수록 빨라진다 // 준비 자세는 예고 동안 그대로 → 내려치기 · 따라가기 한 번
       : fr.length >= 3 ? (e.windT > 0 ? fr[0] : fr[1 + (Math.floor(since * 12) % (fr.length - 1))]) : fr[Math.floor(since * 4) % fr.length];
     else if (kind === 'skill') name = full ? fr[Math.min(fr.length - 1, Math.floor(since * 12))] : fr[Math.floor(since * 3) % fr.length]; // 기술: 차례로 넘기고 마지막 장면을 끝까지
     else name = fr[Math.floor(since * (fr.length >= 8 ? 4.8 : 2.8)) % fr.length]; // 서기 · 맞음: 자세가 바뀐 때부터 첫 장면
+    if (kind === 'attack' && full && fr.length > 2 && name === fr[fr.length - 1] && M.hitAt !== M.kT) { M.hitAt = M.kT; // 내려친 순간: 앞쪽 땅에 흙먼지 · 화면이 한 번 흔들린다
+      const fx0 = e.x + (M.vd || 1) * (e.r || 12) * 1.3;
+      for (let i = 0; i < 12; i++) { const a = Math.PI + Math.random() * Math.PI; this.parts.push({ x: fx0 + (Math.random() - 0.5) * 14, y: e.y + 3, vx: Math.cos(a) * (30 + Math.random() * 50), vy: Math.sin(a) * 30, t: 0.45, max: 0.45, color: i % 3 ? '#a89880' : '#7a6a58', g: 60, puff: i % 2 === 0, size: 2 + (i % 2), floor: e.y + 5 }); }
+      this.shake = Math.max(this.shake, 2.5);
+    }
     if (kind === 'attack' || kind === 'skill') M.last = name;
     return name;
+  }
+  // 땅 파고들기 (특성 · 짐승 기술): 구멍을 파며 몸이 땅 밑으로 내려가고 · 튀어나올 때는 흙을 뚫고 하늘로 솟았다 떨어진다
+  // 보스가 남긴 독액 웅덩이 (걸을 수 있는 땅에만 · 가장자리가 울퉁불퉁 · 거품이 터진다 · 끝날 때 마른다)
+  drawOoze(w) {
+    if (!w.ooze?.length) return;
+    const g = this.g;
+    for (const o of w.ooze) {
+      const fade = Math.min(1, o.t / 1, (o.max - o.t) / 0.25), R = o.r * Math.min(1, (o.max - o.t) / 0.25 + 0.4);
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2, rr = R * (0.55 + 0.12 * Math.sin(i * 2.7 + o.x)); g.fillStyle = `rgba(58,82,18,${0.55 * fade})`; ellipse(g, o.x + Math.cos(a) * rr * 0.55, o.y + Math.sin(a) * rr * 0.3, R * 0.45, R * 0.22); }
+      g.fillStyle = `rgba(110,150,40,${0.5 * fade})`; ellipse(g, o.x, o.y, R * 0.7, R * 0.36);
+      g.fillStyle = `rgba(160,200,70,${0.35 * fade})`; ellipse(g, o.x - R * 0.15, o.y - R * 0.06, R * 0.3, R * 0.1);
+      if (Math.random() < 0.25) { const a = Math.random() * Math.PI * 2, rr = Math.random() * R * 0.7; this.parts.push({ x: o.x + Math.cos(a) * rr, y: o.y + Math.sin(a) * rr * 0.5, vx: 0, vy: -10, t: 0.4, max: 0.4, color: '#b8e070', g: 0, size: 1.5 }); } // 거품
+    }
+  }
+  digHole(x, y, r) { const g = this.g; g.fillStyle = '#7a6448'; ellipse(g, x, y + 3, r + 2, (r + 2) * 0.42); g.fillStyle = '#2a1e14'; ellipse(g, x, y + 3, r, r * 0.38); g.fillStyle = '#4a3828'; ellipse(g, x, y + 2, r * 0.8, r * 0.18); }
+  digPose(w, e, dt) {
+    if (e.shadowSink) { // 얼굴 없는 자: 그림자 속으로 가라앉았다가 다른 자리에서 솟는다
+      const S = e.shadowSink, s = S.t < S.sink ? Math.pow(S.t / S.sink, 1.5) : 1 - Math.min(1, (S.t - S.sink) / S.rise);
+      if (dt > 0 && Math.random() < 0.6) this.parts.push({ x: e.x + (Math.random() - 0.5) * 14, y: e.y + 2, vx: 0, vy: -10 - Math.random() * 14, t: 0.4, max: 0.4, color: Math.random() < 0.5 ? '#2a1844' : '#6a4ab8', g: 0, size: 1 });
+      return { alpha: 1 - 0.3 * s, sink: Math.min(1, s), lift: 0, shadow: 1 - s };
+    }
+    const R = e.r || 8;
+    const sinkK = e.digInT > 0 ? 1 - e.digInT / 0.5 : e.mv?.k === 'burrow' && e.mv.ph === 'dig' ? 1 - Math.max(0, e.mv.t) / 0.5 : -1;
+    if (sinkK >= 0) {
+      this.digHole(e.x, e.y, R * (0.6 + 0.6 * Math.min(1, sinkK * 2)));
+      if (dt > 0) for (let i = 0; i < 2; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4; this.parts.push({ x: e.x + (Math.random() - 0.5) * R, y: e.y + 2, vx: Math.cos(a) * (40 + Math.random() * 50), vy: Math.sin(a) * (60 + Math.random() * 50), t: 0.5, max: 0.5, color: Math.random() < 0.5 ? '#7a6448' : '#5a4632', g: 320, chunk: true, floor: e.y + 3 + (Math.random() - 0.5) * 8 }); } // 앞발로 파낸 흙이 뒤로 튄다
+      return { alpha: 1, sink: Math.min(1, sinkK * sinkK * 1.1), lift: 0, shadow: 1 - sinkK };
+    }
+    const pop = this.pops?.get(e.id);
+    if (pop) {
+      pop.t -= dt; if (pop.t <= 0) { this.pops.delete(e.id); return null; }
+      const u = 1 - pop.t / 0.55;
+      if (u < 0.35) this.digHole(e.x, e.y, R * 1.2 * (1 - u / 0.35 * 0.5));
+      return { alpha: 1, sink: u < 0.12 ? (1 - u / 0.12) * 0.7 : 0, lift: 30 * Math.sin(Math.min(1, u / 0.9) * Math.PI), shadow: 1 - 0.5 * Math.sin(Math.min(1, u / 0.9) * Math.PI) };
+    }
+    return null;
+  }
+  // 숨은 스승: 플레이어와 똑같이 그린다 — 플레이어의 자세표(playerPose) · 몸 그리기(drawBody) · 무기 그리기(drawWeapon)를 그대로 쓴다.
+  // 스승의 상태(e.held: 휘두름 · 겨눔 · 대시)를 「플레이어 모양의 상태」로 바꿔 넘긴다
+  heldFighter(w, e, img, name, gs, sinkY = 0) { // 그리기마다 새 객체를 만들지 않는다 (렉)
+    const H = e.held, it = ITEMS[H.id], dir = e.dir || 1, tw = H.toward || 0;
+    const fw = (e._fw ||= { projs: [], f: new Set(), pvp: null, state: 'play' });
+    fw.t = w.t; fw.map = w.map;
+    fw.b = { weapon: it.weapon, weaponId: H.id, weaponItem: it, race: e.raceLook, cls: null, offItem: null, offId: null, wcat: it.cat };
+    const st = Object.assign(e._st ||= {}, { dir, aimX: Math.cos(tw), aimY: Math.sin(tw), moving: !!e.moving && !(H.swingT > 0), walkT: w.t, hitFlash: e.hitFlash || 0, dashT: H.dash ? 1 : 0, swingMax: H.swingMax || 0, swingT: H.swingT || 0, swingAng: H.swingAng ?? tw, swingDir: H.swingDir || 1, boxN: H.boxN || 0, swingMove: H.swingMove || null, cmbFam: H.cmbFam, cmbN: H.cmbN, cmbDur: H.cmbDur, motion: H.motion || null, charging: null, attackHeld: !!H.aim, atkPeriod: H.atkPeriod || 1, atkCd: H.atkCd || 0, castT: 0, castSkill: null, buffs: NOBUFF, down: false });
+    const fp = (e._fp ||= new Proxy(st, { get: (t, k) => (k in t ? t[k] : typeof k === 'string' ? 0 : undefined) })); // 안 적은 칸은 0 (플레이어 모양의 빈 상태)
+    const P = this.playerPose(fw, fp), g = this.g, bx = e.x + P.ox, by = e.y - 1 + P.oy + sinkY, wart = weaponArt(H.id, ITEMS);
+    if (e.outline) { // 종족 색 1도트 외곽선
+      const sil = sprite(name, e.tintX || '', e.outline, dir < 0), o = Math.max(1, Math.round(gs));
+      if (sil) { let fat = DILATE.get(sil); if (!fat) { fat = document.createElement('canvas'); fat.width = sil.width + 2; fat.height = sil.height + 2; const c = fat.getContext('2d'); for (const [ox, oy] of [[0, 1], [2, 1], [1, 0], [1, 2]]) c.drawImage(sil, ox, oy); DILATE.set(sil, fat); } this.drawBody(fat, bx, by + gs, gs, P, dir); } // 외곽선은 한 번 부풀려 둔 그림 한 장으로 (렉)
+    }
+    if (P.kind === 'fist') { const back = P.punch > 0.05 && P.offhand; this.fistAt(fw, bx + dir * (back ? 3 : 1) * gs, by + (GUARD_Y[fw.b.race] ?? -4) * gs, this.fistMetal(wart), dir); }
+    if (P.behind) this.drawWeapon(fw, fp, P, bx, by, gs);
+    this.drawBody(img, bx, by, gs, P, dir);
+    if (!P.behind) this.drawWeapon(fw, fp, P, bx, by, gs);
   }
   drawEnemy(w, e, dt) {
     const g = this.g, def = e.def;
@@ -1029,7 +1133,8 @@ export class Renderer {
       const bump = Math.abs(Math.sin(w.t * 9 + e.phase)) * 1.2;
       g.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(g, e.x, e.y + 3, 9, 3);
       g.fillStyle = '#5a4a36'; ellipse(g, e.x, e.y + 1 - bump, 8, 3.5); g.fillStyle = '#8a7a5e'; ellipse(g, e.x - 2, e.y - bump, 4, 1.6);
-      if (dt > 0 && Math.random() < 0.5) this.parts.push({ x: e.x + (Math.random() - 0.5) * 10, y: e.y, vx: (Math.random() - 0.5) * 30, vy: -30 - Math.random() * 20, t: 0.4, max: 0.4, color: '#7a6448', g: 300, chunk: true, floor: e.y + 3 });
+      if (dt > 0) for (let i = 0; i < 2; i++) { const sd = Math.random() < 0.5 ? -1 : 1; this.parts.push({ x: e.x + sd * 4 + (Math.random() - 0.5) * 4, y: e.y, vx: sd * (30 + Math.random() * 40), vy: -50 - Math.random() * 50, t: 0.5, max: 0.5, color: Math.random() < 0.5 ? '#7a6448' : '#5a4632', g: 320, chunk: true, floor: e.y + 3 + (Math.random() - 0.5) * 6 }); } // 땅속을 헤치며 흙이 양옆으로 튄다
+      if (dt > 0 && Math.random() < 0.35) this.parts.push({ x: e.x, y: e.y + 2, vx: 0, vy: -6, t: 0.6, max: 0.6, color: '#a89880', g: 0, puff: true, size: 3 }); // 흙먼지
       e._top = null; return;
     }
     if (e.hidden) {
@@ -1053,7 +1158,7 @@ export class Renderer {
     const img = art.beast ? beastImg(art.beast, pose, bf, e.dir < 0, flash, e.tintX || art.tint || '')
       : art.mimic ? sprite(e.dormant ? 'chest_full_open_anim_f0' : `chest_mimic_open_anim_f${e.moving || wind ? 1 + (Math.floor(w.t * 8) % 2) : 2}`, '', flash, e.dir < 0)
       : art.sheet ? sprite(name, e.mirrorT > 0 && !art.mirrorSkill ? 'grayscale(1) brightness(1.75) contrast(1.4)' : [art.tint || '', ...SHEET_LOOKS][(e.bphase || 0)] + (art.tint && e.bphase ? ' ' + art.tint : ''), // 큰 보스: 맞으면 살짝 밝아지기만 (몸 전체가 흰 덩어리가 되지 않게)
-        e.morphT > 0 && Math.floor(w.t * 24) % 2 ? 'rgba(255,255,255,0.45)' : (this.healFx.get(e.id)?.t > 0 || e.mv?.k === 'channel') && Math.floor(w.t * 8) % 2 ? 'rgba(120,255,140,0.34)' : e.wardT > w.t ? 'rgba(150,205,255,0.24)' : e.thornsT > w.t && Math.floor(w.t * 10) % 2 ? 'rgba(240,220,180,0.3)' : flash === true ? 'rgba(255,255,255,0.32)' : flash ? 'rgba(255,60,40,0.26)' : false, e.dir < 0)
+        e.morphT > 0 && Math.floor(w.t * 24) % 2 ? 'rgba(255,255,255,0.45)' : (this.healFx.get(e.id)?.t > 0 || e.mv?.k === 'channel') && Math.floor(w.t * 8) % 2 ? 'rgba(120,255,140,0.34)' : e.wardT > w.t ? 'rgba(150,205,255,0.24)' : e.thornsT > w.t && Math.floor(w.t * 10) % 2 ? 'rgba(240,220,180,0.3)' : flash === true ? 'rgba(255,255,255,0.32)' : false, (e._bm?.vd ?? e.dir) < 0) // 예고: 몸을 붉게 칠하지 않는다 (뒤로 젖히는 동작과 바닥 예고로 알린다)
       : sprite(name, e.mirrorT > 0 ? 'grayscale(1) brightness(1.75) contrast(1.4)' : e.tintX || art.tint || '', e.morphT > 0 && Math.floor(w.t * 24) % 2 ? '#ffffff' : flash, e.dir < 0) || sprite(frames('goblin', 'idle')[0], '', flash, e.dir < 0);
     if (!img) return;
     { const hf = this.healFx.get(e.id); if (hf) { hf.t -= dt; if (hf.t <= 0) this.healFx.delete(e.id); } } // 회복 번쩍임 시간
@@ -1076,33 +1181,65 @@ export class Renderer {
     if (sq > 0) { sq -= dt; this.squash.set(e.id, sq); }
     const k = Math.max(0, sq) / 0.14;
     const sx = 1 + 0.25 * k, sy = 1 - 0.2 * k;
-    let wobble = wind ? (Math.random() - 0.5) * 1.5 : 0;
+    const vdir = art.sheet ? (e._bm?.vd ?? e.dir ?? 1) : e.dir;
+    let wobble = wind ? (art.sheet ? (e.windT < 0.15 ? (Math.random() - 0.5) * 1 : 0) : (Math.random() - 0.5) * 1.5) : 0; // 큰 보스: 힘을 모으는 동안은 떨지 않고 마지막에만 부르르
     // 공격하는 순간 몸을 앞으로 내민다 · 예고 중에는 뒤로 움츠린다
     const lg = this.lunge.get(e.id);
     let lungeY = 0;
-    if (lg) { lg.t -= dt; if (lg.t <= 0) this.lunge.delete(e.id); else { const q = Math.sin((lg.t / 0.14) * Math.PI); wobble += Math.cos(lg.ang) * 4 * q; lungeY = Math.sin(lg.ang) * 2 * q; } }
-    else if (wind) wobble -= e.dir * 1.5;
+    if (lg) { lg.t -= dt; if (lg.t <= 0) this.lunge.delete(e.id); else { const q = Math.sin((lg.t / 0.14) * Math.PI); wobble += Math.cos(lg.ang) * (art.sheet ? 6 : 4) * q; lungeY = Math.sin(lg.ang) * 2 * q; } }
+    else if (wind) wobble -= art.sheet ? vdir * (1 + 3 * easeOut(Math.min(1, (e._wind0 = Math.max(e._wind0 || 0, e.windT), 1 - e.windT / (e._wind0 || 1))))) : e.dir * 1.5; // 큰 보스: 천천히 뒤로 젖혀 힘을 모은다
+    if (!wind) e._wind0 = 0;
     const w0 = img.width * sc * sx, h0 = img.height * sc * sy;
-    if (def.elite || e.champion) { g.fillStyle = `rgba(255,60,40,${0.18 + 0.1 * Math.sin(w.t * 4)})`; ellipse(g, e.x, e.y + 3, w0 * 0.55, w0 * 0.2); }
+    if (def.elite || e.champion) { g.fillStyle = e.outline ? hexA(e.outline, 0.16 + 0.08 * Math.sin(w.t * 4)) : `rgba(255,60,40,${0.18 + 0.1 * Math.sin(w.t * 4)})`; ellipse(g, e.x, e.y + 3, w0 * 0.55, w0 * 0.2); } // 숨은 스승은 종족 색
     else if (e.affix) { g.fillStyle = hexA(AFFIXES[e.affix].color, 0.25 + 0.1 * Math.sin(w.t * 5)); ellipse(g, e.x, e.y + 3, w0 * 0.5, w0 * 0.18); }
     if (fuse) { g.fillStyle = `rgba(255,120,60,${0.25 + 0.25 * Math.sin(w.t * 30)})`; disc(g, e.x, e.y, def.boom?.r || 30); }
-    const ip = e.introT > 0 ? introPose(this, w, e) : null; // 보스 등장: 떨어져 내린다 · 솟는다 · 모인다
+    const ip = e.introT > 0 ? introPose(this, w, e) : this.digPose(w, e, dt); // 보스 등장: 떨어져 내린다 · 솟는다 · 모인다 / 땅 파고들기 · 튀어나오기
     this.shadow(e.x, e.y + 3, Math.max(5, img.width * sc * 0.32) * (ip ? Math.max(0.2, ip.shadow) : 1));
     if (art.ghost) g.globalAlpha = 0.65 + 0.15 * Math.sin(w.t * 3 + e.phase);
+    if (e.fakeGhost) g.globalAlpha = 0.42 + 0.1 * Math.sin(w.t * 4 + e.id); // 얼굴 없는 자의 가짜 분신: 흐리다
     if (def.veil && !(e.revealT > 0)) g.globalAlpha = 0.13 + 0.05 * Math.sin(w.t * 5 + e.phase); // 지워진 기록: 맞기 전에는 거의 보이지 않는다
+    if (e.cloak && !(e.revealT > 0)) g.globalAlpha = 0.16 + 0.06 * Math.sin(w.t * 4 + e.phase); // 은신 특성: 일렁이는 윤곽만
     const carryLift = e.carried > 0 ? 18 + (w.player.air || 0) : 0;
     const flyUp = art.fly ? 6 + Math.sin(w.t * 3 + e.phase) * 2 : 0; // 나는 몬스터는 땅 위에 떠 있다
-    const dx = Math.round(e.x - w0 / 2 + wobble), dy = Math.round(e.y + 4 - h0 - carryLift + lungeY - flyUp - (ip?.lift || 0) + (ip?.sink || 0) * h0);
+    const dx = Math.round(e.x - w0 / 2 + wobble), dy = Math.round(e.y + 4 - h0 - carryLift + lungeY - flyUp - (ip?.lift || 0) - (e.jumpH || 0) + (ip?.sink || 0) * h0);
     if (ip) { g.globalAlpha *= ip.alpha; if (ip.sink > 0) { g.save(); g.beginPath(); g.rect(dx - 4, dy - 4, Math.round(w0) + 8, Math.round(e.y + 4 - dy) + 4); g.clip(); } }
-    const bp = e.pose ? beastPose(e.pose, e.dir || 1, w.t) : null; // 몸 기술 동작: 몸 전체가 일어서고 · 웅크리고 · 내밀고 · 내려찍는다
-    if (bp) {
-      g.save(); g.translate(Math.round(e.x + wobble + bp.x), Math.round(e.y + 4 - carryLift - flyUp + bp.y)); g.rotate(bp.rot); g.scale(bp.sx, bp.sy);
+    let bp = e.pose ? beastPose(e.pose, e.dir || 1, w.t) : null;
+    if (bp && art.sheet) { // 통째로 그린 보스 그림은 기울이거나 늘이지 않는다: 일어서기(땅 찍기 준비)는 몸을 웅크렸다 뛰어올라 내려찍는 점프로
+      const pk = 1 - e.pose.t / e.pose.max;
+      const jy = e.pose.k === 'rear' ? (pk < 0.25 ? 2 * Math.sin(pk / 0.25 * Math.PI) : pk < 0.8 ? -22 * Math.sin(((pk - 0.25) / 0.55) * Math.PI / 2) : -22 * (1 - ((pk - 0.8) / 0.2) ** 2)) : 0;
+      bp = { x: 0, y: jy, rot: 0, sx: 1, sy: 1 };
+    } // 몸 기술 동작: 몸 전체가 일어서고 · 웅크리고 · 내밀고 · 내려찍는다
+    if (e.feignT > 0) { // 죽은 척: 옆으로 쓰러져 누운 몸 (일어나기 직전 0.4초 들썩)
+      const tw = e.feignT < 0.4 ? Math.sin(w.t * 40) * 1.5 : 0;
+      g.save(); g.translate(Math.round(e.x), Math.round(e.y + 2)); g.rotate((e.dir || 1) * Math.PI / 2); g.drawImage(img, Math.round(-h0 + 2 + tw), Math.round(-w0 / 2), Math.round(w0), Math.round(h0)); g.restore();
+    } else if (bp) {
+      g.save(); g.translate(Math.round(e.x + wobble + bp.x), Math.round(e.y + 4 - carryLift - flyUp + bp.y - (ip?.lift || 0) - (e.jumpH || 0) + (ip?.sink || 0) * h0)); g.rotate(bp.rot); g.scale(bp.sx, bp.sy);
       g.drawImage(img, Math.round(-w0 / 2), Math.round(-h0), Math.round(w0), Math.round(h0)); g.restore();
       if (e.pose.k === 'dizzy') for (let i = 0; i < 3; i++) { const a = w.t * 7 + i * 2.1; g.fillStyle = '#ffe060'; g.fillRect(Math.round(e.x + Math.cos(a) * 8), Math.round(dy - 5 + Math.sin(a) * 2), 2, 2); }
       if ((e.pose.k === 'crouch' && e.mv?.k === 'headbutt') && dt > 0 && Math.random() < 0.35) this.parts.push({ x: e.x - (e.dir || 1) * e.r, y: e.y + 3, vx: -(e.dir || 1) * (30 + Math.random() * 40), vy: -20 - Math.random() * 20, t: 0.45, max: 0.45, color: '#a89880', g: 200, puff: true, size: 2 }); // 뒷발로 땅을 긁는 흙먼지
-    } else g.drawImage(img, dx, dy, Math.round(w0), Math.round(h0));
+    } else if (e.held && !art.beast && !art.sheet) {
+      this.heldFighter(w, e, img, name, sc, (ip?.sink || 0) * h0); // 숨은 스승: 플레이어와 같은 자세 · 같은 무기 그리기
+      if (dt > 0 && e.outline && Math.random() < 0.22) this.parts.push({ x: e.x + (Math.random() - 0.5) * w0 * 0.7, y: dy + h0 * (0.3 + Math.random() * 0.6), vx: (Math.random() - 0.5) * 6, vy: -18 - Math.random() * 10, t: 0.5, max: 0.5, color: e.outline, g: -4, glow: true, size: 1 });
+    } else {
+      if (e.outline && !art.beast && !art.sheet) { // 숨은 스승: 종족 색 1도트 외곽선 (몸 둘레 고리 없이 윤곽만) · 종족 색 불티가 가끔 오른다
+        const sil = sprite(name, e.tintX || '', e.outline, e.dir < 0), o = Math.max(1, Math.round(sc));
+        if (sil) for (const [ox, oy] of [[-o, 0], [o, 0], [0, -o], [0, o]]) g.drawImage(sil, dx + ox, dy + oy, Math.round(w0), Math.round(h0));
+        if (dt > 0 && Math.random() < 0.22) this.parts.push({ x: e.x + (Math.random() - 0.5) * w0 * 0.7, y: dy + h0 * (0.3 + Math.random() * 0.6), vx: (Math.random() - 0.5) * 6, vy: -18 - Math.random() * 14, t: 0.7, max: 0.7, color: e.outline, g: -4, size: 1 });
+      }
+      g.drawImage(img, dx, dy, Math.round(w0), Math.round(h0));
+    }
     if (ip?.sink > 0) g.restore();
     g.globalAlpha = 1;
+    if (e.trait === 'shield' && e.shieldHp > 0 && !(e.feignT > 0)) { // 방패병: 바라보는 쪽에 큰 방패 (방패 체력이 줄면 금이 간다)
+      const fx = e.x + Math.cos(e.face) * (e.r + 2), fy = e.y - 8 + Math.sin(e.face) * (e.r * 0.5), k2 = e.shieldHp / (e.maxHp * 2);
+      g.fillStyle = '#16121c'; g.fillRect(Math.round(fx - 4), Math.round(fy - 7), 8, 13);
+      g.fillStyle = '#7a86a0'; g.fillRect(Math.round(fx - 3), Math.round(fy - 6), 6, 11); g.fillStyle = '#d8c070'; g.fillRect(Math.round(fx - 1), Math.round(fy - 5), 2, 9);
+      g.fillStyle = 'rgba(255,255,255,0.4)'; g.fillRect(Math.round(fx - 3), Math.round(fy - 6), 6, 1);
+      if (k2 < 0.6) { g.fillStyle = '#16121c'; g.fillRect(Math.round(fx - 2), Math.round(fy - 3), 1, 4); g.fillRect(Math.round(fx + 1), Math.round(fy + 1), 1, 3); }
+      if (k2 < 0.3) { g.fillRect(Math.round(fx - 3), Math.round(fy), 3, 1); }
+    }
+    if (e.trait === 'carapace' && e.shellHp > 0 && dt > 0 && Math.random() < 0.05) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y - 6 - Math.random() * e.r, vx: 0, vy: -6, t: 0.4, max: 0.4, color: '#e8e0c8', g: 0, glow: true, size: 1 }); // 갑각: 단단한 껍질이 반짝인다
+    if (e.stoneT > 0 && dt > 0 && Math.random() < 0.12) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y - Math.random() * e.r * 2, vx: (Math.random() - 0.5) * 10, vy: 10, t: 0.5, max: 0.5, color: '#9a9488', g: 120, size: 1 }); // 석화: 돌가루가 떨어진다
     if (e.st.frozen > 0) {
       g.fillStyle = 'rgba(170,225,255,0.5)'; g.fillRect(dx, dy + 2, Math.round(w0), Math.round(h0) - 2);
       g.fillStyle = '#e8f8ff'; g.fillRect(dx + 1, dy + 3, 2, 1); g.fillRect(dx + Math.round(w0) - 4, dy + 6, 2, 1);
@@ -1192,6 +1329,18 @@ export class Renderer {
     g.fillStyle = `rgba(90,170,60,${0.9 * fade})`; for (let i = -2; i <= 2; i++) g.fillRect(Math.round(e.x + i * rx * 0.45), Math.round(foot - 2), 1, 2);
   }
 
+  // 여정을 맡기는 사람 머리 위: 「!」(맡길 일) · 「?」(끝낸 일 알리기) — 도트 글자, 위아래로 살짝
+  questMark(w, o, m) {
+    if (!m || o._top == null) return;
+    const y = o._top - 12 + Math.sin(w.t * 5) * 1.5;
+    if (m === '!') this.bang(o.x, y, '#ffd040');
+    else this.qmark(o.x, y, '#8ad8ff');
+  }
+  qmark(x, y, c) {
+    const g = this.g; x = Math.round(x); y = Math.round(y);
+    g.fillStyle = '#0d0b10'; g.fillRect(x - 3, y - 1, 7, 7); g.fillRect(x - 1, y + 5, 3, 5);
+    g.fillStyle = c; g.fillRect(x - 2, y, 5, 1); g.fillRect(x + 1, y + 1, 2, 2); g.fillRect(x - 2, y + 1, 2, 1); g.fillRect(x, y + 3, 2, 1); g.fillRect(x, y + 4, 1, 2); g.fillRect(x, y + 7, 1, 2);
+  }
   bang(x, y, c) {
     const g = this.g; x = Math.round(x); y = Math.round(y);
     g.fillStyle = '#0d0b10'; g.fillRect(x - 2, y - 1, 5, 11);
@@ -1318,9 +1467,9 @@ export class Renderer {
     if (p.boat) this.drawBoat(w, p.x, p.y, p.dir, p.moving, 'back');
     if (w.map.underwater && dt > 0 && Math.random() < dt * 1.6) this.parts.push({ x: bx + p.dir * 3, y: by - 14, vx: (Math.random() - 0.5) * 6, vy: -26 - Math.random() * 14, t: 1.4, max: 1.4, color: '#e0f6ff', g: -6, bubble: true });
     const wart = weaponArt(w.b.weaponId, ITEMS);
-    if ((wart.shield || w.b.wcat === 'shield') && !hideW) this.drawShield(w, p, pose, bx, by, gs);
-    else if (w.b.offItem && !hideW) this.drawOffhand(w, p, pose, bx, by, gs); // 왼손 도구 (한손 무기일 때)
-    if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx - p.dir * (back ? -1 : 4) * gs, by - (back ? 7 : 5) * gs, this.fistMetal(wart), p.dir); }
+    if (wart.shield && !hideW) this.drawShield(w, p, pose, bx, by, gs);
+    else if (w.b.offItem && !hideW && (p.offShowT || 0) > w.t) this.drawOffhand(w, p, pose, bx, by, gs); // 왼손 도구: 평소엔 숨기고 쓸 때만 보인다 (p.offShowT)
+    if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx + p.dir * (back ? 3 : 1) * gs, by + (GUARD_Y[w.b.race] ?? -4) * gs, this.fistMetal(wart), p.dir); }
     if (pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
     let rideY = 0;
     if (p.riding) { // 탄 랩터: 달리면 달리기 동작, 서 있으면 숨쉬기 · 위로 들썩인다
@@ -1342,7 +1491,7 @@ export class Renderer {
     }
     if (!blink && admin) this.drawAdminFigure(bx, by + 2, p.dir, moving, p.walkT || w.t, p.swingT > 0, gs);
     else if (!blink && img) this.drawBody(img, bx, by, gs, pose, p.dir);
-    if (!blink && w.b.offItem && !hideW && OFF_LOOK[String(w.b.offId).split('#')[0]] === 'xbow') this.drawOffhand(w, p, pose, bx, by, gs, 'front'); // 손쇠뇌는 몸 앞에
+    if (!blink && w.b.offItem && !hideW && (p.offShowT || 0) > w.t && OFF_LOOK[String(w.b.offId).split('#')[0]] === 'xbow') this.drawOffhand(w, p, pose, bx, by, gs, 'front'); // 손쇠뇌는 몸 앞에
     if (sink != null) g.restore();
     if (p.swim) this.drawSwimLine(w, p, bx, by, dt);
     if (p.boat) this.drawBoat(w, p.x, p.y, p.dir, p.moving, 'front');
@@ -1422,7 +1571,7 @@ export class Renderer {
     const g = this.g, u = this.u, v = Math.max(1.5, u * 1.3), p = w.player, f = p.fish, Wc = this.c.width;
     this.beatPulse = Math.max(0, (this.beatPulse || 0) - dt * 4);
     const px = this.sx(p.x), py = this.sy(p.y - 34);
-    if (f.phase === 'wait') { g.globalAlpha = 0.75; this.text('찌를 지켜보세요 · 가라앉으면 G', px, py - 8 * u, Math.max(1, u - 1), '#d8e8f4', 'center'); g.globalAlpha = 1; return; }
+    if (f.phase === 'wait') { g.globalAlpha = 0.75; this.text('찌가 가라앉으면 G', px, py - 8 * u, Math.max(1, u - 1), '#d8e8f4', 'center'); g.globalAlpha = 1; return; }
     if (f.phase === 'bite') {
       const s2 = 1 + 0.12 * Math.sin(w.t * 18), bw = 92 * u * s2, bh = 22 * u * s2;
       this.panel(px - bw / 2, py - 30 * u - bh / 2, bw, bh);
@@ -1556,6 +1705,32 @@ export class Renderer {
   }
 
   // 몸 그리기: 줄마다 정수 칸만큼 밀어서 기울인다 (도트 격자를 깨지 않는 기울임) + 눌림/늘어남
+  // 무기 콤보 자세: 준비(A)까지 천천히 → 맞는 순간 직전에 빠르게 B로 → 잠깐 머물렀다가 평소 자세로
+  // th가 있는 동작은 몸 둘레를 수평으로 도는 휘두름 (0 앞 · π/2 화면 앞쪽 · π 뒤 · -π/2 몸 너머 — 대검과 같은 셈)
+  comboPose(p, P, k, aimF) {
+    const mv = WCOMBO[p.cmbFam]?.list[p.cmbN]; if (!mv) return;
+    const pose = CPOSE[mv.m]; if (!pose) return;
+    const h = mv.hit, dur = p.cmbDur || p.swingMax || 0.5, W0 = Math.max(0.05, h - 0.075 / dur), S1 = Math.min(0.97, h + 0.02 / dur); // 휘두름은 0.075초 안에 (준비는 길게 · 내려칠 때는 순식간에)
+    const I = { a: P.a, hx: P.hx, hy: P.hy, lean: P.lean, sy: P.sy, f: 0, len: 1, behind: P.behind };
+    const conv = (X, th) => { if (th == null) return { a: X.a === 'aim' ? aimF : X.a, hx: X.hx, hy: X.hy, lean: X.lean, sy: X.sy ?? 1, f: X.f || 0, len: 1, behind: !!X.behind };
+      const c = Math.cos(th), sn = Math.sin(th); return { a: Math.atan2(sn * 0.3 + 0.1, c), len: Math.sqrt(c * c + 0.09 * sn * sn), hx: X.r * c, hy: X.hy + 1.5 * sn, lean: X.lean, sy: X.sy ?? 1, f: X.f || 0, behind: sn < -0.15 }; };
+    const A = conv(pose.A, pose.A.th), B = conv(pose.B, pose.B.th);
+    const mix = (X, Y, q) => ({ a: X.a + (Y.a - X.a) * q, hx: X.hx + (Y.hx - X.hx) * q, hy: X.hy + (Y.hy - X.hy) * q, lean: X.lean + (Y.lean - X.lean) * q, sy: X.sy + (Y.sy - X.sy) * q, f: X.f + (Y.f - X.f) * q, len: X.len + (Y.len - X.len) * q, behind: q < 0.5 ? X.behind : Y.behind });
+    let R;
+    if (k < W0) { const q = k / W0; R = mix(I, A, q * q * (3 - 2 * q)); if (q > 0.75 && pose.heavy) R.ox2 = (Math.random() - 0.5) * 0.8; } // 들어 올리는 막바지엔 힘이 들어가 떨린다
+    else if (k < S1) { const q = (k - W0) / (S1 - W0), e = q * (0.35 + 0.65 * q); // 순식간에 · 끝으로 갈수록 더 빠르게
+      if (pose.A.th != null) { const th = pose.A.th + (pose.B.th - pose.A.th) * e; R = mix(A, B, e); Object.assign(R, conv({ ...pose.B, r: pose.A.r + (pose.B.r - pose.A.r) * e, hy: pose.A.hy + (pose.B.hy - pose.A.hy) * e }, th), { lean: R.lean, sy: R.sy, f: R.f }); P.whoosh = 1; }
+      else { R = mix(A, B, e); P.whoosh = q; } }
+    else { const q = (k - S1) / (1 - S1), hold = pose.hold ?? 0.25, r = q < hold ? 0 : (q - hold) / (1 - hold); R = mix(B, I, r * r * (3 - 2 * r)); }
+    if (pose.A.a === 'aim') { // 찌르기: 손이 창대를 따라 조준 방향으로만 앞뒤로 (옆으로 밀지 않는다 · 창끝이 앞)
+      const dA = pose.A.hx, dB = pose.B.hx, q = (R.hx - dA) / ((dB - dA) || 1), d = dA + (dB - dA) * q;
+      R.hx = 3 + Math.cos(aimF) * d; R.hy = -7 + Math.sin(aimF) * d;
+      R.a = aimF; R.behind = Math.sin(Math.atan2(p.aimY, p.aimX)) < -0.5; // 창은 처음부터 끝까지 창끝이 조준 방향 (돌아가지 않는다)
+    }
+    P.a = R.a; P.hx = R.hx; P.hy = R.hy; P.lean = R.lean; P.sy = R.sy; P.behind = R.behind; if (R.len !== 1) P.len = R.len;
+    P.ox = Math.cos(p.swingAng) * R.f + (R.ox2 || 0); P.oy = Math.sin(p.swingAng) * R.f * 0.5;
+  }
+
   drawBody(img, x, y, gs, pose, dir) {
     const g = this.g;
     const W = img.width * gs * pose.sx, H = img.height * gs * pose.sy;
@@ -1584,7 +1759,7 @@ export class Renderer {
     else if (kind === 'axe') { P.a = 0.9 + breathe; P.hx = 4; P.hy = -5; }
     else if (kind === 'bow') { P.a = 0.04 + breathe * 0.4; P.hx = 9; P.hy = -8; P.bowIdle = true; } // 활: 옆으로 쏠 때처럼 앞에 세워 든다 (시위는 당기지 않는다)
     else if (kind === 'crossbow') { P.a = 0.35 + breathe * 0.5; P.hx = 4; P.hy = -5; } // 석궁: 허리춤에 앞을 낮춰 든다
-    else if (kind === 'fist') { P.a = 0; P.hx = 5; P.hy = -5 + Math.sin(w.t * 3) * 0.6; } // 주먹: 가볍게 쥐고 선다
+    else if (kind === 'fist') { const bob = Math.sin(w.t * 7.5); P.a = -0.3; P.hx = 5; P.hy = (GUARD_Y[w.b.race] ?? -4) + bob * 0.5; P.oy = bob > 0.4 ? -1 : 0; P.lean = 0.8; } // 주먹: 복서의 가드 — 두 주먹을 가슴 앞에 (머리를 가리지 않게) · 발끝으로 가볍게 들썩인다
     else if (kind === 'whip') { P.a = 1.25 + breathe; P.hx = 4; P.hy = -5; } // 채찍: 손잡이를 아래로 쥐고 줄은 감아 둔다
     else if (kind === 'orb') { P.a = -1.5; P.hx = 6; P.hy = -11 + Math.sin(w.t * 2.4) * 1.2; } // 구슬: 손 위에 떠 있다
     else if (kind === 'tome') { P.a = 0.15 + breathe; P.hx = 5; P.hy = -6; } // 마도서: 옆구리에 끼고 다닌다
@@ -1597,9 +1772,23 @@ export class Renderer {
     // 평타
     const k = p.swingMax && p.swingT > 0 ? 1 - p.swingT / p.swingMax : -1;
     if (k >= 0 && !p.motion) {
-      if (kind === 'fist') { // 주먹: 조준 쪽으로 곧게 내지른다 (왼손 · 오른손 번갈아)
-        const out = k < 0.45 ? easeOut(k / 0.45) : 1 - (k - 0.45) / 0.55;
-        P.a = aimF; P.hx = 5 + 8 * out; P.hy = -6 + Math.sin(aimF) * 3 * out; P.lean = 2.5 * out; P.ox = Math.cos(p.swingAng) * 2 * out; P.punch = out; P.offhand = p.swingDir > 0;
+      if (p.swingMove && !NOCOMBO.has(kind)) this.comboPose(p, P, k, aimF); // 무기마다 고유한 콤보 (data/wcombo.js)
+      else if (kind === 'fist') { // 주먹: 복싱 콤보 (sim p.boxN) — 잽 · 잽 · 스트레이트 · 훅 · 어퍼컷. 빠르게 뻗고(앞 30%) 빠르게 거둔다
+        const n = p.boxN || 0, out = k < 0.3 ? easeOut(k / 0.3) : 1 - easeOut((k - 0.3) / 0.7);
+        if (n === 3) { // 훅: 옆에서 둥글게 돌아 들어온다 · 어깨와 허리를 비튼다
+          const q = Math.min(1, k / 0.35), ret = k > 0.35 ? (k - 0.35) / 0.65 : 0;
+          P.a = aimF - 1.4 + 1.6 * q; P.hx = 2 + 10 * Math.sin(q * Math.PI * 0.5) * (1 - ret); P.hy = (GUARD_Y[w.b.race] ?? -4) - 1 - 2 * Math.sin(q * Math.PI) * (1 - ret);
+          P.lean = 3.2 * out; P.ox = Math.cos(p.swingAng) * 2.5 * out; P.sx = 1 + 0.06 * out; P.punch = out; P.offhand = false;
+        } else if (n === 4) { // 어퍼컷: 무릎을 굽혀 가라앉았다가 아래에서 위로 솟구친다
+          const dip = k < 0.22 ? k / 0.22 : Math.max(0, 1 - (k - 0.22) / 0.12), up = k < 0.22 ? 0 : easeOut(Math.min(1, (k - 0.22) / 0.26)), ret = k > 0.62 ? (k - 0.62) / 0.38 : 0;
+          P.a = aimF * 0.25 - 1.25; P.hx = 3 + 6 * up * (1 - ret); P.hy = -2 + 2 * dip - 9 * up * (1 - ret);
+          P.sy = 1 - 0.12 * dip + 0.06 * up * (1 - ret); P.sx = 1 + 0.08 * dip; P.oy = 2 * dip - 1.5 * up * (1 - ret); P.lean = -1.5 * dip + 2.5 * up * (1 - ret);
+          P.punch = up * (1 - ret); P.offhand = true;
+        } else { // 잽(앞손 · 짧고 빠르게) · 스트레이트(뒷손 · 멀리 · 몸을 실어)
+          const cross = n === 2, reach = cross ? 13 : 9;
+          P.a = aimF; P.hx = 5 + reach * out; P.hy = (GUARD_Y[w.b.race] ?? -4) - 1 + Math.sin(aimF) * 3 * out; P.lean = (cross ? 3.6 : 1.6) * out; P.ox = Math.cos(p.swingAng) * (cross ? 3 : 1.2) * out; P.sx = 1 + (cross ? 0.05 : 0) * out;
+          P.punch = out; P.offhand = cross;
+        }
       } else if (kind === 'whip') { // 채찍: 머리 위로 들었다가 앞으로 내리친다 (줄이 뒤따라 뻗는다)
         const up = Math.min(1, k / 0.3), dn = k < 0.3 ? 0 : easeOut(Math.min(1, (k - 0.3) / 0.25));
         P.a = k < 0.3 ? 1.25 - 3.6 * up : -2.35 + (aimF + 2.35) * dn; P.hx = k < 0.3 ? 2 : 2 + 6 * dn; P.hy = k < 0.3 ? -8 - 5 * up : -13 + 7 * dn; P.lean = k < 0.3 ? -1.5 * up : 2.5 * dn; P.lash = k; P.behind = k < 0.2;
@@ -1608,13 +1797,14 @@ export class Renderer {
       else if (kind === 'tome') { const q = Math.sin(Math.min(1, k * 1.2) * Math.PI); P.a = aimF; P.hx = 8 + 3 * q; P.hy = -8; P.open = 1; P.lean = -1 + 2 * q; P.glow = q; }
       else if (kind === 'spear') {
         // 창: 뒤로 당겼다가 조준 방향으로 곧게 찌른다
-        const back = Math.min(1, k / 0.3), fw = k < 0.3 ? 0 : easeOut(Math.min(1, (k - 0.3) / 0.35));
-        P.a = aimF; P.hx = k < 0.3 ? 4 - 4 * back : 10 * fw + (1 - fw) * 0; P.hy = -7; P.lean = k < 0.3 ? -1.5 * back : 3 * fw; P.ox = Math.cos(p.swingAng) * (k < 0.3 ? -1 : 3 * fw);
+        // (창날은 처음부터 조준 방향으로 눕혀 들고 · 창대를 따라 앞뒤로만 움직인다 → 휘두르는 것처럼 보이지 않게)
+        const back = easeOut(Math.min(1, k / 0.36)), fw = k < 0.36 ? 0 : easeOut(Math.min(1, (k - 0.36) / 0.16)), ret = k < 0.7 ? 0 : (k - 0.7) / 0.3;
+        P.a = aimF; P.hx = k < 0.36 ? 4 - 10 * back : -6 + 21 * fw - 9 * ret; P.hy = -7; P.lean = k < 0.36 ? -2 * back : 3.5 * fw * (1 - ret); P.ox = Math.cos(p.swingAng) * (k < 0.36 ? -2 * back : 4 * fw * (1 - ret)); P.oy = Math.sin(p.swingAng) * (k < 0.36 ? -1 * back : 2 * fw * (1 - ret)); P.behind = false;
       } else if (kind === 'great') {
         // 무거운 대검을 허리 높이에서 옆으로 돌려 던지듯 휘두른다. th = 바닥 위 방향(0 앞 · π/2 화면 앞쪽 · π 뒤 · -π/2 몸 너머)
         const s = greatSpin(k), th = (Math.PI - 0.5) - Math.PI * 2 * s;
         const c = Math.cos(th), sn = Math.sin(th);
-        const v = greatSpinSpeed(k), wind = k < 0.35 ? k / 0.35 : 0;
+        const v = greatSpinSpeed(k), wind = k < 0.3 ? k / 0.3 : 0;
         const reach = 3.5 + 4.5 * Math.min(1, v);          // 던질 때는 팔을 쭉 뻗는다
         P.a = Math.atan2(sn * 0.3 + 0.1, c);
         P.len = Math.sqrt(c * c + 0.09 * sn * sn);
@@ -1626,13 +1816,14 @@ export class Renderer {
         P.behind = sn < -0.15;
         P.whoosh = v;
       } else if (kind === 'melee') {
-        const down = p.swingDir > 0, big = kind === 'great';
-        const wind = big ? 0.3 : 0.2;
-        const from = big ? -2.7 : down ? -2.2 : 1.3, to = big ? 1.4 : down ? 1.2 : -1.9;
-        if (k < wind) { const q = k / wind; P.a = from + (down || big ? -0.25 : 0.25) * q; P.lean = -1.5 * q; P.hx = 1; P.hy = big ? -15 : -11; P.sy = 1 + 0.04 * q; }
+        const blunt = w.b.wcat === 'blunt', down = blunt || p.swingDir > 0, big = kind === 'great';
+        const wind = big ? 0.3 : blunt ? 0.8 : 0.2; // 둔기: 머리 위로 천천히 들어 올리고(80%) · 한 번에 빠르게 내려친다
+        const from = big ? -2.7 : blunt ? -2.6 : down ? -2.2 : 1.3, to = big ? 1.4 : blunt ? 1.35 : down ? 1.2 : -1.9;
+        if (blunt && k < wind) { const q = k / wind, e2 = q * q * (3 - 2 * q); P.a = 0.55 + (from - 0.55) * e2; P.hx = 4 - 4 * e2; P.hy = -6 - 8 * e2; P.lean = -2 * e2; P.sy = 1 + 0.05 * e2; P.behind = P.a < -1.6; }
+        else if (k < wind) { const q = k / wind; P.a = from + (down || big ? -0.25 : 0.25) * q; P.lean = -1.5 * q; P.hx = 1; P.hy = big ? -15 : -11; P.sy = 1 + 0.04 * q; }
         else { const q = easeOut((k - wind) / (1 - wind)); P.a = from + (to - from) * q; P.lean = (big ? 3.5 : 2.5) * Math.sin(Math.min(1, q * 1.4) * Math.PI * 0.9); P.ox = Math.cos(p.swingAng) * 2.5 * (1 - q * 0.5); P.oy = Math.sin(p.swingAng) * 1.5; P.hx = 2 + 5 * q; P.hy = (big ? -15 : -11) + (big ? 11 : 6) * q; if (big && q > 0.6) P.sy = 0.9 + 0.1 * (q - 0.6) / 0.4; }
         P.behind = P.a < -1.6 || P.a > 2.2;
-        if (wpn.shape === 'thrust') { P.a = aimF; P.hx = k < 0.3 ? 0 : 8 * Math.sin(Math.min(1, (k - 0.3) / 0.4) * Math.PI / 2); P.hy = -7; P.lean = k < 0.3 ? -1 : 2.5; P.ox = Math.cos(p.swingAng) * (k < 0.3 ? -1 : 3); P.behind = false; }
+        if (wpn.shape === 'thrust') { const back = easeOut(Math.min(1, k / 0.36)), fw = k < 0.36 ? 0 : easeOut(Math.min(1, (k - 0.36) / 0.16)), ret = k < 0.7 ? 0 : (k - 0.7) / 0.3; P.a = aimF; P.hx = k < 0.36 ? 2 - 7 * back : -5 + 17 * fw - 7 * ret; P.hy = -7; P.lean = k < 0.36 ? -2 * back : 3 * fw * (1 - ret); P.ox = Math.cos(p.swingAng) * (k < 0.36 ? -2 * back : 4 * fw * (1 - ret)); P.behind = false; } // 찌르기: 당겼다가 곧게
       } else if (kind === 'staff') {
         // 세워 든 지팡이를 뒤로 젖혔다가 조준 방향으로 휘두른다
         if (k < 0.35) { const q = k / 0.35; P.a = -1.5 - 0.6 * q; P.hx = 4; P.hy = -8; P.lean = -1.2 * q; P.glow = q; }
@@ -1671,7 +1862,7 @@ export class Renderer {
   }
 
   motionPose(w, p, m, P, aimF) {
-    const k = Math.min(1, m.t / m.dur), melee = P.kind === 'melee' || P.kind === 'great' || P.kind === 'axe';
+    const k0 = Math.min(1, m.t / m.dur), k = m.heavy ? Math.pow(k0, 1.9) : k0, melee = P.kind === 'melee' || P.kind === 'great' || P.kind === 'axe'; // 대검 기술: 처음엔 천천히 · 내려올수록 빨라진다
     const big = P.kind === 'great';
     const phase = (a, b) => Math.max(0, Math.min(1, (k - a) / (b - a)));
     const set = (o) => Object.assign(P, o);
@@ -1944,6 +2135,11 @@ export class Renderer {
     const g = this.g, dir = p.dir, t = w.t;
     const metal = this.fistMetal(wa);
     if (P.kind === 'fist') { // 주먹 장갑: 내지르는 손 (반대 손은 몸 뒤에서 따로 그린다)
+      if (P.punch > 0.25 && p.swingT > 0) { // 뻗는 주먹 뒤로 속도선 두 줄 (빠르게 보이게)
+        const ux = Math.cos(ang), uy = Math.sin(ang), nx = -uy, ny = ux, L = 4 + 7 * P.punch;
+        g.strokeStyle = hexA('#ffffff', 0.55 * P.punch); g.lineWidth = 1;
+        for (const o of [-1.5, 1.5]) { g.beginPath(); g.moveTo(Math.round(hx - ux * 3 + nx * o), Math.round(hy - uy * 3 + ny * o)); g.lineTo(Math.round(hx - ux * (3 + L) + nx * o), Math.round(hy - uy * (3 + L) + ny * o)); g.stroke(); }
+      }
       this.fistAt(w, hx, hy, metal, dir);
       if (P.punch > 0.6) for (let i = 0; i < 2; i++) this.parts.push({ x: hx + Math.cos(ang) * 4, y: hy + Math.sin(ang) * 4, vx: Math.cos(ang) * 60 + (Math.random() - 0.5) * 30, vy: Math.sin(ang) * 60 + (Math.random() - 0.5) * 30, t: 0.12, max: 0.12, color: '#ffffff', g: 0, line: true });
       return true;
@@ -2023,7 +2219,7 @@ export class Renderer {
   // 방패 (검과 방패): 반대 팔에 든다. 몸 뒤쪽 가장자리에 걸쳐 보인다
   drawShield(w, p, P, bx, by, gs) {
     const g = this.g, dir = p.dir, x = Math.round(bx - dir * 5 * gs), y = Math.round(by - 9 * gs);
-    const front = w.b.wcat === 'shield' && w.b.weaponId === 'bastionBlade' ? '#d8c070' : '#8a96b0', rim = '#4a4a56';
+    const front = '#8a96b0', rim = '#4a4a56';
     g.fillStyle = '#16121c'; g.beginPath(); g.moveTo(x - 5, y - 6); g.lineTo(x + 5, y - 6); g.lineTo(x + 5, y + 2); g.lineTo(x, y + 7); g.lineTo(x - 5, y + 2); g.closePath(); g.fill();
     g.fillStyle = rim; g.beginPath(); g.moveTo(x - 4, y - 5); g.lineTo(x + 4, y - 5); g.lineTo(x + 4, y + 2); g.lineTo(x, y + 6); g.lineTo(x - 4, y + 2); g.closePath(); g.fill();
     g.fillStyle = front; g.beginPath(); g.moveTo(x - 3, y - 4); g.lineTo(x + 3, y - 4); g.lineTo(x + 3, y + 2); g.lineTo(x, y + 5); g.lineTo(x - 3, y + 2); g.closePath(); g.fill();
@@ -2090,7 +2286,7 @@ export class Renderer {
 
   castColor(w, p) {
     const sk = p.castSkill?.def;
-    const el = sk ? (sk.elem === 'current' ? p.elem : sk.elem) : w.b.cls === 'elementalist' ? p.elem : null;
+    const el = sk ? (sk.elem === 'current' ? p.elem : sk.elem) : w.f?.has('elemAttune') ? p.elem : null;
     return ELEM[el]?.color || CLASS_MAGIC[w.b.cls] || '#c9a8ff';
   }
 
@@ -2106,14 +2302,14 @@ export class Renderer {
       }
       if (Math.random() < 0.3 + k * 0.5) { const a = Math.random() * Math.PI * 2; this.parts.push({ x: x + Math.cos(a) * 22, y: top + 12 + Math.sin(a) * 18, vx: -Math.cos(a) * 80, vy: -Math.sin(a) * 80, t: 0.25, max: 0.25, color: '#ffe080', g: 0, glow: true }); }
     }
-    if (w.b.cls === 'ranger' && p.focus > 0) {
+    if (w.f?.has('focus') && p.focus > 0) {
       for (let i = 0; i < p.focus; i++) { // 집중: 작은 깃 달린 화살촉 (단계마다 하나)
         const xx = Math.round(x - (p.focus - 1) * 3.5 + i * 7), yy = Math.round(top - 6 + Math.sin(w.t * 4 + i) * 0.6), col = p.focus >= 3 ? '#fff2a0' : '#bfffd0';
         g.fillStyle = '#0d0b10'; g.fillRect(xx - 2, yy - 2, 5, 3); g.fillRect(xx - 1, yy + 1, 3, 1); g.fillRect(xx, yy + 2, 1, 1);
         g.fillStyle = col; g.fillRect(xx - 1, yy - 1, 3, 1); g.fillRect(xx, yy, 1, 2);
       }
     }
-    if (w.b.cls === 'dragonSage') {
+    if (w.b.skills?.some((id) => SKILLS[id]?.word)) { // 용언을 끼웠으면 쌓인 단어 칸
       const n = 3;
       for (let i = 0; i < n; i++) {
         const wd = p.words[i], xx = Math.round(x - 10 + i * 7), yy = Math.round(top - 8);
@@ -2518,7 +2714,7 @@ export class Renderer {
       return;
     }
     if (o.kind === 'station' && !o.npc) return; // 가구 자리 (침대 · 화덕 · 보관함 · 작업대): 가구 그림이 따로 있다
-    if (o.kind === 'station' || o.kind === 'merchant') return this.drawNpc(w, o);
+    if (o.kind === 'station' || o.kind === 'merchant') { this.drawNpc(w, o); if (o.kind === 'station') this.questMark(w, o, w.questMarks?.['station:' + o.station]); return; }
     if (o.kind === 'relic') { drawRelic(this.g, o, w.t, SANCTUMS[o.race]?.color || '#ffffff', o.opened); return; }
     if (o.kind === 'sign') { drawSign(this.g, o); o._top = o.y - 22; return; }
     if (o.kind === 'hiddenWay') { o._top = o.y - 26; return; }
@@ -2622,7 +2818,7 @@ export class Renderer {
       o._top = o.y - 30; return;
     }
     if (o.kind === 'entrance') { o._top = o.y - 26; return; }
-    if (o.kind === 'door') { o._top = o.y - 42; return; }
+    if (o.kind === 'door') { o._top = o.y - 42; this.questMark(w, o, w.questMarks?.['house:' + o.house]); return; } // 집 안 사람이 맡길 일이 있으면 문 위에
     if (o.kind === 'rest') { // 마을 모닥불: 돌 둘레 · 장작 · 타오르는 불 · 앉는 통나무
       const x = Math.round(o.x), y = Math.round(o.y), f = 0.75 + 0.25 * Math.sin(t * 9) * Math.sin(t * 5.7);
       const gl = g.createRadialGradient(x, y - 4, 2, x, y - 4, 46); gl.addColorStop(0, `rgba(255,170,70,${0.32 * f})`); gl.addColorStop(1, 'rgba(255,170,70,0)'); g.fillStyle = gl; g.fillRect(x - 46, y - 50, 92, 92);
@@ -2649,8 +2845,7 @@ export class Renderer {
       if (o.leaving != null) { o.leaving -= dt * 0.6; if (o.leaving <= 0) { w.objects.splice(w.objects.indexOf(o), 1); return; } g.globalAlpha = o.leaving; }
       this.drawNpc(w, o);
       g.globalAlpha = 1;
-      // 건넬 물건이 있거나 처음 만나면 머리 위에 느낌표
-      if (o.id === 'pino' && o.leaving == null && w.story) { const tk = pinoTalk(w.story); if (tk.set) this.bang(o.x, o._top - 12 + Math.sin(w.t * 5) * 1.5, '#ffd040'); }
+      this.questMark(w, o, w.questMarks?.[o.id]); // 맡길 일이 있으면 「!」 · 끝낸 일을 들으려면 「?」
       return;
     }
     if (o.kind === 'barrier') { if (!o.opened) this.drawBarrier(w, o); return; }
@@ -3123,7 +3318,7 @@ export class Renderer {
   // 분노 폭발: 몸에서 붉은 기운이 뾰족하게 터져 나가고, 땅이 붉게 갈라지며 돌 조각 · 흙먼지가 튄다. 터진 뒤에도 한동안 몸에서 열기가 피어오른다
   rageBlast(x, y, r) {
     this.flash = { color: '255,60,30', t: 0.28, max: 0.28 };
-    this.shake = Math.max(this.shake, 13); this.hitstop = Math.max(this.hitstop, 0.14);
+    this.shake = Math.max(this.shake, 13); this.addStop(0.14);
     this.rimFlash = { color: '#ff3a1a', t: 1.1, max: 1.1 };
     const list = [];
     for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2 + Math.random() * 0.4; let px = 0, py = 0; const cr = [[0, 0]]; const len = r * (0.7 + Math.random() * 0.35); for (let s2 = 0; s2 < 7; s2++) { const aa = a + (Math.random() - 0.5) * 0.7; px += Math.cos(aa) * len / 7; py += Math.sin(aa) * len / 7 * 0.6; cr.push([px, py]); } list.push(cr); }
@@ -3149,7 +3344,26 @@ export class Renderer {
     while (out.length > 2 && g.measureText(out).width > maxW) out = out.slice(0, -1);
     return out;
   }
-  text(s, x, y, n, color, align = 'left', outline = true, bold = false) {
+  text(s, x, y, n, color, align = 'left', outline = true, bold = false) { // 한 번 그린 글씨(외곽선 포함)는 그림으로 저장해 다시 쓴다 (렉: 글씨마다 9번 쓰던 것)
+    if (s == null || s === '') return;
+    const key = `${s}|${n}|${color}|${outline ? 1 : 0}|${bold ? 1 : 0}`;
+    let c = TEXT_CACHE.get(key);
+    if (!c) {
+      const size = 11 * n, o = outline ? Math.max(1, Math.round(n)) : 0, font = `${bold ? 'bold ' : ''}${size}px ${FONT}`;
+      const g0 = this.g; g0.font = font; const w = Math.ceil(g0.measureText(String(s)).width) + o * 2 + 2, h = Math.ceil(size * 1.5) + o * 2;
+      c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = h;
+      const q = c.getContext('2d'); q.font = font; q.textAlign = 'left'; q.textBaseline = 'middle';
+      const cx = o + 1, cy = Math.round(h / 2);
+      if (outline) { q.fillStyle = '#0c0a0b'; for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, o], [-o, o], [o, -o]]) q.fillText(s, cx + dx, cy + dy); }
+      q.fillStyle = color; q.fillText(s, cx, cy);
+      c._ox = cx; c._oy = cy; c._tw = w - o * 2 - 2;
+      if (TEXT_CACHE.size > 800) TEXT_CACHE.delete(TEXT_CACHE.keys().next().value);
+      TEXT_CACHE.set(key, c);
+    }
+    const ax = align === 'center' ? c._tw / 2 : align === 'right' ? c._tw : 0;
+    this.g.drawImage(c, Math.round(x - ax) - c._ox, Math.round(y) - c._oy);
+  }
+  textSlow(s, x, y, n, color, align = 'left', outline = true, bold = false) {
     const g = this.g, size = 11 * n;
     g.font = `${bold ? 'bold ' : ''}${size}px ${FONT}`;
     g.textAlign = align; g.textBaseline = 'middle';
@@ -3252,7 +3466,7 @@ function beastPose(ps, dir, t) {
     case 'leap': { out.rot = dir * (0.35 - 0.7 * k); out.sx = 0.92; out.sy = 1.12; break; } // 날아오를 때 앞으로, 떨어질 때 아래로
     case 'recover': { const q = 1 - k; out.sy = 1 - 0.06 * q; out.y = Math.sin(t * 6) * 0.5; break; } // 숨을 고른다 (빈틈)
     case 'dizzy': { out.rot = Math.sin(t * 7) * 0.18; out.x = Math.sin(t * 5) * 1.5; break; }
-    case 'burrow': { const q = ease(k); out.sy = 1 - 0.9 * q; out.y = 2 * q; break; } // 땅속으로 파고든다
+    case 'burrow': { out.x = Math.sin(t * 50) * 0.8; break; } // 땅속으로 파고든다: 몸은 그대로 땅 밑으로 내려간다 (digPose) · 파느라 부르르
   }
   return out;
 }

@@ -6,7 +6,7 @@ const { CLASSES } = await import(root + '/data/skills.js');
 const { ZONES } = await import(root + '/data/monsters.js');
 
 const c = CLASSES.guardian;
-const b = computeBuild({ race: c.race, cls: 'guardian', level: 20, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0] } });
+const b = computeBuild({ race: c.race, cls: 'guardian', level: 20, alloc: {}, engravings: {}, gear: { weapon: c.weapons[0], off: c.off } });
 const w = new World({ build: b, mode: 'field', zoneId: ZONES[0].id, seed: 777 });
 const p = w.player, e = w.enemies.find((x) => !x.def.elite && x.def.ai !== 'dummy');
 for (const o of w.enemies) if (o !== e) { o.dead = true; o.hp = 0; }

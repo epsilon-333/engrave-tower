@@ -123,7 +123,7 @@ export function lifeClick(hub, act, t) {
     }
     case 'forge': {
       const r = FORGE.find((x) => x.id === id);
-      if (r && !s.items.includes(id) && canPay(s, r.mats, r.gold)) { pay(s, r.mats, r.gold); s.items.push(id); hub.toast(`${josa(ITEMS[id].name, '을', '를')} 만들었다! '대장간' 탭에서 장착하세요`); }
+      if (r && !s.items.includes(id) && canPay(s, r.mats, r.gold)) { pay(s, r.mats, r.gold); s.items.push(id); hub.toast(`${josa(ITEMS[id].name, '을', '를')} 만들었다 · 「대장간」 탭에서 장착`); }
       return true;
     }
     case 'reinforce': {

@@ -2,10 +2,12 @@
 // World.prototype 에 그대로 붙는다 (sim/world.js 끝). 메서드 안의 this 는 World
 
 import { WEAPON_SKILLS } from '../data/items.js';
-import { SKILLS, ELEM, ELEM_CYCLE, handFit, crossMul, CANT_TEXT, SKILL_BAL } from '../data/skills.js';
+import { SKILLS, ELEM, ELEM_CYCLE, handFit, crossMul, CANT_TEXT, SKILL_BAL, engravingSkillFor, gradeCost } from '../data/skills.js';
+import { ENGRAVINGS } from '../data/engravings.js';
 import { SPIRITS, SPIRIT_GRADES } from '../data/spirits.js';
 import { skillScale } from '../data/statscale.js';
 import { absMin } from './time.js';
+import { emptyEngSlots } from './hidden.js';
 import { DT, MOTION_DUR, SKILL_TSTAT, SPIRIT_DMG_ELEM, SPIRIT_OPS, STATUS_COLOR, WINDUP, distToSeg } from './world.js';
 
 export const SkillMethods = {
@@ -88,6 +90,7 @@ export const SkillMethods = {
       case 'aoe': {
         const c = op.at === 'aim' ? (ctx.auto && ctx.point ? { ...ctx.point } : this.aimPoint(op.range || 200)) : op.at === 'front' ? { x: p.x + p.aimX * (op.dist || 26), y: p.y + p.aimY * (op.dist || 26) } : { x: p.x, y: p.y };
         if (op.at === 'aim' && ctx.auto && ctx.target && !ctx.point) { c.x = ctx.target.x; c.y = ctx.target.y; }
+        if (op.at === 'aim') Object.assign(c, this.groundPoint(c.x, c.y)); // 벽 속 · 허공에는 떨어지지 않는다
         if (op.jitter) { c.x += this.rng.range(-op.jitter, op.jitter); c.y += this.rng.range(-op.jitter, op.jitter); }
         const follow = op.at === 'self';
         const run = () => {
@@ -113,6 +116,7 @@ export const SkillMethods = {
           if (dd > 0 && dd < 60) { let st = dd; while (st > 0 && this.blocked(p.x + p.aimX * st, p.y + p.aimY * st, 5)) st -= 6; if (st > 0) { const x1 = p.x, y1 = p.y; p.x += p.aimX * st; p.y += p.aimY * st; this.emit({ t: 'skillDash', x1, y1, x2: p.x, y2: p.y, elem: ctx.elem }); } }
         }
         if (p.buffs.dragonForm) op = { ...op, range: op.range * 1.4, angle: op.angle * 1.2 }; // 용의 몸집만큼 넓게
+        if (op._form !== 'melee' && !op.delay) this.meleeStep(ctx, op.range);
         const list = this.enemies.filter((e) => {
           if (e.dead || e.hidden) return false;
           const dx = e.x - p.x, dy = e.y - p.y, dist = Math.hypot(dx, dy);
@@ -129,6 +133,7 @@ export const SkillMethods = {
       case 'single': {
         const e = ctx.target && !ctx.target.dead && Math.hypot(ctx.target.x - p.x, ctx.target.y - p.y) < op.range + 40 ? ctx.target : this.nearestEnemy(op.range);
         if (!e) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '대상 없음', color: '#a8b0c0' }); break; }
+        if (!op.teleportTo && op.range <= 70) this.meleeStep(ctx, op.range, e);
         if (op.teleportTo) { const side = e.dir > 0 ? -1 : 1; let tx = e.x + side * (e.r + 8); if (this.blocked(tx, e.y, 5)) tx = e.x - side * (e.r + 8); this.emit({ t: 'blink', x1: p.x, y1: p.y, x2: tx, y2: e.y }); p.x = tx; p.y = e.y; }
         this.emit({ t: 'skillSingle', x: e.x, y: e.y, fx: op.fx || ctx.def.fx, elem: ctx.elem, big: !!op.scaleRes || ctx.def.ult });
         const bleedN = e.st.bleed?.n || 0;
@@ -148,7 +153,7 @@ export const SkillMethods = {
           if (wc === 'bow' && (op.kind === 'dart' || bolt)) op = { ...op, kind: bolt ? 'bolt' : 'arrow', status: op.status === 'poison' ? null : op.status };
           else if (wc === 'tube' && op.kind === 'arrow') op = { ...op, kind: 'dart' };
         }
-        if (op.focus && this.b.cls === 'ranger' && p.focus > 0) { ctx = { ...ctx, bonus: ctx.bonus * (1 + 0.25 * p.focus) }; p.focus = 0; p.focusT = 0; }
+        if (op.focus && this.f.has('focus') && p.focus > 0) { ctx = { ...ctx, bonus: ctx.bonus * (1 + 0.25 * p.focus) }; p.focus = 0; p.focusT = 0; }
         if (op.fullPierce && ctx.charge >= 3) op = { ...op, pierce: 99, mul: op.mul * 1.2 };
         for (let i = 0; i < (op.n || 1); i++) {
           const a = ang + (i - ((op.n || 1) - 1) / 2) * (op.spread || 0);
@@ -157,9 +162,13 @@ export const SkillMethods = {
             owner: 'p', x: mz.x, y: mz.y, vx: Math.cos(a) * op.speed, vy: Math.sin(a) * op.speed,
             life: op.range / op.speed, maxLife: op.range / op.speed, boomerang: !!op.boomerang, dmg: 0, type: 'mag', pierce: op.pierce || 0, hit: new Set(), splash: 0,
             color: ELEM[ctx.elem]?.color || '#e8e0f4', kind: op.kind === 'rock' ? 'rock' : 'skill', skind: op.kind, elem: ctx.elem, big: true, homing: op.homing, rot: a,
+            ox: mz.x, oy: mz.y,
             skillHit: (e, pr) => {
+              this.projHitDist = Math.hypot(e.x - pr.ox, e.y - pr.oy); // 엘프: 맞힌 거리 (스킬 투사체도)
               this.skillHit(e, op, ctx);
+              this.projHitDist = null;
               if (op.onHitGain) this.addRes(op.onHitGain);
+              if (op.absorb) this.absorbStart(e, op.absorb); // 흡수의 화살
               if (op.onHitHeal) this.heal(this.d.maxHp * op.onHitHeal, 'skill');
               if (op.splash) {
                 this.emit({ t: 'skillAoe', x: pr.x, y: pr.y, r: op.splash, elem: ctx.elem, fromProj: true, fx: op.kind === 'rock' ? 'rocks' : op.kind === 'icerock' ? 'ice' : op.kind === 'plague' ? 'fog' : 'pop' });
@@ -184,7 +193,7 @@ export const SkillMethods = {
         break;
       }
       case 'channel': p.channel = { t: op.dur, every: op.every, tick: 0, sub: op.sub, ctx, invuln: op.invuln }; break;
-      case 'comboSpin': p.combo = { op, ctx, i: 0, t: 0, ang }; break;
+      case 'comboSpin': p.combo = { op: this.b.weapon?.great ? { ...op, every: op.every * 1.45 } : op, ctx, i: 0, t: this.b.weapon?.great ? 0.25 : 0, ang }; break; // 대검: 첫 회전 전에 몸을 비틀어 모으고, 한 바퀴씩 무겁게
       case 'enchant': { // 무기에 속성을 입힌다 (평타 · 무기 기술에 그 속성 피해가 더해진다)
         p.buffs.enchant = { t: op.dur, max: op.dur, mods: {}, color: ELEM[op.elem].color, name: ctx.def.name, elem: op.elem, pow: op.pow, stacks: op.stacks || 1 };
         this.emit({ t: 'enchant', x: p.x, y: p.y, elem: op.elem });
@@ -204,7 +213,9 @@ export const SkillMethods = {
       case 'buff': {
         const mods = { ...op.mods };
         if (op.scaleRes && mods.dmgMul) mods.dmgMul = 1 + (mods.dmgMul - 1) * (1 + ctx.spent / 100);
+        for (const k of ['dmgMul', 'atkSpeed']) if (mods[k] > 1 && ctx.bal != null) mods[k] = 1 + (mods[k] - 1) * ctx.bal; // 각인 등급 보정은 버프의 「+%」에 걸린다
         p.buffs[op.id] = { t: op.dur, max: op.dur, mods, color: op.color, bubble: op.bubble, power: op.power };
+        if (op.frenzyFill) { p.hFrenzyN = 20; p.hFrenzyT = op.dur; } // 「광란」: 멈추지 않는 팔 가득
         if (op.id !== 'nextCrit') this.emit({ t: 'buff', x: p.x, y: p.y, color: op.color || '#ffffff', bubble: op.bubble });
         break;
       }
@@ -240,6 +251,7 @@ export const SkillMethods = {
       case 'zone': {
         let c = op.at === 'aim' ? (ctx.auto && ctx.point ? { ...ctx.point } : ctx.auto && ctx.target ? { x: ctx.target.x, y: ctx.target.y } : this.aimPoint(200)) : { x: p.x, y: p.y + 2 };
         if (op.kind === 'bait') { const traps = this.zones.filter((z) => z.kind === 'trap' && z.t > 0); if (traps.length) { const tr = traps.reduce((a, b) => (Math.hypot(b.x - c.x, b.y - c.y) < Math.hypot(a.x - c.x, a.y - c.y) ? b : a)); c = { x: tr.x, y: tr.y }; this.emit({ t: 'text', x: c.x, y: c.y - 18, text: '덫 위에 미끼', color: '#ffcf8a' }); } }
+        if (op.at === 'aim') c = this.groundPoint(c.x, c.y); // 장판도 벽 속 · 허공에는 깔리지 않는다
         const atk = ctx.atk * ctx.bonus * (op.scaleRes ? ctx.resMul : 1);
         if (op.max) { const mine = this.zones.filter((z) => z.kind === op.kind); while (mine.length >= op.max) { const old = mine.shift(); old.t = 0; } }
         if (op.wall) {
@@ -304,16 +316,19 @@ export const SkillMethods = {
       }
       case 'line': {
         const x1 = p.x, y1 = p.y, ax = p.aimX, ay = p.aimY;
-        let len = op.len;
+        let len = this.rayLen(x1, y1, Math.atan2(ay, ax), op.len); // 땅 가르기는 벽 앞에서 멈춘다 (벽 너머 · 벽 위로 이어지지 않는다)
         const run = () => {
           const x2 = x1 + ax * len, y2 = y1 + ay * len;
           this.emit({ t: 'skillLine', x1, y1, x2, y2, w: op.w, elem: ctx.elem, fx: op.fx || ctx.def.fx, ult: ctx.def.ult });
           countHits(this.enemies.filter((e) => !e.dead && !e.hidden && distToSeg(e.x, e.y, x1, y1, x2, y2) < e.r + op.w / 2));
+          if (op.lava) for (let i = 1; i <= 5; i++) { const zx = x1 + (x2 - x1) * i / 5, zy = y1 + (y2 - y1) * i / 5; if (!this.blocked(zx, zy, 4)) this.zones.push({ kind: 'fire', x: zx, y: zy, r: 18, t: op.lava, max: op.lava, tick: 0, atk: ctx.atk }); } // 「용암 균열」
         };
         if (op.delay) this.delayed.push({ t: op.delay, run }); // 내 일직선 스킬은 예고선 없이 (땅이 갈라지는 것으로 보인다)
         else run();
         break;
       }
+      case 'resGain': case 'resMark': this.resOp(op, ctx); break; // 자원 각인 (sim/resource.js)
+      case 'soulCall': case 'bubble': case 'shadowHands': case 'ram': this.hidOp(op, ctx); break; // 숨은 각인 (sim/hidden.js)
       case 'blastSummons': {
         let mine = this.allies.filter((a) => a.kind !== 'spirit' && a.kind !== 'spiritKing');
         if (op.n) mine = mine.sort((a, b) => (a.maxHp ? a.hp / a.maxHp : 1) - (b.maxHp ? b.hp / b.maxHp : 1)).slice(0, op.n);
@@ -669,16 +684,17 @@ export const SkillMethods = {
     if (id === 'weapon') { if (p.skillCd <= 0) { this.breakStealth(); this.useSkill(); } return; }
     const def = SKILLS[id];
     if (!def || p.cds[id] > 0) return;
+    const surge = false; // (마력 폭주는 2026-11-19부터 0.1초마다 자원 +1 — sim/hidden.js hidTick)
     const fit = handFit(def, this.b).fit;
     if (fit <= 0) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: (CANT_TEXT[def.kind] || '이 무기로는 쓸 수 없다') + (this.b.hands < 2 ? ' · 왼손 도구로도 쓸 수 있다' : '') }); p.cds[id] = 0.4; return; }    if (p.swim && !['dive', 'waterBreath'].includes(id)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: '헤엄치는 중에는 쓸 수 없다' }); p.cds[id] = 0.3; return; }
     if (def.needSpirit && !p.spirits.length) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: '깃든 정령', text: '깃든 정령이 없다' }); p.cds[id] = 0.3; return; }
     if (def.do.some((o) => SPIRIT_OPS.has(o.op)) && !SPIRITS[this.b.spirit?.id]) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: '계약한 정령이 없다 · 세계수 성지의 「정령 계약」' }); p.cds[id] = 0.5; return; }
     let spent = 0;
-    if (def.costAll) {
+    if (surge) { /* 마력 폭주: 마법은 자원을 쓰지 않는다 */ } else if (def.costAll) {
       if (p.res < def.costAll.min) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
       spent = p.res; p.res = 0;
     } else if (def.cost) {
-      const cost = def.cost * (this.d.costMul || 1); // 정신 70: 쓰는 자원 -30%
+      const cost = gradeCost(def, this.skillTier(id)) * (this.d.costMul || 1); // 각인 등급에 맞춘 소모 · 정신 70: -30%
       if (p.res < cost && !this.bloodPay(cost - p.res)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
       p.res = Math.max(0, p.res - cost); spent = cost;
     }
@@ -686,6 +702,7 @@ export const SkillMethods = {
     let cd = def.cd * this.d.skillCdMul * (1 - this.d.cdr) * skillScale(id, this.b).cd; // 스탯 70: 재사용 -20%
     if (id === 'breath' && p.buffs.dragonForm) cd = 0.3;
     if (this.practice?.noCd) cd = Math.min(cd, 0.25);
+    if (surge) cd = 1; // 마력 폭주 중 마법의 쿨타임은 1초
     p.cds[id] = cd; p.cdMax ||= {}; p.cdMax[id] = cd;
     p.lastFight = this.t;
     if (this.pvp) this.pvp.out.push({ t: 'dskill', id });
@@ -714,7 +731,7 @@ export const SkillMethods = {
     if (!opt.weapon) { const ts = SKILL_TSTAT[id]; if (ts) for (const [k, v, dur] of ts) this.addTemp(k, v, dur, def.name); this.chainEvent('cast', null, this.player); }
     const p = this.player;
     const elem = def.elem === 'current' ? p.elem : def.elem;
-    if (this.b.cls === 'elementalist' && ELEM_CYCLE.includes(elem)) p.elem = elem;
+    if (ELEM_CYCLE.includes(elem)) p.elem = elem; // 마지막 속성은 늘 적어 둔다 (평타가 따라가는 것은 「원소 맞춤」 특성)
     let bonus = 1;
     const lvl = opt.charge || 0;
     if (def.charge) bonus *= [1, 1.35, 1.75, 2.2][lvl];
@@ -723,22 +740,29 @@ export const SkillMethods = {
     if (p.buffs.charged && id !== 'chargeUp') { bonus *= p.buffs.charged.power || 2.5; p.buffs.charged.t = Math.min(p.buffs.charged.t, 0.05); }
     const boost = opt.weapon ? this.b.weapon.mul : this.weaponBoost(id), hf = opt.weapon ? { fit: 1, hand: 'main' } : handFit(def, this.b), fit = hf.fit, cross = opt.weapon ? 1 : crossMul(def, this.b); // 다른 종족 스킬: 능력치가 모자라면 85%
     const sc = opt.weapon ? this.b.wScale : skillScale(id, this.b); // 스탯 계수 (이 스킬 · 무기가 따라가는 스탯)
-    const ctx = { def, id, spent, elem, bonus: bonus * boost * fit * cross * (SKILL_BAL[id] ?? 1) * (sc?.dmg ?? 1), // SKILL_BAL: 종족 스킬 밸런스 보정
-      fit, hand: hf.hand, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot };
+    const ctxBal = this.skillBalOff === id ? 1 : SKILL_BAL[id] ?? 1; // 각인 등급 보정 (tools/skillbal.mjs)
+    const ctx = { bal: ctxBal, def, id, spent, elem, bonus: bonus * boost * fit * cross * ctxBal * (sc?.dmg ?? 1), // SKILL_BAL: 종족 스킬 밸런스 보정
+      fit, hand: hf.hand, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot, tier: this._tier };
+    if (hf.hand === 'off') p.offShowT = this.t + Math.max(0.6, (def.cast || 0) + 0.5); // 왼손 장비로 쓰는 스킬: 그동안만 왼손 장비가 보인다
     if (fit < 0.95 && fit > 0) this.emit({ t: 'text', x: p.x, y: p.y - 26, text: `무기가 맞지 않다 · 피해 ${Math.round(fit * 100)}%`, color: '#c8b8a0' });
     if (this.autoAim) {
       const tg = this.pickTarget(def);
       if (tg) {
-        ctx.auto = true; ctx.target = tg.e; ctx.point = tg.e ? null : { x: tg.x, y: tg.y }; ctx.tp = tg.tp;
+        ctx.auto = true; ctx.target = tg.e; ctx.point = tg.e ? null : { x: tg.x, y: tg.y }; ctx.tp = tg.tp; // 스킬 자동 조준은 예전 그대로 (10%로 줄인 건 평타 유도탄)
         this.faceTo(tg.x, tg.y);
         if (tg.kind !== 'none') this.emit({ t: 'lockOn', x: tg.x, y: tg.y, kind: tg.kind, ult: def.ult });
       }
     }
     this.emit({ t: 'skillFx', fx: def.fx, x: p.x, y: p.y, ang: Math.atan2(p.aimY, p.aimX), elem, name: def.name, ult: def.ult, role: def.role, charge: lvl });
-    if (!def.charge && !def.cast) this.motion(def.mo, MOTION_DUR[def.mo] || 0.35);
-    else if (def.charge || def.cast) this.motion(def.mo === 'castBig' ? 'castBigRelease' : def.mo === 'cast' ? 'castRelease' : def.mo, MOTION_DUR[def.mo] || 0.35, { charge: lvl });
+    const heavy = !opt.weapon && this.b.weapon?.great && def.kind !== 'spell' && !def.cast && def.role !== '방어' && def.role !== '강화'; // 대검으로 쓰는 몸 기술: 느리게 들어 올려 무게로 내리친다
+    if (heavy) ctx.bonus *= 1.35; // 느린 만큼 강하다
+    const mDur = (MOTION_DUR[def.mo] || 0.35) * (heavy ? 1.6 : 1);
+    if (!def.charge && !def.cast) this.motion(def.mo, mDur, { heavy });
+    else if (def.charge || def.cast) this.motion(def.mo === 'castBig' ? 'castBigRelease' : def.mo === 'cast' ? 'castRelease' : def.mo, mDur, { charge: lvl, heavy });
+    this.hidAttack(); // 숨은 각인: 스킬 · 무기 기술도 「치기」
+    if (!opt.weapon) this.hidCast(); // 「피로 쓴 함성」
     const fire = () => { for (const op of def.do) this.runOp(op, ctx); if (def.word) this.addWord(def.word); };
-    const wu = !def.cast && !opt.now ? WINDUP[def.mo] || 0 : 0; // 차지 스킬도 휘두르는 동작이 지나간 뒤에 나간다
+    const wu = !def.cast && !opt.now ? (WINDUP[def.mo] || (heavy ? 0.15 : 0)) * (heavy ? 2.2 : 1) : 0; // 차지 스킬도 휘두르는 동작이 지나간 뒤에 나간다 · 대검은 들어 올리는 시간이 길다
     if (wu > 0) { p.windupT = wu; this.delayed.push({ t: wu, run: () => { p.windupT = 0; fire(); } }); }
     else fire();
   },
@@ -756,6 +780,8 @@ export const SkillMethods = {
     if (op.bonusIf === 'frozen' && (e.st.frozen > 0 || e.st.chill?.n >= 4)) { mul *= 2.5; this.emit({ t: 'shatter', x: e.x, y: e.y }); }
     if (op.bonusIf === 'burning' && e.st.burn) mul *= 1.5;
     if (op.backstab && Math.sign(p.x - e.x) !== e.dir) mul *= 1.5;
+    if (op.bare && this.b.weaponId === 'bareHands') mul *= op.bare; // 숨은 각인 「백열권」: 맨손이면 더 세다
+    if (op.voidMul) mul *= 1 + op.voidMul * Math.min(4, emptyEngSlots(this.b)); // 「공허 일격」: 빈 각인 칸마다
     const type = ctx.def.scale === 'mag' || (ctx.elem && ctx.elem !== 'phys') ? 'mag' : 'phys';
     if (mul > 0) this.hitEnemy(e, ctx.atk * mul, type, true, false, { elem: ctx.elem, pen: op.pen, skill: true });
     if (e.dead) return true;
@@ -768,6 +794,8 @@ export const SkillMethods = {
     if (op.retrib) e.st.retrib = Math.max(e.st.retrib || 0, op.retrib);
     if (op.lose && e.state === 'chase') { e.loseT = 4; e.windT = 0; }
     if (op.status) this.applyStatus(e, op.status, op.stacks || 1);
+    if (op.rebelPass) this.hidRebelPass(e, ctx); // 「반역의 낙인」
+    if (op.healPerHit) this.heal(this.d.maxHp * op.healPerHit, 'skill'); // 「피의 축제」 · 「망자의 낫」
     if (op.extraStatus && !e.dead) this.applyStatus(e, op.extraStatus, 1);
     if (op.elemFire && !e.dead) this.applyStatus(e, 'burn', op.stacks || 1);
     if (op.doom && !e.dead) { e.doom = { atk: ctx.atk * ctx.resMul }; this.emit({ t: 'doomMark', id: e.id }); }
@@ -781,12 +809,12 @@ export const SkillMethods = {
       this.delayed.push({ t: op.bind, run: () => { if (e.bind !== b) return; e.bind = null; if (e.dead || b.acc < 1) return; this.damageEnemy(e, b.acc, 'phys', { src: 'bind', pen: 1, heavy: true, color: '#c8a8ff' }); this.emit({ t: 'inkBurst', x: e.x, y: e.y, r: e.r }); } });
     }
     if (op.mark) e.st.elemMark = Math.max(e.st.elemMark || 0, op.mark);
-    if (op.weak) e.st.weak = Math.max(e.st.weak || 0, op.weak);
+    if (op.weak) { e.st.weak = Math.max(e.st.weak || 0, op.weak); e.st.weakK = op.weakK || 1.35; }
     if (op.armorBreak) { e.armorBreak = Math.min(5, (e.armorBreak || 0) + op.armorBreak); e.armorBreakT = 6; }
     if (op.knock && !e.def.elite) {
       const dx = e.x - p.x, dy = e.y - p.y, l = Math.hypot(dx, dy) || 1;
       e.kbx += (dx / l) * op.knock * 2; e.kby += (dy / l) * op.knock * 2;
-      if (this.b.cls === 'behemoth') { e.kbHot = op.launch ? 0.7 : 0.45; e.kbAtk = ctx.atk; }
+      if (this.f.has('impact')) { e.kbHot = op.launch ? 0.7 : 0.45; e.kbAtk = ctx.atk; }
     }
     if (op.pull) { e.reelT = 0.6; e.reelK = e.def.elite ? 0.85 : 1; /* 쇠사슬 · 작살: 내 바로 앞까지 */ e.reelX0 = e.x; e.reelY0 = e.y; e.kbx = 0; e.kby = 0; this.aggro(e); this.emit({ t: 'reel', id: e.id }); }
     return false;
@@ -959,3 +987,54 @@ export const SkillMethods = {
   },
 
 };
+
+// ───────────── 연출 등급 · 지형 ─────────────
+// 스킬을 준 각인의 등급(1~5)을 그 스킬이 내는 사건(ev.tier)에 적어 둔다. 그림 쪽(render/events.js)이 등급만큼 화려하게 · 수수하게 그린다
+Object.assign(SkillMethods, {
+  skillTier(id, opt) {
+    if (opt?.weapon) return null;
+    const lo = this.b.lo || {}, race = this.b.race; let g = 0;
+    const see = (eid) => { const E = eid && ENGRAVINGS[eid]; if (E && engravingSkillFor(eid, race) === id) g = Math.max(g, E.grade || 1); };
+    for (const eid of Object.values(lo.engravings || {})) see(eid);
+    for (const re of lo.runEng || []) see(re.id);
+    if (g) return g;
+    const d = SKILLS[id]; if (!d) return null;
+    return d.ult ? 5 : d.role === '마무리' ? 4 : (d.unlock || 1) >= 6 ? 3 : 2; // 각인 없이 쓰는 스킬: 궁극 5 · 마무리 4 · 나머지 2~3
+  },
+  // 땅에 닿는 스킬의 자리: 벽 속 · 깊은 물 · 맵 밖이면 내 쪽으로 당겨 가장 가까운 땅에 둔다
+  groundPoint(x, y) {
+    const p = this.player;
+    if (!this.map || !this.solid(x, y)) return { x, y };
+    const dx = p.x - x, dy = p.y - y, L = Math.hypot(dx, dy) || 1;
+    for (let d = 6; d < L; d += 6) { const nx = x + (dx / L) * d, ny = y + (dy / L) * d; if (!this.solid(nx, ny)) return { x: nx, y: ny }; }
+    return { x: p.x, y: p.y };
+  },
+  // 근접 스킬의 내딛기: 등급이 높을수록 멀리 · 빠르게 파고든다 (1등급은 제자리 · 벽과 적 앞에서 멈춘다)
+  meleeStep(ctx, range, target = null) {
+    const p = this.player, T = ctx.tier;
+    if (!T || T < 2 || ctx.def.scale === 'mag' || ctx.def.kind === 'spell' || p.dashT > 0 || p.swim || ctx.stepped) return;
+    ctx.stepped = true; // 한 스킬에 한 번 (연타는 첫 타만)
+    let st = [0, 0, 8, 14, 22, 30][T] || 0;
+    const tg = target || (ctx.target && !ctx.target.dead ? ctx.target : this.nearestEnemy(range + st + 20));
+    let dx = p.aimX, dy = p.aimY;
+    if (tg) { const vx = tg.x - p.x, vy = tg.y - p.y, l = Math.hypot(vx, vy) || 1; if ((vx * dx + vy * dy) / l > 0.3) { dx = vx / l; dy = vy / l; st = Math.min(st, Math.max(0, l - tg.r - 10)); } }
+    while (st > 0 && this.blocked(p.x + dx * st, p.y + dy * st, 5)) st -= 4;
+    if (st < 4) return;
+    const x1 = p.x, y1 = p.y; p.x += dx * st; p.y += dy * st;
+    this.emit({ t: 'meleeStep', x1, y1, x2: p.x, y2: p.y, elem: ctx.elem });
+  },
+});
+// 등급을 적어 두는 범위: 이 함수들이 도는 동안 낸 사건과 미뤄 둔 일(delayed)에 등급이 붙는다
+const scoped = (name, tierOf) => {
+  const f = SkillMethods[name];
+  SkillMethods[name] = function (...a) {
+    const prev = this._tier, n0 = this.delayed.length, t = tierOf.apply(this, a);
+    if (t != null) this._tier = t;
+    try { return f.apply(this, a); }
+    finally { for (let i = n0; i < this.delayed.length; i++) if (this.delayed[i].tier == null) this.delayed[i].tier = this._tier; this._tier = prev; }
+  };
+};
+scoped('execSkill', function (def, spent, id, opt) { return this.skillTier(id, opt); });
+scoped('runOp', function (op, ctx) { return ctx?.tier; });
+scoped('updateSpecialMove', function () { const p = this.player; return (p.combo || p.leap || p.rush)?.ctx?.tier; });
+
