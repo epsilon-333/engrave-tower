@@ -29,7 +29,7 @@ export async function loadAssets() {
   await Promise.all([...new Set(man.sheets.map((sh) => sh.img))].map((src) => new Promise((res) => { const i = new Image(); i.onload = () => { imgs[src] = i; res(); }; i.onerror = () => res(); i.src = 'assets/custom/' + src; })));
   for (const sh of man.sheets) {
     const img = imgs[sh.img]; if (!img) continue;
-    for (const [anim, { row, n }] of Object.entries(sh.anims)) for (let i = 0; i < n; i++) atlas[`${sh.prefix}_${anim}_anim_f${i}`] = { x: i * sh.w, y: (sh.y0 || 0) + row * sh.h, w: sh.w, h: sh.h, src: img };
+    for (const [anim, { row, n, col = 0 }] of Object.entries(sh.anims)) for (let i = 0; i < n; i++) atlas[`${sh.prefix}_${anim}_anim_f${i}`] = { x: (col + i) * sh.w, y: (sh.y0 || 0) + row * sh.h, w: sh.w, h: sh.h, src: img }; // col: 그 줄의 몇째 칸부터 (원본 배치를 그대로 쓰는 시트)
   }
   if (man.meta.true_dragon) atlas.true_dragon_meta = man.meta.true_dragon; // 용 · 정령왕: 크기 · 보폭 같은 그리기 정보
   if (man.meta.king) atlas.king_meta = man.meta.king;

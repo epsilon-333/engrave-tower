@@ -384,9 +384,21 @@ export const FxMethods = {
         if (Math.random() < 0.9) this.parts.push({ x: x + (Math.random() - 0.5) * 10 * big, y: y + (Math.random() - 0.5) * 10 * big, vx: 30, vy: -40, t: 0.5, max: 0.5, color: Math.random() < 0.5 ? '#ff7a2a' : '#ffd040', g: -20 });
       } else if (f.k === 'lineTele') { // 예고선: 땅 위 점묘 띠 · 가장자리 실선, 시작점부터 끝까지 진하게 차오르면 그때 맞는다
         const L = Math.hypot(f.x2 - f.x1, f.y2 - f.y1) || 1, ux = (f.x2 - f.x1) / L, uy = (f.y2 - f.y1) / L, hw = Math.max(1, Math.round((f.w || 6) / 2)), fill = (1 - k) * L, col = f.color || '#ff5a3a';
-        for (let d = 0; d < L; d += 1) for (let h = -hw; h <= hw; h++) {
-          const x = Math.round(f.x1 + ux * d - uy * h), y = Math.round(f.y1 + uy * d + ux * h), edge = Math.abs(h) === hw;
-          if (edge) { g.fillStyle = col; g.fillRect(x, y, 1, 1); } else if (d < fill ? (x + y) % 2 === 0 : (x + y) % 4 === 0) { g.fillStyle = d < fill ? col : hexA(col, 0.6); g.fillRect(x, y, 1, 1); }
+        if (!f._c) { // 처음 한 번만 도트를 찍어 둔다: 옅은 띠(차오르기 전) · 짙은 띠(차오른 뒤) — 매 장면 칸마다 찍으면 렉
+          const pts = [];
+          for (let d = 0; d < L; d += 1) for (let h = -hw; h <= hw; h++) pts.push([Math.round(f.x1 + ux * d - uy * h), Math.round(f.y1 + uy * d + ux * h), Math.abs(h) === hw]);
+          const bx = Math.min(...pts.map((q) => q[0])), by = Math.min(...pts.map((q) => q[1])), W = Math.max(...pts.map((q) => q[0])) - bx + 1, H = Math.max(...pts.map((q) => q[1])) - by + 1;
+          const n = parseInt(col.slice(1, 7), 16), rgb = [n >> 16, (n >> 8) & 255, n & 255];
+          const make = (full) => { const c = document.createElement('canvas'); c.width = W; c.height = H; const cg = c.getContext('2d'), img = cg.createImageData(W, H), px = img.data;
+            for (const [x, y, edge] of pts) { if (!edge && ((x + y) % (full ? 2 : 4) !== 0)) continue; const i = ((y - by) * W + (x - bx)) * 4; px[i] = rgb[0]; px[i + 1] = rgb[1]; px[i + 2] = rgb[2]; px[i + 3] = edge || full ? 255 : 153; }
+            cg.putImageData(img, 0, 0); return c; };
+          f._c = { base: make(false), full: make(true), bx, by };
+        }
+        g.drawImage(f._c.base, f._c.bx, f._c.by);
+        if (fill > 0) { // 차오른 만큼만 짙은 띠를 보인다 (선을 따라 자른다)
+          g.save(); g.beginPath(); const e = hw + 1.5;
+          g.moveTo(f.x1 - uy * e - ux, f.y1 + ux * e - uy); g.lineTo(f.x1 + ux * fill - uy * e, f.y1 + uy * fill + ux * e); g.lineTo(f.x1 + ux * fill + uy * e, f.y1 + uy * fill - ux * e); g.lineTo(f.x1 + uy * e - ux, f.y1 - ux * e - uy); g.closePath(); g.clip();
+          g.drawImage(f._c.full, f._c.bx, f._c.by); g.restore();
         }
       } else if (f.k === 'line') {
         if (f.fx === 'spikes') {

@@ -30,6 +30,22 @@ import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
 // 바닥에 납작하게 깔린 것: 사람 · 몬스터 아래에 그린다 (아래 끝 기준으로 줄 세우면 위쪽에 선 사람의 몸을 덮었다)
 export const FLAT_PROP = new Set(['hole', 'whirlpool']), FLAT_OBJ = new Set(['dig', 'trap']);
 export const GROUND_MARKS = new Set(['ink', 'cracks', 'scorch', 'scrape', 'rageCracks']); // 그 가운데 땅에 새겨지는 것 (벽 · 물 · 허공에는 안 생긴다)
+// 점묘 타원(바닥 예고 원 · 장판): 크기 · 색 · 짙기마다 한 번만 도트로 찍어 두고 다시 쓴다 (매 장면 칸마다 다시 찍으면 렉)
+const DITHER = new Map();
+function ditherSprite(rx, ry, hex, d) {
+  rx = Math.max(1, Math.round(rx)); ry = Math.max(1, Math.round(ry)); d = Math.round(Math.min(1, d) * 16) / 16;
+  if (d <= 0.01) return null;
+  const key = `${rx}|${ry}|${hex}|${d}`; let c = DITHER.get(key); if (c) return c;
+  if (DITHER.size > 600) DITHER.clear();
+  const W = rx * 2 + 1, H = ry * 2 + 1; c = document.createElement('canvas'); c.width = W; c.height = H;
+  const cg = c.getContext('2d'), img = cg.createImageData(W, H), px = img.data, n = parseInt(hex.slice(1, 7), 16), r = n >> 16, gg = (n >> 8) & 255, b = n & 255;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const dx = (x - rx) / (rx + 0.5), dy = (y - ry) / (ry + 0.5); if (dx * dx + dy * dy > 1) continue;
+    if (BAYER4[y & 3][x & 3] >= d) continue;
+    const i = (y * W + x) * 4; px[i] = r; px[i + 1] = gg; px[i + 2] = b; px[i + 3] = 255;
+  }
+  cg.putImageData(img, 0, 0); c.ox = rx; c.oy = ry; DITHER.set(key, c); return c;
+}
 export const GROUND_FX = new Set(['ink', 'tcircle', 'tdonut', 'lineTele', 'cracks', 'scorch', 'scrape', 'castCircle', 'rune', 'glyphs', 'rageCracks', 'path']); // 바닥에 그리는 이펙트
 const BOSS_MELEE = new Set(['combo', 'cleave', 'whirl', 'shove', 'charge', 'leap', 'jumps3', 'quake', 'grab', 'retreat']);
 const SHEET_LOOKS = ['saturate(1.25) contrast(1.1) brightness(1.08)', 'saturate(1.5) contrast(1.3) brightness(0.92)']; // 보스 시트 2 · 3단계: 색을 돌리지 않고 진하게만
@@ -175,6 +191,9 @@ import { HudMethods } from './hud.js';
 import { FxMethods } from './fxdraw.js';
 import { EventMethods } from './events.js';
 import { AtmosMethods } from './atmosphere.js';
+import { ChiefFxMethods } from './chieffx.js';
+import { GolemFxMethods } from './golemfx.js';
+import { WitchFxMethods } from './witchfx.js';
 const DILATE = new WeakMap(), NOBUFF = Object.freeze({});
 const NOCOMBO = new Set(['fist', 'great', 'whip', 'bow', 'crossbow', 'orb', 'tome', 'staff', 'tube']);
 const PI = Math.PI;
@@ -564,7 +583,7 @@ export class Renderer {
     if (w.map.ship) this.drawSailing(w);
     if (w.map.plaza) this.drawPlazaFloor(w);
 
-    const dfill = (x, y, rx, ry, hex, d) => { if (g.ditherEllipse) g.ditherEllipse(x, y, rx, ry, hex, d * 0.72); else { g.fillStyle = hexA(hex, d * 0.6); ellipse(g, x, y, rx, ry); } };
+    const dfill = (x, y, rx, ry, hex, d) => { const img = ditherSprite(rx, ry, hex, d * 0.72); if (img) g.drawImage(img, Math.round(x) - img.ox, Math.round(y) - img.oy); }; // 저장해 둔 점묘 그림 (ditherSprite)
     const dline = (x, y, rx, ry, col, ph = 0, on = 3, off = 2) => { if (g.dashEllipse) g.dashEllipse(x, y, rx, ry, col, on, off, ph); else { g.strokeStyle = col; g.lineWidth = 1; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.stroke(); } };
     this.dfill = dfill; this.dline = dline;
     for (const z of w.zones || []) {
@@ -654,7 +673,7 @@ export class Renderer {
     }
     // 바닥 이펙트는 지형을 따른다: 땅에 새기는 것(갈라짐 · 그을음 · 먹물 · 긁힌 자국)은 걸을 수 있는 땅에만, 예고 원 · 마법진은 벽 위로만 안 보이게
     this.clipTiles(w, cx, cy, true); this.anims.drawGround(g, dt); this.drawShadowWalk(w, dt); this.drawOoze(w); this.drawFx(w, dt, true, true); g.restore();
-    this.clipTiles(w, cx, cy, false); this.drawFx(w, dt, true, false); g.restore();
+    this.clipTiles(w, cx, cy, false); this.drawFx(w, dt, true, false); this.drawBog(w, cx, cy); this.drawChiefFx(w, dt, true); this.drawGolemFx(w, dt, true); this.drawWitchFx(w, dt, true); g.restore();
     if (w.veil?.size) { // 금 간 벽 너머 숨은 방: 깨기 전에는 벽 속 어둠처럼 덮어 둔다 (세린의 일지)
       for (const k of w.veil) { const x = (k % w.tw) * 16, y = ((k / w.tw) | 0) * 16; if (x < cx - 16 || x > cx + VW || y < cy - 16 || y > cy + VH) continue; g.fillStyle = '#0f0c13'; g.fillRect(x, y, 16, 16); g.fillStyle = '#17131c'; for (let q = 0; q < 6; q++) g.fillRect(x + ((k * 7 + q * 5) % 15), y + ((k * 3 + q * 11) % 15), 1, 1); }
     }
@@ -710,6 +729,9 @@ export class Renderer {
     this.drawDayNight(w, cx, cy, dt);
     for (const pr of w.projs) this.drawProj(pr);
     this.drawFx(w, dt);
+    this.drawChiefFx(w, dt, false);
+    this.drawGolemFx(w, dt, false);
+    this.drawWitchFx(w, dt, false);
     this.anims.draw(this.g, dt);
 
     if (w.climb) drawTowerOver(this, w, g, cx, cy); // 회오리 · 시간 칼날 · 되감기 잔상 · 고래 그림자 · 돌풍 예고
@@ -720,7 +742,7 @@ export class Renderer {
         const life = q.t / q.max, rr = (q.size || 1.6) * (1 + (1 - life) * 3.2);
         const heat = life > 0.72 ? 0 : life > 0.46 ? 1 : life > 0.22 ? 2 : 3, R = Math.max(1, Math.round(rr * 0.8));
         q.fr ??= (Math.random() * 4) | 0;
-        const img = flameSprite(R, q.fr + ((w.t * 9) | 0), heat);
+        const img = flameSprite(R, q.fr + ((w.t * 9) | 0), heat, q.hue);
         if (heat === 3) g.globalAlpha = Math.min(1, life * 4.5);
         g.drawImage(img, Math.round(q.x - img.width / 2), Math.round(q.y + R + 1 - img.height));
         g.globalAlpha = 1;
@@ -1018,7 +1040,8 @@ export class Renderer {
     let kind;
     if (e.introT > 0) kind = 1 - e.introT / (e.introMax || 1) > 0.55 ? 'skill' : 'idle'; // 등장: 마지막에 포효 자세
     else if (e.soaring || e.morphT > 0) kind = 'skill';
-    else if (charging) kind = 'run';
+    else if (charging) kind = atlas[`${base}_dash_anim_f0`] ? 'dash' : 'run'; // 달려드는 그림이 있으면 그것으로
+    else if (e.mv && art.as?.[e.mv.k]) kind = art.as[e.mv.k]; // 기술마다 정해 둔 그림 줄 (이끼 골렘: 자가수복 = 서기)
     else if (e.mv) kind = art.skl?.includes(e.mv.k) ? 'skill' : art.atk?.includes(e.mv.k) ? 'attack' : BOSS_MELEE.has(e.mv.k) ? 'attack' : 'skill'; // 보스마다 그림에 맞춘 줄
     else if (art.mirrorSkill && e.mirrorT > 0) kind = 'skill'; // 반사 방패: 방패가 빛나는 그림
     else if (e.windT > 0 || this.lunge.has(e.id)) kind = 'attack';
@@ -1111,8 +1134,11 @@ export class Renderer {
     if (e.passives && dt > 0) { // 보스 기운: 몸 둘레에서 피어오르는 독 방울 · 서리 알갱이 · 불티 (고리는 그리지 않는다)
       const au = e.passives.includes('burnAura') ? '#ff8a3a' : e.passives.includes('frostAura') ? '#cfefff' : e.passives.includes('poisonAura') ? '#9be15d' : null;
       if (au && Math.random() < 0.5) { const a = Math.random() * Math.PI * 2, rr = e.r + 10 + Math.random() * 50; this.parts.push({ x: e.x + Math.cos(a) * rr, y: e.y + Math.sin(a) * rr * 0.6, vx: 0, vy: -14 - Math.random() * 18, t: 0.9, max: 0.9, color: au, g: -4, glow: true, size: 1.5 }); }
-      if (e.bphase >= 1 && Math.random() < (e.bphase >= 2 ? 0.6 : 0.3)) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y - Math.random() * e.r * 2, vx: 0, vy: -30, t: 0.6, max: 0.6, color: '#ff5a3a', g: -10, flame: true, size: e.bphase >= 2 ? 1.8 : 1.3 });
-      if (e.bphase >= 2 && Math.random() < 0.25) this.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 1.6, y: e.y - Math.random() * e.r, vx: (Math.random() - 0.5) * 10, vy: -16, t: 1.0, max: 1.0, color: '#1a1020', g: -4, puff: true, size: 3 });
+      if (e.bphase >= 1 && Math.random() < (e.bphase >= 2 ? 0.6 : 0.3)) this.parts.push(e.defId === 'mossLord' // 이끼 골렘: 불꽃 대신 이끼 부스러기가 떨어진다
+        ? { x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y - e.r - Math.random() * e.r, vx: (Math.random() - 0.5) * 10, vy: 10, t: 0.7, max: 0.7, color: Math.random() < 0.5 ? '#63734a' : '#82994d', g: 120, chunk: true, floor: e.y + 3 }
+        : e.defId === 'bogHag' // 늪 마녀: 불꽃 대신 몸에서 독 방울이 떨어진다
+        ? { x: e.x + (Math.random() - 0.5) * e.r * 2.4, y: e.y - Math.random() * e.r * 3, vx: (Math.random() - 0.5) * 8, vy: 6, t: 0.7, max: 0.7, color: Math.random() < 0.5 ? '#4f8a22' : '#8fd84a', g: 160, chunk: true, floor: e.y + 3 }
+        : { x: e.x + (Math.random() - 0.5) * e.r * 2, y: e.y - Math.random() * e.r * 2, vx: 0, vy: -30, t: 0.6, max: 0.6, color: '#ff5a3a', g: -10, flame: true, size: e.bphase >= 2 ? 1.8 : 1.3 });
     }
     if (e.soaring && art.ghostSoar) { // 망령 기사단장 혼령화: 하늘로 날아가지 않고 유령 그림(기술 줄)으로 그 자리에서 흐려진다 · 맞지 않는다
       const fr = sprite(this.bossFrame(w, e, art), '', false, e.dir < 0);
@@ -2470,6 +2496,9 @@ export class Renderer {
 
   drawProj(pr) {
     const g = this.g;
+    if (pr.skind === 'voidfire') return this.drawVoidFire(pr); // 가면 족장의 보라 불덩이 (render/chieffx.js)
+    if (pr.skind === 'venomOrb') return this.drawVenomOrb(pr); // 늪 마녀의 맹독 구슬 (render/witchfx.js)
+    if (pr.skind === 'pebble') return this.drawPebble(pr); // 이끼 골렘의 작은 돌 (render/golemfx.js)
     if (pr.kind === 'rock') {
       g.fillStyle = '#0d0b10'; disc(g, pr.x, pr.y, 6.5); g.fillStyle = '#8a7a66'; disc(g, pr.x, pr.y, 5.5); g.fillStyle = '#b0a088'; disc(g, pr.x - 1.5, pr.y - 1.5, 2.5);
       if (Math.random() < 0.4) this.parts.push({ x: pr.x, y: pr.y, vx: 0, vy: 0, t: 0.3, max: 0.3, color: '#a89880', g: 40 });
@@ -3480,4 +3509,4 @@ function drawWeb(g, x, y, t, a) {
 }
 
 // 나눠 둔 메서드를 Renderer 에 붙인다
-Object.assign(Renderer.prototype, HudMethods, FxMethods, EventMethods, AtmosMethods);
+Object.assign(Renderer.prototype, HudMethods, FxMethods, EventMethods, AtmosMethods, ChiefFxMethods, GolemFxMethods, WitchFxMethods);

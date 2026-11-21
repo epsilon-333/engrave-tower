@@ -4,8 +4,58 @@
     {
       "name": "start",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["server.js"],
+      "runtimeArgs": [
+        "server.js"
+      ],
       "port": 5180
+    },
+    {
+      "name": "en",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5185",
+        "-d",
+        "dist/itch"
+      ],
+      "port": 5185
+    },
+    {
+      "name": "before",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/user/AppData/Local/Temp/claude/C--Users-user-OneDrive-----------engrave-tower/eaa7c1bd-2e82-47f5-837e-30ada6e5d3e9/scratchpad/before/server.js"
+      ],
+      "port": 5181
+    },
+    {
+      "name": "recv",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/user/AppData/Local/Temp/claude/C--Users-user-OneDrive-----------engrave-tower/eaa7c1bd-2e82-47f5-837e-30ada6e5d3e9/scratchpad/recv.mjs"
+      ],
+      "port": 5182
+    },
+    {
+      "name": "plant",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/user/OneDrive/바탕 화면/클로드/plant-factory/server.js"
+      ],
+      "port": 5190
+    },
+    {
+      "name": "plantdist",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5191",
+        "-d",
+        "C:/Users/user/OneDrive/바탕 화면/클로드/plant-factory/dist/app"
+      ],
+      "port": 5191
     }
   ]
 }

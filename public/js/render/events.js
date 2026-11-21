@@ -33,6 +33,9 @@ export const EventMethods = {
       if (pend) { this.tierPolish(w, pend); pend = null; }
       if (ev.tier != null && TIER_EV.has(ev.t)) pend = { ev, parts: this.parts.length, fx: this.fx.length, al: this.anims.list.length, ag: this.anims.ground.length, px: this.anims.px.list.length, shake: this.shake, hitstop: this.hitstop, flash: this.flash };
       if (this.lifeEvent(w, ev)) continue;
+      if (this.chiefEvent(w, ev)) continue; // 가면 족장 (render/chieffx.js)
+      if (this.golemEvent(w, ev)) continue; // 이끼 골렘 (render/golemfx.js)
+      if (this.witchEvent(w, ev)) continue; // 늪 마녀 (render/witchfx.js)
       if (w.climb && towerEvent(this, w, ev)) continue; // 탑 51~100층 장치 · 보스 등장
       switch (ev.t) {
         case 'dmg':

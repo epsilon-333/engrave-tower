@@ -256,8 +256,8 @@ export const EnemyAiMethods = {
           ai.t -= DT;
           if (ai.mode === 'move') {
             vx = ux; vy = uy;
-            if (def.ai === 'boss' && def.proj && !frozen && e.shotCd <= 0 && dist < 220) { e.shotCd = 2.4; this.enemyShot(e, Math.atan2(dyp, dxp), def.proj.spread, 0.22); }
-            if (ai.t <= 0 && dist < 180) { ai.mode = 'wind'; ai.t = 0.6; ai.dx = dxp / dist; ai.dy = dyp / dist; this.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx: ai.dx, dy: ai.dy }); }
+            if (def.ai === 'boss' && def.proj && !frozen && e.shotCd <= 0 && dist < (def.proj.range ?? 220)) { e.shotCd = (def.proj.cd ?? 2.4) / (e.enraged ? 1.25 : 1); this.enemyShot(e, Math.atan2(dyp, dxp), def.proj.spread, 0.22); }
+            if (ai.t <= 0 && dist < 180 && !def.ownKit) { ai.mode = 'wind'; ai.t = 0.6; ai.dx = dxp / dist; ai.dy = dyp / dist; this.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx: ai.dx, dy: ai.dy }); }
           } else if (ai.mode === 'wind') {
             spd = 0;
             if (ai.t <= 0) { ai.mode = 'dash'; ai.t = 0.45; }
@@ -300,7 +300,7 @@ export const EnemyAiMethods = {
             }
           }
         }
-      } else if (e.state === 'chase' && !frozen && !(e.silenceT > 0) && !(st.flee > 0) && !(e.loseT > 0) && !(p.stealthT > 0) && !(e.lureT > 0 && !(e.provokeT > 0)) && def.ai !== 'flee' && def.ai !== 'kamikaze' && dist < e.r + p.r + 6 && e.atkCd <= 0 && (def.ai !== 'charge' && def.ai !== 'boss' || e.ai.mode === 'move')) {
+      } else if (e.state === 'chase' && !frozen && !(e.silenceT > 0) && !(st.flee > 0) && !(e.loseT > 0) && !(p.stealthT > 0) && !(e.lureT > 0 && !(e.provokeT > 0)) && def.ai !== 'flee' && def.ai !== 'kamikaze' && dist < e.r + p.r + 6 && e.atkCd <= 0 && !def.ownKit && (def.ai !== 'charge' && def.ai !== 'boss' || e.ai.mode === 'move')) {
         e.windT = def.elite ? 0.5 : 0.38; e.windMax = e.windT;
         this.emit({ t: 'windup', id: e.id });
       }
@@ -465,14 +465,14 @@ export const EnemyAiMethods = {
         { // 진짜로 뛴다: 처음 25%는 웅크렸다가 · 나머지 동안 포물선으로 날아 예고 원에 내려앉는다 (순간이동 없음)
           const k = 1 - Math.max(0, mv.t) / mv.max, a = Math.max(0, (k - 0.25) / 0.75), ea = a * a * (3 - 2 * a);
           const nx = mv.x0 + (mv.tx - mv.x0) * ea, ny = mv.y0 + (mv.ty - mv.y0) * ea;
-          if (!this.blocked(nx, ny, e.r)) { e.x = nx; e.y = ny; }
+          if ((e.def.ownKit && k >= 0.25) || !this.blocked(nx, ny, e.r)) { e.x = nx; e.y = ny; } // 가면 족장은 공중에서 벽 위도 지난다 (내릴 자리는 땅)
           e.jumpH = k < 0.25 ? 0 : Math.sin(a * Math.PI) * 34; e.moving = k >= 0.25;
         }
         if (mv.t > 0) return true;
         e.jumpH = 0;
         this.enemyArea(e, e.x, e.y, 40, e.atk * 1.7, def.type, def.status); if (!this.bfx(e, 'slam', e.x, e.y, 40)) this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 40, fx: 'quake' });
         if (++mv.n >= 3) { e.mv = null; return true; }
-        mv.t = mv.max = 0.62; mv.x0 = e.x; mv.y0 = e.y; mv.tx = p.x; mv.ty = p.y; this.emit({ t: 'telegraphCircle', x: p.x, y: p.y, r: 40, dur: 0.62 }); return true;
+        { const q = e.def.ownKit ? this.chiefLanding(e) : p; mv.t = mv.max = 0.62; mv.x0 = e.x; mv.y0 = e.y; mv.tx = q.x; mv.ty = q.y; this.emit({ t: 'telegraphCircle', x: q.x, y: q.y, r: 40, dur: 0.62 }); } return true;
       }
       case 'donut': {
         if (mv.t > 0) return true;
@@ -560,6 +560,7 @@ export const EnemyAiMethods = {
       this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '분노!', color: '#ff5a3a' }); this.emit({ t: 'shake', v: 3 });
     }
     const mv = e.mv;
+    if (def.ownKit) { this[def.ownKit + 'Timers'](e); if (!mv) return this[def.ownKit + 'Pick'](e, p, dist); } // 제 기술을 상황에 맞춰 고르는 보스: 가면 족장(sim/chief.js) · 이끼 골렘(sim/golem.js)
     if (!mv) {
       if ((e.mvCd = (e.mvCd ?? 2 + this.rng.range(0, 2)) - DT) > 0 || e.windT > 0 || dist > 200) return false;
       if (!def.elite && !e.champion && this.t - (this.lastMobMoveT ?? -9) < 0.7) { e.mvCd = 0.3 + this.rng.range(0, 0.4); return false; } // 보통 몬스터는 기술을 번갈아 쓴다 (여럿이 한꺼번에 예고 원을 그리지 않게)
@@ -637,6 +638,7 @@ export const EnemyAiMethods = {
       return false;
     }
     mv.t -= DT;
+    if (mv.own) return this[mv.own + 'Tick'](e, p, mv);
     if (mv.boss) return this.bossMoveTick(e, p, mv);
     if (BEAST[mv.k]) return BEAST[mv.k].tick(this, e, mv, p);
     switch (mv.k) {
@@ -761,6 +763,7 @@ export const EnemyAiMethods = {
   },
 
   chaseDir(e) {
+    if (e.def?.ownKit && !this.coTgt && this.mode === 'field') return this.chiefWalk(e); // 가면 족장: 몸이 커서 몸 너비로 벽을 본다 (sim/chief.js)
     if (this.coTgt) return this.pathDir(e, this.coTgt.x, this.coTgt.y); // 동료를 쫓는다 (거리장은 방장 기준이라 길찾기로)
     const p = this.player;
     const dx = p.x - e.x, dy = p.y - e.y, dist = Math.hypot(dx, dy) || 1;

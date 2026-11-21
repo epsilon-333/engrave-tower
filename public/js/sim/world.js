@@ -33,6 +33,9 @@ export const SKILL_TSTAT = {
   colossus: [['vit', 30, 12], ['pres', 30, 12]], extinction: [['vit', 30, 10], ['str', 20, 10]], wordScale: [['spi', 15, 6]], spiritEmpower: [['spi', 20, 8]],
 };
 import { createRng } from './rng.js';
+import { ChiefMethods } from './chief.js';
+import { GolemMethods } from './golem.js';
+import { WitchMethods } from './witch.js';
 import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP, generateField } from './mapgen.js';
 import { buildOverworld, G, WORLD_ZONE, BIOME_LIST, ENTRANCES } from '../data/maps/overworld.js';
 import { BIOME_SANCTUM, SANCTUMS, SANCT_LIFE, sanctQuestDef, FIND_NAME, trainSpec } from '../data/sanctums.js';
@@ -322,7 +325,7 @@ export class World {
       }
       this.enemies.push(e);
       this.aggro(e);
-      this.emit({ t: 'summon', x: e.x, y: e.y });
+      if (!e.lair) this.emit({ t: 'summon', x: e.x, y: e.y }); // 탑 보스는 제 등장 연출이 있다 (주황 불꽃 소환진이 겹치면 불타는 것처럼 보였다)
     }
   }
   updateClimb() {
@@ -732,7 +735,7 @@ export class World {
     if (this.happenT === undefined || (this.happenT -= DT) <= 0) { this.happenT = 0.25; this.updateHappenings(); }
     updateNpcLife(this, DT);
     if (this.pit?.e?.dead) { this.signals.push({ t: 'pitWon', bet: this.pit.bet, tier: this.pit.tier }); this.pit = null; }
-    this.updateZones(); this.updateOoze();
+    this.updateZones(); this.updateOoze(); this.updateBog();
     this.updateFlow();
     this.updateEnemies();
     if (this.climb) this.updateClimb();
@@ -856,6 +859,7 @@ export class World {
       if (lq === 'lava' && p.liquidT <= 0) { p.liquidT = 0.8; this.hurtPlayer(6 + this.zone.floor * 4, 'mag', null, { direct: true, status: 'burn' }); }
     }
     if (p.oozeT > 0) { p.oozeT -= DT; slow = Math.max(slow, 0.4); } // 독액 웅덩이
+    if (p.bogT > 0) { p.bogT -= DT; slow = Math.max(slow, 0.5); } // 늪 마녀가 바꾼 늪 (sim/witch.js)
 
 
     this.autoAim = inp.autoAim !== false;
@@ -2311,7 +2315,7 @@ export class World {
     if (e.dead || e.hidden || e.under || e.begging) return 0;
     if (e.resMark) this.resMarkHit(e); // 공명의 표식 (sim/resource.js)
     if (e.def.trial) return this.trialHit(e, amount, type, opt); // 숨은 스승의 시련: 피해 대신 「맞는 공격」만 센다 (sim/teacher.js)
-    if (e.mv?.k === 'channel' && !opt.fromDot) e.mv.taken = (e.mv.taken || 0) + amount; // 늪의 마녀: 의식 중 받은 피해 (대략)
+    if ((e.mv?.k === 'channel' || e.mv?.k === 'repair') && !opt.fromDot) e.mv.taken = (e.mv.taken || 0) + amount; // 늪의 마녀: 의식 중 받은 피해 (대략)
     if (e.invulnT > 0) { if (!opt.fromDot) this.emit({ t: 'text', x: e.x, y: e.y - 18, text: '무적', color: '#c8a8ff' }); return 0; } // 망령: 순간이동 뒤 잠깐 무적
     if (e.dormant) { e.dormant = false; e.state = 'chase'; this.aggro(e); this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '미믹!', color: '#ff5a3a' }); }
     const d = this.d, p = this.player;
@@ -2875,7 +2879,8 @@ export class World {
     const dist = Math.hypot(p.x - e.x, p.y - e.y);
     for (let i = 0; i < n; i++) {
       const a = ang + (i - (n - 1) / 2) * spread;
-      const base = { owner: 'e', src: e, x: e.x, y: e.y, vx: Math.cos(a) * pr.speed, vy: Math.sin(a) * pr.speed, life: 3, dmg: e.atk, type: e.def.type, status: pr.status, color: pr.color, pat };
+      const base = { owner: 'e', src: e, x: e.x, y: e.y, vx: Math.cos(a) * pr.speed, vy: Math.sin(a) * pr.speed, life: 3, dmg: e.atk, type: e.def.type, status: pr.status, color: pr.color, pat, skind: pr.skind, hitFx: pr.hitFx };
+      if (pr.castFx) this.emit({ t: pr.castFx, id: e.id, x: e.x, y: e.y, ang: a });
       if (pat === 'split') base.splitT = Math.min(0.6, dist / pr.speed * 0.5); // 반쯤 가서 세 갈래
       if (pat === 'homing') { base.vx *= 0.5; base.vy *= 0.5; base.life = 5; base.ehome = true; base.big = true; } // 느리지만 쫓아온다
       if (pat === 'bounce') base.bounces = 2; // 벽에서 두 번 튕긴다
@@ -3026,7 +3031,7 @@ export class World {
     if (v.passives) for (const k of v.passives) if (!e.passives.includes(k)) e.passives.push(k);
     if (v.add && e.phaseMoves) e.phaseMoves = e.phaseMoves.map((l, i) => (i >= n ? [...l, ...v.add] : l));
     e.tintX = e.looks[n - 1] || e.tintX; e.scale = (e.scale || 1) * 1.1; e.morphT = 0.9;
-    if (this.climb) arenaShift(this, n); // 결투장이 바뀐다 (용암 균열이 넓어지고 · 물이 차오른다)
+    if (this.climb && !CLIMB_SIGS[e.defId]?.noShift) arenaShift(this, n); // 결투장이 바뀐다 (noShift: 이끼 군주는 물이 차오르지 않는다) (용암 균열이 넓어지고 · 물이 차오른다)
     if (v.dark && this.zone) this.zone.dark = Math.min(0.85, (this.zone.dark || 0.3) + v.dark); // 별을 읽는 자: 하늘의 별이 꺼진다
     e.invulnT = Math.max(e.invulnT || 0, 0.9); e.mv = null; e.windT = 0.9; e.windMax = 0.9; e.mvCd = Math.max(e.mvCd || 0, 1.2);
     // 설명 글 없이: 터지는 연출 · 흔들림 · 모습(색 · 크기)이 바뀌는 것으로만 보여 준다
@@ -3387,7 +3392,7 @@ export class World {
       else if (this.wallAt(pr.x, pr.y) && pr.returning) { this.emit({ t: 'spark', x: pr.x - pr.vx * DT, y: pr.y - pr.vy * DT, color: pr.color }); pr.life = 0; } // 돌아오는 도끼도 벽에 막힌다 (손으로 바로 돌아온다)
       else if (this.wallAt(pr.x, pr.y) && !pr.returning) {
         if (pr.owner === 'p' && this.tileAt(pr.x, pr.y) === T_CRACK) this.hitCrack(pr.x, pr.y, pr.dmg);
-        this.emit({ t: 'spark', x: pr.x - pr.vx * DT, y: pr.y - pr.vy * DT, color: pr.color });
+        this.emit({ t: pr.hitFx || 'spark', x: pr.x - pr.vx * DT, y: pr.y - pr.vy * DT, color: pr.color });
         pr.life = 0;
       }
       if (pr.life <= 0) continue;
@@ -3414,18 +3419,20 @@ export class World {
           if (pr.pierce-- <= 0) { pr.life = 0; break; }
         }
       } else if (!pr.ghost) {
-        const hit = this.coTargets().find((t) => Math.hypot(t.x - pr.x, t.y - pr.y) < (t.r || 5) + 3);
-        if (hit) {
+        const hit = this.coTargets().find((t) => Math.hypot(t.x - pr.x, t.y - pr.y) < (t.r || 5) + (pr.rad || 3));
+        if (hit && pr.burstOnly) pr.life = 0; // 맹독 구슬: 닿으면 터지기만 한다 (피해는 터질 때 한 번)
+        else if (hit) {
           pr.life = 0;
           this.coTgt = hit === p ? null : hit;
           this.hurtPlayer(pr.dmg, pr.type, pr.src && !pr.src.dead ? pr.src : null, { status: pr.status, fromX: pr.x - pr.vx * 0.2, fromY: pr.y - pr.vy * 0.2 });
+          if (pr.hitFx) this.emit({ t: pr.hitFx, x: pr.x, y: pr.y });
           if (pr.cc && hit === p && this.hurtLanded) this.ccPlayer(pr.cc); // 거미줄 같은 몸 효과
           this.coTgt = null;
         }
       }
     }
     for (const pr of this.projs) if (pr.life <= 0 && pr.burst && !pr.bursted) { // 터지는 탄: 끝난 자리에서 둘레를 친다
-      pr.bursted = true; this.emit({ t: 'skillAoe', x: pr.x, y: pr.y, r: pr.burst, elem: pr.status === 'poison' ? 'poison' : pr.status === 'burn' ? 'fire' : null, fx: 'burst' });
+      pr.bursted = true; this.emit(pr.burstFx ? { t: pr.burstFx, x: pr.x, y: pr.y, r: pr.burst } : { t: 'skillAoe', x: pr.x, y: pr.y, r: pr.burst, elem: pr.status === 'poison' ? 'poison' : pr.status === 'burn' ? 'fire' : null, fx: 'burst' });
       this.enemyArea(pr.src || null, pr.x, pr.y, pr.burst, pr.dmg * 1.2, pr.type, pr.status);
     }
     for (const pr of this.projs) if (pr.life <= 0 && pr.owner === 'p' && !pr.burned && (pr.elem === 'fire' || pr.ench === 'fire') && this.map.outdoor) { // 날아가다 끝난 자리
@@ -3470,4 +3477,4 @@ export function distToSeg(px, py, x1, y1, x2, y2) {
 export { ECHOES, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP };
 
 // 나눠 둔 메서드를 World 에 붙인다
-Object.assign(World.prototype, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods, TeacherMethods, ResMethods, TeacherSkillMethods);
+Object.assign(World.prototype, ChiefMethods, GolemMethods, WitchMethods, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods, TeacherMethods, ResMethods, TeacherSkillMethods);

@@ -150,9 +150,9 @@ const BOSS_SHEET = { climbChief: {}, mossLord: {}, bogHag: {}, climbQueen: {}, d
 // 80층(뼈 용)은 보내 주신 동작 시트 하나로 (예전 시계지기의 3단계 그림은 쓰지 않는다)
 // 그림에 맞춘 동작: 기술마다 공격 줄 · 기술 줄 중 어느 그림을 쓸까 (적지 않은 기술은 근접이면 공격 · 나머지는 기술)
 Object.assign(BOSS_SHEET, {
-  climbChief: { atk: ['combo', 'leap', 'jumps3', 'quake', 'whirl', 'shove'], skl: ['charge'] }, // 몽둥이 내려치기 · 돌진은 기술 줄의 달려드는 그림
-  mossLord: { atk: ['combo', 'quake', 'leap', 'shove'], skl: ['spikeTrail', 'channel', 'pool', 'rain', 'nova', 'mark', 'fan', 'ripple', 'adds'] }, // 주먹 · 뿌리
-  bogHag: { atk: ['fan', 'pool', 'split'], skl: ['spiral', 'rain', 'mark', 'ripple', 'clones', 'meteorRain', 'adds'] }, // 지팡이 휘두르기 · 초록 마법진
+  climbChief: { atk: ['swing'], skl: ['roar', 'curse', 'summon', 'sacrifice', 'jumps3'] }, // 지팡이 휘두르기 = 공격 줄 · 포효 · 저주 · 소환 · 제물 · 뛰기 = 기술 줄(지팡이를 든 자세) · 돌진은 달리기
+  mossLord: { atk: ['punch', 'throw'], skl: ['meteor', 'scatter', 'jump', 'stomp'], as: { repair: 'idle' } }, // 이끼 골렘 (tools/boss_cut.py): 주먹 내려치기 = 공격 줄 · 두 팔 땅 찍기 = 기술 줄 · 돌진은 달려드는 그림(dash)
+  bogHag: { atk: ['melee'], skl: ['bind', 'swamp', 'roots', 'orbs', 'orbFan', 'wave'] }, // 지팡이 휘두르기 · 초록 마법진
   climbQueen: { atk: ['leap', 'fan', 'combo', 'split', 'filth'], skl: ['pool', 'rain', 'nova', 'mark', 'spiral', 'ritual', 'meteorRain', 'ripple', 'adds'] }, // 주먹 · 독 분출
   demonCaptain: { atk: ['combo', 'shove', 'charge', 'whirl', 'cleave', 'grab', 'quake', 'jumps3'], skl: ['mirror', 'pool', 'adds'], mirrorSkill: true }, // 사슬 · 방패 치기 · 방패가 빛나는 반사
   climbRift: { atk: ['quake', 'leap', 'combo', 'charge'], skl: ['fan', 'beam', 'sweep', 'crossBeam', 'nova', 'rain', 'pool', 'mark', 'meteorRain', 'ripple', 'adds'] }, // 주먹 · 가슴 핵 광선

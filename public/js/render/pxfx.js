@@ -19,13 +19,20 @@ const FLAME = [
   ['#ff9a30', '#e8501a', '#b8301a', '#6a2a1e'],
   ['#7a6a66', '#62544f', '#4e4240', '#3a3030'],
 ].map((row) => row.map(rgbOf));
-export function flameSprite(R, frame, heat) {
+// 보라 불 (가면 족장의 불덩이 · 제물): 흰 보라 → 연보라 → 보라 → 짙은 자주, 식으면 검보라 연기
+const FLAME_VOID = [
+  ['#fbeaff', '#e2a8ff', '#b56cff', '#7a34d0'],
+  ['#e8b8ff', '#c27cff', '#8e44e0', '#5a2496'],
+  ['#b06aff', '#7a34d0', '#5a2496', '#341a52'],
+  ['#4a3a5a', '#3c2e4c', '#30263e', '#241c30'],
+].map((row) => row.map(rgbOf));
+export function flameSprite(R, frame, heat, hue) {
   R = Math.max(1, Math.min(8, R | 0)); frame &= 3; heat = Math.max(0, Math.min(3, heat | 0));
-  const key = `f${R}|${frame}|${heat}`;
+  const key = `f${R}|${frame}|${heat}|${hue || ''}`;
   let c = cache.get(key);
   if (c) return c;
   const w = R * 2 + 1, h = Math.round(R * 2.7) + 2, cx = R + 0.5, cy = h - R - 0.5, tip = 1.5 + 0.35 * H(frame, R, 1);
-  const pal = FLAME[heat];
+  const pal = (hue === 'void' ? FLAME_VOID : FLAME)[heat];
   c = paint(w, h, (x, y) => {
     const dx = (x + 0.5 - cx) / R, dy = (y + 0.5 - cy) / R;
     const sway = Math.sin(dy * 2.4 + frame * 1.7) * 0.22 * Math.max(0, -dy);
