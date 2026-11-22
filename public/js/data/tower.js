@@ -64,8 +64,8 @@ export const CLIMB_SIGS = {
     passives: [], phase2: { text: '이끼가 온몸을 덮었다', atk: 1.2 }, phase3: { text: '고목이 썩어 무너진다', atk: 1.2, speed: 1.2 }, looks: ['hue-rotate(40deg) saturate(1.8) brightness(1.05)', 'hue-rotate(60deg) saturate(1.4) brightness(0.6) contrast(1.4)'] },
   bogHag: { add: [[], [], []], names: {}, hint: '맹독 구슬은 벽에 닿아도 터진다', // 기술은 sim/witch.js가 고른다 (add · 패시브 없음)
     passives: [], phase2: { text: '마녀가 진짜 모습을 드러냈다', atk: 1.25, speed: 1.2 }, phase3: { text: '마녀가 늪과 하나가 되었다', atk: 1.2 }, looks: ['hue-rotate(250deg) saturate(1.8) brightness(1.1)', 'hue-rotate(270deg) saturate(2) brightness(0.6) contrast(1.5)'] },
-  climbQueen: { add: [['meteorRain', 'filth'], ['ritual', 'meteorRain', 'filth'], ['ritual', 'meteorRain', 'filth']], names: { ritual: '늪의 제물', meteorRain: '독덩이 비', filth: '오물 투척' }, hint: '제물을 모두 쓰러뜨리면 거인이 무너진다',
-    passives: ['pull', 'poisonAura'], phase2: { text: '늪이 넘쳐흐른다', atk: 1.2, speed: 1.2, add: ['ripple'] }, phase3: { text: '거인이 독을 토해 낸다', atk: 1.25, speed: 1.15, passives: ['frenzy'], add: ['meteorRain'] }, looks: ['hue-rotate(30deg) saturate(2.2) brightness(1.15)', 'hue-rotate(70deg) saturate(2.6) brightness(0.75) contrast(1.4)'] },
+  climbQueen: { add: [[], [], []], names: {}, hint: '처음 쓰러뜨리면 둘로 갈라진다', // 기술은 sim/slime.js가 고른다 (add · 패시브 없음 · 그림 색은 그대로)
+    passives: [], phase2: { text: '왕관이 기울었다', atk: 1.2, speed: 1.15 }, phase3: { text: '몸이 끓어오른다', atk: 1.2, speed: 1.15 }, looks: [] },
   demonCaptain: { add: [['mirror'], ['mirror', 'cleave'], ['mirror', 'cleave', 'grab']], names: { mirror: '반사 방패', cleave: '악귀의 대베기', grab: '쇠사슬 끌어당기기' }, hint: '방패가 빛나는 동안 때리면 내가 다친다',
     passives: ['ward', 'thorns'], phase2: { text: '방패가 불타오른다', atk: 1.3, passives: ['burnAura'], add: ['cleave'] }, phase3: { text: '악귀 대장이 방패를 내던졌다', atk: 1.3, speed: 1.25, passives: ['frenzy'], add: ['jumps3'] }, looks: ['sepia(0.6) saturate(2.4) hue-rotate(-20deg) brightness(1.1)', 'saturate(3) hue-rotate(-40deg) brightness(0.7) contrast(1.5)'] },
   climbRift: { add: [['sweep'], ['sweep', 'crossBeam'], ['sweep', 'crossBeam']], names: { sweep: '회전 균열 광선', crossBeam: '십자 균열' }, hint: '도는 광선은 같은 방향으로 돌며 피해라',

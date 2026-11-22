@@ -163,7 +163,7 @@ Object.assign(MONSTERS, {
   bogHag: { name: '늪 마녀 수장', shape: 'humanoid', scale: 1.7, elite: true, boss: true, pal: { a: '#3a7a3a' }, hp: 1040, atk: 18, type: 'mag', speed: 44, ai: 'boss', ownKit: 'witch', r: 10, xp: 140, gold: 90, pres: 15, mres: 40, echo: { id: 'venom', rate: 1 },
     phaseMoves: [['fan', 'pool', 'blink'], ['pool', 'adds', 'spiral', 'blink'], ['rain', 'adds', 'spiral', 'mark', 'blink']], adds: 'leech',
     skillNames: { mark: '저주의 표식', rain: '독비' } },
-  climbQueen: { name: '늪의 거인', shape: 'blob', scale: 2.4, elite: true, boss: true, pal: { a: '#2a9a5a' }, hp: 1920, atk: 19, type: 'mag', speed: 30, ai: 'boss', status: 'poison', proj: { speed: 120, color: '#5dff9e', status: 'poison', spread: 7 }, r: 15, xp: 240, gold: 160, pres: 25, mres: 30, echo: { id: 'queen', rate: 1 },
+  climbQueen: { name: '늪의 거인', shape: 'blob', scale: 2.4, elite: true, boss: true, pal: { a: '#2a9a5a' }, hp: 1920, atk: 19, type: 'mag', speed: 30, ai: 'boss', ownKit: 'slime', r: 15, xp: 240, gold: 160, pres: 25, mres: 30, echo: { id: 'queen', rate: 1 },
     phaseMoves: [['pool', 'fan', 'leap'], ['rain', 'pool', 'adds', 'split'], ['nova', 'rain', 'adds', 'mark', 'spiral']], adds: 'gasBloat',
     skillNames: { nova: '독 폭발', rain: '독비', mark: '늪의 표식' } },
   demonCaptain: { name: '방패 악귀 대장', shape: 'humanoid', scale: 1.7, elite: true, boss: true, pal: { a: '#8a2a2a' }, hp: 2400, atk: 28, type: 'phys', speed: 46, ai: 'boss', shield: 0.4, status: 'burn', r: 11, xp: 300, gold: 180, pres: 60, mres: 30, echo: { id: 'magma', rate: 1 },

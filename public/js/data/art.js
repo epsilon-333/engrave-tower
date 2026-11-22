@@ -153,7 +153,8 @@ Object.assign(BOSS_SHEET, {
   climbChief: { atk: ['swing'], skl: ['roar', 'curse', 'summon', 'sacrifice', 'jumps3'] }, // 지팡이 휘두르기 = 공격 줄 · 포효 · 저주 · 소환 · 제물 · 뛰기 = 기술 줄(지팡이를 든 자세) · 돌진은 달리기
   mossLord: { atk: ['punch', 'throw'], skl: ['meteor', 'scatter', 'jump', 'stomp'], as: { repair: 'idle' } }, // 이끼 골렘 (tools/boss_cut.py): 주먹 내려치기 = 공격 줄 · 두 팔 땅 찍기 = 기술 줄 · 돌진은 달려드는 그림(dash)
   bogHag: { atk: ['melee'], skl: ['bind', 'swamp', 'roots', 'orbs', 'orbFan', 'wave'] }, // 지팡이 휘두르기 · 초록 마법진
-  climbQueen: { atk: ['leap', 'fan', 'combo', 'split', 'filth'], skl: ['pool', 'rain', 'nova', 'mark', 'spiral', 'ritual', 'meteorRain', 'ripple', 'adds'] }, // 주먹 · 독 분출
+  climbQueen: { atk: ['slam'], skl: ['ball', 'big', 'rain'], as: { sink: 'dash' } }, // 슬라임 왕: 내려치기 · 슬라임공 · 순간이동 (sim/slime.js)
+  slimeHalf: { atk: ['slam'], skl: ['ball', 'big', 'rain'], as: { sink: 'dash' } }, // 갈라진 슬라임 왕 (그림만 · 몬스터는 climbQueen 그대로 isHalf)
   demonCaptain: { atk: ['combo', 'shove', 'charge', 'whirl', 'cleave', 'grab', 'quake', 'jumps3'], skl: ['mirror', 'pool', 'adds'], mirrorSkill: true }, // 사슬 · 방패 치기 · 방패가 빛나는 반사
   climbRift: { atk: ['quake', 'leap', 'combo', 'charge'], skl: ['fan', 'beam', 'sweep', 'crossBeam', 'nova', 'rain', 'pool', 'mark', 'meteorRain', 'ripple', 'adds'] }, // 주먹 · 가슴 핵 광선
   frostOgre: { atk: ['combo', 'shove', 'grab', 'charge', 'cleave'], skl: ['leap', 'jumps3', 'quake', 'nova'] }, // 얼음 주먹 · 뛰어올라 내려찍기

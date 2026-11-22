@@ -36,6 +36,7 @@ export const EventMethods = {
       if (this.chiefEvent(w, ev)) continue; // 가면 족장 (render/chieffx.js)
       if (this.golemEvent(w, ev)) continue; // 이끼 골렘 (render/golemfx.js)
       if (this.witchEvent(w, ev)) continue; // 늪 마녀 (render/witchfx.js)
+      if (this.slimeEvent(w, ev)) continue; // 슬라임 왕 (render/slimefx.js)
       if (w.climb && towerEvent(this, w, ev)) continue; // 탑 51~100층 장치 · 보스 등장
       switch (ev.t) {
         case 'dmg':

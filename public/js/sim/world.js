@@ -36,6 +36,7 @@ import { createRng } from './rng.js';
 import { ChiefMethods } from './chief.js';
 import { GolemMethods } from './golem.js';
 import { WitchMethods } from './witch.js';
+import { SlimeMethods } from './slime.js';
 import { TILE, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP, generateField } from './mapgen.js';
 import { buildOverworld, G, WORLD_ZONE, BIOME_LIST, ENTRANCES } from '../data/maps/overworld.js';
 import { BIOME_SANCTUM, SANCTUMS, SANCT_LIFE, sanctQuestDef, FIND_NAME, trainSpec } from '../data/sanctums.js';
@@ -735,7 +736,7 @@ export class World {
     if (this.happenT === undefined || (this.happenT -= DT) <= 0) { this.happenT = 0.25; this.updateHappenings(); }
     updateNpcLife(this, DT);
     if (this.pit?.e?.dead) { this.signals.push({ t: 'pitWon', bet: this.pit.bet, tier: this.pit.tier }); this.pit = null; }
-    this.updateZones(); this.updateOoze(); this.updateBog();
+    this.updateZones(); this.updateOoze(); this.updateBog(); this.updateSlimeTrail();
     this.updateFlow();
     this.updateEnemies();
     if (this.climb) this.updateClimb();
@@ -2892,6 +2893,7 @@ export class World {
 
   killEnemy(e, selfDestruct = false) {
     if (e.dead) return;
+    if (e.def.ownKit === 'slime' && this.slimeSplit(e)) return; // 슬라임 왕: 처음 쓰러지면 둘로 갈라진다 (sim/slime.js)
     if (e.trait && this.traitDeath(e)) return; // 죽은 척 · 분열 · 폭탄
     if (e.decoyOf && !e.shardFake) this.emit({ t: 'text', x: e.x, y: e.y - 20, text: '가짜!', color: '#c8a8ff' });
     if (e.shardFake) shardFakeDie(this, e);
@@ -3431,6 +3433,7 @@ export class World {
         }
       }
     }
+    for (const pr of this.projs) if (pr.life <= 0 && pr.shatter && !pr.bursted) { pr.bursted = true; this.slimeShatter(pr); } // 슬라임공: 터져 사방으로 방울
     for (const pr of this.projs) if (pr.life <= 0 && pr.burst && !pr.bursted) { // 터지는 탄: 끝난 자리에서 둘레를 친다
       pr.bursted = true; this.emit(pr.burstFx ? { t: pr.burstFx, x: pr.x, y: pr.y, r: pr.burst } : { t: 'skillAoe', x: pr.x, y: pr.y, r: pr.burst, elem: pr.status === 'poison' ? 'poison' : pr.status === 'burn' ? 'fire' : null, fx: 'burst' });
       this.enemyArea(pr.src || null, pr.x, pr.y, pr.burst, pr.dmg * 1.2, pr.type, pr.status);
@@ -3477,4 +3480,4 @@ export function distToSeg(px, py, x1, y1, x2, y2) {
 export { ECHOES, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP };
 
 // 나눠 둔 메서드를 World 에 붙인다
-Object.assign(World.prototype, ChiefMethods, GolemMethods, WitchMethods, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods, TeacherMethods, ResMethods, TeacherSkillMethods);
+Object.assign(World.prototype, ChiefMethods, GolemMethods, WitchMethods, SlimeMethods, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods, TeacherMethods, ResMethods, TeacherSkillMethods);

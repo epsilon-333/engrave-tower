@@ -194,6 +194,7 @@ import { AtmosMethods } from './atmosphere.js';
 import { ChiefFxMethods } from './chieffx.js';
 import { GolemFxMethods } from './golemfx.js';
 import { WitchFxMethods } from './witchfx.js';
+import { SlimeFxMethods } from './slimefx.js';
 const DILATE = new WeakMap(), NOBUFF = Object.freeze({});
 const NOCOMBO = new Set(['fist', 'great', 'whip', 'bow', 'crossbow', 'orb', 'tome', 'staff', 'tube']);
 const PI = Math.PI;
@@ -673,7 +674,7 @@ export class Renderer {
     }
     // 바닥 이펙트는 지형을 따른다: 땅에 새기는 것(갈라짐 · 그을음 · 먹물 · 긁힌 자국)은 걸을 수 있는 땅에만, 예고 원 · 마법진은 벽 위로만 안 보이게
     this.clipTiles(w, cx, cy, true); this.anims.drawGround(g, dt); this.drawShadowWalk(w, dt); this.drawOoze(w); this.drawFx(w, dt, true, true); g.restore();
-    this.clipTiles(w, cx, cy, false); this.drawFx(w, dt, true, false); this.drawBog(w, cx, cy); this.drawChiefFx(w, dt, true); this.drawGolemFx(w, dt, true); this.drawWitchFx(w, dt, true); g.restore();
+    this.clipTiles(w, cx, cy, false); this.drawFx(w, dt, true, false); this.drawBog(w, cx, cy); this.drawChiefFx(w, dt, true); this.drawGolemFx(w, dt, true); this.drawWitchFx(w, dt, true); this.drawSlimeGround(w, dt); g.restore();
     if (w.veil?.size) { // 금 간 벽 너머 숨은 방: 깨기 전에는 벽 속 어둠처럼 덮어 둔다 (세린의 일지)
       for (const k of w.veil) { const x = (k % w.tw) * 16, y = ((k / w.tw) | 0) * 16; if (x < cx - 16 || x > cx + VW || y < cy - 16 || y > cy + VH) continue; g.fillStyle = '#0f0c13'; g.fillRect(x, y, 16, 16); g.fillStyle = '#17131c'; for (let q = 0; q < 6; q++) g.fillRect(x + ((k * 7 + q * 5) % 15), y + ((k * 3 + q * 11) % 15), 1, 1); }
     }
@@ -732,6 +733,7 @@ export class Renderer {
     this.drawChiefFx(w, dt, false);
     this.drawGolemFx(w, dt, false);
     this.drawWitchFx(w, dt, false);
+    this.drawSlimeAir(w, dt);
     this.anims.draw(this.g, dt);
 
     if (w.climb) drawTowerOver(this, w, g, cx, cy); // 회오리 · 시간 칼날 · 되감기 잔상 · 고래 그림자 · 돌풍 예고
@@ -1012,7 +1014,7 @@ export class Renderer {
 
   // 몬스터 그림: 내 모습을 비추는 거울 보스 · 8종족 옛 전사(나올 때 정한 종족)는 그때그때 고른다
   enemyArt(w, e) {
-    const art = MONSTER_ART[e.defId] || { base: 'goblin' };
+    const art = (e.isHalf && MONSTER_ART.slimeHalf) || MONSTER_ART[e.defId] || { base: 'goblin' }; // 갈라진 슬라임 왕은 작은 몸 그림
     if (art.mirrorPlayer) return { ...art, base: (RACE_ART[e.mirrorRace || w.b?.race] || RACE_ART.knight).base };
     if (art.raceLook) return { ...art, base: RACE_LOOK[e.raceLook] || RACE_LOOK.knight };
     if (art.teacherLook) { const ra = RACE_ART[e.raceLook || w.b?.race] || RACE_ART.knight; return { ...art, base: ra.base, tint: ra.tint }; } // 숨은 스승: 플레이어와 같은 종족 캐릭터 그림 (색 · 크기는 sim/teacher.js)
@@ -1082,6 +1084,10 @@ export class Renderer {
   }
   digHole(x, y, r) { const g = this.g; g.fillStyle = '#7a6448'; ellipse(g, x, y + 3, r + 2, (r + 2) * 0.42); g.fillStyle = '#2a1e14'; ellipse(g, x, y + 3, r, r * 0.38); g.fillStyle = '#4a3828'; ellipse(g, x, y + 2, r * 0.8, r * 0.18); }
   digPose(w, e, dt) {
+    if (e.slimeSink) { // 슬라임 왕 순간이동: 꿀렁이며 땅속으로 가라앉았다가 다른 자리에서 솟는다 (sim/slime.js)
+      const K = e.slimeSink, t = K.t, d = t < K.down ? Math.pow(t / K.down, 1.6) : t < K.down + K.under ? 1 : 1 - Math.min(1, (t - K.down - K.under) / K.up);
+      return { alpha: 1, sink: Math.min(0.97, d), lift: 0, shadow: 1 - d * 0.6 };
+    }
     if (e.shadowSink) { // 얼굴 없는 자: 그림자 속으로 가라앉았다가 다른 자리에서 솟는다
       const S = e.shadowSink, s = S.t < S.sink ? Math.pow(S.t / S.sink, 1.5) : 1 - Math.min(1, (S.t - S.sink) / S.rise);
       if (dt > 0 && Math.random() < 0.6) this.parts.push({ x: e.x + (Math.random() - 0.5) * 14, y: e.y + 2, vx: 0, vy: -10 - Math.random() * 14, t: 0.4, max: 0.4, color: Math.random() < 0.5 ? '#2a1844' : '#6a4ab8', g: 0, size: 1 });
@@ -1230,7 +1236,8 @@ export class Renderer {
     const dx = Math.round(e.x - w0 / 2 + wobble), dy = Math.round(e.y + 4 - h0 - carryLift + lungeY - flyUp - (ip?.lift || 0) - (e.jumpH || 0) + (ip?.sink || 0) * h0);
     if (ip) { g.globalAlpha *= ip.alpha; if (ip.sink > 0) { g.save(); g.beginPath(); g.rect(dx - 4, dy - 4, Math.round(w0) + 8, Math.round(e.y + 4 - dy) + 4); g.clip(); } }
     let bp = e.pose ? beastPose(e.pose, e.dir || 1, w.t) : null;
-    if (bp && art.sheet) { // 통째로 그린 보스 그림은 기울이거나 늘이지 않는다: 일어서기(땅 찍기 준비)는 몸을 웅크렸다 뛰어올라 내려찍는 점프로
+    if (e.slimeSink && art.sheet) { const K = e.slimeSink, t = K.t, wob = t < K.down ? Math.sin(t * 34) * (0.12 + 0.18 * t / K.down) : t > K.down + K.under ? Math.sin(t * 30) * 0.16 * (1 - (t - K.down - K.under) / K.up) : 0; bp = { x: 0, y: 0, rot: 0, sx: 1 + wob, sy: 1 - wob * 0.9 }; } // 꿀렁 (가로로 퍼졌다 세로로 솟았다)
+    if (bp && art.sheet && e.pose && !e.slimeSink) { // 통째로 그린 보스 그림은 기울이거나 늘이지 않는다: 일어서기(땅 찍기 준비)는 몸을 웅크렸다 뛰어올라 내려찍는 점프로
       const pk = 1 - e.pose.t / e.pose.max;
       const jy = e.pose.k === 'rear' ? (pk < 0.25 ? 2 * Math.sin(pk / 0.25 * Math.PI) : pk < 0.8 ? -22 * Math.sin(((pk - 0.25) / 0.55) * Math.PI / 2) : -22 * (1 - ((pk - 0.8) / 0.2) ** 2)) : 0;
       bp = { x: 0, y: jy, rot: 0, sx: 1, sy: 1 };
@@ -1241,8 +1248,8 @@ export class Renderer {
     } else if (bp) {
       g.save(); g.translate(Math.round(e.x + wobble + bp.x), Math.round(e.y + 4 - carryLift - flyUp + bp.y - (ip?.lift || 0) - (e.jumpH || 0) + (ip?.sink || 0) * h0)); g.rotate(bp.rot); g.scale(bp.sx, bp.sy);
       g.drawImage(img, Math.round(-w0 / 2), Math.round(-h0), Math.round(w0), Math.round(h0)); g.restore();
-      if (e.pose.k === 'dizzy') for (let i = 0; i < 3; i++) { const a = w.t * 7 + i * 2.1; g.fillStyle = '#ffe060'; g.fillRect(Math.round(e.x + Math.cos(a) * 8), Math.round(dy - 5 + Math.sin(a) * 2), 2, 2); }
-      if ((e.pose.k === 'crouch' && e.mv?.k === 'headbutt') && dt > 0 && Math.random() < 0.35) this.parts.push({ x: e.x - (e.dir || 1) * e.r, y: e.y + 3, vx: -(e.dir || 1) * (30 + Math.random() * 40), vy: -20 - Math.random() * 20, t: 0.45, max: 0.45, color: '#a89880', g: 200, puff: true, size: 2 }); // 뒷발로 땅을 긁는 흙먼지
+      if (e.pose?.k === 'dizzy') for (let i = 0; i < 3; i++) { const a = w.t * 7 + i * 2.1; g.fillStyle = '#ffe060'; g.fillRect(Math.round(e.x + Math.cos(a) * 8), Math.round(dy - 5 + Math.sin(a) * 2), 2, 2); }
+      if ((e.pose?.k === 'crouch' && e.mv?.k === 'headbutt') && dt > 0 && Math.random() < 0.35) this.parts.push({ x: e.x - (e.dir || 1) * e.r, y: e.y + 3, vx: -(e.dir || 1) * (30 + Math.random() * 40), vy: -20 - Math.random() * 20, t: 0.45, max: 0.45, color: '#a89880', g: 200, puff: true, size: 2 }); // 뒷발로 땅을 긁는 흙먼지
     } else if (e.held && !art.beast && !art.sheet) {
       this.heldFighter(w, e, img, name, sc, (ip?.sink || 0) * h0); // 숨은 스승: 플레이어와 같은 자세 · 같은 무기 그리기
       if (dt > 0 && e.outline && Math.random() < 0.22) this.parts.push({ x: e.x + (Math.random() - 0.5) * w0 * 0.7, y: dy + h0 * (0.3 + Math.random() * 0.6), vx: (Math.random() - 0.5) * 6, vy: -18 - Math.random() * 10, t: 0.5, max: 0.5, color: e.outline, g: -4, glow: true, size: 1 });
@@ -2497,6 +2504,7 @@ export class Renderer {
   drawProj(pr) {
     const g = this.g;
     if (pr.skind === 'voidfire') return this.drawVoidFire(pr); // 가면 족장의 보라 불덩이 (render/chieffx.js)
+    if (pr.skind === 'slimeBall' || pr.skind === 'slimeShard' || pr.skind === 'slimeBig') return this.drawSlimeProj(pr); // 슬라임 왕 (render/slimefx.js)
     if (pr.skind === 'venomOrb') return this.drawVenomOrb(pr); // 늪 마녀의 맹독 구슬 (render/witchfx.js)
     if (pr.skind === 'pebble') return this.drawPebble(pr); // 이끼 골렘의 작은 돌 (render/golemfx.js)
     if (pr.kind === 'rock') {
@@ -3509,4 +3517,4 @@ function drawWeb(g, x, y, t, a) {
 }
 
 // 나눠 둔 메서드를 Renderer 에 붙인다
-Object.assign(Renderer.prototype, HudMethods, FxMethods, EventMethods, AtmosMethods, ChiefFxMethods, GolemFxMethods, WitchFxMethods);
+Object.assign(Renderer.prototype, HudMethods, FxMethods, EventMethods, AtmosMethods, ChiefFxMethods, GolemFxMethods, WitchFxMethods, SlimeFxMethods);
