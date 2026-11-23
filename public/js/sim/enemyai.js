@@ -13,6 +13,13 @@ import { ACTIVE_RANGE, AI_MOVES, DT, N8, STATUS_COLOR, distToSeg } from './world
 
 export const SUMMON_MAX = 3, SUMMON_AREA_MAX = 6, BOSS_ADDS_MAX = 4; // 몬스터 소환체 최대 수
 export const EnemyAiMethods = {
+  // 소환체를 몇 마리 더 부를 수 있나: 보스는 부하 4까지 · 그 밖은 한 소환사당 3 · 둘레 200 안에 모두 6
+  summonRoom(e) {
+    const mine = this.enemies.filter((o) => o.summoner === e.id && !o.dead).length;
+    if (e.def?.boss || e.lair) return Math.max(0, BOSS_ADDS_MAX - mine);
+    const area = this.enemies.filter((o) => o.summoned && !o.dead && Math.hypot(o.x - e.x, o.y - e.y) < 200).length;
+    return Math.max(0, Math.min(SUMMON_MAX - mine, SUMMON_AREA_MAX - area));
+  },
   updateEnemies() {
     const P = this.player, d = this.d, s = this.s, host = !!this.coop; // 파티 탑: 내가 맡은 몬스터는 내 세계가 움직인다
     this.coRec = host;

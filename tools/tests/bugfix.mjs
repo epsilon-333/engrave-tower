@@ -51,5 +51,21 @@ const trialWorld = (fam, gear, lv = 40, engravings = {}) => {
   ok(!p.buffs.hNoShadow, '스승의 방에서 맞으면 무영이 풀린다');
 }
 
+// 5) 보스 패시브 「무리를 부른다」(summonTimer): 18초마다 둘씩 부르지만 보스 부하는 4까지 (예전엔 끝없이 늘었다)
+{
+  const f = 15, act = C.actOf(f), z = ALL_ZONES.find((x) => x.id === act.zone), run = C.newRun({ seed: 3 }); run.f = f;
+  const b = computeBuild({ race: 'knight', level: 30, alloc: { vit: 40 }, engravings: {}, gear: { weapon: 'rustySword' }, extraEffects: C.runEffects(run) });
+  const w = new World({ build: b, mode: 'field', zone: { ...z, dark: 0 }, zoneId: z.id, seed: 3, map: buildClimbFloor(z, 3, f, 'guardian'), tower: { f }, climb: { run, f, kind: 'guardian' } });
+  for (let i = 0; i < 60 * 15 && !(w.climb.boss && !w.climb.intro); i++) { w.player.hp = w.d.maxHp; w.step(idle); w.events.length = 0; }
+  const boss = w.climb.boss;
+  ok(!!boss, '수호자가 나온다');
+  if (boss) {
+    boss.passives = ['summonTimer']; boss.pv = {}; boss.hp = boss.maxHp = 1e12;
+    let most = 0;
+    for (let i = 0; i < 60 * 120; i++) { w.player.hp = w.d.maxHp; w.player.invuln = 1; w.bossPassiveTick(boss); w.events.length = 0; w.t += 1 / 60; most = Math.max(most, w.enemies.filter((o) => o.summoner === boss.id && !o.dead).length); }
+    ok(most <= 4, `무리를 불러도 보스 부하는 4까지 (${most})`);
+  }
+}
+
 console.log(bad ? `${bad} FAIL` : 'ALL OK');
 process.exitCode = bad ? 1 : 0;

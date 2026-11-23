@@ -379,7 +379,7 @@ export function bossTickX(w, e, p, mv) {
         const prev = w.coTgt;
         for (const q of w.coTargets()) { const vx = L.x2 - L.x1, vy = L.y2 - L.y1, l2 = vx * vx + vy * vy, k = Math.max(0, Math.min(1, ((q.x - L.x1) * vx + (q.y - L.y1) * vy) / l2)); if (Math.hypot(q.x - L.x1 - vx * k, q.y - L.y1 - vy * k) < 30 + (q.r || 5)) { w.coTgt = q === w.player ? null : q; w.hurtPlayer(e.atk * 2.0, 'mag', e, { status: 'chill', fromX: q.x, fromY: q.y - 20 }); } }
         w.coTgt = prev;
-        for (let i = 0; i < 2; i++) { // 등에서 정령이 떨어진다
+        for (let i = 0, n = Math.min(2, w.summonRoom(e)); i < n; i++) { // 등에서 정령이 떨어진다 (보스 부하 4까지)
           const k = w.rng.range(0.25, 0.75), x = L.x1 + (L.x2 - L.x1) * k, y = L.y1 + (L.y2 - L.y1) * k;
           if (w.blocked(x, y, 6) || w.voidZone && w.tileAt(x, y + 3) === T_LIQUID) continue;
           const m = w.makeEnemy(e.def.adds || 'windSpirit', x, y, { summoned: true }); m.summoner = e.id; m.state = 'chase'; m.home = { x, y }; w.enemies.push(m); w.emit({ t: 'summon', x, y });
