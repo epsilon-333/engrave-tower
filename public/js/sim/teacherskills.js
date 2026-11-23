@@ -11,7 +11,7 @@ export const SIG_SKILL = { sword: 'hIaido', heavy: 'hChiefCall', magic: 'hManaSu
 const SUMMON_MAX = 3; // 리치의 해골 병사 (몬스터 소환 규칙: 한 소환사당 3)
 
 // [아이디, 이름, 쿨타임(초), 쓰는 거리 [최소, 최대], 실행]  — 실행(ctx): ctx = { w, Tr, e, p, a(나를 향한 각), d(거리) }
-const S = (id, name, cd, min, max, run) => ({ id, name, cd, min, max, run });
+const S = (id, name, cd, min, max, run, need) => ({ id, name, cd, min, max, run, need }); // need(Tr): 쓸 수 있을 때만 (시체 폭발 = 시체가 있을 때)
 export const TEACHER_SKILLS = {
   sword: [
     S('sweep', '횡베기', 5, 0, 60, ({ w, e }) => w.tsMelee(e, 'sword', 0.35, { range: 46, arc: 3.0, k: 0.1, knock: 18 })),
@@ -91,7 +91,8 @@ export const TeacherSkillMethods = {
     if (!surge && (Tr.skCd.weapon || 0) <= this.t && dist < (WS_MAX[Tr.fam] || 170)) pool.push({ id: 'weapon', cd: 6.5 });
     if (!pool.length) { Tr.skT = 0.5; return false; }
     const s = pool[this.rng.int(0, pool.length - 1)];
-    Tr.skCd[s.id] = this.t + s.cd * (1 - (Tr.st?.spi || 0) / 400); // 정신 → 쿨타임 Tr.skT = (surge ? 1.0 : 1.3) / Math.pow(Tr.lvK || 1, 0.4) * (Tr.fam === 'magic' ? 2 : 1); // 내 레벨이 높을수록 몰아친다 // 스킬과 스킬 사이 1.3초 (몰아친다) (평타 · 움직임이 그 사이에)
+    Tr.skCd[s.id] = this.t + s.cd * (1 - (Tr.st?.spi || 0) / 400); // 정신 → 쿨타임
+    Tr.skT = (surge ? 1.0 : 1.3) / Math.pow(Tr.lvK || 1, 0.4) * (Tr.fam === 'magic' ? 2 : 1); // 내 레벨이 높을수록 몰아친다 // 스킬과 스킬 사이 1.3초 (몰아친다) (평타 · 움직임이 그 사이에)
     this.trialPayback(e); // 대족장: 스킬을 쓸 때마다 받은 피해를 되갚는다
     if (s.id === 'weapon') { this.trialWeaponSkill(); return true; }
     Tr.s = 'wskill'; Tr.t = 0.8;
