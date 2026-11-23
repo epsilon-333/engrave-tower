@@ -350,7 +350,7 @@ export const TeacherMethods = {
       this.delayed.push({ t: 0.35, run: () => { if (Tr.done) return; const a2 = Math.atan2(this.player.y - e.y, this.player.x - e.x); const x0 = e.x, y0 = e.y; this.trialDash(e, a2, 120, 0.16, Tr.dashCd); this.delayed.push({ t: 0.16, run: () => { if (Tr.done) return; this.emit({ t: 'swing', x: e.x, y: e.y, ang: a2, range: 40, arc: 0.3, type: 'phys', dir: 1, dur: 0.14, thrust: true }); const q = this.player, L = Math.hypot(e.x - x0, e.y - y0) || 1, t2 = Math.max(0, Math.min(1, ((q.x - x0) * (e.x - x0) + (q.y - y0) * (e.y - y0)) / (L * L))); if (Math.hypot(q.x - (x0 + (e.x - x0) * t2), q.y - (y0 + (e.y - y0) * t2)) < 16) { this.hurtPlayer(this.trialDmg(0.13), 'phys', e, { fromX: x0, fromY: y0 }); this.knockPlayer(x0, y0, 24); } } }); } });
     } else if (f === 'scythe') { // 회오리: 하나가 1초 동안 돌며 둘레를 네 번 벤다
       Tr.t = 1.2; const b = e;
-      for (let i = 0; i < 4; i++) this.delayed.push({ t: 0.25 + i * 0.25, run: () => { if (Tr.done || b.dead) return; this.emit({ t: 'spin', x: b.x, y: b.y, r: 50, heavy: false }); if (Math.hypot(this.player.x - b.x, this.player.y - b.y) <= 56) this.hurtPlayer(this.trialDmg(0.05), 'phys', b, { fromX: b.x, fromY: b.y }); } });
+      for (let i = 0; i < 4; i++) this.delayed.push({ t: 0.25 + i * 0.25, run: () => { if (Tr.done || b.dead) return; this.emit({ t: 'spin', x: b.x, y: b.y, r: 50, heavy: false, foe: true }); if (Math.hypot(this.player.x - b.x, this.player.y - b.y) <= 56) this.hurtPlayer(this.trialDmg(0.05), 'phys', b, { fromX: b.x, fromY: b.y }); } });
     } else if (f === 'dagger') { // 단검 폭풍: 여덟 방향으로 단검을 던진다
       Tr.t = 0.8; this.emit({ t: 'windup', id: e.id });
       this.delayed.push({ t: 0.4, run: () => { if (Tr.done) return; const a0 = this.rng.range(0, Math.PI / 4); for (let i = 0; i < 8; i++) this.trialRay(e, a0 + (i / 8) * Math.PI * 2, 150, 12, 0.07, 'arrowBeam'); } });
@@ -411,7 +411,7 @@ export const TeacherMethods = {
       Tr.shoutT = 5; this.emit({ t: 'skillAoe', x: e.x, y: e.y, r: 60, elem: 'fire', fx: 'roar' }); this.emit({ t: 'bossHeal', id: e.id, x: e.x, y: e.y, from: 1, to: 1, big: false });
       this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '받는 피해 -30%', color: '#ff7a5a' }); Tr.t = 0.6;
     } else if (f === 'magic') { // 마력 폭주 (스승판): 10초 동안 주문을 빠르게 (쿨타임 없이 1초에 하나)
-      Tr.surgeT = 10; Tr.skT = 0.3; this.emit({ t: 'buff', x: e.x, y: e.y, color: '#b58aff' }); this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '10초 동안 주문이 쉬지 않는다', color: '#b58aff' }); Tr.s = 'move'; Tr.t = 0.2;
+      Tr.surgeT = 10; Tr.skT = 0.3; this.emit({ t: 'buff', x: e.x, y: e.y, color: '#b58aff', foe: true }); this.emit({ t: 'text', x: e.x, y: e.y - 30, text: '10초 동안 주문이 쉬지 않는다', color: '#b58aff' }); Tr.s = 'move'; Tr.t = 0.2;
     } else if (f === 'scythe') { // 망자의 낫: 앞쪽 크게 (거리 72 · 각 2.6) · 280% · 맞히면 체력 3% 회복
       this.tsMelee(e, 'scythe', 0.35, { range: 72, arc: 2.6, k: 2.8 * SIG_K, heal: 0.03 });
     } else if (f === 'dagger') { // 그림자 손: 둘레 170 안의 나를 끌고 와 최대 체력 50% (공격력 200%~600% 사이)
@@ -431,7 +431,7 @@ export const TeacherMethods = {
         const q = this.player, ax = Math.cos(a), ay = Math.sin(a), x1 = e.x, y1 = e.y;
         let dist = 170; while (dist > 0 && this.blocked(x1 + ax * dist, y1 + ay * dist, 5)) dist -= 6;
         const wall = dist < 170 - 6, t = (q.x - x1) * ax + (q.y - y1) * ay, onPath = t > 0 && t < dist + 12 && Math.hypot(q.x - (x1 + ax * t), q.y - (y1 + ay * t)) < 16;
-        this.trialDash(e, a, dist, 0.22, Tr.dashCd); this.emit({ t: 'skillDash', x1, y1, x2: x1 + ax * dist, y2: y1 + ay * dist, elem: 'phys' });
+        this.trialDash(e, a, dist, 0.22, Tr.dashCd); this.emit({ t: 'skillDash', x1, y1, x2: x1 + ax * dist, y2: y1 + ay * dist, elem: 'phys', foe: true });
         if (onPath) this.tsLater(0.22, () => {
           const ex = x1 + ax * (dist + 10), ey = y1 + ay * (dist + 10); if (!this.blocked(ex, ey, 5)) { q.x = ex; q.y = ey; }
           if (wall) { this.emit({ t: 'skillAoe', x: q.x, y: q.y, r: 30, elem: 'phys', fx: 'quake' }); this.emit({ t: 'shake', v: 5 }); this.emit({ t: 'text', x: q.x, y: q.y - 24, text: '벽에 박혔다!', color: '#ff9a7a' }); }

@@ -480,7 +480,7 @@ export class Renderer {
   // 불 숨결: 입(용화면 용의 입, 아니면 얼굴 앞)에서 불꽃 덩어리를 뿜는다
   flameStream(ev) {
     const pl = this.world.player, M = atlas.true_dragon_meta;
-    const big = !!pl.buffs?.dragonForm && !!M && this.dragonBy != null;
+    const big = !ev.foe && !!pl.buffs?.dragonForm && !!M && this.dragonBy != null; // 스승의 숨결은 내 용의 입에서 나오지 않는다
     // 용: 이 순간의 조준으로 고개를 숙인 브레스 자세의 입을 바로 구하고, 입 끝에서 조금 앞에서 뿜는다
     const dm = big ? this.dragonMouthAt(pl, this.dragonBy, 'breath', M.anims.breath.n - 1, this.dragonTilt(Math.cos(ev.ang), Math.sin(ev.ang))) : null;
     const ox = dm ? dm.x + Math.cos(ev.ang) * 3 : ev.x + Math.cos(ev.ang) * 7, oy = dm ? dm.y + Math.sin(ev.ang) * 3 : ev.y - 12 + Math.sin(ev.ang) * 4;

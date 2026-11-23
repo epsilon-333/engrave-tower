@@ -202,7 +202,7 @@ export const TeacherSkillMethods = {
   tsBreath(Tr, e, a) { // 화염 숨결: 1초 동안 앞쪽 부채꼴을 태운다 (방향은 처음에 정해진다)
     this.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx: Math.cos(a), dy: Math.sin(a), len: 100, w: 60 });
     for (let i = 0; i < 7; i++) this.tsLater(0.35 + i * 0.15, () => {
-      this.emit({ t: 'skillCone', x: e.x, y: e.y, ang: a, range: 72, angle: 0.9, elem: 'fire', fx: 'breath' });
+      this.emit({ t: 'skillCone', x: e.x, y: e.y, ang: a, range: 72, angle: 0.9, elem: 'fire', fx: 'breath', foe: true });
       const p = this.player, dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy); let da = Math.atan2(dy, dx) - a; da = Math.atan2(Math.sin(da), Math.cos(da));
       if (d <= 104 && Math.abs(da) <= 0.5) this.hurtPlayer(this.trialDmg(0.03), 'mag', e, { fromX: e.x, fromY: e.y, direct: true });
     });

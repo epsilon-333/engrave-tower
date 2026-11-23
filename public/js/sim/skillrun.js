@@ -278,7 +278,7 @@ export const SkillMethods = {
         if (!sp.length) { this.emit({ t: 'text', x: p.x, y: p.y - 20, text: '정령이 없다', color: '#a8b0c0' }); break; }
         const c = ctx.auto && ctx.point ? ctx.point : ctx.auto && ctx.target ? { x: ctx.target.x, y: ctx.target.y } : this.aimPoint(160);
         const elems = [...new Set(sp.map((a) => a.elem))];
-        for (const a of sp) { if (!op.keep) a.t = 0; this.emit({ t: 'skillDash', x1: a.x, y1: a.y, x2: c.x, y2: c.y, elem: a.elem }); }
+        for (const a of sp) { if (!op.keep) a.t = 0; this.emit({ t: 'skillDash', x1: a.x, y1: a.y, x2: c.x, y2: c.y, elem: a.elem, ally: true }); }
         this.emit({ t: 'skillAoe', x: c.x, y: c.y, r: op.r, elem: elems[0], fx: 'meteor' });
         for (const e of this.enemiesNear(c.x, c.y, op.r)) {
           this.skillHit(e, { mul: op.mul * (1 + 0.35 * (sp.length - 1)) }, { ...ctx, elem: elems[0] });

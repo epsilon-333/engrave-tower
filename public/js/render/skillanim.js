@@ -81,8 +81,27 @@ export class SkillAnims {
     if (fx === 'shards') return this.add('shardBurst', { x, y, r, col: '#e8f4ff' });
     if (fx === 'gale') return this.add('gale', { x, y, r, col: '#c8ffe0' });
     if (fx === 'arcane' || fx === 'implode' || fx === 'timestop') return this.add('runeBurst', { x, y, r, col: ELEM_COL[el] || '#b98aff', implode: fx === 'implode' });
-    if (fx === 'quake' || fx === 'smash' || fx === 'slam') return this.add('cracks', { x, y, r, col: el === 'fire' ? '#ff8a3a' : el === 'ice' ? '#9fe3ff' : '#ffd890' });
+    if (fx === 'quake' || fx === 'smash' || fx === 'slam') return this.groundSlam(x, y, r, el, big);
     if (fx === 'splash') return this.add('cloud', { x, y, r, col: '#8ad8ff', bubble: true });
+  }
+  // 땅 울림 (위에서 본 모습): 맞은 자리에 금이 번지고(바닥 층 · 벽 · 물에선 잘린다) · 흙먼지가 땅을 타고 흩어지고 · 돌 조각이 튀어 떨어진다 · 한가운데가 잠깐 번쩍
+  groundSlam(x, y, r, el, big) {
+    const R = this.r, w = R.world, col = el === 'fire' ? '#ff8a3a' : el === 'ice' ? '#9fe3ff' : el === 'lightning' ? '#f8f070' : '#ffd890';
+    const onLand = !w || !(w.solid?.(x, y) || w.isWaterAt?.(x, y));
+    if (onLand) this.add('cracks', { x, y, r, col });
+    const n = Math.round(6 + r / 5) * (big ? 2 : 1), dust = onLand ? '#a89a82' : '#cfe8f4';
+    for (let i = 0; i < n; i++) { // 흙먼지: 방향 · 속도 · 크기를 흩뜨려 고리 꼴이 되지 않게, 땅에 붙어 퍼지다 가라앉는다
+      const a = Math.random() * Math.PI * 2, sp = r * (0.6 + Math.random() * 1.6);
+      R.parts.push({ x: x + Math.cos(a) * r * 0.15, y: y + 2 + Math.sin(a) * r * 0.08, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.5, t: 0.5 + Math.random() * 0.35, max: 0.85, color: i % 3 ? dust : '#8a7c68', g: -6, puff: true, size: 2 + Math.random() * (r > 40 ? 2.5 : 1.5) });
+    }
+    if (onLand) for (let i = 0; i < Math.round(4 + r / 8); i++) { // 돌 조각: 튀어 올랐다 둘레 땅에 떨어진다
+      const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * r * 1.6;
+      R.parts.push({ x, y: y - 2, vx: Math.cos(a) * sp, vy: -50 - Math.random() * 90, t: 0.7, max: 0.7, color: i % 3 ? '#6a5a48' : '#a89070', g: 380, chunk: true, floor: y + 2 + Math.sin(a) * r * 0.35 });
+    }
+    if (el && el !== 'phys') for (let i = 0; i < 10; i++) { const a = Math.random() * Math.PI * 2, d = Math.random() * r * 0.7; R.parts.push({ x: x + Math.cos(a) * d, y: y + Math.sin(a) * d * 0.5, vx: 0, vy: -30 - Math.random() * 40, t: 0.5, max: 0.5, color: col, g: -10, glow: true, size: 1 }); } // 속성 빛이 틈에서 솟는다
+    R.fx.push({ k: 'bloom', x, y: y - 2, r: r * 0.7, color: col, t: 0.16, max: 0.16 });
+    R.shake = Math.max(R.shake, big ? 9 : r > 40 ? 6 : 3);
+    return true;
   }
   // 예고 시간이 있는 범위 스킬: 떨어지는 동안
   onFall(ev) {
@@ -92,20 +111,20 @@ export class SkillAnims {
     else if (fx === 'holy') this.add('pillarCharge', { x: ev.x, y: ev.y, r: ev.r, max: ev.dur });
   }
   pxAoe(ev) { // 범위 스킬 → pixelfx
-    const fx = ev.fx, el = ev.elem, x = ev.x, y = ev.y, big = !!ev.ult || (ev.r || 0) >= 70, P = this.px;
-    const pal = PAL[el];
-    if (fx === 'meteor' || (fx === 'burst' && (el === 'fire' || !el))) return P.add('explosions/small-explosion', x, y, { max: big ? 3 : 2.2 });
+    const fx = ev.fx, el = ev.elem, x = ev.x, y = ev.y, big = !!ev.ult || (ev.r || 0) >= 70, pl = this.r.world?.player;
+    const pal = PAL[el], self = !!pl && Math.hypot(x - pl.x, y - pl.y) < 8; // 내 몸에서 터지는 것은 몸 뒤에 (촉수 · 폭발이 내 몸을 덮지 않게)
+    const P = self ? { add: (id, x2, y2, o = {}) => this.px.add(id, x2, y2, { sortY: y2 - 6, ...o }) } : this.px;
+    if (fx === 'meteor' || (fx === 'burst' && (el === 'fire' || !el))) return P.add('explosions/small-explosion', x, y, { max: big ? 3 : 2.2, stone: '#4a4038' }); // 연기 · 돌은 잿빛 (기본값은 보랏빛이라 땅과 어긋났다)
     if (fx === 'burst' && el === 'lightning') return P.add('lightning/lightning-strike', x, y, { max: 1.6 });
-    if (fx === 'burst' && el === 'ice') return P.add('ice/frost-nova', x, y, { max: 1.8, sy: GROUND });
-    if (fx === 'burst' && el === 'dark') return P.add(big ? 'shadow/dark-explosion' : 'shadow/shadow-tendrils', x, y, { max: 2.2 });
+    if (fx === 'burst' && el === 'dark') return P.add('shadow/shadow-tendrils', x, y, { max: 2.2, scale: big ? 1.15 : 1 }); // 큰 것도 촉수 (dark-explosion은 몸 둘레에 커다란 점선 고리를 그렸다)
     if (fx === 'burst') return P.add('arcane/mana-burst', x, y, { palette: pal || PAL.arcane, sy: GROUND });
-    if (fx === 'zero') return P.add('ice/frost-nova', x, y, { max: 2, sy: GROUND }); // 얼음 가시 · 빛기둥은 직접 그린 쪽이 낫다 (사용자 판단) → 아래의 예전 애니메이션
-    if (fx === 'doom' || fx === 'corpse') return P.add(big ? 'shadow/dark-explosion' : 'shadow/shadow-tendrils', x, y, { max: 2.2 });
+    // 얼음 (zero · burst ice): frost-nova는 옆에서 본 그림이라 가로 한 줄 결정 + 타원 고리로 보였다 → 아래의 직접 그린 얼음 가시 (빛기둥도 직접 그린 쪽 · 사용자 판단)
+    if (fx === 'doom' || fx === 'corpse') return P.add('shadow/shadow-tendrils', x, y, { max: 2.2, scale: big ? 1.15 : 1 });
     if (fx === 'spikes' || fx === 'vines') return P.add('nature/earth-spike', x, y, { palette: el === 'phys' ? undefined : PAL.forest, max: 2.2 });
-    if (fx === 'fog') return P.add('nature/poison-cloud', x, y, { palette: PAL.poison, max: 2.6 });
+    // 독 안개 (fog): poison-cloud는 옆에서 본 그림이라 바닥선을 따라 긴 가로 띠로 깔렸다 → 아래의 직접 그린 독 웅덩이 · 안개 (drawMiasma)
     if (fx === 'implode' || fx === 'timestop') return P.add('explosions/implosion', x, y, { palette: pal || PAL.arcane, sy: GROUND });
     if (fx === 'arcane') return P.add('arcane/mana-burst', x, y, { palette: pal || PAL.arcane, sy: GROUND });
-    if (fx === 'quake' || fx === 'smash' || fx === 'slam') return P.add('impacts/ground-slam', x, y, { max: 1.8, sy: GROUND });
+    // 땅 울림 (quake · smash · slam): ground-slam은 옆에서 본 그림(양옆 초승달 충격파 · 바닥선 먼지 띠 · 보랏빛 먼지 기둥)이라 몸 둘레 고리와 가로 막대로 보였다 → 아래의 groundSlam (위에서 본 갈라짐 · 흙먼지 · 돌 조각)
     return false;
   }
   onLine(ev) { // 땅을 가르는 일직선 스킬: 바닥 층에 도트로 갈라짐 (true면 렌더러의 예전 빛줄기는 그리지 않는다)

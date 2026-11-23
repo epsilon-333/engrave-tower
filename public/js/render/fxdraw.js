@@ -6,6 +6,32 @@ import { RACE_ART } from '../data/art.js';
 import { GROUND_FX, GROUND_MARKS, easeOut, WORD_COLOR, hexA, disc, ellipse, smear } from './renderer.js';
 import { sfx } from '../audio.js';
 
+// 예고선(lineTele) 그림판: 칸 [x, y, d, 가장자리]을 한 번 모아 두고, 차오른 길이(fill)가 바뀔 때만 ImageData로 다시 칠한다
+function teleCache(f, key) {
+  const L = Math.hypot(f.x2 - f.x1, f.y2 - f.y1) || 1, ux = (f.x2 - f.x1) / L, uy = (f.y2 - f.y1) / L, hw = Math.max(1, Math.round((f.w || 6) / 2));
+  const pts = []; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (let d = 0; d < L; d += 1) for (let h = -hw; h <= hw; h++) {
+    const x = Math.round(f.x1 + ux * d - uy * h), y = Math.round(f.y1 + uy * d + ux * h);
+    pts.push(x, y, d, Math.abs(h) === hw ? 1 : 0);
+    if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y;
+  }
+  const W = x1 - x0 + 1, H = y1 - y0 + 1, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(W, H), n = parseInt(String(f.color || '#ff5a3a').slice(1, 7), 16);
+  return { key, L, x0, y0, W, cv, ctx, img, pts, rgb: [n >> 16, (n >> 8) & 255, n & 255], step: -1 };
+}
+function paintTele(c, fill) {
+  const D = c.img.data, P = c.pts, [r, g, b] = c.rgb; D.fill(0);
+  for (let i = 0; i < P.length; i += 4) {
+    const x = P[i], y = P[i + 1], on = P[i + 2] < fill;
+    let a = 0;
+    if (P[i + 3]) a = 255; else if (on ? (x + y) % 2 === 0 : (x + y) % 4 === 0) a = on ? 255 : 153;
+    if (!a) continue;
+    const j = ((y - c.y0) * c.W + (x - c.x0)) * 4; if (D[j + 3] >= a) continue;
+    D[j] = r; D[j + 1] = g; D[j + 2] = b; D[j + 3] = a;
+  }
+  c.ctx.putImageData(c.img, 0, 0);
+}
+
 export const FxMethods = {
   // 먹물 얼룩 하나: 가운데 울퉁불퉁한 웅덩이 + 사방으로 튄 줄기(점점 가늘어지다 끝에 방울) + 흩뿌린 작은 방울 (small = 발밑 웅덩이만)
   inkSplash(x, y, R, dur, small = false) {
@@ -244,14 +270,6 @@ export const FxMethods = {
       } else if (f.k === 'bite2') {
         g.fillStyle = hexA('#ffffff', k);
         for (let i = 0; i < 5; i++) { const x = f.x - 12 + i * 6, o = (1 - k) * 6; g.beginPath(); g.moveTo(x, f.y - 12 + o); g.lineTo(x + 3, f.y - 3 + o); g.lineTo(x + 6, f.y - 12 + o); g.fill(); g.beginPath(); g.moveTo(x, f.y + 12 - o); g.lineTo(x + 3, f.y + 3 - o); g.lineTo(x + 6, f.y + 12 - o); g.fill(); }
-      } else if (f.k === 'pillar') {
-        g.save(); g.globalCompositeOperation = 'lighter';
-        const gr = g.createLinearGradient(0, f.y - 120, 0, f.y);
-        gr.addColorStop(0, hexA(f.color, 0)); gr.addColorStop(1, hexA(f.color, 0.7 * k));
-        g.fillStyle = gr; const pw = f.r * 0.8 * (0.5 + k * 0.5);
-        g.fillRect(f.x - pw / 2, f.y - 120, pw, 120);
-        g.fillStyle = hexA('#ffffff', 0.6 * k); g.fillRect(f.x - pw / 6, f.y - 120, pw / 3, 120);
-        g.restore();
       } else if (f.k === 'cracks') { // 땅 갈라짐: 가운데에서 들쭉날쭉 뻗고 잔가지가 난다 (빠르게 번졌다가 옅어진다)
         if (!f.lines) {
           f.lines = [];
@@ -383,11 +401,12 @@ export const FxMethods = {
         g.fillStyle = '#ff7a2a'; disc(g, x, y, 11 * big); g.fillStyle = '#ffd040'; disc(g, x - 1, y - 1, 7 * big); g.fillStyle = '#fff6c0'; disc(g, x - 2, y - 2, 3.5 * big);
         if (Math.random() < 0.9) this.parts.push({ x: x + (Math.random() - 0.5) * 10 * big, y: y + (Math.random() - 0.5) * 10 * big, vx: 30, vy: -40, t: 0.5, max: 0.5, color: Math.random() < 0.5 ? '#ff7a2a' : '#ffd040', g: -20 });
       } else if (f.k === 'lineTele') { // 예고선: 땅 위 점묘 띠 · 가장자리 실선, 시작점부터 끝까지 진하게 차오르면 그때 맞는다
-        const L = Math.hypot(f.x2 - f.x1, f.y2 - f.y1) || 1, ux = (f.x2 - f.x1) / L, uy = (f.y2 - f.y1) / L, hw = Math.max(1, Math.round((f.w || 6) / 2)), fill = (1 - k) * L, col = f.color || '#ff5a3a';
-        for (let d = 0; d < L; d += 1) for (let h = -hw; h <= hw; h++) {
-          const x = Math.round(f.x1 + ux * d - uy * h), y = Math.round(f.y1 + uy * d + ux * h), edge = Math.abs(h) === hw;
-          if (edge) { g.fillStyle = col; g.fillRect(x, y, 1, 1); } else if (d < fill ? (x + y) % 2 === 0 : (x + y) % 4 === 0) { g.fillStyle = d < fill ? col : hexA(col, 0.6); g.fillRect(x, y, 1, 1); }
-        }
+        // 도트를 하나씩 fillRect로 찍으면 예고선 하나가 프레임마다 수천 번 그려 렉이 났다 → 칸 목록을 한 번만 만들어 두고, 차오른 만큼 바뀔 때만 작은 그림판에 다시 찍어 한 번에 얹는다
+        const key = `${f.x1},${f.y1},${f.x2},${f.y2},${f.w},${f.color}`;
+        if (f.tc?.key !== key) f.tc = teleCache(f, key);
+        const c = f.tc, step = Math.floor((1 - k) * c.L / 2);
+        if (step !== c.step) { c.step = step; paintTele(c, step * 2); }
+        g.drawImage(c.cv, c.x0, c.y0);
       } else if (f.k === 'line') {
         if (f.fx === 'spikes') {
           const n = Math.floor(Math.hypot(f.x2 - f.x1, f.y2 - f.y1) / 12);
@@ -468,23 +487,6 @@ export const FxMethods = {
           g.fillStyle = hexA(i % 2 ? f.color : '#ffffff', 0.85 * k);
           g.beginPath(); g.moveTo(nx * wd, ny * wd); g.lineTo(ca * L, sa * L); g.lineTo(-nx * wd, -ny * wd); g.closePath(); g.fill();
         }
-        g.restore();
-      } else if (f.k === 'scorch') { // 그을린 자리: 땅에 남았다가 서서히 옅어진다 (가장자리는 속성 빛이 식어 간다)
-        const a = Math.min(1, k * 2.5);
-        g.save(); g.translate(f.x, f.y); g.scale(1, 0.5);
-        const gr = g.createRadialGradient(0, 0, 0, 0, 0, f.r);
-        gr.addColorStop(0, `rgba(20,14,12,${0.42 * a})`); gr.addColorStop(0.7, `rgba(30,20,16,${0.25 * a})`); gr.addColorStop(1, 'rgba(30,20,16,0)');
-        g.fillStyle = gr; g.beginPath(); g.arc(0, 0, f.r, 0, Math.PI * 2); g.fill();
-        if (k > 0.5) { g.globalCompositeOperation = 'lighter'; g.strokeStyle = hexA(f.color, (k - 0.5) * 0.9); g.lineWidth = 2; g.beginPath(); g.arc(0, 0, f.r * 0.82, 0, Math.PI * 2); g.stroke(); }
-        g.restore();
-      } else if (f.k === 'pillar') { // 빛기둥: 하늘에서 꽂혀 굵어졌다 가늘어진다
-        const prog = 1 - k, wd = f.r * (prog < 0.15 ? prog / 0.15 : 1 - (prog - 0.15) * 0.9), top = f.y - 260;
-        g.save(); g.globalCompositeOperation = 'lighter';
-        const gr = g.createLinearGradient(f.x - wd, 0, f.x + wd, 0);
-        gr.addColorStop(0, hexA(f.color, 0)); gr.addColorStop(0.5, hexA('#ffffff', 0.9 * k)); gr.addColorStop(1, hexA(f.color, 0));
-        g.fillStyle = gr; g.fillRect(f.x - wd, top, wd * 2, f.y - top);
-        const g2 = g.createLinearGradient(f.x - wd * 2.2, 0, f.x + wd * 2.2, 0); g2.addColorStop(0, hexA(f.color, 0)); g2.addColorStop(0.5, hexA(f.color, 0.35 * k)); g2.addColorStop(1, hexA(f.color, 0));
-        g.fillStyle = g2; g.fillRect(f.x - wd * 2.2, top, wd * 4.4, f.y - top);
         g.restore();
       } else if (f.k === 'after') { // 여진: 잠깐 뒤 한 번 더 울린다
         if (!f.done && k < 0.05) { f.done = true; this.shockwave(f.x, f.y, f.r * 0.8, f.color, 24); this.shake = Math.max(this.shake, 5); this.fx.push({ k: 'bloom', x: f.x, y: f.y - 4, r: f.r * 1.2, color: f.color, t: 0.3, max: 0.3 }); }

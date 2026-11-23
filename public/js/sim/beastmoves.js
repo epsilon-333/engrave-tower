@@ -130,7 +130,7 @@ export const BEAST = {
         if (mv.t > 0) return true;
         const side = ang(e, p) + Math.PI / 2 * (e.dir || 1);
         hitP(w, e, e.atk * 1.2, { x: e.x, y: e.y, r: e.r + 24, knock: 80, kang: side });
-        w.emit({ t: 'spin', x: e.x, y: e.y, r: e.r + 24, heavy: true }); w.emit({ t: 'shake', v: 2 });
+        w.emit({ t: 'spin', x: e.x, y: e.y, r: e.r + 24, heavy: true, foe: true }); w.emit({ t: 'shake', v: 2 });
         mv.ph = 'recover'; mv.t = 0.45; pose(e, 'recover', 0.45); return true;
       }
       if (mv.t > 0) return true;
