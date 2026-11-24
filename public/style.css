@@ -766,3 +766,49 @@ body:not(.touch):has(#title:not([hidden])) #cloudChip { bottom: auto; top: calc(
 details.fold > summary .f-close { display: none; }
 details.fold[open] > summary .f-open { display: none; }
 details.fold[open] > summary .f-close { display: inline; }
+/* ───── UI 다듬기 (2026-11-23) ───── */
+/* 창 아래 닫기 줄은 내용이 길어도 늘 보이게 (휴대폰에서 닫기 버튼이 스크롤 아래로 숨던 것) */
+.modal > .actions:last-child, .modal > .row:last-child:has([data-close]) { position: sticky; bottom: -24px; z-index: 1; margin: 4px -28px -24px; padding: 10px 28px 14px; background: var(--panel); box-shadow: 0 -10px 12px -6px var(--panel); }
+/* 빈 스킬 칸: 같은 긴 안내를 네 번 되풀이하지 않고 한 줄로 */
+.skc.empty { opacity: 0.7; border-left-color: #5a5068; align-content: start; }
+.skc.empty .c-sum { color: var(--muted); font-size: var(--fs-s); }
+/* 낮은 가로 화면 (휴대폰을 눕힌 것): 머리줄을 얇게, 탭은 왼쪽 세로로 — 위아래 칸을 내용에 */
+@media (max-height: 500px) and (min-width: 560px) {
+  .hub-top { padding: 4px 10px; gap: 10px; min-height: 38px; }
+  .hub-top .title { display: none; }
+  .hub-top .who { font-size: var(--fs-s); }
+  .hub-top .hub-now { display: block; font-size: var(--fs-m) !important; }
+  .hub-top .close.icon { width: 40px; height: 30px; }
+  .hub-wrap { grid-template-columns: 112px 1fr; }
+  .rail { position: sticky; top: 38px; z-index: auto; display: grid; gap: 8px; padding: 8px 4px 8px 8px; max-height: calc(100vh - 40px); overflow-y: auto; background: none; border-bottom: 0; }
+  .rail-g { display: grid; gap: 2px; } .rail-h { display: block; font-size: 10px; letter-spacing: 1px; }
+  .rail button { white-space: nowrap; padding: 6px 8px; font-size: var(--fs-s); min-height: 32px; }
+  .hub-body { padding: 8px 8px 40px 4px; gap: 8px; }
+  .panel { padding: 10px 12px; }
+  .panel h3 { font-size: 17px !important; margin-bottom: 6px; }
+  .skill-row { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+  .skc { padding: 6px 8px; gap: 2px; font-size: var(--fs-s); }
+  .modal { padding: 12px 18px; gap: 6px; max-height: 94vh; min-width: 0; max-width: min(620px, 92vw); }
+  .modal h2 { font-size: 18px !important; }
+  .modal:has(.pause-h) { gap: 4px; }
+  .modal:has(.pause-h) > button, .modal:has(.pause-h) .actions button { padding: 6px 12px; }
+  .slots { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+  .slot { min-height: 64px; padding: 6px; }
+  .slot button.sm { padding: 2px 5px; font-size: 12px; }
+  .modal > .actions:last-child, .modal > .row:last-child:has([data-close]) { bottom: -12px; margin: 2px -18px -12px; padding: 6px 18px 8px; }
+}
+/* 공명 제단: 접어 둔 스킬 자세히 */
+.alt-skills > summary { cursor: pointer; list-style: none; padding: 10px 14px; background: var(--panel); box-shadow: 0 0 0 2px #0c0a0b, inset 0 0 0 2px var(--line); font-weight: 600; }
+.alt-skills > summary::-webkit-details-marker { display: none; }
+.alt-skills > summary::before { content: '▸ '; color: var(--accent); } .alt-skills[open] > summary::before { content: '▾ '; }
+.alt-skills[open] > summary { margin-bottom: 8px; }
+/* 한글은 낱말 중간에서 줄을 바꾸지 않는다 (「전투도/끼」 · 「마/치면」처럼 잘리던 것) · 띄어쓰기 없이 긴 것만 아무 데서나 */
+#panel, .modal { word-break: keep-all; overflow-wrap: anywhere; }
+/* 좁은 세로 화면: 머리줄 글자가 두 줄로 쪼개지던 것 (「각인의/탑」 · 「Lv/50」 · 「99999/골드」) */
+@media (max-width: 560px) {
+  .hub-top { gap: 8px; padding: 6px 10px; }
+  .hub-top .title { display: none; }
+  .hub-top .who { white-space: nowrap; font-size: var(--fs-s); gap: 6px; min-width: 0; }
+  .hub-top .xp { width: 48px; }
+  .hub-top .close.icon { margin-left: auto; }
+}

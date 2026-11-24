@@ -3854,6 +3854,12 @@ if (LAB) window.__lab = {
   zone(id) { if (!save) return; enterZone(id); },
   practice() { if (!save) return; practice.useSave = true; enterPractice(); },
   home() { if (!save) return; enterWorld(null, false); },
+  // 창 바로 열기 (UI 검토용): panel('altar', true) · quest() · settings() · pause()
+  panel(tab, station = true) { if (world) openPanel(tab, station); },
+  quest() { if (world) showQuestLog(); },
+  settings() { if (world) showSettings(() => { overlay.hidden = true; paused = false; modal = null; }); },
+  pause() { if (world) showPause(); },
+  close() { if (!panelEl.hidden) closePanel(); if (modal) modal(); },
   hidden(id) { if (!save) return false; const ok = grantHidden(save, id); writeSave(save); return ok; },
   spawn(id, n = 1) { // 지금 세계에 몬스터를 부른다
     if (!world) return;

@@ -124,7 +124,7 @@ export const HudMethods = {
     // 데스크톱: 내 상태는 왼쪽 아래 한 덩어리 (Hades · Dead Cells처럼 화면 가운데를 비운다). 모바일: 예전처럼 왼쪽 위 (아래는 조이스틱)
     const desk = !document.body.classList.contains('touch');
     const R = RACES[w.b.race]?.res;
-    const pw = (desk ? 24 : 26) * u, bw = (desk ? 120 : 110) * u, bh = (desk ? 9 : 10) * u, gh = desk ? 5 * u : 7 * u;
+    const pw = (desk ? 24 : 26) * u, bw = (desk ? 120 : 110) * u, bh = desk ? 9 * u : Math.max(10 * u, 13 * Math.max(1, u - 1)), gh = desk ? 5 * u : 6 * u; // 모바일 체력 막대는 글씨가 들어갈 만큼
     const extra = R && (w.b.race === 'undead' || w.b.race === 'wizard') ? 10 * u : 0;
     const frameH = Math.max(pw, bh + (R ? 3 * u + gh : 0) + extra);
     const fx = m, fy = desk ? H - m - frameH - 6 * u : m;
@@ -141,7 +141,7 @@ export const HudMethods = {
     g.fillStyle = hpK < 0.3 && Math.floor(w.t * 3) % 2 ? '#e8404c' : '#c8303c'; g.fillRect(bx + u, m0 + u, (bw - 2 * u) * hpK, bh - 2 * u);
     g.fillStyle = '#ff6a6a'; g.fillRect(bx + u, m0 + u, (bw - 2 * u) * hpK, 2 * u);
     if (p.shield > 0) { g.fillStyle = '#a8d8ff'; g.fillRect(bx + u, m0 + bh - 3 * u, (bw - 2 * u) * Math.min(1, p.shield / d.maxHp), 2 * u); }
-    this.text(`${Math.ceil(p.hp)} / ${d.maxHp}`, desk ? bx + bw - 4 * u : bx + bw / 2, m0 + bh / 2, desk ? Math.max(1, u - 1) : u, '#ffffff', desk ? 'right' : 'center');
+    this.text(`${Math.ceil(p.hp)} / ${d.maxHp}`, desk ? bx + bw - 4 * u : bx + bw / 2, m0 + bh / 2, Math.max(1, u - 1), '#ffffff', desk ? 'right' : 'center'); // 글씨가 막대(높이 9~10u)보다 크면 위아래로 삐져나왔다 (모바일)
     // 종족 자원 게이지
     let ry = m0 + bh + 3 * u;
     if (R) {
@@ -153,8 +153,7 @@ export const HudMethods = {
       g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(bx + u, ry + u, (bw - 2 * u) * k, u);
       for (const t of [0.25, 0.5, 0.75]) { g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(bx + u + (bw - 2 * u) * t, ry + u, u, gh - 2 * u); }
       if (k >= 1 && Math.floor(w.t * 4) % 2) { g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(bx + u, ry + u, bw - 2 * u, gh - 2 * u); }
-      if (desk) this.text(`${R.name} ${Math.floor(p.res)}`, bx + bw + 4 * u, ry + gh / 2, Math.max(1, u - 1), R.color, 'left'); // 얇은 막대: 이름 · 수치는 막대 오른쪽에
-      else this.text(`${R.name} ${Math.floor(p.res)}`, bx + bw / 2, ry + gh / 2, Math.max(1, u - 1), '#ffffff', 'center');
+      this.text(`${R.name} ${Math.floor(p.res)}`, bx + bw + 4 * u, ry + gh / 2, Math.max(1, u - 1), R.color, 'left'); // 얇은 막대: 이름 · 수치는 막대 오른쪽에 (모바일도 · 막대 안에 쓰면 글씨가 삐져나왔다)
       ry += gh + 2 * u;
       if (w.b.race === 'undead') { this.text(`거둔 영혼 ${p.souls.length} / 10`, bx, ry + 5 * u, Math.max(1, u - 1), '#7ae8ff'); ry += 10 * u; }
       if (w.b.race === 'wizard') { const el = ELEM[p.elem]; this.text(`속성: ${el.name}${w.zElem?.weak === p.elem ? ' (약점!)' : w.zElem?.resist === p.elem ? ' (내성)' : ''}`, bx, ry + 5 * u, Math.max(1, u - 1), el.color); ry += 10 * u; }
@@ -184,12 +183,13 @@ export const HudMethods = {
     const names = { burn: ['화상', '#ff7a2a', '불에 데어 잠깐 동안 계속 피해를 받는다. 물에 들어가면 꺼진다.'], poison: ['중독', '#9be15d', '독이 퍼져 잠깐 동안 계속 피해를 받는다.'], bleed: ['출혈', '#e0445a', '피를 흘려 잠깐 동안 계속 피해를 받는다. 겹칠수록 세다.'], chill: ['냉기', '#9fe3ff', '몸이 얼어 이동 · 공격이 느려진다.'], curse: ['저주', '#b7a4ff', '저주가 몸을 갉아 잠깐 동안 계속 피해를 받는다.'], shock: ['감전', '#ffe14a', '몸이 저려 받는 피해가 15% 늘어난다.'] };
     let sxx = bx;
     for (const k of Object.keys(p.st)) { const nm = names[k] || ['상태이상', '#ffffff', '']; this.text(nm[0], sxx, ry + 5 * u, u, nm[1]); tips.push({ x: sxx, y: ry, w: 26 * u, h: 10 * u, title: nm[0], color: nm[1], lines: [nm[2]].filter(Boolean), left: p.st[k]?.t }); sxx += 30 * u; }
+    if (desk || w.mode !== 'field' || this.tutActive) this.miniStripBottom = 0; // 모바일 스킬 칸: 작은 지도 정보띠 아래로 (지난 그림의 값)
     this.drawSkillBar(w);
     // 데스크톱: 미니맵 아래 정보띠(시계 · 골드 · 지역)에 시계를 넣고, 여정은 그 밑 오른쪽 (퀘스트 추적 칸)
     if (desk && w.mode === 'field' && !this.tutActive) { this.drawMinimap(w); this.hudRightY = this.hudRightBottom || 120 * u; }
     else if (w.mode !== 'field') this.drawClock(w); // 바깥(미니맵이 있는 곳)은 미니맵 아래 정보띠에 시계가 있다
     this.journeyBottom = 0;
-    if (this.journey && !w.climb && !w.pvp && !w.practice) {
+    if (this.journey && !w.climb && !w.tower && !w.pvp && !w.practice) { // 탑 · 스승의 방(보스 싸움)에서는 여정을 접는다
       if (desk) this.drawJourney(w, null, (w.mode === 'field' ? this.hudRightY : 34 * u) + 4 * u, W - 10 * u);
       else this.drawJourney(w, bx, ry + 6 * u);
     }
@@ -302,6 +302,7 @@ export const HudMethods = {
     const tb = w.tower?.boss && !w.tower.boss.dead ? w.tower.boss : null;
     const boss = w.climb?.intro ? null : tb || w.enemies.find((e) => (e.def.elite || e.champion) && e.state === 'chase' && !e.dead);
     this.hudBoss = boss; // 체력바에 이름이 나온 보스 (몸 위 이름은 숨긴다)
+    this.arrowTop = boss ? topY + 70 * u : 0; // 화면 가장자리 화살표는 보스 체력바 · 패시브 글 아래로 (글이 겹치던 것)
     { const tut = w.enemies?.find((e) => e.tut && !e.dead); if (tut) this.edgeArrow(tut.x, tut.y - 24, '#e9b85c', '허수아비'); } // 튜토리얼: 때릴 허수아비를 가리킨다 (화면 안이면 머리 위에 통통 튀는 표시)
     if (boss && w.climb && !boss.dead) this.edgeArrow(boss.x, (boss._top ?? boss.y - 60) + 20, '#ff7a5a', boss.champion || boss.def.name, false); // 보스가 화면 밖이면 가장자리에 화살표 (보일 때는 그리지 않는다) · 탑: 진짜 보스 체력 (분신 · 가짜 거울이 아니라) · 등장 연출 동안은 감춘다
     if (boss) {
@@ -321,7 +322,7 @@ export const HudMethods = {
         if (boss.mv?.k === 'channel') {
           if (Math.floor(w.t * 4) % 2) { g.fillStyle = 'rgba(123,227,138,0.55)'; g.fillRect(bx2 + u + bw * k0, by2 + u, bw * Math.max(0, Math.min(1, k0 + 0.18) - k0), 6 * u); }
           const left = Math.max(0, Math.ceil(boss.maxHp * 0.07 - (boss.mv.taken || 0)));
-          this.text(`회복 의식 ${boss.mv.t.toFixed(1)}초 · ${left} 더 때리면 끊긴다`, W / 2, by2 + 22 * u, u, '#9ff0a8', 'center', true);
+          this.text(`회복 의식 ${boss.mv.t.toFixed(1)}초 · ${left} 더 때리면 끊긴다`, W / 2, by2 + 28 * u, Math.max(1, u - 1), '#9ff0a8', 'center', true);
         }
       }
       if (boss.bshield > 0) { g.fillStyle = 'rgba(200,236,255,0.85)'; g.fillRect(bx2 + u, by2 + u, (bw2 - 2 * u) * Math.min(1, boss.bshield / boss.maxHp), 3 * u); } // 보호막: 체력바 위쪽 반에 흰빛
@@ -331,7 +332,7 @@ export const HudMethods = {
         for (const f of [0.66, 0.33]) { const tx = Math.round(bx2 + u + (bw2 - 2 * u) * f); g.fillStyle = '#ffe8b0'; g.fillRect(tx, by2 - u, u, 10 * u); }
         tags.unshift(`${(boss.bphase || 0) + 1}단계`);
       }
-      if (tags.length) this.text(tags.join(' · '), W / 2, by2 + 12 * u, u, boss.bphase >= 2 ? '#ff5a3a' : boss.bphase >= 1 ? '#ff9a6a' : '#e8c8b0', 'center');
+      if (tags.length) this.text(tags.join(' · '), W / 2, by2 + 16 * u, Math.max(1, u - 1), boss.bphase >= 2 ? '#ff5a3a' : boss.bphase >= 1 ? '#ff9a6a' : '#e8c8b0', 'center');
     }
 
     if (this.notes?.length) this.drawNotes(dt);
@@ -395,7 +396,7 @@ export const HudMethods = {
   // 화면 밖의 목표를 가리키는 화살표 (화면 안이면 머리 위에 작은 표시)
   edgeArrow(tx, ty, color, label, bounce = true) {
     const g = this.g, u = this.u, W = this.c.width, H = this.c.height, sx = this.sx(tx), sy = this.sy(ty), m = 34 * u;
-    const mt = 78 * u, mb = 70 * u, ml = 30 * u, mr = 30 * u; // 위 · 아래는 HUD 가 있어 더 안쪽에
+    const mt = Math.max(78 * u, this.arrowTop || 0), mb = 70 * u, ml = 30 * u, mr = 30 * u; // 위 · 아래는 HUD 가 있어 더 안쪽에
     const p = this.world?.player;
     const dist = p ? Math.round(Math.hypot(tx - p.x, ty - p.y) / TILE) : 0;
     if (sx > m && sx < W - m && sy > m && sy < H - m) { // 보이는 곳: 위에서 통통 튀는 표시
@@ -443,7 +444,7 @@ export const HudMethods = {
   drawSkillBar(w) {
     const g = this.g, p = w.player, d = w.d, u = this.u, v = Math.max(2, u), W = this.c.width, H = this.c.height;
     const touch = document.body.classList.contains('touch');
-    const box = (touch ? 16 : 20) * v, gap = 12 * v;
+    const box = (touch ? 16 : 20) * v, gap = (touch ? 6 : 12) * v; // 모바일은 칸 아래 이름이 없어 촘촘하게
     const sk4 = (w.b.skills || []).filter((x) => x !== 'weapon'); while (sk4.length < 4) sk4.push(null); // Q · E · R · F 자리는 늘 그대로 (빈 각인 칸은 빈 칸)
     const slots = [...sk4.slice(0, 4), 'weapon'];
     const keys = [...['KeyQ', 'KeyE', 'KeyR', 'KeyF'].map((k) => keyLabel(keyFor(k))), touch ? '무기' : '우클릭']; // 키 바꾸기를 따른다
@@ -451,8 +452,9 @@ export const HudMethods = {
     const total = n * box + (n - 1) * gap;
     // 데스크톱: 체력 · 자원 글자(왼쪽 아래 약 210) 오른쪽에. 좁은 창이라 거기에 다 들어가지 않으면 가운데 · 체력 덩어리 위로 올린다
     const leftMin = 210 * u + (w.life?.quickFood ? box + gap : 0), narrow = !touch && leftMin + total > W - 8 * u;
-    const x0 = touch ? W - total - 8 * u : narrow ? Math.max(8 * u + (w.life?.quickFood ? box + gap : 0), (W - total) / 2) : Math.max((W - total) / 2, leftMin);
-    const y0 = touch ? Math.round(H * 0.2) : narrow ? Math.round((this.hudFrameTop ?? H) - box - 16 * v) : H - box - 12 * v; // 모바일: 오른쪽 작은 지도 아래 (체력 · 저장 안내와 겹치지 않게)
+    const x0 = touch ? W - total - 8 * u - Math.round(box * 0.2) : narrow ? Math.max(8 * u + (w.life?.quickFood ? box + gap : 0), (W - total) / 2) : Math.max((W - total) / 2, leftMin);
+    const y0 = touch ? (this.miniStripBottom ? Math.min(Math.round(H * 0.45), this.miniStripBottom + 8 * v) : Math.round(H * 0.2)) : narrow ? Math.round((this.hudFrameTop ?? H) - box - 16 * v) : H - box - 12 * v; // 모바일: 오른쪽 작은 지도 아래 (체력 · 저장 안내와 겹치지 않게)
+    // 모바일: 이름 · 비용은 터치 버튼에 있으니 여기 작은 칸은 재사용 시간만 (작은 칸 아래 이름이 잘리고 비용이 그림을 덮던 것)
     // 대시
     const dashMax = d.dashCd * (1 - d.cdr), dashK = p.dashCharges > 0 ? 1 : Math.min(1, 1 - p.dashRecharge / dashMax);
     this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : keyLabel(keyFor('Space')), '', null, p.dashCharges > 0 ? 0 : p.dashRecharge);
@@ -479,14 +481,13 @@ export const HudMethods = {
       if (id === 'weapon') {
         const k = p.skillCd > 0 ? 1 - p.skillCd / p.skillMax : 1;
         this.cooldownBox(x, y0, box, k, keys[i], '', null, p.skillCd);
-        this.text(this.fitName(WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기', box * 1.3, Math.max(1, u - 1)), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#dcd2c6', 'center');
+        if (!touch) this.text(this.fitName(WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기', box * 1.3, Math.max(1, u - 1)), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#dcd2c6', 'center');
         return;
       }
       if (!id) { // 빈 칸: 각인이 없으면 스킬도 없다 (아무것도 채우지 않는다)
         if (touch) return;
         this.cooldownBox(x, y0, box, 1, keys[i], '', null, 0);
         g.fillStyle = 'rgba(8,6,10,0.62)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u);
-        this.text('빈 칸', x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#8c8079', 'center');
         return;
       }
       const sk = SKILLS[id];
@@ -495,9 +496,9 @@ export const HudMethods = {
       const need = sk.costAll ? sk.costAll.min : gradeCost(sk, w.skillTier(id)) * (w.d.costMul || 1);
       const lack = need > p.res;
       this.cooldownBox(x, y0, box, k, keys[i], '', ROLE_COLOR[sk.role], cd, sk);
-      if (lack && k >= 1) { g.fillStyle = 'rgba(40,0,0,0.55)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); }
-      this.text(this.fitName(sk.name, box * 1.3, Math.max(1, u - 1)), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), lack ? '#e88a78' : '#dcd2c6', 'center'); // 한 줄 · 작은 글씨 (이웃 칸과 겹치지 않게)
-      if (need) this.text(String(need), x + box - 3 * v, y0 + 5 * v, Math.max(1, u - 1), lack ? '#e88a78' : RACES[w.b.race].res.color, 'right');
+      if (lack && k >= 1) { g.fillStyle = 'rgba(40,0,0,0.4)'; g.fillRect(x + u, y0 + u, box - 2 * u, box - 2 * u); }
+      if (!touch) this.text(this.fitName(sk.name, box * 1.3, Math.max(1, u - 1)), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), lack ? '#e88a78' : '#dcd2c6', 'center'); // 한 줄 · 작은 글씨 (이웃 칸과 겹치지 않게)
+      if (need && !touch && !(cd > 0.05)) this.text(String(need), x + box - 2 * v, y0 + box - 5 * v, Math.max(1, u - 1), lack ? '#e88a78' : RACES[w.b.race].res.color, 'right'); // 자원 비용은 오른쪽 아래 (왼쪽 위 키 글자와 붙어 「Q15」로 읽히던 것) · 재사용 중엔 그 자리에 남은 초
     });
     // 시전바
     if (p.castT > 0) {
@@ -584,12 +585,17 @@ export const HudMethods = {
     if (w.climb) { this.hudRightBottom = my + mh + 8 * this.u; for (const o of w.objects) if (o.kind === 'climbDoor') dot(o.x, o.y, CLIMB_REWARDS[o.next]?.color || '#fff', 2); else if (o.kind === 'climbReward' && !o.opened) dot(o.x, o.y, '#f6dfae', 2.2); return; } // 탑 등반: 아래 글은 등반 HUD 가 그린다
     if (!this.pctT || this.pctT < w.t) { this.pctT = w.t + 0.5; this.pctV = Math.round(w.exploredPct() * 100); }
     // 정보띠: 미니맵 바로 아래 한 상자에 시계 · 골드 / 지역 · 탐험 (따로 떠 있던 글자를 모은다)
-    const sw = mw + 4 * u, sx0 = mx - 2 * u, sy0 = my + mh + 4 * u, tu2 = Math.max(1, u - 1), stripH = 24 * u;
+    const tu2 = Math.max(1, u - 1), lh = Math.max(10 * u, 13 * tu2), stripH = lh * 2 + 4 * u, r1 = 2 * u + lh / 2, c = w.clock; // 줄 간격은 글씨 크기에 맞춘다 (u=1 휴대폰에서 두 줄이 겹치던 것)
+    // 정보띠 폭: 작은 지도(좁은 화면 · 작은 방)보다 글이 길면 왼쪽으로 늘린다 (시계와 골드가 겹치던 것)
+    const wallet0 = this.walletGold ?? 0, carry0 = w.loot?.gold || 0, goldS = `◆ ${wallet0}${carry0 ? ` +${carry0}` : ''}`, zoneS = `${w.zone.name}${w.depth ? ` 지하 ${w.depth + 1}층` : ''} · 탐험 ${this.pctV}%`, clockS = c ? `${c.day}일 · ${clockText(c)}` : '';
+    g.font = `${11 * tu2}px ${FONT}`; const cw0 = g.measureText(clockS).width + 12 * u; g.font = `bold ${11 * tu2}px ${FONT}`; const gw0 = g.measureText(goldS).width; g.font = `${11 * tu2}px ${FONT}`; const zw0 = g.measureText(zoneS).width;
+    const sw = Math.ceil(Math.max(mw + 4 * u, cw0 + gw0 + 10 * u, zw0 + 10 * u)), sx0 = mx + mw + 2 * u - sw, sy0 = my + mh + 4 * u;
     this.panel(sx0, sy0, sw, stripH);
-    const c = w.clock;
-    if (c) { const dk = darkness(c.min); this.text(`${c.day}일 · ${clockText(c)}`, sx0 + 5 * u, sy0 + 7 * u, tu2, dk > 0.6 ? '#c8d0ff' : '#f6dfae', 'left', false); }
-    { const wallet = this.walletGold ?? 0, carry = w.loot?.gold || 0; this.text(`◆ ${wallet}${carry ? ` +${carry}` : ''}`, sx0 + sw - 5 * u, sy0 + 7 * u, tu2, '#e9b85c', 'right', false, true); } // 가진 골드 (+ 주웠지만 아직 맡기지 않은 골드)
-    this.text(`${w.zone.name}${w.depth ? ` 지하 ${w.depth + 1}층` : ''} · 탐험 ${this.pctV}%`, sx0 + 5 * u, sy0 + 17 * u, tu2, '#c9beb2', 'left', false);
+    this.rightCol = { x: Math.min(mx - 2 * u, sx0), bottom: sy0 + stripH };
+    this.miniStripBottom = sy0 + stripH;
+    if (c) { const dk = darkness(c.min); this.text(`${c.day}일 · ${clockText(c)}`, sx0 + 5 * u, sy0 + r1, tu2, dk > 0.6 ? '#c8d0ff' : '#f6dfae', 'left', false); }
+    this.text(goldS, sx0 + sw - 5 * u, sy0 + r1, tu2, '#e9b85c', 'right', false, true); // 가진 골드 (+ 주웠지만 아직 맡기지 않은 골드)
+    this.text(zoneS, sx0 + 5 * u, sy0 + r1 + lh, tu2, '#c9beb2', 'left', false);
     let y = sy0 + stripH + 10 * u;
     if (w.loot.banked) { this.text('야영지에 잔향을 맡김', mx + mw, y, tu2, '#ffd88a', 'right'); y += 12 * u; }
     for (const [id, n] of Object.entries(w.loot.echoes)) {
@@ -610,7 +616,9 @@ export const HudMethods = {
       y += 20 * u;
       this.text('★ 이야기', mx + mw, y, u, '#f0e0b0', 'right');
       for (const line of obj) { y += 14 * u; this.text(line, mx + mw, y, Math.max(1, u - 1), '#e8dcc0', 'right'); }
-    }    this.hudRightBottom = y + 8 * u;
+    }
+    this.hudRightBottom = y + 8 * u;
+    this.miniStripBottom = Math.max(this.miniStripBottom, y - 4 * u); // 모바일 스킬 칸은 잔향 목록 아래로
   },
 
   // 큰 지도: 가 본 곳만 보이고, 성지 · 입구 · 마을 · 탑 · 내 위치를 표시

@@ -95,7 +95,7 @@ export class Hub {
       <div class="hub-wrap"><nav class="rail">${rail}</nav>
       <main class="hub-body">${this['tab_' + this.tab](s, b)}</main></div>
       <div id="toast"></div>`;
-    if (this.tab === 'altar') this.applyEngSearch();
+    if (this.tab === 'altar') { this.applyEngSearch(); const fd = this.root.querySelector('details.alt-skills'); if (fd) fd.ontoggle = () => (this.altarSkills = fd.open); }
   }
 
   tab_bag(s) { return bagTab(s); }
@@ -186,7 +186,7 @@ export class Hub {
       const i = SLOTS.indexOf(sl), passive = i === 4, sk = e && !passive && SKILLS[engravingSkillFor(id, s.race)];
       const mv = e ? `${i > 0 ? `<button class="sm ghost" data-act="moveE" data-slot="${sl}" data-id="-1" title="앞 칸과 바꾸기">◀</button>` : ''}${i < 4 ? `<button class="sm ghost" data-act="moveE" data-slot="${sl}" data-id="1" title="뒤 칸과 바꾸기">▶</button>` : ''}` : '';
       return `<div class="slot ${e ? 'filled' : ''} ${passive ? 'passive' : ''}" ${e ? `style="--g:${GRADES[e.grade].color}"` : ''}>
-        <div class="sl-name"><b class="sl-key">${SLOT_KEYS[i]}</b> ${passive ? '패시브만' : '스킬 + 패시브'}</div>
+        <div class="sl-name"><b class="sl-key">${SLOT_KEYS[i]}</b> ${passive ? '효과만 (스킬 없음)' : '스킬 + 패시브'}</div>
         ${e ? `<div class="sl-e">${e.name}</div><div class="sl-meta">부하 ${e.load}${sk ? ` · 스킬 「${sk.name}」` : passive ? ' · 스킬 없음' : ''}</div><div>${mv}<button class="sm ghost" data-act="unequipE" data-slot="${sl}">빼기</button></div>` : '<div class="muted">비어 있음</div>'}
       </div>`;
     }).join('');
@@ -250,13 +250,15 @@ export class Hub {
       <span class="muted"> · 등급 </span>${[[0, '전체'], ...[1, 2, 3, 4, 5].map((g) => [g, GRADES[g].name])].map(([g, n]) => `<button class="sm ${grade === g ? 'on' : 'ghost'}" data-act="agrade" data-id="${g}">${n}</button>`).join('')}</div>
       <div class="filters"><span class="muted">무기 </span>${[['all', '전체'], ['mine', `내 무기 · ${WCAT_NAME[b.wcat] || b.wcat}`], ...Object.entries(WCAT_NAME)].map(([k, n]) => `<button class="sm ${wf === k ? 'on' : 'ghost'}" data-act="aweapon" data-id="${k}">${n}</button>`).join('')}</div>`;
 
+    // 제단의 주인공은 각인 칸: 맨 위에 두고, 스킬 설명(긴 카드)은 접어 둔다
+    const skillsFold = `<details class="alt-skills" ${this.altarSkills ? 'open' : ''}><summary>스킬 자세히 보기 <small>Q · E · R · F · 우클릭 · ${RACES[s.race].name} 스킬</small></summary>${this.skillPanel(s, b)}</details>`;
     return `
-      ${this.skillPanel(s, b)}
       <section class="panel">
         <h3>각인 <small>부하 <b>${b.load} / ${b.derived.loadCap}</b></small>${help('Q · E · R · F 칸: 그 각인의 스킬과 패시브. 마지막 칸: 패시브만. 부하 한도는 25 + 정신 10마다 1.')}</h3>
         <div class="slots">${slotHtml}</div>
         <h4>보유 잔향</h4><div class="echoes">${echoInv}</div>
       </section>
+      ${skillsFold}
       <section class="panel">
         <h3>각인 목록${help('★로 찜하면 필요한 재료와 사냥터가 표시된다.')}</h3>
         ${filterBar}
@@ -304,7 +306,7 @@ export class Hub {
       wcard = `<div class="skc on" style="--c:#aab0c0"><div class="c-head"><b>[우클릭] ${wsk.name}</b><span class="role">무기</span></div><div class="c-sum">${esc(wsk.desc || '')}</div><div class="sk-scale">평타 · 무기 기술: ${sn(wst)} 계수 <b>×${(ws?.dmg || 1).toFixed(2)}</b> ${WEAPON_PERKS.map((pk) => `<span class="${(ws?.v || 0) >= pk.at ? 'on' : ''}">${sn(wst)} ${pk.at}: ${pk.text}</span>`).join(' ')}</div><div class="c-act">${wbtn}</div></div>`;
     }
     const auto = getAutoAim();
-    const now = SLOT_KEYS.slice(0, 4).map((k, i) => { const id = b.skills[i], sk = id && SKILLS[id]; return `<div class="skc ${sk ? 'on' : ''}" style="--c:${sk ? ROLE_COLOR[sk.role] : '#5a5068'}"><div class="c-head"><b>[${k}] ${sk ? sk.name : '비어 있음'}</b>${sk ? `<span class="role">${sk.role}</span>` : ''}</div><div class="c-sum">${sk ? esc(sk.desc) : '공명 제단에서 이 칸에 각인을 넣으면 그 각인의 스킬이 나간다 (각인이 없으면 스킬도 없다)'}</div>${sk ? scaleLine(id) : ''}</div>`; }).join('');
+    const now = SLOT_KEYS.slice(0, 4).map((k, i) => { const id = b.skills[i], sk = id && SKILLS[id]; return `<div class="skc ${sk ? 'on' : 'empty'}" style="--c:${sk ? ROLE_COLOR[sk.role] : '#5a5068'}"><div class="c-head"><b>[${k}] ${sk ? sk.name : '비어 있음'}</b>${sk ? `<span class="role">${sk.role}</span>` : ''}</div><div class="c-sum">${sk ? esc(sk.desc) : '공명 제단에서 각인을 넣으면 스킬이 생긴다'}</div>${sk ? scaleLine(id) : ''}</div>`; }).join('');
     return `<section class="panel">
       <h3>스킬${help('Q · E · R · F 칸에 끼운 각인의 스킬이 나간다. 종족 스킬 각인은 여정을 마치면 받는다 (궁극기는 레벨 20).')}</h3>
       <div class="skill-tools">
