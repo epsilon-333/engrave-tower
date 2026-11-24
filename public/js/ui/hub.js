@@ -44,7 +44,7 @@ import { bagTab, tradeTab, forgeTab, lifeClick, fishCodex, artifactCodex } from 
 import { whereTab } from './where.js';
 import { storageTab, cookTab, craftTab, learnTab, homeClick } from './home.js';
 
-import { markLinks, PASSIVE_LINK_TEXT, PASSIVE_BOOST } from '../data/passives.js';
+import { markLinks, PASSIVE_LINK_TEXT } from '../data/passives.js';
 const $ = (sel, root = document) => root.querySelector(sel);
 
 // 이 각인과 같은 스킬을 주는 각인이 끼워진 스킬 칸 (없으면 null) · skip: 견주지 않을 칸
@@ -414,7 +414,7 @@ export class Hub {
     // 🔗 이어지는 패시브 · 표식: 스킬의 표식(marks) → 어울리는 패시브 각인 / 패시브 각인 → 어울리는 표식 스킬
     const ML = SK ? markLinks(SK) : null;
     const linkTxt = ML?.parts.length ? `${ML.parts.join(' · ')} → ${ML.ids.filter((x) => ENGRAVINGS[x]).map((x) => ENGRAVINGS[x].name).join(' · ')}` : e.passiveOnly && PASSIVE_LINK_TEXT[id] ? `어울리는 것: ${PASSIVE_LINK_TEXT[id]}` : '';
-    const linkLine = (linkTxt ? `<div class="c-meta">🔗 ${esc(linkTxt)}</div>` : '') + (e.passiveOnly ? `<div class="c-meta"><b style="color:#9fd8c8">패시브 각인</b> · 스킬 없이 효과만${e.passiveBoost ? ` · 능력치 · 수치 ×${PASSIVE_BOOST}` : ''} · 패시브 칸에 먼저 끼운다</div>` : '');
+    const linkLine = (linkTxt ? `<div class="c-meta">🔗 ${esc(linkTxt)}</div>` : '') + (e.passiveOnly ? `<div class="c-meta"><b style="color:#9fd8c8">패시브 각인</b> · 스킬 없이 효과만 · 패시브 칸에 먼저 끼운다</div>` : '');
     const hd = e.hidden && HIDDEN.find((h) => h.id === e.hidden), hiddenLine = hd ? `<div class="c-meta" style="color:${hd.color}"><b>숨은 각인 · 칭호 「${esc(hd.title)}」</b> · ${esc(hd.cond)}</div>` : '';
     const fromLine = e.from && MONSTERS[e.from] ? `<div class="c-meta">${s.codex.kills?.[e.from] ? MONSTERS[e.from].name : '???'}의 부산물로 새긴다</div>` : '';
     return `<div class="card ${goal ? 'goal' : ''}" data-q="${esc(this.engSearchText(id, s))}" style="--g:${GRADES[e.grade].color}">

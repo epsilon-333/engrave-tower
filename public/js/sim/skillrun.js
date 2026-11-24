@@ -2,7 +2,8 @@
 // World.prototype 에 그대로 붙는다 (sim/world.js 끝). 메서드 안의 this 는 World
 
 import { WEAPON_SKILLS } from '../data/items.js';
-import { SKILLS, ELEM, ELEM_CYCLE, handFit, crossMul, CANT_TEXT, SKILL_BAL, engravingSkillFor, gradeCost } from '../data/skills.js';
+import { SKILLS, ELEM, ELEM_CYCLE, handFit, crossMul, CANT_TEXT, SKILL_BAL, engravingSkillFor, gradeCost, skillBase } from '../data/skills.js';
+import { VX_VAL } from '../data/variants.js';
 import { ENGRAVINGS } from '../data/engravings.js';
 import { PASSIVE_FX, skillMarks, MARK_SCALE_PER, SELF_STATUS } from '../data/passives.js';
 import { SPIRITS, SPIRIT_GRADES } from '../data/spirits.js';
@@ -582,6 +583,7 @@ export const SkillMethods = {
         if (this.f.has('dashCrit')) p.dashCritReady = true;
         break;
       }
+      case 'vxEcho': { const sub = op.sub, k = op.k; ctx.vxS ||= { pool: 0, drain: 0 }; this.delayed.push({ t: op.t, run: () => this.runOp(sub, { ...ctx, bonus: ctx.bonus * k }) }); break; } // 스킬 변형: 한 번 더
       case 'whirl': p.whirlT = 1.2; p.whirlTick = 0; break;
       case 'volley': {
         const sp = w.projSpeed * d.projMul * 1.3;
@@ -680,7 +682,8 @@ export const SkillMethods = {
     const p = this.player;
     if (p.riding) this.dismount();
     // 비상 중에 다시 누르면 바로 내리꽂는다
-    if (id === 'soar' && p.airT > 0) { this.landSoar(); return; }
+    const bid = skillBase(id); // 변형 스킬은 뼈대의 규칙을 따른다 (data/variants.js)
+    if (bid === 'soar' && p.airT > 0) { this.landSoar(); return; }
     if (p.castT > 0 || p.channel || p.charging || p.rush || p.leap || p.windupT > 0 || p.combo || p.fallInto || p.drop || p.hop) return;
     if (id === 'weapon') { if (p.skillCd <= 0) { this.breakStealth(); this.useSkill(); } return; }
     const def = SKILLS[id];
@@ -696,20 +699,21 @@ export const SkillMethods = {
       if (p.res < def.costAll.min) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
       spent = p.res; p.res = 0;
     } else if (def.cost) {
-      const cost = gradeCost(def, this.skillTier(id)) * (this.d.costMul || 1); // 각인 등급에 맞춘 소모 · 정신 70: -30%
+      const cost = gradeCost(def, this.skillTier(id)) * (this.d.costMul || 1) * (def.vx?.costK || 1); // 각인 등급에 맞춘 소모 · 정신 70: -30%
       if (p.res < cost && !this.bloodPay(cost - p.res)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
       p.res = Math.max(0, p.res - cost); spent = cost;
     }
+    if (def.vx?.hp) p.hp = Math.max(1, p.hp - this.d.maxHp * def.vx.hp); // 변형의 대가: 체력
     if (def.gain) this.addRes(def.gain);
     let cd = def.cd * this.d.skillCdMul * (1 - this.d.cdr) * skillScale(id, this.b).cd; // 스탯 70: 재사용 -20%
-    if (id === 'breath' && p.buffs.dragonForm) cd = 0.3;
+    if (bid === 'breath' && p.buffs.dragonForm) cd = 0.3;
     if (this.practice?.noCd) cd = Math.min(cd, 0.25);
     if (surge) cd = 1; // 마력 폭주 중 마법의 쿨타임은 1초
     p.cds[id] = cd; p.cdMax ||= {}; p.cdMax[id] = cd;
     p.lastFight = this.t;
     if (this.pvp) this.pvp.out.push({ t: 'dskill', id });
     if (def.kind === 'spell') this.knack('castSpell');
-    if (id !== 'stealth') this.breakStealth();
+    if (bid !== 'stealth') this.breakStealth();
     // 차지: 누르고 있는 동안 힘을 모은다 (떼면 발동)
     if (def.charge) {
       p.charging = { id, def, spent, slot, t: 0, lvl: 0 };
@@ -730,7 +734,7 @@ export const SkillMethods = {
   },
 
   execSkill(def, spent, id, opt = {}) {
-    if (!opt.weapon) { const ts = SKILL_TSTAT[id]; if (ts) for (const [k, v, dur] of ts) this.addTemp(k, v, dur, def.name); this.chainEvent('cast', null, this.player); }
+    if (!opt.weapon) { const ts = SKILL_TSTAT[skillBase(id)]; if (ts) for (const [k, v, dur] of ts) this.addTemp(k, v, dur, def.name); this.chainEvent('cast', null, this.player); }
     const p = this.player;
     const elem = def.elem === 'current' ? p.elem : def.elem;
     if (ELEM_CYCLE.includes(elem)) p.elem = elem; // 마지막 속성은 늘 적어 둔다 (평타가 따라가는 것은 「원소 맞춤」 특성)
@@ -800,7 +804,7 @@ export const SkillMethods = {
     if (mul > 0) this.hitEnemy(e, ctx.atk * mul, type, true, false, { elem: ctx.elem, pen: op.pen, skill: true, forceCrit: !!MK?.crit });
     if (e.dead) return true;
     const status = ctx.elem && ELEM[ctx.elem]?.status;
-    if (status && op.stacks) this.applyStatus(e, status, op.stacks);
+    if (status && op.stacks && !ctx.def.vx?.elem) this.applyStatus(e, status, op.stacks); // 변형이 입힌 성질은 상태이상을 따로 정한다 (vxHit)
     // 원소 폭주: 다음 속성까지 함께 남긴다
     if (p.buffs.surge && ELEM_CYCLE.includes(ctx.elem) && !e.dead) { const nx = ELEM_CYCLE[(ELEM_CYCLE.indexOf(ctx.elem) + 1) % 3]; this.applyStatus(e, ELEM[nx].status, Math.max(1, Math.ceil((op.stacks || 1) / 2))); }
     if (op.flee && !e.def.elite) { e.st.flee = Math.max(e.st.flee || 0, op.flee); e.windT = 0; }
@@ -830,8 +834,25 @@ export const SkillMethods = {
       e.kbx += (dx / l) * op.knock * 2; e.kby += (dy / l) * op.knock * 2;
       if (this.f.has('impact')) { e.kbHot = op.launch ? 0.7 : 0.45; e.kbAtk = ctx.atk; }
     }
+    if (ctx.def.vx && !e.dead) this.vxHit(e, op, ctx, ctx.def.vx); // 스킬 변형의 덧붙는 효과 (data/variants.js)
     if (op.pull) { e.reelT = 0.6; e.reelK = e.def.elite ? 0.85 : 1; /* 쇠사슬 · 작살: 내 바로 앞까지 */ e.reelX0 = e.x; e.reelY0 = e.y; e.kbx = 0; e.kby = 0; this.aggro(e); this.emit({ t: 'reel', id: e.id }); }
     return false;
+  },
+
+  // 스킬 변형 (data/variants.js): 맞힌 적에게 덧붙는 효과
+  vxHit(e, op, ctx, vx) {
+    const p = this.player, S = (ctx.vxS ||= { pool: 0, drain: 0 });
+    if (vx.status) this.applyStatus(e, vx.status, vx.stacks || 1);
+    if (vx.weak) { e.st.weak = Math.max(e.st.weak || 0, vx.weak); e.st.weakK = Math.max(e.st.weakK || 0, 1.35); }
+    if (vx.stun) this.stunE(e, e.def.elite ? vx.stun * 0.35 : vx.stun);
+    if (vx.knock && !e.def.elite && !op.pull) { const dx = e.x - p.x, dy = e.y - p.y, l = Math.hypot(dx, dy) || 1; e.kbx += (dx / l) * vx.knock * 2; e.kby += (dy / l) * vx.knock * 2; }
+    if (vx.pull && !op.pull) { e.reelT = 0.6; e.reelK = e.def.elite ? 0.85 : 1; e.reelX0 = e.x; e.reelY0 = e.y; e.kbx = 0; e.kby = 0; this.aggro(e); this.emit({ t: 'reel', id: e.id }); }
+    if (vx.drain && S.drain < VX_VAL.drainN) { S.drain++; this.heal(this.d.maxHp * vx.drain, 'skill'); }
+    if (vx.pool && !S.pool) {
+      S.pool = 1; const c = this.groundPoint(e.x, e.y);
+      this.zones.push({ kind: vx.pool.kind, x: c.x, y: c.y, r: vx.pool.r, t: vx.pool.dur, max: vx.pool.dur, tick: 0, atk: ctx.atk * ctx.bonus });
+      this.emit({ t: 'zoneFx', x: c.x, y: c.y, r: vx.pool.r, kind: vx.pool.kind });
+    }
   },
 
   doAction(a, target, pos) {

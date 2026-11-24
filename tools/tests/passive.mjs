@@ -22,15 +22,15 @@ for (const id of P.PASSIVE_CONVERT) ok(ENGRAVINGS[id], `전환 각인 ${id} 있�
 ok(held.size > 150, `스킬이 사라지지 않는다 (${held.size}종)`);
 for (const id of P.PASSIVE_NEW_IDS) ok(ENGRAVINGS[id]?.passiveOnly && /\d|면역|걸리지|느려지지/.test(ENGRAVINGS[id].effects.map((x) => x.text).join(' ')), `${id}: 새 패시브 · 효과 글`);
 
-// 빌드: 스킬 칸에 패시브 각인 → 뒤 스킬이 앞으로 (빈 칸 없음)
+// 빌드: 스킬 칸에 패시브 각인 → 그 칸은 비고 뒤 칸 스킬은 제자리 (보이는 키 = 쓰는 키)
 const sk = Object.keys(ENGRAVING_SKILLS).find((id) => ENGRAVINGS[id] && !ENGRAVINGS[id].hidden && SKILLS[ENGRAVING_SKILLS[id]] && !SKILLS[ENGRAVING_SKILLS[id]].ult);
 const mk = (eng = {}, extra = {}) => computeBuild({ race: 'knight', level: 30, alloc: { str: 30, vit: 20 }, engravings: eng, gear: { weapon: 'rustySword' }, ...extra });
-{ const b = mk({ head: 'pBreeze', arm: sk }); ok(b.skills[0] && !b.skills[1], `스킬 칸 당김 (${b.skills})`); }
+{ const b = mk({ head: 'pBreeze', arm: sk }); ok(!b.skills[0] && b.skills[1], `스킬 칸 제자리 (${b.skills})`); }
 { const a = mk(), b = mk({ back: 'pBreeze' }); ok(b.derived.dodge - a.derived.dodge >= 0.1 - 1e-9, '바람결: 회피 +10%'); }
 { const a = mk(), b = mk({ back: 'pTrain_agi' }); ok(b.stats.agi - a.stats.agi >= 8, `민첩 단련 +8 (${b.stats.agi - a.stats.agi})`); }
 { const b = mk({ back: 'pOneShot' }), a = mk(); ok(Math.abs(b.derived.critDmg - a.derived.critDmg - 1.2) < 1e-9 && Math.abs(b.derived.crit - a.derived.crit * 0.5) < 1e-9, `일격필살: 치명타 ½ · 피해 +120%p (${a.derived.critDmg}→${b.derived.critDmg})`); }
 { const b0 = computeBuild({ race: 'knight', level: 1, alloc: {}, engravings: { back: 'pOneShot' }, gear: { weapon: 'rustySword' } }); ok(Math.abs(b0.derived.critDmg - 2.7) < 0.05, `일격필살: 기본 약 150% → 270% (감각 몫 조금) (${b0.derived.critDmg})`); }
-{ const a = mk(), b = mk({ back: 'ironHide' }); ok(b.derived.dmgTakenMul < a.derived.dmgTakenMul * (1 - 0.03 * 1.29), '전환 각인: 수치 ×1.3'); }
+{ const a = mk(), b = mk({ back: 'ironHide' }); ok(b.derived.dmgTakenMul < a.derived.dmgTakenMul * (1 - 0.03 * 1.29), '전환 각인: 수치 ×1.3'); ok(/-3\.9%/.test(ENGRAVINGS.ironHide.effects[0].text) && ENGRAVINGS.ironHide.stats.pres === 10, '전환 각인: 카드 글 숫자도 ×1.3'); }
 
 // 세계
 const W = (eng, extra) => { const w = new World({ build: mk(eng, extra), mode: 'field', zoneId: ZONES[0].id, seed: 4242 }); for (const o of w.enemies) { o.dead = true; o.hp = 0; } w.enemies = []; w.player.invuln = 0; w.d.dodge = 0; return w; };

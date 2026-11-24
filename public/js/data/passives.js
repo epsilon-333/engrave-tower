@@ -70,8 +70,23 @@ export function registerPassiveEngravings(ENGRAVINGS) {
   });
   for (const id of PASSIVE_CONVERT) {
     const e = ENGRAVINGS[id]; if (!e) continue;
-    e.passiveOnly = true; e.passiveBoost = PASSIVE_BOOST; // 스킬 몫만큼: 능력치 · 수치 ×1.3 (sim/build.js)
+    e.passiveOnly = true; e.passiveConv = true; // 스킬 몫만큼: 능력치 · 수치 ×1.3 (데이터에 바로 쓴다 · 카드 글의 숫자도 바뀐 값)
+    e.stats = Object.fromEntries(Object.entries(e.stats || {}).map(([k, v]) => [k, Math.round(v * PASSIVE_BOOST)]));
+    e.effects = (e.effects || []).map(boostEffect);
   }
+}
+// 효과 하나를 ×1.3: 값과 글의 숫자를 함께 바꾼다 (값 → 글 속 같은 숫자를 찾아 바꾼다)
+const fmt = (x) => String(Math.round(x * 10) / 10);
+function boostEffect(e) {
+  if (typeof e.v !== 'number' || !['mul', 'add', 'stat'].includes(e.type)) return e;
+  const K = PASSIVE_BOOST, pct = (x) => Math.round(x * 1000) / 10;
+  let v, from, to;
+  if (e.type === 'mul') { v = 1 + (e.v - 1) * K; from = [fmt(pct(Math.abs(e.v - 1)))]; to = fmt(pct(Math.abs(v - 1))); }
+  else if (e.type === 'stat' || (Number.isInteger(e.v) && e.v >= 1)) { v = Math.round(e.v * K); from = [String(e.v)]; to = String(v); }
+  else { v = e.v * K; from = [fmt(pct(e.v)), String(e.v)]; to = e.v < 1 ? fmt(pct(v)) : fmt(v); if (!new RegExp(`(^|[^\\d.])${from[0].replace('.', '\\.')}%`).test(e.text || '')) to = fmt(v); }
+  let text = e.text || '';
+  for (const f of from) { const re = new RegExp(`(^|[^\\d.])${f.replace('.', '\\.')}(?![\\d.])`); if (re.test(text)) { text = text.replace(re, (m, a) => a + to); break; } }
+  return { ...e, v, text };
 }
 // 스킬 표에서 패시브 각인을 뺀다 (data/skills.js 끝)
 export function stripPassiveSkills(ENGRAVING_SKILLS) { for (const id of PASSIVE_CONVERT) delete ENGRAVING_SKILLS[id]; }

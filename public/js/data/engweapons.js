@@ -13,7 +13,7 @@ export function engravingWeapons(eid) {
   const sid = ENGRAVING_SKILLS[eid], def = SKILLS[sid], out = new Set();
   if (!def) return (cache[eid] = []);
   const fixed = ENGRAVINGS[eid]?.weapons; if (fixed) return (cache[eid] = fixed === 'all' ? CATS.slice() : CATS.filter((c) => fixed.includes(c))); // 숨은 각인: 정해 둔 무기 (몸으로 쓰는 스킬은 모든 무기)
-  for (const c of Object.values(CLASSES)) if (c.skills.includes(sid)) for (const w of c.weapons) out.add(weaponCat(ITEMS[w]));
+  for (const c of Object.values(CLASSES)) if (c.skills.includes(SKILLS[sid]?.base || sid)) for (const w of c.weapons) out.add(weaponCat(ITEMS[w]));
   const kind = def.kind || 'body';
   if (kind !== 'body') { const t = FIT[kind] || {}; for (const c of CATS) if ((t[c] ?? t._ ?? 0) >= 0.9) out.add(c); }
   if (!out.size) {

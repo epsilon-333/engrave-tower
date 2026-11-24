@@ -4,6 +4,8 @@ import { registerSkillEngravingSkills } from './skillengs.js';
 import { registerHiddenSkills } from './hidden.js';
 import { registerResSkills } from './resengs.js';
 import { stripPassiveSkills } from './passives.js';
+import { registerSkillVariants } from './variants.js';
+import { ENGRAVINGS as ENG_ALL } from './engravings.js';
 // 클래스와 액티브 스킬. 종족마다 클래스 2개, 클래스마다 스킬 6개(1·1·3·6·10·15레벨에 배움). 최대 4개 장착(Q·E·R·F).
 // 콤보 역할: 준비(자원·약화) → 강화(버프) → 마무리(자원 소모 큰 한 방), 궁극(15레벨, 자원 전부)
 // cost: 자원 소모 (값은 자리표시 — 실제 소모량은 스킬을 준 각인 등급이 정한다, GRADE_COST), costAll: 자원 전부 소모(min 이상 필요, 소모량만큼 강해짐). 자원 얻기는 각인 효과로(스킬 자체는 얻지 않는다)
@@ -24,6 +26,7 @@ export const ELEM = {
   phys: { name: '물리', color: '#e8e0f4' },
   wind: { name: '바람', color: '#bfffd0' },
   forest: { name: '숲', color: '#7be38a' },
+  light: { name: '빛', color: '#fff1a0' }, // 스킬 변형의 빛 성질 (상태이상 대신 약화)
 };
 // 저주: 피해를 주지 않고 약하게 만든다 — 중첩마다 그 적이 받는 피해 +2% · 주는 피해 -3% (최대 12중첩 · 8초)
 export const CURSE = { take: 0.02, deal: 0.03 };
@@ -612,11 +615,11 @@ export const ULT_ALT = {
   apexPredator: 'huntersLeap', skyfall: 'bladeStorm', colossus: 'meteorFall', doomBrand: 'plagueNova', timeStop: 'singularity', undying: 'judgement',
   axeLegion: 'whirlingAxe', skyPiercer: 'galeShot', wordSilence: 'wordCataclysm', rageBurst: 'earthSplitter', lichLord: 'deathNova', venomBurst: 'acidRain', spiritKing: 'natureWrath',
 };
-export function skillOwnerRace(id) { for (const c of Object.values(CLASSES)) if (c.skills.includes(id)) return c.race; return null; }
+export function skillOwnerRace(id) { id = SKILLS[id]?.base || id; for (const c of Object.values(CLASSES)) if (c.skills.includes(id)) return c.race; return null; }
 // 이 종족이 이 각인을 새겼을 때 실제로 쓰는 스킬
 export function engravingSkillFor(eid, race) {
   const sk = ENGRAVING_SKILLS[eid]; if (!sk || !SKILLS[sk]) return null;
-  if (SKILLS[sk].ult) { const own = skillOwnerRace(sk); if (own && own !== race) return SKILLS[ULT_ALT[sk]] ? ULT_ALT[sk] : null; }
+  if (SKILLS[sk].ult) { const own = skillOwnerRace(sk); if (own && own !== race) { const alt = ULT_ALT[SKILLS[sk].base || sk]; return SKILLS[alt] ? alt : null; } }
   return sk;
 }
 
@@ -772,3 +775,8 @@ Object.assign(SKILLS.boulderToss, { unlock: 6 }); Object.assign(SKILLS.tremor, {
 // 임시(2026-11-19): 모든 스킬의 쿨타임을 같은 값으로. 되돌리려면 null — 원래 값은 cd0에 남는다
 export const FLAT_CD = 3;
 if (FLAT_CD) for (const s of Object.values(SKILLS)) if (!s.hidden) { s.cd0 = s.cd; s.cd = FLAT_CD; } // 숨은 각인 스킬은 원래 쿨타임
+
+// 스킬 변형 (data/variants.js): 같은 스킬을 쓰던 각인마다 자기 스킬 — 같은 스킬을 쓰는 각인 0개
+export const SKILL_VARIANTS = registerSkillVariants(SKILLS, ENGRAVING_SKILLS, ENG_ALL, SKILL_BAL, SKILL_BAL_GEN);
+// 변형의 뼈대 스킬 id (변형이 아니면 그대로): 스킬 id로 정해 둔 규칙(쿨타임 · 잠깐 오르는 스탯 · 무기 강화 · 갈래)은 뼈대를 따라간다
+export const skillBase = (id) => SKILLS[id]?.base || id;

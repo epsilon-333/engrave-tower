@@ -1710,7 +1710,7 @@ export class World {
   weaponBoost(id) {
     const it = this.b.weaponItem;
     if (!it || !it.boost) return 1; // 무기의 스킬 강화: 클래스와 상관없이 그 스킬을 쓰면
-    return 1 + (it.boost[id] || 0);
+    return 1 + (it.boost[id] || it.boost[SKILLS[id]?.base] || 0); // 변형 스킬은 뼈대의 강화도 받는다
   }
 
   faceTo(x, y) {

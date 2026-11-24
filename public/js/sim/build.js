@@ -47,7 +47,7 @@ export function computeBuild(lo) {
   const sources = [];
   for (const s of SLOTS) {
     const id = lo.engravings?.[s];
-    if (id && ENGRAVINGS[id]) { const elv = lo.engLv?.[id] || 0; sources.push({ kind: 'engraving', id, def: ENGRAVINGS[id], mul: (1 + ENG_STEP * elv) * (ENGRAVINGS[id].passiveBoost || 1), elv }); } // 패시브 각인으로 바뀐 각인: 스킬 몫만큼 ×1.3 (data/passives.js) // 용의 둥지에서 강화한 각인: 단계마다 +12%
+    if (id && ENGRAVINGS[id]) { const elv = lo.engLv?.[id] || 0; sources.push({ kind: 'engraving', id, def: ENGRAVINGS[id], mul: (1 + ENG_STEP * elv) , elv }); } // 패시브 각인으로 바뀐 각인: 스킬 몫만큼 ×1.3 (data/passives.js) // 용의 둥지에서 강화한 각인: 단계마다 +12%
   }
   // 탑 등반에서 새긴 각인: 부하를 차지하지 않는다 · 연마 단계마다 +12% (몸에 새긴 각인과 같은 것이면 겹친다)
   for (const re of lo.runEng || []) if (ENGRAVINGS[re.id]) sources.push({ kind: 'engraving', run: true, id: re.id, def: ENGRAVINGS[re.id], mul: 1 + ENG_STEP * (re.lv || 0), elv: re.lv || 0 });
@@ -237,7 +237,7 @@ export function computeBuild(lo) {
   let cls = lo.cls && CLASSES[lo.cls]?.race === lo.race ? lo.cls : rc[0];
   if (!lo.allSkills) {
     const eq = SKILL_SLOTS.map((sl) => { const id = lo.engravings?.[sl]; return id && ENGRAVINGS[id] ? engravingSkillFor(id, lo.race) : null; }).filter(Boolean);
-    const n = (c) => eq.filter((sk) => CLASSES[c].skills.includes(sk)).length;
+    const n = (c) => eq.filter((sk) => CLASSES[c].skills.includes(SKILLS[sk]?.base || sk)).length;
     for (const c of rc) if (n(c) > n(cls)) cls = c;
   }
   let skills, available, innateSkills = [];
@@ -252,9 +252,8 @@ export function computeBuild(lo) {
     }
   } else {
     skills = SKILL_SLOTS.map((sl) => { const id = lo.engravings?.[sl]; return id && ENGRAVINGS[id] ? engravingSkillFor(id, lo.race) : null; });
-    for (const re of lo.runEng || []) { const sk = engravingSkillFor(re.id, lo.race); const i = skills.indexOf(null); if (sk && i >= 0 && !skills.includes(sk)) skills[i] = sk; }
-    // 패시브 각인이 스킬 칸에 있으면 뒤 칸의 스킬을 앞으로 당긴다 (스킬 칸 사이에 빈 것이 생기지 않게)
-    { const got = skills.filter(Boolean); skills = [...got, ...Array(4 - got.length).fill(null)]; }
+    for (const re of lo.runEng || []) { const sk = engravingSkillFor(re.id, lo.race); const i = skills.findIndex((x, k) => !x && !ENGRAVINGS[lo.engravings?.[SKILL_SLOTS[k]]]); /* 패시브 각인이 든 칸은 그대로 */ if (sk && i >= 0 && !skills.includes(sk)) skills[i] = sk; }
+    // 패시브 각인이 스킬 칸에 있으면 그 칸은 빈 칸 (뒤 칸을 당기지 않는다: 제단 칸에 보이는 키 = 쓰는 키)
     // 빈 칸은 빈 칸 (클래스 스킬로 채우지 않는다): 스킬은 모두 각인에서 나온다
     available = skills.filter(Boolean);
   }

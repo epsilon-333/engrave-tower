@@ -20,7 +20,7 @@ for (const [cid, c] of Object.entries(CLASSES)) for (const id of c.skills) SKILL
 // 이 스킬이 따라가는 스탯
 export function skillStat(id, cls) {
   const sk = SKILLS[id]; if (!sk) return null;
-  const own = CLASS_STATS[SKILL_CLASS[id]] || CLASS_STATS[cls];
+  const own = CLASS_STATS[SKILL_CLASS[sk.base || id]] || CLASS_STATS[cls];
   if (own) return SUPPORT.has(sk.role) ? own[1] : own[0];
   return sk.scale === 'mag' ? 'mag' : sk.scale === 'phys' ? 'str' : (CLASS_STATS[cls]?.[0] || 'str');
 }
