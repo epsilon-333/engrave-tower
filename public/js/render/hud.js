@@ -129,6 +129,9 @@ export const HudMethods = {
     const frameH = Math.max(pw, bh + (R ? 3 * u + gh : 0) + extra);
     const fx = m, fy = desk ? H - m - frameH - 6 * u : m;
     this.hudFrameTop = fy;
+    // 안내 층(튜토리얼)이 HUD 를 짚을 자리: 그림판 픽셀 좌표 { x, y, w, h } (캔버스 CSS 크기로 바꿔 쓴다) — hp · skills · minimap · journey · boss
+    const GR = this.guideRects = {};
+    GR.hp = { x: fx, y: fy, w: pw + 6 * u + bw, h: frameH };
     // 초상화 + 체력
     this.panel(fx, fy, pw, pw);
     const art = RACE_ART[w.b.race];
@@ -190,6 +193,7 @@ export const HudMethods = {
     else if (w.mode !== 'field') this.drawClock(w); // 바깥(미니맵이 있는 곳)은 미니맵 아래 정보띠에 시계가 있다
     this.journeyBottom = 0;
     if (this.journey && !w.climb && !w.tower && !w.pvp && !w.practice) { // 탑 · 스승의 방(보스 싸움)에서는 여정을 접는다
+      GR.journey = null;
       if (desk) this.drawJourney(w, null, (w.mode === 'field' ? this.hudRightY : 34 * u) + 4 * u, W - 10 * u);
       else this.drawJourney(w, bx, ry + 6 * u);
     }
@@ -309,6 +313,7 @@ export const HudMethods = {
       const bw2 = Math.min(W * 0.5, 260 * u), bx2 = (W - bw2) / 2, by2 = topY + 28 * u; // 화면 위쪽 (아래 스킬 칸 · 위쪽 저장 안내를 가리지 않게)
       this.text(boss.champion || boss.def.name, W / 2, by2 - 9 * u, u, '#e8907c', 'center', true, true);
       this.panel(bx2, by2, bw2, 8 * u);
+      GR.boss = { x: bx2, y: by2 - 18 * u, w: bw2, h: 26 * u };
       g.fillStyle = '#3a1016'; g.fillRect(bx2 + u, by2 + u, bw2 - 2 * u, 6 * u);
       if (boss.trialOf) { // 스승: 체력 막대를 다섯 겹으로 (한 겹이 한 대에 크게 줄어 보이게) · 오른쪽에 남은 겹 수
         const LN = 5, LC = ['#e8483a', '#e8903a', '#d8c84a', '#5ac85a', '#4a9ae8'], per = boss.maxHp / LN, cur = Math.max(1, Math.ceil(boss.hp / per - 1e-9)), fr = Math.max(0, (boss.hp - (cur - 1) * per) / per), bw = bw2 - 2 * u;
@@ -385,6 +390,7 @@ export const HudMethods = {
     const show = fight ? [] : lines.slice(0, 2), h = (show.length ? 30 * u : 26 * u) + show.length * 12 * tu;
     this.panel(x, y, tw, h);
     this.journeyBottom = y + h;
+    if (this.guideRects) this.guideRects.journey = { x, y, w: tw, h };
     if (right != null) this.rightCol = { x: Math.min(this.rightCol?.x ?? x, x), bottom: y + h };
     g.fillStyle = J.done ? '#8fcf7a' : '#e9b85c'; g.fillRect(x, y, 2 * u, h);
     this.text(`여정 ${J.n} / ${J.total}${J.done ? ' · 완료!' : ''}${J.canFollow && !J.target ? ' · J 따라가기' : ''}`, x + 7 * u, y + 7 * u, tu, J.done ? '#8fcf7a' : '#c8b88a', 'left', false);
@@ -455,6 +461,7 @@ export const HudMethods = {
     const x0 = touch ? W - total - 8 * u - Math.round(box * 0.2) : narrow ? Math.max(8 * u + (w.life?.quickFood ? box + gap : 0), (W - total) / 2) : Math.max((W - total) / 2, leftMin);
     const y0 = touch ? (this.miniStripBottom ? Math.min(Math.round(H * 0.45), this.miniStripBottom + 8 * v) : Math.round(H * 0.2)) : narrow ? Math.round((this.hudFrameTop ?? H) - box - 16 * v) : H - box - 12 * v; // 모바일: 오른쪽 작은 지도 아래 (체력 · 저장 안내와 겹치지 않게)
     // 모바일: 이름 · 비용은 터치 버튼에 있으니 여기 작은 칸은 재사용 시간만 (작은 칸 아래 이름이 잘리고 비용이 그림을 덮던 것)
+    if (this.guideRects) this.guideRects.skills = { x: x0, y: y0, w: total, h: box + (touch ? 0 : 12 * v) };
     // 대시
     const dashMax = d.dashCd * (1 - d.cdr), dashK = p.dashCharges > 0 ? 1 : Math.min(1, 1 - p.dashRecharge / dashMax);
     this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : keyLabel(keyFor('Space')), '', null, p.dashCharges > 0 ? 0 : p.dashRecharge);
@@ -552,6 +559,7 @@ export const HudMethods = {
       ox = Math.max(0, Math.min(w.tw - vw, Math.floor(w.player.x / TILE) - vw / 2)); oy = Math.max(0, Math.min(w.th - vh, Math.floor(w.player.y / TILE) - vh / 2));
     }
     const mx = W - mw - 10 * u, my = 10 * u;
+    if (this.guideRects) this.guideRects.minimap = { x: mx - 2 * u, y: my - 2 * u, w: mw + 4 * u, h: mh + 4 * u };
     this.panel(mx - 2 * u, my - 2 * u, mw + 4 * u, mh + 4 * u);
     g.fillStyle = '#0c1422'; g.fillRect(mx, my, mw, mh); // 안 가 본 곳: 큰 지도와 같은 밤바다 + 옅은 눈금
     if (w.map.outdoor) { g.fillStyle = 'rgba(120,150,190,0.08)'; for (let x = (8 - ox % 8) % 8; x < mw / s; x += 8) g.fillRect(Math.round(mx + x * s), my, 1, mh); for (let y = (8 - oy % 8) % 8; y < mh / s; y += 8) g.fillRect(mx, Math.round(my + y * s), mw, 1); }

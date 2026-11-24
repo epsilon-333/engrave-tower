@@ -90,9 +90,9 @@ export class Hub {
         <div class="title">각인의 탑</div>
         <div class="who">${RACES[s.race].name} · Lv ${s.level} ${(() => { const lv = levelFor(codexPoints(s)); return `<span class="xp" title="도감 점수 ${lv.into}/${lv.need}: 다음 레벨까지"><i style="width:${(lv.into / lv.need) * 100}%"></i></span>`; })()} <span class="gold">◆ ${s.gold} 골드</span></div>
         <h2 class="hub-now">${tabName[this.tab] || ''}</h2>
-        <button class="close icon" data-act="close" title="닫기 (Esc)">✕</button>
+        <button class="close icon" data-act="close" data-guide="hub-close" title="닫기 (Esc)">✕</button>
       </header>
-      <div class="hub-wrap"><nav class="rail">${rail}</nav>
+      <div class="hub-wrap"><nav class="rail" data-guide="hub-tabs">${rail}</nav>
       <main class="hub-body">${this['tab_' + this.tab](s, b)}</main></div>
       <div id="toast"></div>`;
     if (this.tab === 'altar') { this.applyEngSearch(); const fd = this.root.querySelector('details.alt-skills'); if (fd) fd.ontoggle = () => (this.altarSkills = fd.open); }
@@ -141,10 +141,10 @@ export class Hub {
       <section class="panel">
         <h3>${race.name} <small>${race.passive}</small></h3>
         <p class="muted">${race.desc}</p>
-        <div class="points">남은 포인트 <b>${s.points}</b>
+        <div class="points" data-guide="char-points">남은 포인트 <b>${s.points}</b>
           <button class="sm ghost" data-act="respec">초기화</button></div>
         
-        ${BASE_STATS.map(statRow).join('')}
+        <div data-guide="char-stats">${BASE_STATS.map(statRow).join('')}</div>
         <h4>특수 스탯</h4><div class="chips">${specials}</div>
         <h4>숙련</h4>
         <div class="chips">${Object.keys(s.knack?.got || {}).filter((id) => KNACKS[id]).map((id) => KNACKS[id].kind === 'life' ? `<span class="chip" title="${esc(KNACKS[id].desc)}">${KNACKS[id].name}</span>` : `<span class="chip" title="${esc(KNACKS[id].hint)}">${SKILLS[KNACKS[id].skill]?.name || id}</span>`).join('') || '<span class="muted">아직 없음</span>'}</div>
@@ -251,25 +251,25 @@ export class Hub {
       <div class="filters"><span class="muted">무기 </span>${[['all', '전체'], ['mine', `내 무기 · ${WCAT_NAME[b.wcat] || b.wcat}`], ...Object.entries(WCAT_NAME)].map(([k, n]) => `<button class="sm ${wf === k ? 'on' : 'ghost'}" data-act="aweapon" data-id="${k}">${n}</button>`).join('')}</div>`;
 
     // 제단의 주인공은 각인 칸: 맨 위에 두고, 스킬 설명(긴 카드)은 접어 둔다
-    const skillsFold = `<details class="alt-skills" ${this.altarSkills ? 'open' : ''}><summary>스킬 자세히 보기 <small>Q · E · R · F · 우클릭 · ${RACES[s.race].name} 스킬</small></summary>${this.skillPanel(s, b)}</details>`;
+    const skillsFold = `<details class="alt-skills" data-guide="altar-skills" ${this.altarSkills ? 'open' : ''}><summary>스킬 자세히 보기 <small>Q · E · R · F · 우클릭 · ${RACES[s.race].name} 스킬</small></summary>${this.skillPanel(s, b)}</details>`;
     return `
       <section class="panel">
         <h3>각인 <small>부하 <b>${b.load} / ${b.derived.loadCap}</b></small>${help('Q · E · R · F 칸: 그 각인의 스킬과 패시브. 마지막 칸: 패시브만. 부하 한도는 25 + 정신 10마다 1.')}</h3>
-        <div class="slots">${slotHtml}</div>
-        <h4>보유 잔향</h4><div class="echoes">${echoInv}</div>
+        <div class="slots" data-guide="altar-slots">${slotHtml}</div>
+        <h4>보유 잔향</h4><div class="echoes" data-guide="altar-mats">${echoInv}</div>
       </section>
       ${skillsFold}
       <section class="panel">
         <h3>각인 목록${help('★로 찜하면 필요한 재료와 사냥터가 표시된다.')}</h3>
         ${filterBar}
-        <div class="filters eng-search"><input id="engSearch" type="search" placeholder="각인 이름 · 스킬 이름 · 몬스터 · 효과로 찾기" value="${esc(this.altarQ || '')}" style="flex:1;min-width:14em"> <span id="engCount" class="muted"></span></div>
+        <div class="filters eng-search" data-guide="altar-search"><input id="engSearch" type="search" placeholder="각인 이름 · 스킬 이름 · 몬스터 · 효과로 찾기" value="${esc(this.altarQ || '')}" style="flex:1;min-width:14em"> <span id="engCount" class="muted"></span></div>
         <details class="more-filters" ${this.altarMore ? 'open' : ''}><summary>거르기 · 정리 <small>${[this.altarQ && '검색', grade && '등급', (this.altarWeapon || 'all') !== 'all' && '무기', view === 'tag' && '태그별'].filter(Boolean).join(' · ') || '전체 보기'}</small></summary>
         <div class="filters"><span class="muted">원하는 효과 </span>${['치명타', '처치', '맞으면', '대시', '회피', '스킬을 쓰면', '보호막', '각성하면', '동안', '마다', '화상', '냉기', '중독', '출혈', '저주', '흡혈', '반사', '회복', '궁극'].map((w) => `<button class="sm ${(this.altarQ || '').split(/\s+/).includes(w) ? 'on' : 'ghost'}" data-act="aquery" data-id="${w}">${w === '동안' ? '잠깐 스탯' : w === '마다' ? '스탯 바꾸기' : w}</button>`).join('')}${this.altarQ ? '<button class="sm" data-act="aquery" data-id="">지우기</button>' : ''}</div>
         ${viewBar}
         </details>
         ${goalHtml}
-        <div class="eng-split"><div id="engList">${groups || '<p class="muted">없음</p>'}</div>
-        <aside class="eng-detail">${this.altarSel && ENGRAVINGS[this.altarSel] ? this.engravingCard(this.altarSel, s, b) : '<p class="muted">각인을 고른다</p>'}</aside></div>
+        <div class="eng-split"><div id="engList" data-guide="altar-list">${groups || '<p class="muted">없음</p>'}</div>
+        <aside class="eng-detail" data-guide="altar-detail">${this.altarSel && ENGRAVINGS[this.altarSel] ? this.engravingCard(this.altarSel, s, b) : '<p class="muted">각인을 고른다</p>'}</aside></div>
       </section>`;
   }
 
@@ -313,9 +313,9 @@ export class Hub {
         <label class="toggle"><input type="checkbox" data-act="autoAim" ${auto ? 'checked' : ''}> 자동 조준 <small>(T)</small></label>
         <button class="sm" data-act="practice">연습장</button>
       </div>
-      <div class="skill-row">${now}${wcard}</div>
+      <div class="skill-row" data-guide="skill-slots">${now}${wcard}</div>
       <h4>${RACES[s.race].name} 스킬 <small class="muted">여정을 마치면 각인으로 받는다 · 섞어서 끼운다</small></h4>
-      <div class="skill-row">${race}</div>
+      <div class="skill-row" data-guide="skill-race">${race}</div>
     </section>`;
   }
 
@@ -424,11 +424,11 @@ export class Hub {
       <div class="badges">${this.badges(id, s, b)}</div>
       <div class="c-sum">${termify(esc(summary))}</div>
       <details class="fold"><summary><span class="f-open">자세히 보기</span><span class="f-close">접기</span></summary><div class="c-stats">${stats}</div><ul class="c-eff">${effs}</ul></details>
-      <div class="recipe">${recipe}</div>
+      <div class="recipe" data-guide="altar-recipe">${recipe}</div>
       ${prev}
       <div class="c-act">
-        <button class="sm" data-act="craft" data-id="${id}" ${can && !owned ? '' : 'disabled'}>${owned ? '이미 있음' : '새기기'}</button>
-        <button class="sm" data-act="equipE" data-id="${id}" ${canEquip ? '' : 'disabled'}>장착</button>
+        <button class="sm" data-act="craft" data-guide="altar-engrave" data-id="${id}" ${can && !owned ? '' : 'disabled'}>${owned ? '이미 있음' : '새기기'}</button>
+        <button class="sm" data-act="equipE" data-guide="altar-equip" data-id="${id}" ${canEquip ? '' : 'disabled'}>장착</button>
         <span class="muted">보유 ${owned}</span>
       </div>
     </div>`;
@@ -479,12 +479,12 @@ export class Hub {
       <div class="filters"><span class="muted">등급 </span>${chip('grar', '-1', String(rarF), '전체')}${['일반', '희귀', '영웅', '전설', '신화'].map((n, i) => chip('grar', String(i), String(rarF), n)).join('')}</div>`;
     const bySlot = () => '';
     return `
-      <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots">${gearRow}</div>
+      <section class="panel"><h3>장착 장비 <small>${s.race === 'dwarf' ? '드워프: 장비 스탯 ×1.5' : ''}</small></h3><div class="slots" data-guide="gear-slots">${gearRow}</div>
         ${b.notes.filter((n) => /^양손|둘:|^쌍/.test(n.text)).map((n) => `<p class="up">◇ ${esc(n.text)}</p>`).join('') || ''}</section>
       <section class="panel"><h3>${ownedOnly ? '내 장비' : '대장간'}</h3>
         ${gearFilters}
-        <div class="eng-split"><div class="cards eng-rows">${all.map(gearRowItem).join('') || '<p class="muted">없음</p>'}</div>
-        <aside class="eng-detail">${sel ? card(sel) : '<p class="muted">장비를 고른다</p>'}</aside></div></section>`;
+        <div class="eng-split"><div class="cards eng-rows" data-guide="gear-list">${all.map(gearRowItem).join('') || '<p class="muted">없음</p>'}</div>
+        <aside class="eng-detail" data-guide="gear-detail">${sel ? card(sel) : '<p class="muted">장비를 고른다</p>'}</aside></div></section>`;
   }
 
   // ───── 사냥터 ─────
