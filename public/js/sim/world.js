@@ -2687,7 +2687,7 @@ export class World {
       for (const tr of this.b.triggers.hurt) if (this.trig(tr)) this.doAction(tr.action, attacker, attacker);
     }
     if (type === 'mag' && !opt.direct) for (const tr of this.b.triggers.hurtMag) if (this.trig(tr)) this.doAction(tr.action, attacker, p);
-    if (opt.status) this.applyPlayerStatus(opt.status, amount);
+    if (opt.status) this.applyPlayerStatus(opt.status, dmg + absorbed); // 지속 피해는 막고 줄인 뒤의 피해에 비례 (예전: 줄이기 전 피해 — 방어 · 기사 특성을 건너뛰었다)
     this.checkDeath();
   }
 
