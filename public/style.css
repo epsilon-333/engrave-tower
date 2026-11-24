@@ -435,6 +435,8 @@ b.dim { color: #e8c890; }
 #tut small { color: #e9b85c; white-space: nowrap; }
 #tut b { font-weight: 400; min-width: min(420px, 60vw); }
 #tut button { font: 12px Galmuri11, sans-serif; padding: 3px 8px; background: transparent; color: #a89a8f; border: 1px solid #5e5253; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+#tut em { font-style: normal; color: #ffd76a; }
+#tut i { font-style: normal; color: #8fcf7a; margin-left: 6px; }
 
 /* 온라인 채팅 */
 #chat { position: fixed; left: 12px; bottom: 96px; z-index: 30; width: min(340px, calc(100vw - 24px)); font: 13px Galmuri11, sans-serif; color: #f4ecd8; pointer-events: none; }
