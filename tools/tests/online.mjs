@@ -1,6 +1,6 @@
 // 온라인 중계 서버: 두 사람이 접속해 서로 보이고, 채팅하고, 결투를 시작 · 주고받고 · 끝내는지
 import { spawn } from 'node:child_process';
-const PORT = 5199, root = new URL('../../', import.meta.url);
+const PORT = 5279, root = new URL('../../', import.meta.url);
 const srv = spawn(process.execPath, ['server.js'], { cwd: root, env: { ...process.env, PORT: String(PORT) }, stdio: 'ignore' });
 await new Promise((r) => setTimeout(r, 600));
 const open = (name) => new Promise((res) => {
@@ -20,7 +20,7 @@ ok(has(b, 'players')?.list.some((p) => p.name === '가람'), '들어온 사람�
 b.send({ t: 'pos', x: 60, y: 12, dir: -1, mo: 'run' }); await wait(100);
 ok(a.inbox.some((m) => m.t === 'pos' && m.id === idb && m.x === 60), '움직임이 전해진다');
 a.send({ t: 'chat', text: '안녕 <b>하세요</b>' }); await wait(100);
-ok(has(b, 'chat')?.text === '안녕 b하세요/b', '채팅이 전해지고 태그 글자는 지워진다');
+ok(has(b, 'chat')?.text === '안녕 하세요', '채팅이 전해지고 태그 글자는 지워진다');
 a.send({ t: 'duelInvite', to: idb }); await wait(100);
 ok(has(b, 'duelInvite')?.from === ida, '결투 신청이 상대에게 간다');
 b.send({ t: 'duelAnswer', to: ida, ok: true, maxHp: 180 }); await wait(120);

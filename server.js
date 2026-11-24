@@ -309,7 +309,7 @@ function handle(c, m) {
       if (c.map) toMap(c.map, { t: 'pos', id: c.id, x: c.x, y: c.y, dir: c.dir, mo: c.mo }, c);
       break;
     case 'chat': {
-      const text = clean(m.text, 120).trim(); if (!text) break;
+      const text = clean(String(m.text ?? "").replace(/<\/?[a-z][^>]*>/gi, ""), 120).trim(); if (!text) break;
       const now = Date.now(); if (now - (c.chatT || 0) < 600) break; c.chatT = now; // 도배 막기
       const ch = m.ch === 'party' && c.party ? 'party' : m.ch === 'guild' && c.guild ? 'guild' : 'all';
       const msg = { t: 'chat', id: c.id, name: c.name, text, ch };
