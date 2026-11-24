@@ -2,18 +2,22 @@
 // 손으로 하나씩 쓰지 않는다: 원래 재료의 주 잔향(설계 의도) + 각인 태그(성질)에 맞는 잔향 후보 + 등급 → 양,
 // 고르는 것은 각인 id 해시로 결정적. 같은 조합 · 거의 같은 조합(같은 잔향들에 양 차이가 모두 1 이하)이 나오면 다시 고른다.
 // 시험: tools/tests/recipes.mjs
-const Z = { goo: 1, wing: 1, rust: 1, venom: 1, blood: 1, spore: 1, ember: 2, magma: 2, cinder: 2, frost: 3, mirror: 3, icecore: 3, bone: 4, soul: 4, rot: 4 };
+export const Z = { goo: 1, wing: 1, rust: 1, venom: 1, blood: 1, spore: 1, ember: 2, magma: 2, cinder: 2, frost: 3, mirror: 3, icecore: 3, bone: 4, soul: 4, rot: 4 };
 const RARE_OF = { 1: ['chief', 'queen'], 2: ['core'], 3: ['witch', 'meltcore'], 4: ['grave'] };
-const TAG_POOL = {
-  slime: ['goo', 'spore', 'rot'], wind: ['wing', 'mirror', 'spore'], poison: ['venom', 'spore', 'rot'], bleed: ['blood', 'rust', 'wing'],
-  brawl: ['rust', 'blood', 'cinder', 'bone'], giant: ['magma', 'bone', 'goo', 'icecore'], fire: ['ember', 'magma', 'cinder'], ice: ['frost', 'icecore', 'mirror'],
-  curse: ['soul', 'rot', 'venom'], shadow: ['wing', 'soul', 'mirror'], drain: ['blood', 'soul', 'goo'], undying: ['bone', 'soul', 'rot'],
-  reflect: ['mirror', 'rust', 'icecore'], light: ['mirror', 'ember', 'frost'],
+// 태그(성질)별 후보: 지역마다 하나 이상 — 낮은 등급도 성질에 맞는 잔향을 고를 수 있게
+export const TAG_POOL = {
+  slime: ['goo', 'spore', 'venom', 'magma', 'frost', 'rot'], wind: ['wing', 'spore', 'cinder', 'ember', 'mirror', 'frost', 'soul'],
+  poison: ['venom', 'spore', 'goo', 'cinder', 'icecore', 'rot'], bleed: ['blood', 'rust', 'wing', 'ember', 'icecore', 'bone'],
+  brawl: ['rust', 'blood', 'wing', 'cinder', 'magma', 'frost', 'bone'], giant: ['goo', 'rust', 'magma', 'cinder', 'icecore', 'bone'],
+  fire: ['ember', 'blood', 'magma', 'cinder', 'rust'], ice: ['frost', 'icecore', 'mirror', 'goo', 'wing'],
+  curse: ['venom', 'spore', 'cinder', 'mirror', 'soul', 'rot'], shadow: ['wing', 'venom', 'cinder', 'mirror', 'soul', 'rot'],
+  drain: ['blood', 'goo', 'magma', 'frost', 'soul', 'bone'], undying: ['blood', 'spore', 'cinder', 'icecore', 'bone', 'soul', 'rot'],
+  reflect: ['rust', 'goo', 'magma', 'mirror', 'icecore', 'bone'], light: ['ember', 'wing', 'magma', 'mirror', 'frost', 'soul'],
 };
 const DEFAULT_POOL = ['rust', 'goo', 'wing', 'blood', 'spore'];
 // 등급별 일반 잔향 합계 (예전 5~12개 → 낮은 등급도 여러 번 사냥) · 희귀(보스) 잔향
 export const RECIPE_TOTAL = [0, 14, 22, 34, 50, 72];
-const MAX_ZONE = [0, 1, 2, 3, 4, 4];
+export const MAX_ZONE = [0, 1, 2, 3, 4, 4];
 const KINDS = [0, [2, 3], [2, 3], [3, 3], [3, 4], [3, 4]];
 
 function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -40,15 +44,27 @@ function build(id, e, ECHOES, salt) {
       if (pick) out[pick] = Math.round(RECIPE_TOTAL[g] * (rareFam ? 0.5 + R() * 0.2 : 0.15 + R() * 0.12));
     }
     for (const k in out) if (out[k] < 1) out[k] = 1;
+    // 합계가 등급 목표보다 모자라면 성질 · 계열 잔향(보스 잔향 · 부산물 빼고)에 나눠 채운다
+    const fill = Object.keys(out).filter((k) => k !== part && !isRare(k));
+    const have = Object.entries(out).filter(([k]) => !isRare(k)).reduce((a, [, v]) => a + v, 0);
+    const want = Math.round(RECIPE_TOTAL[g] * (0.95 + R() * 0.15));
+    if (fill.length && have < want) fill.forEach((k, i) => { out[k] += Math.floor((want - have) / fill.length) + (i < (want - have) % fill.length ? 1 : 0); });
     return out;
   }
   const common = old.filter(([k]) => !isRare(k)).sort((a, b) => b[1] - a[1]);
-  const primary = common[0]?.[0] || DEFAULT_POOL[Math.floor(R() * DEFAULT_POOL.length)];
-  const lim = Math.max(MAX_ZONE[g], Z[primary] || 1);
-  const pool = [...new Set([...(e.tags || []).flatMap((t) => TAG_POOL[t] || []), ...common.slice(1).map(([k]) => k), ...DEFAULT_POOL])]
-    .filter((k) => k !== primary && ECHOES[k] && (Z[k] || 9) <= lim);
-  const kinds = [primary];
+  const lim = MAX_ZONE[g], ok = (k) => ECHOES[k] && (Z[k] || 9) <= lim;
+  const tagPool = [...new Set((e.tags || []).flatMap((t) => TAG_POOL[t] || []))].filter(ok);
+  // 주 잔향: 원래 주 잔향이 등급 지역 안이면 그대로, 아니면 성질 후보에서(없으면 원래 재료 → 기본 후보)
+  let primary = common[0]?.[0];
+  if (!primary || !ok(primary)) {
+    const alt = tagPool.length ? tagPool : common.map(([k]) => k).filter(ok);
+    primary = alt.length ? alt[Math.floor(R() * alt.length)] : DEFAULT_POOL[Math.floor(R() * DEFAULT_POOL.length)];
+  }
   const nk = KINDS[g][0] + Math.floor(R() * (KINDS[g][1] - KINDS[g][0] + 1));
+  let pool = [...new Set([...tagPool, ...common.slice(1).map(([k]) => k).filter(ok)])].filter((k) => k !== primary);
+  // 기본 후보는 성질 후보가 정말 모자랄 때만
+  if (pool.length < nk - 1) pool = [...new Set([...pool, ...DEFAULT_POOL])].filter((k) => k !== primary && ok(k));
+  const kinds = [primary];
   while (kinds.length < nk && pool.length) kinds.push(pool.splice(Math.floor(R() * Math.min(pool.length, 5)), 1)[0]);
   const w = kinds.map((_, i) => (i === 0 ? 1.6 : 1) * (0.7 + R() * 0.6));
   const sw = w.reduce((a, b) => a + b, 0), total = Math.round(RECIPE_TOTAL[g] * (0.9 + R() * 0.25));

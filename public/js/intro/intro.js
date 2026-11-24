@@ -1,5 +1,5 @@
 // 아르케 인트로: 320×180 도트 판에 장면마다 직접 그리고, 화면 배율로 키워 보여 준다. 글자는 화면 해상도로 아래에 한 줄씩
-// 짧게 (약 50초 · 아무 키나 누르면 건너뜀): 별이 떨어져 탑이 솟고 → 빛이 여덟 종족에게 각인으로 → 꼭대기에 닿은 이는 없다
+// 짧게 (약 30초 · 아무 키나 누르면 건너뜀): 별이 떨어져 탑이 솟고 → 빛이 여덟 종족에게 각인으로 → 꼭대기에 닿은 이는 없다
 // → 몇 해 전 세린이 탑에 들어가 돌아오지 않았다 → 오늘 밤 바람결 마을, 탑이 다시 울린다 → 제목
 import { PixelCtx } from '../render/pixelctx.js';
 import { IW, IH, seg, cover } from './pix.js';
@@ -12,20 +12,20 @@ const clip = (S, { from = 0, speed = 1, dur, ...o } = {}) => ({ ...S, ...o, dur:
 const { T1, SERIN, T6, T7, T8 } = PARTS;
 const RACE8 = ACT2.slice(0, 8), RING = ACT2[8];
 const LIGHT = '탑의 빛은 여덟 종족에게 내려앉았다.';
-const TITLE_SCENE = clip(T6, { text: '그리고 오늘 밤, 바람결 마을.', textAt: 0.8 });
+const TITLE_SCENE = clip(T6, { dur: 3.4, text: '그리고 오늘 밤, 바람결 마을.', textAt: 0.4 });
 
 export const SCENES = [
-  clip(S1, { from: 1.2, text: '아주 먼 옛날, 하늘이 갈라졌다.', textAt: 0.3, fo: 0.25 }),
-  clip(S2, { dur: 4.4, text: '떨어진 별의 이름은 아르케.', textAt: 2.7, fi: 0.25 }),
-  clip(S3, { speed: 1.25, text: '별이 떨어진 자리에 탑이 솟았다.', textAt: 2.2 }),
-  ...RACE8.map((S, i) => clip(S, { from: [0.7, 0.7, 0.7, 0.7, 1.0, 0.9, 0.9, 0.7][i], dur: 0.9, text: LIGHT, textAt: 0.15, fi: 0.16, fo: 0.16 })), // 종족마다 한 컷 (몸이 움직이는 가장 센 순간만)
-  clip(RING, { speed: 1.15, text: '빛은 몸에 문양으로 새겨졌다. 사람들은 그것을 각인이라 불렀다.', textAt: 0.5 }),
-  clip(T1, { text: '각인을 지닌 자들은 탑을 올랐다. 꼭대기에 닿은 이는 아직 없다.', textAt: 0.4 }),
-  clip(SERIN, { dur: 3.0, text: '몇 해 전, 바람결 마을의 세린도 각인을 안고 탑에 들어갔다.', textAt: 0.4, fo: 0 }),
-  clip(SERIN, { from: 3.6, dur: 2.4, text: '세린은 돌아오지 않았다.', textAt: 0.2, fi: 0 }),
+  clip(S1, { from: 2.3, text: '아주 먼 옛날, 하늘이 갈라졌다.', textAt: 0.3, fo: 0.25 }),
+  clip(S2, { from: 1.6, dur: 2.6, text: '떨어진 별의 이름은 아르케.', textAt: 1.1, fi: 0.25 }),
+  clip(S3, { speed: 2.2, text: '별이 떨어진 자리에 탑이 솟았다.', textAt: 1.0 }),
+  ...RACE8.map((S, i) => clip(S, { from: [0.7, 0.7, 0.7, 0.7, 1.0, 0.9, 0.9, 0.7][i], dur: 0.5, text: LIGHT, textAt: 0.1, fi: 0.1, fo: 0.1 })), // 종족마다 한 컷 (몸이 움직이는 가장 센 순간만)
+  clip(RING, { speed: 1.8, text: '빛은 몸에 문양으로 새겨졌다. 사람들은 그것을 각인이라 불렀다.', textAt: 0.3 }),
+  clip(T1, { speed: 4.6 / 2.4, text: '각인을 지닌 자들은 탑을 올랐다. 꼭대기에 닿은 이는 아직 없다.', textAt: 0.3 }),
+  clip(SERIN, { dur: 2.0, text: '몇 해 전, 바람결 마을의 세린도 각인을 안고 탑에 들어갔다.', textAt: 0.4, fo: 0 }),
+  clip(SERIN, { from: 3.6, dur: 1.6, text: '세린은 돌아오지 않았다.', textAt: 0.1, fi: 0 }),
   TITLE_SCENE,
-  clip(T7, { text: '탑이 다시 울린다. 이번에는 — 너를 부른다.', textAt: 0.2 }),
-  T8,
+  clip(T7, { speed: 3.6 / 2.2, text: '탑이 다시 울린다. 이번에는 — 너를 부른다.', textAt: 0.15 }),
+  clip(T8, { speed: 6.0 / 3.4 }),
 ];
 const TOUCH = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 const startsOf = (scenes) => { const st = []; let acc = 0; for (const s of scenes) { st.push(acc); acc += s.dur; } return { st, total: acc }; };
