@@ -7,7 +7,8 @@ import { computeBuild, fitEngravings, SLOTS } from './sim/build.js';
 import { Renderer } from './render/renderer.js';
 import { loadAssets, sprite, frames } from './render/assets.js';
 import { Hub, renderRaceSelect } from './ui/hub.js';
-import { createIntro, makeStage, TOTAL as INTRO_TOTAL } from './intro/intro.js';
+import { createIntro, makeStage, TITLE_BG } from './intro/intro.js';
+import { dreamScenes } from './intro/dream.js';
 import { padState, applyPad, padMenu } from './gamepad.js';
 import { LAB, newSave, newLife, loadSave, writeSave, clearSave, toLoadout, applyRun, refreshQuests, progressQuests, setSaveHook, syncLevel, grantClassEngravings, grantRaceSkills, grantRaceMats, raceSkills, classEngravingFor, setStaleHook, onLocalSave, isStale } from './save.js';
 import { JOURNALS, STORY_ITEMS, newStory } from './data/story.js';
@@ -59,7 +60,7 @@ import { HIDDEN_BY_ID, TEACHERS, HIDDEN_COUNTS, HIDDEN } from './data/hidden.js'
 import { CLASS_STATS } from './data/statscale.js';
 import { JOURNEY, journeyNow, rewardText as journeyReward, GIVERS } from './data/journey.js';
 import { oathScore, newClimbSave, newRun } from './data/climb.js';
-import { createTutorial, tutFlags } from './ui/tutorial.js';
+import { createTutorial, createGuide, tutFlags, ctlText } from './ui/tutorial.js';
 import { lockText, SYSTEM_NAME, makeLocks, openedBetween, towerBest, isOpen } from './data/unlocks.js';
 // 디버그 핸들: 내 컴퓨터(localhost)나 주소에 ?debug 가 있을 때만 (배포판에서 콘솔 치트가 쉽지 않게)
 // 해방되지 않은 체계를 열려고 하면 안내하고 true (data/unlocks.js)
@@ -727,7 +728,17 @@ function coWipe() {
 }
 
 // ───── 튜토리얼 (ui/tutorial.js) ─────
-const tutorial = createTutorial({ save: () => save, world: () => world, paused: () => paused, touch: () => !!touch, sfx, writeSave: () => writeSave(save), banner: (b) => { renderer.banner = b; } });
+const tutorial = createTutorial({ hasFood: () => Object.keys(save?.bag || {}).some((k) => save.bag[k] > 0 && eatInfo(k)), save: () => save, world: () => world, paused: () => paused, touch: () => !!touch, inHouse: () => !!stash, sfx, writeSave: () => writeSave(save), banner: (b) => { renderer.banner = b; },
+  follow: () => { const J = journeyNow(save); if (J?.step.to && J.stage === 'do' && !save.follow) save.follow = J.step.id; } });
+// 창을 처음 열 때의 안내: 지금 열린 창 이름
+const guide = createGuide({ save: () => save, touch: () => !!touch, writeSave: () => writeSave(save), sfx,
+  current: () => {
+    if (!overlay.hidden) { const h = overlay.querySelector('h2')?.textContent || ''; return h === '퀘스트' ? 'quest' : h === '설정' ? 'settings' : h.startsWith('떠돌이 상인') ? 'merchant' : null; }
+    if (!panelEl.hidden) return 'tab:' + hub.tab;
+    if (renderer.bigMap) return 'map';
+    if (world?.player?.fish) return 'fishing';
+    return null;
+  } });
 
 // ───── 각인의 탑 100층 ─────
 function showTower() { climbUi.showTowerMenu(); }
@@ -799,7 +810,7 @@ function journeyTick(dt) {
   if (to && following && world.zone?.id === 'world') target = journeyTarget(to);
   const title = J.stage === 'talk' ? `${G.name}에게 말 걸기` : J.stage === 'report' ? `${G.name}에게 알리기` : J.step.title;
   const hint = J.stage === 'talk' ? `${G.name}이(가) 맡길 일이 있다 (머리 위 「!」 · G로 말 걸기)` : J.stage === 'report' ? `끝냈다: ${J.step.title} · 돌아가서 알리자 (머리 위 「?」)` : J.step.hint;
-  renderer.journey = { n: J.i + 1, total: JOURNEY.length, title, hint, done: J.done, reward: journeyReward(J.step.reward), target, canFollow: !!to };
+  renderer.journey = { n: J.i + 1, total: JOURNEY.length, title, hint: ctlText(hint, !!touch), done: J.done, reward: journeyReward(J.step.reward), target, canFollow: !!to };
 }
 // 여정 목적지 → 화살표 자리 (바깥 세계에서만)
 const HOUSE_NAME = { altar: '공명 제단', forge: '대장간', library: '서고', guild: '의뢰소', shop: '잡화점', dojo: '수련장', home: '내 집' };
@@ -947,7 +958,7 @@ function showTitle() {
     <p class="title-foot">그래픽 0x72 (CC0) · 효과음 Kenney (CC0) · 글꼴 갈무리 (OFL) · 이펙트 pixelfx (MIT)</p></div></div>`;
   document.getElementById('tsLang').onclick = () => { const next = window.__lang === 'en' ? 'ko' : 'en'; try { localStorage.setItem('lang', next); } catch { /* 저장소 막힘 */ } location.reload(); }; // 언어: 계정 · 종족을 고르기 전에도 바꾼다 (단추 글은 늘 영어 「Language」)
   const cv = titleEl.querySelector('.title-bg'), st = makeStage(), t0 = performance.now();
-  const T0 = INTRO_TOTAL - 6 - 3.6 - 6.2 + 0.6, LEN = 4.8; // 「그리고 삼백 년 뒤」 장면의 가운데 (어두워지기 전)
+  const T0 = TITLE_BG.t0, LEN = TITLE_BG.len; // 「오늘 밤, 바람결 마을」 장면의 가운데 (어두워지기 전)
   const draw = () => {
     if (titleEl.hidden || !cv.isConnected) return;
     const W = (cv.width = cv.clientWidth), H = (cv.height = cv.clientHeight);
@@ -1006,7 +1017,7 @@ function showLogin(onDone) {
 
 // 퀘스트 창 (J): 의뢰 게시판 · 성지 의뢰를 한눈에
 function showQuestLog() {
-  tutFlags.panel = true;
+  tutFlags.panel = true; tutFlags.quest = true;
   const zoneName = (id) => ZONES.find((z) => z.id === id)?.name || '';
   const bar = (v, n) => `<span class="qbar"><i style="width:${Math.min(100, Math.round((v / Math.max(1, n)) * 100))}%"></i></span><small>${Math.min(v, n)} / ${n}</small>`;
   const board = (save.quests || []).map((q) => `<div class="qrow ${q.done ? 'done' : ''}"><b>${q.text}</b> <small class="muted">${zoneName(q.zone)}</small>
@@ -1295,22 +1306,17 @@ function exitHouse() {
   sfx('close', { vol: 0.5 });
   startLoop();
 }
-// 새 게임: 꿈 → 바람결 마을 내 집에서 눈을 뜬다 (촌장이 문 앞에서 기다린다)
+// 새 게임: 꿈(도트 장면 · 탑 빛 · 팔의 내 종족 문양) → 바람결 마을 내 집에서 눈을 뜬다 (촌장이 문 앞에서 기다린다). 아무 키나 누르면 건너뛴다
 function showDream() {
   save.owTutorial = 1; save.lifeIntro = 1; writeSave(save);
-  const lines = ['…꿈속에서 탑 꼭대기의 빛이 심장처럼 고동친다.', '빛이 울릴 때마다 팔에 희미한 문양이 떠올라 타오른다.', '누군가 부르는 소리. 눈을 떴다. 바람결 마을, 내 방이다.'];
-  let i = 0;
-  const show = () => {
-    const last = i >= lines.length - 1;
-    showModal(`<div class="dream"><p class="big">${esc(lines[i])}</p>${last ? '<p class="keys muted">WASD 이동 · G 상호작용 · 집 아래쪽 문으로 나간다</p>' : ''}</div><button data-next>${last ? '일어난다' : '▸'}</button>`, () => {
-      if (!last) { i++; show(); return; }
-      overlay.hidden = true; paused = false; modal = null;
-      const hd = world.objects.find((o) => o.kind === 'door' && o.house === 'home');
-      if (hd) enterHouse('home', hd);
-    });
-    overlay.querySelector('[data-next]').onclick = () => modal();
-  };
-  show();
+  const wrap = document.createElement('div'), cv = document.createElement('canvas');
+  wrap.className = 'intro-wrap'; wrap.appendChild(cv); document.body.appendChild(wrap);
+  paused = true;
+  createIntro(cv, { scenes: dreamScenes(save.race), skipText: '건너뛰기 ▶', onDone: () => {
+    wrap.remove(); paused = false;
+    const hd = world.objects.find((o) => o.kind === 'door' && o.house === 'home');
+    if (hd) enterHouse('home', hd);
+  } }).start();
 }
 function showWorldIntro() {
   save.owTutorial = 1; writeSave(save);
@@ -2080,6 +2086,9 @@ function showSettings(back, openKeys = false) {
     <label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> 마을 사람도 때릴 수 있게 (끄면 사람에게 맞지 않는다)</label>
     <details class="keys-set"${openKeys ? ' open' : ''}><summary>키 바꾸기</summary><div class="key-grid">${KEY_ACTIONS.map(([def, name]) => `<span>${name}</span><button class="sm ghost" data-rebind="${def}">${keyLabel(keyFor(def))}</button>`).join('')}</div>
       <p class="muted">버튼 → 키 (Esc 그만두기) · 겹치면 서로 바뀐다</p><button id="keysReset" class="sm ghost">기본 키로</button></details>
+    <h4>처음 안내</h4>
+    <label class="ck"><input type="checkbox" id="guideCk" ${save?.guideOff ? '' : 'checked'}> 처음 해 보는 것 · 처음 여는 창 안내 보기</label>
+    <button id="guideReset" class="sm ghost">안내 다시 보기 (본 것 모두 처음부터)</button>
     <h4>화면</h4>
     <p class="set-row">언어 · Language ${sel('optLang', window.__lang || 'ko', [['ko', '한국어'], ['en', 'English']])}</p>
     <p class="set-row">화면 흔들림 ${sel('optShake', opts.shake, [[1, '보통'], [0.5, '약하게'], [0, '끔']])}</p>
@@ -2095,6 +2104,8 @@ function showSettings(back, openKeys = false) {
   $('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
   $('npcAtkCk').onchange = (e) => { setNpcAttack(e.target.checked); if (world) world.npcAttack = e.target.checked; };
   $('optLang').onchange = (e) => { try { localStorage.setItem('lang', e.target.value); } catch { /* 저장소 막힘 */ } if (save) writeSave(save); location.reload(); }; // 글자를 처음부터 다시 그리도록 새로 연다
+  $('guideCk').onchange = (e) => { if (save) { save.guideOff = !e.target.checked; writeSave(save); } };
+  $('guideReset').onclick = (e) => { if (save) { save.guides = {}; save.tips = {}; save.guideOff = false; $('guideCk').checked = true; writeSave(save); e.target.textContent = '다시 보인다 ✓'; } };
   $('optShake').onchange = (e) => setOpt('shake', +e.target.value);
   $('optDmg').onchange = (e) => setOpt('dmgNum', e.target.value);
   $('optBig').onchange = (e) => { setOpt('bigText', e.target.checked); document.body.classList.toggle('big-text', e.target.checked); };
@@ -2280,7 +2291,7 @@ function giverTalk(gid, after) {
         (save.jAccept ||= {})[step.id] = Date.now();
         for (const f of (step.autoReport ? step.set : step.set?.slice(0, 1)) || []) save.story.flags[f] = true; // 알리러 오지 않는 여정은 이때 모두
         if (step.to) save.follow = step.id; // 맡은 일은 바로 따라가기 (화살표)
-        renderer.banner = { text: `여정 · ${step.title}`, sub: step.hint, t: 4, color: '#f6dfae' };
+        renderer.banner = { text: `여정 · ${step.title}`, sub: ctlText(step.hint, !!touch), t: 5, color: '#f6dfae' };
         sfx('open', { vol: 0.5 });
       } else {
         for (const f of step.set || []) save.story.flags[f] = true;
