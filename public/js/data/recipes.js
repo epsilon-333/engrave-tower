@@ -7,7 +7,7 @@ const RARE_OF = { 1: ['chief', 'queen'], 2: ['core'], 3: ['witch', 'meltcore'], 
 // 태그(성질)별 후보: 지역마다 하나 이상 — 낮은 등급도 성질에 맞는 잔향을 고를 수 있게
 export const TAG_POOL = {
   slime: ['goo', 'spore', 'venom', 'magma', 'frost', 'rot'], wind: ['wing', 'spore', 'cinder', 'ember', 'mirror', 'frost', 'soul'],
-  poison: ['venom', 'spore', 'goo', 'cinder', 'icecore', 'rot'], bleed: ['blood', 'rust', 'wing', 'ember', 'icecore', 'bone'],
+  poison: ['venom', 'spore', 'goo', 'cinder', 'rot'], bleed: ['blood', 'rust', 'wing', 'ember', 'icecore', 'bone'],
   brawl: ['rust', 'blood', 'wing', 'cinder', 'magma', 'frost', 'bone'], giant: ['goo', 'rust', 'magma', 'cinder', 'icecore', 'bone'],
   fire: ['ember', 'blood', 'magma', 'cinder', 'rust'], ice: ['frost', 'icecore', 'mirror', 'goo', 'wing'],
   curse: ['venom', 'spore', 'cinder', 'mirror', 'soul', 'rot'], shadow: ['wing', 'venom', 'cinder', 'mirror', 'soul', 'rot'],
@@ -40,8 +40,12 @@ function build(id, e, ECHOES, salt) {
     if (fam) out[fam] = rareFam ? Math.max(1, g - 2) + Math.floor(R() * 2) : Math.round([0, 8, 14, 22, 32, 44][g] * (0.85 + R() * 0.35));
     if (g >= 3 || rareFam) {
       const pool = (e.tags || []).flatMap((t) => TAG_POOL[t] || []).filter((k) => k !== fam && (Z[k] || 9) <= MAX_ZONE[g]);
-      const pick = pool.length ? pool[Math.floor(R() * pool.length)] : null;
-      if (pick) out[pick] = Math.round(RECIPE_TOTAL[g] * (rareFam ? 0.5 + R() * 0.2 : 0.15 + R() * 0.12));
+      // 보스 계열이면 태그 잔향 몫이 커서, 한 가지에 몰리지 않게 두 가지로 나눈다 (태그마다 하나씩 먼저)
+      const n = rareFam ? 2 : 1, picks = [];
+      for (const t of e.tags || []) { const c = (TAG_POOL[t] || []).filter((k) => pool.includes(k) && !picks.includes(k)); if (picks.length < n && c.length) picks.push(c[Math.floor(R() * c.length)]); }
+      while (picks.length < n) { const c = pool.filter((k) => !picks.includes(k)); if (!c.length) break; picks.push(c[Math.floor(R() * c.length)]); }
+      const amt = Math.round(RECIPE_TOTAL[g] * (rareFam ? 0.5 + R() * 0.2 : 0.15 + R() * 0.12));
+      picks.forEach((k, i) => { out[k] = Math.round(amt / picks.length) + (i ? 0 : amt % picks.length); });
     }
     for (const k in out) if (out[k] < 1) out[k] = 1;
     // 합계가 등급 목표보다 모자라면 성질 · 계열 잔향(보스 잔향 · 부산물 빼고)에 나눠 채운다
