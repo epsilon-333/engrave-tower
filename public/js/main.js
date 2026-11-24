@@ -2078,7 +2078,7 @@ function showSettings(back, openKeys = false) {
     <h4>조작</h4>
     <label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T): 가까운 적을 저절로 겨눈다</label>
     <label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> 마을 사람도 때릴 수 있게 (끄면 사람에게 맞지 않는다)</label>
-    <details class="keys-set"${openKeys ? ' open' : ''}><summary>키 바꾸기</summary><div class="key-grid">${KEY_ACTIONS.map(([def, name]) => `<span>${name}</span><button class="sm ghost" data-rebind="${def}">${keyLabel(keyFor(def))}</button>`).join('')}</div>
+    <details class="keys-set" data-guide="settings-keys"${openKeys ? ' open' : ''}><summary>키 바꾸기</summary><div class="key-grid">${KEY_ACTIONS.map(([def, name]) => `<span>${name}</span><button class="sm ghost" data-rebind="${def}">${keyLabel(keyFor(def))}</button>`).join('')}</div>
       <p class="muted">버튼 → 키 (Esc 그만두기) · 겹치면 서로 바뀐다</p><button id="keysReset" class="sm ghost">기본 키로</button></details>
     <h4>화면</h4>
     <p class="set-row">언어 · Language ${sel('optLang', window.__lang || 'ko', [['ko', '한국어'], ['en', 'English']])}</p>

@@ -483,7 +483,7 @@ export class Hub {
         ${b.notes.filter((n) => /^양손|둘:|^쌍/.test(n.text)).map((n) => `<p class="up">◇ ${esc(n.text)}</p>`).join('') || ''}</section>
       <section class="panel"><h3>${ownedOnly ? '내 장비' : '대장간'}</h3>
         ${gearFilters}
-        <div class="eng-split"><div class="cards eng-rows" data-guide="gear-list">${all.map(gearRowItem).join('') || '<p class="muted">없음</p>'}</div>
+        <div class="eng-split"><div class="cards eng-rows" data-guide="${ownedOnly ? 'gear-list' : 'shop-list'}">${all.map(gearRowItem).join('') || '<p class="muted">없음</p>'}</div>
         <aside class="eng-detail" data-guide="gear-detail">${sel ? card(sel) : '<p class="muted">장비를 고른다</p>'}</aside></div></section>`;
   }
 
@@ -513,7 +513,7 @@ export class Hub {
     const c = s.codex, f = s.story?.flags || {}, items = s.story?.items || {};
     const pts = codexPoints(s), lv = levelFor(pts), tot = codexTotals(s);
     const sec = this.codexSec ||= 'monsters';
-    const head = `<div class="codex-head">
+    const head = `<div class="codex-head" data-guide="codex-score">
       <div><b>도감 점수 ${pts}</b> · 다음 레벨까지 ${lv.need - lv.into}점 <span class="bar"><i style="width:${(lv.into / lv.need) * 100}%"></i></span></div>
       
       <nav class="codex-nav">${[['monsters', `몬스터 ${tot.monsters.done}/${tot.monsters.all}`], ['places', `장소 ${tot.places.done}/${tot.places.all}`], ['records', `기록 ${tot.records.done}/${tot.records.all}`], ['people', `사람 ${tot.people.done}/${tot.people.all}`], ['fish', `물고기 ${tot.fish.done}/${tot.fish.all}`], ['artifacts', `유물 ${tot.artifacts.done}/${tot.artifacts.all}`], ['mats', '각인 재료'], ['etc', '원소 반응 · 태그']]
