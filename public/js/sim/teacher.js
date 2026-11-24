@@ -90,7 +90,6 @@ const TEACHER_STATS = {
   fist: { str: 80, mag: 5, agi: 65, vit: 70, sen: 50, spi: 40, pres: 55, mres: 30 },
   spear: { str: 75, mag: 40, agi: 50, vit: 60, sen: 55, spi: 45, pres: 50, mres: 50 },
 };
-export const teacherStats = (fam) => TEACHER_STATS[fam];
 // 내 레벨에 맞춘 난이도 (쉬우면 안 된다): 레벨 40(스승이 처음 나오는 즈음)이 기준 1, 레벨 100이면 2
 //  · 스승의 여덟 스탯이 레벨 40 넘는 만큼 0.6씩 오른다 · 주는 피해 ×(1.2 × √배율) · 준비 · 스킬 사이가 짧아진다
 // 레벨 lv의 기준 캐릭터(오크 · 스탯 60% 근력 · 40% 체력 · 맨몸): 스승 체력 = 기준 공격력 × 25, 스승 피해 = 기준 최대 체력 비율
@@ -178,21 +177,6 @@ export const TeacherMethods = {
       } else this.trialEnd(true);
     }
     return 0;
-  },
-  // 분신을 다시 늘어세운다 (얼굴 없는 자): 하나가 진짜 (흐리지 않다)
-  trialShuffle() {
-    const Tr = this.trial, p = this.player, live = Tr.bodies;
-    const real = this.rng.int(0, live.length - 1), a0 = this.rng.range(0, Math.PI * 2);
-    live.forEach((e, i) => {
-      e.dead = false;
-      const a = a0 + (i / live.length) * Math.PI * 2; let x = p.x + Math.cos(a) * 72, y = p.y + Math.sin(a) * 48;
-      if (this.blocked(x, y, 6)) { x = Tr.cx + Math.cos(a) * 60; y = Tr.cy + Math.sin(a) * 40; }
-      this.emit({ t: 'blink', x1: e.x, y1: e.y, x2: x, y2: y }); e.x = x; e.y = y;
-      e.fakeGhost = i !== real; if (i === real) Tr.main = e;
-      if (!this.enemies.includes(e)) this.enemies.push(e);
-    });
-    if (this.tower) this.tower.boss = Tr.main;
-    Tr.shufT = 3.2;
   },
   // ───── 무기를 든 스승의 동작 ─────
   trialDash(e, ang, dist, dur = DASH.dur, cd = DASH.cd) {
@@ -380,22 +364,6 @@ export const TeacherMethods = {
       this.emit({ t: 'strike', id: e.id, x, y, ang: Math.atan2(y - e.y, x - e.x) });
       this.emit({ t: 'skillAoe', x, y, r, elem: fx === 'lightRain' ? 'holy' : 'phys', fx });
       const p = this.player; if (Math.hypot(p.x - x, p.y - y) < r + 5) this.hurtPlayer(this.trialDmg(k), 'phys', e, { fromX: e.x, fromY: e.y });
-    } });
-  },
-  // 예고 선 뒤 일직선 (발도 · 돌진 · 용암 균열 · 화살)
-  trialLine(e, len, w, wind, k, fx, after) {
-    const p = this.player, a = Math.atan2(p.y - e.y, p.x - e.x), dx = Math.cos(a), dy = Math.sin(a); len = this.rayLen(e.x, e.y, a, len);
-    if (wind >= 0.1) { // 각인 스킬(예고 선) · 활의 화살은 준비 자세가 예고라서 선을 그리지 않는다
-      this.emit({ t: 'windup', id: e.id }); this.emit({ t: 'telegraph', id: e.id, x: e.x, y: e.y, dx, dy, len, w });
-      for (let i = 1; i <= 4; i++) this.emit({ t: 'telegraphCircle', x: e.x + dx * len * i / 4, y: e.y + dy * len * i / 4, r: w / 2, dur: wind });
-    }
-    this.delayed.push({ t: wind, run: () => {
-      if (!this.trial || this.trial.done || e.dead) return;
-      const x1 = e.x, y1 = e.y; len = this.rayLen(x1, y1, a, len); const x2 = x1 + dx * len, y2 = y1 + dy * len;
-      this.emit({ t: 'skillLine', x1, y1, x2, y2, w, elem: fx === 'lava' ? 'fire' : 'phys', fx: fx === 'lava' ? 'quake' : fx });
-      const q = this.player, t = Math.max(0, Math.min(1, ((q.x - x1) * dx + (q.y - y1) * dy) / len)), cx = x1 + dx * len * t, cy = y1 + dy * len * t;
-      if (Math.hypot(q.x - cx, q.y - cy) < w / 2 + 5) this.hurtPlayer(this.trialDmg(k), 'phys', e, { fromX: e.x, fromY: e.y });
-      after?.(x2, y2);
     } });
   },
   // 스승의 각인 스킬 = 이기면 받는 스킬을 플레이어가 쓸 때와 똑같이 (범위 · 폭 · 지연 · 효과 그대로, 피해는 공격력 100%당 내 최대 체력 5.5% `SIG_K`)

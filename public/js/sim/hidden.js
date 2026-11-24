@@ -237,7 +237,6 @@ export function climbFeats(r, w, f, kind) {
   if (w.b.weaponId === 'bloodEater') out.push('count:bloodLords');
   return out;
 }
-export const teacherFor = (fam) => TEACHERS[fam] && HIDDEN_BY_ID[TEACHERS[fam].id];
 
 // 얻기: 증표(잔향) 하나 · 칭호. 이미 얻었으면 false
 export function grantHidden(s, id) {

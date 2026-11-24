@@ -13,13 +13,6 @@ const GUST_EVERY = 8, GUST_TELE = 1, GUST_PUSH = 48; // 3칸
 const BELT_SPEED = 16; // 1초에 1칸
 const BELL_EVERY = 20, BELL_DUR = 3;
 const LIGHT_R = 96, LIGHT_DUR = 30; // 6칸 · 30초
-export const ZONE_RULES = {
-  gust: '돌풍: 8초마다 화살표 방향으로 3칸 밀린다 (가장자리에서 멈춘다) · 제 발로 하늘에 걸어 나가면 떨어져 죽는다',
-  mirror: '거울 벽: 투사체가 한 번 튕긴다 (피해 70%) · 내 그림자가 20초 동안 나온다',
-  clock: '톱니 바닥이 1초에 1칸 실어 간다 · 20초마다 시간의 종 (3초 동안 적 -30% 속도 · 내 쿨타임 2배 빠르게)',
-  library: '책장이 물결마다 옮겨진다 · 별자리 위에서 주는 피해 +20% (적도)',
-  light: '빛기둥(G)을 깨우면 30초 동안 둘레 6칸이 밝다 · 빛 안의 적은 +25% · 그림자 속 적은 -30% 피해',
-};
 
 const isVoid = (w, x, y) => w.voidZone && w.tileAt(x, y) === T_LIQUID;
 const flyer = (e) => e.def.shape === 'flyer' || e.soaring;

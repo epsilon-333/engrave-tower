@@ -3107,12 +3107,6 @@ export class World {
   spawnMinion(m, x, y, i = 0) {
     this.allies.push({ id: this.nextId++, kind: m.kind, perm: true, mref: m, defId: m.defId, hp: m.maxHp, maxHp: m.maxHp, x, y, t: 1e9, max: 1e9, shield1: true, atk: m.atk, cd: 0.3 + i * 0.15, phase: i, dir: 1, r: m.r || 6, scale: m.scale || 1 });
   }
-  raiseSoul(sv, x, y, i = 0, bonus = 1) {
-    sv.up = true;
-    const hp = sv.maxHp * 0.5;
-    this.allies.push({ id: this.nextId++, kind: 'soul', perm: true, sv, defId: sv.defId, hp, maxHp: hp, x, y, t: 1e9, max: 1e9, shield1: true,
-      atk: sv.atk * bonus, cd: 0.3 + i * 0.15, phase: i, dir: 1, r: sv.r, scale: sv.scale });
-  }
 
   // 다른 사람이 쏜 투사체 (보이기만 · 맞히지 않는다)
   addGhostProjs(l) {

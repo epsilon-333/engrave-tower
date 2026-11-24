@@ -20,7 +20,6 @@ export const DUNGEONS = {
   crypt: { lv: 42, boss: 'dgCryptWarden', first: 380, blurb: '그림자 묘지 아래 지하 묘지. 녹슨 열쇠 꾸러미를 찬 파수꾼이 무덤을 지킨다.' },
   palace: { lv: 45, boss: 'dragonGuard', first: 420, blurb: '바닷속 소용돌이 아래 용궁. 용궁의 근위가 보물을 지킨다.' },
 };
-export const DUNGEON_DEPTH_LV = 2; // 지하 한 층마다 몬스터 레벨 +2
 
 // 우두머리: from(바탕 몬스터) · name · hp · atk · scale(그림 크기 배율) · tint(그림 색, CSS filter) · 그 밖에 덮어쓸 것
 export const DUNGEON_BOSSES = {
@@ -48,5 +47,3 @@ export function registerDungeonArt(MONSTER_ART) {
     MONSTER_ART[id] = { ...a, scale: (a.scale || 1) * (B.scale || 1), tint: B.tint };
   }
 }
-// 이 몬스터가 어느 던전의 우두머리인가 (없으면 null)
-export const dungeonOfBoss = (monId) => Object.keys(DUNGEONS).find((k) => DUNGEONS[k].boss === monId) || null;

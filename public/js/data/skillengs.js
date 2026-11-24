@@ -180,7 +180,6 @@ const LV = [
 for (const [id, name, grade, tags, stats, effects, recipe, skill] of LV) L.push([id, name, 'arm', grade, tags, stats, effects.filter((e) => e.text), recipe, skill]);
 export const LV_GRADE = (sk) => (sk.ult ? 5 : { 3: 2, 6: 2, 10: 3, 15: 3, 30: 4 }[sk.unlock] || 2); // 레벨업으로 받는 종족 스킬 각인의 등급
 
-export const START_ENGS = Object.fromEntries(START.map((x) => [x[5], x[0]])); // 스킬 → 그 종족 시작 각인
 
 export const SKILL_ENGS = L.map(([id, name, slot, grade, tags, stats, effects, recipe, skill]) => ({ id, name, slot, grade, tags, stats, effects, recipe: Object.fromEntries(Object.entries(recipe).filter(([, n]) => n > 0)), skill }));
 export function registerSkillEngravings(ENGRAVINGS) {

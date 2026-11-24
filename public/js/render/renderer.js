@@ -3364,18 +3364,6 @@ export class Renderer {
     const ax = align === 'center' ? c._tw / 2 : align === 'right' ? c._tw : 0;
     this.g.drawImage(c, Math.round(x - ax) - c._ox, Math.round(y) - c._oy);
   }
-  textSlow(s, x, y, n, color, align = 'left', outline = true, bold = false) {
-    const g = this.g, size = 11 * n;
-    g.font = `${bold ? 'bold ' : ''}${size}px ${FONT}`;
-    g.textAlign = align; g.textBaseline = 'middle';
-    x = Math.round(x); y = Math.round(y);
-    if (outline) {
-      g.fillStyle = '#0c0a0b';
-      const o = Math.max(1, Math.round(n));
-      for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, o], [-o, o], [o, -o]]) g.fillText(s, x + dx, y + dy);
-    }
-    g.fillStyle = color; g.fillText(s, x, y);
-  }
   sx(x) { return (x - this.cx) * this.S; }
   sy(y) { return (y - this.cy) * this.S; }
 

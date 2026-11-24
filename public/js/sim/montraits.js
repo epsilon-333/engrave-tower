@@ -14,7 +14,6 @@
 //   carapace 갑각: 껍질(최대 체력 60%)이 남아 있으면 받는 피해 -75% · 깨지면 그대로
 import { DT } from './world.js';
 
-export const TRAIT_NAME = { shield: '방패', stone: '석화', dig: '구멍 파기', caster: '마법', feign: '죽은 척', split: '분열', callHelp: '도움 요청', rammer: '돌진', healer: '치유', bomber: '폭탄', stalker: '은신', carapace: '갑각' };
 const ang = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export const TraitMethods = {
