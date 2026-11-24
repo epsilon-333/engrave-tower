@@ -42,7 +42,7 @@ function build(id, e, ECHOES, salt) {
       const pool = (e.tags || []).flatMap((t) => TAG_POOL[t] || []).filter((k) => k !== fam && (Z[k] || 9) <= MAX_ZONE[g]);
       // 보스 계열이면 태그 잔향 몫이 커서, 한 가지에 몰리지 않게 두 가지로 나눈다 (태그마다 하나씩 먼저)
       const n = rareFam ? 2 : 1, picks = [];
-      for (const t of e.tags || []) { const c = (TAG_POOL[t] || []).filter((k) => pool.includes(k) && !picks.includes(k)); if (picks.length < n && c.length) picks.push(c[Math.floor(R() * c.length)]); }
+      for (const t of [...(e.tags || [])].reverse()) { const c = (TAG_POOL[t] || []).filter((k) => pool.includes(k) && !picks.includes(k)); if (picks.length < n && c.length) picks.push(c[Math.floor(R() * c.length)]); }
       while (picks.length < n) { const c = pool.filter((k) => !picks.includes(k)); if (!c.length) break; picks.push(c[Math.floor(R() * c.length)]); }
       const amt = Math.round(RECIPE_TOTAL[g] * (rareFam ? 0.5 + R() * 0.2 : 0.15 + R() * 0.12));
       picks.forEach((k, i) => { out[k] = Math.round(amt / picks.length) + (i ? 0 : amt % picks.length); });
