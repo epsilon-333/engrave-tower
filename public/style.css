@@ -768,3 +768,12 @@ body:not(.touch):has(#title:not([hidden])) #cloudChip { bottom: auto; top: calc(
 details.fold > summary .f-close { display: none; }
 details.fold[open] > summary .f-open { display: none; }
 details.fold[open] > summary .f-close { display: inline; }
+
+/* 창을 처음 열 때의 안내 (ui/tutorial.js createGuide) */
+#guideHi { position: fixed; z-index: 60; pointer-events: none; border: 2px solid #ffd76a; border-radius: 6px; box-shadow: 0 0 0 9999px rgba(8,6,12,0.45), 0 0 12px #ffd76a88; transition: all .18s; }
+#guide { position: fixed; z-index: 61; left: 50%; bottom: 24px; transform: translateX(-50%); width: min(440px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px; padding: 10px 14px; background: rgba(20,16,28,0.96); border: 1px solid #e9b85c; border-radius: 6px; color: #f4ecd8; font: 14px Galmuri11, sans-serif; box-shadow: 0 2px 0 #000; }
+#guide small { color: #e9b85c; }
+#guide b { font-weight: 400; line-height: 1.5; }
+#guide em { font-style: normal; color: #ffd76a; }
+#guide .g-act { display: flex; justify-content: flex-end; gap: 8px; }
+body.touch #guide { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }

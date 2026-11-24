@@ -18,11 +18,11 @@ export const SCENES = [
   clip(S1, { from: 1.2, text: '아주 먼 옛날, 하늘이 갈라졌다.', textAt: 0.3, fo: 0.25 }),
   clip(S2, { dur: 4.4, text: '떨어진 별의 이름은 아르케.', textAt: 2.7, fi: 0.25 }),
   clip(S3, { speed: 1.25, text: '별이 떨어진 자리에 탑이 솟았다.', textAt: 2.2 }),
-  ...RACE8.map((S, i) => clip(S, { from: [0.7, 0.7, 0.7, 0.7, 1.0, 0.9, 0.9, 0.7][i], dur: 1.3, text: LIGHT, textAt: 0.15, fi: 0.16, fo: 0.16 })), // 종족마다 한 컷 (몸이 움직이는 가장 센 순간만)
+  ...RACE8.map((S, i) => clip(S, { from: [0.7, 0.7, 0.7, 0.7, 1.0, 0.9, 0.9, 0.7][i], dur: 0.9, text: LIGHT, textAt: 0.15, fi: 0.16, fo: 0.16 })), // 종족마다 한 컷 (몸이 움직이는 가장 센 순간만)
   clip(RING, { speed: 1.15, text: '빛은 몸에 문양으로 새겨졌다. 사람들은 그것을 각인이라 불렀다.', textAt: 0.5 }),
   clip(T1, { text: '각인을 지닌 자들은 탑을 올랐다. 꼭대기에 닿은 이는 아직 없다.', textAt: 0.4 }),
-  clip(SERIN, { dur: 3.6, text: '몇 해 전, 바람결 마을의 세린도 각인을 안고 탑에 들어갔다.', textAt: 0.4, fo: 0 }),
-  clip(SERIN, { from: 3.6, dur: 3.0, text: '세린은 돌아오지 않았다.', textAt: 0.2, fi: 0 }),
+  clip(SERIN, { dur: 3.0, text: '몇 해 전, 바람결 마을의 세린도 각인을 안고 탑에 들어갔다.', textAt: 0.4, fo: 0 }),
+  clip(SERIN, { from: 3.6, dur: 2.4, text: '세린은 돌아오지 않았다.', textAt: 0.2, fi: 0 }),
   TITLE_SCENE,
   clip(T7, { text: '탑이 다시 울린다. 이번에는 — 너를 부른다.', textAt: 0.2 }),
   T8,

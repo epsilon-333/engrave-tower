@@ -60,7 +60,7 @@ import { HIDDEN_BY_ID, TEACHERS, HIDDEN_COUNTS, HIDDEN } from './data/hidden.js'
 import { CLASS_STATS } from './data/statscale.js';
 import { JOURNEY, journeyNow, rewardText as journeyReward, GIVERS } from './data/journey.js';
 import { oathScore, newClimbSave, newRun } from './data/climb.js';
-import { createTutorial, tutFlags, ctlText } from './ui/tutorial.js';
+import { createTutorial, createGuide, tutFlags, ctlText } from './ui/tutorial.js';
 import { lockText, SYSTEM_NAME, makeLocks, openedBetween, towerBest, isOpen } from './data/unlocks.js';
 // 디버그 핸들: 내 컴퓨터(localhost)나 주소에 ?debug 가 있을 때만 (배포판에서 콘솔 치트가 쉽지 않게)
 // 해방되지 않은 체계를 열려고 하면 안내하고 true (data/unlocks.js)
@@ -728,8 +728,17 @@ function coWipe() {
 }
 
 // ───── 튜토리얼 (ui/tutorial.js) ─────
-const tutorial = createTutorial({ save: () => save, world: () => world, paused: () => paused, touch: () => !!touch, inHouse: () => !!stash, sfx, writeSave: () => writeSave(save), banner: (b) => { renderer.banner = b; },
-  follow: () => { const J = journeyNow(save); if (J?.step.to && J.stage === 'do' && !save.follow) save.follow = J.step.id; } }); // 끝나면 지금 여정을 따라가기 (화살표)
+const tutorial = createTutorial({ hasFood: () => Object.keys(save?.bag || {}).some((k) => save.bag[k] > 0 && eatInfo(k)), save: () => save, world: () => world, paused: () => paused, touch: () => !!touch, inHouse: () => !!stash, sfx, writeSave: () => writeSave(save), banner: (b) => { renderer.banner = b; },
+  follow: () => { const J = journeyNow(save); if (J?.step.to && J.stage === 'do' && !save.follow) save.follow = J.step.id; } });
+// 창을 처음 열 때의 안내: 지금 열린 창 이름
+const guide = createGuide({ save: () => save, touch: () => !!touch, writeSave: () => writeSave(save), sfx,
+  current: () => {
+    if (!overlay.hidden) { const h = overlay.querySelector('h2')?.textContent || ''; return h === '퀘스트' ? 'quest' : h === '설정' ? 'settings' : h.startsWith('떠돌이 상인') ? 'merchant' : null; }
+    if (!panelEl.hidden) return 'tab:' + hub.tab;
+    if (renderer.bigMap) return 'map';
+    if (world?.player?.fish) return 'fishing';
+    return null;
+  } });
 
 // ───── 각인의 탑 100층 ─────
 function showTower() { climbUi.showTowerMenu(); }
@@ -2077,6 +2086,9 @@ function showSettings(back, openKeys = false) {
     <label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> 마을 사람도 때릴 수 있게 (끄면 사람에게 맞지 않는다)</label>
     <details class="keys-set"${openKeys ? ' open' : ''}><summary>키 바꾸기</summary><div class="key-grid">${KEY_ACTIONS.map(([def, name]) => `<span>${name}</span><button class="sm ghost" data-rebind="${def}">${keyLabel(keyFor(def))}</button>`).join('')}</div>
       <p class="muted">버튼 → 키 (Esc 그만두기) · 겹치면 서로 바뀐다</p><button id="keysReset" class="sm ghost">기본 키로</button></details>
+    <h4>처음 안내</h4>
+    <label class="ck"><input type="checkbox" id="guideCk" ${save?.guideOff ? '' : 'checked'}> 처음 해 보는 것 · 처음 여는 창 안내 보기</label>
+    <button id="guideReset" class="sm ghost">안내 다시 보기 (본 것 모두 처음부터)</button>
     <h4>화면</h4>
     <p class="set-row">언어 · Language ${sel('optLang', window.__lang || 'ko', [['ko', '한국어'], ['en', 'English']])}</p>
     <p class="set-row">화면 흔들림 ${sel('optShake', opts.shake, [[1, '보통'], [0.5, '약하게'], [0, '끔']])}</p>
@@ -2092,6 +2104,8 @@ function showSettings(back, openKeys = false) {
   $('autoAimCk').onchange = (e) => setAutoAim(e.target.checked);
   $('npcAtkCk').onchange = (e) => { setNpcAttack(e.target.checked); if (world) world.npcAttack = e.target.checked; };
   $('optLang').onchange = (e) => { try { localStorage.setItem('lang', e.target.value); } catch { /* 저장소 막힘 */ } if (save) writeSave(save); location.reload(); }; // 글자를 처음부터 다시 그리도록 새로 연다
+  $('guideCk').onchange = (e) => { if (save) { save.guideOff = !e.target.checked; writeSave(save); } };
+  $('guideReset').onclick = (e) => { if (save) { save.guides = {}; save.tips = {}; save.guideOff = false; $('guideCk').checked = true; writeSave(save); e.target.textContent = '다시 보인다 ✓'; } };
   $('optShake').onchange = (e) => setOpt('shake', +e.target.value);
   $('optDmg').onchange = (e) => setOpt('dmgNum', e.target.value);
   $('optBig').onchange = (e) => { setOpt('bigText', e.target.checked); document.body.classList.toggle('big-text', e.target.checked); };
