@@ -542,7 +542,7 @@ export const TeacherMethods = {
         if ((Tr.strafeT -= DT) <= 0) { Tr.strafe = -Tr.strafe; Tr.strafeT = this.rng.range(0.7, 1.3); }
         const aa = Math.atan2(e.y - p.y, e.x - p.x) + Tr.strafe * 0.6; this.stepToward(e, p.x + Math.cos(aa) * 130, p.y + Math.sin(aa) * 130, 75);
         if (Tr.t <= 0) {
-          Tr.s = 'cast'; Tr.t = 3.2; // 주문은 두 배 느리게 (2026-11-19) Tr.castT0 = this.t; e.moving = false; this.trialSay(e, '주문을 왼다…', '#c8a8ff');
+          Tr.s = 'cast'; Tr.t = 3.2; Tr.castT0 = this.t; e.moving = false; this.trialSay(e, '주문을 왼다…', '#c8a8ff'); // 주문은 두 배 느리게 (2026-11-19)
           for (const dt of [0.3, 1.5, 2.7]) this.tsLater(dt, () => { if (Tr.s !== 'cast') return; const L = this.trialLead(1.2); this.trialStrike(e, L.x, L.y, 1.2, 45, 0.08, 'burst'); });
         }
       } else if (Tr.s === 'cast') { e.moving = false; if (Tr.t <= 0) { Tr.s = 'move'; Tr.t = 1.3; const L = this.trialLead(1.6); this.trialStrike(e, L.x, L.y, 1.6, 60, TR.hit, 'burst'); } }

@@ -107,7 +107,7 @@ export function setupTouch({ input, getWorld, onMenu, onBag, onInteract }) {
         el.hidden = !id;
         if (!id) continue;
         const sk = SKILLS[id];
-        const nm = id === 'weapon' ? '무기' : sk.name; // 이름을 자르지 않는다 (긴 이름은 글자를 줄여 두 줄로)
+        const nm = id === 'weapon' ? '무기' : sk?.name || '?'; // 없는 스킬(옛 저장)에 멈추지 않게 // 이름을 자르지 않는다 (긴 이름은 글자를 줄여 두 줄로)
         if (el.textContent !== nm) { el.textContent = nm; el.classList.toggle('long', nm.length > 4); }
         const cd = id === 'weapon' ? p.skillCd : p.cds[id] || 0;
         const need = sk ? (sk.costAll ? sk.costAll.min : sk.cost || 0) : 0;

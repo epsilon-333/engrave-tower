@@ -3049,8 +3049,8 @@ export class World {
     for (const k of e.passives) {
       if (k === 'frenzy' && tick(k, 15) && (pv.fr || 0) < 6) { pv.fr = (pv.fr || 0) + 1; e.atkRate *= 1.1; e.speedMul *= 1.03; this.emit({ t: 'text', x: e.x, y: e.y - 32, text: `광분 ${pv.fr}`, color: '#ff5a3a' }); }
       if (k === 'regrow' && this.t - (e.lastHitT ?? -9) > 3 && e.hp < e.maxHp) { e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.01 * DT); if (tick('regrowFx', 1)) { this.emit({ t: 'text', x: e.x, y: e.y - 28, text: '재생 +1%', color: '#7be38a' }); this.emit({ t: 'bossHeal', id: e.id, x: e.x, y: e.y, from: e.hp / e.maxHp - 0.01, to: e.hp / e.maxHp }); } }
-      if (k === 'summonTimer' && tick(k, 18)) {
-        for (let i = 0; i < 2; i++) { const a = this.rng.range(0, Math.PI * 2); let x = e.x + Math.cos(a) * 44, y = e.y + Math.sin(a) * 44; if (this.blocked(x, y, 6)) { x = e.x; y = e.y; } const m = this.makeEnemy(e.def.adds || this.zone.pool?.[0] || 'goblin', x, y, { summoned: true }); m.summoner = e.id; m.state = 'chase'; m.home = { ...e.home }; m.noLoot = true; this.enemies.push(m); this.emit({ t: 'summon', x, y }); }
+      if (k === 'summonTimer' && tick(k, 18) && this.summonRoom(e) > 0) {
+        for (let i = 0, n = Math.min(2, this.summonRoom(e)); i < n; i++) { const a = this.rng.range(0, Math.PI * 2); let x = e.x + Math.cos(a) * 44, y = e.y + Math.sin(a) * 44; if (this.blocked(x, y, 6)) { x = e.x; y = e.y; } const m = this.makeEnemy(e.def.adds || this.zone.pool?.[0] || 'goblin', x, y, { summoned: true }); m.summoner = e.id; m.state = 'chase'; m.home = { ...e.home }; m.noLoot = true; this.enemies.push(m); this.emit({ t: 'summon', x, y }); }
         this.emit({ t: 'text', x: e.x, y: e.y - 36, text: '무리를 부른다', color: '#ffb07a' });
       }
       if (k === 'curseMark' && tick(k, 12)) { p.markT = 4; this.emit({ t: 'text', x: p.x, y: p.y - 30, text: '저주의 표식 · 받는 피해 +30%', color: '#c45cff' }); }

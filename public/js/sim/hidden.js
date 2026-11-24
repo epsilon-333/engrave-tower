@@ -55,10 +55,9 @@ export const HiddenMethods = {
   // 맞았다 (회피 · 받아치기 · 무적으로 막은 것은 오지 않는다). shield: 방패로 정면에서 받았다
   hidHurt(shield, dmg = 0) {
     const H = this.hid; if (!H) return;
-    if (this.trial) return; // 스승의 방: 위업 기록은 하지 않는다
-    H.lastHurt = this.t; delete this.player.buffs.hNoShadow;
+    H.lastHurt = this.t; delete this.player.buffs.hNoShadow; // 패시브(무영 · 되갚기)는 스승의 방에서도 그대로
     if (this.f.has('payback') && dmg > 0) H.pay.push([this.t, dmg]);
-    if (!H.boss) return;
+    if (this.trial || !H.boss) return; // 스승의 방: 위업 기록은 하지 않는다
     H.hits++;
     if (shield) H.blocks++; else H.other++;
   },

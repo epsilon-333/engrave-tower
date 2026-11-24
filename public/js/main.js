@@ -879,6 +879,7 @@ function awardHidden(id) {
 
 // 일부러 쌓는 것 (사람 쓰러뜨리기 · 바닷속 숨 막힘 · 피를 먹는 칼로 벤 주인): 다 차면 숨은 각인
 function hiddenCount(key) {
+  if (!save) return; // 저장이 없을 때 신호가 와도 멈추지 않게
   const c = ((save.hidden ||= {}).c ||= {}); c[key] = (c[key] || 0) + 1;
   const [n, id] = HIDDEN_COUNTS[key] || [];
   if (id && c[key] >= n) awardHidden(id); else writeSave(save);
