@@ -1357,7 +1357,8 @@ export class Renderer {
   }
 
   drawCorpse(c, dt) {
-    const art = MONSTER_ART[c.defId]; if (!art) { c.t = 0; return; }
+    if (!MONSTER_ART[c.defId]) { c.t = 0; return; }
+    const L = c.look || {}, art = this.enemyArt(this.world, { defId: c.defId, mirrorRace: L.mirrorRace, raceLook: L.raceLook }), tint = L.tintX || art.tint || ''; // 살아 있을 때와 같은 그림 · 색 · 크기
     if (art.sheet && atlas[`${art.base}_death_anim_f0`]) { // 보스: 시트의 쓰러지는 장면 → 누운 채 4초 → 흐려진다
       if (!c.sheet) { c.sheet = true; c.t = c.max = 5; this.shake = Math.max(this.shake, 8); }
       c.t -= dt; const el = c.max - c.t, fr = frames(art.base, 'death'), img = sprite(fr[Math.min(fr.length - 1, Math.floor(el * 10))], '', false, c.dir < 0);
@@ -1367,8 +1368,8 @@ export class Renderer {
       return;
     }
     c.t -= dt;
-    const el = c.max - c.t, g = this.g, sc = (art.scale || 1) * (c.big ? 1.2 : 1);
-    const img = art.beast ? beastImg(art.beast, 'idle', 0, c.dir < 0, false) : sprite(frames(art.base, 'idle')[0], art.tint || '', el < 0.08, c.dir < 0);
+    const el = c.max - c.t, g = this.g, sc = (art.scale || 1) * (L.scale || 1);
+    const img = art.beast ? beastImg(art.beast, 'idle', 0, c.dir < 0, el < 0.08, tint) : sprite(frames(art.base, 'idle')[0], tint, el < 0.08, c.dir < 0);
     if (!img) return;
     if (c.sky) { this.drawSkyFall(img, c.x, c.y, el / c.max, c.dir, sc); return; } // 하늘로 떨어짐: 허우적대며 작아져 구름 아래로
     const W = img.width * sc, H = img.height * sc, fallT = 0.28, sinkT = c.max - 0.75;

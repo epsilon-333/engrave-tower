@@ -431,6 +431,10 @@ export class World {
   }
 
   emit(e) {
+    if (e.t === 'death' && e.defId && !e.look) { // 쓰러진 몸이 살아 있을 때와 같은 모습이도록 (색 · 크기 · 종족 모습)
+      const o = this.enemies.find((q) => q.dead && q.defId === e.defId && q.x === e.x && q.y === e.y);
+      if (o) e.look = { tintX: o.tintX || '', scale: o.scale || 1, mirrorRace: o.mirrorRace, raceLook: o.raceLook };
+    }
     if ((e.t === 'lineTele' || e.t === 'beamFx') && this.map && e.x2 != null) { // 예고선 · 광선 그림은 벽 앞에서 끊는다 (끊긴 자리에 부딪히는 불꽃)
       const L = Math.hypot(e.x2 - e.x1, e.y2 - e.y1), a = Math.atan2(e.y2 - e.y1, e.x2 - e.x1), l2 = this.rayLen(e.x1, e.y1, a, L);
       if (l2 < L - 2) { e.x2 = e.x1 + Math.cos(a) * l2; e.y2 = e.y1 + Math.sin(a) * l2; e.wall = true; }

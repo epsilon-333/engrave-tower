@@ -122,7 +122,7 @@ export const EventMethods = {
         case 'death': {
           // 쓰러진다: 몸이 옆으로 넘어가 땅에 엎어지고(먼지) · 잠깐 누워 있다가 · 흙 속으로 가라앉는다 (반투명으로 흐려지지 않는다)
           const skyF = this.skyFallMark && Math.hypot(this.skyFallMark.x - ev.x, this.skyFallMark.y - ev.y) < 4; if (skyF) this.skyFallMark = null; // 하늘로 떨어진 몬스터: 넘어지지 않고 구름 아래로
-          if (ev.defId) { const mx = skyF ? 1.1 : ev.big ? 2.4 : 1.8; this.corpses.push({ defId: ev.defId, x: ev.x, y: ev.y, dir: ev.dir || 1, big: !!ev.big, t: mx, max: mx, landed: false, sky: skyF }); }
+          if (ev.defId) { const mx = skyF ? 1.1 : ev.big ? 2.4 : 1.8; this.corpses.push({ defId: ev.defId, x: ev.x, y: ev.y, dir: ev.dir || 1, big: !!ev.big, look: ev.look, t: mx, max: mx, landed: false, sky: skyF }); }
           else this.burst(ev.x, ev.y - 6, ev.color, ev.big ? 30 : 10, ev.big ? 140 : 80);
           if (ev.big) this.shake = 8;
           sfx('death', { vol: ev.big ? 1 : 0.6, rate: ev.big ? 0.7 : 1 });

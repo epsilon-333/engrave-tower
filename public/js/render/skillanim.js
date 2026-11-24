@@ -63,9 +63,14 @@ export class SkillAnims {
     const fx = ev.fx, el = ev.elem, r = Math.max(18, Math.min(130, ev.r || 30)), x = ev.x, y = ev.y, big = !!ev.ult;
     if (fx === 'meteor' || (fx === 'burst' && (el === 'fire' || !el) && r >= 30)) return this.add('explosion', { x, y, r, big, col: el ? ELEM_COL[el] : '#ffc040', fire: el === 'fire' || fx === 'meteor' });
     if (fx === 'burst' && el === 'lightning') return this.add('lightning', { x, y, r });
-    if (fx === 'burst' && el === 'ice') return this.add('iceSpikes', { x, y, r });
+    if (fx === 'burst' && el === 'ice') { if (big) this.add('shardBurst', { x, y, r, col: '#e8f4ff', max: 0.7 }); return this.add('iceSpikes', { x, y, r, big }); }
     if (fx === 'burst' && el === 'dark') return this.add('portal', { x, y, r });
-    if (fx === 'burst' && (el === 'arcane' || el === 'wind' || el === 'forest')) return this.add('runeBurst', { x, y, r, col: ELEM_COL[el] });
+    if (fx === 'burst' && el === 'forest') return this.add('vines', { x, y, r, col: '#5fbf4a' });
+    if (fx === 'burst' && el === 'poison') { this.add('cloud', { x, y, r, max: 1.4 }); return this.add('explosion', { x, y, r: r * 0.7, col: ELEM_COL.poison }); } // 독: 터지며 웅덩이 · 안개가 남는다
+    if (fx === 'burst' && el === 'holy') return this.add('lightPillar', { x, y, r, col: ELEM_COL.holy });
+    if (fx === 'burst' && el === 'wind') return this.add('gale', { x, y, r, col: '#c8ffe0' });
+    if (fx === 'burst' && el === 'phys') return this.groundSlam(x, y, r, el, big);
+    if (fx === 'burst' && el === 'arcane') return this.add('runeBurst', { x, y, r, col: ELEM_COL[el] });
     if (fx === 'burst') return this.add('explosion', { x, y, r, col: ELEM_COL[el] || '#ffc040', fire: el === 'fire' });
     if (fx === 'ice' || fx === 'shatter' || fx === 'zero' || fx === 'crystal') return this.add('iceSpikes', { x, y, r, big: fx === 'zero' || big });
     if (fx === 'holy' || fx === 'pillar') return this.add('lightPillar', { x, y, r, col: fx === 'holy' ? '#fff0a0' : ELEM_COL[el] || '#fff0a0' });
@@ -117,6 +122,7 @@ export class SkillAnims {
     if (fx === 'meteor' || (fx === 'burst' && (el === 'fire' || !el))) return P.add('explosions/small-explosion', x, y, { max: big ? 3 : 2.2, stone: '#4a4038' }); // 연기 · 돌은 잿빛 (기본값은 보랏빛이라 땅과 어긋났다)
     if (fx === 'burst' && el === 'lightning') return P.add('lightning/lightning-strike', x, y, { max: 1.6 });
     if (fx === 'burst' && el === 'dark') return P.add('shadow/shadow-tendrils', x, y, { max: 2.2, scale: big ? 1.15 : 1 }); // 큰 것도 촉수 (dark-explosion은 몸 둘레에 커다란 점선 고리를 그렸다)
+    if (fx === 'burst' && (el === 'ice' || el === 'forest' || el === 'poison' || el === 'holy' || el === 'wind' || el === 'phys')) return false; // 성질마다 제 모양 (mana-burst는 어떤 성질이든 같은 비전 고리로 보였다) → onAoe의 얼음 가시 · 덩굴 · 독 · 빛기둥 · 바람 · 땅 울림
     if (fx === 'burst') return P.add('arcane/mana-burst', x, y, { palette: pal || PAL.arcane, sy: GROUND });
     // 얼음 (zero · burst ice): frost-nova는 옆에서 본 그림이라 가로 한 줄 결정 + 타원 고리로 보였다 → 아래의 직접 그린 얼음 가시 (빛기둥도 직접 그린 쪽 · 사용자 판단)
     if (fx === 'doom' || fx === 'corpse') return P.add('shadow/shadow-tendrils', x, y, { max: 2.2, scale: big ? 1.15 : 1 });
