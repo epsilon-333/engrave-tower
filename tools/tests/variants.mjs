@@ -14,7 +14,7 @@ for (const [eid, sid] of Object.entries(ENGRAVING_SKILLS)) if (ENGRAVINGS[eid]) 
 const dup = Object.entries(by).filter(([, a]) => a.length > 1);
 ok(dup.length === 0, `같은 스킬을 쓰는 각인 0 (${dup.slice(0, 5).map(([s, a]) => s + ':' + a.join(',')).join(' / ')})`);
 ok(SKILL_VARIANTS.length + ORIG_SKILL_IDS.length >= 120, `새 스킬 수 (변형 ${SKILL_VARIANTS.length} · 독창 ${ORIG_SKILL_IDS.length})`);
-ok(ORIG_SKILL_IDS.length === Object.keys(ORIG_SKILLS).length, `독창 스킬이 모두 붙었다 (${ORIG_SKILL_IDS.length})`);
+ok(ORIG_SKILL_IDS.length === Object.keys(ORIG_SKILLS).length && ORIG_SKILL_IDS.length >= 86, `독창 스킬이 모두 붙었다 (${ORIG_SKILL_IDS.length} · 2묶음까지 86 이상)`);
 ok(new Set(ORIG_SKILL_IDS.map((id) => SKILLS[id].do[0].k)).size === ORIG_SKILL_IDS.length, '독창 스킬마다 실행 종류가 다르다');
 for (const id of ORIG_SKILL_IDS) { const d = SKILLS[id]; ok(!d.base && !d.vx && d.orig && /\d/.test(d.desc), `${id}: 뼈대 없이 · 설명에 숫자`); ok(ENGRAVING_SKILLS[d.fromEng] === id, `${id}: 각인 연결`); }
 const priced = new Set(Object.values(ENGRAVING_SKILLS)).size && [...new Set(Object.values(ENGRAVING_SKILLS))].filter((sid) => hasPrice(SKILLS[sid]));
@@ -37,7 +37,7 @@ ok(nameDup <= 30, `각인 스킬 이름 겹침 적게 (${nameDup})`);
 
 // 3) World에서 한 번씩: 오류 없이 · 맞히면 적 체력이 준다 (또는 변형 효과가 보인다)
 const RACE_CLS = {}; for (const [cid, c] of Object.entries(CLASSES)) RACE_CLS[c.race] ||= cid;
-let n = 0, hitN = 0;
+let n = 0, hitN = 0, origMiss = 0;
 for (const vid of [...SKILL_VARIANTS, ...ORIG_SKILL_IDS]) {
   const v = SKILLS[vid], eid = v.fromEng, race = v.race && RACE_CLS[v.race] ? v.race : 'knight', cid = CLASSES[v.cls]?.race === race ? v.cls : RACE_CLS[race], c = CLASSES[cid];
   const sid = engravingSkillFor(eid, race);
@@ -56,9 +56,10 @@ for (const vid of [...SKILL_VARIANTS, ...ORIG_SKILL_IDS]) {
     for (let f = 0; f < 150; f++) { w.step(inp); w.events.length = 0; if (w.state !== 'play') { w.state = 'play'; p.hp = w.d.maxHp; } }
     const lost = hp0 - foes.reduce((a, e) => a + Math.max(0, e.hp), 0);
     if (lost > 0 || foes.some((e) => Object.keys(e.st || {}).length)) hitN++;
-    if (v.orig && !(lost > 0 || foes.some((e) => Object.keys(e.st || {}).length))) console.log('  (독창 스킬이 못 맞힘)', vid);
+    if (v.orig && !(lost > 0 || foes.some((e) => Object.keys(e.st || {}).length))) { origMiss++; console.log('  (독창 스킬이 못 맞힘)', vid); }
   } catch (err) { fails++; console.log('FAIL', vid, err.message, (err.stack || '').split('\n')[1]); }
 }
+ok(origMiss === 0, `독창 스킬은 모두 World에서 맞힌다 (못 맞힘 ${origMiss})`);
 ok(hitN >= n * 0.85, `새 스킬 대부분이 실제로 맞힌다 (${hitN}/${n})`);
 
 // 4) 덧붙는 효과가 실제로: 대가(체력) · 자원 ×1.5 · 웅덩이 · 한 번 더
