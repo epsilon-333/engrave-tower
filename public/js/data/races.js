@@ -18,7 +18,7 @@ export const RACES = {
     strong: '마력 · 정신 · 마법 피해 +80%', weak: '최대 체력 -10% · 물리 저항이 가장 낮음',
     base: { str: 3, mag: 18, agi: 8, vit: 6, sen: 9, spi: 15, pres: 3, mres: 9 },
     growth: { mag: 1 },
-    mult: { mag: 1.2, spi: 1.1, str: 0.7, vit: 0.85, pres: 0.8 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
+    mult: { mag: 1.0, spi: 1.1, str: 0.7, vit: 1.15, pres: 1 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '주문 증폭',
     res: { key: 'mana', name: '마력', color: '#4a8aff', regen: 2, kill: 5, start: 100 },
   },
@@ -26,9 +26,9 @@ export const RACES = {
     name: '기사', origin: '인간',
     desc: '때리고 쓰러뜨릴수록 오러가 쌓이고, 오러를 실어 강타한다. 최대 체력 +50%, 받는 물리 피해 -20%.',
     strong: '최대 체력 +50% · 물리 피해 -20%', weak: '마력 낮음 · 마법 저항 낮음',
-    base: { str: 13, mag: 3, agi: 6, vit: 16, sen: 6, spi: 7, pres: 15, mres: 7 },
+    base: { str: 17, mag: 3, agi: 9, vit: 16, sen: 6, spi: 7, pres: 15, mres: 7 },
     growth: { str: 1 },
-    mult: { pres: 1.15, vit: 1.1, agi: 0.85, mag: 0.75 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
+    mult: { str: 1.1, pres: 1.15, vit: 1.1, mag: 0.75 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '수호의 맹세',
     res: { key: 'grit', name: '오러', color: '#ffd84a', regen: 2, kill: 5 },
   },
@@ -36,9 +36,9 @@ export const RACES = {
     name: '오크', origin: '황야',
     desc: '체력이 낮을수록 피해가 커진다(체력 10% 이하에서 +80%). 맞으면 2초 동안 분노: 피해 +10%.',
     strong: '근력 · 체력', weak: '마력 거의 없음 · 마법 저항 낮음',
-    base: { str: 18, mag: 2, agi: 9, vit: 15, sen: 7, spi: 5, pres: 6, mres: 3 },
-    growth: { vit: 1 },
-    mult: { str: 1.2, vit: 1.1, mag: 0.6, mres: 0.8 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
+    base: { str: 16, mag: 2, agi: 9, vit: 15, sen: 7, spi: 5, pres: 6, mres: 3 },
+    growth: { str: 1 },
+    mult: { str: 1.1, vit: 1.1, mag: 0.6, mres: 0.8 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '피의 분노',
     res: { key: 'rage', name: '분노', color: '#ff4a3a', regen: 2, kill: 5 },
   },
@@ -46,9 +46,9 @@ export const RACES = {
     name: '언데드', origin: '묘지',
     desc: '영혼을 거둬 저주를 터뜨린다. 물리 공격 회피 +30%. 독 · 저주 · 출혈에 면역.',
     strong: '물리 회피 +30% · 독 · 저주 · 출혈 면역', weak: '마법 저항 낮음 · 느림',
-    base: { str: 6, mag: 15, agi: 6, vit: 11, sen: 6, spi: 10, pres: 15, mres: 6 },
-    growth: { pres: 1 },
-    mult: { pres: 1.15, mag: 1.1, agi: 0.85, vit: 0.9 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
+    base: { str: 6, mag: 17, agi: 6, vit: 11, sen: 6, spi: 10, pres: 15, mres: 6 },
+    growth: { mag: 1 },
+    mult: { pres: 1.15, mag: 1.2, agi: 0.85, vit: 1.1 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '썩은 몸',
     res: { key: 'soul', name: '영혼', color: '#c45cff', regen: 2, kill: 5 }, // 맞힐 때마다 · 쓰러뜨리면 많이 오르고, 저절로 줄지 않는다
   },
@@ -56,9 +56,9 @@ export const RACES = {
     name: '암살자', origin: '뒷골목',
     desc: '피하고 파고들며 그림자를 모은다. 모든 공격 회피 +15%. 대시가 그림자 순간이동이다(벽 · 허공도 건너뛴다).',
     strong: '민첩 · 감각', weak: '체력 낮음 · 저항 낮음',
-    base: { str: 9, mag: 4, agi: 17, vit: 8, sen: 16, spi: 6, pres: 4, mres: 5 },
-    growth: { sen: 1 },
-    mult: { agi: 1.15, sen: 1.2, vit: 0.85, pres: 0.8 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
+    base: { str: 9, mag: 4, agi: 20, vit: 8, sen: 16, spi: 6, pres: 4, mres: 5 },
+    growth: { agi: 1 },
+    mult: { agi: 1.1, sen: 1.2, vit: 0.9, pres: 0.8 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '그림자 사냥꾼',
     res: { key: 'shadow', name: '그림자', color: '#8a6aff', regen: 2, kill: 5 },
   },
@@ -68,7 +68,7 @@ export const RACES = {
     strong: '민첩 · 마력', weak: '체력 낮음 · 가까이에서 약함',
     base: { str: 5, mag: 14, agi: 15, vit: 7, sen: 12, spi: 11, pres: 4, mres: 8 },
     growth: { agi: 1 },
-    mult: { agi: 1.1, sen: 1.1, mag: 1.05, str: 0.75, vit: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
+    mult: { agi: 1.1, sen: 1.1, mag: 1.1, str: 0.75, vit: 1.1 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '먼 사격',
     res: { key: 'spirit', name: '정령력', color: '#7be38a', regen: 2, kill: 5 },
   },
@@ -76,9 +76,9 @@ export const RACES = {
     name: '용족', origin: '화산',
     desc: '불을 다루는 고대 혈통. 화염 피해 +50%, 화상은 피해 2배 · 지속 2배. 화상 · 냉기에 면역.',
     strong: '화염 피해 +50% · 화상 피해 · 지속 2배 · 화상 · 냉기 면역', weak: '느림 · 회피 낮음',
-    base: { str: 13, mag: 13, agi: 7, vit: 11, sen: 6, spi: 7, pres: 7, mres: 9 },
-    growth: { mres: 1 },
-    mult: { str: 1.05, mag: 1.05, mres: 1.1, agi: 0.85 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
+    base: { str: 13, mag: 13, agi: 10, vit: 11, sen: 6, spi: 7, pres: 7, mres: 9 },
+    growth: { str: 1, mag: 1 },
+    mult: { str: 1.15, mag: 1.1, mres: 1.1, vit: 1.15 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
     passive: '용의 피',
     res: { key: 'dragon', name: '용기', color: '#ff6a2a', regen: 2, kill: 5 },
   },
@@ -86,19 +86,20 @@ export const RACES = {
 
 // 종족 특성 수치 (2026-11-10 개편: 종족마다 특성 하나 · 둘을 숫자로 분명하게, 예전 특성은 모두 뺐다)
 export const RACE_FX = {
-  assassinDodge: 0.15,   // 암살자: 모든 공격 회피 +15%
+  assassinDodge: 0,   // 암살자: 모든 공격 회피 +15%
   assassinBlink: 64,     // 암살자: 대시 = 그림자 순간이동 (벽 · 허공 · 물도 건너뛴다 · 내릴 자리는 땅)
   undeadPhysDodge: 0.30, // 언데드: 물리 공격 회피 +30%
-  wizardMag: 1.8,        // 마법사: 마법 피해 +80%
-  wizardHp: 0.9,         //        최대 체력 -10%
+  wizardMag: 1.1,        // 마법사: 마법 피해 +80%
+  wizardStaffMana: 0,   // 마법사: 지팡이 평타가 쓰는 마력 배율 (2026-11-24: 0 — 자원 통일(초당 +2) 뒤로 한 발 5~7 마력이 공격 속도를 못 따라가 평타가 자꾸 「지팡이 휘두르기」로 바뀌고 스킬 쓸 마력도 남지 않았다)
+  wizardHp: 1.0,         //        최대 체력 -10%
   dragonFire: 1.5,       // 용족: 화염 피해 +50% (화상은 아래 dragonBurn)
   knightAtkSpd: 0.7,     // 기사: 평타가 느리다 (×0.7) · 대신 한 방이 그만큼 세다 (1초 평균 피해는 같다)
   dragonBurn: 2,         // 용족: 화상 피해 2배 (2026-11-16)
   dragonBurnT: 2,        // 용족: 화상 지속 시간 2배 (3초 → 6초)
-  knightPhys: 0.8,       // 기사: 받는 물리 피해 -20%
-  knightHp: 1.5,         //      최대 체력 +50%
-  dinoKillHeal: 0.01,    // 공룡 수인: 처치마다 최대 체력 1% 회복
-  elfFar: 1.5,           // 엘프: 맞힌 거리에 따라 투사체 피해 +0~150%
+  knightPhys: 0.85,       // 기사: 받는 물리 피해 -20%
+  knightHp: 1.35,         //      최대 체력 +50%
+  dinoKillHeal: 0.003,    // 공룡 수인: 처치마다 최대 체력 1% 회복
+  elfFar: 1.0,           // 엘프: 맞힌 거리에 따라 투사체 피해 +0~150%
   elfFarRange: 260,      //      가장 긴 무기 사거리에서 최대
   orcLow: 0.8,           // 오크: 체력이 낮을수록 피해 +0~80% (2026-11-16 예전 100%) (체력 100% → 0 · 10% 이하 → 최대)
   orcLowAt: 0.1,

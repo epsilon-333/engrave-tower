@@ -443,7 +443,7 @@ export const CLASS_BAL = {"predator": 1, "behemoth": 0.92, "elementalist": 1.07,
 // 몬스터를 상대할 때의 클래스 보정 (tools/tests/climbsim.mjs 로 클래스마다 오른 층을 비교해 맞춤)
 export const CLASS_BAL_PVE = {}; // 갈래 보정 없음 (2026-11-15): 힘은 각인 등급(SKILL_BAL) · 종족 특성으로 맞춘다
 // 종족 보정 (임시): 종족 특성 · 각인 등급을 맞춘 뒤에도 남는 종족 차이 (등반 시뮬레이션: 종족 각인을 섞어 끼우고 약 30층)
-export const RACE_BAL_PVE = {"dino": 1.2, "wizard": 2.0, "knight": 3.6, "orc": 0.5, "undead": 3.3, "assassin": 3.8, "elf": 3.0, "dragon": 3.6};
+export const RACE_BAL_PVE = {"dino": 2.5, "wizard": 4, "knight": 4.5, "orc": 3, "undead": 3, "assassin": 4, "elf": 4, "dragon": 4.5}; // 2026-11-24 다시 맞춤: 종족 스탯 · 무기 계열 등급 · 마법사 지팡이 마력을 고친 뒤 남은 것 (공통 약 3.5배는 지금 탑 곡선과 봇의 차이)
 
 // ── 돈 · 미션으로 얻는 CC기 (누구나 · 어떤 무기로든 · 내 종족의 자원으로 쓴다) ──
 export const CC_EXTRA = {

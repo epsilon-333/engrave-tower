@@ -1466,7 +1466,7 @@ export class World {
     let type = w.dmg;
     if (type === 'phys' && this.f.has('physToMag')) type = 'mag';
     const ang = Math.atan2(p.aimY, p.aimX) + angOff;
-    if (w.kind === 'proj' && w.mana && !this.payMana(w.mana)) {
+    if (w.kind === 'proj' && w.mana && !this.payMana(w.mana * RACE_FX.wizardStaffMana)) {
       // 마력 부족: 지팡이 휘두르기
       p.atkCount++;
       p.swingDir = p.atkCount % 2 ? 1 : -1; p.swingMax = 0.16; p.swingT = 0.16; p.swingAng = ang;

@@ -15,12 +15,14 @@ const { SLOTS } = await import(root + '/sim/build.js');
 const { ITEMS } = await import(root + '/data/items.js');
 const C = await import(root + '/data/climb.js');
 const { TOWER_WEAPONS } = await import(root + '/data/weapons.js');
+const { weaponStat } = await import(root + '/data/statscale.js');
 // WT=auto: 그 층보다 한 단계 아래 탑 무기를 든다 · WT=숫자: 그 단계 무기 고정 (클래스 시작 무기와 같은 계열 중 가장 좋은 것)
 const WT = process.env.WT;
 
 const args = process.argv.slice(2);
 const clsArg = args[0] || 'greatsword', lvArg = args[1] && args[1] !== 'auto' ? +args[1] : null, RUNS = +(args[2] || 3), TOP = +(args[3] || 100), START_F = +(args[4] || 1);
 const QUIET = process.env.QUIET;
+if (process.env.RBAL) { const S = await import(root + '/data/skills.js'); S.RACE_BAL_PVE[CLASSES[clsArg]?.race || clsArg] = +process.env.RBAL; } // 종족 보정을 바꿔 보기 (RACE_BAL_PVE 맞추기용)
 
 function towerWeaponFor(cid, f) {
   if (!WT) return null;
@@ -41,12 +43,15 @@ function loadout(cid, level, f = 1) {
   const wpn = ITEMS[tw || c.weapons[1] || c.weapons[0]];
   const main = wpn.weapon.dmg === 'mag' ? 'mag' : wpn.weapon.scale === 'agi' ? 'agi' : 'str';
   const pts = level - 1;
+  // 공격 스탯 60% · 체력 40% (무기가 따라가는 스탯이 공격 스탯과 다르면 공격 35% · 무기 스탯 25%)
+  const ws = weaponStat(wpn), alloc = { vit: Math.floor(pts * 0.4) };
+  if (ws === main || ws === 'vit') alloc[main] = Math.ceil(pts * 0.6); else { alloc[main] = Math.ceil(pts * 0.35); alloc[ws] = (alloc[ws] || 0) + Math.floor(pts * 0.25); }
   // 클래스가 없다: 그 갈래 스킬의 각인을 레벨에 맞게 Q · E · R · F에 (궁극 · 마무리 먼저) · 다섯째 칸에 갈래 특성 각인
   const DMG = new Set(['공격', '마무리', '궁극', '연타', '이동', '소환']); // 사람처럼: 때리는 스킬부터 끼운다 (궁극 · 마무리 먼저)
   const sks = pool.filter((id) => (SKILLS[id].unlock || 1) <= level).sort((a, b) => (DMG.has(SKILLS[b].role) - DMG.has(SKILLS[a].role)) || (!!SKILLS[b].ult - !!SKILLS[a].ult) || ((SKILLS[b].role === '마무리') - (SKILLS[a].role === '마무리')) || ((SKILLS[b].unlock || 1) - (SKILLS[a].unlock || 1)));
   const engs = sks.map(classEngravingFor).filter(Boolean).slice(0, 4), trait = pool.map(classEngravingFor).find((e) => ENGRAVINGS[e]?.effects?.some((x) => x.type === 'flag' && /갈래 특성/.test(x.text || '')));
   const engravings = Object.fromEntries(engs.map((e, i) => [SLOTS[i], e])); if (trait && !engs.includes(trait)) engravings[SLOTS[4]] = trait;
-  return { race: R, cls: cid, level, allSkills: false, alloc: { [main]: Math.ceil(pts * 0.6), vit: Math.floor(pts * 0.4) }, engravings, spirit: { id: 'fire2', star: 1 }, gear: { weapon: tw || c.weapons[1] || c.weapons[0], off: c.off }, skills: null };
+  return { race: R, cls: cid, level, allSkills: false, alloc, engravings, spirit: { id: 'fire2', star: 1 }, gear: { weapon: tw || c.weapons[1] || c.weapons[0], off: c.off }, skills: null };
 }
 
 function makeWorld(run, lo) {
