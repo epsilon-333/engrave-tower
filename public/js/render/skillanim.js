@@ -135,7 +135,7 @@ export class SkillAnims {
   onLine(ev) { // 땅을 가르는 일직선 스킬: 바닥 층에 도트로 갈라짐 (true면 렌더러의 예전 빛줄기는 그리지 않는다)
     if (ev.fx === 'arrowBeam') return false;
     this.ground.push({ type: 'split', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, w: Math.max(14, ev.w || 24), elem: ev.elem, big: !!ev.ult, t: 0, max: ev.ult ? 3 : 2.4, seed: (Math.random() * 1e9) | 0, popped: false });
-    return true; this.add('fissure', { x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, w: ev.w || 24, col: ELEM_COL[ev.elem] || '#ffd890', big: ev.ult }); }
+    return true; }
   onCone(ev) {
     if (ev.fx === 'sweep' || ev.fx === 'slashX' || ev.fx === 'claws') { // 칼 · 발톱: pixelfx 베기 (오른쪽을 보고 그려진 것을 조준 방향으로 돌린다)
       const id = ev.fx === 'claws' ? 'melee/claw-swipe' : (ev.angle || 0) > 3.5 ? 'melee/spin-slash' : (ev.range || 0) > 70 ? 'melee/heavy-cleave' : 'melee/sword-slash';

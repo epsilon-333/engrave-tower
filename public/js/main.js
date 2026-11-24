@@ -1456,7 +1456,7 @@ function buyRaceItem(race, id, lv) {
 }
 // 다른 종족의 기술: 스킬 종류에 맞는 능력치(마법 = 마력 · 활 · 던지기 = 민첩 · 나머지 = 근력) + 이 성지의 친밀도 「친구」 + 골드
 function sanctLearnHtml(race, lv) {
-  const S = SANCTUMS[race], b = buildNow(), resName = RACES[save.race].res.name;
+  const b = buildNow(), resName = RACES[save.race].res.name;
   const groups = Object.entries(CLASSES).filter(([, c]) => c.race === race).map(([cid, c]) => {
     const cards = c.skills.filter(crossOk).map((id) => {
       const sk = SKILLS[id], r = crossReq(sk), have = b.stats[r.stat] || 0, known = (save.learned || []).includes(id);
@@ -2724,7 +2724,6 @@ function noktTalk(id) {
   }
   if (!id.startsWith('nokt_')) return false;
   const role = id.slice(5);
-  const say = (title, text, extra = '') => showModal(`<h2>${esc(title)}</h2><p>"${esc(text)}"</p>${extra}<div class="actions"><button data-close>돌아선다</button></div>`);
   if (role.startsWith('exit_')) { exitNokt(role.slice(5)); return true; }
   if (role === 'broker') {
     const k = learnNoktWay();
@@ -3135,7 +3134,6 @@ function shopTalk() {
 }
 // ── 다른 섬의 일 ──
 function islandTalk(id) {
-  const say = (title, text, extra = '') => showModal(`<h2>${esc(title)}</h2><p>"${esc(text)}"</p>${extra}<div class="actions"><button data-close>돌아선다</button></div>`);
   if (id === 'gold_guild') { guildTalk(); return true; }
   if (id === 'gold_auction') { auctionTalk(); return true; }
   if (id === 'gold_yard') { yardTalk(); return true; }

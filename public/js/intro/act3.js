@@ -1,10 +1,8 @@
 // 3막: 빛이 흐려지고 · 네 컷의 전쟁 · 재의 계절 · 마지막 왕 · 해돋이 · 삼백 년 뒤 · 제목
 import { IW, IH, H, lerp, seg, eOut, eIn, eIO, hexA, rect, px, poly, circ, ell, line, path, vgrad, glow, stars, RACE_COL, rimmed, rim2, bz2, big, bp, tongue } from './pix.js';
 import { tower } from './act1.js';
-import { knight, orc } from './body.js';
 
 const TAU = Math.PI * 2, RACES = ['wizard', 'elf', 'knight', 'orc', 'undead', 'assassin', 'dino', 'dragon'];
-const dark = (a) => hexA('#000000', a);
 
 // 작은 종족 실루엣 (키 24칸). 생김새만으로 누군지 알아보게
 function lineFig(g, race, x, y, fl, c, t) {

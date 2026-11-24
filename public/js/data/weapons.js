@@ -405,7 +405,7 @@ const THEMES = [
 const TINT_KEY = Object.fromEntries(Object.entries(TINT).map(([k, v]) => [v, k]));
 function themeOf(x, T) {
   const tk = TINT_KEY[x.tint];
-  for (const [id, re, tints, look] of THEMES) if (re.test(x.name)) return { id, ...look };
+  for (const [id, re, , look] of THEMES) if (re.test(x.name)) return { id, ...look };
   for (const [id, , tints, look] of THEMES) if (tints.includes(tk)) return { id, ...look };
   return null; // 계열이 없으면 원래 연출 그대로
 }

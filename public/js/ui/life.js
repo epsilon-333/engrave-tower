@@ -42,7 +42,6 @@ export function bagTab(s) {
   const body = Object.keys(GOOD_CATS).filter((c) => groups[c]).map((c) => `<h4>${GOOD_CATS[c]}</h4><div class="goods" data-guide="bag-goods">${groups[c].map(([id, n]) =>
     `<div class="good ${s.quickFood === id ? 'quick' : ''}" title="${esc(goodTitle(id))}">${ico(id)}<b>${n}</b><span>${GOODS[id].name}</span>${foodButtons(s, id)}</div>`).join('')}</div>`).join('')
     || '<p class="muted">비어 있음</p>';
-  const fishN = Object.keys(s.fishLog || {}).length, artN = Object.keys(s.artifacts || {}).length;
   return `<section class="panel" data-guide="bag-tools"><h3>도구<span class="help" data-tip="대장간에서 더 좋은 도구로 바꾼다. 물건 가까이에서 G: 캐기 · 베기 · 파기 · 낚시 · 밭일. G를 누르고 있으면 계속 한다.">?</span></h3><div class="tools">${tools}</div></section>
     <section class="panel"><h3>가방 <small>${bagLine(s).replace('가방 ', '')}</small><span class="help" data-tip="종류마다 한 칸. 먹을 것은 「먹기」, 빠른 칸(H)에 두면 싸우는 중에도 먹는다.">?</span></h3>${body}</section>`;
 }

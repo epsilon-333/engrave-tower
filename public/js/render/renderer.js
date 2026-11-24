@@ -1869,7 +1869,6 @@ export class Renderer {
     const set = (o) => Object.assign(P, o);
     switch (m.kind) {
       case 'overhead': if (big) {
-        const ease = (q) => (q < 0.5 ? 2 * q * q : 1 - 2 * (1 - q) * (1 - q));
         if (k < 0.25) { const q = k / 0.25; set({ a: 2.86 + 0.16 * q, hx: -1 - q, hy: -5, lean: -1.6 * q, sy: 1 - 0.08 * q, behind: true }); }
         else if (k < 0.45) { const q = Math.pow((k - 0.25) / 0.2, 3); set({ a: 3.02 + (-1.05 - 3.02) * q, hx: -2 + 8 * q, hy: -4 - 7 * q, lean: -1.6 + 3 * q, sy: 0.92 + 0.08 * q, behind: q < 0.25 }); }
         else if (k < 0.6) { const q = Math.pow((k - 0.45) / 0.15, 2); set({ a: -1.05 + 2.45 * q, hx: 6 + q, hy: -11 + 6 * q, lean: 1.4 + 2.6 * q, sy: q > 0.8 ? 0.86 : 1, ox: Math.cos(m.ang) * 3 * q }); }
@@ -2062,7 +2061,6 @@ export class Renderer {
       // 귀 위치까지의 거리 (조준 방향으로 잰 길이)
       const earX = bx - dir * 1, earY = by + (MOUTH_Y[w.b.race] ?? -9) - 2;
       const toEar = Math.max(3, (hx - earX) * Math.cos(ang) + (hy - earY) * Math.sin(ang));
-      const back = toEar * (P.pull || 0);
       const gx = -Math.round(img.width * 0.86); // 활 등 가운데가 손에 오게
       const tipX = gx + img.width / 2 + 1;     // 시위가 걸린 활 끝 (그림의 시위 줄)
       const skinB = HAND_COLOR[w.b.race] || '#e8b48a';

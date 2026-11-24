@@ -117,9 +117,7 @@ export const TeacherMethods = {
     Tr.hp = Tr.maxHp;
     const look = teacherLook(this.b.race, fam);
     const mk = (x, y, extra = {}) => { const e = this.makeEnemy(T.mon, x, y, { noAffix: true }); Object.assign(e, { state: 'idle', home: { x, y }, trialOf: fam, champion: T.name, maxHp: Tr.maxHp, hp: Tr.maxHp, raceLook: this.b.race, tintX: look.tint, scale: look.scale, outline: look.outline }, extra); this.enemies.push(e); Tr.bodies.push(e); return e; };
-    if (false) {} // (첫 번째 망자는 한 명 — 2026-11-19)
-    else if (fam === 'dagger') mk(lx, ly); // 본체 하나 — 분신 셋은 함께 벨 때만 본체에서 튀어나온다
-    else mk(lx, ly);
+    mk(lx, ly); // 본체 하나 — 분신 셋은 함께 벨 때만 본체에서 튀어나온다
     Tr.wid = teacherWeaponId(this.b, fam); Tr.skT = 2.5; Tr.skCd = {}; Tr.zones = []; Tr.minions = []; Tr.corpses = []; Tr.powT = 0; Tr.curseT = 0; Tr.counterT = 0; Tr.wsT = 4.5; Tr.dodgeCd = 0; Tr.strafe = 1; Tr.strafeT = 0.8; Tr.dashCd = 2.5; Tr.okHits = []; Tr.heals = 0; Tr.dash = null;
     for (const b of Tr.bodies) b.held = { id: Tr.wid, kind: fam, toward: 0, swingT: 0, swingMax: 0, swingAng: 0, swingDir: 1, aim: false, dash: false };
     Tr.main = Tr.bodies[0]; Tr.mkBody = mk; Tr.emergeT = -9;

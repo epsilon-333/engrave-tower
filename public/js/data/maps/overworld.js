@@ -506,15 +506,6 @@ export function buildOverworld(zone) {
     for (const c of cand) { if (n >= 2) break; if (relics.some((r) => Math.hypot(r.x - c.x, r.y - c.y) < 22)) continue; relics.push({ x: c.x, y: c.y, race, id: `${race}_${n + 1}` }); n++; }
   }
   for (const r of relics) objects.push({ kind: 'relic', race: r.race, rid: r.id, ...at(r.x, r.y), label: '빛나는 성물 줍기' });
-  // 옛 기술 석판: 그 지역 깊은 곳 (높은 곳 · 길에서 먼 곳) — 읽으면 기술을 배운다
-  const TABLETS = [['enchantFire', B.volcano], ['enchantIce', B.snow], ['enchantLightning', B.mountains], ['enchantPoison', B.swamp], ['windStep', B.meadow], ['shadowStep', B.ruins], ['vineSnare', B.forest], ['retreatShot', B.jungle], ['leap', B.wasteland]];
-  const tabs = [];
-  const farFromRoad = (x, y) => { for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) if (inb(x + dx, y + dy) && onPath[I(x + dx, y + dy)]) return false; return true; };
-  for (const [skill, b] of []) { // 옛 기술 석판은 없앴다: 기술은 숙련(같은 행동 반복)으로 깨닫는다 (TABLETS는 기록으로만 남긴다)
-    const cand = biomeTiles(b, (x, y) => !nearSafe(x, y, 6) && farFromRoad(x, y)).map((c) => ({ ...c, r: rng.next() })).sort((a, c) => (LV[I(c.x, c.y)] - LV[I(a.x, a.y)]) || (a.r - c.r));
-    const c = cand.find((q) => !relics.some((r) => Math.hypot(r.x - q.x, r.y - q.y) < 16) && !tabs.some((r) => Math.hypot(r.x - q.x, r.y - q.y) < 30));
-    if (c) { tabs.push(c); objects.push({ kind: 'skillStone', skill, ...at(c.x, c.y), label: '옛 기술 석판 읽기', reusable: true }); }
-  }
   { // 남쪽 해안 서쪽 끝: 작살
     let best = null;
     for (let y = TH - 40; y < TH - 6; y++) for (let x = 40; x < 200; x++) {

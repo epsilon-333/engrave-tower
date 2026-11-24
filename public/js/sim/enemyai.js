@@ -8,7 +8,6 @@ import { bossCan, bossAlias, bossPickX, bossTickX } from './towerzone.js';
 import { SKILLS } from '../data/skills.js';
 import { BEAST, BEAST_CAN, BEAST_KIT, BEAST_NAMES } from './beastmoves.js';
 import { TILE, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP } from './mapgen.js';
-import { G } from '../data/maps/overworld.js';
 import { ACTIVE_RANGE, AI_MOVES, DT, N8, STATUS_COLOR, distToSeg } from './world.js';
 
 export const SUMMON_MAX = 3, SUMMON_AREA_MAX = 6, BOSS_ADDS_MAX = 4; // 몬스터 소환체 최대 수

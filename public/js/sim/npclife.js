@@ -123,7 +123,7 @@ function choose(w, o, min) {
   return best;
 }
 function start(w, o, act, min) {
-  const p = w.player, T = o.trait, r = (k) => rnd(o.seed, Math.floor(w.t / 2) + k);
+  const T = o.trait, r = (k) => rnd(o.seed, Math.floor(w.t / 2) + k);
   o.doing = act; o.doT = 0; o.goal = null; if (!o.asleep && !o.riding) o.away = false;
   const wanderTo = (rad, c = o.home) => { const a = r(1) * Math.PI * 2, d = (0.3 + r(2) * 0.7) * rad * TILE; return { x: c.x + Math.cos(a) * d, y: c.y + Math.sin(a) * d * 0.7 }; };
   if (act === 'sleep') { const b = o.bedBad ? null : o.bed; o.goal = b ? { x: b.x, y: b.y, then: 'enterBed' } : { x: o.home.x, y: o.home.y, then: 'doze' }; return; }
