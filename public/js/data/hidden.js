@@ -3,7 +3,6 @@
 // 갈래: feat 위업 · taboo 금기 · teacher 숨은 스승(40층 주인을 쓰러뜨린 무기 갈래마다 하나 · sim/teacher.js) · doppel 나의 그림자 · legend 전설 몬스터
 // 이 파일은 다른 데이터를 가져오지 않는다 (skills · engravings · monsters 가 여기서 가져간다)
 
-const on = (event, chance, action, text) => ({ type: 'on', event, chance, action, text });
 const mul = (key, v, text) => ({ type: 'mul', key, v, text });
 const add = (key, v, text) => ({ type: 'add', key, v, text });
 const flag = (f, text) => ({ type: 'flag', flag: f, text });

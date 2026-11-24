@@ -1,7 +1,7 @@
 // 숨은 각인 (data/hidden.js): 조건 검사 · 패시브 효과 · 얻기
 // HiddenMethods 는 World.prototype 에 붙는다 (sim/world.js 끝) — 메서드 안의 this 는 World
 // 등반 전체를 봐야 하는 위업(질풍 · 검귀 · 반역자)은 climbFeats 로 ui/climb.js 가 층을 깰 때 검사한다
-import { HIDDEN_BY_ID, hiddenEcho, hiddenEngId, TEACHERS } from '../data/hidden.js';
+import { HIDDEN_BY_ID, hiddenEcho, hiddenEngId } from '../data/hidden.js';
 import { OATHS } from '../data/climb.js';
 import { SLOTS } from './build.js';
 import { BIOME_LIST } from '../data/maps/overworld.js';

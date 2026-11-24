@@ -421,31 +421,6 @@ function tradeCheck() {
   renderer.banner = { text: `${josa(name, '과', '와')} 교환했다`, sub: offerText(theirs).join(' · ') || '받은 것 없음', t: 3, color: '#f0c878' }; sfx('coin', { vol: 0.7 });
 }
 
-// ───── 사령술사: 거둔 영혼 (30개까지 모아 두고, 소환 목록에 넣은 것부터 한 번에 10개까지 되살린다) ─────
-function showSouls() {
-  const S = (save.souls ||= []);
-  const groups = new Map();
-  S.forEach((sv, i) => { if (sv.up) return; const k = sv.defId; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i); });
-  const rows = [...groups.entries()].map(([id, idx]) => {
-    const def = MONSTERS[id], picked = idx.filter((i) => S[i].pick).length, sv = S[idx[0]];
-    return `<div class="soc-row ${picked ? 'on' : ''}"><span class="nm"><b>${esc(def?.name || id)}</b> <small class="muted">×${idx.length}</small></span><span class="muted">체력 ${Math.round(sv.maxHp * 0.5)} · 공격 ${Math.round(sv.atk * 0.5)} · 소환 목록 ${picked}</span>
-      <span class="btns"><button class="sm ghost" data-sp="${id}" data-d="-1" ${picked ? '' : 'disabled'}>−</button><button class="sm" data-sp="${id}" data-d="1" ${picked < idx.length ? '' : 'disabled'}>목록 +</button><button class="sm ghost" data-sx="${id}">하나 버리기</button></span></div>`;
-  }).join('');
-  const upN = S.filter((s) => s.up).length;
-  showModal(`<div class="social" id="soulBox"><h2>거둔 영혼 <small>${S.length} / 30 · 나와 있음 ${upN}/10</small></h2>
-    <p class="muted">영혼 소환: 목록 → 강한 순으로 10마리 · 공격력 그대로 · 체력 50% · 첫 한 대 막음 · 최대 30개</p>
-    <div class="soc-list">${rows || '<p class="muted">거둔 영혼 없음 (처치의 절반쯤에서 거둔다)</p>'}</div>
-    <div class="actions"><button id="soulAll" class="ghost">목록 비우기</button><button data-close>닫기</button></div></div>`);
-  const box = document.getElementById('soulBox');
-  box.onclick = (e) => {
-    const b = e.target.closest('button'); if (!b) return;
-    if (b.id === 'soulAll') S.forEach((s) => delete s.pick);
-    else if (b.dataset.sp) { const list = S.filter((s) => s.defId === b.dataset.sp && !s.up); if (+b.dataset.d > 0) { const f = list.find((s) => !s.pick); if (f) f.pick = true; } else { const f = list.find((s) => s.pick); if (f) delete f.pick; } }
-    else if (b.dataset.sx) { const i = S.findIndex((s) => s.defId === b.dataset.sx && !s.pick && !s.up); const j = i >= 0 ? i : S.findIndex((s) => s.defId === b.dataset.sx && !s.up); if (j >= 0) S.splice(j, 1); }
-    else return;
-    writeSave(save); showSouls();
-  };
-}
 
 // 동료 창 (O): 파티 · 길드
 let socialTab = 'party', socialOpen = false;
