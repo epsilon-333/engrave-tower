@@ -4,7 +4,7 @@
 export const RACES = {
   dino: {
     name: '공룡 수인', origin: '원시림',
-    desc: '사냥으로 살아남는다. 적을 쓰러뜨릴 때마다 최대 체력 1% 회복.',
+    desc: '사냥으로 살아남는다. 적을 쓰러뜨릴 때마다 최대 체력 0.3% 회복.',
     strong: '근력 · 민첩', weak: '마법 저항 낮음',
     base: { str: 15, mag: 3, agi: 15, vit: 12, sen: 10, spi: 5, pres: 6, mres: 4 },
     growth: { str: 1 },
@@ -14,8 +14,8 @@ export const RACES = {
   },
   wizard: {
     name: '마법사', origin: '인간',
-    desc: '마력으로 주문을 시전한다. 시전 중에는 움직일 수 없다. 마법 피해 +80%, 최대 체력 -10%.',
-    strong: '마력 · 정신 · 마법 피해 +80%', weak: '최대 체력 -10% · 물리 저항이 가장 낮음',
+    desc: '마력으로 주문을 시전한다. 시전 중에는 움직일 수 없다. 마법 피해 +10%.',
+    strong: '마력 · 정신 · 마법 피해 +10%', weak: '물리 저항이 가장 낮음',
     base: { str: 3, mag: 18, agi: 8, vit: 6, sen: 9, spi: 15, pres: 3, mres: 9 },
     growth: { mag: 1 },
     mult: { mag: 1.0, spi: 1.1, str: 0.7, vit: 1.15, pres: 1 }, // 능력치 비율 보정 (높아지는 것 · 낮아지는 것)
@@ -98,7 +98,7 @@ export const RACE_FX = {
   dragonBurnT: 2,        // 용족: 화상 지속 시간 2배 (3초 → 6초)
   knightPhys: 0.85,       // 기사: 받는 물리 피해 -20%
   knightHp: 1.35,         //      최대 체력 +50%
-  dinoKillHeal: 0.003,    // 공룡 수인: 처치마다 최대 체력 1% 회복
+  dinoKillHeal: 0.003,    // 공룡 수인: 처치마다 최대 체력 0.3% 회복
   elfFar: 1.0,           // 엘프: 맞힌 거리에 따라 투사체 피해 +0~150%
   elfFarRange: 260,      //      가장 긴 무기 사거리에서 최대
   orcLow: 0.8,           // 오크: 체력이 낮을수록 피해 +0~80% (2026-11-16 예전 100%) (체력 100% → 0 · 10% 이하 → 최대)
