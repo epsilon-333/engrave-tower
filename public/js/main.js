@@ -1033,9 +1033,9 @@ function showQuestLog() {
       <p class="muted">${d.text}</p><small>${what}</small><div class="qmeta">${bar(have, d.n)}${have >= d.n ? '<small><em class="up">다 했다 · 성지에 돌아가 알리기</em></small>' : ''}</div></div>`;
   }).join('') || '<p class="muted">받은 성지 의뢰 없음</p>';
   const JN = journeyNow(save), jg = save.journey || {};
-  const jrows = JOURNEY.map((st, i) => { const done = !!jg[st.id], cur = JN && JN.i === i; if (!done && !cur && i > (JN?.i ?? 0) + 2) return ''; return `<div class="qrow jn ${done ? 'done' : cur ? 'cur' : 'next'}"><b>${done ? '✓' : cur ? '▶' : '·'} ${i + 1}. ${st.title}</b> <small class="muted">${journeyReward(st.reward)}</small>${cur ? `<p class="muted">${st.hint}</p>${st.to ? `<button class="sm ${save.follow === st.id ? 'ghost' : ''}" data-follow="${st.id}">${save.follow === st.id ? '그만 따라가기' : '따라가기 · 화살표'}</button>` : ''}` : ''}</div>`; }).join('');
+  const jrows = JOURNEY.map((st, i) => { const done = !!jg[st.id], cur = JN && JN.i === i; if (!done && !cur && i > (JN?.i ?? 0) + 2) return ''; return `<div class="qrow jn ${done ? 'done' : cur ? 'cur' : 'next'}"><b>${done ? '✓' : cur ? '▶' : '·'} ${i + 1}. ${st.title}</b> <small class="muted">${journeyReward(st.reward)}</small>${cur ? `<p class="muted">${st.hint}</p>${st.to ? `<button class="sm ${save.follow === st.id ? 'ghost' : ''}" data-guide="quest-follow" data-follow="${st.id}">${save.follow === st.id ? '그만 따라가기' : '따라가기 · 화살표'}</button>` : ''}` : ''}</div>`; }).join('');
   const jdone = JOURNEY.filter((st) => jg[st.id]).length;
-  showModal(`<h2>퀘스트</h2><div class="qlog"><h3>여정 <small class="muted">${jdone} / ${JOURNEY.length} · 지금 할 일이 맨 위에 보인다</small></h3><div class="jlist">${jrows}</div><h3>의뢰 게시판</h3>${board}<h3>성지 의뢰</h3>${sanct}</div><div class="actions"><button data-close>닫기 (J)</button></div>`);
+  showModal(`<h2>퀘스트</h2><div class="qlog" data-guide="quest-log"><h3>여정 <small class="muted">${jdone} / ${JOURNEY.length} · 지금 할 일이 맨 위에 보인다</small></h3><div class="jlist" data-guide="quest-journey">${jrows}</div><h3>의뢰 게시판</h3><div data-guide="quest-board">${board}</div><h3>성지 의뢰</h3><div data-guide="quest-sanct">${sanct}</div></div><div class="actions"><button data-close data-guide="quest-close">닫기 (J)</button></div>`);
   document.querySelectorAll('[data-follow]').forEach((b) => (b.onclick = () => { save.follow = save.follow === b.dataset.follow ? null : b.dataset.follow; writeSave(save); journeyT = 0; showQuestLog(); })); // 따라가기: 켠 여정의 목적지를 화면 화살표가 가리킨다
 }
 
@@ -2087,7 +2087,7 @@ function showSettings(back, openKeys = false) {
     <h4>조작</h4>
     <label class="ck"><input type="checkbox" id="autoAimCk" ${getAutoAim() ? 'checked' : ''}> 자동 조준 (T): 가까운 적을 저절로 겨눈다</label>
     <label class="ck"><input type="checkbox" id="npcAtkCk" ${getNpcAttack() ? 'checked' : ''}> 마을 사람도 때릴 수 있게 (끄면 사람에게 맞지 않는다)</label>
-    <details class="keys-set"${openKeys ? ' open' : ''}><summary>키 바꾸기</summary><div class="key-grid">${KEY_ACTIONS.map(([def, name]) => `<span>${name}</span><button class="sm ghost" data-rebind="${def}">${keyLabel(keyFor(def))}</button>`).join('')}</div>
+    <details class="keys-set" data-guide="settings-keys"${openKeys ? ' open' : ''}><summary>키 바꾸기</summary><div class="key-grid">${KEY_ACTIONS.map(([def, name]) => `<span>${name}</span><button class="sm ghost" data-rebind="${def}">${keyLabel(keyFor(def))}</button>`).join('')}</div>
       <p class="muted">버튼 → 키 (Esc 그만두기) · 겹치면 서로 바뀐다</p><button id="keysReset" class="sm ghost">기본 키로</button></details>
     <h4>처음 안내</h4>
     <label class="ck"><input type="checkbox" id="guideCk" ${save?.guideOff ? '' : 'checked'}> 처음 해 보는 것 · 처음 여는 창 안내 보기</label>
@@ -3873,6 +3873,12 @@ if (LAB) window.__lab = {
   dungeon(id) { if (!save) return; const en = overworldBase().objects.find((o) => o.kind === 'entrance' && o.id === id); curInterior = { id, x: en?.x || 0, y: en?.y || 0 }; enterInterior(id); }, // 탑 밖 던전 (data/dungeons.js)
   practice() { if (!save) return; practice.useSave = true; enterPractice(); },
   home() { if (!save) return; enterWorld(null, false); },
+  // 창 바로 열기 (UI 검토용): panel('altar', true) · quest() · settings() · pause()
+  panel(tab, station = true) { if (world) openPanel(tab, station); },
+  quest() { if (world) showQuestLog(); },
+  settings() { if (world) showSettings(() => { overlay.hidden = true; paused = false; modal = null; }); },
+  pause() { if (world) showPause(); },
+  close() { if (!panelEl.hidden) closePanel(); if (modal) modal(); },
   hidden(id) { if (!save) return false; const ok = grantHidden(save, id); writeSave(save); return ok; },
   spawn(id, n = 1) { // 지금 세계에 몬스터를 부른다
     if (!world) return;
