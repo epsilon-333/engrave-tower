@@ -288,7 +288,7 @@ export class Renderer {
     }
     this.mg.putImageData(img, 0, 0);
   }
-  // 피노의 지도: 아직 안 가 본 곳도 작은 지도에 흐릿하게
+  // 아는 지도: 아직 안 가 본 곳도 작은 지도에 흐릿하게
   knowMap(w) {
     for (let i = 0; i < w.tiles.length; i++) {
       if (w.explored[i]) continue;

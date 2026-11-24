@@ -12,9 +12,9 @@ function build() {
   const add = (id, p) => { if (!MONSTERS[id]) return; const L = (W[id] ||= []); if (!L.some((x) => x.name === p.name)) L.push(p); };
   for (const b of BIOME_LIST) for (const id of b.pool || []) add(id, { kind: 'field', name: b.name, lv: b.lv });
   for (const en of Object.values(ENTRANCES)) {
-    const z = ZONES.find((x) => x.id === en.theme);
-    if (z) for (const id of [...z.pool, z.elite]) add(id, { kind: 'dungeon', name: `${en.name} (던전)` });
-    if (en.elite) add(en.elite, { kind: 'dungeon', name: `${en.name} (던전 우두머리)` });
+    const z = ZONES.find((x) => x.id === en.theme); // 몬스터는 그 던전의 것 (pool이 따로 있으면 그것) · 우두머리는 그 던전에서만
+    if (z) for (const id of en.pool || z.pool) add(id, { kind: 'dungeon', name: `${en.name} (던전)` });
+    if (en.elite || z) add(en.elite || z.elite, { kind: 'dungeon', name: `${en.name} (던전 우두머리)` });
   }
   for (const z of [LABY_ZONE, PALACE_ZONE]) for (const id of [...(z.pool || []), z.elite]) add(id, { kind: 'dungeon', name: z.name });
   for (const a of ACTS) {

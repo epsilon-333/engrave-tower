@@ -4,8 +4,8 @@
 
 // 이야기 물건. from: 떨어뜨리는 몬스터와 확률, max: 이만큼 모이면 더 안 나온다, done: 다 쓴 뒤엔 안 나온다
 export const STORY_ITEMS = {
-  rustyKey: { name: '녹슨 열쇠', color: '#d0a868', max: 1, from: { goblinChief: 1 }, done: 'open:ironGate',
-    desc: '가면 족장이 목에 걸고 있던 열쇠. 녹이 슬어 무겁다.' },
+  rustyKey: { name: '녹슨 열쇠', color: '#d0a868', max: 1, from: { dgMossChief: 1 }, done: 'open:ironGate',
+    desc: '이끼 가면 족장이 목에 걸고 있던 열쇠. 녹이 슬어 무겁다.' },
 };
 
 // 길을 막는 것들. need: 필요한 물건(keep: 쓰고도 남는지), oneway: 이쪽에서만 열린다

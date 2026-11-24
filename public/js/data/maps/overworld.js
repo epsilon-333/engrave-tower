@@ -42,22 +42,22 @@ const B = Object.fromEntries(BIOMES.map((b, i) => [b.id, i]));
 export const OW_PLACES = [...BIOMES.map((b) => b.name), '바람결 마을', '남쪽 해안'];
 const R_VILLAGE = BIOMES.length, R_COAST = BIOMES.length + 1;
 
-// 안으로 들어가는 곳 (theme: 안쪽 그림 · 몬스터의 바탕, relic: 우두머리가 지닌 성물의 종족)
+// 안으로 들어가는 곳 (theme: 안쪽 그림 · 몬스터의 바탕, elite: 가장 깊은 곳의 우두머리 — 그 던전에서만 산다 · data/dungeons.js, relic: 우두머리가 지닌 성물의 종족)
 export const ENTRANCES = {
-  mossCave: { name: '이끼 동굴', theme: 'cave', prop: 'caveMouth', relic: 'elf' },
-  forestCave: { name: '숲속 동굴', theme: 'cave', prop: 'caveMouth', size: { tw: 96, th: 64 }, elite: 'goblinShaman' },
-  sunkenTemple: { name: '가라앉은 사원', theme: 'swamp', prop: 'templeRuin' },
-  crypt: { name: '지하 묘지', theme: 'grave', prop: 'cryptStairs', relic: 'undead' },
-  iceCave: { name: '얼음 동굴', theme: 'frost', prop: 'iceCaveMouth', relic: 'wizard' },
-  riftCave: { name: '균열 동굴', theme: 'rift', prop: 'lavaCave', relic: 'dragon' },
+  mossCave: { name: '이끼 동굴', theme: 'cave', prop: 'caveMouth', elite: 'dgMossChief', relic: 'elf' },
+  forestCave: { name: '숲속 동굴', theme: 'cave', prop: 'caveMouth', size: { tw: 96, th: 64 }, elite: 'dgGoblinSage' },
+  sunkenTemple: { name: '가라앉은 사원', theme: 'swamp', prop: 'templeRuin', elite: 'dgTempleWitch' },
+  crypt: { name: '지하 묘지', theme: 'grave', prop: 'cryptStairs', elite: 'dgCryptWarden', relic: 'undead' },
+  iceCave: { name: '얼음 동굴', theme: 'frost', prop: 'iceCaveMouth', elite: 'dgIceMatron', relic: 'wizard' },
+  riftCave: { name: '균열 동굴', theme: 'rift', prop: 'lavaCave', elite: 'dgRiftWarden', relic: 'dragon' },
   labyrinth: { name: '잊힌 미궁', theme: 'labyrinth', prop: 'labyrinthGate', relic: 'assassin' },
   palace: { name: '용궁', theme: 'palace', prop: 'whirlpool' },
   wasteHole: { name: '황야의 구멍', theme: 'rift', prop: 'hole', size: { tw: 96, th: 64 }, elite: 'orcWarlord', pool: ['sandScorpion', 'hyena', 'orcRaider'], relic: 'orc' },
   jungleHole: { name: '원시림의 구멍', theme: 'swamp', prop: 'hole', size: { tw: 96, th: 64 }, elite: 'raptorAlpha', pool: ['raptor', 'jungleWasp', 'bigBeetle'], relic: 'dino' },
   castleCrypt: { name: '왕성 지하 감옥', theme: 'grave', prop: 'cryptStairs', size: { tw: 96, th: 64 }, elite: 'fallenKnight', pool: ['goblin', 'shieldDemon', 'tinyCorpse'], relic: 'knight' },
-  mtCave1: { name: '바위산 동굴', theme: 'cave', prop: 'caveMouth', size: { tw: 96, th: 64 }, elite: 'goblinChief', pool: ['bat', 'caveLurker', 'goblin', 'goblinShaman'] },
-  mtCave2: { name: '깊은 바위굴', theme: 'frost', prop: 'caveMouth', size: { tw: 96, th: 64 }, elite: 'iceGolem', pool: ['frostWolf', 'snowLurker', 'bat'] },
-  plainsHole: { name: '들판의 구멍', theme: 'cave', prop: 'hole', size: { tw: 96, th: 64 }, elite: 'goblinShaman', pool: ['slime', 'mossSlug', 'bat'] },
+  mtCave1: { name: '바위산 동굴', theme: 'cave', prop: 'caveMouth', size: { tw: 96, th: 64 }, elite: 'dgStoneChief', pool: ['bat', 'caveLurker', 'goblin', 'goblinShaman'] },
+  mtCave2: { name: '깊은 바위굴', theme: 'frost', prop: 'caveMouth', size: { tw: 96, th: 64 }, elite: 'dgFrostGiant', pool: ['frostWolf', 'snowLurker', 'bat'] },
+  plainsHole: { name: '들판의 구멍', theme: 'cave', prop: 'hole', size: { tw: 96, th: 64 }, elite: 'dgSlimeKing', pool: ['slime', 'mossSlug', 'bat'] },
 };
 
 // 값 노이즈 (부드러운 덩어리)

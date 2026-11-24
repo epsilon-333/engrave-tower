@@ -1,4 +1,5 @@
 import { registerParts } from './monsterparts.js';
+import { registerDungeonBosses } from './dungeons.js';
 import { registerHiddenEchoes, registerHiddenMonsters } from './hidden.js';
 // 몬스터와 문양 잔향. 원하는 각인을 만들려면 그 잔향을 남기는 몬스터를 골라 사냥해야 한다.
 
@@ -338,7 +339,8 @@ export const LORES = [
   '…중독과 출혈이 겹친 피는 썩어, 독이 두 배로 퍼진다.',
 ];
 
-// 몬스터 개체마다 고유한 부산물 (data/monsterparts.js)
+// 탑 밖 던전의 우두머리 (data/dungeons.js) · 몬스터 개체마다 고유한 부산물 (data/monsterparts.js)
+registerDungeonBosses(MONSTERS);
 registerParts(ECHOES, MONSTERS);
 
 // ── 몬스터 특성: 「이 몬스터는 이렇게 상대한다」 규칙 하나 (sim/montraits.js) ──
