@@ -1,7 +1,6 @@
 // 51~100층 보스의 피하는 기술 (2026-11-06): 모든 기술은 먼저 바닥 예고(빨간 줄 · 원)를 보여 주고, 정해진 때에 터진다.
 // 기술 하나 = 「대본」: 언제 무엇을 예고하고 언제 터지는지 적은 목록 (ev) + 매 틱 할 일 (frame: 도는 광선 · 퍼지는 물결 · 튕기는 톱니)
 // world.js(enemyai · towerzone)가 부른다: bossScriptPick(w, e, p, pick) → true/false/undefined · bossScriptTick(w, e, p, mv)
-import { TILE } from './mapgen.js';
 
 const DT = 1 / 60;
 const RED = '#ff3a3a';

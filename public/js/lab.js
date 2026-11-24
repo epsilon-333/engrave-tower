@@ -11,7 +11,6 @@ import { TEACHERS, HIDDEN } from './data/hidden.js';
 import { ZONES, MONSTERS } from './data/monsters.js';
 import { floorKind, actOf, CLIMB_TOP } from './data/climb.js';
 import { SERIN_FLOORS } from './data/story.js';
-import { RES_ENGS } from './data/resengs.js';
 import { DUNGEONS } from './data/dungeons.js';
 import { ENTRANCES } from './data/maps/overworld.js';
 

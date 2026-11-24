@@ -7,7 +7,7 @@ import { ENGRAVINGS } from '../../public/js/data/engravings.js';
 import { MONSTER_ART } from '../../public/js/data/art.js';
 import { monsterWhere } from '../../public/js/data/where.js';
 import { dungeonZone, dungeonCleared } from '../../public/js/ui/dungeons.js';
-import { generateField, TILE } from '../../public/js/sim/mapgen.js';
+import { generateField } from '../../public/js/sim/mapgen.js';
 import { computeBuild } from '../../public/js/sim/build.js';
 import { World } from '../../public/js/sim/world.js';
 

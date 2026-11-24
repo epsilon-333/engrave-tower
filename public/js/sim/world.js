@@ -5,7 +5,7 @@ import { MONSTERS, ALL_ZONES, DUMMIES, ECHOES, LORES, AFFIXES } from '../data/mo
 import { zoneInit, zoneTick, zoneTakeMul, zoneHitMul, mirrorBounce, lightPillar, shiftShelves, arenaShift, shardHit, shardFakeDie, startIntro, introTick } from './towerzone.js';
 import { REACTIONS } from '../data/engravings.js';
 import { knackTick, hasKnack, BEASTS } from '../data/knacks.js';
-import { towerMul, isBossFloor, bossKit, CLIMB_SIGS, BOSS_PASSIVES } from '../data/tower.js';
+import { towerMul, isBossFloor, bossKit, CLIMB_SIGS } from '../data/tower.js';
 import { LOOT_RARITY } from '../data/crafting.js';
 import { rollTowerWeapon, W_RARITY } from '../data/weapons.js';
 import { rollTowerGear } from '../data/towergear.js'; // 탑의 방어구 · 장신구 · 왼손 장비도 떨어진다

@@ -2,7 +2,7 @@
 import { computeBuild } from '../../public/js/sim/build.js';
 import { World, DT } from '../../public/js/sim/world.js';
 import { SHIP_ZONE, buildShipDeck } from '../../public/js/data/maps/ship.js';
-import { SEA_EVENTS, PORTS, buyPrice, sellPrice, noteTrade } from '../../public/js/data/trade.js';
+import { SEA_EVENTS, buyPrice, sellPrice, noteTrade } from '../../public/js/data/trade.js';
 
 const b = computeBuild({ race: 'knight', level: 15, alloc: { str: 20, vit: 10 }, engravings: {}, gear: {} });
 let ok = true;
