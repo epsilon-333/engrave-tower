@@ -419,6 +419,7 @@ export const EventMethods = {
       this.hitstop = Math.max(m.hitstop, Math.min(this.hitstop, T === 1 ? 0.02 : 0.035));
       this.flash = m.flash;
       for (let i = m.px; i < A.px.list.length; i++) A.px.list[i].scale *= T === 1 ? 0.72 : 0.86;
+      for (let i = m.al; i < A.list.length; i++) { const q = A.list[i]; if (q.r) q.r *= T === 1 ? 0.8 : 0.9; if (q.range) q.range *= T === 1 ? 0.9 : 0.95; } // 직접 그린 연출도 작게 (화살비 · 비전 균열 · 칼날)
       return;
     }
     const hi = T >= 5, n1 = P.length;
@@ -427,6 +428,11 @@ export const EventMethods = {
     if (this.hitstop > m.hitstop) this.hitstop = Math.min(0.14, this.hitstop + (hi ? 0.035 : 0.015));
     for (let i = m.px; i < A.px.list.length; i++) A.px.list[i].scale *= hi ? 1.22 : 1.1;
     const el = ev.elem, col = ELEM[el]?.color && el !== 'phys' ? ELEM[el].color : '#ffd890';
+    { // 잔광: 높은 등급은 터진 자리에서 성질 빛의 불티가 천천히 떠올라 흩어지고(4등급 6 · 5등급 12) · 화면이 조금 더 흔들린다
+      const ex = ev.x ?? ev.x2, ey = ev.y ?? ev.y2, rad = ev.r || ev.range || 24;
+      if (ex != null) for (let i = 0; i < (hi ? 12 : 6); i++) { const a = Math.random() * Math.PI * 2, d = Math.random() * rad * 0.7; P.push({ x: ex + Math.cos(a) * d, y: ey + Math.sin(a) * d * 0.6, vx: (Math.random() - 0.5) * 14, vy: -14 - Math.random() * 22, t: 0.9 + Math.random() * 0.6, max: 1.5, color: i % 3 ? col : '#ffffff', g: -6, size: 1 }); }
+      this.shake = Math.max(this.shake, hi ? 4 : 2.5);
+    }
     const land = (x, y) => (w.wallAt(x, y) ? 0 : w.isWaterAt(x, y) ? 2 : w.solid(x, y) ? 0 : 1); // 0 벽 · 허공 · 1 땅 · 2 물
     // 맵에 닿는 것: 돌 조각이 튀어 땅에 떨어진다 (벽 쪽으로는 안 튄다) · 물이면 물보라
     const scatter = (x, y, r, n) => {

@@ -123,13 +123,12 @@ export class SkillAnims {
     if (fx === 'burst' && el === 'lightning') return P.add('lightning/lightning-strike', x, y, { max: 1.6 });
     if (fx === 'burst' && el === 'dark') return P.add('shadow/shadow-tendrils', x, y, { max: 2.2, scale: big ? 1.15 : 1 }); // 큰 것도 촉수 (dark-explosion은 몸 둘레에 커다란 점선 고리를 그렸다)
     if (fx === 'burst' && (el === 'ice' || el === 'forest' || el === 'poison' || el === 'holy' || el === 'wind' || el === 'phys')) return false; // 성질마다 제 모양 (mana-burst는 어떤 성질이든 같은 비전 고리로 보였다) → onAoe의 얼음 가시 · 덩굴 · 독 · 빛기둥 · 바람 · 땅 울림
-    if (fx === 'burst') return P.add('arcane/mana-burst', x, y, { palette: pal || PAL.arcane, sy: GROUND });
+    if (fx === 'burst') return false; // 비전 · 그 밖: mana-burst(보랏빛 마법진 고리) 대신 onAoe의 비전 균열(runeBurst)
     // 얼음 (zero · burst ice): frost-nova는 옆에서 본 그림이라 가로 한 줄 결정 + 타원 고리로 보였다 → 아래의 직접 그린 얼음 가시 (빛기둥도 직접 그린 쪽 · 사용자 판단)
     if (fx === 'doom' || fx === 'corpse') return P.add('shadow/shadow-tendrils', x, y, { max: 2.2, scale: big ? 1.15 : 1 });
     if (fx === 'spikes' || fx === 'vines') return P.add('nature/earth-spike', x, y, { palette: el === 'phys' ? undefined : PAL.forest, max: 2.2 });
     // 독 안개 (fog): poison-cloud는 옆에서 본 그림이라 바닥선을 따라 긴 가로 띠로 깔렸다 → 아래의 직접 그린 독 웅덩이 · 안개 (drawMiasma)
     if (fx === 'implode' || fx === 'timestop') return P.add('explosions/implosion', x, y, { palette: pal || PAL.arcane, sy: GROUND });
-    if (fx === 'arcane') return P.add('arcane/mana-burst', x, y, { palette: pal || PAL.arcane, sy: GROUND });
     // 땅 울림 (quake · smash · slam): ground-slam은 옆에서 본 그림(양옆 초승달 충격파 · 바닥선 먼지 띠 · 보랏빛 먼지 기둥)이라 몸 둘레 고리와 가로 막대로 보였다 → 아래의 groundSlam (위에서 본 갈라짐 · 흙먼지 · 돌 조각)
     return false;
   }
@@ -156,7 +155,7 @@ export class SkillAnims {
 }
 // 등급 표식 (탑의 무기 · 장비): 희귀 반짝임 · 영웅 수정 파편 · 전설 금빛 깃털 · 신화 붉은 꽃잎과 빛살
 export const RARITY_ANIM = [null, 'glint', 'shardBurst', 'featherBurst', 'mythBloom'];
-const DUR = { lightRain: 1.0, glint: 0.6, shardBurst: 0.9, featherBurst: 1.4, mythBloom: 1.3, bloodThorns: 1.4, boneSpikes: 1.3, starfall: 1.0, gale: 0.8, explosion: 1.3, lightning: 0.5, iceSpikes: 1.3, lightPillar: 0.9, portal: 1.4, vines: 1.8, arrowRain: 0.9, rockRain: 1.0, cloud: 2.2, runeBurst: 0.8, cracks: 1.4, fissure: 1.3, bladeArc: 0.28, meteorFall: 0.8, pillarCharge: 0.6 };
+const DUR = { lightRain: 1.0, glint: 0.6, shardBurst: 0.9, featherBurst: 1.4, mythBloom: 1.3, bloodThorns: 1.4, boneSpikes: 1.3, starfall: 1.0, gale: 0.8, explosion: 1.3, lightning: 0.5, iceSpikes: 1.3, lightPillar: 0.9, portal: 1.4, vines: 1.8, arrowRain: 0.9, rockRain: 1.0, cloud: 2.2, runeBurst: 0.8, cracks: 1.4, fissure: 1.3, bladeArc: 0.3, meteorFall: 0.8, pillarCharge: 0.6 };
 
 const glows = (c) => !!c && c !== '#ffd890' && c !== '#f4f0ff' && c !== '#e8dcc8'; // 속성(불 · 얼음 …)이 있는 갈라짐만 빛난다 · 물리는 어두운 틈과 깨진 가장자리만 (2026-11-18)
 const DRAW = {
@@ -298,26 +297,39 @@ const DRAW = {
     }
     g.restore();
   },
-  arrowRain(R, g, a, k) {
-    const rr = rnd(a.seed), n = Math.round(8 + a.r / 5), img = sprite('weapon_arrow');
+  arrowRain(R, g, a, k) { // 화살비: 하늘에서 빛 꼬리를 끌며 내리꽂히고, 박힌 자리에서 흙이 튀고 짧게 번쩍인다 (번개처럼 넓은 빛 · 밝은 심 · 흰 중심 세 겹)
+    const rr = rnd(a.seed), n = Math.round(8 + a.r / 5), img = sprite('weapon_arrow'), col = a.col || '#ffe8b0';
     for (let i = 0; i < n; i++) {
       const tx = a.x + (rr() - 0.5) * a.r * 1.8, ty = a.y + (rr() - 0.5) * a.r * 0.9, d = rr() * 0.35, out = 0.72 + rr() * 0.2, kk = Math.min(1, Math.max(0, (k - d) / 0.16));
       if (kk <= 0 || k > out + 0.04) { if (k > out && !a['o' + i] && kk > 0) { a['o' + i] = true; R.parts.push({ x: tx, y: ty - 1, vx: 0, vy: -6, t: 0.35, max: 0.35, color: '#b0a088', g: 0, puff: true, size: 1.5 }); } continue; }
       const fall = kk < 1, x = tx - 50 * (1 - kk), y = ty - 150 * (1 - kk), ang = Math.atan2(150, 50) + Math.PI / 2;
-      if (!fall && !a['h' + i]) { a['h' + i] = true; R.parts.push({ x: tx, y: ty, vx: (rr() - 0.5) * 30, vy: -20, t: 0.3, max: 0.3, color: '#7a6448', g: 300, chunk: true, floor: ty + 1 }); }
+      if (fall) { // 빛 꼬리
+        const L = 34, ux = 50 / 158, uy = 150 / 158;
+        g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+        for (const [w, c, al] of [[4, col, 0.25], [2, col, 0.6], [1, '#ffffff', 0.9]]) { const gr = g.createLinearGradient(x, y, x - ux * L, y - uy * L); gr.addColorStop(0, hexA(c, al)); gr.addColorStop(1, hexA(c, 0)); g.strokeStyle = gr; g.lineWidth = w; g.beginPath(); g.moveTo(x, y); g.lineTo(x - ux * L, y - uy * L); g.stroke(); }
+        g.restore();
+      } else if (!a['h' + i]) { a['h' + i] = true; a['f' + i] = k; for (let j = 0; j < 3; j++) R.parts.push({ x: tx, y: ty, vx: (rr() - 0.5) * 50, vy: -20 - rr() * 25, t: 0.35, max: 0.35, color: j ? '#7a6448' : '#fff4d0', g: 300, chunk: !!j, floor: ty + 1, size: 1 }); }
+      if (!fall) { const f = 1 - (k - (a['f' + i] ?? k)) / 0.12; if (f > 0) { g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = hexA(col, 0.8 * f); g.beginPath(); starPath(g, tx, ty, 6 * f + 2, 4, 0, 0.15); g.fill(); g.fillStyle = hexA('#ffffff', f); g.beginPath(); starPath(g, tx, ty, 3 * f + 1, 4, 0.78, 0.2); g.fill(); g.restore(); } }
       if (img) { g.save(); g.translate(Math.round(x), Math.round(y)); g.rotate(ang); g.drawImage(img, Math.round(-img.width / 2), Math.round(fall ? -img.height : -img.height * 0.7)); g.restore(); }
       if (!fall) { g.fillStyle = '#4a3828'; g.fillRect(Math.round(tx) - 1, Math.round(ty), 3, 1); }
     }
   },
-  // 돌 · 우박 비: 떨어져 튀고 부서진다
+  // 돌 · 우박 비: 그림자가 먼저 커지고, 먼지 꼬리를 끌며 떨어져 부딪힌 자리에서 번쩍 · 흙먼지 · 조각
   rockRain(R, g, a, k) {
     const rr = rnd(a.seed), n = Math.round(5 + a.r / 10);
     const rock = (cx, cy, rad, col) => { for (let yy = -rad; yy <= rad; yy++) for (let xx = -rad; xx <= rad; xx++) { const d = xx * xx + yy * yy; if (d > rad * rad) continue; g.fillStyle = d > (rad - 1) * (rad - 1) ? '#2a221c' : xx + yy < -rad * 0.5 ? '#e8e0d0' : col; g.fillRect(Math.round(cx + xx), Math.round(cy + yy), 1, 1); } };
     for (let i = 0; i < n; i++) {
       const tx = a.x + (rr() - 0.5) * a.r * 1.6, ty = a.y + (rr() - 0.5) * a.r * 0.8, d = rr() * 0.3, kk = Math.min(1, Math.max(0, (k - d) / 0.22)), s0 = 2 + Math.round(rr() * 2);
       if (kk <= 0) continue;
-      if (kk < 1) { const x = tx - 40 * (1 - kk), y = ty - 180 * (1 - ease.in(kk)); g.fillStyle = '#1a120c'; g.fillRect(Math.round(tx - s0 * kk), Math.round(ty + 1), Math.max(1, Math.round(s0 * 2 * kk)), 1); rock(x, y, s0, a.col); }
-      else if (!a['hit' + i]) { a['hit' + i] = true; for (let j = 0; j < 4; j++) R.parts.push({ x: tx, y: ty, vx: (Math.random() - 0.5) * 90, vy: -40 - Math.random() * 60, t: 0.5, max: 0.5, color: a.col, g: 380, chunk: true, floor: ty + 2 }); R.parts.push({ x: tx, y: ty, vx: 0, vy: -10, t: 0.5, max: 0.5, color: '#b8a890', g: 0, puff: true, size: 3 }); }
+      if (kk < 1) {
+        const x = tx - 40 * (1 - kk), y = ty - 180 * (1 - ease.in(kk)), k2 = Math.max(0, kk - 0.18), px = tx - 40 * (1 - k2), py = ty - 180 * (1 - ease.in(k2));
+        g.fillStyle = `rgba(20,14,10,${0.25 + 0.4 * kk})`; g.beginPath(); g.ellipse(tx, ty + 1, s0 * (0.6 + kk), s0 * 0.45 * (0.6 + kk), 0, 0, Math.PI * 2); g.fill();
+        g.save(); g.lineCap = 'round'; for (const [w, c, al] of [[s0 * 2.2, '#8a7a64', 0.25], [s0, '#d8ccb4', 0.5]]) { const gr = g.createLinearGradient(x, y, px, py); gr.addColorStop(0, hexA(c, al)); gr.addColorStop(1, hexA(c, 0)); g.strokeStyle = gr; g.lineWidth = w; g.beginPath(); g.moveTo(x, y); g.lineTo(px, py); g.stroke(); } g.restore();
+        rock(x, y, s0, a.col);
+      } else {
+        if (!a['hit' + i]) { a['hit' + i] = k; for (let j = 0; j < 6; j++) R.parts.push({ x: tx, y: ty, vx: (Math.random() - 0.5) * 100, vy: -40 - Math.random() * 70, t: 0.55, max: 0.55, color: j % 3 ? a.col : '#2a221c', g: 380, chunk: true, floor: ty + 2 }); for (let j = 0; j < 3; j++) R.parts.push({ x: tx + (j - 1) * 4, y: ty, vx: (j - 1) * 18, vy: -8, t: 0.6, max: 0.6, color: '#b8a890', g: 0, puff: true, size: 3 }); }
+        const f = 1 - (k - a['hit' + i]) / 0.1; if (f > 0) { g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = hexA('#fff0d0', 0.7 * f); g.beginPath(); starPath(g, tx, ty, s0 * 3 * (1.4 - f * 0.4), 6, 0.3, 0.2); g.fill(); g.restore(); }
+      }
     }
   },
   // 독구름: 독 웅덩이가 번지고 안개 줄기가 감겨 오르고 거품이 터진다 (물보라는 푸른빛)
@@ -325,22 +337,29 @@ const DRAW = {
     const grow = ease.out(Math.min(1, k * 3)), fade = k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1;
     drawMiasma(g, a.x, a.y, a.r * grow, a.t, fade, a.seed % 97, a.bubble ? ['#1a3a5a', '#4a9ad8', '#9ad8ff', '#e8f8ff'] : undefined, R);
   },
-  // 비전 문양: 문양 조각들이 한가운데로 모였다가 터져 흩어진다
+  // 비전 균열: 사방에서 보랏빛 실금(번개처럼 꺾인 세 겹 빛)이 한가운데로 빨려 들고, 한 점이 부풀었다가 별빛 가시로 찢어지며 파편이 흩어진다 (고리 없음)
   runeBurst(R, g, a, k) {
-    const rr = rnd(a.seed), n = 8, conv = Math.min(1, k / 0.45), out = k > 0.45 ? (k - 0.45) / 0.55 : 0;
-    g.save(); g.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < n; i++) {
-      const an = (i / n) * Math.PI * 2 + rr() * 0.4 + a.t * (a.implode ? 2 : 1), d = out ? a.r * 1.2 * ease.out(out) : a.r * 1.1 * (1 - ease.in(conv)), x = a.x + Math.cos(an) * d, y = a.y - 8 + Math.sin(an) * d * 0.55, s = 5 * (out ? 1 - out : 1);
-      if (s <= 0.3) continue;
-      g.strokeStyle = hexA(a.col, 0.9); g.lineWidth = 1.5; g.beginPath();
-      const t = i % 3; // 문양 세 가지
-      if (t === 0) { g.moveTo(x - s, y); g.lineTo(x, y - s); g.lineTo(x + s, y); g.lineTo(x, y + s); g.closePath(); }
-      else if (t === 1) { g.moveTo(x - s, y - s); g.lineTo(x + s, y + s); g.moveTo(x + s, y - s); g.lineTo(x - s, y + s); }
-      else { g.arc(x, y, s * 0.8, 0, Math.PI * 1.5); g.moveTo(x, y - s); g.lineTo(x, y + s); }
-      g.stroke();
+    const rr = rnd(a.seed), fl = rnd(a.seed + Math.floor(a.t * 24)), n = 7, conv = Math.min(1, k / 0.42), out = k > 0.42 ? (k - 0.42) / 0.58 : 0, cy = a.y - 8, col = a.col || '#b98aff';
+    g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineJoin = 'round';
+    if (!out) for (let i = 0; i < n; i++) { // 빨려 드는 실금
+      const an = (i / n) * Math.PI * 2 + rr() * 0.6 + (a.implode ? k * 2 : 0), L0 = a.r * (1.0 + rr() * 0.3), head = L0 * (1 - ease.in(conv)), tail = Math.min(L0, head + a.r * 0.55), pts = [];
+      for (let j = 0; j <= 5; j++) { const d = head + (tail - head) * (j / 5), jit = j && j < 5 ? (fl() - 0.5) * 9 : 0; pts.push([a.x + Math.cos(an) * d - Math.sin(an) * jit, cy + (Math.sin(an) * d + Math.cos(an) * jit) * 0.6]); }
+      for (const [w, c, al] of [[5, col, 0.3], [2.2, col, 0.75], [1, '#ffffff', 0.95]]) { g.strokeStyle = hexA(c, al * (0.4 + conv * 0.6)); g.lineWidth = w; g.beginPath(); pts.forEach(([px, py], j) => (j ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke(); }
+      const [hx, hy] = pts[0]; g.fillStyle = '#ffffff'; g.fillRect(Math.round(hx) - 1, Math.round(hy) - 1, 2, 2);
     }
-    if (out > 0 && out < 0.5) { const gr = g.createRadialGradient(a.x, a.y - 8, 0, a.x, a.y - 8, a.r); gr.addColorStop(0, hexA('#ffffff', 0.8 * (1 - out * 2))); gr.addColorStop(0.4, hexA(a.col, 0.5 * (1 - out * 2))); gr.addColorStop(1, hexA(a.col, 0)); g.fillStyle = gr; g.beginPath(); g.arc(a.x, a.y - 8, a.r, 0, Math.PI * 2); g.fill(); }
+    const core = out ? Math.max(0, 1 - out * 1.6) : conv; // 한가운데 빛점
+    if (core > 0) { const s = out ? 7 + out * 18 : 2 + conv * 5; const gr = g.createRadialGradient(a.x, cy, 0, a.x, cy, s * 2.2); gr.addColorStop(0, hexA('#ffffff', 0.95 * core)); gr.addColorStop(0.35, hexA(col, 0.6 * core)); gr.addColorStop(1, hexA(col, 0)); g.fillStyle = gr; g.fillRect(a.x - s * 2.2, cy - s * 2.2, s * 4.4, s * 4.4); }
+    if (out) {
+      const f = 1 - out;
+      if (out < 0.55) { const s = a.r * (0.5 + out * 0.9), q = 1 - out / 0.55; g.fillStyle = hexA(col, 0.55 * q); g.beginPath(); starPath(g, a.x, cy, s, 8, rr() * 0.4, 0.08); g.fill(); g.fillStyle = hexA('#ffffff', 0.9 * q); g.beginPath(); starPath(g, a.x, cy, s * 0.55, 4, 0.785, 0.1); g.fill(); } // 별빛 가시로 찢어짐
+      for (let i = 0; i < 12; i++) { // 흩어지는 수정 파편 (빛 꼬리)
+        const an = rr() * Math.PI * 2, sp = a.r * (0.6 + rr() * 0.7), d = sp * ease.out(out), x = a.x + Math.cos(an) * d, y = cy + Math.sin(an) * d * 0.6 - Math.sin(out * Math.PI) * 6, bx = a.x + Math.cos(an) * d * 0.7, by = cy + Math.sin(an) * d * 0.42;
+        g.strokeStyle = hexA(col, 0.6 * f); g.lineWidth = 2; g.beginPath(); g.moveTo(bx, by); g.lineTo(x, y); g.stroke();
+        g.fillStyle = hexA('#ffffff', f); g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+      }
+    }
     g.restore();
+    if (out && !a.sp) { a.sp = true; for (let i = 0; i < 10; i++) { const an = Math.random() * Math.PI * 2, v = 40 + Math.random() * 70; R.parts.push({ x: a.x, y: cy, vx: Math.cos(an) * v, vy: Math.sin(an) * v * 0.6 - 20, t: 0.5, max: 0.5, color: i % 2 ? '#ffffff' : col, g: 60, size: 1 }); } }
   },
   // 땅울림: 한가운데서 금이 사방으로 번지고, 금 사이로 빛이 새고, 돌판이 들썩인다
   cracks(R, g, a, k) {
@@ -370,19 +389,24 @@ const DRAW = {
       g.fillStyle = `rgba(170,150,120,${fade})`; g.fillRect(Math.round(px + ox - 2), Math.round(py + oy - 4 - lift), 5, 1);
     }
   },
-  // 칼날 초승달: 실제로 휘두르는 방향을 따라 두꺼운 날빛이 쓸고 지나간다 (가장자리는 밝고 몸통은 옅게)
+  // 칼날 초승달: 휘두르는 방향으로 앞이 두껍고 꼬리가 가늘어지는 날빛 (번개처럼 넓은 빛 · 밝은 심 · 흰 날 세 겹) · 끝에서 불티가 튄다
   bladeArc(R, g, a, k) {
-    const half = Math.min(Math.PI * 0.95, (a.angle || 2) / 2), prog = ease.out(Math.min(1, k / 0.6)), fade = k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1;
-    const a0 = a.ang - half, a1 = a0 + half * 2 * prog, Rr = (a.range || 40) * 0.95, inner = Rr * 0.45;
+    const half = Math.min(Math.PI * 0.95, (a.angle || 2) / 2), prog = ease.out(Math.min(1, k / 0.5)), fade = k > 0.5 ? 1 - (k - 0.5) / 0.5 : 1;
+    const a0 = a.ang - half, a1 = a0 + half * 2 * prog, Rr = (a.range || 40) * 0.95, tailA = Math.max(a0, a1 - half * 2 * 0.85), col = a.col || '#f4f0ff';
+    const crescent = (rOut, thick, al, c) => { // 앞(a1)이 가장 두껍고 꼬리로 갈수록 0
+      const N = 14; g.fillStyle = hexA(c, al); g.beginPath();
+      for (let i = 0; i <= N; i++) { const u = tailA + (a1 - tailA) * (i / N); g.lineTo(Math.cos(u) * rOut, Math.sin(u) * rOut); }
+      for (let i = N; i >= 0; i--) { const u = tailA + (a1 - tailA) * (i / N), th = thick * Math.pow(i / N, 1.4); g.lineTo(Math.cos(u) * (rOut - th), Math.sin(u) * (rOut - th)); }
+      g.closePath(); g.fill();
+    };
     g.save(); g.translate(a.x, a.y - 6); g.scale(1, 0.75); g.globalCompositeOperation = 'lighter';
-    const steps = 10;
-    for (let i = 0; i < steps; i++) { // 몸통: 지나간 쪽일수록 옅게
-      const u0 = a0 + (a1 - a0) * (i / steps), u1 = a0 + (a1 - a0) * ((i + 1) / steps), al = (0.08 + 0.4 * (i / steps)) * fade;
-      g.fillStyle = hexA(a.col, al); g.beginPath(); g.arc(0, 0, Rr, u0, u1); g.arc(0, 0, inner + (Rr - inner) * 0.4 * (1 - i / steps), u1, u0, true); g.closePath(); g.fill();
+    for (const o of a.claws ? [-6, 0, 6] : [0]) {
+      crescent(Rr + o + 2, Rr * (a.claws ? 0.25 : 0.42), 0.28 * fade, col);
+      crescent(Rr + o, Rr * (a.claws ? 0.14 : 0.24), 0.65 * fade, col);
+      crescent(Rr + o, a.claws ? 2 : 3.5, 0.95 * fade, '#ffffff');
     }
-    g.strokeStyle = hexA('#ffffff', 0.95 * fade); g.lineWidth = a.claws ? 1.5 : 2.5; g.beginPath(); g.arc(0, 0, Rr, a0 + (a1 - a0) * 0.35, a1); g.stroke();
-    if (a.claws) for (const off of [-6, 6]) { g.beginPath(); g.arc(0, 0, Rr + off, a0 + (a1 - a0) * 0.35, a1); g.stroke(); }
     g.restore();
+    if (!a.spk && k > 0.3) { a.spk = true; const ex = a.x + Math.cos(a1) * Rr, ey = a.y - 6 + Math.sin(a1) * Rr * 0.75; for (let i = 0; i < 4; i++) { const tn = a1 + Math.PI / 2 + (Math.random() - 0.5) * 0.8, v = 50 + Math.random() * 50; R.parts.push({ x: ex, y: ey, vx: Math.cos(tn) * v, vy: Math.sin(tn) * v * 0.7, t: 0.25, max: 0.25, color: i ? col : '#ffffff', g: 80, size: 1 }); } }
   },
 
   // ── 등급 표식 ──
@@ -461,17 +485,19 @@ const DRAW = {
       else { const bk = Math.min(1, (k - d - 0.3) / 0.4); g.fillStyle = hexA(a.col, 0.8 * (1 - bk)); g.beginPath(); starPath(g, tx, ty - 4, a.r * 0.5 * ease.out(bk) + 4, 4, 0.785, 0.1); g.fill(); g.fillStyle = hexA('#ffffff', 0.9 * (1 - bk)); g.beginPath(); starPath(g, tx, ty - 4, a.r * 0.25 * ease.out(bk) + 3, 4, 0, 0.12); g.fill(); } }
     g.restore();
   },
-  // 바람 칼날: 초승달 모양 바람 날이 사방으로 날아가며 휘고, 뒤로 가는 바람 결과 나뭇잎이 끌려간다
+  // 돌풍: 한가운데서 감아 도는 바람 칼날 여러 줄 (꼬리가 가늘고 앞이 굵은 세 겹 빛줄) · 그 사이로 풀잎 · 흙먼지가 휘말려 날아간다 (고리 없음)
   gale(R, g, a, k) {
-    const rr = rnd(a.seed), fade = k > 0.55 ? 1 - (k - 0.55) / 0.45 : 1, n = 6;
+    const rr = rnd(a.seed), fade = k > 0.5 ? 1 - (k - 0.5) / 0.5 : 1, n = 7, cy = a.y - 6, col = a.col || '#c8ffe0';
+    g.save(); g.lineCap = 'round';
     for (let i = 0; i < n; i++) {
-      const an = (i / n) * Math.PI * 2 + rr() * 0.5, d = a.r * (0.15 + 1.0 * ease.out(k)), cx = a.x + Math.cos(an) * d, cy = a.y - 8 + Math.sin(an) * d * 0.55, L = a.r * (0.7 + rr() * 0.25), bend = L * 0.4, swirl = an + Math.PI / 2 + k * 1.2;
-      const x0 = cx - Math.cos(swirl) * L / 2, y0 = cy - Math.sin(swirl) * L / 2 * 0.6, x1 = cx + Math.cos(swirl) * L / 2, y1 = cy + Math.sin(swirl) * L / 2 * 0.6, ox = Math.cos(an) * bend, oy = Math.sin(an) * bend * 0.55;
-      g.fillStyle = hexA(a.col, 0.8 * fade); g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo(cx + ox, cy + oy, x1, y1); g.quadraticCurveTo(cx + ox * 0.25, cy + oy * 0.4, x0, y0); g.fill();
-      g.strokeStyle = hexA('#ffffff', 0.85 * fade); g.lineWidth = 1; g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo(cx + ox, cy + oy, x1, y1); g.stroke();
-      for (let j = 1; j <= 2; j++) { const bx = cx - Math.cos(an) * j * 7, by = cy - Math.sin(an) * j * 4; g.strokeStyle = hexA(a.col, 0.35 * fade / j); g.lineWidth = 0.8; g.beginPath(); g.moveTo(bx - Math.cos(swirl) * L * 0.3, by - Math.sin(swirl) * L * 0.18); g.quadraticCurveTo(bx + ox * 0.6, by + oy * 0.6, bx + Math.cos(swirl) * L * 0.3, by + Math.sin(swirl) * L * 0.18); g.stroke(); }
-      const lx = cx + ox * 0.7, ly = cy + oy * 0.7, lr = k * 9 + i; g.fillStyle = hexA(i % 2 ? '#8ad070' : '#d0f0a0', 0.9 * fade); g.beginPath(); spikePath(g, lx - Math.cos(lr) * 2.5, ly - Math.sin(lr) * 2.5, lx + Math.cos(lr) * 2.5, ly + Math.sin(lr) * 2.5, 1.4, 1); g.fill();
+      const base = (i / n) * Math.PI * 2 + rr() * 0.5, spin = ease.out(k) * 2.6, r0 = a.r * (0.25 + rr() * 0.2), r1 = a.r * (0.75 + rr() * 0.35) * (0.5 + 0.5 * ease.out(k)), span = 1.1 + rr() * 0.6, N = 10;
+      const pts = []; for (let j = 0; j <= N; j++) { const u = j / N, an = base + spin + u * span, d = r0 + (r1 - r0) * u; pts.push([a.x + Math.cos(an) * d, cy + Math.sin(an) * d * 0.55]); }
+      g.globalCompositeOperation = 'lighter';
+      for (const [w, c, al] of [[5, col, 0.22], [2.2, col, 0.6], [1, '#ffffff', 0.9]]) for (let j = 1; j <= N; j++) { const u = j / N; g.strokeStyle = hexA(c, al * fade * u); g.lineWidth = w * (0.3 + 0.7 * u); g.beginPath(); g.moveTo(pts[j - 1][0], pts[j - 1][1]); g.lineTo(pts[j][0], pts[j][1]); g.stroke(); }
+      const [lx, ly] = pts[Math.round(N * 0.6)], lr = k * 12 + i; g.globalCompositeOperation = 'source-over';
+      g.fillStyle = hexA(i % 3 === 0 ? '#a89880' : i % 2 ? '#8ad070' : '#d0f0a0', 0.9 * fade); g.beginPath(); spikePath(g, lx - Math.cos(lr) * 2.5, ly - Math.sin(lr) * 2.5, lx + Math.cos(lr) * 2.5, ly + Math.sin(lr) * 2.5, 1.4, 1); g.fill();
     }
+    g.restore();
   },
 };
 
