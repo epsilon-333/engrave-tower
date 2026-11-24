@@ -62,11 +62,12 @@ export function axe(g, Q, w, ang, C) {
   pl([X(6, -1.5), X(9, 0), X(6, 1.5)], 'metal');
   return Q(X(0, 15 * (n[1] > 0 ? 1 : -1)));
 }
+export const mouthOf = (q) => add(q.hd, rotv([6.4, 2.6], q.ha));
 
 // ───────── 오크: 키가 크고 어깨가 넓은 초록 피부 전사. 튀어나온 턱 · 엄니 · 뒤로 뻗은 귀 · 상투, 큰 양날 도끼 ─────────
 export const ORC_PAL = { skin: ['#5a6a28', '#2a3614'], cloth: ['#7a3a1e', '#3e1c0e'], leather: ['#5a3418', '#2a180c'], metal: ['#8e8278', '#3c3632'], bone: ['#f0e4c8', '#b0a080'], hair: ['#3a2418', '#180e08'], wood: ['#7a5430', '#3a2614'] };
 export function orc(g, P, q, c, t, o = {}) {
-  const { Q, pl, lb, el, ci, pa } = painter(g, P, c, o), on = (k) => !o.layer || o.layer === k;
+  const { C, Q, pl, lb, el, ci, pa } = painter(g, P, c, o), on = (k) => !o.layer || o.layer === k;
   const R = (x, y) => add(q.hd, rotv([x, y], q.ha)), sw = Math.sin(t * 2.6), f = Math.sin(t * 5);
   const hB = add(q.hip, [-1.5, 0]), hF = add(q.hip, [1.5, 0]), u = unit(q.hip, q.sh), sB = add(q.sh, [-1.5, 2]), sF = add(q.sh, [1.5, 2]);
   const [eB, wB] = ik(sB, q.hB, 13, 12, o.bendB ?? 1), [eF, wF] = ik(sF, q.hF, 13, 12, o.bendF ?? 1);
@@ -105,7 +106,7 @@ export const ORC = {
 // ───────── 용족: 사람의 몸에 붉은 머리칼 · 뒤로 휜 뿔 · 끝에 불이 붙은 비늘 꼬리 ─────────
 export const DRK_PAL = { skin: ['#e0a07a', '#8a4a34'], hair: ['#ff5a32', '#a01c12'], horn: ['#f0e0b8', '#9a8460'], cloth: ['#5a2c2a', '#26100e'], cloth2: ['#c83a1e', '#6a1a0e'], leather: ['#6a4426', '#2e1c0e'], scale: ['#c8461e', '#5a160a'], metal: ['#b0a090', '#4a403a'] };
 export function dragonkin(g, P, q, c, t, o = {}) {
-  const { Q, pl, lb, el, ci, pa } = painter(g, P, c, o), on = (k) => !o.layer || o.layer === k;
+  const { C, Q, pl, lb, el, ci, pa } = painter(g, P, c, o), on = (k) => !o.layer || o.layer === k;
   const R = (x, y) => add(q.hd, rotv([x, y], q.ha)), fl = o.float || 0, sw = Math.sin(t * 3), f = Math.sin(t * 6);
   const u = unit(q.hip, q.sh), hB = add(q.hip, [-1, 0]), hF = add(q.hip, [1, 0]), sB = add(q.sh, [-1, 1.6]), sF = add(q.sh, [1, 1.6]);
   const tail = [add(q.hip, [-2.5, -1]), add(q.hip, [-10, 4]), add(q.hip, [-18, 7 + sw]), add(q.hip, [-25, 4 + sw * 1.5]), add(q.hip, [-28, -2 + sw * 2])];
@@ -142,7 +143,7 @@ export const DRK = {
 
 // ───────── 기사: 판금 갑옷 · 깃털 장식 투구 · 망토 · 연 모양 방패와 긴 검 ─────────
 export function knight(g, P, q, c, t, o = {}) {
-  const { Q, pl, lb, el, ci, pa } = painter(g, P, c, o), on = (k) => !o.layer || o.layer === k;
+  const { C, Q, pl, lb, el, ci, pa } = painter(g, P, c, o), on = (k) => !o.layer || o.layer === k;
   const R = (x, y) => add(q.hd, rotv([x, y], q.ha)), f = Math.sin(t * (o.capeSpeed || 4)), f2 = Math.sin(t * (o.capeSpeed || 4) + 1.2), wind = o.wind || 0;
   const u = unit(q.hip, q.sh), s0 = add(q.sh, [-1.5, 0.5]), sB = add(q.sh, [-1.4, 1.8]), sF = add(q.sh, [1.4, 1.8]);
   const [eB, wB] = ik(sB, q.hB, 11, 10.5, o.bendB ?? 1), [eF, wF] = ik(sF, q.hF, 11, 10.5, o.bendF ?? 1), sc = add(wB, [1, 1]);
@@ -170,3 +171,7 @@ export function knight(g, P, q, c, t, o = {}) {
   }
   return { tip: Q(tip), shield: Q(sc), chest: Q(add(add(q.sh, u, -7), [2, 0])), hand: Q(wF) };
 }
+export const KNT = {
+  ready: { hip: [0, -26], kF: [7, -13], aF: [10, -1], kB: [-6, -13], aB: [-10, -1], sh: [2.5, -46], hd: [4, -51.5], ha: 0.12, hF: [9, -34], hB: [9, -40] },
+  lunge: { hip: [3, -21], kF: [14, -12], aF: [17, -1], kB: [-8, -11], aB: [-19, -1], sh: [11, -39], hd: [14.5, -44], ha: 0.05, hF: [29, -37], hB: [-5, -32] },
+};

@@ -2724,6 +2724,7 @@ function noktTalk(id) {
   }
   if (!id.startsWith('nokt_')) return false;
   const role = id.slice(5);
+  const say = (title, text, extra = '') => showModal(`<h2>${esc(title)}</h2><p>"${esc(text)}"</p>${extra}<div class="actions"><button data-close>돌아선다</button></div>`);
   if (role.startsWith('exit_')) { exitNokt(role.slice(5)); return true; }
   if (role === 'broker') {
     const k = learnNoktWay();
