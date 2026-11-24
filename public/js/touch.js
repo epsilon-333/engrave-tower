@@ -113,6 +113,8 @@ export function setupTouch({ input, getWorld, onMenu, onBag, onInteract }) {
         const need = sk ? (sk.costAll ? sk.costAll.min : sk.cost || 0) : 0;
         el.classList.toggle('cool', cd > 0 || need > p.res);
       }
+      root.querySelector('[data-btn=dash]').classList.toggle('cool', !(p.dashCharges > 0));
+      root.querySelector('[data-btn=wskill]').classList.toggle('cool', p.skillCd > 0);
       root.querySelector('[data-btn=bag]').hidden = w.mode !== 'plaza';
     },
     reset() { for (const st of Object.values(sticks)) { st.active = false; st.x = st.y = 0; st.knob.style.transform = 'translate(-50%, -50%)'; } input.attack = false; },

@@ -387,7 +387,13 @@ export const HudMethods = {
     let line = '';
     for (const word of hint.split(' ')) { const t2 = line ? line + ' ' + word : word; if (g.measureText(t2).width > tw - 14 * u && line) { lines.push(line); line = word; } else line = t2; }
     if (line) lines.push(line);
-    const show = fight ? [] : lines.slice(0, 2), h = (show.length ? 30 * u : 26 * u) + show.length * 12 * tu;
+    const show = fight ? [] : lines.slice(0, 2);
+    if (show.length === 2 && lines.length > 2) { // 두 줄을 넘으면 둘째 줄 끝을 말줄임표로 (글이 뚝 끊기지 않게)
+      let l2 = show[1] + ' ' + lines[2];
+      while (l2.length > 1 && g.measureText(l2 + '…').width > tw - 14 * u) l2 = l2.slice(0, -1);
+      show[1] = l2.trimEnd() + '…';
+    }
+    const h = (show.length ? 30 * u : 26 * u) + show.length * 12 * tu;
     this.panel(x, y, tw, h);
     this.journeyBottom = y + h;
     if (this.guideRects) this.guideRects.journey = { x, y, w: tw, h };
@@ -464,7 +470,7 @@ export const HudMethods = {
     if (this.guideRects) this.guideRects.skills = { x: x0, y: y0, w: total, h: box + (touch ? 0 : 12 * v) };
     // 대시
     const dashMax = d.dashCd * (1 - d.cdr), dashK = p.dashCharges > 0 ? 1 : Math.min(1, 1 - p.dashRecharge / dashMax);
-    this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : keyLabel(keyFor('Space')), '', null, p.dashCharges > 0 ? 0 : p.dashRecharge);
+    if (!touch) this.cooldownBox(x0, y0, box, dashK, touch ? '대시' : keyLabel(keyFor('Space')), '', null, p.dashCharges > 0 ? 0 : p.dashRecharge);
     // 빠른 칸 음식 (H)
     const qf = w.life?.quickFood;
     if (qf && !touch) {
@@ -486,6 +492,7 @@ export const HudMethods = {
     slots.forEach((id, i) => {
       const x = x0 + (i + 1) * (box + gap);
       if (id === 'weapon') {
+        if (touch) return; // 모바일: 큰 「무기」 터치 버튼과 겹치지 않게
         const k = p.skillCd > 0 ? 1 - p.skillCd / p.skillMax : 1;
         this.cooldownBox(x, y0, box, k, keys[i], '', null, p.skillCd);
         if (!touch) this.text(this.fitName(WEAPON_SKILLS[w.b.weapon.skill]?.name || '무기', box * 1.3, Math.max(1, u - 1)), x + box / 2, y0 + box + 7 * v, Math.max(1, u - 1), '#dcd2c6', 'center');
