@@ -7,7 +7,6 @@
 
 export const DUNGEONS = {
   plainsHole: { lv: 3, boss: 'dgSlimeKing', first: 80, blurb: '시작 평원 아래 굴. 슬라임이 모여 왕을 만들었다. 처음 해 보는 던전으로 알맞다.' },
-  castleCrypt: { lv: 22, boss: 'fallenKnight', first: 220, blurb: '왕도 감옥 마당의 계단 아래 지하 감옥. 들판 한가운데지만 깊고 험하다. 맹세를 저버린 기사가 아직 갇힌 자들을 지킨다.' },
   mossCave: { lv: 12, boss: 'dgMossChief', first: 150, blurb: '이끼 숲 아래 고블린 굴. 족장의 천막 안쪽에 이끼 가면을 쓴 족장이 산다.' },
   forestCave: { lv: 13, boss: 'dgGoblinSage', first: 150, blurb: '숲속 깊은 동굴. 고블린 대주술사가 해골 방울을 흔들며 부하를 부른다.' },
   sunkenTemple: { lv: 17, boss: 'dgTempleWitch', first: 180, blurb: '독늪에 반쯤 잠긴 옛 사원. 물에 젖은 종을 울리는 무녀가 제단을 지킨다.' },

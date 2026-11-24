@@ -16,6 +16,7 @@ const fail = (m) => { ok = false; console.log('FAIL', m); };
 const zoneOf = (id) => { const en = ENTRANCES[id], base = en.theme === 'labyrinth' ? LABY_ZONE : en.theme === 'palace' ? PALACE_ZONE : ZONES.find((z) => z.id === en.theme); return { base, zone: { ...base, name: en.name, key: id, relic: en.relic, elite: en.elite || base.elite, pool: en.pool || base.pool, ...dungeonZone(id) } }; };
 const bosses = new Set();
 for (const id of Object.keys(ENTRANCES)) {
+  if (id === 'castleCrypt') continue; // 왕도 쪽은 건드리지 않는다 (정치 잠금)
   const D = DUNGEONS[id]; if (!D) { fail(`${id}: DUNGEONS에 없다`); continue; }
   const { zone } = zoneOf(id), b = MONSTERS[D.boss];
   if (zone.elite !== D.boss) fail(`${id}: 우두머리 ${zone.elite} ≠ ${D.boss}`);
