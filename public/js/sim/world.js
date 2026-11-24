@@ -159,7 +159,7 @@ export class World {
       for (const c of this.camps) this.spawnCamp(c);
       if (!this.climb && (!this.tower || isBossFloor(this.tower.f))) { // 탑: 보스 층에만 층 수호자 (짧게)
         const elite = this.makeEnemy(this.zone.elite, m.lair.x * TILE + 8, m.lair.y * TILE + 8);
-        elite.home = { x: elite.x, y: elite.y }; elite.lair = true;
+        elite.home = { x: elite.x, y: elite.y }; elite.lair = true; if (this.zone?.dungeonLv) this.applyLevel(elite, this.regionLevel(-1, m.lair.x, m.lair.y) + 2); // 던전 우두머리: 두 레벨 위
         if (this.tower) { elite.hp = elite.maxHp = elite.maxHp * 4; elite.champion = `${this.tower.f}층 수호자`; elite.scale = 1.4; this.tower.boss = elite; this.giveBossKit(elite, this.tower.f); }
         this.enemies.push(elite);
       }
@@ -2787,6 +2787,7 @@ export class World {
 
   // 바깥 세계의 지역 레벨: 권장 레벨 안에서 시작 마을에서 멀수록 높다 · 레벨만큼 체력 · 공격력 · 보상이 커진다
   regionLevel(r, tx, ty) {
+    if (this.zone?.dungeonLv) return this.zone.dungeonLv + 2 * this.depth; // 탑 밖 던전: 입구가 있는 지역에 맞춘 레벨 · 지하 한 층마다 +2 (data/dungeons.js)
     const info = this.map.regionInfo?.[r]; if (!info?.lv || (this.zone?.id !== 'world' && this.zone?.id !== 'nokt' && !this.zone?.island)) return 0;
     const [lo, hi] = info.lv, st = this.map.start || { x: tx, y: ty }, f = Math.min(1, Math.hypot(tx - st.x, ty - st.y) / 260);
     return Math.round(lo + (hi - lo) * f);
@@ -2949,6 +2950,7 @@ export class World {
     if (def.elite || e.champion) { this.emit({ t: 'hitstop', v: 0.25 }); this.emit({ t: 'banner', text: `${e.champion || def.name} 처치!`, color: '#ffcf5a' }); }
     if (this.raid && RAID_BOSS.has(e.defId)) this.signals.push({ t: 'raidClear', id: this.raid.id }); // 레이드 보스를 쓰러뜨렸다
     if (e.lair && this.zone?.relic && !this.depth) this.signals.push({ t: 'relic', race: this.zone.relic, rid: `${this.zone.relic}_boss` });
+    if (e.lair && this.zone?.dungeonLv && !this.practice) this.signals.push({ t: 'dungeonClear', id: this.zone.key, depth: this.depth, boss: e.defId }); // 던전 정복 (data/dungeons.js)
     // 성물 조각: 그 성지의 땅에서만 나온다 (바깥은 그 지역의 몬스터, 지하는 그 던전의 몬스터와 우두머리)
     const sr = this.map.outdoor ? BIOME_SANCTUM[BIOME_LIST[e.region]?.id] : this.zone?.relic;
     if (sr && !this.practice) {

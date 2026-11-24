@@ -161,6 +161,16 @@ const P = [
   ['cultShade', '사도의 검은 성표', '검은 성표', 'head', 3, ['shadow', 'curse'], { mag: 4, agi: 3 }, [on('hit', 0.12, st('curse'), '공격하면 12% 확률로 저주'), add('crit', 0.02, '치명타 확률 +2%')], 'painLink'],
   ['lightEater', '빛 먹는 자의 검은 혀', '삼킨 빛', 'leg', 3, ['shadow', 'drain'], { agi: 5, vit: 2 }, [add('lifesteal', 2, '흡혈 +2 (평타 피해의 0.6%를 체력으로)'), on('kill', 0.3, { heal: 0.008 }, '처치하면 30% 확률로 체력 0.8% 회복')], 'shadowStep'],
   ['highPriest', '대사제의 꺼진 등불', '꺼진 등불', 'head', 5, ['curse', 'shadow'], { mag: 10, spi: 8 }, [mul('statusDmgMul', 1.12, '상태이상 피해 +12%'), on('kill', 0.35, strike(56, 1.6, 'dark', 'doom'), '처치하면 35% 확률로 어둠의 문 (피해 160%)'), add('crit', 0.04, '치명타 확률 +4%')], 'eSoulHarvest'],
+  // ── 탑 밖 던전 우두머리 (2026-11-23 · data/dungeons.js): 그 던전에서만 산다 → 부산물도 그 던전에서만 ──
+  ['dgSlimeKing', '왕 슬라임의 젤리 왕관', '말랑한 왕관', 'head', 2, ['slime'], { vit: 4, pres: 2 }, [on('hurt', 0.2, { shield: 0.04 }, '맞으면 20% 확률로 보호막 (최대 체력 4%)')], 'hardenShell'],
+  ['dgMossChief', '이끼 낀 전쟁 가면', '이끼 가면의 함성', 'head', 2, ['brawl'], { str: 3, vit: 2 }, [on('kill', 1, ts('str', 3, 8), '처치하면 8초 동안 근력 +3'), add('knockback', 30, '넉백 +30')], 'groundSmash'],
+  ['dgGoblinSage', '대주술사의 해골 방울', '해골 방울의 주문', 'head', 2, ['curse'], { mag: 3, spi: 2 }, [mul('magAtk', 1.04, '마법 공격력 +4%'), on('kill', 0.3, { res: 10 }, '처치하면 30% 확률로 종족 자원 +10')], 'eChainBolt'],
+  ['dgTempleWitch', '물에 젖은 제단 종', '가라앉은 종소리', 'head', 3, ['poison', 'curse'], { mag: 4, toxicity: 3 }, [on('hit', 0.12, st('poison', 2), '공격하면 12% 확률로 중독 2중첩'), mul('statusDmgMul', 1.06, '상태이상 피해 +6%')], 'acidRain'],
+  ['dgRiftWarden', '문지기의 식지 않는 쐐기', '식지 않는 쐐기', 'heart', 3, ['fire'], { mag: 3, fireAff: 3, vit: 2 }, [mul('magAtk', 1.04, '마법 공격력 +4%'), on('kill', 0.3, strike(40, 1.0, 'fire', 'burst', { status: 'burn' }), '처치하면 30% 확률로 불꽃이 터진다 (피해 100%)')], 'flameBurst'],
+  ['dgStoneChief', '고블린 왕의 돌 왕관', '돌 왕관의 위엄', 'head', 3, ['brawl', 'giant'], { str: 4, pres: 4 }, [mul('dmgTakenMul', 0.96, '받는 피해 -4%'), on('dash', 1, strike(40, 1.0, 'phys', 'quake', { stun: 0.3 }), '대시가 끝난 자리를 내려찍는다 (피해 100%)')], 'stoneSkin'],
+  ['dgFrostGiant', '서리 거인의 언 심장', '언 심장', 'heart', 4, ['ice', 'giant'], { vit: 6, str: 5 }, [mul('maxHp', 1.06, '최대 HP +6%'), on('hurt', 0.2, strike(44, 1.0, 'ice', 'ice', { status: 'chill', stacks: 2 }), '맞으면 20% 확률로 둘레가 얼어붙는다 (피해 100% · 냉기 2중첩)')], 'glacialSpikes'],
+  ['dgIceMatron', '서리 노파의 얼음 물레', '얼음 물레', 'back', 3, ['ice'], { mag: 4, iceAff: 3 }, [on('hit', 0.15, st('chill'), '공격하면 15% 확률로 냉기'), mul('chillMul', 1.1, '냉기 효과 +10%')], 'frostField'],
+  ['dgCryptWarden', '파수꾼의 녹슨 열쇠 꾸러미', '묘지 열쇠', 'arm', 4, ['undying', 'shadow'], { vit: 5, spi: 4 }, [on('kill', 0.3, { heal: 0.01 }, '처치하면 30% 확률로 체력 1% 회복'), on('hurt', 0.15, strike(44, 1.2, 'dark', 'doom'), '맞으면 15% 확률로 어둠의 문 (피해 120%)')], 'boneSpear'],
   ['lastKing', '마지막 왕의 빛의 핵', '꺼지지 않는 빛', 'heart', 5, ['light', 'undying'], { str: 9, mag: 9, agi: 7, sen: 7 }, [mul('dmgMul', 1.12, '모든 피해 +12%'), on('crit', 0.3, strike(64, 2.2, 'holy', 'holy'), '치명타면 30% 확률로 빛기둥 (피해 220%)'), on('awaken', 1, { shield: 0.1 }, '싸우는 중 각성하면 보호막(최대 체력 10%)')], 'colossus'],
 ];
 

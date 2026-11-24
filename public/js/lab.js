@@ -12,6 +12,8 @@ import { ZONES, MONSTERS } from './data/monsters.js';
 import { floorKind, actOf, CLIMB_TOP } from './data/climb.js';
 import { SERIN_FLOORS } from './data/story.js';
 import { RES_ENGS } from './data/resengs.js';
+import { DUNGEONS } from './data/dungeons.js';
+import { ENTRANCES } from './data/maps/overworld.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const root = $('#lab');
@@ -60,8 +62,9 @@ ${SLOTS.map((sl) => `<div class="row"><label>${SLOT_NAME[sl] || sl}</label><sele
 <div class="muted">세린의 일지 층(금 간 벽 너머):</div>
 <div class="row">${Object.keys(SERIN_FLOORS).map((f) => `<button data-a="tower" data-v="${f}">${f}층</button>`).join('')}</div>
 
-<h2>4. 지역 · 연습장 · 새 게임</h2>
+<h2>4. 지역 · 던전 · 연습장 · 새 게임</h2>
 <div class="row"><select id="zone">${ZONES.map((z) => `<option value="${z.id}">${esc(z.name)}</option>`).join('')}</select><button data-a="zone">들어가기</button></div>
+<div class="row"><select id="dungeon">${Object.entries(DUNGEONS).sort((a, b) => a[1].lv - b[1].lv).map(([id, d]) => `<option value="${id}">Lv ${d.lv} ${esc(ENTRANCES[id]?.name || id)} · ${esc(MONSTERS[d.boss]?.name || '')}</option>`).join('')}</select><button data-a="dungeon">던전 들어가기</button></div>
 <div class="row"><button data-a="practice">연습장(허수아비 · 무리)</button><button data-a="dream">새 게임 처음부터(꿈 → 집 → 촌장)</button></div>
 
 <h2>5. 몬스터 부르기 (지금 있는 곳에)</h2>
@@ -93,11 +96,12 @@ const A = {
   trial: (v) => { if (needSave()) { lab().trial(v); toast('스승의 방'); } },
   tower: (v) => { if (!needSave()) return; const f = +(v || selVal('floor')); lab().tower(f); toast(`탑 ${f}층`); },
   zone: () => { if (needSave()) lab().zone(selVal('zone')); },
+  dungeon: () => { if (needSave()) { lab().dungeon(selVal('dungeon')); toast('던전'); } },
   practice: () => { if (needSave()) lab().practice(); },
   dream: () => { lab().dream(selVal('race')); toast('새 게임'); },
   spawn: () => { if (needSave()) lab().spawn(selVal('mon'), +selVal('monN') || 1); },
 };
-const SCENES = new Set(['build', 'home', 'trial', 'tower', 'zone', 'practice', 'dream']); // 장면이 열리면 패널을 접어 화면을 가리지 않게
+const SCENES = new Set(['build', 'home', 'trial', 'tower', 'zone', 'dungeon', 'practice', 'dream']); // 장면이 열리면 패널을 접어 화면을 가리지 않게
 root.addEventListener('click', (e) => { const b = e.target.closest('button[data-a]'); if (!b) return; e.preventDefault(); const a = b.dataset.a; A[a]?.(b.dataset.v); if (SCENES.has(a) && !root.classList.contains('min')) A.min(); b.blur(); });
 // 키보드로 꾸미는 중에 게임이 키를 가져가지 않게
 root.addEventListener('keydown', (e) => e.stopPropagation());

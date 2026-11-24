@@ -61,6 +61,7 @@ import { JOURNEY, journeyNow, rewardText as journeyReward, GIVERS } from './data
 import { oathScore, newClimbSave, newRun } from './data/climb.js';
 import { createTutorial, tutFlags } from './ui/tutorial.js';
 import { lockText, SYSTEM_NAME, makeLocks, openedBetween, towerBest, isOpen } from './data/unlocks.js';
+import { dungeonZone, dungeonCardHtml, dungeonCleared, dungeonLoot } from './ui/dungeons.js';
 // 디버그 핸들: 내 컴퓨터(localhost)나 주소에 ?debug 가 있을 때만 (배포판에서 콘솔 치트가 쉽지 않게)
 // 해방되지 않은 체계를 열려고 하면 안내하고 true (data/unlocks.js)
 function lockedMsg(kind, id) {
@@ -1342,7 +1343,7 @@ const memKeyOf = (id) => (id === 'mossCave' ? 'cave' : id); // 이끼 동굴은 
 function interiorZone(id) {
   const def = ENTRANCES[id];
   const base = def.theme === 'labyrinth' ? LABY_ZONE : def.theme === 'palace' ? PALACE_ZONE : ZONES.find((z) => z.id === def.theme);
-  return { base, zone: { ...base, name: def.name, key: id, relic: def.relic, elite: def.elite || base.elite, pool: def.pool || base.pool } };
+  return { base, zone: { ...base, name: def.name, key: id, relic: def.relic, elite: def.elite || base.elite, pool: def.pool || base.pool, ...dungeonZone(id) } }; // 던전 레벨 · 우두머리 (data/dungeons.js)
 }
 function enterInterior(id, depth = 0, carry = null, co = null) { // co: 파티 던전 { role, seed, host }
   const def = ENTRANCES[id], { base, zone } = interiorZone(id);
@@ -1364,7 +1365,8 @@ function enterInterior(id, depth = 0, carry = null, co = null) { // co: 파티 �
   world.rootMemory = carry?.rootMemory;
   world.goalNeeds = [];
   renderer.setWorld(world);
-  renderer.banner = { text: depth ? `${def.name} · 지하 ${depth + 1}층` : def.name, sub: def.relic && !depth ? `가장 깊은 곳의 우두머리가 ${josa(SANCTUMS[def.relic].relic, '을', '를')} 지니고 있다` : depth ? '더 강한 적, 더 많은 보상' : '시작 지점의 포탈로 언제든 밖에 나갈 수 있다', t: 3.4, color: '#f6dfae' };
+  const dgL = dungeonLoot(id);
+  renderer.banner = { text: depth ? `${def.name} · 지하 ${depth + 1}층` : def.name, sub: dgL ? `Lv ${zone.dungeonLv + 2 * depth} · 가장 깊은 곳의 ${def.relic && !depth ? `${josa(dgL.boss.name, '이', '가')} ${josa(SANCTUMS[def.relic].relic, '을', '를')} 지니고 있다` : `${dgL.boss.name}: ${dgL.partName}`}` : def.relic && !depth ? `가장 깊은 곳의 우두머리가 ${josa(SANCTUMS[def.relic].relic, '을', '를')} 지니고 있다` : depth ? '더 강한 적, 더 많은 보상' : '시작 지점의 포탈로 언제든 밖에 나갈 수 있다', t: 3.4, color: '#f6dfae' };
   startMusic(base.id);
   sfx('open');
   startLoop();
@@ -2319,9 +2321,12 @@ function handleSignals() {
       // 입구: 안쪽 세계로 (권장 레벨보다 많이 낮으면 한 번 묻는다)
       if (world.zone?.id === 'world') save.zoneMemory.world = world.exportMemory();
       if (world.zone?.id === 'seabed') { save.zoneMemory.seabed = world.exportMemory(); seaStash = null; }
-      const { base } = interiorZone(s.entrance), go = () => { curInterior = { id: s.entrance, x: s.x, y: s.y }; if (isPartyLeader() && net.party.members.length > 1 && ENTRANCES[s.entrance]?.theme !== 'palace') startCoZone(s.entrance); else enterInterior(s.entrance); if (ENTRANCES[s.entrance]?.prop === 'hole') world.player.drop = { h: 170, v: 0 }; }; // 구멍: 위에서 떨어져 내린다
-      if (save.level < base.rec - 2) {
-        showModal(`<h2>${ENTRANCES[s.entrance].name}</h2><p>권장 Lv ${base.rec} · 지금 Lv ${save.level}</p>
+      const { zone: iz } = interiorZone(s.entrance), go = () => { curInterior = { id: s.entrance, x: s.x, y: s.y }; if (isPartyLeader() && net.party.members.length > 1 && ENTRANCES[s.entrance]?.theme !== 'palace') startCoZone(s.entrance); else enterInterior(s.entrance); if (ENTRANCES[s.entrance]?.prop === 'hole') world.player.drop = { h: 170, v: 0 }; }; // 구멍: 위에서 떨어져 내린다
+      if (iz.dungeon) { // 던전: 들어가기 전에 우두머리 · 그곳에서만 나는 부산물 · 정복 기록을 보여 준다 (ui/dungeons.js)
+        showModal(dungeonCardHtml(s.entrance, save, { go: save.level < iz.rec - 2 ? '그래도 들어간다' : '들어간다' }));
+        document.getElementById('dgGo').onclick = () => { overlay.hidden = true; paused = false; modal = null; go(); };
+      } else if (save.level < iz.rec - 2) {
+        showModal(`<h2>${ENTRANCES[s.entrance].name}</h2><p>권장 Lv ${iz.rec} · 지금 Lv ${save.level}</p>
           <button id="goAnyway">그래도 들어간다</button><button data-close class="ghost">돌아간다</button>`);
         document.getElementById('goAnyway').onclick = () => { overlay.hidden = true; paused = false; modal = null; go(); };
       } else go();
@@ -2354,6 +2359,7 @@ function handleSignals() {
     }
     else if (s.t === 'waypoint') { showWaypoints(s.id); return; }
     else if (s.t === 'relic') { gainRelic(s.race, s.rid); }
+    else if (s.t === 'dungeonClear') { const r = dungeonCleared(save, s); if (r) { if (renderer.banner?.t > 2.5) renderer.note(`${r.text} · ${r.sub}`, '#ffd76a'); else renderer.banner = { text: r.text, sub: r.sub, t: 4, color: '#ffd76a' }; sfx('levelup', { vol: 0.6 }); writeSave(save); } }
     else if (s.t === 'shard') { gainShard(s.race); }
     else if (s.t === 'towerWeapon') { // 탑의 무기 100종: 처음이면 가방으로, 이미 있으면 금화로 바꿔 준다
       const it = ITEMS[s.id];
@@ -3852,6 +3858,7 @@ if (LAB) window.__lab = {
     save.run.f = f - 1; climbUi.enterFloor('fight');
   },
   zone(id) { if (!save) return; enterZone(id); },
+  dungeon(id) { if (!save) return; const en = overworldBase().objects.find((o) => o.kind === 'entrance' && o.id === id); curInterior = { id, x: en?.x || 0, y: en?.y || 0 }; enterInterior(id); }, // 탑 밖 던전 (data/dungeons.js)
   practice() { if (!save) return; practice.useSave = true; enterPractice(); },
   home() { if (!save) return; enterWorld(null, false); },
   hidden(id) { if (!save) return false; const ok = grantHidden(save, id); writeSave(save); return ok; },
