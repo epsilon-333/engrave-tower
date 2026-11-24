@@ -28,6 +28,8 @@ export const OrigMethods = {
     const shoot = (x, y, a, speed, range, skind, onHit, o = {}) => W.projs.push({ owner: 'p', x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: range / speed, maxLife: range / speed, dmg: 0, type: 'mag', pierce: o.pierce || 0, hit: new Set(o.skip || []), splash: 0,
       color: o.color || col, kind: 'skill', skind, elem: el, big: true, rot: a, ox: x, oy: y, skillHit: (e, pr) => onHit(e, pr) });
     const zone = (kind, x, y, r, t, atk = ctx.atk * ctx.bonus * 0.3) => { const c = W.groundPoint(x, y); const z = { kind, x: c.x, y: c.y, r, t, max: t, tick: 0, atk }; W.zones.push(z); W.emit({ t: 'zoneFx', x: c.x, y: c.y, r, kind }); return z; };
+    const coneHits = (a, R, half) => W.enemies.filter((e) => { if (!AT(e)) return false; const dx = e.x - p.x, dy = e.y - p.y; let da = Math.atan2(dy, dx) - a; da = Math.atan2(Math.sin(da), Math.cos(da)); return Math.hypot(dx, dy) < R + e.r && Math.abs(da) < half + 0.15; });
+    const moveE = (e, x, y) => { if (!AT(e) || W.blocked(x, y, e.r * 0.6)) return false; e.x = x; e.y = y; e.kbx = 0; e.kby = 0; return true; };
     const dash = (dist, o = {}) => W.runOp({ op: 'dash', dist, mul: 0, ...o }, ctx);
 
     switch (op.k) {
@@ -183,7 +185,7 @@ export const OrigMethods = {
         if (!W.blocked(tx, ty, 5)) { p.x = tx; p.y = ty; t.x = ox; t.y = oy; t.kbx = 0; t.kby = 0; }
         p.invuln = Math.max(p.invuln, 0.25);
         W.emit({ t: 'blink', x1: ox, y1: oy, x2: p.x, y2: p.y }); W.emit({ t: 'blink', x1: tx, y1: ty, x2: t.x, y2: t.y });
-        later(0.25, () => { const x = AT(t) ? t.x : ox, y = AT(t) ? t.y : oy; AOE(x, y, 36, 'burst'); for (const o of W.enemiesNear(x, y, 36)) H(o, op.mul, { status: 'burn', stacks: 1 }); });
+        later(0.25, () => { const x = AT(t) ? t.x : ox, y = AT(t) ? t.y : oy; AOE(x, y, 36, 'burst'); for (const o of W.enemiesNear(x, y, 36)) H(o, op.mul); });
         break;
       }
       case 'tendrils': { // 촉수를 꽂아 계속 찌른다
@@ -531,7 +533,7 @@ export const OrigMethods = {
         while (L.length < 4) { const n = near(L[L.length - 1].x, L[L.length - 1].y, 110, seen); if (!n) break; seen.add(n.id); L.push(n); }
         W.emit({ t: 'bolt', pts: [{ x: p.x, y: p.y - 6 }, ...L.map((e) => ({ x: e.x, y: e.y - 6 }))], color: '#7ac070' });
         for (const e of L) { H(e, op.mul, { status: 'chill', stacks: 1 }); if (AT(e)) e.st.slowZ = Math.max(e.st.slowZ || 0, 2); }
-        every(0.25, 8, (i) => { const A = L.filter(AT); if (A.length < 2) return; const cx = A.reduce((s, e) => s + e.x, 0) / A.length, cy = A.reduce((s, e) => s + e.y, 0) / A.length;
+        every(0.25, 8, (i) => { const A = L.filter(AT); if (A.length === 1) { if (i % 2 === 1) { W.emit({ t: 'inkBind', x: A[0].x, y: A[0].y, r: A[0].r, dur: 0.4 }); H(A[0], op.mul2 * 2); } return; } if (A.length < 2) return; const cx = A.reduce((s, e) => s + e.x, 0) / A.length, cy = A.reduce((s, e) => s + e.y, 0) / A.length;
           for (const e of A) pullTo(e, cx, cy, 0.12);
           if (i % 2 === 1) { for (let j = 1; j < A.length; j++) W.emit({ t: 'linkPulse', x1: A[j - 1].x, y1: A[j - 1].y - 6, x2: A[j].x, y2: A[j].y - 6 }); for (const e of A) if (A.some((o) => o !== e && Math.hypot(o.x - e.x, o.y - e.y) < e.r + o.r + 12)) { H(e, op.mul2); W.emit({ t: 'bump', x: e.x, y: e.y }); } } });
         break;
@@ -589,7 +591,7 @@ export const OrigMethods = {
         const a = ang, L = W.rayLen(p.x, p.y, a, 160), riders = []; let x = p.x + Math.cos(a) * 14, y = p.y + Math.sin(a) * 14, i = 0, n = Math.max(2, Math.floor(L / 12));
         every(0.04, n, () => { x += Math.cos(a) * 12; y += Math.sin(a) * 12; i++; if (i % 2 === 0) W.emit({ t: 'steamPuff', x, y });
           W.emit({ t: 'skillAoe', x, y, r: 10 + riders.length * 3, elem: el, fx: 'ice', lite: true });
-          for (const e of W.enemiesNear(x, y, 12 + riders.length * 3)) if (!riders.includes(e)) riders.push(e);
+          for (const e of W.enemiesNear(x, y, 12 + riders.length * 3)) { if (e.def.elite || e.def.boss) return false; if (!riders.includes(e)) riders.push(e); }
           for (const e of riders) if (AT(e) && !e.def.elite && !e.def.boss && !W.blocked(x, y, e.r)) { e.x = x; e.y = y; e.kbx = e.kby = 0; } },
           () => { const m = op.mul * (1 + 0.2 * riders.length); AOE(x, y, 40, 'ice'); W.emit({ t: 'shatter', x, y }); for (const e of W.enemiesNear(x, y, 40)) H(e, m, { status: 'chill', stacks: 2 }); });
         break;
@@ -611,6 +613,7 @@ export const OrigMethods = {
         const L = W.enemiesNear(p.x, p.y, 140); AOE(p.x, p.y, 120, 'wind', { lite: true }); W.emit({ t: 'shake', v: 3 });
         let n = 0; for (const e of L) { H(e, op.mul); if (AT(e)) { stun(e, 1); W.emit({ t: 'land', x: e.x, y: e.y }); n++; } }
         if (n) { const k = Math.min(0.24, 0.04 * n); p.buffs.oCrown = { t: 5, max: 5, mods: { dmgMul: 1 + k }, name: '돌 왕관', color: '#e0c070' }; W.emit({ t: 'text', x: p.x, y: p.y - 26, text: `위엄 +${Math.round(k * 100)}%`, color: '#e0c070' }); }
+        later(0.9, () => { for (const e of L) if (AT(e) && e.st.stun > 0) { W.emit({ t: 'slam', x: e.x, y: e.y }); H(e, op.mul2); } });
         break;
       }
       case 'harpoonAnchor': { // 작살을 박고 날아간다
@@ -687,6 +690,290 @@ export const OrigMethods = {
         for (let i = 0; i < 5; i++) { const q = i === 0 && first ? { x: first.x, y: first.y } : W.groundPoint(c.x + W.rng.range(-80, 80) * 0.7, c.y + W.rng.range(-80, 80) * 0.7);
           W.emit({ t: 'skillFall', x: q.x, y: q.y, r: 24, dur: 0.35 + 0.2 * i, fx: 'burst', elem: el });
           later(0.35 + 0.2 * i, () => { AOE(q.x, q.y, 24, 'burst', { lite: i < 4 }); W.emit({ t: 'emberPop', x: q.x, y: q.y }); for (const e of W.enemiesNear(q.x, q.y, 24)) H(e, op.mul); }); }
+        break;
+      }
+      // ── 3묶음 ──
+      case 'flankArchers': { // 양옆 환영 궁수가 함께 쏜다
+        const sx = -p.aimY, sy = p.aimX, A = [-1, 1].map((s) => W.groundPoint(p.x + sx * 30 * s, p.y + sy * 30 * s));
+        for (const q of A) W.emit({ t: 'afterimage', x1: p.x, y1: p.y, x2: q.x, y2: q.y });
+        every(0.3, 4, () => { const t = near(p.x, p.y, 200); for (const q of A) { W.emit({ t: 'afterimage', x1: q.x, y1: q.y, x2: q.x + 1, y2: q.y }); const a = t ? Math.atan2(t.y - q.y, t.x - q.x) : ang; shoot(q.x, q.y - 4, a, 300, 200, 'arrow', (e) => H(e, op.mul), { color: '#a890e0' }); } });
+        break;
+      }
+      case 'skewerPin': { // 첫 적을 꿰어 끝까지 끌고 가 박는다
+        const end = rayEnd(ang, 170), mz = W.muzzle(ang); let carried = null, arrow = null;
+        shoot(mz.x, mz.y, ang, 320, end.L, 'arrow', (e) => { if (!carried && !e.def.elite && !e.def.boss) { carried = e; H(e, op.mul); } else H(e, carried ? op.mul2 : op.mul); }, { pierce: 9 });
+        arrow = W.projs[W.projs.length - 1];
+        every(0.02, Math.ceil(end.L / 320 / 0.02), () => { if (carried && AT(carried) && arrow.life > 0) { moveE(carried, arrow.x, arrow.y + 4); } },
+          () => { if (!AT(carried)) return; stun(carried, 1.2); W.emit({ t: 'collide', x: carried.x, y: carried.y }); W.emit({ t: 'shake', v: 3 }); H(carried, op.mul2); });
+        break;
+      }
+      case 'steamVent': { // 압력을 모았다가 증기를 뿜는다
+        p.buffs.oPress = { t: 0.8, max: 0.8, mods: { dmgTakenMul: 0.75, moveSpeed: 0.5 }, name: '압력', color: '#e0e0e0' };
+        W.emit({ t: 'steamPuff', x: p.x, y: p.y - 6 });
+        later(0.8, () => every(0.1, 6, () => { const a = Math.atan2(p.aimY, p.aimX); W.emit({ t: 'skillCone', x: p.x, y: p.y, ang: a, range: 90, angle: 1, elem: el, fx: 'smoke' }); W.emit({ t: 'steamPuff', x: p.x + Math.cos(a) * 40, y: p.y + Math.sin(a) * 40 });
+          for (const e of coneHits(a, 90, 0.5)) { H(e, op.mul, { status: 'burn', stacks: 1 }); knock(e, p.x, p.y, 25); } }));
+        break;
+      }
+      case 'launchSlam': { // 증기로 몸을 쏘아 올려 내리꽂는다
+        const c = aimAt(160), x0 = p.x, y0 = p.y;
+        AOE(x0, y0, 50, 'smoke'); W.emit({ t: 'steamPuff', x: x0, y: y0 }); for (const e of W.enemiesNear(x0, y0, 50)) { H(e, op.mul); knock(e, x0, y0, 40); }
+        p.invuln = Math.max(p.invuln, 0.75); W.emit({ t: 'soarUp', x: x0, y: y0 }); W.emit({ t: 'skillFall', x: c.x, y: c.y, r: 80, dur: 0.6, fx: 'quake', elem: el });
+        later(0.6, () => { moveTo(c.x, c.y); W.emit({ t: 'land', x: p.x, y: p.y }); W.emit({ t: 'slam', x: p.x, y: p.y }); AOE(p.x, p.y, 80, 'quake'); W.emit({ t: 'shake', v: 8 });
+          for (const e of W.enemiesNear(p.x, p.y, 80)) { H(e, op.mul2, { status: 'burn', stacks: 2 }); stun(e, 1); } });
+        break;
+      }
+      case 'mossMask': { // 이끼를 붙여 칠 때마다 회복 · 끝에 조인다
+        const L = W.enemiesNear(p.x, p.y, 110); AOE(p.x, p.y, 110, 'wind', { lite: true }); W.emit({ t: 'shake', v: 2 });
+        for (const e of L) { H(e, op.mul); if (AT(e)) W.emit({ t: 'inkBind', x: e.x, y: e.y, r: e.r, dur: 4 }); }
+        const hp0 = new Map(L.map((e) => [e, e.hp]));
+        every(0.2, 20, () => { for (const e of L) { if (!AT(e)) continue; if (e.hp < hp0.get(e) - 1) W.heal(W.d.maxHp * 0.005, 'skill'); hp0.set(e, e.hp); } },
+          () => { for (const e of L) { if (!AT(e)) continue; W.emit({ t: 'skillSingle', x: e.x, y: e.y, fx: 'trap', elem: el }); H(e, op.mul2); e.rooted = Math.max(e.rooted || 0, 1); } });
+        break;
+      }
+      case 'liftSlab': { // 땅판을 들었다 덮어 찍는다
+        const c = aimAt(120), L = W.enemiesNear(c.x, c.y, 50);
+        W.emit({ t: 'skillAoe', x: c.x, y: c.y, r: 50, elem: el, fx: 'rocks', lite: true }); W.emit({ t: 'shake', v: 3 });
+        for (const e of L) { H(e, op.mul); stun(e, 0.8); }
+        later(0.8, () => { AOE(c.x, c.y, 50, 'quake'); W.emit({ t: 'slam', x: c.x, y: c.y }); W.emit({ t: 'shake', v: 6 });
+          for (const e of W.enemiesNear(c.x, c.y, 50)) H(e, op.mul2); for (const e of W.enemiesNear(c.x, c.y, 85)) if (Math.hypot(e.x - c.x, e.y - c.y) > 40) knock(e, c.x, c.y, 60); });
+        break;
+      }
+      case 'sandSlow': { // 흘러내리는 모래가 갈수록 무겁고 끝에 멈춘다
+        const c = aimAt(140); W.emit({ t: 'skillFall', x: c.x, y: c.y, r: 80, dur: 3, fx: 'wind', elem: el });
+        every(0.5, 6, (i) => { AOE(c.x, c.y, 80, 'wind', { lite: i < 5 }); for (const e of W.enemiesNear(c.x, c.y, 80)) { H(e, op.mul); if (!AT(e)) continue; e.st.slowZ = Math.max(e.st.slowZ || 0, 1); if (i === 5) { e.st.frozen = Math.max(e.st.frozen || 0, e.def.boss ? 0.4 : 1.5); W.emit({ t: 'text', x: e.x, y: e.y - 20, text: '멈춤', color: '#f0d890' }); } } });
+        break;
+      }
+      case 'timeDebt': { // 멈춘 동안 받은 피해를 한꺼번에 다시
+        const L = W.enemiesNear(p.x, p.y, 130); AOE(p.x, p.y, 130, 'ice', { lite: true });
+        const hp0 = new Map(); for (const e of L) { H(e, op.mul); if (AT(e)) { e.st.frozen = Math.max(e.st.frozen || 0, e.def.boss ? 0.5 : 2); hp0.set(e, e.hp); } }
+        later(2, () => { W.emit({ t: 'rewind', x: p.x, y: p.y }); W.emit({ t: 'shake', v: 6 }); for (const [e, h] of hp0) { if (!AT(e)) continue; const debt = Math.max(0, h - e.hp); W.emit({ t: 'shatter', x: e.x, y: e.y }); H(e, op.mul2 + Math.min(4, debt * 0.6 / Math.max(1, ctx.atk))); } });
+        break;
+      }
+      case 'curseSpread': { // 저주탄 → 저주가 둘레로 옮는다
+        const mz = W.muzzle(ang);
+        shoot(mz.x, mz.y, ang, 260, 180, 'skill', (e) => { H(e, op.mul, { status: 'curse', stacks: 2 }); const n = Math.min(6, e.st.curse?.n || 2);
+          for (const o of W.enemiesNear(e.x, e.y, 80)) if (o !== e) { W.emit({ t: 'linkPulse', x1: e.x, y1: e.y - 6, x2: o.x, y2: o.y - 6 }); H(o, op.mul2, { status: 'curse', stacks: n }); } }, { color: '#9a5cff' });
+        break;
+      }
+      case 'boneCage': { // 뼈 우리에 가두고 닫힐 때 파편
+        const t = tgt(140); if (!t) { W.emit({ t: 'text', x: p.x, y: p.y - 20, text: '대상 없음', color: '#a8b0c0' }); break; }
+        W.emit({ t: 'skillAoe', x: t.x, y: t.y, r: 22, elem: el, fx: 'bones', lite: true }); H(t, op.mul); stun(t, 2);
+        every(0.5, 4, () => { if (!AT(t)) return false; W.emit({ t: 'inkBind', x: t.x, y: t.y, r: t.r, dur: 0.5 }); H(t, op.mul * 0.5); },
+          () => { const x = t.x, y = t.y; AOE(x, y, 60, 'bones'); W.emit({ t: 'shatter', x, y }); for (const e of W.enemiesNear(x, y, 60)) H(e, op.mul2); });
+        break;
+      }
+      case 'crossRake': { // 앞 · 옆 · 뒤 · 옆 네 갈래
+        [0, Math.PI / 2, Math.PI, -Math.PI / 2].forEach((d, i) => later(0.1 * i, () => { const a = Math.atan2(p.aimY, p.aimX) + d; W.emit({ t: 'skillCone', x: p.x, y: p.y, ang: a, range: 55, angle: 1.3, elem: el, fx: 'claws' });
+          for (const e of coneHits(a, 55, 0.7)) H(e, op.mul, { status: 'bleed', stacks: 1 }); }));
+        break;
+      }
+      case 'bellToll': { // 가라앉은 종이 세 번 운다
+        const c = aimAt(130); W.emit({ t: 'skillFall', x: c.x, y: c.y, r: 20, dur: 0.3, fx: 'slam', elem: el });
+        [0.3, 1.0, 1.7].forEach((t, i) => later(t, () => { const r = 50 + i * 20; AOE(c.x, c.y, r, 'fog', { lite: i < 2 }); W.emit({ t: 'shake', v: 2 + i });
+          for (const e of W.enemiesNear(c.x, c.y, r)) { const had = !!e.st.poison; H(e, op.mul, { status: had ? 'curse' : 'poison', stacks: 2 }); } }));
+        break;
+      }
+      case 'wristLock': { // 다음 공격을 잡아 비틀어 넘긴다
+        const g = (p.origGuard = { k: 0.2, acc: 0, n: 0, until: W.t + 0.9 }); W.emit({ t: 'parryStance', x: p.x, y: p.y, dur: 0.9 });
+        let done = false;
+        const flip = (caught) => { if (done) return; done = true; if (p.origGuard === g) p.origGuard = null; const t = near(p.x, p.y, 70); if (!t) return; const a = Math.atan2(t.y - p.y, t.x - p.x);
+          W.emit({ t: 'skillSingle', x: t.x, y: t.y, fx: 'parry', elem: el }); W.emit({ t: 'thud', x: t.x, y: t.y }); H(t, caught ? op.mul2 : op.mul); stun(t, caught ? 1.2 : 0.4);
+          if (!t.def.elite && !t.def.boss) moveE(t, p.x - Math.cos(a) * 20, p.y - Math.sin(a) * 20); };
+        every(0.05, 18, () => { if (g.n > 0) { flip(true); return false; } }, () => flip(false));
+        break;
+      }
+      case 'holyCross': { // 가로 · 세로 빛 기둥, 교차점에선 회복
+        const c = aimAt(120);
+        for (const a of [ang, ang + Math.PI / 2]) { const x1 = c.x - Math.cos(a) * 80, y1 = c.y - Math.sin(a) * 80, x2 = c.x + Math.cos(a) * 80, y2 = c.y + Math.sin(a) * 80; W.emit({ t: 'lineTele', x1, y1, x2, y2, dur: 0.5 });
+          later(0.5, () => { W.emit({ t: 'skillLine', x1, y1, x2, y2, w: 12, elem: el, fx: 'pillar' }); for (const e of segHits(x1, y1, x2, y2, 12)) H(e, op.mul); }); }
+        later(0.55, () => { AOE(c.x, c.y, 24, 'holy'); if (Math.hypot(p.x - c.x, p.y - c.y) < 30) W.heal(W.d.maxHp * 0.05, 'skill'); for (const e of W.enemiesNear(c.x, c.y, 24)) H(e, op.mul2); });
+        break;
+      }
+      case 'darkSnuff': { // 빛을 꺼 눈멀게 하고 어둠이 조인다
+        const L = W.enemiesNear(p.x, p.y, 140); W.emit({ t: 'shadowVeil', x: p.x, y: p.y, dur: 2.5 }); AOE(p.x, p.y, 140, 'dark', { lite: true });
+        for (const e of L) { H(e, op.mul, { status: 'curse', stacks: 3 }); if (AT(e)) { e.loseT = Math.max(e.loseT || 0, 2.5); e.windT = 0; } }
+        later(2.5, () => { for (const e of L) { if (!AT(e)) continue; const n = e.st.curse?.n || 0; W.emit({ t: 'inkBurst', x: e.x, y: e.y }); H(e, op.mul2 * (1 + 0.1 * n)); } W.emit({ t: 'shake', v: 5 }); });
+        break;
+      }
+      case 'toppleColumn': { // 기둥을 쓰러뜨린다
+        const end = rayEnd(ang, 130); W.emit({ t: 'lineTele', x1: p.x, y1: p.y, x2: end.x, y2: end.y, dur: 0.6 });
+        later(0.6, () => { W.emit({ t: 'skillLine', x1: p.x, y1: p.y, x2: end.x, y2: end.y, w: 16, elem: el, fx: 'rocks' }); W.emit({ t: 'shake', v: 6 });
+          for (const e of segHits(p.x, p.y, end.x, end.y, 16)) { H(e, op.mul); stun(e, 1); }
+          W.emit({ t: 'shatter', x: end.x, y: end.y }); for (const e of W.enemiesNear(end.x, end.y, 45)) H(e, op.mul2); });
+        break;
+      }
+      case 'shieldPush': { // 방패를 내밀고 계속 밀며 걷는다
+        p.buffs.oPush = { t: 1.2, max: 1.2, mods: { dmgTakenMul: 0.6, moveSpeed: 0.7 }, name: '밀고 가기', color: '#c8c8d8' };
+        const walled = new Set();
+        every(0.1, 12, (i) => { const a = Math.atan2(p.aimY, p.aimX); moveTo(p.x + Math.cos(a) * 6, p.y + Math.sin(a) * 6); if (i % 3 === 0) W.emit({ t: 'rushDust', x: p.x, y: p.y, dx: Math.cos(a) });
+          for (const e of coneHits(a, 40, 0.9)) { const nx = e.x + Math.cos(a) * 8, ny = e.y + Math.sin(a) * 8;
+            if (W.blocked(nx, ny, e.r)) { if (!walled.has(e.id)) { walled.add(e.id); W.emit({ t: 'collide', x: e.x, y: e.y }); H(e, op.mul2); stun(e, 1); } } else if (!e.def.elite && !e.def.boss) moveE(e, nx, ny);
+            if (i % 3 === 0) H(e, op.mul); } });
+        break;
+      }
+      case 'sweepRain': { // 화살 장막이 옆으로 쓸고 지나간다
+        const c = aimAt(130), sx = -Math.sin(ang), sy = Math.cos(ang);
+        for (let i = 0; i < 7; i++) { const q = W.groundPoint(c.x + sx * (i - 3) * 18, c.y + sy * (i - 3) * 18), t = 0.25 + i * 0.12;
+          W.emit({ t: 'skillFall', x: q.x, y: q.y, r: 22, dur: t, fx: 'arrow', elem: el });
+          later(t, () => { AOE(q.x, q.y, 22, 'arrow', { lite: i % 2 === 0 }); for (const e of W.enemiesNear(q.x, q.y, 22)) { H(e, op.mul); knock(e, q.x - sx * 10, q.y - sy * 10, 12); } }); }
+        break;
+      }
+      case 'mirrorPincer': { // 거울의 나와 양쪽에서 동시에 벤다
+        p.invuln = Math.max(p.invuln, 0.3);
+        every(0.5, 5, () => { const t = near(p.x, p.y, 150); if (!t) return; const ax = t.x - p.x, ay = t.y - p.y, mx = t.x + ax, my = t.y + ay;
+          W.emit({ t: 'afterimage', x1: mx, y1: my, x2: t.x, y2: t.y }); W.emit({ t: 'danceDash', x1: p.x, y1: p.y, x2: mx, y2: my }); W.emit({ t: 'danceCut', x: t.x, y: t.y, ang: Math.atan2(ay, ax) });
+          for (const e of segHits(p.x, p.y, mx, my, 12)) if (e !== t) H(e, op.mul); H(t, op.mul2); },
+          () => { AOE(p.x, p.y, 70, 'blink'); W.emit({ t: 'shake', v: 5 }); for (const e of W.enemiesNear(p.x, p.y, 70)) H(e, op.mul2); });
+        break;
+      }
+      case 'prismSplit': { // 빛살이 첫 적에서 세 갈래로 갈라진다
+        const end = rayEnd(ang, 150), L = segHits(p.x, p.y, end.x, end.y, 8).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)), t = L[0];
+        const hx = t ? t.x : end.x, hy = t ? t.y : end.y; W.emit({ t: 'skillLine', x1: p.x, y1: p.y, x2: hx, y2: hy, w: 6, elem: el, fx: 'holy' });
+        if (t) H(t, op.mul);
+        later(0.1, () => { for (const d of [-0.5, 0, 0.5]) { const a = ang + d, L2 = W.rayLen(hx, hy, a, 110), x2 = hx + Math.cos(a) * L2, y2 = hy + Math.sin(a) * L2;
+          W.emit({ t: 'skillLine', x1: hx, y1: hy, x2, y2, w: 5, elem: el, fx: 'holy' }); for (const e of segHits(hx, hy, x2, y2, 8)) if (e !== t) H(e, op.mul2); } });
+        break;
+      }
+      case 'skullRattle': { // 방울을 흔들 때마다 해골 표식 · 세 번째에 터진다
+        const cnt = new Map();
+        every(0.3, 6, () => { const L = W.enemiesNear(p.x, p.y, 120); if (!L.length) return; const e = L[Math.floor(W.rng.range(0, L.length)) % L.length]; W.emit({ t: 'linkPulse', x1: p.x, y1: p.y - 8, x2: e.x, y2: e.y - 6 });
+          H(e, op.mul, { status: 'curse', stacks: 1 }); const n = (cnt.get(e) || 0) + 1; cnt.set(e, n); W.emit({ t: 'doomMark', id: e.id });
+          if (n === 3 && AT(e)) { cnt.set(e, 0); W.emit({ t: 'inkBurst', x: e.x, y: e.y }); for (const o of W.enemiesNear(e.x, e.y, 40)) H(o, op.mul2); } });
+        break;
+      }
+      case 'glareBash': { // 방패로 빛을 비춰 눈부시게 하고 친다
+        W.emit({ t: 'skillCone', x: p.x, y: p.y, ang, range: 100, angle: 1.2, elem: 'light', fx: 'holy' });
+        for (const e of coneHits(ang, 100, 0.6)) { H(e, op.mul); if (AT(e)) { e.st.weak = Math.max(e.st.weak || 0, 2); e.windT = 0; } }
+        const t = tgt(70); if (t) { W.meleeStep(ctx, 30, t); later(0.25, () => { if (!AT(t)) return; W.emit({ t: 'slam', x: t.x, y: t.y }); H(t, op.mul2 * (t.st.weak ? 1.3 : 1)); knock(t, p.x, p.y, 60); }); }
+        break;
+      }
+      case 'springPunch': { // 태엽을 감은 만큼 연타 (맞으면 풀린다)
+        const g = (p.origGuard = { k: 1, acc: 0, n: 0, until: W.t + 1.5 }); let turns = 0;
+        every(0.3, 5, () => { if (g.n > 0) return false; turns++; W.emit({ t: 'text', x: p.x, y: p.y - 22, text: `태엽 ${turns}`, color: '#e0c080' }); W.emit({ t: 'spark', x: p.x, y: p.y - 10, color: '#e0c080' }); },
+          () => { if (p.origGuard === g) p.origGuard = null; const n = 2 + turns * 2; const t = tgt(70); if (t) W.meleeStep(ctx, 30, t);
+            every(0.07, n, (i) => { const a = Math.atan2(p.aimY, p.aimX); W.emit({ t: 'skillCone', x: p.x, y: p.y, ang: a + (i % 2 ? 0.2 : -0.2), range: 42, angle: 0.8, elem: el, fx: 'smash' }); for (const e of coneHits(a, 42, 0.5)) H(e, op.mul); }); });
+        break;
+      }
+      case 'rallyPull': { // 함성으로 끌어모으고 다가온 적을 친다
+        const L = W.enemiesNear(p.x, p.y, 150); AOE(p.x, p.y, 150, 'wind', { lite: true }); W.emit({ t: 'shake', v: 2 });
+        for (const e of L) { H(e, op.mul); pullTo(e, p.x, p.y, 0.7); W.aggro(e); }
+        later(0.8, () => { AOE(p.x, p.y, 45, 'slam'); for (const e of W.enemiesNear(p.x, p.y, 45)) { H(e, op.mul2); stun(e, 0.5); } });
+        break;
+      }
+      case 'hoverBlade': { // 던진 칼이 그 자리에서 돌다 돌아온다
+        const c = aimAt(110), x0 = p.x, y0 = p.y; W.emit({ t: 'skillLine', x1: x0, y1: y0, x2: c.x, y2: c.y, w: 6, elem: el, fx: 'spin' });
+        for (const e of segHits(x0, y0, c.x, c.y, 10)) H(e, op.mul);
+        every(0.2, 5, () => { W.emit({ t: 'spin', x: c.x, y: c.y, r: 26 }); for (const e of W.enemiesNear(c.x, c.y, 26)) H(e, op.mul); },
+          () => { W.emit({ t: 'skillLine', x1: c.x, y1: c.y, x2: p.x, y2: p.y, w: 6, elem: el, fx: 'spin' }); for (const e of segHits(c.x, c.y, p.x, p.y, 10)) H(e, op.mul2); });
+        break;
+      }
+      case 'hawkStrike': { // 매가 체력이 가장 많은 적에게 내리꽂힌다
+        W.emit({ t: 'soarUp', x: p.x, y: p.y - 10 });
+        later(0.9, () => { let t = null; for (const e of W.enemiesNear(p.x, p.y, 220)) if (!t || e.hp > t.hp) t = e; if (!t) return;
+          W.emit({ t: 'skillFall', x: t.x, y: t.y, r: 20, dur: 0.15, fx: 'wind', elem: el });
+          later(0.15, () => { if (!AT(t)) return; W.emit({ t: 'danceCut', x: t.x, y: t.y, ang: Math.PI / 2 }); W.emit({ t: 'shake', v: 3 }); H(t, op.mul, { status: 'bleed', stacks: 2 });
+            every(0.4, 3, () => { if (AT(t)) { W.emit({ t: 'skillSingle', x: t.x, y: t.y, fx: 'claws', elem: el }); H(t, op.mul2); } }); }); });
+        break;
+      }
+      case 'swallowBeam': { // 빛을 삼키며 숨고 · 한 줄로 토해 낸다
+        p.invuln = Math.max(p.invuln, 0.8); W.emit({ t: 'stealthOn', x: p.x, y: p.y });
+        let eaten = 0;
+        every(0.2, 4, () => { for (const e of W.enemiesNear(p.x, p.y, 90)) { W.emit({ t: 'linkPulse', x1: e.x, y1: e.y - 6, x2: p.x, y2: p.y - 8 }); H(e, op.mul); eaten++; } W.heal(W.d.maxHp * 0.006, 'skill'); },
+          () => { const a = Math.atan2(p.aimY, p.aimX), end = rayEnd(a, 160); W.emit({ t: 'skillLine', x1: p.x, y1: p.y, x2: end.x, y2: end.y, w: 10, elem: el, fx: 'dark' }); W.emit({ t: 'shake', v: 4 });
+            for (const e of segHits(p.x, p.y, end.x, end.y, 12)) H(e, op.mul2 * (1 + Math.min(1, eaten * 0.05))); });
+        break;
+      }
+      case 'crossWind': { // 옆바람이 적을 한쪽으로 쓸어 몰아붙인다
+        const c = aimAt(100), sx = -Math.sin(ang), sy = Math.cos(ang), walled = new Set();
+        every(0.1, 10, (i) => { W.emit({ t: 'skillCone', x: c.x - sx * 60, y: c.y - sy * 60, ang: Math.atan2(sy, sx), range: 120, angle: 0.8, elem: el, fx: 'wind', lite: true });
+          for (const e of W.enemiesNear(c.x, c.y, 70)) { if (i % 3 === 0) H(e, op.mul); if (!AT(e) || e.def.boss) continue; const nx = e.x + sx * 7, ny = e.y + sy * 7; if (W.blocked(nx, ny, e.r)) { if (!walled.has(e.id)) { walled.add(e.id); W.emit({ t: 'collide', x: e.x, y: e.y }); H(e, op.mul2); stun(e, 0.8); } } else moveE(e, nx, ny); } });
+        break;
+      }
+      case 'pushBlast': { // 바람탄이 꿰뚫고 밀어낸 거리만큼 세다
+        const mz = W.muzzle(ang);
+        shoot(mz.x, mz.y, ang, 280, 200, 'skill', (e) => { H(e, op.mul); if (e.def.boss) return; const x0 = e.x, y0 = e.y;
+          every(0.03, 10, () => { if (!AT(e)) return false; const nx = e.x + Math.cos(ang) * 9, ny = e.y + Math.sin(ang) * 9; if (W.blocked(nx, ny, e.r)) { W.emit({ t: 'collide', x: e.x, y: e.y }); stun(e, 0.8); return false; } moveE(e, nx, ny); },
+            () => { if (!AT(e)) return; const d = Math.hypot(e.x - x0, e.y - y0); W.emit({ t: 'skillSingle', x: e.x, y: e.y, fx: 'wind', elem: el }); H(e, op.mul2 * (1 + d / 90)); }); }, { pierce: 6, color: '#d8f0ff' });
+        break;
+      }
+      case 'boulderSplit': { // 하늘로 던진 바위가 떨어져 다섯 조각으로 굴러간다
+        const c = aimAt(140); W.emit({ t: 'skillFall', x: c.x, y: c.y, r: 40, dur: 0.7, fx: 'rocks', elem: el });
+        later(0.7, () => { AOE(c.x, c.y, 40, 'rocks'); W.emit({ t: 'shake', v: 5 }); for (const e of W.enemiesNear(c.x, c.y, 40)) H(e, op.mul);
+          for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; shoot(c.x, c.y, a, 160, 90, 'icerock', (e) => { H(e, op.mul2); knock(e, c.x, c.y, 30); }, { color: '#b0a088', pierce: 2 }); } });
+        break;
+      }
+      case 'sweepKnives': { // 팔을 휘둘러 칼을 부채꼴로 흩뿌린다
+        for (let i = 0; i < 7; i++) later(0.05 * i, () => { const a = Math.atan2(p.aimY, p.aimX) - 0.6 + i * 0.2, mz = W.muzzle(a); shoot(mz.x, mz.y, a, 330, 170, 'knife', (e) => H(e, op.mul)); });
+        break;
+      }
+      case 'boneShrapnel': { // 뼈 주머니가 흩어졌다 적에게 튀어 오른다
+        const c = aimAt(110); W.emit({ t: 'skillAoe', x: c.x, y: c.y, r: 50, elem: el, fx: 'bones', lite: true }); for (const e of W.enemiesNear(c.x, c.y, 50)) H(e, op.mul);
+        const pts = [0, 1, 2, 3, 4, 5].map((i) => W.groundPoint(c.x + Math.cos(i * 1.047) * 30, c.y + Math.sin(i * 1.047) * 30));
+        later(1, () => pts.forEach((q, i) => later(0.06 * i, () => { const t = near(q.x, q.y, 140); if (!t) return; W.emit({ t: 'emerge', x: q.x, y: q.y }); shoot(q.x, q.y, Math.atan2(t.y - q.y, t.x - q.x), 260, 150, 'icerock', (e) => H(e, op.mul2), { color: '#e8e0c8' }); })));
+        break;
+      }
+      case 'bloatSac': { // 맞을수록 부푸는 주머니가 터진다
+        const t = tgt(140); if (!t) { W.emit({ t: 'text', x: p.x, y: p.y - 20, text: '대상 없음', color: '#a8b0c0' }); break; }
+        W.emit({ t: 'skillSingle', x: t.x, y: t.y, fx: 'plague', elem: el }); H(t, op.mul, { status: 'poison', stacks: 1 });
+        let n = 1, last = t.hp;
+        every(0.1, 30, () => { if (!AT(t)) return false; if (t.hp < last - 1 && n < 6) { n++; W.emit({ t: 'text', x: t.x, y: t.y - 22, text: `부풂 ${n}`, color: '#a0e060' }); } last = t.hp; },
+          () => { const x = t.x, y = t.y, r = 40 + n * 6; AOE(x, y, r, 'splash'); W.emit({ t: 'shake', v: 2 + n }); for (const e of W.enemiesNear(x, y, r)) H(e, op.mul2 * n, { status: 'poison', stacks: n }); });
+        break;
+      }
+      case 'ankleDrag': { // 땅에서 손가락이 발목을 잡아 끌고 온다
+        const t = tgt(160); if (!t) { W.emit({ t: 'text', x: p.x, y: p.y - 20, text: '대상 없음', color: '#a8b0c0' }); break; }
+        W.emit({ t: 'emerge', x: t.x, y: t.y });
+        every(0.3, 5, () => { if (!AT(t)) return false; W.emit({ t: 'inkBind', x: t.x, y: t.y, r: t.r, dur: 0.3 }); W.emit({ t: 'linkPulse', x1: t.x, y1: t.y, x2: p.x, y2: p.y });
+          H(t, op.mul, { status: 'chill', stacks: 1 }); if (AT(t) && !t.def.boss) { const d = Math.hypot(p.x - t.x, p.y - t.y); if (d > 24) moveE(t, t.x + (p.x - t.x) / d * 14, t.y + (p.y - t.y) / d * 14); } if (AT(t)) t.windT = 0; },
+          () => { if (AT(t)) { W.emit({ t: 'skillSingle', x: t.x, y: t.y, fx: 'trap', elem: el }); H(t, op.mul2); } });
+        break;
+      }
+      case 'shadowRelay': { // 그림자가 적에서 적으로 건너가 묶고 나는 끝으로
+        const seen = new Set(); let cur = { x: p.x, y: p.y };
+        every(0.18, 4, () => { const e = near(cur.x, cur.y, 120, seen); if (!e) return false; seen.add(e.id); W.emit({ t: 'danceDash', x1: cur.x, y1: cur.y, x2: e.x, y2: e.y });
+          W.emit({ t: 'inkBind', x: e.x, y: e.y, r: e.r, dur: 0.8 }); H(e, op.mul); if (AT(e)) e.rooted = Math.max(e.rooted || 0, 0.8); cur = { x: e.x, y: e.y }; },
+          () => { if (!seen.size) return; const x1 = p.x, y1 = p.y; if (moveTo(cur.x - p.aimX * 14, cur.y - p.aimY * 14)) { W.emit({ t: 'shadowBlink', x1, y1, x2: p.x, y2: p.y }); for (const e of W.enemiesNear(p.x, p.y, 40)) H(e, op.mul2); } });
+        break;
+      }
+      case 'lullaby': { // 잠재우고 · 처음 때리면 깨며 크게
+        const L = W.enemiesNear(p.x, p.y, 130).slice(0, 5); AOE(p.x, p.y, 130, 'spiritIn', { lite: true });
+        const hp = new Map(); for (const e of L) { H(e, op.mul); if (AT(e)) { stun(e, 3); hp.set(e, e.hp); W.emit({ t: 'text', x: e.x, y: e.y - 20, text: 'Zz', color: '#c0e0ff' }); } }
+        every(0.1, 30, () => { for (const [e, h] of hp) { if (!AT(e)) { hp.delete(e); continue; } if (e.hp < h - 1) { hp.delete(e); e.st.stun = 0; W.emit({ t: 'skillSingle', x: e.x, y: e.y, fx: 'wind', elem: el }); H(e, op.mul2); } } });
+        break;
+      }
+      case 'inhaleExhale': { // 들이쉬어 끌어모으고 내쉬어 날린다
+        every(0.1, 8, () => { W.emit({ t: 'skillAoe', x: p.x, y: p.y, r: 120, elem: el, fx: 'spiritIn', lite: true }); for (const e of W.enemiesNear(p.x, p.y, 120)) pullTo(e, p.x + p.aimX * 30, p.y + p.aimY * 30, 0.12); },
+          () => { const a = Math.atan2(p.aimY, p.aimX); W.emit({ t: 'skillCone', x: p.x, y: p.y, ang: a, range: 110, angle: 1.2, elem: el, fx: 'wind' }); W.emit({ t: 'shake', v: 4 });
+            for (const e of coneHits(a, 110, 0.65)) { H(e, op.mul); knock(e, p.x, p.y, 90); } });
+        break;
+      }
+      case 'lifeSip': { // 생기 줄을 이어 마신다 (멀어지면 끊긴다)
+        const t = tgt(120); if (!t) { W.emit({ t: 'text', x: p.x, y: p.y - 20, text: '대상 없음', color: '#a8b0c0' }); break; }
+        every(0.2, 8, () => { if (!AT(t) || Math.hypot(t.x - p.x, t.y - p.y) > 140) return false; W.emit({ t: 'linkPulse', x1: t.x, y1: t.y - 6, x2: p.x, y2: p.y - 8 }); const h = t.hp; H(t, op.mul); W.heal(Math.max(0, h - t.hp) * 0.3, 'skill'); });
+        break;
+      }
+      case 'curveArrow': { // 크게 휘어 적의 등 뒤에서 꽂힌다
+        const t = tgt(200), tx = t ? t.x : p.x + p.aimX * 150, ty = t ? t.y : p.y + p.aimY * 150, sx = p.x, sy = p.y, dx = tx - sx, dy = ty - sy, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
+        let px0 = sx, py0 = sy; const N = 12;
+        every(0.04, N, (i) => { const s = (i + 1) / N, bend = Math.sin(s * Math.PI) * 50, x = sx + dx * s + nx * bend, y = sy + dy * s + ny * bend;
+          W.emit({ t: 'skillLine', x1: px0, y1: py0, x2: x, y2: y, w: 3, elem: el, fx: 'wind' }); px0 = x; py0 = y; },
+          () => { if (!AT(t)) { AOE(px0, py0, 20, 'wind', { lite: true }); for (const e of W.enemiesNear(px0, py0, 20)) H(e, op.mul); return; } W.emit({ t: 'skillSingle', x: t.x, y: t.y, fx: 'arrow', elem: el }); H(t, op.mul * 1.5); for (const e of W.enemiesNear(t.x, t.y, 30)) if (e !== t) H(e, op.mul2); });
+        break;
+      }
+      case 'skyDrop': { // 움켜쥐고 날아올라 떨어뜨린다
+        const t = tgt(70); if (!t) { dash(60, { mul: op.mul }); break; }
+        H(t, op.mul); const c = aimAt(130); p.invuln = Math.max(p.invuln, 1); W.emit({ t: 'soarUp', x: p.x, y: p.y });
+        const carry = !t.def.elite && !t.def.boss; if (carry) stun(t, 1.2);
+        every(0.05, 16, (i) => { moveTo(p.x + (c.x - p.x) / (16 - i), p.y + (c.y - p.y) / (16 - i)); if (carry && AT(t)) moveE(t, p.x, p.y - 4); },
+          () => { const x = AT(t) ? t.x : p.x, y = AT(t) ? t.y : p.y; W.emit({ t: 'slam', x, y }); AOE(x, y, 50, 'burst'); W.emit({ t: 'shake', v: 5 }); for (const e of W.enemiesNear(x, y, 50)) H(e, op.mul2); });
+        break;
+      }
+      case 'splitBlink': { // 떠난 자리와 닿은 자리가 함께 터지고 사이의 적은 양옆으로
+        const x0 = p.x, y0 = p.y, end = rayEnd(ang, 120); moveTo(end.x - p.aimX * 6, end.y - p.aimY * 6); p.invuln = Math.max(p.invuln, 0.3);
+        W.emit({ t: 'blink', x1: x0, y1: y0, x2: p.x, y2: p.y });
+        later(0.15, () => { const sx = -Math.sin(ang), sy = Math.cos(ang);
+          for (const e of segHits(x0, y0, p.x, p.y, 20)) { H(e, op.mul); if (!AT(e) || e.def.elite || e.def.boss) continue; const side = (e.x - x0) * sx + (e.y - y0) * sy >= 0 ? 1 : -1; e.kbx += sx * side * 140; e.kby += sy * side * 140; }
+          for (const [x, y] of [[x0, y0], [p.x, p.y]]) { AOE(x, y, 36, 'wind'); for (const e of W.enemiesNear(x, y, 36)) H(e, op.mul2); } });
         break;
       }
       default: break;
