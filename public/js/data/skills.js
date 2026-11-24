@@ -5,6 +5,7 @@ import { registerHiddenSkills } from './hidden.js';
 import { registerResSkills } from './resengs.js';
 import { stripPassiveSkills } from './passives.js';
 import { registerSkillVariants } from './variants.js';
+import { registerOrigSkills } from './origskills.js';
 import { ENGRAVINGS as ENG_ALL } from './engravings.js';
 // 클래스와 액티브 스킬. 종족마다 클래스 2개, 클래스마다 스킬 6개(1·1·3·6·10·15레벨에 배움). 최대 4개 장착(Q·E·R·F).
 // 콤보 역할: 준비(자원·약화) → 강화(버프) → 마무리(자원 소모 큰 한 방), 궁극(15레벨, 자원 전부)
@@ -777,6 +778,8 @@ export const FLAT_CD = 3;
 if (FLAT_CD) for (const s of Object.values(SKILLS)) if (!s.hidden) { s.cd0 = s.cd; s.cd = FLAT_CD; } // 숨은 각인 스킬은 원래 쿨타임
 
 // 스킬 변형 (data/variants.js): 같은 스킬을 쓰던 각인마다 자기 스킬 — 같은 스킬을 쓰는 각인 0개
+// 독창 스킬 (data/origskills.js): 스킬을 나눠 쓰던 각인 일부는 동작부터 새로 만든 자기 스킬 — 변형보다 먼저
+export const ORIG_SKILL_IDS = registerOrigSkills(SKILLS, ENGRAVING_SKILLS, ENG_ALL, SKILL_BAL, SKILL_BAL_GEN);
 export const SKILL_VARIANTS = registerSkillVariants(SKILLS, ENGRAVING_SKILLS, ENG_ALL, SKILL_BAL, SKILL_BAL_GEN);
 // 변형의 뼈대 스킬 id (변형이 아니면 그대로): 스킬 id로 정해 둔 규칙(쿨타임 · 잠깐 오르는 스탯 · 무기 강화 · 갈래)은 뼈대를 따라간다
 export const skillBase = (id) => SKILLS[id]?.base || id;

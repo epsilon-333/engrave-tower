@@ -20,7 +20,7 @@ export const AllyMethods = {
         for (const e of this.enemiesNear(al.x, al.y, 8)) {
           if ((al.hitCd[e.id] || 0) > this.t) continue;
           al.hitCd[e.id] = this.t + 0.35;
-          this.damageEnemy(e, al.atk, 'phys', { src: 'aoe' });
+          if (al.onHit) al.onHit(e); else this.damageEnemy(e, al.atk, 'phys', { src: 'aoe' }); // 독창 스킬의 톱날은 스킬 피해
           this.emit({ t: 'allyHit', x: e.x, y: e.y, kind: 'axe' });
         }
       } else if (al.kind === 'spiritKing') {

@@ -329,6 +329,7 @@ export const SkillMethods = {
         else run();
         break;
       }
+      case 'orig': this.origOp(op, ctx); break; // 독창 스킬 (data/origskills.js · sim/origrun.js)
       case 'resGain': case 'resMark': this.resOp(op, ctx); break; // 자원 각인 (sim/resource.js)
       case 'soulCall': case 'bubble': case 'shadowHands': case 'ram': this.hidOp(op, ctx); break; // 숨은 각인 (sim/hidden.js)
       case 'blastSummons': {
@@ -699,11 +700,11 @@ export const SkillMethods = {
       if (p.res < def.costAll.min) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
       spent = p.res; p.res = 0;
     } else if (def.cost) {
-      const cost = gradeCost(def, this.skillTier(id)) * (this.d.costMul || 1) * (def.vx?.costK || 1); // 각인 등급에 맞춘 소모 · 정신 70: -30%
+      const cost = gradeCost(def, this.skillTier(id)) * (this.d.costMul || 1) * (def.vx?.costK || def.price?.res || 1); // 각인 등급에 맞춘 소모 · 정신 70: -30%
       if (p.res < cost && !this.bloodPay(cost - p.res)) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
       p.res = Math.max(0, p.res - cost); spent = cost;
     }
-    if (def.vx?.hp) p.hp = Math.max(1, p.hp - this.d.maxHp * def.vx.hp); // 변형의 대가: 체력
+    if (def.vx?.hp || def.price?.hp) p.hp = Math.max(1, p.hp - this.d.maxHp * (def.vx?.hp || def.price.hp)); // 대가: 체력 (독창 스킬 price · 예전 변형 vx)
     if (def.gain) this.addRes(def.gain);
     let cd = def.cd * this.d.skillCdMul * (1 - this.d.cdr) * skillScale(id, this.b).cd; // 스탯 70: 재사용 -20%
     if (bid === 'breath' && p.buffs.dragonForm) cd = 0.3;
@@ -743,6 +744,7 @@ export const SkillMethods = {
     if (def.charge) bonus *= [1, 1.35, 1.75, 2.2][lvl];
     if (p.elemBonusT > 0 && elem && elem !== 'phys') { bonus = 1.3; p.elemBonusT = 0; }
     // 힘 모으기: 다음 스킬 한 번이 강해진다
+    if (p.origNext && !opt.weapon && id !== p.origNext.from) { if (p.origNext.until > this.t) bonus *= p.origNext.mul; p.origNext = null; } // 「톱니 바퀴 다리」: 다음 스킬 강화
     if (p.buffs.charged && id !== 'chargeUp') { bonus *= p.buffs.charged.power || 2.5; p.buffs.charged.t = Math.min(p.buffs.charged.t, 0.05); }
     const boost = opt.weapon ? this.b.weapon.mul : this.weaponBoost(id), hf = opt.weapon ? { fit: 1, hand: 'main' } : handFit(def, this.b), fit = hf.fit, cross = opt.weapon ? 1 : crossMul(def, this.b); // 다른 종족 스킬: 능력치가 모자라면 85%
     const sc = opt.weapon ? this.b.wScale : skillScale(id, this.b); // 스탯 계수 (이 스킬 · 무기가 따라가는 스탯)

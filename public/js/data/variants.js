@@ -1,5 +1,6 @@
 // 스킬 변형 (2026-11-24): 같은 스킬을 나눠 쓰던 각인마다 그 스킬을 뼈대로 한 자기 스킬을 준다 (같은 스킬을 쓰는 각인 0개)
-// 손으로 쓰지 않는다: 각인 이름 · 태그(성질) · 등급 · 능력치에서 고른다. 같은 뼈대 안에서 「성질 | 덧붙는 효과 | 표식 | 대가」 조합은 겹치지 않는다
+// (2026-11-24) 독창 스킬(data/origskills.js)로 바뀌는 중 — 이미 바뀐 각인은 여기 오지 않는다. 변형에는 대가가 없다
+// 손으로 쓰지 않는다: 각인 이름 · 태그(성질) · 등급 · 능력치에서 고른다. 같은 뼈대 안에서 「성질 | 덧붙는 효과 | 표식」 조합은 겹치지 않는다
 // 실행: sim/skillrun.js (skillHit → vxHit · runOp 'vxEcho' · castSkillId0의 대가) · 시험 tools/tests/variants.mjs
 // 뼈대의 연출을 그대로 쓰고 성질 색만 바뀐다 (def.elem → 이펙트 색) · 높은 등급(4 · 5)은 앞에 성질 폭발이 하나 더
 
@@ -63,7 +64,7 @@ export function makeVariant(baseId, base, eid, eng, used) {
   const st = Object.entries(eng.stats || {}).filter(([k]) => STAT_KO[k]).sort((a, b) => b[1] - a[1]).map(([k]) => k);
   if (!st.length) st.push(base.scale === 'mag' ? 'mag' : 'str');
   const marks = rot(['crit', 'scale:' + st[0], ...(st[1] ? ['scale:' + st[1]] : [])], (h >> 3) % 3);
-  const costs = rot(['none', 'hp', 'self', ...(base.cost ? ['res'] : [])], (h >> 6) % 4);
+  const costs = ['none']; // 변형에는 대가가 없다 (2026-11-24 · 대가는 독창 스킬 30개 안쪽에서만 · data/origskills.js)
   for (const add of adds) for (const mark of marks) for (const cost of costs) {
     const key = `${elem || '-'}|${add}|${mark}|${cost}`;
     if (used.has(key)) continue;

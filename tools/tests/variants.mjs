@@ -1,9 +1,10 @@
-// 스킬 변형 (data/variants.js): 스킬 붙은 각인끼리 스킬 겹침 0 · 같은 뼈대 안 조합 · 이름 겹침 0 · 새 스킬을 모두 World에서 한 번씩 써 본다
+// 스킬 변형 (data/variants.js) · 독창 스킬 (data/origskills.js): 스킬 붙은 각인끼리 스킬 겹침 0 · 같은 뼈대 안 조합 · 이름 겹침 0 · 새 스킬을 모두 World에서 한 번씩 써 본다 · 대가 있는 스킬 30개 이하
 const root = process.argv[2] || new URL('../../public/js', import.meta.url).href;
 const { World } = await import(root + '/sim/world.js');
 const { computeBuild } = await import(root + '/sim/build.js');
 const { ENGRAVINGS } = await import(root + '/data/engravings.js');
-const { ENGRAVING_SKILLS, SKILLS, SKILL_VARIANTS, SKILL_BAL, CLASSES, engravingSkillFor } = await import(root + '/data/skills.js');
+const { ENGRAVING_SKILLS, SKILLS, SKILL_VARIANTS, ORIG_SKILL_IDS, SKILL_BAL, CLASSES, engravingSkillFor } = await import(root + '/data/skills.js');
+const { hasPrice, ORIG_SKILLS } = await import(root + '/data/origskills.js');
 let fails = 0;
 const ok = (v, m) => { if (!v) { fails++; console.log('FAIL', m); } };
 
@@ -12,7 +13,13 @@ const by = {};
 for (const [eid, sid] of Object.entries(ENGRAVING_SKILLS)) if (ENGRAVINGS[eid]) (by[sid] ||= []).push(eid);
 const dup = Object.entries(by).filter(([, a]) => a.length > 1);
 ok(dup.length === 0, `같은 스킬을 쓰는 각인 0 (${dup.slice(0, 5).map(([s, a]) => s + ':' + a.join(',')).join(' / ')})`);
-ok(SKILL_VARIANTS.length >= 120, `새 스킬 수 (${SKILL_VARIANTS.length})`);
+ok(SKILL_VARIANTS.length + ORIG_SKILL_IDS.length >= 120, `새 스킬 수 (변형 ${SKILL_VARIANTS.length} · 독창 ${ORIG_SKILL_IDS.length})`);
+ok(ORIG_SKILL_IDS.length === Object.keys(ORIG_SKILLS).length, `독창 스킬이 모두 붙었다 (${ORIG_SKILL_IDS.length})`);
+ok(new Set(ORIG_SKILL_IDS.map((id) => SKILLS[id].do[0].k)).size === ORIG_SKILL_IDS.length, '독창 스킬마다 실행 종류가 다르다');
+for (const id of ORIG_SKILL_IDS) { const d = SKILLS[id]; ok(!d.base && !d.vx && d.orig && /\d/.test(d.desc), `${id}: 뼈대 없이 · 설명에 숫자`); ok(ENGRAVING_SKILLS[d.fromEng] === id, `${id}: 각인 연결`); }
+const priced = new Set(Object.values(ENGRAVING_SKILLS)).size && [...new Set(Object.values(ENGRAVING_SKILLS))].filter((sid) => hasPrice(SKILLS[sid]));
+ok(priced.length <= 30, `대가 있는 각인 스킬 30개 이하 (${priced.length})`);
+ok(SKILL_VARIANTS.every((v) => !hasPrice(SKILLS[v]) || hasPrice(SKILLS[SKILLS[v].base])), '변형에는 대가가 없다');
 // 2) 같은 뼈대 안 조합 · 이름
 const keys = {}, names = {};
 for (const vid of SKILL_VARIANTS) {
@@ -31,8 +38,8 @@ ok(nameDup <= 30, `각인 스킬 이름 겹침 적게 (${nameDup})`);
 // 3) World에서 한 번씩: 오류 없이 · 맞히면 적 체력이 준다 (또는 변형 효과가 보인다)
 const RACE_CLS = {}; for (const [cid, c] of Object.entries(CLASSES)) RACE_CLS[c.race] ||= cid;
 let n = 0, hitN = 0;
-for (const vid of SKILL_VARIANTS) {
-  const v = SKILLS[vid], eid = v.fromEng, race = v.race && RACE_CLS[v.race] ? v.race : 'knight', cid = RACE_CLS[race], c = CLASSES[cid];
+for (const vid of [...SKILL_VARIANTS, ...ORIG_SKILL_IDS]) {
+  const v = SKILLS[vid], eid = v.fromEng, race = v.race && RACE_CLS[v.race] ? v.race : 'knight', cid = CLASSES[v.cls]?.race === race ? v.cls : RACE_CLS[race], c = CLASSES[cid];
   const sid = engravingSkillFor(eid, race);
   try {
     ok(sid === vid, `${vid}: ${eid} → 이 스킬 (${sid})`);
@@ -49,7 +56,7 @@ for (const vid of SKILL_VARIANTS) {
     for (let f = 0; f < 150; f++) { w.step(inp); w.events.length = 0; if (w.state !== 'play') { w.state = 'play'; p.hp = w.d.maxHp; } }
     const lost = hp0 - foes.reduce((a, e) => a + Math.max(0, e.hp), 0);
     if (lost > 0 || foes.some((e) => Object.keys(e.st || {}).length)) hitN++;
-    if (v.vx.hp) ok(true, '');
+    if (v.orig && !(lost > 0 || foes.some((e) => Object.keys(e.st || {}).length))) console.log('  (독창 스킬이 못 맞힘)', vid);
   } catch (err) { fails++; console.log('FAIL', vid, err.message, (err.stack || '').split('\n')[1]); }
 }
 ok(hitN >= n * 0.85, `새 스킬 대부분이 실제로 맞힌다 (${hitN}/${n})`);
@@ -66,11 +73,10 @@ ok(hitN >= n * 0.85, `새 스킬 대부분이 실제로 맞힌다 (${hitN}/${n})
     for (let f = 0; f < 60; f++) w.step({ moveX: 0, moveY: 0, aimX: p.x + 60, aimY: p.y });
     return { w, e, r0, r1, h0, h1 };
   };
-  const hpV = pick((v) => v.vx.hp); if (hpV) { const R = run(hpV); ok(R.h0 - R.h1 >= R.w.d.maxHp * 0.03 - 1e-6, `${hpV}: 체력 3% 대가`); }
-  const resV = pick((v) => v.vx.costK); if (resV) { const R = run(resV); const R0 = run(SKILLS[resV].base === resV ? resV : resV); ok(R.r0 - R.r1 > 0, `${resV}: 자원 소모 (${R.r0 - R.r1})`); }
+  for (const id of ORIG_SKILL_IDS) { const pr = SKILLS[id].price; if (!pr) continue; const R = run(id); if (pr.hp) ok(R.h0 - R.h1 >= R.w.d.maxHp * pr.hp - 1e-6, `${id}: 체력 ${pr.hp * 100}% 대가`); if (pr.res && SKILLS[id].cost > 1) ok(R.r0 - R.r1 > SKILLS[id].cost, `${id}: 자원 ×${pr.res} (${R.r0 - R.r1})`); }
   const poolV = pick((v) => v.vx.pool && !v.do.some((o) => o.vxBurst)); if (poolV) { const R = run(poolV); ok(R.w.zones.some((z) => z.kind === SKILLS[poolV].vx.pool.kind) || R.w.zones.length >= 0, `${poolV}: 웅덩이`); }
   const stV = pick((v) => v.vx.status && !v.do.some((o) => o.vxBurst) && v.do.some((o) => o.op === 'single' || o.op === 'aoe' || o.op === 'cone')); if (stV) { const R = run(stV); ok(R.e.st[SKILLS[stV].vx.status], `${stV}: 맞힌 적에게 ${SKILLS[stV].vx.status}`); }
   const echoV = pick((v) => v.do.some((o) => o.op === 'vxEcho')); ok(!!echoV, '한 번 더 변형이 있다');
 }
-console.log(fails ? `${fails} FAIL` : `variants ALL OK (새 스킬 ${SKILL_VARIANTS.length} · 써 본 것 ${n} · 맞힌 것 ${hitN})`);
+console.log(fails ? `${fails} FAIL` : `variants ALL OK (변형 ${SKILL_VARIANTS.length} · 독창 ${ORIG_SKILL_IDS.length} · 대가 ${priced.length} · 써 본 것 ${n} · 맞힌 것 ${hitN})`);
 process.exitCode = fails ? 1 : 0;

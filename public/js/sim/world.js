@@ -81,6 +81,7 @@ import { TraitMethods } from './montraits.js';
 import { HiddenMethods } from './hidden.js';
 import { ResMethods } from './resource.js';
 import { TeacherSkillMethods } from './teacherskills.js';
+import { OrigMethods } from './origrun.js';
 import { TeacherMethods } from './teacher.js';
 // 레벨 lv의 기준 캐릭터(스탯 60% 공격 · 40% 체력)가 1레벨보다 몇 배 세게 때리고 · 몇 배 버티나 → 바깥 몬스터가 지역 레벨만큼 그대로 따라 세진다
 const GROWTH = new Map();
@@ -2666,6 +2667,7 @@ export class World {
     const dr = type === 'phys' ? d.physDR : d.magDR, raw = amount;
     let shieldBlock = false; // 방패로 정면에서 받았다 (숨은 각인 「철벽」 기록)
     let dmg = amount * (1 - dr) * d.dmgTakenMul * this.mod('dmgTakenMul') * (1 + 0.05 * (p.ab || 0)); // 갑옷 부수기(결투)
+    if (p.origGuard && p.origGuard.until > this.t) { dmg *= p.origGuard.k; p.origGuard.acc += dmg; p.origGuard.n++; } // 독창 스킬의 막는 자세 (sim/origrun.js)
     if (this.b.race === 'knight' && type === 'phys') dmg *= RACE_FX.knightPhys;
     if (p.stillT >= 1 && this.f.has('stillGuard')) dmg *= 0.5; // 각인 「바위의 인내」: 1초 동안 가만히 있으면 다시 움직일 때까지 받는 피해 -50%
     if (this.f.has('resGuard') && p.res >= 50) dmg *= 0.9;
@@ -3497,4 +3499,4 @@ export function distToSeg(px, py, x1, y1, x2, y2) {
 export { ECHOES, T_FLOOR, T_WALL, T_LIQUID, T_CRACK, T_BUILD, T_GATE, T_DEEP };
 
 // 나눠 둔 메서드를 World 에 붙인다
-Object.assign(World.prototype, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods, TeacherMethods, ResMethods, TeacherSkillMethods);
+Object.assign(World.prototype, OrigMethods, EnemyAiMethods, SkillMethods, AllyMethods, TraitMethods, HiddenMethods, TeacherMethods, ResMethods, TeacherSkillMethods);

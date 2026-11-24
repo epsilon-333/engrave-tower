@@ -10,10 +10,12 @@ import { writeFileSync } from 'fs';
 const root = new URL('../public/js', import.meta.url).href;
 const { World } = await import(root + '/sim/world.js');
 const { computeBuild } = await import(root + '/sim/build.js');
-const { CLASSES, SKILLS, SKILL_BAL, RACE_CLASSES } = await import(root + '/data/skills.js');
+const { CLASSES, SKILLS, SKILL_BAL, RACE_CLASSES, ORIG_SKILL_IDS } = await import(root + '/data/skills.js');
 const { ZONES } = await import(root + '/data/monsters.js');
 const { ENGRAVINGS } = await import(root + '/data/engravings.js');
 const { classEngravingFor } = await import(root + '/save.js');
+const { hasPrice } = await import(root + '/data/origskills.js');
+const PRICE_K = 1.3; // 대가(체력 · 자원 · 나도 상태이상)가 있는 독창 스킬은 그만큼 세게
 
 const DMG_ROLES = new Set(['공격', '마무리', '궁극', '연타', '이동', '소환', '강화']);
 const buffish = (id) => SKILLS[id].do.some((o) => o.op === 'buff' || o.op === 'enchant') && !SKILLS[id].do.some((o) => o.mul > 0.5); // 때리지 않고 몸만 강하게 하는 스킬
@@ -53,22 +55,26 @@ function score(race, cls, id, scen, use = true, atk = false) {
 }
 
 const rows = [], base0 = {};
-for (const race of RACES) for (const cls of RACE_CLASSES(race)) for (const id of CLASSES[cls].skills) {
-  const sk = SKILLS[id], eid = classEngravingFor(id), grade = ENGRAVINGS[eid]?.grade;
+// 잴 목록: 종족 스킬 + 독창 스킬(data/origskills.js · 그 스킬의 종족 · 갈래로, 종족이 없는 들판 스킬은 기사로)
+const JOBS = [];
+for (const race of RACES) for (const cls of RACE_CLASSES(race)) for (const id of CLASSES[cls].skills) JOBS.push([race, cls, id, ENGRAVINGS[classEngravingFor(id)]?.grade]);
+for (const id of ORIG_SKILL_IDS || []) { const d = SKILLS[id], race = RACES.includes(d.race) ? d.race : 'knight', cls = CLASSES[d.cls]?.race === race ? d.cls : RACE_CLASSES(race)[0]; JOBS.push([race, cls, id, ENGRAVINGS[d.fromEng]?.grade, true]); }
+for (const [race, cls, id, grade, orig] of JOBS) {
+  const sk = SKILLS[id];
   if (!sk || !grade) continue;
   let crowd, single;
   if (buffish(id)) { // 평타를 치며 켠 것 - 평타만
     const k0 = race + cls; base0[k0] ||= { crowd: score(race, cls, id, 'crowd', false, true), boss: score(race, cls, id, 'boss', false, true) };
     crowd = Math.max(0, score(race, cls, id, 'crowd', true, true) - base0[k0].crowd); single = Math.max(0, score(race, cls, id, 'boss', true, true) - base0[k0].boss);
   } else { crowd = score(race, cls, id, 'crowd'); single = score(race, cls, id, 'boss'); }
-  rows.push({ race, cls, id, name: sk.name, grade, crowd, single, s: Math.sqrt(Math.max(1, crowd) * Math.max(1, single)) });
+  rows.push({ race, cls, id, orig, name: sk.name, grade, crowd, single, s: Math.sqrt(Math.max(1, crowd) * Math.max(1, single)) });
 }
 const med = (xs) => { const a = xs.slice().sort((x, y) => x - y); return a.length ? a[Math.floor(a.length / 2)] : 1; };
 const base = med(rows.filter((r) => r.grade === 2 && DMG_ROLES.has(SKILLS[r.id].role) && r.s >= 3).map((r) => r.s)); // 피해 스킬만
 const out = {};
 for (const r of rows) {
-  r.target = base * GRADE_K[r.grade];
-  r.dmgSkill = DMG_ROLES.has(SKILLS[r.id].role) && r.s >= 3 && !SKILLS[r.id].do.some((o) => ['detonate', 'spread', 'blastSummons'].includes(o.op)) && !SKILLS[r.id].needSpirit; // 다른 것이 깔려 있어야 터지는 스킬도 혼자서는 잴 수 없다 // 피해가 목적인 스킬만 (방어 · 강화 · 제어 · 준비는 피해로 재지 않는다)
+  r.target = base * GRADE_K[r.grade] * (r.orig && hasPrice(SKILLS[r.id]) ? PRICE_K : 1);
+  r.dmgSkill = (r.orig || DMG_ROLES.has(SKILLS[r.id].role)) && r.s >= 3 && !SKILLS[r.id].do.some((o) => ['detonate', 'spread', 'blastSummons'].includes(o.op)) && !SKILLS[r.id].needSpirit; // 다른 것이 깔려 있어야 터지는 스킬도 혼자서는 잴 수 없다 // 피해가 목적인 스킬만 (방어 · 강화 · 제어 · 준비는 피해로 재지 않는다)
   if (r.dmgSkill) out[r.id] = Math.round(Math.min(3, Math.max(0.15, r.target / r.s)) * 100) / 100;
 }
 for (const g of [1, 2, 3, 4, 5]) {
