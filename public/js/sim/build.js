@@ -10,6 +10,7 @@ import { evalCond, condText } from './conditions.js';
 export const STAT_MAX = 300;
 import { GROWTH_MUL } from '../data/races.js';
 import { weaponScale, CLASS_STATS } from '../data/statscale.js';
+import { PASSIVE_FX } from '../data/passives.js';
 import { engravingSkillFor, SKILLS, CLASSES, RACE_CLASSES } from '../data/skills.js';
 
 export const SLOTS = ['head', 'arm', 'heart', 'leg', 'back']; // 각인 칸 다섯: 앞 넷이 Q · E · R · F(스킬 + 패시브), 마지막은 패시브만 (부위 구분 없음 · 이름은 예전 저장 그대로)
@@ -46,7 +47,7 @@ export function computeBuild(lo) {
   const sources = [];
   for (const s of SLOTS) {
     const id = lo.engravings?.[s];
-    if (id && ENGRAVINGS[id]) { const elv = lo.engLv?.[id] || 0; sources.push({ kind: 'engraving', id, def: ENGRAVINGS[id], mul: 1 + ENG_STEP * elv, elv }); } // 용의 둥지에서 강화한 각인: 단계마다 +12%
+    if (id && ENGRAVINGS[id]) { const elv = lo.engLv?.[id] || 0; sources.push({ kind: 'engraving', id, def: ENGRAVINGS[id], mul: (1 + ENG_STEP * elv) * (ENGRAVINGS[id].passiveBoost || 1), elv }); } // 패시브 각인으로 바뀐 각인: 스킬 몫만큼 ×1.3 (data/passives.js) // 용의 둥지에서 강화한 각인: 단계마다 +12%
   }
   // 탑 등반에서 새긴 각인: 부하를 차지하지 않는다 · 연마 단계마다 +12% (몸에 새긴 각인과 같은 것이면 겹친다)
   for (const re of lo.runEng || []) if (ENGRAVINGS[re.id]) sources.push({ kind: 'engraving', run: true, id: re.id, def: ENGRAVINGS[re.id], mul: 1 + ENG_STEP * (re.lv || 0), elv: re.lv || 0 });
@@ -107,7 +108,7 @@ export function computeBuild(lo) {
       if (e.type === 'flag' && e.flag === 'bloodHunger' && lo.bloodAwake) continue; // 깨어난 「피를 먹는 칼」: 체력을 먹지 않는다
       const ok = evalCond(e.when, ctx);
       if (e.when) notes.push({ kind: ok ? 'on' : 'off', text: `${src.def.name}: ${condText(e.when)} → ${e.text}` });
-      if (ok) effects.push(src.elv ? scaleEffect(e, src.mul) : e);
+      if (ok) effects.push(src.kind === 'engraving' && src.mul !== 1 ? scaleEffect(e, src.mul) : e);
     }
   }
 
@@ -213,6 +214,7 @@ export function computeBuild(lo) {
   d.physPen += d.sensePen; d.magPen += d.sensePen;
   d.dodge = Math.min(0.6, d.dodge);
   d.crit = Math.min(0.9, d.crit);
+  if (flags.has('oneShot')) { d.crit *= PASSIVE_FX.oneShotCrit; d.critDmg += PASSIVE_FX.oneShotCritDmg; } // 일격필살: 치명타 확률 ½ · 치명타 피해 +120%p
   d.statusRes = Math.min(0.85, d.statusRes);
 
   // 9) 각인 부하
@@ -224,7 +226,7 @@ export function computeBuild(lo) {
   const wid = lo.gear?.weapon && ITEMS[lo.gear.weapon] ? lo.gear.weapon : 'rustySword';
   const weaponId = disabled.has(wid) ? 'rustySword' : wid;
   const wpn = ITEMS[weaponId].weapon;
-  if (wpn.crit) d.crit = Math.min(0.9, d.crit + wpn.crit);
+  if (wpn.crit) d.crit = Math.min(0.9, d.crit + wpn.crit * (flags.has('oneShot') ? PASSIVE_FX.oneShotCrit : 1));
   if (wpn.critDmg) d.critDmg += wpn.critDmg;
   if (flags.has('noAimSlow')) d.aimSlow = 1;
 
@@ -251,6 +253,8 @@ export function computeBuild(lo) {
   } else {
     skills = SKILL_SLOTS.map((sl) => { const id = lo.engravings?.[sl]; return id && ENGRAVINGS[id] ? engravingSkillFor(id, lo.race) : null; });
     for (const re of lo.runEng || []) { const sk = engravingSkillFor(re.id, lo.race); const i = skills.indexOf(null); if (sk && i >= 0 && !skills.includes(sk)) skills[i] = sk; }
+    // 패시브 각인이 스킬 칸에 있으면 뒤 칸의 스킬을 앞으로 당긴다 (스킬 칸 사이에 빈 것이 생기지 않게)
+    { const got = skills.filter(Boolean); skills = [...got, ...Array(4 - got.length).fill(null)]; }
     // 빈 칸은 빈 칸 (클래스 스킬로 채우지 않는다): 스킬은 모두 각인에서 나온다
     available = skills.filter(Boolean);
   }

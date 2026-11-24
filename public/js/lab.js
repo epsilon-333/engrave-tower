@@ -24,7 +24,8 @@ const KIND_LABEL = { guardian: '수호자', lord: '주인' };
 
 const weapons = Object.entries(ITEMS).filter(([, it]) => it.weapon && it.slot === 'weapon').sort((a, b) => (WCAT_NAME[a[1].cat] || '').localeCompare(WCAT_NAME[b[1].cat] || '', 'ko'));
 const offs = Object.entries(ITEMS).filter(([, it]) => it.slot === 'off');
-const engBySlot = (sl) => Object.entries(ENGRAVINGS).filter(([, e]) => e.slot === sl).sort((a, b) => a[1].grade - b[1].grade || a[1].name.localeCompare(b[1].name, 'ko'));
+// 패시브 칸(등)에서는 패시브 각인을 모두 고를 수 있다
+const engBySlot = (sl) => Object.entries(ENGRAVINGS).filter(([, e]) => e.slot === sl || (sl === 'back' && e.passiveOnly)).sort((a, b) => a[1].grade - b[1].grade || a[1].name.localeCompare(b[1].name, 'ko'));
 const bossFloors = []; for (let f = 1; f <= CLIMB_TOP; f++) { const k = floorKind(f); if (k === 'guardian' || k === 'lord') bossFloors.push(f); }
 const mons = Object.entries(MONSTERS).sort((a, b) => (b[1].boss ? 1 : 0) - (a[1].boss ? 1 : 0) || a[1].name.localeCompare(b[1].name, 'ko'));
 
@@ -45,7 +46,7 @@ root.innerHTML = `
 <div class="row"><label>무기</label><select id="weapon"><option value="">(종족 기본)</option>${weapons.map(([id, it]) => `<option value="${id}">[${esc(WCAT_NAME[it.cat] || it.cat || '')}] ${esc(it.name)}</option>`).join('')}</select></div>
 <div class="row"><label>왼손</label><select id="off"><option value="">(자동)</option>${offs.map(([id, it]) => `<option value="${id}">${esc(it.name)}</option>`).join('')}</select></div>
 <div class="row"><label>세트</label><select id="preset">${Object.entries(PRESETS).map(([k, v]) => `<option value="${k}">${esc(v[0])}</option>`).join('')}</select></div>
-${SLOTS.map((sl) => `<div class="row"><label>${SLOT_NAME[sl] || sl}</label><select data-slot="${sl}"><option value="">(비움)</option>${engBySlot(sl).map(([id, e]) => `<option value="${id}">★${e.grade} ${esc(e.name)}</option>`).join('')}</select></div>`).join('')}
+${SLOTS.map((sl) => `<div class="row"><label>${SLOT_NAME[sl] || sl}</label><select data-slot="${sl}"><option value="">(비움)</option>${engBySlot(sl).map(([id, e]) => `<option value="${id}">★${e.grade} ${esc(e.name)}${e.passiveOnly ? " · 패시브" : ""}</option>`).join('')}</select></div>`).join('')}
 <label class="chk"><input type="checkbox" id="allHidden"> 숨은 각인 24개 전부 얻은 상태</label>
 <div class="muted" id="cur"></div>
 <div class="row"><button class="go" data-a="build">이 캐릭터로 마을에 서기</button><button data-a="home">마을로</button></div>

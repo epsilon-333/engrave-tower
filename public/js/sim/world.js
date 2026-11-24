@@ -20,6 +20,7 @@ import { SPIRITS, SPIRIT_ELEMS, SPIRIT_GRADES, spiritPower } from '../data/spiri
 export const SPIRIT_OPS = new Set(['summonSpirit', 'spiritEmpower', 'spiritGuard']);
 export const SPIRIT_DMG_ELEM = { fire: 'fire', ice: 'ice', lightning: 'lightning', wind: 'wind', forest: 'poison', dark: 'dark' };
 import { RACES, RACE_FX, RACE_IMMUNE } from '../data/races.js';
+import { PASSIVE_FX } from '../data/passives.js';
 import { WPN_BAL } from '../data/wpnbal.js';
 import { computeBuild } from './build.js';
 const TEMP_MAX = 60; // 잠깐 오르는 스탯: 한 스탯에 합쳐서 +60까지
@@ -639,7 +640,7 @@ export class World {
     if (p.swim) { p.swimAcc = (p.swimAcc || 0) + DT; if (p.swimAcc >= 1) { p.swimAcc = 0; this.knack('swim'); } }
     p.wasSwim = p.swim;
     if (!this.map.underwater) { p.breath = null; return; }
-    const inf = !!p.buffs.waterBreath || this.f.has('deepBreath'), max = ((this.b.abilities?.waterBlessing ? BREATH.blessing : this.b.available?.includes('dive') ? BREATH.dive : BREATH.free) + (this.hasKnack('swimmer') ? 6 : 0)) * this.mod('breath'); // 아무것도 없으면 숨이 짧다
+    const inf = !!p.buffs.waterBreath || this.f.has('deepBreath'), max = ((this.b.abilities?.waterBlessing ? BREATH.blessing : this.b.available?.includes('dive') ? BREATH.dive : BREATH.free) + (this.hasKnack('swimmer') ? 6 : 0)) * this.mod('breath') * (this.f.has('gills') ? PASSIVE_FX.gillsBreath : 1); // 아가미: 숨 최대 +100% // 아무것도 없으면 숨이 짧다
     p.breathMax = max; if (p.breath == null) p.breath = max;
     const vent = this.objects.some((o) => o.kind === 'vent' && Math.hypot(o.x - p.x, o.y - p.y) < 24);
     if (inf) p.breath = max;
@@ -647,7 +648,7 @@ export class World {
     else p.breath = Math.max(0, p.breath - DT);
     if (p.breath <= 0) {
       p.drownT = (p.drownT || 0) - DT;
-      if (p.drownT <= 0) { p.drownT = 1; this.hurtPlayer(this.d.maxHp * 0.08, 'phys', null, { direct: true }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '숨이 막힌다!', color: '#9fd8ff' }); }
+      if (p.drownT <= 0) { p.drownT = 1; this.hurtPlayer(this.d.maxHp * 0.08 * (this.f.has('gills') ? PASSIVE_FX.gillsDrown : 1), 'phys', null, { direct: true }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '숨이 막힌다!', color: '#9fd8ff' }); }
       if (p.hp < this.d.maxHp * 0.25 && !this.surfacing) { this.surfacing = true; this.signals.push({ t: 'surface', x: p.x, y: p.y, forced: true }); }
     }
   }
@@ -854,10 +855,11 @@ export class World {
     if (p.onLiquid && this.zone) {
       const og = this.map.outdoor ? this.map.ground[Math.floor((p.y + 3) / TILE) * this.tw + Math.floor(p.x / TILE)] : -1;
       const lq = og === G.LAVA ? 'lava' : og === G.BOG ? 'bog' : this.zone.liquid;
-      if (lq === 'bog') { slow = Math.max(slow, 0.45); if (p.liquidT <= 0) { p.liquidT = 1.2; if (this.rng.chance(0.35)) this.applyPlayerStatus('poison', 20); } }
-      if (lq === 'water' || lq === 'oil' || lq === 'ink') slow = Math.max(slow, 0.35); // 기름 · 먹 웅덩이도 발이 묶인다
-      if (lq === 'snow') slow = Math.max(slow, 0.25);
-      if (lq === 'lava' && p.liquidT <= 0) { p.liquidT = 0.8; this.hurtPlayer(6 + this.zone.floor * 4, 'mag', null, { direct: true, status: 'burn' }); }
+      const bogWalk = this.f.has('bogWalk'); // 늪 걸음: 늪 · 물 · 기름 · 먹 · 눈밭에서 안 느려지고 늪 독도 없다
+      if (lq === 'bog') { if (!bogWalk) slow = Math.max(slow, 0.45); if (p.liquidT <= 0) { p.liquidT = 1.2; if (!bogWalk && this.rng.chance(0.35)) this.applyPlayerStatus('poison', 20); } }
+      if (!bogWalk && (lq === 'water' || lq === 'oil' || lq === 'ink')) slow = Math.max(slow, 0.35); // 기름 · 먹 웅덩이도 발이 묶인다
+      if (!bogWalk && lq === 'snow') slow = Math.max(slow, 0.25);
+      if (lq === 'lava' && p.liquidT <= 0) { p.liquidT = 0.8; const fw = this.f.has('lavaWalk'); this.hurtPlayer((6 + this.zone.floor * 4) * (fw ? PASSIVE_FX.lavaWalk : 1), 'mag', null, fw ? { direct: true } : { direct: true, status: 'burn' }); } // 불의 발: -70% · 화상 없음
     }
     if (p.oozeT > 0) { p.oozeT -= DT; slow = Math.max(slow, 0.4); } // 독액 웅덩이
 
@@ -1545,6 +1547,7 @@ export class World {
         }
       }
       this.emit({ t: 'swing', x: p.x, y: p.y, ang, range: RG, arc: TH ? 0.3 : FULL ? 6.3 : AR, move: ov?.m, heavy: heavy || great, type, dir: great ? (slam ? -1 : 1) : p.swingDir, dur: great ? 0.28 : ov ? 0.22 : p.swingMax, thrust: TH, aura: p.auraT > 0, whip: w.shape === 'whip', fist: this.b.wcat === 'fist', box, enchant: p.buffs.enchant?.elem });
+      let landed = 0;
       for (const e of this.enemies) {
         if (e.dead || e.hidden) continue;
         const dx = e.x - p.x, dy = e.y - p.y, dist = Math.hypot(dx, dy);
@@ -1562,8 +1565,10 @@ export class World {
           ok = Math.abs(da) <= AR / 2 || dist < e.r + 6;
         }
         if (!ok) continue;
+        landed++;
         for (let h = 0; h < hits; h++) this.hitEnemy(e, base * mulK * tip, type, heavy || slam || tip > 1, false, { weapon: true });
       }
+      if (!landed) this.relentMiss(); // 몰아치기: 아무도 못 맞혔다
       if (slam) this.emit({ t: 'heavySwing', x: p.x, y: p.y });
       const hx = p.x + Math.cos(ang) * 14, hy = p.y + Math.sin(ang) * 14;
       if (this.tileAt(hx, hy) === T_CRACK) this.hitCrack(hx, hy, base);
@@ -1647,6 +1652,21 @@ export class World {
     if (race === 'orc' && type !== 'true') return 1 + R.orcLow * Math.max(0, Math.min(1, (1 - p.hp / this.d.maxHp) / (1 - R.orcLowAt)));
     return 1;
   }
+  // 패시브 각인의 피해 배율 (data/passives.js): 저격수 · 몰아치기 · 피의 대가 · 불붙은 몸
+  passiveDmgMul(e, opt) {
+    const f = this.f, p = this.player, F = PASSIVE_FX; let m = 1;
+    if (opt.src === 'dot' || opt.src === 'reflect' || opt.linked) return m;
+    if (f.has('sniper')) m *= 1 + F.sniperMax * Math.min(1, Math.hypot(e.x - p.x, e.y - p.y) / F.sniperRange);
+    if (f.has('relentless')) {
+      const R = (p.relent ||= { id: null, n: 0, t: -9 });
+      if (R.id !== e.id || this.t - R.t > F.relentGap) { if (R.t !== this.t || R.id == null) { R.id = e.id; R.n = 0; } } // 다른 적 · 1.2초가 지났다: 처음부터 (한 번에 여럿을 맞히면 첫 적 기준)
+      if (R.id === e.id) { m *= 1 + F.relentStep * R.n; if (R.t !== this.t) R.n++; R.t = this.t; }
+    }
+    if (f.has('bloodPrice')) m *= 1 + F.bloodPrice * Math.max(0, 1 - p.hp / this.d.maxHp);
+    if (f.has('burnBody') && p.st.burn && opt.elem === 'fire') m *= F.burnBody;
+    return m;
+  }
+  relentMiss() { const R = this.player.relent; if (R && R.n) { R.n = 0; R.id = null; } }
   mod(key) {
     const p = this.player;
     let m = 1;
@@ -2089,7 +2109,9 @@ export class World {
   hitEnemy(e, base, type, heavy, proj = false, opt = {}) {
     const p = this.player, d = this.d, f = this.f, w = this.b.weapon;
     if (proj && e.wardT > this.t) base *= 0.6; // 보스 「화살 막이」: 투사체 피해 -40%
-    let crit = this.rng.chance(d.crit + this.modAdd('crit'));
+    let crit = this.rng.chance(d.crit + this.modAdd('crit') + (f.has('curseHunter') && e.st.curse ? PASSIVE_FX.curseCrit * e.st.curse.n : 0)); // 저주 사냥꾼: 저주 중첩마다 +3%
+    if (f.has('dodgeCounter') && p.counterCritT > this.t) crit = true; // 회피 반격: 피한 뒤 2초 동안 치명타 확정
+    if (opt.forceCrit) crit = true; // 표식 crit
     if (p.dashCritReady) { crit = true; p.dashCritReady = false; }
     if (p.buffs.nextCrit) { crit = true; delete p.buffs.nextCrit; }
     if (crit && this.raceRes?.crit) this.addRes(this.raceRes.crit);
@@ -2269,7 +2291,7 @@ export class World {
     const p = this.player, e = this.enemies.find((x) => x.remote);
     if (this.state !== 'play') return;
     if (m.dmg > 0) this.hurtPlayer(m.dmg * PVP.dmg, m.type === 'mag' ? 'mag' : 'phys', e, { fromX: e?.x, fromY: e?.y });
-    if (m.cc === 'stun' && m.dur > 0 && !(p.dashT > 0)) { /* 맞은 직후의 짧은 무적과는 상관없이 (구르는 중에만 피한다) */ p.ccT = Math.max(p.ccT || 0, m.dur * (1 - this.d.statusRes * 0.5)); this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '기절', color: '#ffd060' }); }
+    if (m.cc === 'stun' && m.dur > 0 && !(p.dashT > 0) && !this.f.has('immune_stun')) { /* 맞은 직후의 짧은 무적과는 상관없이 (구르는 중에만 피한다) */ p.ccT = Math.max(p.ccT || 0, m.dur * (1 - this.d.statusRes * 0.5)); this.emit({ t: 'text', x: p.x, y: p.y - 24, text: '기절', color: '#ffd060' }); }
     if (m.status && ['burn', 'poison', 'bleed', 'chill'].includes(m.status)) this.applyPlayerStatus(m.status, 8 + (m.stacks || 1) * 4);
     const res = 1 - this.d.statusRes * 0.5, say = (text, color) => this.emit({ t: 'text', x: p.x, y: p.y - 24, text, color });
     if (m.cc === 'fear' && m.dur > 0 && !(p.dashT > 0)) { p.fearT = Math.max(p.fearT || 0, m.dur * res); say('공포', '#c45cff'); }
@@ -2278,7 +2300,7 @@ export class World {
     if (m.kx || m.ky) { const k = 0.14 * PVP.cc; this.move(p, Math.max(-60, Math.min(60, m.kx * k)), Math.max(-60, Math.min(60, m.ky * k))); }
     if (m.pull && !this.blocked(m.pull.x, m.pull.y, 5)) { p.x = m.pull.x; p.y = m.pull.y; say('끌려갔다', '#ffd060'); }
     if (m.ab > 0) { p.ab = Math.min(5, m.ab); p.abT = 5; }
-    if (m.slow > 0) { p.slowT = Math.max(p.slowT || 0, m.slow * res); say('느려짐', '#9fe3ff'); }
+    if (m.slow > 0 && !this.f.has('immune_slow')) { p.slowT = Math.max(p.slowT || 0, m.slow * res); say('느려짐', '#9fe3ff'); }
     if (m.taunt > 0) { p.tauntT = Math.max(p.tauntT || 0, m.taunt * res); p.tauntAt = null; say('도발당함', '#ffd84a'); }
     if (m.lure) { p.tauntT = Math.max(p.tauntT || 0, m.lure.dur * res); p.tauntAt = { x: m.lure.x, y: m.lure.y }; say('미끼에 끌린다', '#ffd84a'); }
   }
@@ -2377,6 +2399,7 @@ export class World {
     if (opt.src === 'reaction' && e.st.elemMark > 0) mult *= 1.5;
     if (this.f.has('slowHunt') && (e.st.slowZ > 0 || e.st.chill || e.st.frozen > 0)) mult *= 1.2;
     mult *= this.mod('dmgMul');
+    mult *= this.passiveDmgMul(e, opt);
     { const lh = this.modAdd('lowHpDmg'); if (lh) mult *= 1 + lh * (1 - p.hp / d.maxHp); }
     mult *= this.raceDmgMul(type, opt);
     if (e.trait) mult *= this.traitTakeMul(e, opt);
@@ -2633,6 +2656,7 @@ export class World {
         p.invuln = 0.15;
         if (attacker) this.knack('dodge');
         for (const tr of this.b.triggers.dodge) if (this.trig(tr)) this.doAction(tr.action, attacker, p);
+        if (f.has('dodgeCounter')) p.counterCritT = this.t + PASSIVE_FX.dodgeCounterT;
         return;
       }
       if ((type === 'phys' && f.has('blockPhys')) || (type === 'mag' && f.has('blockMag'))) {
@@ -2645,6 +2669,7 @@ export class World {
     if (this.b.race === 'knight' && type === 'phys') dmg *= RACE_FX.knightPhys;
     if (p.stillT >= 1 && this.f.has('stillGuard')) dmg *= 0.5; // 각인 「바위의 인내」: 1초 동안 가만히 있으면 다시 움직일 때까지 받는 피해 -50%
     if (this.f.has('resGuard') && p.res >= 50) dmg *= 0.9;
+    if (f.has('heavyBody') && (p.slowT > 0 || p.st.chill || p.rootT > 0)) dmg *= PASSIVE_FX.heavyBody; // 무거운 몸: 느려져 있으면 -25%
     if (front) { dmg *= 0.75; this.knack('block'); if (attacker && !attacker.dead) this.damageEnemy(attacker, raw * 0.25, 'phys', { src: 'reflect', color: '#a8c8ff' }); /* 수호기사: 정면으로 막으면 25%를 되갚는다 */ this.emit({ t: 'block', x: p.x + p.aimX * 8, y: p.y - 6 + p.aimY * 8, small: true }); }
     else if ((this.b.weapon.guard || this.b.offItem?.guard) && fx != null && !opt.direct) { // 방패(무기 · 왼손): 앞에서 오는 피해를 줄인다
       const vx = fx - p.x, vy = fy - p.y, l = Math.hypot(vx, vy) || 1;
@@ -2702,7 +2727,8 @@ export class World {
   applyPlayerStatus(kind, power) {
     if (this.f.has('statusImmune') || this.mode === 'plaza') return;
     if (kind === 'poison' && this.f.has('venomImmune')) return; // 만독불침
-    if (RACE_IMMUNE[this.b.race]?.includes(kind)) return; // 언데드: 독 · 저주 · 출혈 · 용족: 화상 · 냉기
+    if (RACE_IMMUNE[this.b.race]?.includes(kind)) return;
+    if (this.f.has('immune_' + kind)) return; // 면역 각인 (data/passives.js) // 언데드: 독 · 저주 · 출혈 · 용족: 화상 · 냉기
     const dur = (PLAYER_STATUS_DUR[kind] ?? 3) * (1 - this.d.statusRes); // 표에 없는 상태도 끝이 있다 (예전: 저주 · 감전은 NaN이라 영영 안 풀렸다)
     if (!(dur > 0.05)) return;
     const dps = kind === 'chill' || kind === 'shock' ? 0 : power * 0.18 * (1 - this.d.statusRes * 0.5);
@@ -2992,6 +3018,7 @@ export class World {
     }
 
     for (const tr of this.b.triggers.kill) if (this.trig(tr)) this.doAction(tr.action, null, e);
+    if (st.poison && this.f.has('poisonCarry')) for (const o of this.enemiesNear(e.x, e.y, PASSIVE_FX.poisonCarryR)) if (o !== e) this.applyStatus(o, 'poison', st.poison.n); // 독 퍼뜨리기: 중첩 그대로
     if (st.poison && this.f.has('poisonSpread')) for (const o of this.enemiesNear(e.x, e.y, 60)) this.applyStatus(o, 'poison', Math.ceil(st.poison.n / 2));
     if (st.burn && this.f.has('burnSpread')) for (const o of this.enemiesNear(e.x, e.y, 60)) this.applyStatus(o, 'burn', 2);
     if (st.poison && this.f.has('poisonBurst')) this.addCloud(e.x, e.y, 34 * (1 + d.cloudSize), 4 + (this.s.toxicity || 0) * 0.8, 3, 'p');
@@ -3087,8 +3114,8 @@ export class World {
   ccPlayer(m) {
     const p = this.player, res = 1 - (this.d.statusRes || 0) * 0.5, say = (text, color) => this.emit({ t: 'text', x: p.x, y: p.y - 24, text, color });
     if (m.root) { p.rootT = Math.max(p.rootT || 0, m.root * res); p.webT = m.say ? p.rootT : 0; say(m.say || '묶였다', '#e8e8d8'); }
-    if (m.slow) { p.slowT = Math.max(p.slowT || 0, m.slow * res); say('느려짐', '#9fe3ff'); }
-    if (m.stun) { p.ccT = Math.max(p.ccT || 0, m.stun * res); say('기절', '#ffd060'); }
+    if (m.slow && !this.f.has('immune_slow')) { p.slowT = Math.max(p.slowT || 0, m.slow * res); say('느려짐', '#9fe3ff'); }
+    if (m.stun && !this.f.has('immune_stun')) { p.ccT = Math.max(p.ccT || 0, m.stun * res); say('기절', '#ffd060'); }
   }
   tickKnock() { // 밀려나는 중: 벽에 막히면 그 자리에서 멈추고, 세게 부딪혔으면 기절
     const p = this.player, k = p.kb; if (!k) return;
@@ -3097,7 +3124,7 @@ export class World {
     if (this.voidZone && this.tileAt(p.x, p.y + 3) === T_LIQUID) { p.x = x0; p.y = y0; p.kb = null; return; } // 하늘 정원: 맞아서 밀려날 때는 가장자리에서 멈춘다 (떨어져 죽는 건 제 발로 걸어 나갔을 때만)
     const moved = Math.hypot(p.x - x0, p.y - y0), want = Math.hypot(dx, dy);
     if (want > 0.5 && moved < want * 0.3) {
-      if (k.wall > 0) { p.ccT = Math.max(p.ccT || 0, k.wall); this.emit({ t: 'collide', x: p.x, y: p.y, wall: true }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '벽에 부딪혔다!', color: '#ffd060' }); this.hurtPlayer(this.d.maxHp * 0.04, 'phys', null, { direct: true }); }
+      if (k.wall > 0) { if (!this.f.has('immune_stun')) p.ccT = Math.max(p.ccT || 0, k.wall); this.emit({ t: 'collide', x: p.x, y: p.y, wall: true }); this.emit({ t: 'text', x: p.x, y: p.y - 26, text: '벽에 부딪혔다!', color: '#ffd060' }); this.hurtPlayer(this.d.maxHp * 0.04, 'phys', null, { direct: true }); }
       p.kb = null; return;
     }
     if ((k.t -= DT) <= 0) p.kb = null;
@@ -3390,7 +3417,7 @@ export class World {
         this.emit({ t: 'spark', x: pr.x - pr.vx * DT, y: pr.y - pr.vy * DT, color: pr.color });
         pr.life = 0;
       }
-      if (pr.life <= 0) continue;
+      if (pr.life <= 0) { if (pr.owner === 'p' && pr.weaponHit && !pr.hit.size && !pr.missed) { pr.missed = 1; this.relentMiss(); } continue; } // 몰아치기: 평타 탄이 아무도 못 맞혔다
       if (pr.owner === 'p' && !pr.ghost) {
         if (this.npcAttack) for (const o of this.objects) if ((isPerson(o) && o.home && !o.hostile && !o.away && !o.knockedUntil && Math.hypot(o.x - pr.x, o.y - pr.y) < 9) || (o.kind === 'happening' && !o.gone && !o.engaged && Math.hypot(o.x - pr.x, o.y - pr.y) < 18)) { if (pr.tok == null || this.tokUsed?.has(pr.tok)) continue; pokeNpcs(this, o.x, o.y, 1, pr.tok); if (o.hostile || o.engaged) { if (!pr.pierce) pr.life = 0; break; } }
         for (const e of this.enemies) {

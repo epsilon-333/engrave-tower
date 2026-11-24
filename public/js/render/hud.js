@@ -29,6 +29,7 @@ export const HudMethods = {
     if (w.mode === 'plaza' || w.practice) { // 허수아비 이름 · 초당 피해 (광장 · 연습 실험장)
       for (const e of w.enemies) if (e.tag && !e.dead && e._top != null) this.text(e.tag, this.sx(e.x), this.sy(e._top - 9), Math.max(1, u - 1), '#ffd8a0', 'center', true);
       if (w.title && w.mode === 'field' && !w.pvp) this.text(w.title.text, this.sx(w.player.x), this.sy(w.player.y - 34), Math.max(1, u - 1), w.title.color, 'center', true);
+      { const R = w.player.relent; if (R?.n > 0 && w.f?.has('relentless') && w.t - R.t <= 1.2) this.text(`연타 ×${R.n} (+${R.n * 10}%)`, this.sx(w.player.x), this.sy(w.player.y - 42), u, R.n > 10 ? '#ff7a4a' : '#ffd27a', 'center', true); } // 몰아치기: 다음 맞힘에 붙는 피해 (data/passives.js)
       if (w.track) { // 고른 일 · 목적지로 가는 방향 화살표 (화면 가장자리)
         const W = this.c.width, H = this.c.height, tx = this.sx(w.track.x), ty = this.sy(w.track.y), m = 34 * u / 2;
         const on = tx > m && tx < W - m && ty > m && ty < H - m;

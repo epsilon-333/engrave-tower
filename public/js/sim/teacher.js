@@ -145,7 +145,7 @@ export const TeacherMethods = {
     { // 스승의 민첩: 갈래마다 회피율이 있다 (휘두르는 중 · 회복 자세 · 지속 피해는 못 피한다 · 한 번 피하면 0.7초 동안은 안 피한다)
       const ev = Math.max(0, ((Tr.st?.agi || 0) - 20) / 250); // 민첩 → 회피
       if (ev > 0 && !opt.fromDot && !e.tatk && Tr.s !== 'heal' && Tr.s !== 'cast' && !e.shadowSink && this.t - (Tr.evadeT ?? -9) > 0.7 && this.rng.chance(ev)) {
-        Tr.evadeT = this.t; this.emit({ t: 'text', x: e.x, y: e.y - e.r - 12, text: '회피', color: '#cfe8ff' });
+        Tr.evadeT = this.t; this.relentMiss?.(); this.emit({ t: 'text', x: e.x, y: e.y - e.r - 12, text: '회피', color: '#cfe8ff' });
         if (!Tr.dash) { const a = Math.atan2(e.y - p.y, e.x - p.x) + (this.rng.chance(0.5) ? 1.4 : -1.4); this.trialDash(e, a, 26, 0.1, Tr.dashCd); }
         return 0;
       }

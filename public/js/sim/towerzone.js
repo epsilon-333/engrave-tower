@@ -6,6 +6,7 @@
 //  별의 서고  책장: 물결마다 옆으로 옮겨진다 (1초 예고) · 별자리 장판: 그 안에서 주는 피해 +20% (적도)
 //  빛의 정상  빛기둥(G): 30초 동안 둘레 6칸이 밝다 · 빛 안의 적은 받는 피해 +25%, 빛 밖(그림자)의 적은 -30% · 빛 먹는 자는 기둥을 끈다
 import { TILE, T_FLOOR, T_WALL, T_LIQUID } from './mapgen.js';
+import { PASSIVE_FX } from '../data/passives.js';
 import { bossScriptPick, bossScriptTick, SCRIPT_MOVES } from './bossmoves.js';
 
 const DT = 1 / 60;
@@ -97,6 +98,13 @@ function playerFall(w) {
 function skyFallTick(w) {
   const p = w.player, F = p.skyFall;
   F.t += DT; p.x = F.x; p.y = F.y; p.dashT = 0; p.windupT = Math.max(p.windupT || 0, 0.05); p.moving = false; // 떨어지는 동안은 움직이거나 공격할 수 없다
+  const Z = w.climb?.gz;
+  if (F.t >= F.dur && w.state === 'play' && w.f.has('featherFall') && Z && (Z.feathers || 0) < PASSIVE_FX.featherN) { // 깃털 발: 죽지 않고 체력 20%를 잃고 마지막으로 섰던 땅으로 (한 층에 3번)
+    Z.feathers = (Z.feathers || 0) + 1; p.skyFall = null; p.x = Z.safe.x; p.y = Z.safe.y; p.invuln = Math.max(p.invuln || 0, 0.6);
+    w.hurtPlayer(w.d.maxHp * PASSIVE_FX.featherHp, 'phys', null, { direct: true });
+    w.emit({ t: 'text', x: p.x, y: p.y - 26, text: `깃털 발 (${PASSIVE_FX.featherN - Z.feathers}번 남음)`, color: '#e8f4ff' });
+    return;
+  }
   if (F.t >= F.dur && w.state === 'play') { p.skyDead = true; p.hp = 0; w.checkDeath(); p.skyFall = null; }
 }
 function enemyFall(w, e) {

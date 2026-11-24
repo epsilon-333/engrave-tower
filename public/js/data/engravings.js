@@ -4,6 +4,7 @@ import { registerSkillEngravings } from './skillengs.js';
 import { registerHiddenEngravings } from './hidden.js';
 import { registerResEngravings } from './resengs.js';
 import { retuneRecipes } from './recipes.js';
+import { registerPassiveEngravings } from './passives.js';
 import { ECHOES } from './monsters.js';
 // 각인: 신체 부위에 새기는 고대 문양. 잔향을 모아 공명 제단에서 새긴다.
 // grade 1~5, load = 각인 부하. 고등급은 부하가 크고 태그가 적다 → 많이 끼우면 과부하.
@@ -722,6 +723,7 @@ registerPartEngravings(ENGRAVINGS, MONSTERS);
 registerSkillEngravings(ENGRAVINGS); // 각인이 없던 스킬마다 각인 하나 (data/skillengs.js)
 registerHiddenEngravings(ENGRAVINGS); // 숨은 각인 (data/hidden.js)
 registerResEngravings(ENGRAVINGS); // 자원 각인 (data/resengs.js)
+registerPassiveEngravings(ENGRAVINGS); // 패시브 각인 (data/passives.js)
 retuneRecipes(ENGRAVINGS, ECHOES); // 재료(잔향)를 규칙으로 다시 정한다 (data/recipes.js)
 
 // 효과 문구에 숫자가 없으면 실제 수치를 붙인다 (설계 규칙: 효과는 숫자로 분명하게)

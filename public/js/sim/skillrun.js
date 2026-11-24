@@ -4,6 +4,7 @@
 import { WEAPON_SKILLS } from '../data/items.js';
 import { SKILLS, ELEM, ELEM_CYCLE, handFit, crossMul, CANT_TEXT, SKILL_BAL, engravingSkillFor, gradeCost } from '../data/skills.js';
 import { ENGRAVINGS } from '../data/engravings.js';
+import { PASSIVE_FX, skillMarks, MARK_SCALE_PER, SELF_STATUS } from '../data/passives.js';
 import { SPIRITS, SPIRIT_GRADES } from '../data/spirits.js';
 import { skillScale } from '../data/statscale.js';
 import { absMin } from './time.js';
@@ -690,6 +691,7 @@ export const SkillMethods = {
     if (def.needSpirit && !p.spirits.length) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: '깃든 정령', text: '깃든 정령이 없다' }); p.cds[id] = 0.3; return; }
     if (def.do.some((o) => SPIRIT_OPS.has(o.op)) && !SPIRITS[this.b.spirit?.id]) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: def.name, text: '계약한 정령이 없다 · 세계수 성지의 「정령 계약」' }); p.cds[id] = 0.5; return; }
     let spent = 0;
+    if (this.f.has('brimPower') && p.res >= 100 && (def.cost || def.costAll)) p.buffs.brimPower = { t: PASSIVE_FX.brimT, max: PASSIVE_FX.brimT, mods: { dmgMul: PASSIVE_FX.brimMul }, name: '넘치는 힘', color: '#ffe08a' }; // 넘치는 힘: 자원이 가득일 때 쓴 스킬 +25%
     if (surge) { /* 마력 폭주: 마법은 자원을 쓰지 않는다 */ } else if (def.costAll) {
       if (p.res < def.costAll.min) { this.emit({ t: 'noRes', x: p.x, y: p.y, name: this.raceRes?.name || '자원' }); p.cds[id] = 0.3; return; }
       spent = p.res; p.res = 0;
@@ -759,6 +761,7 @@ export const SkillMethods = {
     const mDur = (MOTION_DUR[def.mo] || 0.35) * (heavy ? 1.6 : 1);
     if (!def.charge && !def.cast) this.motion(def.mo, mDur, { heavy });
     else if (def.charge || def.cast) this.motion(def.mo === 'castBig' ? 'castBigRelease' : def.mo === 'cast' ? 'castRelease' : def.mo, mDur, { charge: lvl, heavy });
+    if (def.marks) this.selfMarkStatus(def); // 표식 selfStatus: 쓰면 나도 걸린다
     this.hidAttack(); // 숨은 각인: 스킬 · 무기 기술도 「치기」
     if (!opt.weapon) this.hidCast(); // 「피로 쓴 함성」
     const fire = () => { for (const op of def.do) this.runOp(op, ctx); if (def.word) this.addWord(def.word); };
@@ -767,6 +770,15 @@ export const SkillMethods = {
     else fire();
   },
 
+  selfMarkStatus(def) {
+    const p = this.player;
+    for (const st of skillMarks(def).selfStatus) {
+      if (this.f.has('immune_' + st)) continue;
+      if (st === 'slow') p.slowT = Math.max(p.slowT || 0, SELF_STATUS.slow);
+      else if (st === 'stun') p.ccT = Math.max(p.ccT || 0, SELF_STATUS.stun);
+      else this.applyPlayerStatus(st, this.d.maxHp * (SELF_STATUS[st] || 0) / 0.18 / 3); // 지속 피해: 3초 동안 최대 체력 약 4%
+    }
+  },
   // 스킬 피해 한 번: 치명타·각인 트리거가 붙는다
   skillHit(e, op, ctx, mulExtra = 1) {
     if (!e || e.dead) return false;
@@ -782,8 +794,10 @@ export const SkillMethods = {
     if (op.backstab && Math.sign(p.x - e.x) !== e.dir) mul *= 1.5;
     if (op.bare && this.b.weaponId === 'bareHands') mul *= op.bare; // 숨은 각인 「백열권」: 맨손이면 더 세다
     if (op.voidMul) mul *= 1 + op.voidMul * Math.min(4, emptyEngSlots(this.b)); // 「공허 일격」: 빈 각인 칸마다
+    const MK = ctx.def.marks ? skillMarks(ctx.def) : null; // 스킬 표식 (data/passives.js)
+    if (MK) for (const st of MK.scale) mul *= 1 + MARK_SCALE_PER * Math.max(0, this.s[st] || 0); // scale:<스탯>: 1점마다 +1%
     const type = ctx.def.scale === 'mag' || (ctx.elem && ctx.elem !== 'phys') ? 'mag' : 'phys';
-    if (mul > 0) this.hitEnemy(e, ctx.atk * mul, type, true, false, { elem: ctx.elem, pen: op.pen, skill: true });
+    if (mul > 0) this.hitEnemy(e, ctx.atk * mul, type, true, false, { elem: ctx.elem, pen: op.pen, skill: true, forceCrit: !!MK?.crit });
     if (e.dead) return true;
     const status = ctx.elem && ELEM[ctx.elem]?.status;
     if (status && op.stacks) this.applyStatus(e, status, op.stacks);

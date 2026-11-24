@@ -44,6 +44,7 @@ import { bagTab, tradeTab, forgeTab, lifeClick, fishCodex, artifactCodex } from 
 import { whereTab } from './where.js';
 import { storageTab, cookTab, craftTab, learnTab, homeClick } from './home.js';
 
+import { markLinks, PASSIVE_LINK_TEXT, PASSIVE_BOOST } from '../data/passives.js';
 const $ = (sel, root = document) => root.querySelector(sel);
 
 // 이 각인과 같은 스킬을 주는 각인이 끼워진 스킬 칸 (없으면 null) · skip: 견주지 않을 칸
@@ -186,7 +187,7 @@ export class Hub {
       const mv = e ? `${i > 0 ? `<button class="sm ghost" data-act="moveE" data-slot="${sl}" data-id="-1" title="앞 칸과 바꾸기">◀</button>` : ''}${i < 4 ? `<button class="sm ghost" data-act="moveE" data-slot="${sl}" data-id="1" title="뒤 칸과 바꾸기">▶</button>` : ''}` : '';
       return `<div class="slot ${e ? 'filled' : ''} ${passive ? 'passive' : ''}" ${e ? `style="--g:${GRADES[e.grade].color}"` : ''}>
         <div class="sl-name"><b class="sl-key">${SLOT_KEYS[i]}</b> ${passive ? '효과만 (스킬 없음)' : '스킬 + 패시브'}</div>
-        ${e ? `<div class="sl-e">${e.name}</div><div class="sl-meta">부하 ${e.load}${sk ? ` · 스킬 「${sk.name}」` : passive ? ' · 스킬 없음' : ''}</div><div>${mv}<button class="sm ghost" data-act="unequipE" data-slot="${sl}">빼기</button></div>` : '<div class="muted">비어 있음</div>'}
+        ${e ? `<div class="sl-e">${e.name}</div><div class="sl-meta">부하 ${e.load}${sk ? ` · 스킬 「${sk.name}」` : e.passiveOnly ? ' · 패시브 각인' : passive ? ' · 스킬 없음' : ''}</div><div>${mv}<button class="sm ghost" data-act="unequipE" data-slot="${sl}">빼기</button></div>` : '<div class="muted">비어 있음</div>'}
       </div>`;
     }).join('');
 
@@ -378,7 +379,7 @@ export class Hub {
     return `<button class="eng-row ${this.altarSel === id ? 'on' : ''} ${known ? '' : 'unknown'}" data-act="aselect" data-id="${id}" data-q="${esc(this.engSearchText(id, s, !known))}" style="--g:${GRADES[e.grade].color}">
       <span class="er-name">${goal ? '★ ' : ''}${esc(e.name)}${known ? '' : ' <small class="muted">미확인</small>'}</span>
       <span class="er-tags">${e.tags.map((t) => `<i style="--c:${TAGS[t]?.color}">${TAGS[t]?.name || t}</i>`).join('')}</span>
-      <span class="er-skill">${sk ? esc(sk.name) : ''}</span>
+      <span class="er-skill">${sk ? esc(sk.name) : e.passiveOnly ? '<i class="muted">패시브 각인</i>' : ''}</span>
       <span class="er-state">${owned ? `<b class="ok">보유 ${owned}</b>` : can ? '<b class="ok">새길 수 있음</b>' : ''}</span></button>`;
   }
   engravingCard(id, s, b) {
@@ -410,6 +411,10 @@ export class Hub {
       <div class="cs-meta">재사용 ${SK.cd}초${SK.cost ? ` · 자원 ${gradeCost(SK, e.grade)}` : SK.costAll ? ` · 자원 전부(${SK.costAll.min} 이상)` : SK.mana ? ` · 마나 ${SK.mana}` : ''} · ${KIND_NAME[SK.kind || 'body'] || '몸'}으로 쓴다</div>
       <div class="cs-desc">${termify(esc(SK.desc || ''))}</div>
       ${skId !== orig ? `<div class="cs-meta muted">원래 스킬 「${esc(SKILLS[orig].name)}」(궁극)은 그 종족만 · 다른 종족은 이 기술을 쓴다</div>` : ''}</div>` : '';
+    // 🔗 이어지는 패시브 · 표식: 스킬의 표식(marks) → 어울리는 패시브 각인 / 패시브 각인 → 어울리는 표식 스킬
+    const ML = SK ? markLinks(SK) : null;
+    const linkTxt = ML?.parts.length ? `${ML.parts.join(' · ')} → ${ML.ids.filter((x) => ENGRAVINGS[x]).map((x) => ENGRAVINGS[x].name).join(' · ')}` : e.passiveOnly && PASSIVE_LINK_TEXT[id] ? `어울리는 것: ${PASSIVE_LINK_TEXT[id]}` : '';
+    const linkLine = (linkTxt ? `<div class="c-meta">🔗 ${esc(linkTxt)}</div>` : '') + (e.passiveOnly ? `<div class="c-meta"><b style="color:#9fd8c8">패시브 각인</b> · 스킬 없이 효과만${e.passiveBoost ? ` · 능력치 · 수치 ×${PASSIVE_BOOST}` : ''} · 패시브 칸에 먼저 끼운다</div>` : '');
     const hd = e.hidden && HIDDEN.find((h) => h.id === e.hidden), hiddenLine = hd ? `<div class="c-meta" style="color:${hd.color}"><b>숨은 각인 · 칭호 「${esc(hd.title)}」</b> · ${esc(hd.cond)}</div>` : '';
     const fromLine = e.from && MONSTERS[e.from] ? `<div class="c-meta">${s.codex.kills?.[e.from] ? MONSTERS[e.from].name : '???'}의 부산물로 새긴다</div>` : '';
     return `<div class="card ${goal ? 'goal' : ''}" data-q="${esc(this.engSearchText(id, s))}" style="--g:${GRADES[e.grade].color}">
@@ -417,7 +422,7 @@ export class Hub {
       <div class="c-meta">${(() => { const sk = engravingSkillFor(id, s.race), orig = ENGRAVING_SKILLS[id]; return sk ? `<b style="color:#f0c878">스킬: ${SKILLS[sk].name}</b>${sk !== orig ? ` <small class="muted">(궁극기 「${SKILLS[orig].name}」는 그 종족만)</small>` : ''} · ` : ''; })()}부하 ${e.load} · ${e.tags.map((t) => `<span class="tag" style="--c:${TAGS[t].color}">${TAGS[t].name}</span>`).join(' ')}</div>
       ${hiddenLine}${fromLine}
       ${weaponLine}
-      ${skillBox}
+      ${skillBox}${linkLine}
       <div class="badges">${this.badges(id, s, b)}</div>
       <div class="c-sum">${termify(esc(summary))}</div>
       <details class="fold"><summary><span class="f-open">자세히 보기</span><span class="f-close">접기</span></summary><div class="c-stats">${stats}</div><ul class="c-eff">${effs}</ul></details>
@@ -647,14 +652,15 @@ export class Hub {
         if (Object.values(s.slots).includes(id)) { this.toast('이미 끼운 각인'); break; }
         // 같은 스킬을 주는 각인은 스킬 칸(Q · E · R · F)에 하나만: 겹치면 패시브 칸으로, 거기도 차 있으면 못 끼운다
         const dup = sameSkillSlot(s, id);
-        const target = dup ? (!s.slots[SLOTS[4]] ? SLOTS[4] : null) : SLOTS.find((x) => !s.slots[x]);
+        // 패시브 각인은 패시브 칸부터 (스킬 칸을 비워 두지 않게)
+        const target = dup || e.passiveOnly ? (!s.slots[SLOTS[4]] ? SLOTS[4] : dup ? null : SLOTS.find((x) => !s.slots[x])) : SLOTS.find((x) => !s.slots[x]);
         if (!target && dup) { this.toast(`「${SKILLS[engravingSkillFor(id, s.race)].name}」 스킬은 이미 ${SLOT_KEYS[SLOTS.indexOf(dup)]} 칸의 각인이 준다 · 패시브 칸이 비어야 끼울 수 있다`); break; }
         if (!target) { this.toast('빈 각인 칸이 없다 · 먼저 하나를 뺀다'); break; }
         s.slots[target] = id;
         const after = computeBuild(toLoadout(s));
         if (after.load > after.derived.loadCap) { delete s.slots[target]; this.toast(`부하가 넘친다 (${after.load} / ${after.derived.loadCap}) · 다른 각인을 빼거나 정신을 올리자`); break; }
         const ti = SLOTS.indexOf(target);
-        this.toast(`${e.name} → ${SLOT_KEYS[ti]} 칸${ti < 4 && engravingSkillFor(id, s.race) ? ` · 스킬 「${SKILLS[engravingSkillFor(id, s.race)].name}」` : ' · 패시브만'}`);
+        this.toast(`${e.name} → ${SLOT_KEYS[ti]} 칸${ti < 4 && engravingSkillFor(id, s.race) ? ` · 스킬 「${SKILLS[engravingSkillFor(id, s.race)].name}」` : e.passiveOnly ? ' · 패시브 각인' : ' · 패시브만'}`);
         break;
       }
       case 'unequipE': delete s.slots[slot]; break;
