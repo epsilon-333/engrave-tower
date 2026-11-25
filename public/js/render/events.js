@@ -150,6 +150,19 @@ export const EventMethods = {
         }
         case 'alert': this.alerts.set(ev.id, -0.7); break;
         case 'spark': this.sparkBurst(ev.x, ev.y, ev.color, 4); break;
+        case 'kiGather': { // 기공: 손에 주황 기운이 모인다 (둘레에서 손으로 빨려 드는 불티 + 커지는 기운 덩어리)
+          const p = this.world.player;
+          this.fx.push({ k: 'kiOrb', grow: ev.k, t: ev.dur * 1.6, max: ev.dur * 1.6 });
+          for (let j = 0; j < 4 + (ev.tier || 2); j++) { const a = Math.random() * Math.PI * 2, r = 22 + Math.random() * 16, hx = p.x + (p.dir || 1) * 7, hy = p.y - 8; this.parts.push({ x: hx + Math.cos(a) * r, y: hy + Math.sin(a) * r, vx: -Math.cos(a) * r / 0.22, vy: -Math.sin(a) * r / 0.22, t: 0.22, max: 0.22, color: j % 3 ? '#ff9a3a' : '#ffe6a0', g: 0, glow: true, size: 1 }); }
+          break;
+        }
+        case 'kiLaunch': this.fx.push({ k: 'kiBurst', x: ev.x, y: ev.y + 6, ang: ev.ang, r: 16, small: true, t: 0.2, max: 0.2 }); this.sparkBurst(ev.x, ev.y, '#ffb050', 6); sfx('hitHeavy', { vol: 0.7, rate: 1.3 }); break;
+        case 'kiImpact': { // 기공 주먹이 맞은 자리: 주먹 방향으로 터지는 충격파 (빛살 + 기운 조각 · 고리 없이)
+          this.fx.push({ k: 'kiBurst', x: ev.x, y: ev.y + 6, ang: ev.ang, r: 30, t: 0.3, max: 0.3 });
+          for (let j = 0; j < 14; j++) { const a = ev.ang + (Math.random() - 0.5) * 2.4, v = 60 + Math.random() * 140; this.parts.push({ x: ev.x, y: ev.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0.35, max: 0.35, color: j % 3 ? '#ff8a2a' : '#ffe6a0', g: 0, glow: true, size: 1 }); }
+          this.shake = Math.max(this.shake, 4); sfx('hitHeavy', { vol: 0.9, rate: 0.8 });
+          break;
+        }
         case 'chest': this.chestOpen.set(`${ev.x},${ev.y}`, 0); this.burst(ev.x, ev.y - 6, ev.rich ? '#d8a8ff' : '#ffe08a', 30, 120); this.shake = 2; sfx('chest', { vol: 0.7 }); sfx('coin', { vol: 0.6 }); break;
         case 'bossEvolve': { // 보스 변신: 땅이 터져 돌덩이가 튀고 · 흙먼지가 바닥을 타고 퍼지고 · 몸에서 불티가 솟는다 (가운데 검은 구멍 · 고리 없이)
           const col = ev.n === 2 ? ['#ff5a3a', '#ffd0a0', '#b03a8a'] : ['#ff9a3a', '#ffe8a8', '#ffd050'];
@@ -204,7 +217,7 @@ export const EventMethods = {
         case 'aura': this.rimFlash = { color: '#ffd84a', t: 0.6, max: 0.6 }; this.shockwave(ev.x, ev.y, 46, '#ffd84a', 26); this.burst(ev.x, ev.y - 6, '#ffd84a', 30, 120); sfx('reaction', { vol: 0.6, rate: 1.3 }); this.shake = 3; break;
         case 'rage': this.rimFlash = { color: '#ff4030', t: 0.6, max: 0.6 }; this.shockwave(ev.x, ev.y, 46, '#ff4030', 26); this.burst(ev.x, ev.y - 6, '#ff4030', 30, 120); sfx('hitHeavy', { vol: 0.7, rate: 0.7 }); this.shake = 4; break;
         case 'skill': sfx('skill', { vol: 0.55 }); break;
-        case 'slam': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: '#ffe8a0', t: 0.45, max: 0.45, w: 5 }); this.burst(ev.x, ev.y, '#c8b898', 40, 150); this.shake = 7; sfx('hitHeavy', { vol: 1, rate: 0.6 }); break;
+        case 'slam': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r || 34, color: '#ffe8a0', t: 0.45, max: 0.45, w: 5 }); this.burst(ev.x, ev.y, '#c8b898', 40, 150); this.shake = 7; sfx('hitHeavy', { vol: 1, rate: 0.6 }); break;
         case 'meteor': this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r, color: '#c9a8ff', t: 0.6, max: 0.6, w: 6 }); this.burst(ev.x, ev.y, '#c9a8ff', 60, 200); this.burst(ev.x, ev.y, '#ffffff', 20, 120); sfx('reaction', { vol: 1, rate: 0.7 }); break;
         case 'telegraphCircle': this.fx.push({ k: ev.inner ? 'tdonut' : 'tcircle', x: ev.x, y: ev.y, r: ev.r, inner: ev.inner, t: ev.dur, max: ev.dur, follow: ev.follow }); break;
         case 'noMana':

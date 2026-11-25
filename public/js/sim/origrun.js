@@ -849,9 +849,9 @@ export const OrigMethods = {
       }
       case 'spiritFist': { // 기를 모아 흐릿한 주황 거대 주먹을 날린다 (꿰뚫고 밀어낸다)
         const T = op.charge || 0.7, N = 7; p.chargeT = T;
-        every(T / N, N, (i) => { const k = 1 - i / N; for (let j = 0; j < 3; j++) { const a = Math.random() * Math.PI * 2, r = 10 + 26 * k; W.emit({ t: 'spark', x: p.x + Math.cos(a) * r, y: p.y - 8 + Math.sin(a) * r, color: j ? '#ffb050' : '#ffe0a0' }); } },
-          () => { const a = Math.atan2(p.aimY, p.aimX), hit = new Set(); W.emit({ t: 'shake', v: 3 });
-            shoot(p.x + Math.cos(a) * 10, p.y - 6 + Math.sin(a) * 10, a, 220, op.range || 240, 'spiritFist', (e) => { if (hit.has(e.id)) return; hit.add(e.id); H(e, op.mul); knock(e, e.x - Math.cos(a) * 10, e.y - Math.sin(a) * 10, op.kb || 90); stun(e, op.stun || 0.6); W.emit({ t: 'spark', x: e.x, y: e.y - 6, color: '#ffb050' }); }, { pierce: 99, color: '#ff9a3a' }); });
+        every(T / N, N, (i) => W.emit({ t: 'kiGather', k: (i + 1) / N, dur: T / N, tier }), // 손에 기운이 모인다 (그림만)
+          () => { const a = Math.atan2(p.aimY, p.aimX), hit = new Set(); W.emit({ t: 'shake', v: 3 }); W.emit({ t: 'kiLaunch', x: p.x + Math.cos(a) * 12, y: p.y - 6 + Math.sin(a) * 12, ang: a });
+            shoot(p.x + Math.cos(a) * 10, p.y - 6 + Math.sin(a) * 10, a, 220, op.range || 240, 'spiritFist', (e) => { if (hit.has(e.id)) return; hit.add(e.id); H(e, op.mul); knock(e, e.x - Math.cos(a) * 10, e.y - Math.sin(a) * 10, op.kb || 90); stun(e, op.stun || 0.6); W.emit({ t: 'kiImpact', x: e.x, y: e.y - 6, ang: a }); }, { pierce: 99, color: '#ff9a3a' }); });
         break;
       }
       case 'rallyPull': { // 함성으로 끌어모으고 다가온 적을 친다

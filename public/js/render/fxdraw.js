@@ -336,6 +336,23 @@ export const FxMethods = {
         for (const b of f.blots) { g.fillStyle = `rgba(24,14,10,${0.2 * a})`; ellipse(g, f.x + b.x, f.y + b.y, b.r, b.r * 0.55); }
         if (heat > 0) for (const b of f.blots) { g.fillStyle = `rgba(255,${100 + 60 * heat | 0},40,${0.22 * heat * (0.6 + 0.4 * Math.sin(this.world.t * 7 + b.x))})`; ellipse(g, f.x + b.x, f.y + b.y, b.r * 0.35, b.r * 0.2); }
         if (Math.random() < 0.15 * heat) this.parts.push({ x: f.x + (Math.random() - 0.5) * f.r * 1.2, y: f.y + (Math.random() - 0.5) * f.r * 0.5, vx: 0, vy: -20, t: 0.6, max: 0.6, color: '#ff8a3a', g: -20, glow: true, size: 1 });
+      } else if (f.k === 'kiOrb') { // 손에 모인 기운: 겹겹의 주황 불꽃 덩어리 (모일수록 크고 밝다)
+        const p2 = this.world.player, hx = p2.x + (p2.dir || 1) * 7, hy = p2.y - 8, R = 3 + f.grow * 7, fl = Math.sin(this.world.t * 40) * 0.8;
+        this.glow(hx, hy, R * 2.6, '#ff7a1a', 0.35 * k + 0.2);
+        g.fillStyle = hexA('#ff6a10', 0.45 * k + 0.2); disc(g, hx, hy, R + 1.5 + fl);
+        g.fillStyle = hexA('#ffa040', 0.8); disc(g, hx, hy, R);
+        g.fillStyle = '#ffe6a0'; disc(g, hx, hy - 0.5, Math.max(1, R * 0.5));
+        for (let i = 0; i < 3; i++) { const a = this.world.t * 9 + i * 2.1, rr = R + 2; g.fillStyle = hexA('#ffc060', 0.7); g.fillRect(Math.round(hx + Math.cos(a) * rr), Math.round(hy + Math.sin(a) * rr * 0.8 - 1), 1, 2); }
+      } else if (f.k === 'kiBurst') { // 기공 충격파: 주먹이 나아가던 쪽으로 퍼지는 빛살 (가운데 밝고 끝은 주황)
+        const e2 = 1 - k, R = f.r * (0.4 + e2 * 0.9), n = f.small ? 7 : 11;
+        this.glow(f.x, f.y - 6, R * 1.4, '#ff8a2a', k * 0.8);
+        for (let i = 0; i < n; i++) {
+          const a = f.ang + (i / (n - 1) - 0.5) * (f.small ? 2.2 : 3.4), L = R * (i % 2 ? 0.65 : 1), w0 = (f.small ? 2 : 3.2) * k + 0.6;
+          const x0 = f.x + Math.cos(a) * R * 0.25, y0 = f.y - 6 + Math.sin(a) * R * 0.25, x1 = f.x + Math.cos(a) * L, y1 = f.y - 6 + Math.sin(a) * L;
+          g.fillStyle = hexA(i % 2 ? '#ff8a2a' : '#ffd890', k); g.beginPath();
+          g.moveTo(x0 - Math.sin(a) * w0, y0 + Math.cos(a) * w0); g.lineTo(x1, y1); g.lineTo(x0 + Math.sin(a) * w0, y0 - Math.cos(a) * w0); g.closePath(); g.fill();
+        }
+        g.fillStyle = hexA('#fff4d0', k); disc(g, f.x, f.y - 6, R * 0.28 * k + 1);
       } else if (f.k === 'glow') {
         this.glow(f.x, f.y, f.r * (1.3 - k * 0.3), f.color, k);
       } else if (f.k === 'echo') {

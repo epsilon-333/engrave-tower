@@ -2488,14 +2488,34 @@ export class Renderer {
       g.beginPath(); g.moveTo(pr.x - Math.cos(a) * L * 2.4, pr.y - Math.sin(a) * L * 2.4); g.lineTo(pr.x - Math.cos(a) * L, pr.y - Math.sin(a) * L); g.stroke();
       return;
     }
-    if (pr.skind === 'spiritFist') { // 기공 거대 주먹: 흐릿한 주황 기운 (겹겹이 옅게 · 주먹 모양)
-      const a = Math.atan2(pr.vy, pr.vx), t = 1 - pr.life / pr.maxLife, S = 0.9 + Math.min(1, t * 4) * 0.3;
-      g.save(); g.translate(pr.x, pr.y); g.rotate(a); g.scale(S, S);
-      const fist = () => { g.beginPath(); g.ellipse(-3, 0, 10, 10.5, 0, 0, Math.PI * 2); g.fill(); for (let k = 0; k < 4; k++) { g.beginPath(); g.arc(7, -7.5 + k * 5, 3.6, 0, Math.PI * 2); g.fill(); } g.beginPath(); g.ellipse(-2, -11, 6, 3.2, 0.3, 0, Math.PI * 2); g.fill(); g.beginPath(); g.ellipse(-16, 0, 7, 6.5, 0, 0, Math.PI * 2); g.fill(); };
-      for (const [k, col] of [[1.3, 'rgba(255,110,20,0.22)'], [1.12, 'rgba(255,140,40,0.4)'], [1, 'rgba(255,170,70,0.62)']]) { g.save(); g.scale(k, k); g.fillStyle = col; fist(); g.restore(); }
-      g.fillStyle = 'rgba(150,50,10,0.45)'; for (let k = 0; k < 3; k++) { g.beginPath(); g.rect(4, -5 + k * 5, 6, 1); g.fill(); } g.beginPath(); g.rect(-8, -2, 9, 1); g.fill(); // 손가락 사이 · 엄지 금
-      g.restore();
-      for (let k = 0; k < 2; k++) this.parts.push({ x: pr.x - Math.cos(a) * 14 + (Math.random() - 0.5) * 18, y: pr.y - Math.sin(a) * 14 + (Math.random() - 0.5) * 18, vx: -pr.vx * 0.15, vy: -pr.vy * 0.15, t: 0.35, max: 0.35, color: Math.random() < 0.5 ? '#ff9a3a' : '#ffd08a', g: 0 });
+    if (pr.skind === 'spiritFist') { // 기공 거대 주먹: 기운으로 빚은 주황 주먹 (마디 넷 · 엄지 · 팔목이 기운 꼬리로 풀린다) + 지나온 길의 잔상
+      const a = Math.atan2(pr.vy, pr.vx), t = 1 - pr.life / pr.maxLife, S = 0.85 + Math.min(1, t * 5) * 0.35, wob = Math.sin(this.world.t * 30) * 0.6;
+      // 주먹 모양 (앞 = +x · 위 = -y): 손등 · 마디 넷 · 엄지 · 팔목
+      const fist = (o) => {
+        g.beginPath(); g.rect(-11 - o, -10 - o, 17 + o * 2, 20 + o * 2); g.fill(); // 손등
+        for (let k2 = 0; k2 < 4; k2++) { g.beginPath(); g.rect(5 - o, -10 + k2 * 5 - o, 6 + o * 2, 4.4 + o * 2); g.fill(); g.beginPath(); g.arc(11, -7.8 + k2 * 5, 2.2 + o, 0, Math.PI * 2); g.fill(); } // 마디
+        g.beginPath(); g.rect(-6 - o, 7 - o, 12 + o * 2, 5 + o * 2); g.fill(); // 엄지 (아래로 감싼다)
+        g.beginPath(); g.moveTo(-11, -8 - o); g.lineTo(-24 - o * 2, -5 - o); g.lineTo(-24 - o * 2, 5 + o); g.lineTo(-11, 8 + o); g.closePath(); g.fill(); // 팔목 (꼬리로 가늘어진다)
+      };
+      const draw = (x, y, s, alpha, solid) => {
+        g.save(); g.translate(x, y); g.rotate(a); g.scale(s, s);
+        g.globalAlpha = alpha;
+        g.fillStyle = '#ff6a10'; g.save(); g.translate(wob, 0); g.scale(1.14, 1.16); fist(1.5); g.restore(); // 바깥 기운
+        if (solid) {
+          g.globalAlpha = Math.min(1, alpha * 1.4);
+          g.fillStyle = '#8a2c06'; fist(1); // 짙은 외곽선
+          g.fillStyle = '#ff8a2a'; fist(0);
+          g.fillStyle = '#ffb455'; g.beginPath(); g.rect(-9, -8, 13, 9); g.fill(); for (let k2 = 0; k2 < 4; k2++) { g.beginPath(); g.rect(6, -9.5 + k2 * 5, 5, 2); g.fill(); } // 밝은 면
+          g.fillStyle = '#fff0c0'; for (let k2 = 0; k2 < 4; k2++) { g.beginPath(); g.rect(9, -9.5 + k2 * 5, 3, 1); g.fill(); } g.beginPath(); g.rect(-7, -8, 9, 1); g.fill(); // 마디 끝 빛
+          g.fillStyle = '#a8400c'; for (let k2 = 1; k2 < 4; k2++) { g.beginPath(); g.rect(5, -10.5 + k2 * 5, 7, 0.9); g.fill(); } g.beginPath(); g.rect(-6, 6, 11, 1); g.fill(); // 손가락 사이 · 엄지 금
+        }
+        g.restore();
+      };
+      this.glow(pr.x, pr.y, 30 * S, '#ff7a1a', 0.45);
+      for (let k2 = 3; k2 >= 1; k2--) draw(pr.x - Math.cos(a) * k2 * 11, pr.y - Math.sin(a) * k2 * 11, S * (1 - k2 * 0.06), 0.32 - k2 * 0.08, false); // 잔상
+      draw(pr.x, pr.y, S, 1, true);
+      g.globalAlpha = 1;
+      for (let k2 = 0; k2 < 3; k2++) { const sd = (Math.random() - 0.5) * 22; this.parts.push({ x: pr.x - Math.cos(a) * 22 - Math.sin(a) * sd, y: pr.y - Math.sin(a) * 22 + Math.cos(a) * sd, vx: -pr.vx * 0.35, vy: -pr.vy * 0.35 - 8, t: 0.3, max: 0.3, color: k2 ? '#ff8a2a' : '#ffd890', g: -20, glow: true, size: 1 }); } // 기운 꼬리
       return;
     }
     if (pr.skind === 'wave') {
@@ -2661,6 +2681,7 @@ export class Renderer {
   // 빛 퍼짐 (lighter 원형 그라디언트)
   glow(x, y, r, color, a = 1) {
     const g = this.g;
+    if (!(r > 0) || !Number.isFinite(x + y + r)) return; // 반지름이 없는 사건(예: r 없는 slam)이 그림판을 멈추지 않게
     g.save(); g.globalCompositeOperation = 'lighter';
     const gr = g.createRadialGradient(x, y, 0, x, y, r);
     gr.addColorStop(0, hexA(color, 0.6 * a)); gr.addColorStop(0.45, hexA(color, 0.22 * a)); gr.addColorStop(1, hexA(color, 0));
