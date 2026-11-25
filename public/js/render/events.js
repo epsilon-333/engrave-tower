@@ -156,6 +156,7 @@ export const EventMethods = {
           for (let j = 0; j < 4 + (ev.tier || 2); j++) { const a = Math.random() * Math.PI * 2, r = 22 + Math.random() * 16, hx = p.x + (p.dir || 1) * 7, hy = p.y - 8; this.parts.push({ x: hx + Math.cos(a) * r, y: hy + Math.sin(a) * r, vx: -Math.cos(a) * r / 0.22, vy: -Math.sin(a) * r / 0.22, t: 0.22, max: 0.22, color: j % 3 ? '#ff9a3a' : '#ffe6a0', g: 0, glow: true, size: 1 }); }
           break;
         }
+        case 'ofx': this.origFx(ev); break; // 독창 스킬 그림 (render/origfx.js)
         case 'kiLaunch': this.fx.push({ k: 'kiBurst', x: ev.x, y: ev.y + 6, ang: ev.ang, r: 16, small: true, t: 0.2, max: 0.2 }); this.sparkBurst(ev.x, ev.y, '#ffb050', 6); sfx('hitHeavy', { vol: 0.7, rate: 1.3 }); break;
         case 'kiImpact': { // 기공 주먹이 맞은 자리: 주먹 방향으로 터지는 충격파 (빛살 + 기운 조각 · 고리 없이)
           this.fx.push({ k: 'kiBurst', x: ev.x, y: ev.y + 6, ang: ev.ang, r: 30, t: 0.3, max: 0.3 });

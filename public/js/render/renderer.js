@@ -29,8 +29,8 @@ import { BOSS_PASSIVES } from '../data/tower.js';
 import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
 // 바닥에 납작하게 깔린 것: 사람 · 몬스터 아래에 그린다 (아래 끝 기준으로 줄 세우면 위쪽에 선 사람의 몸을 덮었다)
 export const FLAT_PROP = new Set(['hole', 'whirlpool']), FLAT_OBJ = new Set(['dig', 'trap']);
-export const GROUND_MARKS = new Set(['ink', 'cracks', 'scorch', 'scrape', 'rageCracks']); // 그 가운데 땅에 새겨지는 것 (벽 · 물 · 허공에는 안 생긴다)
-export const GROUND_FX = new Set(['ink', 'tcircle', 'tdonut', 'lineTele', 'cracks', 'scorch', 'scrape', 'castCircle', 'rune', 'glyphs', 'rageCracks', 'path']); // 바닥에 그리는 이펙트
+export const GROUND_MARKS = new Set(['ink', 'cracks', 'scorch', 'scrape', 'rageCracks', 'ofxG']); // 그 가운데 땅에 새겨지는 것 (벽 · 물 · 허공에는 안 생긴다)
+export const GROUND_FX = new Set(['ink', 'tcircle', 'tdonut', 'lineTele', 'cracks', 'scorch', 'scrape', 'castCircle', 'rune', 'glyphs', 'rageCracks', 'path', 'ofxG']); // 바닥에 그리는 이펙트
 const BOSS_MELEE = new Set(['combo', 'cleave', 'whirl', 'shove', 'charge', 'leap', 'jumps3', 'quake', 'grab', 'retreat']);
 const SHEET_LOOKS = ['saturate(1.25) contrast(1.1) brightness(1.08)', 'saturate(1.5) contrast(1.3) brightness(0.92)']; // 보스 시트 2 · 3단계: 색을 돌리지 않고 진하게만
 export const PASSIVE_NAME = Object.fromEntries(Object.entries(BOSS_PASSIVES).map(([k, v]) => [k, v.name]));
@@ -175,6 +175,7 @@ import { HudMethods } from './hud.js';
 import { FxMethods } from './fxdraw.js';
 import { EventMethods } from './events.js';
 import { AtmosMethods } from './atmosphere.js';
+import { OrigFxMethods } from './origfx.js';
 const DILATE = new WeakMap(), NOBUFF = Object.freeze({});
 const NOCOMBO = new Set(['fist', 'great', 'whip', 'bow', 'crossbow', 'orb', 'tome', 'staff', 'tube']);
 const PI = Math.PI;
@@ -2469,6 +2470,7 @@ export class Renderer {
 
   drawProj(pr) {
     const g = this.g;
+    if (pr.oskin) { this.drawOrigProj(pr); return; }
     if (pr.kind === 'rock') {
       g.fillStyle = '#0d0b10'; disc(g, pr.x, pr.y, 6.5); g.fillStyle = '#8a7a66'; disc(g, pr.x, pr.y, 5.5); g.fillStyle = '#b0a088'; disc(g, pr.x - 1.5, pr.y - 1.5, 2.5);
       if (Math.random() < 0.4) this.parts.push({ x: pr.x, y: pr.y, vx: 0, vy: 0, t: 0.3, max: 0.3, color: '#a89880', g: 40 });
@@ -3498,4 +3500,4 @@ function drawWeb(g, x, y, t, a) {
 }
 
 // 나눠 둔 메서드를 Renderer 에 붙인다
-Object.assign(Renderer.prototype, HudMethods, FxMethods, EventMethods, AtmosMethods);
+Object.assign(Renderer.prototype, HudMethods, FxMethods, EventMethods, AtmosMethods, OrigFxMethods);

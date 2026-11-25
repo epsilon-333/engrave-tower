@@ -106,6 +106,7 @@ export const FxMethods = {
       if (marks !== null && GROUND_MARKS.has(f.k) !== marks) continue;
       f.t -= dt;
       const k = Math.max(0, f.t / f.max);
+      if (f.k === 'ofx' || f.k === 'ofxG') { this.drawOfx(g, f, k); continue; }
       if (f.k === 'pipes') { // 황금 관: 줄을 따라 14px마다 관이 땅에서 솟았다 들어가며 끝에서 증기를 뿜는다
         const age = f.max - f.t, up = Math.min(1, age / 0.14) * Math.min(1, f.t / 0.2), len = Math.hypot(f.x2 - f.x1, f.y2 - f.y1), n = Math.max(2, Math.floor(len / 16));
         for (let i = 0; i <= n; i++) {
