@@ -2488,6 +2488,16 @@ export class Renderer {
       g.beginPath(); g.moveTo(pr.x - Math.cos(a) * L * 2.4, pr.y - Math.sin(a) * L * 2.4); g.lineTo(pr.x - Math.cos(a) * L, pr.y - Math.sin(a) * L); g.stroke();
       return;
     }
+    if (pr.skind === 'spiritFist') { // 기공 거대 주먹: 흐릿한 주황 기운 (겹겹이 옅게 · 주먹 모양)
+      const a = Math.atan2(pr.vy, pr.vx), t = 1 - pr.life / pr.maxLife, S = 0.9 + Math.min(1, t * 4) * 0.3;
+      g.save(); g.translate(pr.x, pr.y); g.rotate(a); g.scale(S, S);
+      const fist = () => { g.beginPath(); g.ellipse(-3, 0, 10, 10.5, 0, 0, Math.PI * 2); g.fill(); for (let k = 0; k < 4; k++) { g.beginPath(); g.arc(7, -7.5 + k * 5, 3.6, 0, Math.PI * 2); g.fill(); } g.beginPath(); g.ellipse(-2, -11, 6, 3.2, 0.3, 0, Math.PI * 2); g.fill(); g.beginPath(); g.ellipse(-16, 0, 7, 6.5, 0, 0, Math.PI * 2); g.fill(); };
+      for (const [k, col] of [[1.3, 'rgba(255,110,20,0.22)'], [1.12, 'rgba(255,140,40,0.4)'], [1, 'rgba(255,170,70,0.62)']]) { g.save(); g.scale(k, k); g.fillStyle = col; fist(); g.restore(); }
+      g.fillStyle = 'rgba(150,50,10,0.45)'; for (let k = 0; k < 3; k++) { g.beginPath(); g.rect(4, -5 + k * 5, 6, 1); g.fill(); } g.beginPath(); g.rect(-8, -2, 9, 1); g.fill(); // 손가락 사이 · 엄지 금
+      g.restore();
+      for (let k = 0; k < 2; k++) this.parts.push({ x: pr.x - Math.cos(a) * 14 + (Math.random() - 0.5) * 18, y: pr.y - Math.sin(a) * 14 + (Math.random() - 0.5) * 18, vx: -pr.vx * 0.15, vy: -pr.vy * 0.15, t: 0.35, max: 0.35, color: Math.random() < 0.5 ? '#ff9a3a' : '#ffd08a', g: 0 });
+      return;
+    }
     if (pr.skind === 'wave') {
       const a = Math.atan2(pr.vy, pr.vx);
       for (const [r, col, wd] of [[16, 'rgba(255,240,190,0.35)', 7], [14, 'rgba(255,250,230,0.9)', 3]]) { g.strokeStyle = col; g.lineWidth = wd; g.beginPath(); g.arc(pr.x - Math.cos(a) * 8, pr.y - Math.sin(a) * 8, r, a - 1.1, a + 1.1); g.stroke(); }

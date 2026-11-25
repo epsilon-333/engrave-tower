@@ -719,6 +719,7 @@ export class World {
       const p = this.player;
       for (const k of ['rootT', 'silT', 'fearT', 'abT', 'slowT', 'tauntT', 'webT']) if (p[k] > 0) p[k] -= DT;
       if (p.slowT > 0) input = { ...input, moveX: input.moveX * 0.45, moveY: input.moveY * 0.45 };
+      if (p.chargeT > 0) { p.chargeT -= DT; input = { ...input, moveX: input.moveX * 0.35, moveY: input.moveY * 0.35 }; } // 기를 모으는 동안 (상태이상이 아니다)
       if (p.tauntT > 0) { const f = p.tauntAt || this.enemies.find((x) => x.remote); if (f) { const dx = f.x - p.x, dy = f.y - p.y, l = Math.hypot(dx, dy) || 1; input = { ...input, moveX: l > 20 ? dx / l : 0, moveY: l > 20 ? dy / l : 0, aimX: f.x, aimY: f.y }; } } // 도발: 도발한 사람에게 끌려간다
       if (p.abT <= 0) p.ab = 0;
       if (p.rootT > 0) input = { ...input, moveX: 0, moveY: 0, dash: false };

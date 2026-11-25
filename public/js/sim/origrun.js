@@ -847,11 +847,11 @@ export const OrigMethods = {
         const t = tgt(70); if (t) { W.meleeStep(ctx, 30, t); later(0.25, () => { if (!AT(t)) return; W.emit({ t: 'slam', x: t.x, y: t.y }); H(t, op.mul2 * (t.st.weak ? 1.3 : 1)); knock(t, p.x, p.y, 60); }); }
         break;
       }
-      case 'springPunch': { // 태엽을 감은 만큼 연타 (맞으면 풀린다)
-        const g = (p.origGuard = { k: 1, acc: 0, n: 0, until: W.t + 1.5 }); let turns = 0;
-        every(0.3, 5, () => { if (g.n > 0) return false; turns++; W.emit({ t: 'text', x: p.x, y: p.y - 22, text: `태엽 ${turns}`, color: '#e0c080' }); W.emit({ t: 'spark', x: p.x, y: p.y - 10, color: '#e0c080' }); },
-          () => { if (p.origGuard === g) p.origGuard = null; const n = 2 + turns * 2; const t = tgt(70); if (t) W.meleeStep(ctx, 30, t);
-            every(0.07, n, (i) => { const a = Math.atan2(p.aimY, p.aimX); W.emit({ t: 'skillCone', x: p.x, y: p.y, ang: a + (i % 2 ? 0.2 : -0.2), range: 42, angle: 0.8, elem: el, fx: 'smash' }); for (const e of coneHits(a, 42, 0.5)) H(e, op.mul); }); });
+      case 'spiritFist': { // 기를 모아 흐릿한 주황 거대 주먹을 날린다 (꿰뚫고 밀어낸다)
+        const T = op.charge || 0.7, N = 7; p.chargeT = T;
+        every(T / N, N, (i) => { const k = 1 - i / N; for (let j = 0; j < 3; j++) { const a = Math.random() * Math.PI * 2, r = 10 + 26 * k; W.emit({ t: 'spark', x: p.x + Math.cos(a) * r, y: p.y - 8 + Math.sin(a) * r, color: j ? '#ffb050' : '#ffe0a0' }); } },
+          () => { const a = Math.atan2(p.aimY, p.aimX), hit = new Set(); W.emit({ t: 'shake', v: 3 });
+            shoot(p.x + Math.cos(a) * 10, p.y - 6 + Math.sin(a) * 10, a, 220, op.range || 240, 'spiritFist', (e) => { if (hit.has(e.id)) return; hit.add(e.id); H(e, op.mul); knock(e, e.x - Math.cos(a) * 10, e.y - Math.sin(a) * 10, op.kb || 90); W.emit({ t: 'spark', x: e.x, y: e.y - 6, color: '#ffb050' }); }, { pierce: 99, color: '#ff9a3a' }); });
         break;
       }
       case 'rallyPull': { // 함성으로 끌어모으고 다가온 적을 친다

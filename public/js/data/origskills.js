@@ -74,17 +74,17 @@ export const ORIG_SKILLS = {
     desc: '조준한 자리에 얼음 실이 바깥에서 안으로 세 번 감긴다(둘레 70 · 48 · 26 · 0.3초 간격 · 하나에 50% · 냉기 1). 가운데 적은 세 번 다 맞는다.', do: O('spiralIce', { mul: 0.5 }), marks: ['ranged', 'multi'] },
   m_shieldDemon: { id: 'o_shieldBounce', name: '튕겨 오는 방패', mo: 'throw', fx: 'parry',
     desc: '방패를 던져 110 안의 적 셋 사이를 튕긴다(하나 80%). 돌아온 방패가 맞힌 적 하나마다 최대 체력 4%의 보호막(최대 12%).', do: O('shieldBounce', { mul: 0.8, n: 3 }), marks: ['ranged', 'multi'] },
-  m_archiveKeeper: { id: 'o_wall', name: '쇠 책갈피 벽', mo: 'stomp', fx: 'spikes',
+  m_archiveKeeper: { id: 'o_wall', kind: 'body', name: '쇠 책갈피 벽', mo: 'stomp', fx: 'spikes',
     desc: '앞쪽 60에 너비 80의 쇠 벽을 2초 세운다. 앞쪽 적을 벽 쪽으로 밀쳐내고(70%), 벽에 부딪힌 적은 1초 기절 · 60%(한 번). 벽 너머로는 지나가지 못한다.', do: O('wall', { mul: 0.7, mul2: 0.6 }) },
-  m_lightWarden: { id: 'o_lantern', name: '파수의 등불', mo: 'cast', fx: 'holy', elem: 'light',
+  m_lightWarden: { id: 'o_lantern', kind: 'body', name: '파수의 등불', mo: 'cast', fx: 'holy', elem: 'light',
     desc: '앞에 등불을 4초 세운다. 0.5초마다 둘레 60의 적에게 30% · 약화 0.6초. 등불 둘레 50 안에 서 있으면 초당 최대 체력 1.2% 회복.', do: O('lantern', { mul: 0.3 }), marks: ['multi'] },
   m_cultist: { id: 'o_prayer', name: '그림자 기도', mo: 'castBig', fx: 'ink', elem: 'dark',
     desc: '0.8초 기도한 뒤, 둘레 200의 모든 적의 그림자에서 손이 솟아 찌른다(160% · 0.6초 기절). 대가: 최대 체력 6%.', do: O('prayer', { mul: 1.6 }), price: { hp: 0.06 }, marks: ['scale:mag'] },
   m_cultShade: { id: 'o_sigilLine', name: '두 성표 잇기', mo: 'cast', fx: 'rune', elem: 'dark',
     desc: '내 발밑과 조준한 자리(140 안)에 검은 성표를 새기고 둘을 잇는다. 2초 동안 0.25초마다 그 줄 위의 적을 벤다(25% · 저주 1).', do: O('sigilLine', { mul: 0.25 }), marks: ['multi'] },
-  m_jungleWasp: { id: 'o_swarm', name: '말벌 떼 풀기', mo: 'blow3', fx: 'dart', elem: 'poison',
+  m_jungleWasp: { id: 'o_swarm', kind: 'spell', name: '말벌 떼 풀기', mo: 'blow3', fx: 'dart', elem: 'poison',
     desc: '말벌 떼가 4초 동안 날아다니며(초당 150) 가장 가까운 적을 쫓아 0.3초마다 쏜다(18% · 독 1). 쫓던 적이 쓰러지면 다음 적으로.', do: O('swarm', { mul: 0.18, dur: 4 }), marks: ['ranged', 'multi'] },
-  m_shardBird: { id: 'o_shardBurst', name: '유리 깃 깨뜨리기', mo: 'blow3', fx: 'dart',
+  m_shardBird: { id: 'o_shardBurst', kind: 'spell', name: '유리 깃 깨뜨리기', mo: 'blow3', fx: 'dart',
     desc: '유리 깃 다섯을 부채꼴로 박는다(맞으면 30%). 1초 뒤 박힌 자리마다 깨지며 둘레 26에 50% · 출혈 2.', do: O('shardBurst', { mul: 0.3, mul2: 0.5 }), marks: ['ranged', 'multi'] },
   m_harpy: { id: 'o_hop3', name: '깃털 세 번 도약', mo: 'dash', fx: 'claws', elem: 'wind',
     desc: '100 안의 적 사이를 세 번 튕겨 다니며 할퀸다(한 번 55% · 출혈 1 · 0.18초 간격). 남은 적이 없으면 같은 적을 다시.', do: O('hop3', { mul: 0.55 }), marks: ['multi', 'scale:agi'] },
@@ -212,7 +212,7 @@ export const ORIG_SKILLS = {
     desc: '조준한 자리(120까지)에 가로 · 세로 160 빛줄을 새겨 0.5초 뒤 솟는다(줄 위 40%). 교차점 둘레 24는 한 번 더 30%, 내가 교차점에 서 있으면 최대 체력 5% 회복.', do: O('holyCross', { mul: 0.4, mul2: 0.3 }) },
   m_highPriest: { id: 'o_darkSnuff', name: '등불 끄기', mo: 'castBig', fx: 'dark', elem: 'dark',
     desc: '둘레 140의 빛을 끈다: 적은 2.5초 나를 놓치고(50% · 저주 3), 끝에 어둠이 조여 200% · 그 적의 저주 중첩마다 +10%. 대가: 쓰면 나도 저주.', do: O('darkSnuff', { mul: 0.5, mul2: 2.0 }), marks: ['selfStatus:curse'] },
-  m_ruinSentinel: { id: 'o_topple', name: '폐허 기둥 쓰러뜨리기', mo: 'charge', fx: 'rocks',
+  m_ruinSentinel: { id: 'o_topple', kind: 'body', name: '폐허 기둥 쓰러뜨리기', mo: 'charge', fx: 'rocks',
     desc: '앞 일직선 130으로 기둥을 넘어뜨린다(0.6초 예고). 깔린 적 130% · 1초 기절, 기둥 머리가 부서진 둘레 45에 70%.', do: O('toppleColumn', { mul: 1.3, mul2: 0.7 }), marks: ['scale:vit'] },
   sShieldPush: { id: 'o_shieldPush', name: '밀며 걷는 방패', mo: 'charge', fx: 'dash',
     desc: '1.2초 방패를 내밀고 걸어간다(받는 피해 -40%). 앞 40의 적은 계속 밀려나며 0.3초마다 30%, 벽에 닿은 적은 100% · 1초 기절.', do: O('shieldPush', { mul: 0.3, mul2: 1.0 }) },
@@ -226,8 +226,8 @@ export const ORIG_SKILLS = {
     desc: '방울을 0.3초마다 여섯 번 흔든다: 둘레 120의 아무 적에게 해골 표식(35% · 저주 1). 같은 적이 세 번 받으면 해골이 터진다(둘레 40 · 90%).', do: O('skullRattle', { mul: 0.35, mul2: 0.9 }), marks: ['multi'] },
   m_mirrorKnight: { id: 'o_glare', name: '은빛 눈부심', mo: 'bash', fx: 'holy', elem: 'light',
     desc: '방패로 빛을 비춰 앞쪽 100의 적을 2초 약하게 하고(30% · 약화) 앞의 적을 친다(120% · 약한 적엔 1.3배 · 밀쳐냄).', do: O('glareBash', { mul: 0.3, mul2: 1.2 }) },
-  m_clockSoldier: { id: 'o_spring', name: '태엽 주먹', mo: 'bash', fx: 'smash',
-    desc: '0.3초마다 태엽을 감는다(최대 다섯 번 · 맞으면 거기서 멈춘다). 감은 만큼 주먹을 쏟는다: 2 + 감은 수 × 2번 · 한 번 36%.', do: O('springPunch', { mul: 0.36 }), marks: ['multi', 'scale:str'] },
+  m_clockSoldier: { id: 'o_spring', kind: 'body', name: '기공 거대 주먹', mo: 'bash', fx: 'smash',
+    desc: '0.7초 동안 주먹에 기를 모은다(그동안 이동 -65%). 흐릿한 주황빛 거대 주먹을 앞으로 날려 길 위의 적을 모두 꿰뚫고(공격력 430%) 밀어낸다 · 거리 240.', do: O('spiritFist', { mul: 4.3, range: 240, kb: 90 }), marks: ['ranged', 'scale:str'] },
   sWarShout: { id: 'o_rallyPull', name: '모여라 외침', mo: 'roar', fx: 'roar',
     desc: '둘레 150의 적을 외쳐 내게 끌어당기고 나를 노리게 한다(20%). 0.8초 뒤 둘레 45 안에 온 적에 60% · 0.5초 기절.', do: O('rallyPull', { mul: 0.2, mul2: 0.6 }) },
   sSpinBlade: { id: 'o_hoverBlade', name: '머무는 칼바퀴', mo: 'throw', fx: 'spin',
@@ -276,6 +276,7 @@ export function registerOrigSkills(SKILLS, ENGRAVING_SKILLS, ENGRAVINGS, SKILL_B
     if (base.cost && base.cost > 1) def.cost = base.cost; // 자원을 쓰던 스킬은 그대로 · 자원을 모으던 스킬(+)도 그대로
     Object.assign(def, { name: o.name, desc: `【${ENGRAVINGS[eid].name}】 ${o.desc}`, mo: o.mo, fx: o.fx, do: o.do, marks: o.marks || [], orig: true, fromEng: eid });
     if (o.elem) def.elem = o.elem;
+    if (o.kind) def.kind = o.kind; // 동작이 원래 스킬과 다르면 무기 조건도 다르게 (기공 주먹은 방패 없이)
     if (def.aim === 'away') delete def.aim; // 물러나는 뼈대(그림자 회피 등)의 「반대로 겨눔」은 따르지 않는다
     if (o.price) def.price = o.price;
     if (def.role === '준비' || def.role === '방어' && !['spineShell', 'absorbWave', 'blurGuard', 'repairWound', 'petrify', 'reflectShots', 'wristLock'].includes(o.do[0].k)) def.role = '공격';
