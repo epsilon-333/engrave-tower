@@ -65,7 +65,7 @@ export class Hub {
   }
 
   get s() { return this.getSave(); }
-  save() { const out = fitEngravings(this.s, toLoadout); if (out.length) this.toast(`부하 한도를 넘어 뺐다: ${out.join(' · ')}`); writeSave(this.s); } // 정신이 줄어 부하가 넘치면 뒤 칸부터 뺀다
+  save() { const out = fitEngravings(this.s, toLoadout); if (out.length) this.toast(`부하 한도를 넘어 뺐다: ${out.join(' · ')}`); writeSave(this.s); } // 예전 저장이 넘치면 부하가 넘치면 뒤 칸부터 뺀다
 
   toast(msg) {
     const t = $('#toast');
@@ -254,7 +254,7 @@ export class Hub {
     const skillsFold = `<details class="alt-skills" data-guide="altar-skills" ${this.altarSkills ? 'open' : ''}><summary>스킬 자세히 보기 <small>Q · E · R · F · 우클릭 · ${RACES[s.race].name} 스킬</small></summary>${this.skillPanel(s, b)}</details>`;
     return `
       <section class="panel">
-        <h3>각인 <small>부하 <b>${b.load} / ${b.derived.loadCap}</b></small>${help('Q · E · R · F 칸: 그 각인의 스킬과 패시브. 마지막 칸: 패시브만. 부하 한도는 25 + 정신 10마다 1.')}</h3>
+        <h3>각인 <small>부하 <b>${b.load} / ${b.derived.loadCap}</b></small>${help('Q · E · R · F 칸: 그 각인의 스킬과 패시브. 마지막 칸: 패시브만. 부하 한도는 25 + 레벨 15마다 1.')}</h3>
         <div class="slots" data-guide="altar-slots">${slotHtml}</div>
         <h4>보유 잔향</h4><div class="echoes" data-guide="altar-mats">${echoInv}</div>
       </section>
@@ -658,7 +658,7 @@ export class Hub {
         if (!target) { this.toast('빈 각인 칸이 없다 · 먼저 하나를 뺀다'); break; }
         s.slots[target] = id;
         const after = computeBuild(toLoadout(s));
-        if (after.load > after.derived.loadCap) { delete s.slots[target]; this.toast(`부하가 넘친다 (${after.load} / ${after.derived.loadCap}) · 다른 각인을 빼거나 정신을 올리자`); break; }
+        if (after.load > after.derived.loadCap) { delete s.slots[target]; this.toast(`부하가 넘친다 (${after.load} / ${after.derived.loadCap}) · 다른 각인을 빼거나 레벨을 올리자`); break; }
         const ti = SLOTS.indexOf(target);
         this.toast(`${e.name} → ${SLOT_KEYS[ti]} 칸${ti < 4 && engravingSkillFor(id, s.race) ? ` · 스킬 「${SKILLS[engravingSkillFor(id, s.race)].name}」` : e.passiveOnly ? ' · 패시브 각인' : ' · 패시브만'}`);
         break;

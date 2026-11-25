@@ -63,4 +63,11 @@ const mkWorld = (eng = {}, extra = {}) => new World({ build: computeBuild({ race
   ok(sh.length === 4 && sh.every((q) => !q.homing && q.straight && q.x === e.x), '파편은 유도 없이 곧게 · 터진 자리에서');
 }
 
+// 3) 각인 부하 한도는 레벨로만: 정신을 다시 찍어 낮춰도 한도가 줄지 않는다
+{
+  const a = computeBuild({ race: 'orc', level: 40, alloc: { spi: 39 }, engravings: {} }), b = computeBuild({ race: 'orc', level: 40, alloc: { str: 39 }, engravings: {} });
+  ok(a.derived.loadCap === b.derived.loadCap, `정신과 상관없는 부하 한도 (${a.derived.loadCap} · ${b.derived.loadCap})`);
+  ok(computeBuild({ race: 'orc', level: 100, alloc: {}, engravings: {} }).derived.loadCap > computeBuild({ race: 'orc', level: 1, alloc: {}, engravings: {} }).derived.loadCap, '레벨이 오르면 한도가 는다');
+}
+
 if (bad) { console.log(`${bad}개 실패`); process.exitCode = 1; } else console.log('ALL OK');

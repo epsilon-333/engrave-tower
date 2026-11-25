@@ -195,7 +195,7 @@ const GUIDES = {
   ],
   'tab:skills': [
     { g: 'skill-slots', sel: '.slots, .skill-row', text: '스킬 칸. 새긴 각인을 골라 Q · E · R · F에 끼운다 · 비어 있으면 그 키는 아무것도 안 한다' },
-    { text: '각인마다 <em>부하</em>가 있다. 끼운 부하의 합이 한도를 넘을 수 없다 (정신을 올리면 한도가 는다)' },
+    { text: '각인마다 <em>부하</em>가 있다. 끼운 부하의 합이 한도를 넘을 수 없다 (레벨이 오르면 한도가 는다)' },
   ],
   'tab:gear': [
     { g: 'gear-slots', sel: '.slots', text: '장비 칸: 무기 · 왼손 · 몸. 아래 목록에서 눌러 바로 바꿔 낀다' },

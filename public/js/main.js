@@ -1187,7 +1187,7 @@ function migrateSave(sv) {
       .sort((a, b) => ((had.includes(b[0]) - had.includes(a[0])) || (ENGRAVINGS[a[1]].load - ENGRAVINGS[b[1]].load)));
     for (const sl of SLOTS.slice(0, 4)) if (!sv.slots[sl] && cand.length) sv.slots[sl] = cand.shift()[1];
   }
-  fitEngravings(sv, toLoadout); // 각인 칸: 부하 한도(25 + 정신)를 넘으면 뒤 칸부터 뺀다
+  fitEngravings(sv, toLoadout); // 각인 칸: 부하 한도(25 + 레벨 15마다 1)를 넘으면 뒤 칸부터 뺀다
   return sv;
 }
 
