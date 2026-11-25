@@ -159,6 +159,7 @@ export function grantRaceMats(s, kind, cls) {
   const sk = list[0]; if (!sk) return null;
   const eid = classEngravingFor(sk); if (!eid) return null;
   s.classEng[sk] = eid;
+  (s.engUnlocked ||= {})[eid] = 1; // 여정으로 받은 각인은 제단에서 잠금 해제 (몬스터를 아직 못 만났어도 보인다)
   for (const [k, n] of Object.entries(ENGRAVINGS[eid].recipe || {})) { s.echoes[k] = (s.echoes[k] || 0) + n; ((s.codex ||= {}).echoes ||= {})[k] ||= 1; } // 받은 재료는 이름을 안다
   return eid;
 }

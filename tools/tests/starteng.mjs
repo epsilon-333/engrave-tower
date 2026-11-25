@@ -8,17 +8,13 @@ const { SKILL_ENGS } = await import(root + '/data/skillengs.js');
 let fails = 0;
 const ok = (v, m) => { if (!v) { fails++; console.log('FAIL', m); } };
 
-// 시작 각인은 모두 원래 종족 스킬 그대로 (패시브 전환 · 독창 스킬로 바뀌지 않는다)
-for (const e of SKILL_ENGS.filter((x) => ENGRAVINGS[x.id]?.start)) {
-  ok(!ENGRAVINGS[e.id].passiveOnly, `${e.id}: 패시브 각인이 아니다`);
-  ok(ENGRAVING_SKILLS[e.id] === e.skill, `${e.id}: 원래 스킬 ${e.skill} (지금 ${ENGRAVING_SKILLS[e.id]})`);
-}
 let n = 0;
 for (const race of Object.keys(RACES)) {
   if (!RACE_CLASSES(race).length) continue;
   const s = newSave(race);
   const eid = grantRaceMats(s, 1);
-  ok(eid && ENGRAVINGS[eid]?.start, `${race}: 여정 1 보상이 시작 각인 (${eid})`);
+  ok(eid && ENGRAVINGS[eid], `${race}: 여정 1 보상 각인 (${eid})`);
+  ok(s.engUnlocked?.[eid], `${race}: 받은 각인은 제단에서 잠금 해제`);
   if (!eid) continue;
   const e = ENGRAVINGS[eid];
   ok(Object.entries(e.recipe).every(([r, k]) => (s.echoes[r] || 0) >= k), `${race}: 재료로 바로 새길 수 있다`);

@@ -49,7 +49,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 // 얻는 법을 아는 각인만 제단 목록에 나온다 (2026-11-25 · 미확인 ???는 보이지 않는다): 가졌거나 · 재료를 하나라도 만났거나(도감) · 재료를 가지고 있거나
 export function engKnown(id, s) {
   const e = ENGRAVINGS[id]; if (!e) return false;
-  if ((s.owned?.[id] || 0) > 0 || Object.values(s.slots || {}).includes(id)) return true;
+  if ((s.owned?.[id] || 0) > 0 || s.engUnlocked?.[id] || Object.values(s.slots || {}).includes(id)) return true;
   return Object.keys(e.recipe || {}).some((r) => s.codex?.echoes?.[r] || (s.echoes?.[r] || 0) > 0);
 }
 
