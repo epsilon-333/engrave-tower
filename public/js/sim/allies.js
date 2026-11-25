@@ -124,7 +124,7 @@ export const AllyMethods = {
         } else tgt = near(al.kind === 'clone' ? 120 : 220);
         let tx = p.x + (al.kind === 'clone' ? -p.dir * 14 : 0), ty = p.y;
         // 할 일이 없으면 내 주위에 둥글게 선다
-        if (!tgt && al.kind !== 'clone') { const a = al.phase + al.id * 1.3; tx = p.x + Math.cos(a) * 24; ty = p.y + Math.sin(a) * 16; }
+        if (!tgt && al.kind !== 'clone') [tx, ty] = this.allyIdleSpot(al, p); // 내 걸음마다 따라붙지 않고, 멀어질 때만 내 곁 한 자리로 옮긴다
         if (tgt) { tx = tgt.x; ty = tgt.y; }
         const vx = tx - al.x, vy = ty - al.y, l = Math.hypot(vx, vy) || 1;
         const spd = al.kind === 'lich' ? 70 : al.kind === 'skeleton' || al.kind === 'soul' ? 95 : 110;
@@ -167,9 +167,12 @@ export const AllyMethods = {
     if (pd > 360) { al.x = p.x; al.y = p.y; this.emit({ t: 'summonFx', x: al.x, y: al.y, kind: al.kind }); }
     const foes = this.enemies.filter((e) => this.targetable(e));
     let tx, ty;
-    if (al.kind === 'grasper') { // 내 뒤쪽 비스듬히 50만큼 떨어져 떠 있다
-      al.side ||= -(p.dir || 1); // 처음 불렀을 때 내 뒤쪽 · 그 뒤로는 그쪽을 지킨다 (끌고 간 적이 다시 내 앞으로 오지 않게)
-      const a = Math.atan2(-0.35, al.side); tx = p.x + Math.cos(a) * 125; ty = p.y + Math.sin(a) * 70; // 나와 멀리 떨어져 떠 있다
+    if (al.kind === 'grasper') { // 스스로 적을 찾아 떠다닌다: 가까운 적에게서 90쯤 떨어진 자리 · 나와 170 넘게 멀어지면 돌아온다 (예전엔 내 뒤 한 점에 붙어 내 걸음을 그대로 따라왔다)
+      if (pd > 170) al.returning = true; else if (pd < 70) al.returning = false;
+      let tg = null, gd = 220;
+      if (!al.returning) for (const e of foes) { const d = Math.hypot(e.x - al.x, e.y - al.y); if (d < gd && Math.hypot(e.x - p.x, e.y - p.y) < 200) { gd = d; tg = e; } }
+      if (tg) { const d = gd || 1; tx = tg.x + (al.x - tg.x) / d * 90; ty = tg.y + (al.y - tg.y) / d * 90; al.dir = tg.x > al.x ? 1 : -1; }
+      else [tx, ty] = this.allyIdleSpot(al, p);
       al.chg = (al.chg || 0) + DT;
       if (al.chg >= 5) {
         let best = null, bd = 200;
@@ -184,7 +187,7 @@ export const AllyMethods = {
       let tgt = null, bd = 240;
       for (const e of foes) { const d = Math.hypot(e.x - al.x, e.y - al.y); if (d < bd && Math.hypot(e.x - p.x, e.y - p.y) < 200) { bd = d; tgt = e; } }
       if (tgt) { const d = bd || 1, k = d < 70 ? -1 : d > 110 ? 1 : 0; tx = al.x + (tgt.x - al.x) / d * 30 * k; ty = al.y + (tgt.y - al.y) / d * 30 * k; al.dir = tgt.x > al.x ? 1 : -1; }
-      else { const a = al.phase + al.id * 1.3; tx = p.x + Math.cos(a) * 30; ty = p.y + Math.sin(a) * 20; }
+      else [tx, ty] = this.allyIdleSpot(al, p);
       if (tgt && al.cd <= 0) {
         al.cd = 1.2; al.castT = 0.35; const vx = tgt.x - al.x, vy = tgt.y - al.y, l = Math.hypot(vx, vy) || 1;
         this.projs.push({ owner: 'p', x: al.x, y: al.y - 10, vx: vx / l * 230, vy: vy / l * 230, life: 1.2, dmg: al.atk, type: 'mag', pierce: 0, hit: new Set(), color: '#b06aff', kind: 'skill', elem: 'dark', noTrigger: true,
@@ -205,6 +208,15 @@ export const AllyMethods = {
     if (l > 4) { const sp = (al.kind === 'grasper' ? 120 : 75) * DT * (pd > 150 ? 1.6 : 1); al.r = al.r || 5; if (al.kind === 'grasper') { al.x += vx / l * Math.min(l, sp); al.y += vy / l * Math.min(l, sp); } else { const [mx, my] = this.pathDir(al, tx, ty); this.move(al, mx * sp, my * sp); } }
     if (al.kind !== 'lichMage' || !al.dir) al.dir = al.dir || p.dir;
     if (al.castT > 0) al.castT -= DT; if (al.liftT > 0) al.liftT -= DT;
+  },
+  // 할 일 없는 소환체의 자리: 내 곁 40~65 한 점을 정해 두고, 내가 그 자리에서 85 넘게 멀어질 때만 새로 고른다 (내 걸음마다 붙어 움직이지 않게)
+  allyIdleSpot(al, p) {
+    if (al.idleX == null || Math.hypot(al.idleX - p.x, al.idleY - p.y) > 85) {
+      const a = this.rng.range(0, Math.PI * 2), r = this.rng.range(40, 65);
+      al.idleX = p.x + Math.cos(a) * r; al.idleY = p.y + Math.sin(a) * r * 0.7;
+      if (this.blocked(al.idleX, al.idleY, 4)) { al.idleX = p.x; al.idleY = p.y; }
+    }
+    return [al.idleX, al.idleY];
   },
   updateFamiliar() {
     const p = this.player, f = p.familiar;

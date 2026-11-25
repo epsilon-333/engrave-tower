@@ -18,4 +18,22 @@ const mkWorld = (eng = {}, extra = {}) => new World({ build: computeBuild({ race
   ok(w.player.hp === hp0, '거울 기사를 때려도 되돌아오지 않는다');
 }
 
+// 2) 붙잡는 망령은 내 걸음을 그대로 따라오지 않는다 · 적을 찾아 떠다니고 · 너무 멀어지면 돌아온다
+{
+  const w = mkWorld(); for (let i = 0; i < 30; i++) w.step(idle);
+  w.enemies.length = 0;
+  const p = w.player, al = { id: w.nextId++, kind: 'grasper', x: p.x - 60, y: p.y, t: 99, max: 99, atk: 1, cd: 0, phase: 0, dir: 1, r: 5, hp: 100, maxHp: 100 };
+  w.allies.push(al);
+  for (let i = 0; i < 60; i++) w.step(idle);
+  const ax = al.x, ay = al.y, px = p.x;
+  for (let i = 0; i < 15; i++) w.step({ moveX: 1, moveY: 0, attack: false });
+  ok(Math.abs(al.x - ax) + Math.abs(al.y - ay) < Math.abs(p.x - px) * 0.5, `조금 걸어도 망령이 붙어 따라오지 않는다 (망령 ${Math.hypot(al.x - ax, al.y - ay).toFixed(1)} · 나 ${Math.abs(p.x - px).toFixed(1)})`);
+  for (let i = 0; i < 240; i++) w.step({ moveX: 1, moveY: 0.3, attack: false });
+  for (let i = 0; i < 120; i++) w.step(idle);
+  ok(Math.hypot(al.x - p.x, al.y - p.y) < 120, `멀리 가면 돌아온다 (${Math.hypot(al.x - p.x, al.y - p.y).toFixed(0)})`);
+  const e = w.makeEnemy('slime', p.x + 120, p.y); w.enemies.push(e); const d0 = Math.hypot(al.x - e.x, al.y - e.y);
+  for (let i = 0; i < 40; i++) w.step(idle);
+  ok(Math.hypot(al.x - e.x, al.y - e.y) < d0 - 10 || Math.hypot(al.x - e.x, al.y - e.y) < 110, '적을 보면 스스로 그쪽으로 간다');
+}
+
 if (bad) { console.log(`${bad}개 실패`); process.exitCode = 1; } else console.log('ALL OK');
