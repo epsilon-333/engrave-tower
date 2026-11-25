@@ -570,12 +570,14 @@ export class Renderer {
     this.dfill = dfill; this.dline = dline;
     for (const z of w.zones || []) {
       const k = Math.min(1, z.t / 0.4);
-      if (z.kind === 'slow') { // 시간 둔화: 보랏빛 점묘 바닥 · 도는 점선 테두리 · 시계 바늘 · 눈금
-        dfill(z.x, z.y, z.r, z.r * 0.62, '#9670e6', 0.28 * k);
-        dline(z.x, z.y, z.r, z.r * 0.62, hexA('#d8c4ff', 0.85 * k), w.t * 6);
-        g.strokeStyle = hexA('#e8dcff', 0.8 * k); g.lineWidth = 1;
-        for (const [len, sp] of [[z.r * 0.7, 0.5], [z.r * 0.45, 2]]) { const a = w.t * sp; g.beginPath(); g.moveTo(z.x, z.y); g.lineTo(z.x + Math.cos(a) * len, z.y + Math.sin(a) * len * 0.62); g.stroke(); }
-        for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; g.fillStyle = hexA('#e8dcff', 0.8 * k); g.fillRect(Math.round(z.x + Math.cos(a) * z.r * 0.86) - 1, Math.round(z.y + Math.sin(a) * z.r * 0.53) - 1, 2, 2); }
+      if (z.kind === 'slow') { // 시간 둔화: 땅에 새긴 시계 문자판 — 외곽선 눈금 열둘 · 도는 바늘 둘 · 가운데 축 (채운 타원 · 점선 고리 없이)
+        dfill(z.x, z.y, z.r * 0.9, z.r * 0.55, '#9670e6', 0.1 * k);
+        const tick = (cx, cy, s2, big) => { g.fillStyle = hexA('#24082e', 0.9 * k); g.fillRect(Math.round(cx) - s2 - 1, Math.round(cy) - s2 - 1, s2 * 2 + 2, s2 * 2 + 2); g.fillStyle = hexA(big ? '#f4d0ff' : '#a83ae0', k); g.fillRect(Math.round(cx) - s2, Math.round(cy) - s2, s2 * 2, s2 * 2); };
+        for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; tick(z.x + Math.cos(a) * z.r * 0.86, z.y + Math.sin(a) * z.r * 0.53, i % 3 ? 1 : 2, !(i % 3)); }
+        for (const [len, sp, wd] of [[z.r * 0.7, 0.5, 2], [z.r * 0.45, 2, 3]]) { const a = w.t * sp, ex = z.x + Math.cos(a) * len, ey = z.y + Math.sin(a) * len * 0.62;
+          for (const [lw, c] of [[wd + 2, hexA('#24082e', 0.9 * k)], [wd, hexA('#c8a8ff', k)], [1, hexA('#ffffff', 0.8 * k)]]) { g.strokeStyle = c; g.lineWidth = lw; g.beginPath(); g.moveTo(z.x, z.y); g.lineTo(ex, ey); g.stroke(); } }
+        g.fillStyle = hexA('#24082e', k); disc(g, z.x, z.y, 3.2); g.fillStyle = hexA('#f4d0ff', k); disc(g, z.x, z.y, 2);
+        if (Math.random() < 0.12) this.parts.push({ x: z.x + (Math.random() - 0.5) * z.r * 1.5, y: z.y + (Math.random() - 0.5) * z.r * 0.8, vx: 0, vy: -6, t: 1.2, max: 1.2, color: '#d8c4ff', g: -1, size: 1 });
         continue;
       }
       if (z.kind === 'trap') {
@@ -619,11 +621,18 @@ export class Renderer {
       } else {
         // 안개 · 독 · 불 구름: 점묘 바닥 위에 울퉁불퉁한 구름 덩이가 맴돈다
         const hex = z.kind === 'fog' ? '#8c46c8' : z.kind === 'poison' ? '#8cdc5a' : '#ff7828';
-        dfill(z.x, z.y, z.r, z.r * 0.8, hex, 0.16 * k);
+        dfill(z.x, z.y, z.r * 0.85, z.r * 0.5, hex, (z.kind === 'fog' ? 0.1 : 0.16) * k);
+        if (z.kind === 'fog') { // 죽음의 안개: 넓게 깔린 보랏빛 대신 땅을 기는 외곽선 안개 덩이 (짙은 테 · 보라 몸 · 밝은 윗면)
+          for (let i = 0; i < 7; i++) { const a = w.t * 0.5 * (i % 2 ? 1 : -1) + i * 0.9, d = z.r * (0.15 + (i % 4) * 0.16), bx = z.x + Math.cos(a) * d, by = z.y + Math.sin(a) * d * 0.5, br = 5 + (i % 3) * 2 + Math.sin(w.t * 2 + i) * 1;
+            const el = (cx2, cy2, rx) => { g.beginPath(); g.ellipse(cx2, cy2, rx, rx * 0.5, 0, 0, Math.PI * 2); g.fill(); }; // 납작한 안개 덩이 (땅을 긴다)
+            g.fillStyle = hexA('#24082e', 0.55 * k); el(bx, by, br + 1.2); el(bx + br * 0.8, by + 1, br * 0.7 + 1.2);
+            g.fillStyle = hexA('#5a2a7a', 0.5 * k); el(bx, by, br); el(bx + br * 0.8, by + 1, br * 0.7);
+            g.fillStyle = hexA('#a86ad0', 0.45 * k); el(bx - br * 0.3, by - br * 0.2, br * 0.45); }
+        }
         { const dk = z.kind === 'fog' ? '#24082e' : z.kind === 'poison' ? '#17300a' : '#4a1206', lt = z.kind === 'fog' ? '#f4d0ff' : z.kind === 'poison' ? '#e0ffa0' : '#ffe08a'; // 터지는 거품: 짙은 외곽선 + 밝은 면
           for (let i = 0; i < 4; i++) { const ph = (w.t * 0.9 + i * 0.27) % 1, a = i * 2.4 + Math.floor(w.t * 0.9 + i * 0.27) * 1.7, d = z.r * (0.25 + (i % 3) * 0.22), bx = z.x + Math.cos(a) * d, by = z.y + Math.sin(a) * d * 0.6, br = 1.5 + ph * 2.5;
             if (ph > 0.85) continue; g.fillStyle = hexA(dk, k); disc(g, bx, by, br + 1.2); g.fillStyle = hexA(hex, k); disc(g, bx, by, br); g.fillStyle = hexA(lt, k); g.fillRect(Math.round(bx - br * 0.4), Math.round(by - br * 0.5), 1, 1); } }
-        for (let i = 0; i < 5; i++) { const a = w.t * 0.8 + i * 1.3, img = puffSprite(4 + (i % 3), hex, i); g.globalAlpha = 0.35 * k; g.drawImage(img, Math.round(z.x + Math.cos(a) * z.r * 0.55 - img.width / 2), Math.round(z.y + Math.sin(a * 1.3) * z.r * 0.4 - img.height / 2)); g.globalAlpha = 1; }
+        if (z.kind !== 'fog') for (let i = 0; i < 5; i++) { const a = w.t * 0.8 + i * 1.3, img = puffSprite(4 + (i % 3), hex, i); g.globalAlpha = 0.35 * k; g.drawImage(img, Math.round(z.x + Math.cos(a) * z.r * 0.55 - img.width / 2), Math.round(z.y + Math.sin(a * 1.3) * z.r * 0.4 - img.height / 2)); g.globalAlpha = 1; }
         if (z.kind === 'fire' && Math.random() < 0.5) this.parts.push({ x: z.x + (Math.random() - 0.5) * z.r, y: z.y, vx: 0, vy: -40, t: 0.4, max: 0.4, color: Math.random() < 0.5 ? '#ff7a2a' : '#ffd040', g: -30 });
       }
     }
@@ -790,7 +799,7 @@ export class Renderer {
     if (this.flash) {
       this.flash.t -= dt;
       if (this.flash.t <= 0) this.flash = null;
-      else { g.fillStyle = `rgba(${this.flash.color},${0.3 * this.flash.t / this.flash.max})`; g.fillRect(0, 0, this.c.width, this.c.height); }
+      else { g.fillStyle = `rgba(${this.flash.color},${0.2 * this.flash.t / this.flash.max})`; g.fillRect(0, 0, this.c.width, this.c.height); }
     }
     if (this.ultName) {
       const un = this.ultName; un.t -= dt;
@@ -1898,13 +1907,13 @@ export class Renderer {
         break;
       }
       case 'dashSlash': {
-        if (k < 0.55) set({ a: 2.4, hx: -2, hy: -6, lean: 3.5, sx: 1.1, sy: 0.9, behind: true });
-        else { const q = easeOut(phase(0.55, 0.8)); set({ a: 2.4 - 3.3 * q, hx: -2 + 10 * q, hy: -6, lean: 3 - q, behind: q < 0.3 }); }
+        if (k < 0.55) { const c = Math.min(1, k / 0.12); set({ a: 2.4 + 0.3 * c, hx: -3 * c, hy: -5, lean: 5 * c, sx: 1 + 0.14 * c, sy: 1 - 0.16 * c, oy: 1.5 * c, behind: true }); } // 몸을 낮춰 칼을 뒤로 끌고 내달린다
+        else { const q = easeOut(phase(0.55, 0.8)); set({ a: 2.7 - 3.9 * q, hx: -3 + 13 * q, hy: -5 - 2 * q, lean: 5 - 3 * q, sx: 1.14 - 0.1 * q, sy: 0.84 + 0.16 * q, ox: Math.cos(m.ang) * 4 * Math.sin(q * Math.PI), behind: q < 0.3 }); }
         break;
       }
       case 'thrust': case 'stab': {
         const back = phase(0, 0.25), fwd = easeOut(phase(0.25, 0.5));
-        set({ a: aimF, hx: k < 0.25 ? -2 * back : -2 + 11 * fwd, hy: -7, lean: k < 0.25 ? -1.5 * back : 3 * fwd, ox: Math.cos(m.ang) * (k < 0.25 ? -back : 3 * fwd) });
+        set({ a: aimF, hx: k < 0.25 ? -4 * back : -4 + 16 * fwd, hy: -7, lean: k < 0.25 ? -2.5 * back : 4.5 * fwd, sx: 1 + 0.08 * fwd, sy: 1 - 0.08 * fwd, ox: Math.cos(m.ang) * (k < 0.25 ? -2 * back : 5 * fwd), oy: Math.sin(m.ang) * (k < 0.25 ? -back : 2 * fwd) }); // 뒤로 당겼다 몸째 찌른다
         break;
       }
       case 'spin': { // 도는 베기 (연속베기 등): 평타 대검처럼 허리 높이에서 몸 둘레를 바닥과 나란히 한 바퀴. 앞뒤로 돌 때 칼이 짧아 보인다
@@ -1916,8 +1925,8 @@ export class Renderer {
         break;
       }
       case 'dash': case 'charge': case 'bash': {
-        const lean = m.kind === 'bash' ? 4 * Math.sin(Math.min(1, k * 2.2) * Math.PI) : 3.5;
-        set({ lean, sx: 1.08, sy: 0.92, ox: m.kind === 'bash' ? Math.cos(m.ang) * 3 * Math.sin(k * Math.PI) : 0 });
+        const lean = m.kind === 'bash' ? 6 * Math.sin(Math.min(1, k * 2.2) * Math.PI) : 5;
+        set({ lean, sx: 1.12, sy: 0.86, ox: m.kind === 'bash' ? Math.cos(m.ang) * 6 * Math.sin(k * Math.PI) : 0, oy: m.kind === 'bash' ? 0 : 1 }); // 어깨부터 들이민다
         if (melee) set({ a: m.kind === 'bash' ? -1.25 : 0.35, hx: m.kind === 'bash' ? 9 : 5, hy: m.kind === 'bash' ? -9 : -5 });
         break;
       }
@@ -1945,17 +1954,17 @@ export class Renderer {
       }
       case 'roar': {
         const q = phase(0.25, 0.4);
-        if (k < 0.25) set({ lean: -2.5 * (k / 0.25), sy: 1 + 0.06 * (k / 0.25), a: 1.0, hx: 2, hy: -4 });
-        else set({ lean: 2 + (k < 0.8 ? (Math.random() - 0.5) * 1.5 : 0), sy: 0.94 + 0.06 * q, a: 1.0, hx: 3, hy: -4, ox: (Math.random() - 0.5) * (k < 0.8 ? 1.2 : 0) });
+        if (k < 0.25) set({ lean: -4 * (k / 0.25), sy: 1 + 0.12 * (k / 0.25), sx: 1 - 0.04 * (k / 0.25), a: -2.2, hx: -1, hy: -12, behind: true }); // 가슴을 펴고 젖혔다가
+        else set({ lean: 3.5 + (k < 0.8 ? (Math.random() - 0.5) * 2 : 0), sy: 0.88 + 0.12 * q, sx: 1.08, a: 1.0, hx: 4, hy: -4, ox: (Math.random() - 0.5) * (k < 0.8 ? 2 : 0) }); // 앞으로 내지르며 몸이 떨린다
         break;
       }
       case 'guard': {
-        set({ sy: 0.92, lean: 1, a: -1.35, hx: 6, hy: -9, behind: false });
+        { const c = Math.min(1, k / 0.15); set({ sy: 1 - 0.14 * c, sx: 1 + 0.06 * c, lean: 2.5 * c, ox: -Math.cos(m.ang) * 1.5 * c, a: -1.35, hx: 7, hy: -9, behind: false }); } // 무릎을 굽혀 버틴다
         break;
       }
       case 'power': {
         if (k < 0.3) set({ sy: 1 - 0.14 * (k / 0.3), lean: -1, a: 1.2, hx: 2, hy: -4 });
-        else set({ sy: 1.1 - 0.1 * phase(0.3, 1), a: -1.45, hx: 7, hy: -11, lean: -1, glow: 1 - phase(0.3, 1) });
+        else { const q = phase(0.3, 1); set({ sy: 1.16 - 0.16 * q, sx: 1.06 - 0.06 * q, lift: 4 * Math.sin(Math.min(1, phase(0.3, 0.6)) * Math.PI), a: -1.45, hx: 7, hy: -12, lean: -2, glow: 1 - q }); } // 웅크렸다 솟구치며 힘을 터뜨린다
         break;
       }
       case 'stomp': {
@@ -2586,6 +2595,8 @@ export class Renderer {
 
   // 마법 투사체: 바깥 빛무리 → 꼬리 → 원소 모양 심 → 흰 중심. lighter 로 겹쳐 빛나게
   drawMagicProj(pr) {
+    if (pr.skind === 'ice' && !pr.oskin && !pr.weaponHit) { pr.oskin = 'shard'; pr.opal = 'ice'; } // 얼음 파편: 푸른 번짐 덩이 대신 외곽선 얼음 조각
+    if (pr.oskin) { this.drawOrigProj(pr); if (pr.oskin === 'shard' && Math.random() < 0.3) this.parts.push({ x: pr.x, y: pr.y, vx: 0, vy: 8, t: 0.3, max: 0.3, color: '#eef9ff', g: 30, size: 1 }); return; }
     { // pixelfx 탄: 불은 불덩이(꼬리를 끄는 불꽃), 나머지는 그 속성 색의 플라스마 덩이 — 평타 · 정령 탄은 작게
       const el0 = pr.elem || (pr.skind === 'fireball' ? 'fire' : pr.skind === 'icerock' || pr.skind === 'ice' ? 'ice' : pr.skind === 'arcane' ? 'arcane' : null);
       if (!pr.pxe) {

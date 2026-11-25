@@ -442,6 +442,7 @@ export class World {
       if (l2 < L - 2) { e.x2 = e.x1 + Math.cos(a) * l2; e.y2 = e.y1 + Math.sin(a) * l2; e.wall = true; }
     }
     if (this._tier != null && e.tier == null) e.tier = this._tier; // 스킬 연출 등급 (sim/skillrun.js)
+    if (this._sk && e.sk == null) e.sk = this._sk; // 어느 스킬이 낸 사건인지 (그림만 쓴다)
     this.events.push(e);
     if (this.coRec && CO_EV.has(e.t)) this.coop.ev.push(e); // 파티 탑 (방장): 적이 낸 사건을 동료에게도
     if (this.map?.outdoor && (e.elem === 'fire' || e.elem === 'ice') && e.t && e.t.startsWith('skill')) this.elemReact(e);
@@ -2077,7 +2078,7 @@ export class World {
       a.t -= DT;
       if (a.t > 0) continue;
       a.done = true;
-      if (a.run) { const pv = this._tier; this._tier = a.tier; try { a.run(); } finally { this._tier = pv; } continue; }
+      if (a.run) { const pv = this._tier, ps = this._sk; this._tier = a.tier; this._sk = a.sk; try { a.run(); } finally { this._tier = pv; this._sk = ps; } continue; }
       this.emit({ t: a.fx === 'meteor' ? 'meteor' : 'ring', x: a.x, y: a.y, r: a.r, color: a.type === 'mag' ? '#c9a8ff' : '#ffe8a0' });
       if (a.big) { this.emit({ t: 'hitstop', v: 0.08 }); this.emit({ t: 'shake', v: 6 }); }
       for (const e of this.enemiesNear(a.x, a.y, a.r)) this.hitEnemy(e, a.dmg, a.type, !!a.big);

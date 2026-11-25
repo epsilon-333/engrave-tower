@@ -9,7 +9,7 @@ import { ELEM } from '../data/skills.js';
 import { MONSTER_ART } from '../data/art.js';
 import { REWARDS as CLIMB_REWARDS } from '../data/climb.js';
 import { skyColor, darkness } from '../sim/time.js';
-import { GLOW, hexA, fogSprites } from './renderer.js';
+import { GLOW, hexA, fogSprites, disc } from './renderer.js';
 
 export const AtmosMethods = {
   // 연막: 뭉게뭉게 피어오르는 잿빛 연기 (반쯤 비쳐서 안이 보인다)
@@ -23,9 +23,12 @@ export const AtmosMethods = {
       for (const pf of z.puffs) {
         const x = z.x + Math.cos(pf.a + t * 0.08) * z.r * pf.d * grow, y = z.y - 8 + Math.sin(pf.a + t * 0.08) * z.r * pf.d * 0.55 * grow + Math.sin(t * 0.7 + pf.ph) * 2;
         const rr = z.r * pf.r * grow * (1 + 0.08 * Math.sin(t * 0.9 + pf.ph));
-        const gr = g.createRadialGradient(x, y, rr * 0.2, x, y, rr);
-        gr.addColorStop(0, `rgba(196,198,210,${0.36 * a})`); gr.addColorStop(0.6, `rgba(170,172,186,${0.22 * a})`); gr.addColorStop(1, 'rgba(160,162,176,0)');
-        g.fillStyle = gr; g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+        const r2 = rr * 0.55; // 연기 덩이: 하얀 안개 대신 짙은 테 · 잿빛 몸 · 밝은 윗면의 뭉게구름 (반쯤 비친다)
+        g.globalAlpha = 0.5 * a;
+        g.fillStyle = '#2e2e38'; disc(g, x, y, r2 + 1.5); disc(g, x + r2 * 0.7, y + r2 * 0.2, r2 * 0.7 + 1.5);
+        g.fillStyle = '#6e7080'; disc(g, x, y, r2); disc(g, x + r2 * 0.7, y + r2 * 0.2, r2 * 0.7);
+        g.fillStyle = '#a4a6b4'; disc(g, x - r2 * 0.25, y - r2 * 0.3, r2 * 0.55);
+        g.globalAlpha = 1;
       }
       if (dt > 0 && Math.random() < 0.5 * life) this.parts.push({ x: z.x + (Math.random() - 0.5) * z.r * 1.4, y: z.y - 4 + (Math.random() - 0.5) * z.r * 0.7, vx: (Math.random() - 0.5) * 6, vy: -6 - Math.random() * 6, t: 1.6, max: 1.6, color: '#c8cad4', g: -1, steam: true });
     }

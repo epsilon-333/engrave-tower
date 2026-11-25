@@ -1046,10 +1046,11 @@ Object.assign(SkillMethods, {
 const scoped = (name, tierOf) => {
   const f = SkillMethods[name];
   SkillMethods[name] = function (...a) {
-    const prev = this._tier, n0 = this.delayed.length, t = tierOf.apply(this, a);
+    const prev = this._tier, ps = this._sk, n0 = this.delayed.length, t = tierOf.apply(this, a);
     if (t != null) this._tier = t;
+    if (name === 'execSkill') this._sk = a[2]; // 사건에 스킬 id (그림 쪽에서 스킬마다 다르게 그리려고)
     try { return f.apply(this, a); }
-    finally { for (let i = n0; i < this.delayed.length; i++) if (this.delayed[i].tier == null) this.delayed[i].tier = this._tier; this._tier = prev; }
+    finally { for (let i = n0; i < this.delayed.length; i++) { const d = this.delayed[i]; if (d.tier == null) d.tier = this._tier; if (d.sk == null) d.sk = this._sk; } this._tier = prev; this._sk = ps; }
   };
 };
 scoped('execSkill', function (def, spent, id, opt) { return this.skillTier(id, opt); });

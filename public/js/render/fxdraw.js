@@ -228,7 +228,8 @@ export const FxMethods = {
       } else if (f.k === 'trail') { // 돌진한 길: 도착한 쪽이 굵고 처음 쪽은 뾰족한 바람 자국. 꼬리부터 따라 줄어든다 (막대 선 대신)
         const dx = f.x2 - f.x1, dy = f.y2 - f.y1, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, prog = 1 - k;
         const sx = f.x1 + dx * prog * 0.85, sy = f.y1 - 6 + dy * prog * 0.85, ex = f.x2, ey = f.y2 - 6, W = Math.min(7, (f.w || 6) * 0.5) * (0.4 + 0.6 * k);
-        for (const [c, wm, al] of [[f.color, 1, 0.32], [f.color, 0.55, 0.45], ['#ffffff', 0.18, 0.6]]) {
+        const dk = (() => { const m = /^#?([0-9a-f]{6})/i.exec(f.color || ''); if (!m) return '#202030'; const n = parseInt(m[1], 16); return '#' + [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v * 0.28).toString(16).padStart(2, '0')).join(''); })();
+        for (const [c, wm, al] of [[dk, 1.15, 0.85], [f.color, 1, 0.9], ['#ffffff', 0.35, 0.85]]) { // 짙은 외곽선 · 또렷한 몸 · 흰 심 (옅게 비치던 꼬리를 진하게)
           g.fillStyle = hexA(c, al * k); g.beginPath(); g.moveTo(sx, sy);
           g.quadraticCurveTo(ex - dx / L * 6 + nx * W * wm, ey - dy / L * 6 + ny * W * wm, ex, ey);
           g.quadraticCurveTo(ex - dx / L * 6 - nx * W * wm, ey - dy / L * 6 - ny * W * wm, sx, sy); g.closePath(); g.fill();
