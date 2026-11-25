@@ -2021,7 +2021,9 @@ export class Renderer {
   // 표본 사이는 각도 · 길이 · 손 위치를 잘게 나눠 이어서, 한 프레임에 많이 돌아도 끊긴 햇살처럼 보이지 않는다
   weaponTrail(w, p, P, bx, by, gs) {
     const K = P.kind;
-    if (K === 'bow' || K === 'staff' || K === 'tube' || K === 'crossbow' || K === 'orb' || K === 'tome' || K === 'fist' || K === 'whip' || p.swim) { this.trail = []; return; }
+    const stab = K === 'spear' || (p.swingT > 0 && CPOSE[p.swingMove]?.A.a === 'aim') || (p.thrustT || 0) > w.t; // 찌르기: 창끝이 도는 호를 따라 불티를 남기지 않는다 (찌른 방향으로 곧게만)
+    if (p.swingT > 0 && CPOSE[p.swingMove]?.A.a === 'aim') p.thrustT = w.t + 0.35;
+    if (stab || K === 'bow' || K === 'staff' || K === 'tube' || K === 'crossbow' || K === 'orb' || K === 'tome' || K === 'fist' || K === 'whip' || p.swim) { this.trail = []; return; }
     const wa = weaponArt(w.b.weaponId, ITEMS), img = sprite(wa.s, wa.tint || '');
     if (!img) return;
     const L = this.bladeLen(wa, P, img, gs), now = w.t, LIFE = 0.12;
