@@ -46,6 +46,12 @@ import { storageTab, cookTab, craftTab, learnTab, homeClick } from './home.js';
 
 import { markLinks, PASSIVE_LINK_TEXT } from '../data/passives.js';
 const $ = (sel, root = document) => root.querySelector(sel);
+// 얻는 법을 아는 각인만 제단 목록에 나온다 (2026-11-25 · 미확인 ???는 보이지 않는다): 가졌거나 · 재료를 하나라도 만났거나(도감) · 재료를 가지고 있거나
+export function engKnown(id, s) {
+  const e = ENGRAVINGS[id]; if (!e) return false;
+  if ((s.owned?.[id] || 0) > 0 || Object.values(s.slots || {}).includes(id)) return true;
+  return Object.keys(e.recipe || {}).some((r) => s.codex?.echoes?.[r] || (s.echoes?.[r] || 0) > 0);
+}
 
 // 이 각인과 같은 스킬을 주는 각인이 끼워진 스킬 칸 (없으면 null) · skip: 견주지 않을 칸
 function sameSkillSlot(s, id, skip = []) {
@@ -219,17 +225,16 @@ export class Hub {
     // 정리: 몬스터별(기본) · 태그별 · 등급으로 거르기 (부위는 없다: 어느 각인이든 어느 칸에)
     const view = this.altarView === 'tag' ? 'tag' : 'mon', grade = this.altarGrade || 0;
     const wf = this.altarWeapon || 'all'; // 무기 종류로 찾기: 한 각인이 여러 무기에 들어간다 (그 무기로 스킬을 80% 이상 힘으로 쓸 때)
-    const passAll = (id) => !ENGRAVINGS[id].hidden && pass(id) && (!grade || ENGRAVINGS[id].grade === grade) && (wf === 'all' || engravingWeapons(id).includes(wf === 'mine' ? b.wcat : wf));
+    const passAll = (id) => !ENGRAVINGS[id].hidden && engKnown(id, s) && pass(id) && (!grade || ENGRAVINGS[id].grade === grade) && (wf === 'all' || engravingWeapons(id).includes(wf === 'mine' ? b.wcat : wf));
     // 두 단 (PoE 2처럼): 왼쪽은 한 줄짜리 목록, 오른쪽은 고른 각인의 자세한 카드
     const row = (id) => this.engravingRow(id, s);
     const block = (title, sub, ids) => ids.length ? `<h4>${title} <small>${sub ? sub + ' · ' : ''}${ids.length}종</small></h4><div class="cards eng-rows">${ids.map(row).join('')}</div>` : '';
     const byGrade = (ids) => ids.sort((x, y) => ENGRAVINGS[x].grade - ENGRAVINGS[y].grade);
     let groups = '';
-    // 숨은 각인: 얻은(증표를 가진 · 새긴) 것만 보이고 나머지는 ??? 칸 · 힌트 한 줄 (data/hidden.js)
+    // 숨은 각인: 얻은(증표를 가진 · 새긴) 것만 보이고 나머지는 보이지 않는다 (2026-11-25 · data/hidden.js)
     {
       const got = HIDDEN.filter((h) => (s.hidden || {})[h.id] || (s.owned[hiddenEngId(h.id)] || 0) > 0 || (s.echoes[hiddenEcho(h.id)] || 0) > 0);
-      const unk = HIDDEN.length - got.length;
-      groups += `<h4>숨은 각인 <small>${got.length} / ${HIDDEN.length}</small></h4><div class="cards eng-rows">${got.map((h) => row(hiddenEngId(h.id))).join('')}${HIDDEN.filter((h) => !got.includes(h)).map((h) => `<div class="eng-row unknown" data-q="???" style="--g:#5a5068"><span class="er-name">??? <small class="muted">${esc(h.hint)}</small></span></div>`).join('')}</div>${unk ? '<p class="muted">얻는 방법은 알려 주지 않는다. 무언가를 이루면 그 증표가 온다.</p>' : ''}`;
+      if (got.length) groups += `<h4>숨은 각인 <small>${got.length}</small></h4><div class="cards eng-rows">${got.map((h) => row(hiddenEngId(h.id))).join('')}</div>`;
     }
     if (view === 'mon') {
       // 몬스터 각인: 그 몬스터가 사는 지역 → 몬스터 순 / 문양 각인: 계열 잔향 지역
@@ -373,7 +378,7 @@ export class Hub {
   }
   // 목록 한 줄: 등급 색 · 이름(모르면 ???) · 태그 · 스킬 · 재료 준비 여부
   engravingRow(id, s) {
-    const e = ENGRAVINGS[id], known = (s.owned[id] || 0) > 0 || Object.keys(e.recipe).some((eid) => s.codex.echoes[eid]);
+    const e = ENGRAVINGS[id], known = engKnown(id, s);
     const can = Object.entries(e.recipe).every(([eid, n]) => (s.echoes[eid] || 0) >= n), owned = s.owned[id] || 0;
     const sk = SKILLS[engravingSkillFor(id, s.race)], goal = (s.goals || []).includes(id);
     return `<button class="eng-row ${this.altarSel === id ? 'on' : ''} ${known ? '' : 'unknown'}" data-act="aselect" data-id="${id}" data-q="${esc(this.engSearchText(id, s, !known))}" style="--g:${GRADES[e.grade].color}">
@@ -384,7 +389,7 @@ export class Hub {
   }
   engravingCard(id, s, b) {
     const e = ENGRAVINGS[id];
-    const known = (s.owned[id] || 0) > 0 || Object.keys(e.recipe).some((eid) => s.codex.echoes[eid]);
+    const known = engKnown(id, s);
     const owned = s.owned[id] || 0;
     const equipped = Object.values(s.slots).filter((x) => x === id).length;
     const can = Object.entries(e.recipe).every(([eid, n]) => (s.echoes[eid] || 0) >= n);
