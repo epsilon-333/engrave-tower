@@ -36,4 +36,17 @@ const mkWorld = (eng = {}, extra = {}) => new World({ build: computeBuild({ race
   ok(Math.hypot(al.x - e.x, al.y - e.y) < d0 - 10 || Math.hypot(al.x - e.x, al.y - e.y) < 110, '적을 보면 스스로 그쪽으로 간다');
 }
 
+// 4) 도약하던 몬스터가 기절 · 끊김으로 기술이 사라져도 공중에 멈춰 남지 않는다
+{
+  const w = mkWorld(); for (let i = 0; i < 30; i++) w.step(idle);
+  const e = w.makeEnemy('slime', w.player.x + 60, w.player.y); w.enemies.push(e);
+  e.jumpH = 24; e.mv = null; // 뛰던 중에 기술이 끊겼다
+  for (let i = 0; i < 60; i++) w.step(idle);
+  ok(!e.jumpH, `끊긴 도약은 땅으로 내려앉는다 (높이 ${e.jumpH})`);
+  const p = w.player; p.hop = { t: 0, dur: 0.3, x0: p.x, y0: p.y, x1: p.x, y1: p.y, h: 10 };
+  ok(w.castSkillId('comboSlash', 0) === false, '뛰어내리는 중엔 다른 기술이 끼어들지 않는다');
+  for (let i = 0; i < 40; i++) w.step(idle);
+  ok(!p.hop && !p.air, `뛰어내린 뒤 땅에 선다 (높이 ${p.air})`);
+}
+
 if (bad) { console.log(`${bad}개 실패`); process.exitCode = 1; } else console.log('ALL OK');

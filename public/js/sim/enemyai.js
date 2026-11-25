@@ -71,6 +71,8 @@ export const EnemyAiMethods = {
       if (e.exposedT > 0) e.exposedT -= DT;
       if (e.passives && !e.dead) this.bossPassiveTick(e);
       if (e.mirrorT > 0) e.mirrorT -= DT; // 반사 방패: 몸이 거울처럼 번쩍인다 (렌더러)
+      // 공중에 멈춘 채 남지 않게: 뛰는 중이면 높이가 매 순간 바뀐다 · 도약이 기절 · 끊김 · 다른 기술로 바뀌어 높이가 0.25초 넘게 그대로면 땅으로 내려앉힌다
+      if (e.jumpH) { if (e.jumpH === e.jumpLast) { if ((e.jumpHold = (e.jumpHold || 0) + DT) > 0.25) e.jumpH = Math.max(0, e.jumpH - DT * 200); } else e.jumpHold = 0; e.jumpLast = e.jumpH; }
       if (e.rooted > 0) e.rooted -= DT;
       const dot = burn + poison + bleed + curse;
       if (dot > 0) this.damageEnemy(e, dot * DT, 'true', { src: 'dot' });

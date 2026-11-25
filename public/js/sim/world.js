@@ -1701,7 +1701,7 @@ export class World {
   }
   dismount() { const p = this.player; if (!p.riding) return; p.riding = null; this.emit({ t: 'mountOff', x: p.x, y: p.y }); }
 
-  castSkillId(id, slot) { this.pHit = true; const tok = this.curTok = (this.tokN = (this.tokN || 0) + 1), n0 = this.projs.length; try { if (this.player.eating) return false; return this.castSkillId0(id, slot); } finally { for (let i = n0; i < this.projs.length; i++) if (this.projs[i].owner === 'p') this.projs[i].tok = tok; this.pHit = false; this.curTok = null; } } // 조준해서 쓴 스킬 한 번 = 표 하나
+  castSkillId(id, slot) { this.pHit = true; const tok = this.curTok = (this.tokN = (this.tokN || 0) + 1), n0 = this.projs.length; try { if (this.player.eating) return false; const P0 = this.player; if (P0.hop || P0.drop || P0.fallInto || P0.leap) return false; /* 뛰어내리는 · 도약하는 중엔 다른 기술을 못 쓴다 (돌진 · 연속베기가 먼저 돌아 공중에 멈춘 채 남던 버그) */ return this.castSkillId0(id, slot); } finally { for (let i = n0; i < this.projs.length; i++) if (this.projs[i].owner === 'p') this.projs[i].tok = tok; this.pHit = false; this.curTok = null; } } // 조준해서 쓴 스킬 한 번 = 표 하나
   // 캐릭터 몸 동작 (렌더러가 읽는다): kind, 진행 시간, 길이
   motion(kind, dur, extra = {}) {
     if (!kind) return;
