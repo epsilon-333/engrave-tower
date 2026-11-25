@@ -430,6 +430,14 @@ export class World {
     if (hpFrac != null && this.player && this.tmpRebuild) this.player.hp = Math.max(1, Math.min(this.d.maxHp, hpFrac * this.d.maxHp)); // 최대 체력이 바뀌어도 비율 그대로
     if (this.player) this.player.hp = Math.min(this.player.hp, this.d.maxHp);
     if (this.player && this.mode === 'plaza') this.player.hp = this.d.maxHp;
+    if (this.allies && !this.tmpRebuild) this.dropOrphanSummons();
+  }
+  // 펫 · 소환체를 준 각인(스킬)을 빼면 그 소환체는 바로 사라진다 (쓰러질 때까지 남는 부하도 · 저장의 minions 배열은 그 자리에서 줄인다)
+  dropOrphanSummons() {
+    const have = new Set([...(this.b.skills || []), ...(this.b.innateSkills || []), this.b.weapon?.skill, 'weapon']), gone = (o) => o.sk && !have.has(o.sk);
+    for (const a of this.allies) if (gone(a) && a.t > 0) { a.t = 0; this.emit({ t: 'summonFx', x: a.x, y: a.y, kind: a.kind, elem: a.elem, out: true }); }
+    this.allies = this.allies.filter((a) => a.t > 0);
+    for (let i = this.minions.length - 1; i >= 0; i--) if (gone(this.minions[i])) this.minions.splice(i, 1);
   }
 
   emit(e) {
@@ -3136,7 +3144,7 @@ export class World {
   // 사령술사: 영혼을 되살린다 — 공격력은 그대로, 체력은 절반, 첫 한 대는 보호막. 쓰러질 때까지 남고 다른 곳에 가도 따라온다
   // 사령술사의 부하를 세운다 (기록 m은 저장에 남아 다른 곳에서도 다시 선다) · 첫 한 대는 보호막
   spawnMinion(m, x, y, i = 0) {
-    this.allies.push({ id: this.nextId++, kind: m.kind, perm: true, mref: m, defId: m.defId, hp: m.maxHp, maxHp: m.maxHp, x, y, t: 1e9, max: 1e9, shield1: true, atk: m.atk, cd: 0.3 + i * 0.15, phase: i, dir: 1, r: m.r || 6, scale: m.scale || 1 });
+    this.allies.push({ id: this.nextId++, kind: m.kind, perm: true, mref: m, defId: m.defId, hp: m.maxHp, maxHp: m.maxHp, x, y, t: 1e9, max: 1e9, shield1: true, sk: m.sk, atk: m.atk, cd: 0.3 + i * 0.15, phase: i, dir: 1, r: m.r || 6, scale: m.scale || 1 });
   }
 
   // 다른 사람이 쏜 투사체 (보이기만 · 맞히지 않는다)

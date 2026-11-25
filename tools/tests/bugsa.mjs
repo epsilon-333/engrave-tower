@@ -70,4 +70,16 @@ const mkWorld = (eng = {}, extra = {}) => new World({ build: computeBuild({ race
   ok(computeBuild({ race: 'orc', level: 100, alloc: {}, engravings: {} }).derived.loadCap > computeBuild({ race: 'orc', level: 1, alloc: {}, engravings: {} }).derived.loadCap, '레벨이 오르면 한도가 는다');
 }
 
+// 6) 소환체를 준 각인(스킬)을 빼면 그 소환체가 바로 사라진다
+{
+  const w = mkWorld(); for (let i = 0; i < 30; i++) w.step(idle);
+  const sk = (w.b.skills || []).find(Boolean) || null;
+  w.allies.push({ id: w.nextId++, kind: 'ghost', x: w.player.x, y: w.player.y, t: 99, max: 99, atk: 1, cd: 0, phase: 0, dir: 1, sk: 'notMySkill' });
+  w.allies.push({ id: w.nextId++, kind: 'ghost', x: w.player.x, y: w.player.y, t: 99, max: 99, atk: 1, cd: 0, phase: 0, dir: 1, sk });
+  const m = { kind: 'soul', maxHp: 10, atk: 1, sk: 'notMySkill' }; w.minions.push(m); w.spawnMinion(m, w.player.x, w.player.y);
+  w.setBuild(w.b);
+  ok(!w.allies.some((a) => a.sk === 'notMySkill') && !w.minions.includes(m), '뺀 각인의 소환체 · 부하는 사라진다');
+  ok(!sk || w.allies.some((a) => a.sk === sk), '끼운 각인의 소환체는 남는다');
+}
+
 if (bad) { console.log(`${bad}개 실패`); process.exitCode = 1; } else console.log('ALL OK');

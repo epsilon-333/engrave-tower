@@ -228,9 +228,9 @@ export const SkillMethods = {
           const elem = op.kind === 'spiritKing' ? ELEM_CYCLE[this.rng.int(0, 2)] : op.elem;
           if (op.kind === 'spiritKing') this.emit({ t: 'banner', text: `${ELEM[elem].name}의 정령왕 강림`, color: ELEM[elem].color });
           const hp = op.kind === 'skeleton' ? this.d.maxHp * 0.35 : op.kind === 'lich' ? this.d.maxHp * 0.8 : op.kind === 'lichMage' ? this.d.maxHp * 0.6 : op.kind === 'grasper' ? this.d.maxHp * 0.3 : 0, atk = ctx.atk * op.mul * (op.scaleRes ? ctx.resMul : 1) * ctx.bonus;
-          if (op.perm && hp > 0) { const m = { kind: op.kind, maxHp: hp, atk, r: op.kind === 'lich' ? 8 : 6, scale: op.kind === 'lichMage' ? 1.25 : 1 }; this.minions.push(m); this.spawnMinion(m, p.x + Math.cos(a) * 16, p.y + Math.sin(a) * 16, i); }
+          if (op.perm && hp > 0) { const m = { kind: op.kind, maxHp: hp, atk, r: op.kind === 'lich' ? 8 : 6, scale: op.kind === 'lichMage' ? 1.25 : 1, sk: ctx.id }; this.minions.push(m); this.spawnMinion(m, p.x + Math.cos(a) * 16, p.y + Math.sin(a) * 16, i); }
           else this.allies.push({ id: this.nextId++, kind: op.kind, perm: !!op.perm, elem, hp, maxHp: hp, x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, t: op.dur, max: op.dur,
-            atk, cd: 0.3 + i * 0.2, phase: a, dir: 1 });
+            atk, cd: 0.3 + i * 0.2, phase: a, dir: 1, sk: ctx.id });
           this.emit({ t: 'summonFx', x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, kind: op.kind, elem, big: op.kind === 'spiritKing' || op.kind === 'lich' });
         }
         break;
@@ -295,7 +295,7 @@ export const SkillMethods = {
           const a = (i / list.length) * Math.PI * 2 + 0.5;
           let x = p.x + Math.cos(a) * 20, y = p.y + Math.sin(a) * 20;
           if (this.blocked(x, y, 5)) { x = p.x; y = p.y; }
-          const m = { kind: 'soul', defId, maxHp: this.d.maxHp * (defId === 'boneGuard' ? 0.6 : 0.4), atk: ctx.atk * (defId === 'boneGuard' ? 0.5 : 0.7) * ctx.bonus, r: 6, scale: defId === 'boneGuard' ? 1.2 : 1 };
+          const m = { kind: 'soul', defId, maxHp: this.d.maxHp * (defId === 'boneGuard' ? 0.6 : 0.4), atk: ctx.atk * (defId === 'boneGuard' ? 0.5 : 0.7) * ctx.bonus, r: 6, scale: defId === 'boneGuard' ? 1.2 : 1, sk: ctx.id };
           this.minions.push(m); this.spawnMinion(m, x, y, i);
           this.emit({ t: 'summonFx', x, y, kind: 'soul', big: i === 0 });
         });
