@@ -227,7 +227,7 @@ export const ORIG_SKILLS = {
   m_mirrorKnight: { id: 'o_glare', name: '은빛 눈부심', mo: 'bash', fx: 'holy', elem: 'light',
     desc: '방패로 빛을 비춰 앞쪽 100의 적을 2초 약하게 하고(30% · 약화) 앞의 적을 친다(120% · 약한 적엔 1.3배 · 밀쳐냄).', do: O('glareBash', { mul: 0.3, mul2: 1.2 }) },
   m_clockSoldier: { id: 'o_spring', kind: 'body', name: '기공 거대 주먹', mo: 'bash', fx: 'smash',
-    desc: '0.7초 동안 주먹에 기를 모은다(그동안 이동 -65%). 흐릿한 주황빛 거대 주먹을 앞으로 날려 길 위의 적을 모두 꿰뚫고(공격력 430%) 밀어낸다 · 거리 240.', do: O('spiritFist', { mul: 4.3, range: 240, kb: 90 }), marks: ['ranged', 'scale:str'] },
+    desc: '0.7초 동안 주먹에 기를 모은다(그동안 이동 -65%). 흐릿한 주황빛 거대 주먹을 앞으로 날려 길 위의 적을 모두 꿰뚫고(공격력 430%) 밀어내며 0.6초 경직(정예 · 보스는 35%) · 거리 240.', do: O('spiritFist', { mul: 4.3, range: 240, kb: 90 }), marks: ['ranged', 'scale:str'] },
   sWarShout: { id: 'o_rallyPull', name: '모여라 외침', mo: 'roar', fx: 'roar',
     desc: '둘레 150의 적을 외쳐 내게 끌어당기고 나를 노리게 한다(20%). 0.8초 뒤 둘레 45 안에 온 적에 60% · 0.5초 기절.', do: O('rallyPull', { mul: 0.2, mul2: 0.6 }) },
   sSpinBlade: { id: 'o_hoverBlade', name: '머무는 칼바퀴', mo: 'throw', fx: 'spin',
