@@ -777,6 +777,12 @@ details.fold[open] > summary .f-close { display: inline; }
 #guide em { font-style: normal; color: #ffd76a; }
 #guide .g-act { display: flex; justify-content: flex-end; gap: 8px; }
 body.touch #guide { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+#guide.forced { border-color: #ffd76a; box-shadow: 0 2px 0 #000, 0 0 10px #ffd76a55; }
+#guide.nudge { animation: gnudge .35s; }
+#guide .g-nudge { color: #ff9a6a; }
+#guide.forced.raise { bottom: 120px; }
+body.touch #guide.forced.raise { bottom: auto; top: calc(110px + env(safe-area-inset-top, 0px)); }
+@keyframes gnudge { 0%, 100% { transform: translateX(-50%); } 25% { transform: translateX(calc(-50% - 6px)); } 75% { transform: translateX(calc(-50% + 6px)); } }
 /* ───── UI 다듬기 (2026-11-23) ───── */
 /* 창 아래 닫기 줄은 내용이 길어도 늘 보이게 (휴대폰에서 닫기 버튼이 스크롤 아래로 숨던 것) */
 .modal > .actions:last-child, .modal > .row:last-child:has([data-close]) { position: sticky; bottom: -24px; z-index: 1; margin: 4px -28px -24px; padding: 10px 28px 14px; background: var(--panel); box-shadow: 0 -10px 12px -6px var(--panel); }

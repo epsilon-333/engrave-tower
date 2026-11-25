@@ -159,7 +159,7 @@ export function grantRaceMats(s, kind, cls) {
   const sk = list[0]; if (!sk) return null;
   const eid = classEngravingFor(sk); if (!eid) return null;
   s.classEng[sk] = eid;
-  for (const [k, n] of Object.entries(ENGRAVINGS[eid].recipe || {})) s.echoes[k] = (s.echoes[k] || 0) + n;
+  for (const [k, n] of Object.entries(ENGRAVINGS[eid].recipe || {})) { s.echoes[k] = (s.echoes[k] || 0) + n; ((s.codex ||= {}).echoes ||= {})[k] ||= 1; } // 받은 재료는 이름을 안다
   return eid;
 }
 

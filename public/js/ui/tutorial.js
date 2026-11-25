@@ -2,6 +2,10 @@
 // 끝난 뒤에도 처음 해 보는 조작(새긴 스킬 · 물약 · 스탯 점수 · 지도)은 그때 한 번씩 짧게 알려 준다 (save.tips).
 // 세계(World)와 저장만 보고 판단하고, 화면에는 띠 하나(#tut)만 그린다. 키 이름은 키 바꾸기(settings.js)를 따른다.
 import { keyFor, keyLabel } from '../settings.js';
+import { journeyNow } from '../data/journey.js';
+import { ENGRAVINGS } from '../data/engravings.js';
+import { SKILLS, engravingSkillFor } from '../data/skills.js';
+import { SLOTS } from '../sim/build.js';
 
 // 창 열기 · 상호작용은 세계 밖(main.js)에서 일어나므로 여기에 표시해 둔다
 export const tutFlags = { interact: false, panel: false, quest: false };
@@ -165,7 +169,7 @@ export function createTutorial(ctx) {
     const now = performance.now(), dt = Math.min(0.1, last ? (now - last) / 1000 : 0); last = now;
     const s = ctx.save(), T = s?.tutorial, w = ctx.world();
     if (!s || !w || w.state !== 'play' || ctx.paused()) { hide(); return; }
-    if (!T || T.done) { if (T?.done && !w.pvp && !w.practice && !s.guideOff) tickTips(dt, w, s); else hide(); return; }
+    if (!T || T.done) { if (T?.done && !w.pvp && !w.practice && !s.guideOff && !firstEngState.phase) tickTips(dt, w, s); else hide(); return; }
     let step = STEPS[T.step];
     if (!step) { finish(true); return; }
     if (step.house ? !c.inHouse() : w.zone?.id !== 'world') { // 이 단계를 할 곳이 아니다: 집 단계인데 이미 밖이면 넘어간다
@@ -272,15 +276,112 @@ export function createGuide(ctx) {
     Object.assign(box.style, { left: `${r.left - 4}px`, top: `${r.top - 4}px`, width: `${r.width + 8}px`, height: `${Math.min(r.height, innerHeight - r.top) + 8}px` });
     box.hidden = false;
   }
+  // ── 첫 각인 안내 (건너뛸 수 없다 · 그 동작을 해야 넘어간다) ──
+  let fe = null; // { phase, el, spec, nudgeT }
+  function forced(s, key) {
+    const w = ctx.world?.();
+    const presses = ctx.skillPresses?.() || 0;
+    const used = !!(w && Object.keys(w.player?.cdMax || {}).length) || (fe?.phase === 'use' && presses > fe.presses0); // 써 봤거나 · 키를 눌러 봤다 (자원이 모자라 안 나가도)
+    let phase = firstEngPhase(s, { panel: key, altarSel: ctx.altarSel?.(), used });
+    if (phase === 'done') { s.firstEngTut = { ...(s.firstEngTut || {}), used: 1, done: 1 }; (s.guides ||= {})['tab:altar'] = 1; ctx.writeSave(); ctx.banner?.({ text: '첫 각인을 새겼다!', sub: '잔향을 모아 공명 제단에서 각인을 더 새기자 · 노란 화살표가 다음 할 일', t: 5, color: '#f6dfae' }); phase = null; }
+    if (phase && !(w && (w.state === 'play' || key))) phase = null; // 싸움 밖 화면(죽음 등)에선 잠깐 숨긴다
+    firstEngState.phase = phase;
+    if (!phase) { if (fe) { fe = null; card.hidden = true; box.hidden = true; card.classList.remove('forced', 'raise'); } return false; }
+    if (!fe || fe.phase !== phase) {
+      fe = { phase, spec: firstEngSpec(phase, s, ctx.touch()), nudgeT: 0, presses0: presses };
+      if (phase === 'select') ctx.prepAltar?.(s.flags.firstEng); // 목록을 「새길 수 있음」으로 · 그 각인이 보이게
+      if (phase === 'rune' || phase === 'open') { if (!s.follow) s.follow = 'altarEng'; }
+      ctx.sfx?.('open', { vol: 0.4, rate: 1.5 });
+      fe.html = null;
+    }
+    const sp = fe.spec;
+    fe.el = sp.sel ? document.querySelector(sp.sel) : null;
+    if (fe.el && !fe.scrolled) { fe.el.scrollIntoView?.({ block: 'center' }); fe.scrolled = true; }
+    const nudge = fe.nudgeT > Date.now();
+    const html = `<small>첫 각인 · 하나씩 따라 하기</small><b>${nudge ? '<span class="g-nudge">여기를 누르자 → </span>' : ''}${sp.text}</b>${sp.btn ? `<span class="g-act"><button class="sm" data-gforce="${sp.act}">${sp.btn}</button></span>` : ''}`;
+    if (html !== fe.html) { card.innerHTML = html; fe.html = html; }
+    card.hidden = false; card.classList.add('forced'); card.classList.toggle('raise', !ALTAR_PHASES.has(phase)); card.classList.toggle('nudge', nudge);
+    cur = null;
+    const el = fe.el;
+    if (el && el.isConnected && el.getBoundingClientRect().width) { const r = el.getBoundingClientRect(); Object.assign(box.style, { left: `${r.left - 4}px`, top: `${r.top - 4}px`, width: `${r.width + 8}px`, height: `${Math.min(r.height, innerHeight - r.top) + 8}px` }); box.hidden = false; }
+    else box.hidden = true;
+    return true;
+  }
+  // 이 구간엔 강조한 것 말고 다른 단추는 듣지 않고 짧게 다시 짚는다
+  document.addEventListener('click', (e) => {
+    if (!fe) return;
+    const t = e.target;
+    if (card?.contains(t)) {
+      const a = t.dataset?.gforce; if (!a) return;
+      const s = ctx.save(); s.firstEngTut ||= {};
+      if (a === 'ack') s.firstEngTut.ack = 1;
+      if (a === 'seenMats') s.firstEngTut.seenMats = 1;
+      ctx.writeSave(); e.stopPropagation(); return;
+    }
+    if (!ALTAR_PHASES.has(fe.phase) && !fe.spec.btn) return;
+    const hit = t.closest?.('button, [data-act], a, summary, input, select');
+    if (!hit) return;
+    if (fe.el && (fe.el === hit || fe.el.contains(hit))) return;
+    e.preventDefault(); e.stopPropagation();
+    fe.nudgeT = Date.now() + 1400; ctx.sfx?.('click', { vol: 0.3, rate: 0.7 });
+  }, true);
+
   setInterval(() => {
     const s = ctx.save?.();
     if (!s) { if (cur) close(false); return; }
     let key = null; try { key = ctx.current(); } catch { key = null; }
+    ensure();
+    if (forced(s, key)) return;
     if (cur && cur.key !== key) close(false); // 창을 닫거나 다른 탭으로: 다음에 다시 열면 또 보인다
     if (cur) { if (!cur.el?.isConnected && cur.el) cur.el = find(cur.steps[cur.i]); place(); return; }
-    if (!key || s.guideOff || s.guides?.[key] || !GUIDES[key]) return;
+    if (!key || s.guideOff || s.guides?.[key] || !GUIDES[key]) { if (!cur) { card.hidden = true; box.hidden = true; } return; }
     if (s.tutorial && !s.tutorial.done && key !== 'quest') return; // 몸풀기 중에는 퀘스트 창만
     ensure(); cur = { key, steps: GUIDES[key], i: 0 }; draw();
   }, 250);
   return { close };
+}
+
+// ───── 첫 각인 새기기 안내 (2026-11-25) ─────
+// 사냥을 알리기 → 재료 → 루네 → 제단 → 목록에서 그 각인 → 재료 → 새기기 → 장착 → 창 닫기 → 스킬 써 보기.
+// 건너뛸 수 없고 그 동작을 해야 넘어간다 (창 안내 끄기 save.guideOff 와 상관없이). 상태는 저장(s.firstEngTut: ack · seenMats · used · done)과 지금 창만 보고 정한다
+export const firstEngState = { phase: null };
+const ALTAR_PHASES = new Set(['select', 'full', 'engrave', 'equip', 'close']);
+// ui: { panel: 지금 열린 창 이름('tab:altar' …) · altarSel: 제단에서 고른 각인 · used: 스킬을 써 봤나 }
+export function firstEngPhase(s, ui = {}) {
+  if (!s?.npcJourney || s.firstEngTut?.done) return null;
+  if (s.tutorial && !s.tutorial.done) return null; // 몸풀기가 먼저
+  const T = s.firstEngTut || {}, eid = s.flags?.firstEng, J = journeyNow(s);
+  if (!eid || !ENGRAVINGS[eid]) return J?.step.id === 'hunt' && J.stage === 'report' ? 'report' : null;
+  const altar = ui.panel === 'tab:altar';
+  if (!T.ack) return 'mats';
+  if (!((s.owned?.[eid] || 0) > 0)) {
+    if (!altar) return J?.step.id === 'altarEng' && J.stage === 'talk' ? 'rune' : 'open';
+    if (ui.altarSel !== eid) return 'select';
+    return T.seenMats ? 'engrave' : 'full';
+  }
+  const slot = SLOTS.slice(0, 4).find((k) => s.slots?.[k] === eid);
+  if (!slot) return altar ? 'equip' : 'open';
+  if (T.used || ui.used) return 'done';
+  return ui.panel ? 'close' : 'use';
+}
+
+// 단계마다: 글 · 강조할 것(선택자) · 누르는 단추(있으면 그것이 그 단계의 동작)
+function firstEngSpec(phase, s, touch) {
+  const eid = s.flags?.firstEng, E = ENGRAVINGS[eid], nm = E ? `「${E.name}」` : '첫 각인';
+  const slot = SLOTS.slice(0, 4).findIndex((k) => s.slots?.[k] === eid), sk = E && SKILLS[engravingSkillFor(eid, s.race)];
+  const key = touch ? `${Math.max(0, slot) + 1}번 버튼` : keyName(['KeyQ', 'KeyE', 'KeyR', 'KeyF'][Math.max(0, slot)]);
+  const G = touch ? '「확인」 버튼' : keyName('KeyG');
+  switch (phase) {
+    case 'report': return { text: `사냥을 마쳤다! 머리 위 <em>「?」</em>가 뜬 <em>촌장</em>에게 돌아가 <em>${G}</em>로 알리자 · 노란 화살표를 따라가자` };
+    case 'mats': return { text: `${nm} 각인의 <em>재료</em>를 받았다. 종족의 첫 각인이다 · 공명 제단에서 이 재료로 새긴다`, btn: '알겠어요', act: 'ack' };
+    case 'rune': return { text: `각인사 <em>루네</em>에게 가자 · 공명 제단 건물 안 (노란 화살표) · 머리 위 <em>「!」</em>에서 <em>${G}</em>로 말 걸기` };
+    case 'open': return { text: `<em>공명 제단</em>으로 가서 루네 앞에서 <em>${G}</em> · 제단 창을 열자 (노란 화살표)` };
+    case 'select': return { sel: `[data-act="aselect"][data-id="${eid}"]`, text: `각인 목록에서 ${nm}을 누르자 · 오른쪽에 필요한 재료가 보인다` };
+    case 'full': return { sel: '[data-guide="altar-recipe"]', text: '재료 <em>◆</em>가 모두 찼다 (가진 수 / 필요한 수) · 이제 새길 수 있다', btn: '다음', act: 'seenMats' };
+    case 'engrave': return { sel: '[data-guide="altar-engrave"]', text: `<em>「새기기」</em>를 눌러 ${nm}을 몸에 새기자` };
+    case 'equip': return { sel: '[data-guide="altar-equip"]', text: '새긴 각인은 스킬 칸에 끼워야 쓴다 · <em>「장착」</em>을 누르자' };
+    case 'close': return { sel: '[data-guide="hub-close"]', text: `창을 닫자 (<em>${touch ? '✕' : 'Esc'}</em>) · 이제 스킬을 써 볼 차례` };
+    case 'use': return { text: `<em>${key}</em>를 눌러 ${sk ? `「${sk.name}」` : '새 스킬'}을 써 보자 · 자원이 모자라면 평타로 모은다` };
+  }
+  return { text: '' };
 }

@@ -708,6 +708,8 @@ const tutorial = createTutorial({ hasFood: () => Object.keys(save?.bag || {}).so
   follow: () => { const J = journeyNow(save); if (J?.step.to && J.stage === 'do' && !save.follow) save.follow = J.step.id; } });
 // 창을 처음 열 때의 안내: 지금 열린 창 이름
 const guide = createGuide({ save: () => save, touch: () => !!touch, writeSave: () => writeSave(save), sfx,
+  world: () => world, altarSel: () => hub.altarSel, skillPresses: () => skillPresses, banner: (b) => { renderer.banner = b; },
+  prepAltar: () => { hub.altarFilter = 'ready'; hub.altarGrade = 0; hub.altarWeapon = 'all'; hub.altarQ = ''; hub.altarView = 'mon'; if (!panelEl.hidden) hub.render(); }, // 첫 각인 안내: 새길 수 있는 것만 보이게
   current: () => {
     if (!overlay.hidden) { const h = overlay.querySelector('h2')?.textContent || ''; return h === '퀘스트' ? 'quest' : h === '설정' ? 'settings' : h.startsWith('떠돌이 상인') ? 'merchant' : null; }
     if (!panelEl.hidden) return 'tab:' + hub.tab;
@@ -731,6 +733,7 @@ hub.onQuest = () => checkCcMissions();
 hub.onKnack = (act, n = 1) => { for (const id of knackTick((save.knack ||= newKnack()), act, Math.random, n)) onKnackLearned(id); };
 hub.onCodex = () => { const ups = syncLevel(save); if (ups && world) { world.setBuild(buildNow()); renderer.levelUp(world, save.level, ups); } };
 
+let skillPresses = 0;
 let world = null, paused = false, endTimer = 0, last = 0, acc = 0, modal = null;
 // 여정(목표 안내): 등반에서 생긴 일을 기록해 두면 여정이 저장만 보고 판단한다
 function journeyEvent(k, d) {
@@ -752,7 +755,7 @@ function claimJourney() {
     if (r.potion) { bagAdd(lifeOf(), r.potion, 1); sum.potion = r.potion; }
     if (r.firstMats) { // 첫 각인: 종족의 처음 스킬 각인을 새길 재료를 준다 (새기는 것은 여정 2)
       const sk = raceSkills(save.race).find((id) => SKILLS[id] && (SKILLS[id].unlock || 1) <= 1), eid = sk && classEngravingFor(sk);
-      if (eid) { (save.flags ||= {}).firstEng = eid; (save.classEng ||= {})[sk] = eid; for (const [k, n] of Object.entries(ENGRAVINGS[eid].recipe || {})) save.echoes[k] = (save.echoes[k] || 0) + n; sum.names = [...(sum.names || []), `${ENGRAVINGS[eid].name} 재료`]; sum.firstMats = true; }
+      if (eid) { (save.flags ||= {}).firstEng = eid; (save.classEng ||= {})[sk] = eid; for (const [k, n] of Object.entries(ENGRAVINGS[eid].recipe || {})) { save.echoes[k] = (save.echoes[k] || 0) + n; ((save.codex ||= {}).echoes ||= {})[k] ||= 1; } sum.names = [...(sum.names || []), `${ENGRAVINGS[eid].name} 재료`]; sum.firstMats = true; }
     }
     if (r.mats) { const eid = grantRaceMats(save, r.mats, world.b.cls); if (eid) sum.names = [...(sum.names || []), `${ENGRAVINGS[eid].name} 재료`]; } // 종족 스킬 각인 재료 (공명 제단에서 새긴다)
     if (r.skill) { const got = grantRaceSkills(save, r.skill); if (got.length) { sum.skill = (sum.skill || 0) + got.length; if (r.skill === 'ult') sum.ult = 1; sum.names = [...(sum.names || []), ...got.map((e) => ENGRAVINGS[e]?.name)]; } } // 종족 스킬 각인
@@ -3782,6 +3785,7 @@ function tick(ts) {
       if (!paused) readInput();
       while (acc >= DT) {
         snapPrev(world);
+        if (!paused && (input.s1 || input.s2 || input.s3 || input.s4)) skillPresses++; // 첫 각인 안내: 스킬 키를 눌러 봤나 (자원이 모자라도)
         world.step(paused ? IDLE_INPUT : input);
         input.dash = false; input.interact = false; input.skill = false; input.s1 = false; input.s2 = false; input.s3 = false; input.s4 = false; input.wskill = false; input.mount = false;
         acc -= DT;
