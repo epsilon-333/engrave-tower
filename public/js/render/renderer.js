@@ -525,7 +525,12 @@ export class Renderer {
     const p = w.player;
     return !!w.climb?.boss && !w.climb.boss.dead || w.enemies.some((e) => !e.dead && !e.hidden && e.state === 'chase' && Math.hypot(e.x - p.x, e.y - p.y) < 220);
   }
-  draw(w, dt) {
+  draw(w, dt) { // 멈춘 동안(창 · 표지판을 열었을 때 dt=0): 그리면서 생긴 불티 · 연기 · 빛 알갱이는 나이를 먹지 않아 겹겹이 쌓인다 → 그 프레임에 생긴 것은 버린다
+    if (dt > 0) return this.drawFrame(w, dt);
+    const np = this.parts.length, nf = this.fx.length;
+    try { return this.drawFrame(w, dt); } finally { if (this.parts.length > np) this.parts.length = np; if (this.fx.length > nf) this.fx.length = nf; }
+  }
+  drawFrame(w, dt) {
     if (this.calmQueue?.length && !this.banner && !this.inCombat(w)) this.banner = this.calmQueue.shift();
     const main = this.mainG, S = this.S, VW = this.VW, VH = this.VH;
     const p = w.player;
