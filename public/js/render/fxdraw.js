@@ -503,7 +503,10 @@ export const FxMethods = {
       } else if (f.k === 'bloom') { // 빛 번짐: 빠르게 커지며 사라진다
         const rr = f.r * (0.55 + 0.45 * (1 - k * k)), gr = g.createRadialGradient(f.x, f.y, 0, f.x, f.y, rr);
         gr.addColorStop(0, hexA('#ffffff', 0.75 * k)); gr.addColorStop(0.25, hexA(f.color, 0.55 * k)); gr.addColorStop(1, hexA(f.color, 0));
-        g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.translate(f.x, f.y); g.scale(1, 0.75); g.translate(-f.x, -f.y); g.beginPath(); g.arc(f.x, f.y, rr, 0, Math.PI * 2); g.fill(); g.restore();
+        g.save(); g.globalCompositeOperation = 'lighter';
+        if (g.ditherEllipse) { for (const [kr, c, d] of [[1, f.color, 0.3], [0.6, f.color, 0.5], [0.28, '#ffffff', 0.8]]) g.ditherEllipse(f.x, f.y, rr * kr, rr * kr * 0.75, c, d * k); } // 매끈한 빛 원판 대신 들쭉날쭉한 점묘 빛
+        else { g.fillStyle = gr; g.translate(f.x, f.y); g.scale(1, 0.75); g.translate(-f.x, -f.y); g.beginPath(); g.arc(f.x, f.y, rr, 0, Math.PI * 2); g.fill(); }
+        g.restore();
       } else if (f.k === 'starburst') { // 별빛살: 가늘고 날카로운 빛줄기가 뻗었다 줄어든다
         g.save(); g.globalCompositeOperation = 'lighter'; g.translate(f.x, f.y);
         const ext = f.r * (0.4 + 0.6 * Math.sqrt(1 - k));

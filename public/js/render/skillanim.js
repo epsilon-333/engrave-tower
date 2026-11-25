@@ -209,7 +209,7 @@ const DRAW = {
     g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineJoin = 'round';
     for (const [w, c, aa] of [[7, '#f8f070', 0.35], [3, '#fffbd0', 0.8], [1.2, '#ffffff', 1]]) { g.strokeStyle = hexA(c, aa * al); g.lineWidth = w; g.beginPath(); pts.forEach(([px, py], i) => (i ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke(); }
     for (let b = 0; b < 3; b++) { const s = pts[2 + b * 2]; if (!s) continue; let [bx, by] = s; g.strokeStyle = hexA('#fffbd0', 0.6 * al); g.lineWidth = 1.2; g.beginPath(); g.moveTo(bx, by); for (let j = 0; j < 3; j++) { bx += (rr() - 0.5) * 30 + (b - 1) * 8; by += 12 + rr() * 10; g.lineTo(bx, by); } g.stroke(); }
-    const gr = g.createRadialGradient(a.x, a.y, 0, a.x, a.y, a.r * 1.2); gr.addColorStop(0, hexA('#ffffff', 0.7 * al)); gr.addColorStop(0.4, hexA('#f8f070', 0.4 * al)); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(a.x, a.y, a.r * 1.2, a.r * 0.7, 0, 0, Math.PI * 2); g.fill();
+    if (g.ditherEllipse) { for (const [kr, c, d] of [[1.2, '#f8f070', 0.3], [0.7, '#f8f070', 0.45], [0.35, '#ffffff', 0.7]]) g.ditherEllipse(a.x, a.y, a.r * kr, a.r * kr * 0.58, c, d * al); } // 매끈한 빛 타원 대신 들쭉날쭉한 점묘 빛
     g.restore();
   },
   // 얼음 가시: 땅에서 차례로 솟아올랐다가 금이 가며 부서진다
@@ -237,13 +237,13 @@ const DRAW = {
     g.save(); g.globalCompositeOperation = 'lighter';
     const bottom = top + (a.y - top) * drop;
     for (const [mw, c, al] of [[2.2, a.col, 0.25], [1, a.col, 0.55], [0.35, '#ffffff', 0.95]]) { const gr = g.createLinearGradient(a.x - w * mw, 0, a.x + w * mw, 0); gr.addColorStop(0, hexA(c, 0)); gr.addColorStop(0.5, hexA(c, al)); gr.addColorStop(1, hexA(c, 0)); g.fillStyle = gr; g.fillRect(a.x - w * mw, top, w * mw * 2, bottom - top); }
-    if (drop >= 1) { const gr = g.createRadialGradient(a.x, a.y, 0, a.x, a.y, a.r * 1.3); gr.addColorStop(0, hexA('#ffffff', 0.8 * (1 - k))); gr.addColorStop(0.5, hexA(a.col, 0.4 * (1 - k))); gr.addColorStop(1, hexA(a.col, 0)); g.fillStyle = gr; g.beginPath(); g.ellipse(a.x, a.y, a.r * 1.3, a.r * 0.65, 0, 0, Math.PI * 2); g.fill(); }
+    if (drop >= 1 && g.ditherEllipse) { const q = 1 - k; for (const [kr, c, d] of [[1.3, a.col, 0.35], [0.8, a.col, 0.5], [0.4, '#ffffff', 0.75]]) g.ditherEllipse(a.x, a.y, a.r * kr, a.r * kr * 0.5, c, d * q); } // 내려꽂힌 자리: 들쭉날쭉한 점묘 빛
     g.restore();
     if (drop >= 1 && Math.random() < 0.8) R.parts.push({ x: a.x + (Math.random() - 0.5) * a.r * 1.4, y: a.y + (Math.random() - 0.5) * a.r * 0.5, vx: 0, vy: -50 - Math.random() * 60, t: 0.8, max: 0.8, color: Math.random() < 0.5 ? '#ffffff' : a.col, g: -10, glow: true, size: 2 });
   },
   pillarCharge(R, g, a, k) { // 빛기둥 예고: 하늘에서 가는 빛이 흔들리며 내려온다
     g.save(); g.globalCompositeOperation = 'lighter'; const w = 1 + k * 2, al = 0.3 + 0.5 * k * (0.7 + 0.3 * Math.sin(a.t * 40));
-    g.fillStyle = hexA('#fff0a0', al); g.fillRect(a.x - w / 2, a.y - 320, w, 320); g.restore();
+    g.fillStyle = hexA('#fff0a0', al); for (let y = 0; y < 320; y += 3) { const j = Math.round(Math.sin(y * 0.21 + a.t * 30) * 1.5), ww = Math.max(1, Math.round(w * (0.6 + 0.5 * Math.abs(Math.sin(y * 0.13 + a.t * 17))))); g.fillRect(Math.round(a.x - ww / 2 + j), Math.round(a.y - 320 + y), ww, 2); } g.restore(); // 곧은 막대 대신 흔들리며 끊기는 빛줄기
   },
   // 어둠의 문: 바닥에 소용돌이 문이 열리고, 촉수가 솟았다 들어가고, 문이 닫힌다
   portal(R, g, a, k) {
