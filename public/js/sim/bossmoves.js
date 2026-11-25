@@ -246,7 +246,7 @@ function bitsMove(w, e, bits, o) {
     const p = w.player;
     for (const b of bits) {
       if (b.gone) continue;
-      if (o.homing) { const dx = p.x - b.x, dy = p.y - b.y, l = Math.hypot(dx, dy) || 1, sp = b.home; b.vx += ((dx / l) * sp - b.vx) * 2 * DT; b.vy += ((dy / l) * sp - b.vy) * 2 * DT; }
+      if (o.homing && !b.teled) { const dx = p.x - b.x, dy = p.y - b.y, l = Math.hypot(dx, dy) || 1, sp = b.home; b.vx += ((dx / l) * sp - b.vx) * 2 * DT; b.vy += ((dy / l) * sp - b.vy) * 2 * DT; }
       if (o.boomerang && b.back != null && el - t0 > b.back && !b.returning) { b.returning = true; b.hitSet = null; }
       if (b.returning) { const dx = e.x - b.x, dy = e.y - b.y, l = Math.hypot(dx, dy) || 1; b.vx = (dx / l) * 200; b.vy = (dy / l) * 200; if (l < 14) { b.gone = true; continue; } }
       const nx = b.x + b.vx * DT, ny = b.y + b.vy * DT;
@@ -256,8 +256,8 @@ function bitsMove(w, e, bits, o) {
       w.emit({ t: 'bossBit', x: b.x, y: b.y, kind: b.kind, r: b.r, rot: b.rot });
       if (o.pop && b.life != null) {
         b.life -= DT;
-        if (b.life <= o.pop.tele && !b.teled) { b.teled = true; b.vx *= 0.2; b.vy *= 0.2; b.home = 0; tele(w, b.x, b.y, o.pop.r, o.pop.tele); }
-        if (b.life <= 0) { b.gone = true; boom(w, e, b.x, b.y, o.pop.r, o.pop.mul, 'nova', 'curse'); }
+        if (b.life <= o.pop.tele && !b.teled) { b.teled = true; b.vx = 0; b.vy = 0; b.home = 0; b.px = b.x; b.py = b.y; tele(w, b.x, b.y, o.pop.r, o.pop.tele); } // 예고가 뜨면 그 자리에 멈춘다 (예고 원 밖으로 끌려와 터지지 않게)
+        if (b.life <= 0) { b.gone = true; boom(w, e, b.px ?? b.x, b.py ?? b.y, o.pop.r, o.pop.mul, 'nova', 'curse'); }
         continue;
       }
       if (o.mul > 0) { const hs = (b.hitSet ||= new Set()); if (!hs.has(p) && Math.hypot(p.x - b.x, p.y - b.y) < b.r + (p.r || 5) && !(p.dashT > 0)) { hs.add(p); w.hurtPlayer(e.atk * o.mul, 'phys', e, { status: o.status, fromX: b.x, fromY: b.y }); setTimeoutSim(w, 0.6, () => hs.delete(p)); } }

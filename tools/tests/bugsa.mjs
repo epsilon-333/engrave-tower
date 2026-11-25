@@ -49,4 +49,18 @@ const mkWorld = (eng = {}, extra = {}) => new World({ build: computeBuild({ race
   ok(!p.hop && !p.air, `뛰어내린 뒤 땅에 선다 (높이 ${p.air})`);
 }
 
+// 5) 처치하면 터지는 효과: 죽은 자리에서 터지고 · 튀는 파편은 유도 없이 사방으로 곧게 · 스킬 그림(sk)이 붙지 않는다
+{
+  const w = mkWorld(); for (let i = 0; i < 30; i++) w.step(idle);
+  const e = w.makeEnemy('slime', w.player.x + 80, w.player.y); w.enemies.push(e);
+  w._sk = 'someSkill'; const evs = []; const em = w.emit.bind(w); w.emit = (ev) => { evs.push(ev); return em(ev); };
+  const n0 = w.projs.length;
+  w.doAction({ strike: { r: 30, mul: 1, elem: 'fire', fx: 'burst', type: 'mag' }, shards: { n: 4, mul: 0.5, type: 'phys' } }, null, e);
+  w.emit = em; w._sk = null;
+  const aoe = evs.find((v) => v.t === 'skillAoe');
+  ok(aoe && aoe.x === e.x && aoe.y === e.y && !aoe.sk, '처치 폭발은 죽은 자리에서 · 스킬 그림 없이');
+  const sh = w.projs.slice(n0);
+  ok(sh.length === 4 && sh.every((q) => !q.homing && q.straight && q.x === e.x), '파편은 유도 없이 곧게 · 터진 자리에서');
+}
+
 if (bad) { console.log(`${bad}개 실패`); process.exitCode = 1; } else console.log('ALL OK');

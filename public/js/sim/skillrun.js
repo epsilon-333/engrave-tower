@@ -838,7 +838,13 @@ export const SkillMethods = {
     return false;
   },
 
+  // 각인 · 무기가 저절로 일으키는 효과: 그때 돌던 스킬의 사건(sk)이 아니다 — 스킬 그림(skfx)이 내 몸 · 내 방향에 그리던 것을 막고 터진 자리에 고정한다
   doAction(a, target, pos) {
+    const ps = this._sk; this._sk = null;
+    if (pos && pos !== this.player) pos = { x: pos.x, y: pos.y, dir: pos.dir };
+    try { return this.doAction0(a, target, pos); } finally { this._sk = ps; }
+  },
+  doAction0(a, target, pos) {
     const d = this.d, s = this.s;
     if (a.buff) { // 잠깐 강해진다 (무기 · 각인 효과)
       const p = this.player, B = a.buff, prev = p.buffs[B.id];
@@ -868,10 +874,10 @@ export const SkillMethods = {
     }
     if (a.cloud) this.addCloud(pos.x, pos.y, a.cloud.r * (1 + d.cloudSize), 4 + (s.toxicity || 0) * 0.8 + d.magAtk * 0.2, a.cloud.dur, 'p');
     if (a.shards) {
-      const aimed = a.shards.dash && pos.dir != null; // 대시하며 던지는 단검: 대시한 쪽으로 부채꼴
+      const a0 = this.rng.range(0, Math.PI * 2), aimed = a.shards.dash && pos.dir != null; // 대시하며 던지는 단검: 대시한 쪽으로 부채꼴
       for (let i = 0; i < a.shards.n; i++) {
-        const ang = aimed ? pos.dir + (i - (a.shards.n - 1) / 2) * 0.16 : this.rng.range(0, Math.PI * 2), spd = aimed ? 300 : 200;
-        this.projs.push({ owner: 'p', x: pos.x, y: pos.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 0.9, dmg: (a.shards.type === 'phys' ? d.physAtk : d.magAtk) * a.shards.mul, type: a.shards.type, kind: aimed ? 'knife' : undefined, pierce: 0, hit: new Set(), color: '#8ad8ff', homing: !aimed, noTrigger: true });
+        const ang = aimed ? pos.dir + (i - (a.shards.n - 1) / 2) * 0.16 : a0 + (i / a.shards.n) * Math.PI * 2 /* 터진 자리에서 사방으로 고르게 */, spd = aimed ? 300 : 200;
+        this.projs.push({ owner: 'p', x: pos.x, y: pos.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 0.9, dmg: (a.shards.type === 'phys' ? d.physAtk : d.magAtk) * a.shards.mul, type: a.shards.type, kind: aimed ? 'knife' : undefined, pierce: 0, hit: new Set(), color: '#8ad8ff', straight: true, noTrigger: true }); // 유도 없이 곧게 (2026-11-25: 다른 적을 쫓아가던 것)
       }
     }
   },

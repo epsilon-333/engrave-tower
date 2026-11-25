@@ -3363,7 +3363,7 @@ export class World {
           pr.vx += (Math.cos(a) * sp - pr.vx) * k; pr.vy += (Math.sin(a) * sp - pr.vy) * k;
         }
       }
-      else if (pr.owner === 'p' && !pr.boomerang && !pr.ghost && this.f.has('aimAssist')) { // 각인 「바람 읽기」: 앞쪽 3.5칸 안의 적에게 살짝 휜다 (초당 최대 2.5라디안)
+      else if (pr.owner === 'p' && !pr.boomerang && !pr.ghost && !pr.straight && this.f.has('aimAssist')) { // 각인 「바람 읽기」: 앞쪽 3.5칸 안의 적에게 살짝 휜다 (초당 최대 2.5라디안)
         const sp = Math.hypot(pr.vx, pr.vy) || 1, ux = pr.vx / sp, uy = pr.vy / sp;
         let best = null, bd = 56;
         for (const e of this.enemies) { if (e.dead || e.hidden || pr.hit.has(e.id)) continue; const ex = e.x - pr.x, ey = e.y - 4 - pr.y, dd = Math.hypot(ex, ey); if (dd < bd && (ex * ux + ey * uy) > dd * 0.5) { bd = dd; best = e; } }
