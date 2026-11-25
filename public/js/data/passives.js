@@ -6,12 +6,12 @@ export const PASSIVE_BOOST = 1.3;
 
 // 스킬을 떼고 패시브만 남기는 각인 (각 스킬은 다른 각인이 여전히 준다 · tools/tests/passive.mjs)
 export const PASSIVE_CONVERT = [
-  'stillStone', 'ironHide', 'windRead', 'hunterMark', 'batWing', 'chiefWill', 'leechFang', 'queenCrown', 'sAfterimage', 'mirrorShell',
-  'meltCore', 'witchEye', 'sFrostRing', 'ghoulHunger', 'slimeArmor', 'kBrace', 'sWeakEye', 'rotSporeHeart', 'kAcidRain', 'leechLordMaw',
-  'cinderGlove', 'demonHorn', 'sFireWord', 'impWings', 'mirrorPupil', 'ogreFist', 'freezeCrystal', 'sPainChain', 'necroHeart', 'kBoneSpear',
-  'manaSpring', 'sSeeker', 'bloodMagic', 'steamEngine', 'kElemMark', 'bloodFrost', 'septicClaw', 'sPounce', 'balanceSigil', 'allroundSigil',
-  'kTimeBlades', 'extremeSigil', 'berserkBlood', 'echoAmplifier', 'quickHands', 'sLunge', 'sWindShoe', 'kSoulRend', 'sBoilBreath', 'giantGrip',
-  'shadowStrike', 'sBehind', 'slimeRebirth', 'riftCore', 'graveContract', 'giantHeart', 'witchCrown', 'm_skyWhale', 'm_shardQueen', 'm_archivist',
+  'stillStone', 'ironHide', 'windRead', 'hunterMark', 'batWing', 'chiefWill', 'leechFang', 'queenCrown', 'impTrick', 'mirrorShell',
+  'meltCore', 'witchEye', 'm_frostWolf', 'ghoulHunger', 'slimeArmor', 'kBrace', 'wogolEye', 'rotSporeHeart', 'kAcidRain', 'leechLordMaw',
+  'cinderGlove', 'demonHorn', 'm_chortShaman', 'impWings', 'mirrorPupil', 'ogreFist', 'freezeCrystal', 'soulFlame', 'necroHeart', 'kBoneSpear',
+  'manaSpring', 'bloodMagic', 'steamEngine', 'kElemMark', 'bloodFrost', 'septicClaw', 'm_mudLurker', 'balanceSigil', 'allroundSigil',
+  'kTimeBlades', 'extremeSigil', 'berserkBlood', 'echoAmplifier', 'quickHands', 'hungryBlade', 'windStep', 'kSoulRend', 'chainEmber', 'giantGrip',
+  'shadowStrike', 'm_shadowPanther', 'slimeRebirth', 'riftCore', 'graveContract', 'giantHeart', 'witchCrown', 'm_skyWhale', 'm_shardQueen', 'm_archivist',
 ];
 export const PASSIVE_CONVERT_SET = new Set(PASSIVE_CONVERT);
 
