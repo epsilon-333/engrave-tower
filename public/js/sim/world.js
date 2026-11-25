@@ -2444,7 +2444,7 @@ export class World {
       const more = p.lsT === this.t; p.lsT = this.t; // 한 번 휘둘러 여러 적을 맞히면 두 번째 적부터는 범위 공격처럼 약하게
       if (ls > 0) this.heal(Math.min(dmg * ls * LIFESTEAL_PER * (opt.src === 'aoe' || more ? 0.35 : 1), d.maxHp * 0.025), 'steal'); // 범위 공격 흡혈은 약하게, 한 번에 최대 체력 2.5%까지
     }
-    if (opt.src === 'attack' && e.def.reflect) this.hurtPlayer(Math.min(dmg * e.def.reflect, d.maxHp * 0.08), 'phys', null, { direct: true });
+    // 상시 반사(def.reflect)는 없앴다 (2026-11-25) — 반사는 예고 있는 기술(반사 방패 mirrorT · 가시 세움 thornsT)만
     if (e.hp <= 0 && !e.puppet) this.killEnemy(e);
     return dmg;
   }

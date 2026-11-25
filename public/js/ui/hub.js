@@ -495,7 +495,7 @@ export class Hub {
           const def = MONSTERS[m], seen = s.codex.kills[m];
           const ec = seen ? `<span style="color:${ECHOES[def.echo.id].color}">◇ ${ECHOES[def.echo.id].name}</span>` : '<span class="muted">◇ ???</span>';
           const cond = def.condEcho && seen ? `<div class="hint">숨겨진 잔향: ${def.condEcho.hint}하면 ${s.codex.echoes[def.condEcho.id] ? ECHOES[def.condEcho.id].name : '???'}</div>` : '';
-          const res = seen ? `<span class="muted">물저 ${def.pres} · 마저 ${def.mres}${def.reflect ? ' · 반사' : ''}</span>` : '';
+          const res = seen ? `<span class="muted">물저 ${def.pres} · 마저 ${def.mres}</span>` : '';
           return `<div class="mon ${def.elite ? 'elite' : ''}"><b>${seen ? def.name : '???'}</b>${def.boss ? ' <span class="warn">탑의 주인</span>' : def.elite ? ' <span class="warn">정예</span>' : ''} ${ec} ${res}${cond}</div>`;
         }).join('');
         const lvWarn = s.level < z.rec ? 'warn' : '';
