@@ -58,7 +58,7 @@ const GROUND = new Set(['splat', 'trap', 'sigil', 'web', 'crack', 'path']);
 export const OrigFxMethods = {
   // 사건 → fx 목록 (+ 조각)
   origFx(ev) {
-    const pal = P(ev.pal), T = ev.dur || { rays: 0.32, burst: 0.4, spikes: 0.7, wall: ev.dur || 2, tether: 0.3, bolt: 0.22, pillar: 0.6, orb: 0.6, swirl: 1, slash: 0.25, splat: 1.2, trap: 3, sigil: 1.5, web: 1.6, crack: 0.9, path: 1.4, fist: 0.3, wing: 0.35, ghost: 0.4 }[ev.s] || 0.4;
+    const pal = P(ev.pal), T = ev.dur || { rays: 0.32, burst: 0.4, spikes: 0.7, wall: ev.dur || 2, tether: 0.3, bolt: 0.22, beam: 0.35, cage: 1.2, star: 1, bell: 1, rock: 0.6, mark: 1, glyph: 1, blade: 1, column: 0.9, gust: 0.6, mirage: 2, pillar: 0.6, orb: 0.6, swirl: 1, slash: 0.25, splat: 1.2, trap: 3, sigil: 1.5, web: 1.6, crack: 0.9, path: 1.4, fist: 0.3, wing: 0.35, ghost: 0.4 }[ev.s] || 0.4;
     const tier = ev.tier || 2, big = tier >= 4 ? 1.25 : tier >= 3 ? 1.1 : 1;
     const f = { k: GROUND.has(ev.s) ? 'ofxG' : 'ofx', ...ev, pal, t: T, max: T, big, seed: Math.random() * 99 };
     this.fx.push(f);
@@ -142,8 +142,8 @@ export const OrigFxMethods = {
         return;
       }
       case 'swirl': { // 소용돌이: 안으로 감겨 드는 팔 (가늘어지는 꼬리 · 고리 없이)
-        const arms = f.n || 4, spin = (f.ccw ? -1 : 1) * t * 6, a0 = Math.min(1, age / 0.15) * Math.min(1, f.t / 0.3);
-        for (let j = 0; j < arms; j++) { const pts = []; for (let i = 0; i <= 10; i++) { const u = i / 10, a = spin + (j / arms) * TAU + u * 2.6, d = R * (1 - u * 0.85); pts.push([x + Math.cos(a) * d, y - 6 + Math.sin(a) * d * 0.55]); } rope(g, pts, 0.6, 2.6 * big, pal, a0 * 0.9); }
+        const arms = Math.min(4, f.n || 4), Rs = Math.min(R, 48), spin = (f.ccw ? -1 : 1) * t * 6, a0 = Math.min(1, age / 0.15) * Math.min(1, f.t / 0.3);
+        for (let j = 0; j < arms; j++) { const pts = []; for (let i = 0; i <= 10; i++) { const u = i / 10, a = spin + (j / arms) * TAU + u * 2.6, d = Rs * (1 - u * 0.85); pts.push([x + Math.cos(a) * d, y - 6 + Math.sin(a) * d * 0.55]); } rope(g, pts, 0.4, 1.6 * big, pal, a0 * 0.75); }
         g.fillStyle = hexA(pal[2], a0); disc(g, x, y - 6, 2.5 * big);
         return;
       }
@@ -167,6 +167,94 @@ export const OrigFxMethods = {
         for (let i = 0; i < n; i++) { const a = t * (9 + i) + i * 2.1, d = R * (0.4 + rnd(f.seed + i) * 0.6), bx = Math.round(x + Math.cos(a) * d), by = Math.round(y + Math.sin(a * 1.3) * d * 0.6);
           g.fillStyle = '#1a1206'; g.fillRect(bx - 2, by - 1, 4, 3); g.fillStyle = pal[1]; g.fillRect(bx - 1, by, 1, 1); g.fillRect(bx + 1, by, 1, 1);
           g.fillStyle = hexA('#eef6ff', Math.sin(t * 60 + i) > 0 ? 0.9 : 0.4); g.fillRect(bx - 1, by - 2, 1, 1); g.fillRect(bx + 1, by - 2, 1, 1); }
+        return;
+      }
+      case 'beam': { // 굵은 빛줄기 x1,y1 → x2,y2 (짙은 외곽 · 가운데 색 · 흰 심 · 끝에 섬광) — 프리즘 · 십자 · 토해 내는 빛
+        const L = Math.hypot(f.x2 - f.x1, f.y2 - f.y1) || 1, out = Math.min(1, age / 0.07), w = (f.w || 5) * big * (0.35 + 0.65 * k) * (1 + Math.sin(t * 50 + f.seed) * 0.08);
+        const ex = f.x1 + (f.x2 - f.x1) * out, ey = f.y1 + (f.y2 - f.y1) * out, nx = -(f.y2 - f.y1) / L, ny = (f.x2 - f.x1) / L;
+        const band = (ww, c) => { g.fillStyle = c; g.beginPath(); g.moveTo(f.x1 + nx * ww * 0.6, f.y1 + ny * ww * 0.6); g.lineTo(ex + nx * ww, ey + ny * ww); g.lineTo(ex + (f.x2 - f.x1) / L * ww, ey + (f.y2 - f.y1) / L * ww); g.lineTo(ex - nx * ww, ey - ny * ww); g.lineTo(f.x1 - nx * ww * 0.6, f.y1 - ny * ww * 0.6); g.closePath(); g.fill(); };
+        band(w + 1.6, hexA(pal[0], k)); band(w, hexA(pal[1], k)); band(w * 0.38, hexA(pal[2], k));
+        this.glow(ex, ey, w * 4, pal[1], k * 0.8); this.glow(f.x1, f.y1, w * 3, pal[2], k * 0.5);
+        for (let i = 0; i < 6; i++) spike(g, ex, ey, rnd(f.seed + i + Math.floor(age * 20)) * TAU, 0, w * 2.2, 1.4, hexA(pal[2], k));
+        return;
+      }
+      case 'cage': { // 뼈 우리: 둘레에서 뼈 창살이 솟아 안쪽으로 굽고 (닫히면) 꼭대기에서 맞물린다
+        const n = f.n || 8, up = Math.min(1, age / 0.18), close = Math.min(1, age / (f.max * 0.85)), rr = R, H = (f.h || 26) * big * up, fade = Math.min(1, f.t / 0.15);
+        const bars = []; for (let i = 0; i < n; i++) { const a = (i / n) * TAU + 0.3, bx = x + Math.cos(a) * rr, by = y + Math.sin(a) * rr * 0.5; bars.push({ a, bx, by, front: Math.sin(a) > 0 }); }
+        const bar = (b) => { const tx = x + (b.bx - x) * (0.25 + 0.5 * (1 - close)), ty = y - H, pts = []; for (let j = 0; j <= 6; j++) { const u = j / 6, q = u * u; pts.push([b.bx + (tx - b.bx) * q, b.by + (ty - b.by) * u]); } rope(g, pts, 2.6, 1.6, pal, fade); blob(g, b.bx, b.by, 2, pal, fade); };
+        for (const b of bars) if (!b.front) bar(b);
+        if (close > 0.6) { g.fillStyle = hexA(pal[0], fade); disc(g, x, y - H, 4); g.fillStyle = hexA(pal[1], fade); disc(g, x, y - H, 3); g.fillStyle = hexA(pal[2], fade); disc(g, x - 1, y - H - 1, 1.2); }
+        for (const b of bars) if (b.front) bar(b);
+        return;
+      }
+      case 'star': { // 반짝이는 별 (네 갈래 빛 · 외곽선) — 별자리 · 별 지도
+        const tw = 0.75 + 0.25 * Math.sin(t * 14 + f.seed), rr = R * tw * Math.min(1, age / 0.1), sy = y - (f.h ?? 8), fade = Math.min(1, f.t / 0.2);
+        this.glow(x, sy, rr * 2.2, pal[1], 0.6 * fade);
+        const pts = []; for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU - Math.PI / 2, d = i % 2 ? rr * 0.28 : rr * (i % 4 ? 0.7 : 1); pts.push([x + Math.cos(a) * d, sy + Math.sin(a) * d]); }
+        outlined(g, pts, pal, fade);
+        return;
+      }
+      case 'bell': { // 종: 위에서 흔들리는 종 + 추
+        const sw = Math.sin(age * 14) * 0.35 * k, by = y - (f.h ?? 30), rr = R;
+        const loc = (u, v) => [x + Math.cos(sw) * u - Math.sin(sw) * v, by + Math.sin(sw) * u + Math.cos(sw) * v];
+        const pts = [[-rr * 0.35, 0], [-rr * 0.45, rr * 0.5], [-rr * 0.7, rr * 1.05], [rr * 0.7, rr * 1.05], [rr * 0.45, rr * 0.5], [rr * 0.35, 0]].map(([u, v]) => loc(u, v));
+        outlined(g, pts, pal, Math.min(1, k * 2));
+        const cl = loc(Math.sin(age * 20) * rr * 0.25, rr * 1.2); blob(g, cl[0], cl[1], 2.2, pal, Math.min(1, k * 2));
+        return;
+      }
+      case 'rock': { // 하늘에서 떨어지는 바위 (h 높이에서 내려와 땅에 닿는다)
+        const fall = Math.min(1, age / (f.fall || f.max * 0.7)), rr = R, sy = y - (f.h ?? 120) * (1 - fall * fall), rot = age * 6 + f.seed;
+        g.fillStyle = hexA('#000000', 0.15 + 0.25 * fall); g.beginPath(); g.ellipse(x, y + 2, rr * (0.5 + fall * 0.5), rr * 0.3 * (0.5 + fall * 0.5), 0, 0, TAU); g.fill();
+        if (fall >= 1) return;
+        const pts = []; for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU + rot, d = rr * (0.8 + rnd(f.seed + i) * 0.3); pts.push([x + Math.cos(a) * d, sy - rr + Math.sin(a) * d]); }
+        outlined(g, pts, pal);
+        return;
+      }
+      case 'mark': { // 적 머리 위 표식: skull · crown · z · clock · brand (짙은 외곽선 도트)
+        const bob = Math.sin(t * 6 + f.seed) * 1, fade = Math.min(1, f.t / 0.2) * Math.min(1, age / 0.08), mx = Math.round(x), my = Math.round(y - (f.h ?? 24) + bob), sc = Math.max(1, Math.round(big * (f.sc || 1)));
+        const icons = { skull: ['.###.', '#####', '#.#.#', '#####', '.#.#.'], crown: ['#.#.#', '#####', '#####'], z: ['####', '..#.', '.#..', '####'], clock: ['.###.', '#.#.#', '#.##.', '#...#', '.###.'], brand: ['#...#', '.#.#.', '..#..', '.#.#.', '#...#'] };
+        const ic = icons[f.icon] || icons.brand, w = ic[0].length, h = ic.length, ox = mx - Math.floor(w * sc / 2), oy = my - h * sc;
+        g.fillStyle = hexA(pal[0], fade); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (ic[j][i] === '#') g.fillRect(ox + i * sc - 1, oy + j * sc - 1, sc + 2, sc + 2);
+        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (ic[j][i] === '#') { g.fillStyle = hexA(j === 0 ? pal[2] : pal[1], fade); g.fillRect(ox + i * sc, oy + j * sc, sc, sc); }
+        if (f.n > 1) for (let i = 0; i < f.n; i++) { g.fillStyle = hexA(pal[2], fade); g.fillRect(mx - f.n * 2 + i * 4, my + 2, 2, 2); }
+        return;
+      }
+      case 'glyph': { // 떠오르는 불 글자 (획을 그어 나가며 타오른다)
+        const draw = Math.min(1, age / 0.25), fade = Math.min(1, f.t / 0.25), rr = R, sy = y - 10 - Math.min(1, age / 0.3) * 4;
+        const strokes = [[[-1, -1], [1, -1]], [[0, -1], [0, 1]], [[-1, 0.2], [1, 1]], [[-1, 1], [0.4, 0.2]]].slice(0, 2 + (Math.floor(f.seed * 7) % 3));
+        for (const [lw, c] of [[3.4, hexA(pal[0], fade)], [1.8, hexA(pal[1], fade)], [0.8, hexA(pal[2], fade)]]) { g.strokeStyle = c; g.lineWidth = lw; g.beginPath();
+          strokes.forEach(([a, b], i) => { const u = Math.min(1, Math.max(0, draw * strokes.length - i)); if (u <= 0) return; g.moveTo(x + a[0] * rr, sy + a[1] * rr); g.lineTo(x + (a[0] + (b[0] - a[0]) * u) * rr, sy + (a[1] + (b[1] - a[1]) * u) * rr); }); g.stroke(); }
+        this.glow(x, sy, rr * 2, pal[1], 0.5 * fade);
+        if (Math.random() < 0.3) this.parts.push({ x: x + (Math.random() - 0.5) * rr * 2, y: sy, vx: 0, vy: -30, t: 0.4, max: 0.4, color: pal[2], g: -20, flame: true, glow: true, size: 1 });
+        return;
+      }
+      case 'blade': { // 돌아가는 칼바퀴 · 톱날
+        const bx = x, by = y - 4, n = f.n || 6, rr = (f.size || 7) * big, rot = t * 22, fade = Math.min(1, f.t / 0.2);
+        for (let i = 1; i <= 3; i++) { g.fillStyle = hexA(pal[1], 0.22 * fade / i); disc(g, bx - Math.cos(rot) * i, by - Math.sin(rot) * i, rr * 0.9); }
+        const pts = []; for (let i = 0; i < n * 2; i++) { const a = rot + (i / (n * 2)) * TAU + (i % 2 ? 0.25 : 0), d = i % 2 ? rr * 0.55 : rr; pts.push([bx + Math.cos(a) * d, by + Math.sin(a) * d * 0.8]); }
+        outlined(g, pts, pal, fade, false); g.fillStyle = hexA(pal[0], fade); disc(g, bx, by, rr * 0.25 + 0.8); g.fillStyle = hexA(pal[2], fade); g.fillRect(Math.round(bx + Math.cos(rot) * rr * 0.7), Math.round(by + Math.sin(rot) * rr * 0.55), 1, 1);
+        return;
+      }
+      case 'column': { // 쓰러지는 돌기둥: 서 있다가 ang 쪽으로 넘어가 땅에 눕는다
+        const fall = Math.min(1, Math.max(0, (age - 0.15) / 0.35)), q = fall * fall, Lc = f.len || 80, wd = (f.w || 9) * big, fade = Math.min(1, f.t / 0.25);
+        const tx = x + Math.cos(f.ang) * Lc * q, ty = y + Math.sin(f.ang) * Lc * 0.7 * q - Lc * (1 - q) * 0.9, nx = -(ty - y), ny = tx - x, l = Math.hypot(nx, ny) || 1;
+        const c = [[x + nx / l * wd, y + ny / l * wd * 0.6], [tx + nx / l * wd, ty + ny / l * wd * 0.6], [tx - nx / l * wd, ty - ny / l * wd * 0.6], [x - nx / l * wd, y - ny / l * wd * 0.6]];
+        outlined(g, c, pal, fade, false); g.fillStyle = hexA(pal[2], fade); g.beginPath(); g.moveTo(c[0][0], c[0][1]); g.lineTo(c[1][0], c[1][1]); g.lineTo((c[1][0] + c[2][0]) / 2, (c[1][1] + c[2][1]) / 2); g.lineTo((c[0][0] + c[3][0]) / 2, (c[0][1] + c[3][1]) / 2); g.closePath(); g.fill();
+        blob(g, tx, ty, wd * 0.9, pal, fade);
+        return;
+      }
+      case 'gust': { // 바람결: ang 쪽으로 흘러가는 바람 줄기 (in: true 면 안으로)
+        const n = f.n || 6, Lg = R, fade = Math.min(1, f.t / 0.25), a = f.ang || 0, ca = Math.cos(a), sa = Math.sin(a);
+        for (let i = 0; i < n; i++) { const off = (rnd(f.seed + i) - 0.5) * (f.wide || R * 0.8), ph = (age * 2.4 + rnd(f.seed + i * 3)) % 1, u0 = f.in ? 1 - ph : ph, pts = [];
+          for (let j = 0; j <= 6; j++) { const u = u0 * Lg - j * 5 * (f.in ? -1 : 1), wv = Math.sin(j * 0.9 + t * 12 + i) * 1.5; pts.push([x + ca * u - sa * (off + wv), y - 6 + sa * u + ca * (off + wv) * 0.7]); }
+          rope(g, pts, 2.2 * big, 0.4, pal, fade * Math.sin(ph * Math.PI)); }
+        return;
+      }
+      case 'mirage': { // 잔영 셋이 내 둘레를 돈다 — 맞으면 하나씩 깨진다
+        const P0 = this.world.player, n = P0.origGuard ? Math.max(0, 3 - (P0.origGuard.n || 0)) : 0; if (!n) { f.t = Math.min(f.t, 0.01); return; }
+        for (let i = 0; i < n; i++) { const a = t * 3 + (i / 3) * TAU, mx = P0.x + Math.cos(a) * 14, my = P0.y + Math.sin(a) * 6;
+          const pts = [[mx, my - 18], [mx + 4, my - 14], [mx + 5, my - 4], [mx + 3, my + 2], [mx - 3, my + 2], [mx - 5, my - 4], [mx - 4, my - 14]];
+          outlined(g, pts, pal, 0.55 + 0.15 * Math.sin(t * 9 + i), true); }
         return;
       }
       // ── 바닥 (땅에만) ──
@@ -225,6 +313,15 @@ export const OrigFxMethods = {
     }
   },
 
+  // 독창 스킬의 톱날 (allies orbitAxe + orig): 이빨이 둘러선 쇠 톱니가 돌며 불똥
+  drawOrigSaw(g, al, fade) {
+    const t = this.world.t, pal = OPAL.metal, rr = 7, rot = t * 20 + al.phase, x = al.x, y = al.y;
+    for (let i = 1; i <= 3; i++) { g.fillStyle = hexA(pal[1], 0.18 * fade / i); disc(g, x - Math.cos(al.phase + Math.PI / 2) * i * 3, y - Math.sin(al.phase + Math.PI / 2) * i * 2, rr); }
+    const pts = []; for (let i = 0; i < 16; i++) { const a = rot + (i / 16) * TAU + (i % 2 ? 0.18 : 0), d = i % 2 ? rr * 0.7 : rr; pts.push([x + Math.cos(a) * d, y + Math.sin(a) * d * 0.85]); }
+    outlined(g, pts, pal, fade, false); g.fillStyle = hexA(pal[0], fade); disc(g, x, y, 2.2); g.fillStyle = hexA(pal[2], fade); disc(g, x - 2, y - 2, 1.2);
+    if (Math.random() < 0.35) this.parts.push({ x: x + (Math.random() - 0.5) * 8, y, vx: (Math.random() - 0.5) * 60, vy: -30 - Math.random() * 30, t: 0.25, max: 0.25, color: '#ffd27a', g: 200, glow: true, size: 1 });
+  },
+
   // 독창 스킬 탄 (pr.oskin): 외곽선 · 밝은 면 · 지나온 길의 잔상
   drawOrigProj(pr) {
     const g = this.g, pal = P(pr.opal), a = Math.atan2(pr.vy, pr.vx), t = this.world.t, s = pr.oskin, x = pr.x, y = pr.y;
@@ -236,6 +333,10 @@ export const OrigFxMethods = {
     else if (s === 'wisp') { tail(6, 2.5, 4, pal[1]); blob(g, x, y, 3.6, pal); this.glow(x, y, 12, pal[1], 0.5); }
     else if (s === 'comet') { tail(6, 3, 5, pal[1]); blob(g, x, y, 5, pal); this.glow(x, y, 16, pal[1], 0.6); if (Math.random() < 0.6) this.parts.push({ x, y, vx: -Math.cos(a) * 30, vy: -Math.sin(a) * 30 - 10, t: 0.35, max: 0.35, color: pal[2], g: -20, flame: pal === OPAL.fire, glow: true, size: 1 }); }
     else if (s === 'snow') { tail(4, 3, 4, '#ffffff'); blob(g, x, y - 1, 5, pal); if (Math.random() < 0.4) this.parts.push({ x, y, vx: 0, vy: 10, t: 0.4, max: 0.4, color: '#ffffff', g: 60, size: 1 }); }
+    else if (s === 'arrow' || s === 'harpoon') { tail(4, 3, 1.6, pal[1]); const L = s === 'harpoon' ? 10 : 8; outlined(g, dir([[L, 0], [L - 4, 3], [L - 4, 1], [-L, 1], [-L - 2, 3], [-L + 1, 0], [-L - 2, -3], [-L, -1], [L - 4, -1], [L - 4, -3]]), pal, 1, false); const [hx, hy] = dir([[L - 2, 0]])[0]; g.fillStyle = pal[2]; g.fillRect(Math.round(hx), Math.round(hy), 1, 1); }
+    else if (s === 'knife') { tail(3, 3, 2, pal[1]); const r = t * 30; const d2 = (pts) => pts.map(([u, v]) => [x + Math.cos(r) * u - Math.sin(r) * v, y + Math.sin(r) * u + Math.cos(r) * v]); outlined(g, d2([[6, 0], [0, 2], [-4, 1.5], [-6, 0], [-4, -1.5], [0, -2]]), pal); }
+    else if (s === 'rock' || s === 'bone') { tail(3, 3, 3, pal[1]); const r = t * 12, pts = []; for (let i = 0; i < 7; i++) { const b = (i / 7) * TAU + r, d = (s === 'bone' ? (i % 2 ? 2 : 4.5) : 4.5) * (0.85 + rnd(i) * 0.3); pts.push([x + Math.cos(b) * d, y + Math.sin(b) * d]); } outlined(g, pts, pal); }
+    else if (s === 'gale') { tail(7, 2.5, 4, pal[2]); for (let j = 0; j < 3; j++) { const pts = []; for (let i = 0; i <= 6; i++) { const u = -i * 3, v = Math.sin(i * 0.9 + t * 20 + j * 2) * (2 + i * 0.5); pts.push(dir([[u, v + (j - 1) * 3]])[0]); } rope(g, pts, 2.4, 0.4, pal, 0.9); } blob(g, x, y, 3.5, pal); }
     else blob(g, x, y, 4, pal);
   },
 };

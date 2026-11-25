@@ -2364,6 +2364,7 @@ export class Renderer {
 
   drawAlly(w, al) {
     const g = this.g, fade = Math.min(1, al.perm ? 1 : al.t / 0.5, (al.age ?? (al.max - al.t)) / 0.3 + 0.2);
+    if (al.kind === 'orbitAxe' && al.orig) { this.drawOrigSaw(g, al, fade); return; }
     if (al.kind === 'orbitAxe') {
       const img = sprite('weapon_throwing_axe');
       if (img) { g.save(); g.globalAlpha = fade; g.translate(al.x, al.y); g.rotate(w.t * 18 + al.phase); g.drawImage(img, -img.width / 2, -img.height / 2); g.restore(); }
