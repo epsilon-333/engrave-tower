@@ -1513,7 +1513,7 @@ export class World {
     this.breakStealth();
     mul *= this.hidBasicMul(); this.hidAttack(); // 숨은 각인: 무영 · 공허의 그릇 · 멈추지 않는 팔
     const base = atk * mul;
-    if (this.b.offItem?.slot === 'weapon') p.offShowT = this.t + 0.6; // 왼손에 든 무기는 칠 때 보인다
+    if (this.b.offItem?.slot === 'weapon') p.offShowT = 0; // 두 무기: 평타는 오른손 무기만 보인다
     if (w.kind === 'melee') {
       p.swingDir = p.atkCount % 2 ? 1 : -1;
       const great = !!w.great, thrust = w.shape === 'thrust';

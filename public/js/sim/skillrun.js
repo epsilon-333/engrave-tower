@@ -749,7 +749,7 @@ export const SkillMethods = {
     const ctxBal = this.skillBalOff === id ? 1 : SKILL_BAL[id] ?? 1; // 각인 등급 보정 (tools/skillbal.mjs)
     const ctx = { bal: ctxBal, def, id, spent, elem, bonus: bonus * boost * fit * cross * ctxBal * (sc?.dmg ?? 1), // SKILL_BAL: 종족 스킬 밸런스 보정
       fit, hand: hf.hand, atk: this.skillAtk(def.scale), resMul: 1 + spent / 100, charge: lvl, slot: opt.slot, tier: this._tier };
-    if (hf.hand === 'off') p.offShowT = this.t + Math.max(0.6, (def.cast || 0) + 0.5); // 왼손 장비로 쓰는 스킬: 그동안만 왼손 장비가 보인다
+    if (hf.hand === 'off') p.offShowT = this.t + Math.max(0.6, (def.cast || 0) + 0.5); else if (!opt.weapon) p.offShowT = 0; // 왼손 장비로 쓰는 스킬: 그동안만 왼손 장비가 보인다
     if (fit < 0.95 && fit > 0) this.emit({ t: 'text', x: p.x, y: p.y - 26, text: `무기가 맞지 않다 · 피해 ${Math.round(fit * 100)}%`, color: '#c8b8a0' });
     if (this.autoAim) {
       const tg = this.pickTarget(def);
