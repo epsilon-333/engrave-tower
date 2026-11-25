@@ -525,7 +525,12 @@ export class Renderer {
     const p = w.player;
     return !!w.climb?.boss && !w.climb.boss.dead || w.enemies.some((e) => !e.dead && !e.hidden && e.state === 'chase' && Math.hypot(e.x - p.x, e.y - p.y) < 220);
   }
-  draw(w, dt) {
+  draw(w, dt) { // 멈춘 동안(창 · 표지판을 열었을 때 dt=0): 그리면서 생긴 불티 · 연기 · 빛 알갱이는 나이를 먹지 않아 겹겹이 쌓인다 → 그 프레임에 생긴 것은 버린다
+    if (dt > 0) return this.drawFrame(w, dt);
+    const np = this.parts.length, nf = this.fx.length;
+    try { return this.drawFrame(w, dt); } finally { if (this.parts.length > np) this.parts.length = np; if (this.fx.length > nf) this.fx.length = nf; }
+  }
+  drawFrame(w, dt) {
     if (this.calmQueue?.length && !this.banner && !this.inCombat(w)) this.banner = this.calmQueue.shift();
     const main = this.mainG, S = this.S, VW = this.VW, VH = this.VH;
     const p = w.player;
@@ -1483,14 +1488,14 @@ export class Renderer {
       if (dt > 0 && Math.random() < 0.08) this.parts.push({ x: tx, y: ty + 1, vx: -p.dir * 4, vy: -1, t: 0.4, max: 0.4, color: '#8a7a66', g: 0, dust: true, v: (Math.random() * 4) | 0 });
       if (dt > 0 && Math.random() < 0.3) this.fx.push({ k: 'scrape', x: tx, y: ty + 1, t: 0.6, max: 0.6 });
     }
-    const busy = p.gather || p.fish, hideW = busy || p.swim || p.riding || blink; // 헤엄칠 때는 무기를 들지 않는다 · 무적 깜빡임은 무기 · 방패도 함께 (몸만 사라져 칼이 떠 보이지 않게)
+    const busy = p.gather || p.fish, hideW = busy || p.swim || p.riding || blink, offUp = !!w.b.offItem && (p.offShowT || 0) > w.t, hideMain = hideW || (offUp && w.b.offItem.slot === 'weapon'); // 두 무기: 평타는 오른손만 · 왼손으로 쓰는 스킬 동안은 왼손 무기만 (hideMain) // 헤엄칠 때는 무기를 들지 않는다 · 무적 깜빡임은 무기 · 방패도 함께 (몸만 사라져 칼이 떠 보이지 않게)
     if (p.boat) this.drawBoat(w, p.x, p.y, p.dir, p.moving, 'back');
     if (w.map.underwater && dt > 0 && Math.random() < dt * 1.6) this.parts.push({ x: bx + p.dir * 3, y: by - 14, vx: (Math.random() - 0.5) * 6, vy: -26 - Math.random() * 14, t: 1.4, max: 1.4, color: '#e0f6ff', g: -6, bubble: true });
     const wart = weaponArt(w.b.weaponId, ITEMS);
     if (wart.shield && !hideW) this.drawShield(w, p, pose, bx, by, gs);
     else if (w.b.offItem && !hideW && (p.offShowT || 0) > w.t) this.drawOffhand(w, p, pose, bx, by, gs); // 왼손 도구: 평소엔 숨기고 쓸 때만 보인다 (p.offShowT)
     if (pose.kind === 'fist' && !hideW) { const back = pose.punch > 0.05 && pose.offhand; this.fistAt(w, bx + p.dir * (back ? 3 : 1) * gs, by + (GUARD_Y[w.b.race] ?? -4) * gs, this.fistMetal(wart), p.dir); }
-    if (pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
+    if (pose.behind && !hideMain) this.drawWeapon(w, p, pose, bx, by, gs);
     let rideY = 0;
     if (p.riding) { // 탄 랩터: 달리면 달리기 동작, 서 있으면 숨쉬기 · 위로 들썩인다
       const rmov = p.moving && p.dashT <= 0, rf = this.animFrame('raptor_mount', rmov ? 'run' : 'idle', rmov ? p.walkT * 1.4 : w.t, rmov ? 14 : 5);
@@ -1515,7 +1520,7 @@ export class Renderer {
     if (sink != null) g.restore();
     if (p.swim) this.drawSwimLine(w, p, bx, by, dt);
     if (p.boat) this.drawBoat(w, p.x, p.y, p.dir, p.moving, 'front');
-    if (!pose.behind && !hideW) this.drawWeapon(w, p, pose, bx, by, gs);
+    if (!pose.behind && !hideMain) this.drawWeapon(w, p, pose, bx, by, gs);
     if (p.familiar) { this.drawFamiliar(w, p); for (const x of p.famExtra || []) this.drawFamiliar(w, p, x); } // 불러낸 정령 (어깨 위 · 정령사는 셋까지)
     if (busy) this.drawLifeTool(w, p, bx, by);
     if (this.caught) { // 잡은 것을 머리 위로 들어 보인다
@@ -2016,7 +2021,9 @@ export class Renderer {
   // 표본 사이는 각도 · 길이 · 손 위치를 잘게 나눠 이어서, 한 프레임에 많이 돌아도 끊긴 햇살처럼 보이지 않는다
   weaponTrail(w, p, P, bx, by, gs) {
     const K = P.kind;
-    if (K === 'bow' || K === 'staff' || K === 'tube' || K === 'crossbow' || K === 'orb' || K === 'tome' || K === 'fist' || K === 'whip' || p.swim) { this.trail = []; return; }
+    const stab = K === 'spear' || (p.swingT > 0 && CPOSE[p.swingMove]?.A.a === 'aim') || (p.thrustT || 0) > w.t; // 찌르기: 창끝이 도는 호를 따라 불티를 남기지 않는다 (찌른 방향으로 곧게만)
+    if (p.swingT > 0 && CPOSE[p.swingMove]?.A.a === 'aim') p.thrustT = w.t + 0.35;
+    if (stab || K === 'bow' || K === 'staff' || K === 'tube' || K === 'crossbow' || K === 'orb' || K === 'tome' || K === 'fist' || K === 'whip' || p.swim) { this.trail = []; return; }
     const wa = weaponArt(w.b.weaponId, ITEMS), img = sprite(wa.s, wa.tint || '');
     if (!img) return;
     const L = this.bladeLen(wa, P, img, gs), now = w.t, LIFE = 0.12;

@@ -204,7 +204,7 @@ export const FxMethods = {
           // 창끝 앞으로 뾰족하게 뻗는 바람 자국 두세 줄 (막대처럼 보이지 않게 끝만)
           const a2 = Math.min(1, k * 2.2), prog = 1 - k;
           const ux = Math.cos(f.ang), uy = Math.sin(f.ang), nx = -uy, ny = ux;
-          const base = 24 + 8 * prog, tipL = base + 10 + 8 * prog;
+          const reach = Math.max(24, (f.range || 30) - 6), base = reach + 4 * prog, tipL = base + 12 + 8 * prog; // 무기 끝(창끝)에서 찌른 방향으로 곧게
           g.save(); g.globalCompositeOperation = 'lighter';
           g.fillStyle = hexA(f.aura ? '#ffd84a' : '#fff4d8', 0.85 * a2);
           g.beginPath(); g.moveTo(f.x + ux * base + nx * 2.5, f.y - 7 + uy * base + ny * 2.5); g.lineTo(f.x + ux * tipL, f.y - 7 + uy * tipL); g.lineTo(f.x + ux * base - nx * 2.5, f.y - 7 + uy * base - ny * 2.5); g.closePath(); g.fill();
