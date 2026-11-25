@@ -63,7 +63,7 @@ try {
       setTimeout(() => page.keyboard.up('KeyQ').catch(() => {}), 120);
       for (const t of TIMES) {
         const wait = t * 1000 - (Date.now() - t0); if (wait > 0) await sleep(wait);
-        const W = 320, H = 200;
+        const W = +(process.env.SW || 480), H = +(process.env.SH || 280);
         await page.screenshot({ path: `${OUT}/${s.eid}_${t}.png`, clip: { x: Math.max(0, Math.min(960 - W, pos.px - W / 2)), y: Math.max(0, Math.min(600 - H, pos.py - H / 2)), width: W, height: H } });
       }
       const st = await page.evaluate((sk) => { const p = window.__game.world.player; const t = document.getElementById('errToast'); const ev = window.__fxev || []; const no = ev.find((x) => String(x).startsWith('noRes')); return { cd: Object.keys(p.cds || {}).length > 0 && !no, no, ev: [...new Set(ev)].slice(0, 12), toast: t && !t.hidden ? t.textContent : null }; });

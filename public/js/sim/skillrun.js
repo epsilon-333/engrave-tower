@@ -50,7 +50,7 @@ export const SkillMethods = {
         p.dashT = dur; p.dvx = dx * dist / dur; p.dvy = dy * dist / dur;
         p.invuln = Math.max(p.invuln, op.invuln || 0.25);
         const x2 = x1 + dx * dist, y2 = y1 + dy * dist;
-        this.emit({ t: 'skillDash', x1, y1, x2, y2, elem: ctx.elem });
+        this.emit({ t: 'skillDash', x1, y1, x2, y2, elem: ctx.elem, ice: !!op.iceTrail });
         if (op.mul) countHits(this.enemies.filter((e) => !e.dead && !e.hidden && distToSeg(e.x, e.y, x1, y1, x2, y2) < e.r + 14));
         if (op.iceTrail) for (let i = 1; i <= 4; i++) this.zones.push({ kind: 'frost', x: x1 + (x2 - x1) * i / 4, y: y1 + (y2 - y1) * i / 4, r: 20, t: 3, max: 3, tick: 0, atk: ctx.atk });
         if (op.fireTrail) for (let i = 1; i <= 4; i++) this.zones.push({ kind: 'fire', x: x1 + (x2 - x1) * i / 4, y: y1 + (y2 - y1) * i / 4, r: 18, t: 3, tick: 0, atk: ctx.atk });

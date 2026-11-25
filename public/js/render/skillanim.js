@@ -362,17 +362,18 @@ const DRAW = {
     if (out && !a.sp) { a.sp = true; for (let i = 0; i < 10; i++) { const an = Math.random() * Math.PI * 2, v = 40 + Math.random() * 70; R.parts.push({ x: a.x, y: cy, vx: Math.cos(an) * v, vy: Math.sin(an) * v * 0.6 - 20, t: 0.5, max: 0.5, color: i % 2 ? '#ffffff' : col, g: 60, size: 1 }); } }
   },
   // 땅울림: 한가운데서 금이 사방으로 번지고, 금 사이로 빛이 새고, 돌판이 들썩인다
-  cracks(R, g, a, k) {
-    const rr = rnd(a.seed), n = 7, spread = ease.out(Math.min(1, k / 0.25)), fade = k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1;
+  cracks(R, g, a, k) { // 땅 갈라짐: 가운데가 굵고 끝으로 가늘어지는 들쭉날쭉한 금 (같은 굵기 줄이 거미 다리처럼 보이지 않게) · 가운데에 깨진 돌판
+    const rr = rnd(a.seed), n = 6, spread = ease.out(Math.min(1, k / 0.25)), fade = k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1, lit = glows(a.col);
     g.lineCap = 'round';
     for (let i = 0; i < n; i++) {
-      const an = (i / n) * Math.PI * 2 + rr() * 0.6, L = a.r * (0.7 + rr() * 0.5) * spread; let x = a.x, y = a.y; const pts = [[x, y]];
-      for (let j = 1; j <= 4; j++) { const u = j / 4, aa = an + (rr() - 0.5) * 0.7; x = a.x + Math.cos(aa) * L * u; y = a.y + Math.sin(aa) * L * u * 0.55; pts.push([x, y]); }
-      g.strokeStyle = `rgba(30,20,14,${0.8 * fade})`; g.lineWidth = 3; g.beginPath(); pts.forEach(([px, py], j) => (j ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke();
-      if (glows(a.col)) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = hexA(a.col, 0.8 * fade); g.lineWidth = 1.2; g.beginPath(); pts.forEach(([px, py], j) => (j ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke(); g.restore(); }
-      else { g.strokeStyle = `rgba(200,186,160,${0.35 * fade})`; g.lineWidth = 1; g.beginPath(); pts.forEach(([px, py], j) => (j ? g.lineTo(px, py + 1.5) : g.moveTo(px, py + 1.5))); g.stroke(); } // 물리: 빛나는 줄 없이 깨진 가장자리만
-      const [sx, sy] = pts[2], lift = Math.sin(Math.min(1, k / 0.3) * Math.PI) * 5; // 들썩이는 돌판
-      g.fillStyle = `rgba(110,96,78,${fade})`; g.fillRect(Math.round(sx - 3), Math.round(sy - 2 - lift), 6, 3); g.fillStyle = `rgba(160,146,120,${fade})`; g.fillRect(Math.round(sx - 3), Math.round(sy - 2 - lift), 6, 1);
+      const an = (i / n) * Math.PI * 2 + rr() * 0.8, L = a.r * (0.4 + rr() * 0.4) * spread; let x = a.x, y = a.y, aa = an; const pts = [[x, y]];
+      for (let j = 1; j <= 5; j++) { aa += (rr() - 0.5) * 0.9; x += Math.cos(aa) * L / 5; y += Math.sin(aa) * L / 5 * 0.55; pts.push([x, y]); }
+      for (let j = 0; j < 5; j++) { const w = 2.6 * (1 - j / 5) + 0.6, [x0, y0] = pts[j], [x1, y1] = pts[j + 1];
+        g.strokeStyle = `rgba(36,24,14,${0.85 * fade})`; g.lineWidth = w; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+        if (lit) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = hexA(a.col, 0.8 * fade); g.lineWidth = Math.max(0.6, w * 0.4); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.restore(); }
+        else { g.strokeStyle = `rgba(208,192,160,${0.45 * fade})`; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, y0 + w * 0.6 + 0.5); g.lineTo(x1, y1 + w * 0.6 + 0.5); g.stroke(); } }
+      if (i % 2 === 0) { const [sx, sy] = pts[1], lift = Math.sin(Math.min(1, k / 0.3) * Math.PI) * 4; // 금 사이로 들썩이는 돌판 (짙은 외곽선 · 밝은 윗면)
+        g.fillStyle = `rgba(36,24,14,${fade})`; g.fillRect(Math.round(sx - 4), Math.round(sy - 3 - lift), 8, 5); g.fillStyle = `rgba(122,106,84,${fade})`; g.fillRect(Math.round(sx - 3), Math.round(sy - 2 - lift), 6, 3); g.fillStyle = `rgba(184,168,138,${fade})`; g.fillRect(Math.round(sx - 3), Math.round(sy - 2 - lift), 6, 1); }
     }
   },
   // 갈라지는 땅 (일직선 스킬): 시작점에서 끝까지 금이 달려가고, 돌판이 솟았다 가라앉는다
@@ -521,7 +522,7 @@ const GROUND_DRAW = {
       const A = P[i], B = P[i + 1], n = Math.max(1, Math.ceil(Math.hypot(B.x - A.x, B.y - A.y)));
       for (let j = 0; j < n; j++) {
         const x = A.x + (B.x - A.x) * j / n, y = A.y + (B.y - A.y) * j / n;
-        for (const sd of [-2, 2]) { g.fillStyle = '#4a3828'; g.fillRect(Math.round(x + nx * sd), Math.round(y + ny * sd), 1, 1); g.fillStyle = '#b8a07a'; g.fillRect(Math.round(x + nx * sd), Math.round(y + ny * sd) - 1, 1, 1); }
+        for (const sd of [-2, 2]) { g.fillStyle = a.ice ? '#4a7fa8' : '#4a3828'; g.fillRect(Math.round(x + nx * sd), Math.round(y + ny * sd), 1, 1); g.fillStyle = a.ice ? '#e8f8ff' : '#b8a07a'; g.fillRect(Math.round(x + nx * sd), Math.round(y + ny * sd) - 1, 1, 1); }
       }
     }
     if (fill > 0 && fill < 1 && Math.random() < 0.3) { const Q = P[Math.min(P.length - 1, from)]; R.parts.push({ x: Q.x, y: Q.y - 1, vx: 0, vy: -6, t: 0.3, max: 0.3, color: '#b0a088', g: 0, puff: true, size: 1.5 }); }

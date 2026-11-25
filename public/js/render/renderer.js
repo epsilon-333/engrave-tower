@@ -598,8 +598,11 @@ export class Renderer {
         continue;
       }
       if (z.kind === 'frost') { // 서리 바닥: 하늘빛 점묘
-        dfill(z.x, z.y, z.r, z.r * 0.6, '#aae1ff', 0.32 * k); dfill(z.x, z.y, z.r * 0.6, z.r * 0.36, '#e8f8ff', 0.2 * k);
-        for (let i = 0; i < 6; i++) { const a = i * 1.05 + z.x; g.fillStyle = `rgba(230,250,255,${0.6 * k})`; g.fillRect(z.x + Math.cos(a) * z.r * 0.6, z.y + Math.sin(a) * z.r * 0.35, 2, 2); }
+        dfill(z.x, z.y, z.r, z.r * 0.6, '#aae1ff', 0.12 * k); // 옅은 서리 위에 짙은 외곽선의 얼음 조각들 (흐릿한 덩어리 대신)
+        { const n = Math.max(5, Math.round(z.r / 5)), sd = (z.x * 7.13 + z.y * 3.7) | 0, al = Math.min(1, k * 1.6);
+          for (let i = 0; i < n; i++) { const h = Math.sin((sd + i) * 12.9898) * 43758.5453, u = h - Math.floor(h), h2 = Math.sin((sd + i) * 78.233) * 43758.5453, v = h2 - Math.floor(h2);
+            const a = u * Math.PI * 2, d = Math.sqrt(v) * z.r * 0.85, cx = z.x + Math.cos(a) * d, cy = z.y + Math.sin(a) * d * 0.6, s = 2 + ((i * 7) % 3), q = (sx, sy, c) => { g.fillStyle = c; g.beginPath(); g.moveTo(cx, cy - sy); g.lineTo(cx + sx, cy); g.lineTo(cx, cy + sy * 0.6); g.lineTo(cx - sx, cy); g.closePath(); g.fill(); };
+            q(s + 1.2, s * 0.8 + 1.2, `rgba(18,48,86,${al})`); q(s, s * 0.8, `rgba(120,196,255,${al})`); g.fillStyle = `rgba(238,249,255,${al})`; g.fillRect(Math.round(cx - 1), Math.round(cy - s * 0.5), 1, 1); } }
         if (Math.random() < 0.2) this.parts.push({ x: z.x + (Math.random() - 0.5) * z.r * 1.6, y: z.y + (Math.random() - 0.5) * z.r, vx: 0, vy: -10, t: 0.8, max: 0.8, color: '#e8f8ff', g: -2 });
         continue;
       }
@@ -616,8 +619,11 @@ export class Renderer {
       } else {
         // 안개 · 독 · 불 구름: 점묘 바닥 위에 울퉁불퉁한 구름 덩이가 맴돈다
         const hex = z.kind === 'fog' ? '#8c46c8' : z.kind === 'poison' ? '#8cdc5a' : '#ff7828';
-        dfill(z.x, z.y, z.r, z.r * 0.8, hex, 0.3 * k);
-        for (let i = 0; i < 5; i++) { const a = w.t * 0.8 + i * 1.3, img = puffSprite(4 + (i % 3), hex, i); g.globalAlpha = 0.55 * k; g.drawImage(img, Math.round(z.x + Math.cos(a) * z.r * 0.55 - img.width / 2), Math.round(z.y + Math.sin(a * 1.3) * z.r * 0.4 - img.height / 2)); g.globalAlpha = 1; }
+        dfill(z.x, z.y, z.r, z.r * 0.8, hex, 0.16 * k);
+        { const dk = z.kind === 'fog' ? '#24082e' : z.kind === 'poison' ? '#17300a' : '#4a1206', lt = z.kind === 'fog' ? '#f4d0ff' : z.kind === 'poison' ? '#e0ffa0' : '#ffe08a'; // 터지는 거품: 짙은 외곽선 + 밝은 면
+          for (let i = 0; i < 4; i++) { const ph = (w.t * 0.9 + i * 0.27) % 1, a = i * 2.4 + Math.floor(w.t * 0.9 + i * 0.27) * 1.7, d = z.r * (0.25 + (i % 3) * 0.22), bx = z.x + Math.cos(a) * d, by = z.y + Math.sin(a) * d * 0.6, br = 1.5 + ph * 2.5;
+            if (ph > 0.85) continue; g.fillStyle = hexA(dk, k); disc(g, bx, by, br + 1.2); g.fillStyle = hexA(hex, k); disc(g, bx, by, br); g.fillStyle = hexA(lt, k); g.fillRect(Math.round(bx - br * 0.4), Math.round(by - br * 0.5), 1, 1); } }
+        for (let i = 0; i < 5; i++) { const a = w.t * 0.8 + i * 1.3, img = puffSprite(4 + (i % 3), hex, i); g.globalAlpha = 0.35 * k; g.drawImage(img, Math.round(z.x + Math.cos(a) * z.r * 0.55 - img.width / 2), Math.round(z.y + Math.sin(a * 1.3) * z.r * 0.4 - img.height / 2)); g.globalAlpha = 1; }
         if (z.kind === 'fire' && Math.random() < 0.5) this.parts.push({ x: z.x + (Math.random() - 0.5) * z.r, y: z.y, vx: 0, vy: -40, t: 0.4, max: 0.4, color: Math.random() < 0.5 ? '#ff7a2a' : '#ffd040', g: -30 });
       }
     }
@@ -784,7 +790,7 @@ export class Renderer {
     if (this.flash) {
       this.flash.t -= dt;
       if (this.flash.t <= 0) this.flash = null;
-      else { g.fillStyle = `rgba(${this.flash.color},${0.55 * this.flash.t / this.flash.max})`; g.fillRect(0, 0, this.c.width, this.c.height); }
+      else { g.fillStyle = `rgba(${this.flash.color},${0.3 * this.flash.t / this.flash.max})`; g.fillRect(0, 0, this.c.width, this.c.height); }
     }
     if (this.ultName) {
       const un = this.ultName; un.t -= dt;

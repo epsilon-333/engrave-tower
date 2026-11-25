@@ -17,6 +17,16 @@ import { CLASS_MAGIC, WORD_NAME, sentenceLine, WORD_COLOR, fmt } from './rendere
 
 const TIER_EV = new Set(['skillAoe', 'skillCone', 'skillLine', 'skillSingle', 'skillDash', 'meleeStep', 'skillFx', 'slam', 'land']); // 등급에 맞춰 다듬는 사건
 
+// 색 → 독창 스킬 색 세트 이름 (짙은 외곽선 그림을 종족 스킬에도 쓰려고)
+function palOf(hex, elem) {
+  const E = { fire: 'fire', ice: 'ice', poison: 'poison', lightning: 'bolt', shock: 'bolt', dark: 'shadow', holy: 'holy', wind: 'wind', earth: 'earth', blood: 'blood', water: 'water', curse: 'curse', arcane: 'curse', nature: 'poison', phys: 'metal' };
+  if (elem && E[elem]) return E[elem];
+  const m = /^#?([0-9a-f]{6})/i.exec(hex || ''); if (!m) return 'holy';
+  const n = parseInt(m[1], 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  if (mx - mn < 30) return mx > 180 ? 'glass' : 'metal';
+  const h = mx === r ? ((g - b) / (mx - mn) + 6) % 6 : mx === g ? (b - r) / (mx - mn) + 2 : (r - g) / (mx - mn) + 4;
+  return h < 0.5 ? 'blood' : h < 1.2 ? 'fire' : h < 1.9 ? 'holy' : h < 2.6 ? 'poison' : h < 3.4 ? 'wind' : h < 4.2 ? 'ice' : h < 5.2 ? 'curse' : 'petal';
+}
 export const EventMethods = {
   // 히트스톱은 맞은 적에게: 작은 타격은 맞은 몬스터만 잠깐 굳는다(나와 세계는 그대로 움직인다 · e.hitFreeze)
   // 화면 전체가 멈추는 것은 큰 순간(0.1초 넘게 · 궁극기 · 보스 쓰러짐 등)만, 그것도 한 번 멈춘 뒤 0.5초 안엔 다시 멈추지 않는다
@@ -269,9 +279,9 @@ export const EventMethods = {
         }
         case 'shatter': this.burst(ev.x, ev.y - 6, '#e0f8ff', 18, 160); this.fx.push({ k: 'shards', x: ev.x, y: ev.y, r: 16, color: '#e0f8ff', t: 0.35, max: 0.35, seed: Math.random() * 100 }); sfx('freeze', { vol: 0.7, rate: 1.4 }); break;
         case 'doomMark': this.texts.push({ x: w.enemies.find((e) => e.id === ev.id)?.x || 0, y: (w.enemies.find((e) => e.id === ev.id)?.y || 0) - 26, text: '낙인', color: '#c45cff', t: 1.2, vy: -8, vx: 0, label: true, size: 2 }); break;
-        case 'zoneFx': if (ev.kind === 'smoke') { for (let i = 0; i < 26; i++) { const a = Math.random() * Math.PI * 2, sp = 30 + Math.random() * 60; this.parts.push({ x: ev.x, y: ev.y - 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6 - 10, t: 1.2, max: 1.2, color: '#d0d2dc', g: -4, steam: true }); } sfx('dash', { vol: 0.6, rate: 0.5 }); break; }
+        case 'zoneFx': if (ev.kind === 'smoke') { for (let i = 0; i < 14; i++) { const a = Math.random() * Math.PI * 2, sp = 30 + Math.random() * 60; this.parts.push({ x: ev.x, y: ev.y - 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6 - 10, t: 0.9, max: 0.9, color: i % 2 ? '#8a8c98' : '#b8bac4', g: -4, steam: true }); } this.origFx({ s: 'burst', x: ev.x, y: ev.y, r: 16, pal: 'steam', tier: 2, dur: 0.3 }); sfx('dash', { vol: 0.6, rate: 0.5 }); break; }
           if (ev.kind === 'trap' || ev.kind === 'bait') { this.burst(ev.x, ev.y, ev.kind === 'trap' ? '#8a7a5a' : '#c8504a', 8, 40); sfx('step', { vol: 0.5, rate: 0.8 }); break; }
-          this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r * 1.1, color: ev.kind === 'slow' ? '#b98aff' : ev.kind === 'frost' ? '#c8f0ff' : ev.kind === 'trap' ? '#9be15d' : ev.kind === 'arrows' ? '#ffe080' : '#ff8a3a', t: 0.4, max: 0.4, w: 3 }); break;
+          this.origFx({ s: 'rays', x: ev.x, y: ev.y + 4, r: Math.min(30, ev.r * 0.6), n: 8, pal: ev.kind === 'slow' ? 'curse' : ev.kind === 'frost' ? 'ice' : ev.kind === 'trap' ? 'poison' : ev.kind === 'arrows' ? 'holy' : 'fire', tier: 2, dur: 0.35 }); if (0) this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: ev.r * 1.1, color: ev.kind === 'slow' ? '#b98aff' : ev.kind === 'frost' ? '#c8f0ff' : ev.kind === 'trap' ? '#9be15d' : ev.kind === 'arrows' ? '#ffe080' : '#ff8a3a', t: 0.4, max: 0.4, w: 3 }); break;
         case 'arrowDrop': this.fx.push({ k: 'arrowDrop', x: ev.x, y: ev.y, t: 0.18, max: 0.18 }); if (Math.random() < 0.3) sfx('shoot', { vol: 0.25, rate: 1.6 }); break;
         case 'shadowVeil': this.fx.push({ k: 'veil', x: ev.x, y: ev.y, r: ev.r || 30, t: ev.small ? 0.6 : 0.9, max: ev.small ? 0.6 : 0.9, small: !!ev.small, seed: Math.random() * 10 }); if (!ev.small) sfx('skill', { vol: 0.5, rate: 0.7 }); break; // 그림자 장막 (그림자 손)
         case 'skillDash': {
@@ -324,7 +334,7 @@ export const EventMethods = {
             if (ev.elem === 'fire') for (let i = 0; i < 6; i++) { const a = ev.ang + (Math.random() - 0.5) * ev.angle, d = ev.range * (0.5 + Math.random() * 0.5); this.parts.push({ x: ev.x + Math.cos(a) * d, y: ev.y + Math.sin(a) * d * 0.62, vx: 0, vy: -30, t: 0.4, max: 0.4, g: -20, flame: true, size: 1, color: '#ffffff' }); }
             this.shake = Math.max(this.shake, 2); sfx('reaction', { vol: 0.45, rate: 1.5 });
           } else if (ev.fx === 'sweep') { this.fx.push({ k: 'spin', x: ev.x, y: ev.y, r: ev.range, type: 'phys', t: 0.25, max: 0.25 }); this.shake = Math.max(this.shake, 4); sfx('heavySwing', { vol: 0.9 }); }
-          if (ev.fx !== 'breath' && ev.fx !== 'spellBlade') this.fx.push({ k: 'cone', ...ev, color: ELEM[ev.elem]?.color || (ev.fx === 'claws' ? '#ffffff' : '#ffb066'), t: 0.22, max: 0.22 });
+          if (ev.fx !== 'breath' && ev.fx !== 'spellBlade') this.origFx({ s: 'slash', x: ev.x, y: ev.y + 6, ang: ev.ang, r: Math.max(16, ev.range * 0.8), spread: Math.min(3, Math.max(1, ev.angle || 1.6)), pal: palOf(ev.fx === 'claws' ? '#ffffff' : '#ffb066', ev.elem), tier: ev.tier, dur: 0.24 }); // 부채꼴 덩어리 대신 휘두른 자리의 칼자국
           if (ev.fx === 'claws') { this.fx.push({ k: 'claws', x: ev.x, y: ev.y, ang: ev.ang + (Math.random() - 0.5) * 0.6, r: ev.range, t: 0.18, max: 0.18 }); sfx('swing', { vol: 0.5, rate: 1.4 }); }
           else if (ev.fx === 'breath') this.flameStream(ev);
           else { this.shake = Math.max(this.shake, 4); sfx('hitHeavy', { vol: 0.8, rate: 0.7 }); }
@@ -334,7 +344,7 @@ export const EventMethods = {
           if (ev.fx === 'stab') { this.fx.push({ k: 'impact', x: ev.x, y: ev.y + 2, r: 12, color: '#b89aff', t: 0.15, max: 0.15 }); this.sparkBurst(ev.x, ev.y - 6, '#b89aff', 8); sfx('swing', { vol: 0.5, rate: 1.6 }); break; }
           if (ev.fx === 'slashX') { this.fx.push({ k: 'slashX', x: ev.x, y: ev.y - 6, color: '#b89aff', t: 0.35, max: 0.35 }); this.burst(ev.x, ev.y - 6, '#8a6aff', 30, 160); }
           else if (ev.fx === 'bite') { this.fx.push({ k: 'bite2', x: ev.x, y: ev.y - 6, t: 0.3, max: 0.3 }); this.burst(ev.x, ev.y - 6, '#e0445a', 24, 130); }
-          else { this.fx.push({ k: 'ring', x: ev.x, y: ev.y, r: 30, color: col, t: 0.35, max: 0.35, w: 4 }); this.burst(ev.x, ev.y - 4, '#c8b898', 24, 140); }
+          else { this.origFx({ s: 'burst', x: ev.x, y: ev.y, r: 18, pal: palOf(col, ev.elem), tier: ev.tier, dur: 0.32 }); this.burst(ev.x, ev.y - 4, '#c8b898', 16, 140); }
           this.shake = Math.max(this.shake, ev.big ? 7 : 4); this.addStop(ev.big ? 0.1 : 0.05);
           sfx('hitHeavy', { vol: 1, rate: ev.big ? 0.6 : 0.85 });
           break;
@@ -344,7 +354,9 @@ export const EventMethods = {
         case 'parryStance': this.fx.push({ k: 'parryStance', t: ev.dur, max: ev.dur }); sfx('open', { vol: 0.5 }); break;
         case 'parry': this.rimFlash = { color: '#fff6c0', t: 0.4, max: 0.4 }; this.shockwave(ev.x, ev.y, 40, '#fff6c0', 24); this.burst(ev.x, ev.y - 6, '#fff6c0', 30, 160); this.texts.push({ x: ev.x, y: ev.y - 26, text: '받아치기!', color: '#ffe080', t: 1, vy: -14, vx: 0, label: true, size: 2 }); this.shake = 5; sfx('hitArmor', { vol: 1 }); sfx('reaction', { vol: 0.5, rate: 1.5 }); break;
         case 'buff': if (!ev.foe && Math.hypot(ev.x - w.player.x, ev.y - w.player.y) < 24) this.rimFlash = { color: ev.color || '#ffffff', t: 0.35, max: 0.35 * 1.8 }; // 테두리 번쩍임은 내 몸에 건 것만 (스승 · 적에게 붙은 표식이 내 몸을 물들이지 않게)
-          for (let i = 0; i < 7; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 14, y: ev.y, vx: 0, vy: -30 - Math.random() * 25, t: 0.55, max: 0.55, color: ev.color, g: -8 }); sfx('echo', { vol: 0.5 }); break;
+          for (let i = 0; i < 7; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 14, y: ev.y, vx: 0, vy: -30 - Math.random() * 25, t: 0.55, max: 0.55, color: ev.color, g: -8 });
+          if (!ev.foe && !ev.quiet) this.origFx({ s: 'rays', x: ev.x, y: ev.y - 4, r: 14, n: 6, spread: 2.2, ang: -Math.PI / 2, pal: palOf(ev.color), tier: 2, dur: 0.4 }); // 몸에서 솟는 짙은 외곽선 빛살 (걸린 것이 보이게)
+          sfx('echo', { vol: 0.5 }); break;
         case 'elemShift': this.fx.push({ k: 'ring', x: ev.x, y: ev.y - 6, r: 24, color: ELEM[ev.elem].color, t: 0.4, max: 0.4, w: 3 }); this.burst(ev.x, ev.y - 6, ELEM[ev.elem].color, 16, 80); this.texts.push({ x: ev.x, y: ev.y - 24, text: `${ELEM[ev.elem].name}${ev.weak ? ' · 약점!' : ''}`, color: ELEM[ev.elem].color, t: 1, vy: -12, vx: 0, label: true }); sfx('open', { vol: 0.5, rate: 1.2 }); break;
         case 'beamFx': { if (ev.wall && Math.random() < 0.6) { this.sparkBurst(ev.x2, ev.y2, '#ffe0a0', 4); if (Math.random() < 0.4) this.parts.push({ x: ev.x2, y: ev.y2, vx: (Math.random() - 0.5) * 20, vy: -12, t: 0.5, max: 0.5, color: '#8a8070', g: -2, puff: true, size: 2 }); } // 광선이 벽에 부딪힌 자리
           { const b = ev.from != null && w.enemies.find((o) => o.id === ev.from); if (b && b._top != null) { const h = b._vis || b.y - b._top; ev.x1 = b.x; ev.y1 = b.y + 4 - h * 0.6; ev.y2 -= 8; ev.feet = b.y; } } // 보스 광선은 몸(가슴께)에서 나간다 · 끝은 맞는 사람 몸 높이
@@ -477,8 +489,8 @@ export const EventMethods = {
     } else if (ev.t === 'skillDash' || ev.t === 'meleeStep') { // 높은 등급의 돌진: 잔상이 더 길게 이어지고, 멈춘 자리에 미끄러진 자국과 흙
       const dx = ev.x2 - ev.x1, dy = ev.y2 - ev.y1, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, g2 = hi ? 4 : 2;
       for (let i = 0; i < g2; i++) { const u = (i + 0.5) / g2; this.fx.push({ k: 'ghost', x: ev.x1 + dx * u, y: ev.y1 + dy * u, t: 0.16 + u * 0.2, max: 0.36, dir: dx > 0 ? 1 : -1 }); }
-      if (L > 14 && land(ev.x2, ev.y2) === 1) { const pts = []; for (let d = Math.min(L, hi ? 26 : 16); d >= 0; d -= 4) pts.push({ x: ev.x2 - ux * d, y: ev.y2 - uy * d + 4 }); A.ground.push({ type: 'skid', pts, ux, uy, t: 0, max: 1.2 }); }
-      for (let i = 0; i < (hi ? 8 : 4); i++) P.push({ x: ev.x2, y: ev.y2 + 3, vx: ux * (30 + Math.random() * 50) + (Math.random() - 0.5) * 24, vy: -24 - Math.random() * 30, t: 0.4, max: 0.4, color: '#7a6448', g: 380, chunk: true, floor: ev.y2 + 4 });
+      if (L > 14 && land(ev.x2, ev.y2) === 1) { const pts = []; for (let d = Math.min(L, hi ? 26 : 16); d >= 0; d -= 4) pts.push({ x: ev.x2 - ux * d, y: ev.y2 - uy * d + 4 }); A.ground.push({ type: 'skid', pts, ux, uy, t: 0, max: 1.2, ice: ev.ice || ev.elem === 'ice' }); }
+      for (let i = 0; i < (hi ? 8 : 4); i++) P.push({ x: ev.x2, y: ev.y2 + 3, vx: ux * (30 + Math.random() * 50) + (Math.random() - 0.5) * 24, vy: -24 - Math.random() * 30, t: 0.4, max: 0.4, color: ev.ice || ev.elem === 'ice' ? '#bfe6f8' : '#7a6448', g: 380, chunk: true, floor: ev.y2 + 4 });
     }
   },
 
