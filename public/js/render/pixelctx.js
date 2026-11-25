@@ -247,7 +247,7 @@ export class PixelCtx {
   ditherEllipse(x, y, rx, ry, color, density) {
     if (!(density > 0.01)) return;
     const m = this.m;
-    ellipseSpans(m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5], Math.abs(rx * m[0]), Math.abs(ry * m[3]));
+    raggedSpans(m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5], Math.abs(rx * m[0]), Math.abs(ry * m[3]));
     this.ditherSpans(color, density);
   }
   ditherPoly(pts, color, density) { if (!(density > 0.01)) return; SN = 0; polySpans([pts.map(([x, y]) => this.P(x, y))], false, false); this.ditherSpans(color, density); }
@@ -272,10 +272,11 @@ export class PixelCtx {
   dashEllipse(x, y, rx, ry, color, on = 3, off = 2, phase = 0) {
     const m = this.m, cx = m[0] * x + m[2] * y + m[4], cy = m[1] * x + m[3] * y + m[5], RX = Math.abs(rx * m[0]), RY = Math.abs(ry * m[3]);
     if (RX < 1 || RY < 1) return;
+    const big = RX >= 8 && RY >= 4, amp = Math.min(4, Math.max(1.5, Math.min(RX, RY) * 0.14)), seed = ((Math.round(cx) * 7 + Math.round(cy) * 13) % 97) * 0.37; // 채움(raggedSpans)과 같은 들쭉날쭉한 둘레
     const n = Math.ceil(Math.PI * (RX + RY) * 1.5), per = on + off, ph = Math.floor(phase), c = this.c, fs = c.fillStyle;
     c.fillStyle = color;
     let lx = 1e9, ly = 1e9, k = 0;
-    this.dev((g) => { for (let i = 0; i < n; i++) { const a = (i / n) * TAU, X = Math.floor(cx + Math.cos(a) * RX), Y = Math.floor(cy + Math.sin(a) * RY); if (X === lx && Y === ly) continue; lx = X; ly = Y; if (((k++ + ph) % per + per) % per < on) g.fillRect(X, Y, 1, 1); } });
+    this.dev((g) => { for (let i = 0; i < n; i++) { const a = (i / n) * TAU, e = big ? 1 + amp * edgeK(a, seed) / Math.max(RX, RY) : 1, X = Math.floor(cx + Math.cos(a) * RX * e), Y = Math.floor(cy + Math.sin(a) * RY * e); if (X === lx && Y === ly) continue; lx = X; ly = Y; if (((k++ + ph) % per + per) % per < on) g.fillRect(X, Y, 1, 1); } });
     c.fillStyle = fs;
   }
 
@@ -306,6 +307,22 @@ Object.defineProperty(PixelCtx.prototype, 'strokeStyle', {
 });
 
 // 원 · 타원: 줄마다 칸 한가운데가 안에 드는 구간 (버퍼를 비우고 채운다)
+// 기본 도형 금지: 큰 타원은 가장자리를 들쭉날쭉하게 (자리마다 정해진 모양 · 바깥으로 번진 혀와 안으로 파인 금)
+export function edgeK(a, seed) {
+  const n = Math.sin(a * 3 + seed) * 0.45 + Math.sin(a * 7 - seed * 1.7) * 0.3 + Math.sin(a * 13 + seed * 2.3) * 0.25;
+  return n + (Math.sin(a * 23 + seed * 3.1) > 0.82 ? -0.9 : 0); // 가끔 깊게 파인 금
+}
+function raggedSpans(cx, cy, rx, ry) {
+  ellipseSpans(cx, cy, rx, ry);
+  if (rx < 8 || ry < 4) return;
+  const amp = Math.min(4, Math.max(1.5, Math.min(rx, ry) * 0.14)), seed = ((Math.round(cx) * 7 + Math.round(cy) * 13) % 97) * 0.37;
+  for (let i = 0; i < SN * 3; i += 3) {
+    const t = Math.max(-1, Math.min(1, (SB[i] + 0.5 - cy) / ry)), q = Math.asin(t), c = Math.sqrt(1 - t * t);
+    SB[i + 1] -= Math.round(amp * edgeK(Math.PI - q, seed) * c); // 왼쪽 끝
+    SB[i + 2] += Math.round(amp * edgeK(q, seed) * c); // 오른쪽 끝
+    if (SB[i + 2] <= SB[i + 1]) SB[i + 2] = SB[i + 1] + 1;
+  }
+}
 function ellipseSpans(cx, cy, rx, ry) {
   SN = 0;
   if (rx < 0.35 || ry < 0.35) { pushSpan(Math.floor(cy), Math.floor(cx), Math.floor(cx) + 1); return; } // 아주 작은 원은 한 칸

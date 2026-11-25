@@ -181,7 +181,8 @@ export const FxMethods = {
         g.save(); g.globalCompositeOperation = 'lighter';
         const gr = g.createRadialGradient(f.x, f.y, rr * 0.2, f.x, f.y, rr);
         gr.addColorStop(0, hexA(f.color, 0.12 * k)); gr.addColorStop(0.6, hexA(f.color, 0.06 * k)); gr.addColorStop(1, hexA(f.color, 0)); // 가운데가 밝은 둥근 빛 (띠 모양이 아니게)
-        g.fillStyle = gr; g.save(); g.translate(f.x, f.y); g.scale(1, 0.62); g.translate(-f.x, -f.y); g.fillRect(f.x - rr, f.y - rr, rr * 2, rr * 2); g.restore();
+        if (g.ditherEllipse) g.ditherEllipse(f.x, f.y, rr, rr * 0.62, f.color, 0.3 * k); // 매끈한 원판 대신 들쭉날쭉한 점묘 빛
+        else { g.fillStyle = gr; g.save(); g.translate(f.x, f.y); g.scale(1, 0.62); g.translate(-f.x, -f.y); g.fillRect(f.x - rr, f.y - rr, rr * 2, rr * 2); g.restore(); }
         if (!f.spread) { // 한 번만: 방향 · 속도를 흩뜨려 고리 꼴이 되지 않게
           f.spread = true;
           for (let i = 0; i < n; i++) {
@@ -254,8 +255,14 @@ export const FxMethods = {
           }
         }
       } else if (f.k === 'cone') {
-        g.fillStyle = hexA(f.color, 0.28 * k);
-        g.beginPath(); g.moveTo(f.x, f.y - 6); g.arc(f.x, f.y - 6, f.range, f.ang - f.angle / 2, f.ang + f.angle / 2); g.closePath(); g.fill();
+        // 부채꼴 판 대신 뻗어 나가는 혀 조각들: 줄기마다 길이가 다르고 끝이 뾰족하다
+        const n = Math.max(5, Math.round(f.angle * 6));
+        g.fillStyle = hexA(f.color, 0.4 * k);
+        for (let i = 0; i < n; i++) {
+          const a = f.ang - f.angle / 2 + (i + 0.5) / n * f.angle, L = f.range * (0.7 + 0.3 * Math.abs(Math.sin(i * 2.7 + 1))), hw = f.angle / n * 0.55;
+          g.beginPath(); g.moveTo(f.x + Math.cos(a - hw) * L * 0.25, f.y - 6 + Math.sin(a - hw) * L * 0.25); g.lineTo(f.x + Math.cos(a - hw) * L * 0.8, f.y - 6 + Math.sin(a - hw) * L * 0.8);
+          g.lineTo(f.x + Math.cos(a) * L, f.y - 6 + Math.sin(a) * L); g.lineTo(f.x + Math.cos(a + hw) * L * 0.8, f.y - 6 + Math.sin(a + hw) * L * 0.8); g.lineTo(f.x + Math.cos(a + hw) * L * 0.25, f.y - 6 + Math.sin(a + hw) * L * 0.25); g.closePath(); g.fill();
+        }
       } else if (f.k === 'claws') {
         g.strokeStyle = hexA('#ffffff', k); g.lineWidth = 2.5;
         for (let i = -1; i <= 1; i++) {

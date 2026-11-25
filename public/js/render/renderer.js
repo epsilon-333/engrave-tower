@@ -644,11 +644,14 @@ export class Renderer {
       const e = w.enemies.find((x) => x.id === f.id);
       if (!e) continue;
       const k = 1 - f.t / f.max;
-      g.fillStyle = `rgba(255,40,40,${0.12 + 0.25 * k})`;
-      g.save(); g.translate(e.x, e.y); g.rotate(Math.atan2(f.dy, f.dx));
-      g.fillRect(0, -e.r, 150, e.r * 2);
-      g.fillStyle = `rgba(255,80,80,${0.5 * k})`; g.fillRect(0, -e.r, 150 * k, e.r * 2);
-      g.restore();
+      // 돌진 예고: 막대 대신 땅을 긁고 나가는 들쭉날쭉한 자국 (칸마다 폭이 다르고 · 차오른 만큼 짙다 · 끝은 뾰족)
+      const L = Math.hypot(f.dx, f.dy) || 1, ux = f.dx / L, uy = f.dy / L, R0 = Math.max(3, e.r);
+      for (let d = 0; d < 150; d += 3) {
+        const taper = d > 120 ? (150 - d) / 30 : 1, h = Math.sin(d * 0.37 + e.id) * 0.25 + Math.sin(d * 0.91) * 0.15, hw = Math.max(1, Math.round(R0 * (0.85 + h) * taper));
+        const on = d < 150 * k, x = Math.round(e.x + ux * d), y = Math.round(e.y + uy * d);
+        g.fillStyle = on ? `rgba(255,${70 + (d * 7) % 40},60,${0.55 * k + 0.15})` : `rgba(255,40,40,${0.12 + 0.2 * k})`;
+        for (let q = -hw; q <= hw; q += (on ? 1 : 2)) if (Math.abs(q) === hw || ((d / 3 + q) & 1) === 0) g.fillRect(Math.round(x - uy * q), Math.round(y + ux * q), 2, 2);
+      }
     }
 
     // 탑: 층을 깨면 문까지 가는 길이 바닥에 빛나는 점으로 이어진다
@@ -2703,6 +2706,10 @@ export class Renderer {
     const g = this.g;
     if (!(r > 0) || !Number.isFinite(x + y + r)) return; // 반지름이 없는 사건(예: r 없는 slam)이 그림판을 멈추지 않게
     g.save(); g.globalCompositeOperation = 'lighter';
+    if (r >= 10 && g.ditherEllipse) { // 기본 도형 금지: 매끈한 빛 원 대신 들쭉날쭉한 가장자리의 점묘 빛 세 겹 (자리마다 모양이 다르다)
+      for (const [kr, d] of [[1, 0.22], [0.62, 0.32], [0.3, 0.5]]) g.ditherEllipse(x, y, r * kr, r * kr * 0.9, color, Math.min(1, d * a * 1.6));
+      g.restore(); return;
+    }
     const gr = g.createRadialGradient(x, y, 0, x, y, r);
     gr.addColorStop(0, hexA(color, 0.6 * a)); gr.addColorStop(0.45, hexA(color, 0.22 * a)); gr.addColorStop(1, hexA(color, 0));
     g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);

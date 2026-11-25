@@ -106,11 +106,15 @@ export const OrigFxMethods = {
         const up = Math.min(1, age / 0.15) * Math.min(1, f.t / 0.25), L = Math.hypot(f.x2 - f.x1, f.y2 - f.y1), n = Math.max(3, Math.round(L / 9));
         for (let i = 0; i < n; i++) { const u = (i + 0.5) / n, sx = Math.round(f.x1 + (f.x2 - f.x1) * u), sy = Math.round(f.y1 + (f.y2 - f.y1) * u), h = Math.round((f.h || 20) * up * (0.85 + rnd(f.seed + i) * 0.3)), w = 5;
           if (h < 1) continue;
-          g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(sx - w - 1, sy - 1, w * 2 + 2, 3);
-          g.fillStyle = pal[0]; g.fillRect(sx - w - 1, sy - h - 1, w * 2 + 2, h + 2);
-          g.fillStyle = pal[1]; g.fillRect(sx - w, sy - h, w * 2, h);
-          g.fillStyle = pal[2]; g.fillRect(sx - w, sy - h, w * 2, 2); g.fillRect(sx - w, sy - h, 1, h);
-          g.fillStyle = hexA(pal[0], 0.6); g.fillRect(sx + w - 2, sy - h + 2, 2, h - 2); if (i % 2) g.fillRect(sx - 1, sy - h + 4, 1, Math.max(1, h - 8));
+          g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(sx - w - 1, sy - 1, w * 2 + 2, 2); g.fillRect(sx - w + 1, sy + 1, w * 2 - 3, 1);
+          // 직사각형 대신: 칸마다 윗면 높이가 들쭉날쭉한 돌 · 쇠 덩이 (깨진 윗면 · 옆 그늘 · 금 · 쇠는 리벳)
+          const top = (c) => sy - h + Math.round((rnd(f.seed + i * 7 + c * 13) - 0.3) * 4 * up) + (c === -w || c === w - 1 ? 1 : 0);
+          for (let c = -w - 1; c <= w; c++) { const ty = top(Math.max(-w, Math.min(w - 1, c))); g.fillStyle = pal[0]; g.fillRect(sx + c, ty - 1, 1, sy - ty + 2); }
+          for (let c = -w; c < w; c++) { const ty = top(c); g.fillStyle = c >= w - 2 ? hexA(pal[0], 0.55) : pal[1]; g.fillRect(sx + c, ty, 1, sy - ty); g.fillStyle = pal[2]; g.fillRect(sx + c, ty, 1, c === -w ? sy - ty : 1 + (c + i) % 2); }
+          g.fillStyle = hexA(pal[0], 0.8); // 금: 위에서 비스듬히 내려오는 갈라짐
+          let cx2 = sx - 2 + Math.round(rnd(f.seed + i) * 3);
+          for (let yy = sy - h + 4; yy < sy - 3; yy += 2) { g.fillRect(cx2, yy, 1, 2); if (rnd(f.seed + yy + i) > 0.6) cx2 += rnd(f.seed + yy) > 0.5 ? 1 : -1; }
+          if (f.pal === 'metal' && h > 9) { for (const ry of [sy - h + 4, sy - 4]) { g.fillStyle = pal[0]; g.fillRect(sx - w + 1, ry, 2, 2); g.fillRect(sx + w - 3, ry, 2, 2); g.fillStyle = pal[2]; g.fillRect(sx - w + 1, ry, 1, 1); g.fillRect(sx + w - 3, ry, 1, 1); } } // 리벳
         }
         return;
       }
