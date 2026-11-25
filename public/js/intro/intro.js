@@ -21,8 +21,8 @@ export const SCENES = [
   ...RACE8.map((S, i) => clip(S, { from: [0.7, 0.7, 0.7, 0.7, 1.0, 0.9, 0.9, 0.7][i], dur: 0.5, text: LIGHT, textAt: 0.1, fi: 0.1, fo: 0.1 })), // 종족마다 한 컷 (몸이 움직이는 가장 센 순간만)
   clip(RING, { speed: 1.8, text: '빛은 몸에 문양으로 새겨졌다. 사람들은 그것을 각인이라 불렀다.', textAt: 0.3 }),
   clip(T1, { speed: 4.6 / 2.4, text: '각인을 지닌 자들은 탑을 올랐다. 꼭대기에 닿은 이는 아직 없다.', textAt: 0.3 }),
-  clip(SERIN, { dur: 2.0, text: '몇 해 전, 바람결 마을의 세린도 각인을 안고 탑에 들어갔다.', textAt: 0.4, fo: 0 }),
-  clip(SERIN, { from: 3.6, dur: 1.6, text: '세린은 돌아오지 않았다.', textAt: 0.1, fi: 0 }),
+  clip(SERIN, { dur: 2.0, text: '몇 해 전에도, 바람결 마을의 누군가가 각인을 안고 탑에 들어갔다.', textAt: 0.4, fo: 0 }),
+  clip(SERIN, { from: 3.6, dur: 1.6, text: '그는 돌아오지 않았다.', textAt: 0.1, fi: 0 }),
   TITLE_SCENE,
   clip(T7, { speed: 3.6 / 2.2, text: '탑이 다시 울린다. 이번에는 — 너를 부른다.', textAt: 0.15 }),
   clip(T8, { speed: 6.0 / 3.4 }),
