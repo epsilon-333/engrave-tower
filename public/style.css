@@ -437,6 +437,11 @@ b.dim { color: #e8c890; }
 #tut button { font: 12px Galmuri11, sans-serif; padding: 3px 8px; background: transparent; color: #a89a8f; border: 1px solid #5e5253; border-radius: 4px; cursor: pointer; white-space: nowrap; }
 #tut em { font-style: normal; color: #ffd76a; }
 #tut i { font-style: normal; color: #8fcf7a; margin-left: 6px; }
+/* 안내 줄 (2026-11-26): 키 그림 · 한 줄 · ? 덧말 */
+#tut kbd, #guide kbd { display: inline-block; min-width: 1.4em; padding: 0 5px; margin: 0 2px; font: 12px Galmuri11, sans-serif; line-height: 18px; text-align: center; color: #1a1420; background: #f4ecd8; border: 1px solid #000; border-bottom-width: 3px; border-radius: 4px; vertical-align: 1px; }
+#tut b { min-width: 0 !important; white-space: nowrap; }
+#tut .tut-more { color: #c8baa8; font-size: 12px; }
+#tut button[data-tutmore] { padding: 1px 6px; color: #e9b85c; border-color: #e9b85c; }
 
 /* 온라인 채팅 */
 #chat { position: fixed; left: 12px; bottom: 96px; z-index: 30; width: min(340px, calc(100vw - 24px)); font: 13px Galmuri11, sans-serif; color: #f4ecd8; pointer-events: none; }
@@ -781,6 +786,9 @@ body.touch #guide { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
 #guide.nudge { animation: gnudge .35s; }
 #guide .g-nudge { color: #ff9a6a; }
 #guide.forced.raise { bottom: 120px; }
+#guide.forced.top { top: 64px; bottom: auto; }
+#guide { width: auto; min-width: min(260px, calc(100vw - 32px)); max-width: calc(100vw - 32px); }
+#guide b { white-space: nowrap; }
 body.touch #guide.forced.raise { bottom: auto; top: calc(110px + env(safe-area-inset-top, 0px)); }
 @keyframes gnudge { 0%, 100% { transform: translateX(-50%); } 25% { transform: translateX(calc(-50% - 6px)); } 75% { transform: translateX(calc(-50% + 6px)); } }
 /* ───── UI 다듬기 (2026-11-23) ───── */

@@ -3521,7 +3521,7 @@ function politicsTick(dt) {
   const w = world;
   if (save.time) econTick(save, absMin(save.time)); // 마을마다 만들고 쓴다
   if (w.map.outdoor || w.objects.some((q) => q.kind === 'npc')) barkTick(dt);
-  if (!save.flags?.deedTip && w.state === 'play' && w.zone?.id === 'world' && save.tutorial?.done && save.journey?.f1) { (save.flags ||= {}).deedTip = true; renderer.banner = { text: '사람들은 내가 한 일을 기억한다', sub: '때리면 싸움 · 돈을 건네면 뇌물 · 기부 · 후원 · 곁에 머물면 호위 (설정에서 NPC 공격 끄기)', t: 7, color: '#f6dfae' }; }
+  if (!save.flags?.deedTip && w.state === 'play' && w.zone?.id === 'world' && save.tutorial?.done && save.journey?.f1) { (save.flags ||= {}).deedTip = true; renderer.banner = { text: '사람들은 내가 한 일을 기억한다', sub: '때리면 싸움 · 돈은 뇌물 · 기부', t: 7, color: '#f6dfae' }; }
   if (w.map.outdoor && !w.voyage && w.state === 'play') {
     happenClock -= dt;
     HAPPEN_LIST = HAPPEN_LIST.filter((h) => w.objects.includes(h.o) && !h.o.gone);
