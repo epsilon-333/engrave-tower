@@ -14,7 +14,8 @@ import { STORY_ITEMS } from '../data/story.js';
 import { sfx, tone } from '../audio.js';
 import { towerEvent } from './towerfx.js';
 import { SK_FX } from './skfx.js';
-import { bigFx } from './bigfx.js';
+import { bigFx, BIG } from './bigfx.js';
+import { classFx } from './classfx.js';
 import { CLASS_MAGIC, WORD_NAME, sentenceLine, WORD_COLOR, fmt } from './renderer.js';
 
 const TIER_EV = new Set(['skillAoe', 'skillCone', 'skillLine', 'skillSingle', 'skillDash', 'meleeStep', 'skillFx', 'slam', 'land']); // 등급에 맞춰 다듬는 사건
@@ -46,6 +47,8 @@ export const EventMethods = {
       if (ev.tier != null && TIER_EV.has(ev.t)) pend = { ev, parts: this.parts.length, fx: this.fx.length, al: this.anims.list.length, ag: this.anims.ground.length, px: this.anims.px.list.length, shake: this.shake, hitstop: this.hitstop, flash: this.flash };
       if (this.lifeEvent(w, ev)) continue;
       if (w.climb && towerEvent(this, w, ev)) continue; // 탑 51~100층 장치 · 보스 등장
+      this._evSk = ev.foe ? null : ev.sk; // 갈래 그림이 스킬을 알도록 (origfx 가시 → 갈래 그림)
+      if (ev.sk && !ev.foe) classFx.call(this, ev, w, !!BIG[ev.sk]); // 갈래마다 다른 시각 언어 (render/classfx.js)
       if (ev.sk && !ev.foe && bigFx.call(this, ev, w) === 'own') continue; // 대표 기술은 화려하게 (render/bigfx.js)
       if (ev.sk && SK_FX[ev.sk] && !ev.foe && SK_FX[ev.sk].call(this, ev, w)) continue; // 스킬마다 다른 그림 (render/skfx.js)
       if (ev.quiet && (ev.t === 'skillAoe' || ev.t === 'skillCone' || ev.t === 'skillLine')) { sfx(ev.t === 'skillCone' ? 'swing' : 'hitHeavy', { vol: 0.35, rate: 1.1 }); continue; } // 독창 스킬: 그림은 ofx 가 맡는다 (범용 범위 그림을 겹치지 않는다)

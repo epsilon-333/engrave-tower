@@ -4,6 +4,7 @@
 // 그림 사건만 쓴다 (시뮬레이션 수치는 건드리지 않는다). this 는 Renderer
 import { hexA } from './color.js';
 import { sfx } from '../audio.js';
+import { classHit, skillClass, keepsSpike } from './classfx.js';
 
 const TAU = Math.PI * 2;
 const rnd = (seed) => { let s = seed >>> 0 || 1; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
@@ -199,6 +200,7 @@ function impact(R, w, ev, C, opt = {}) {
   if (onLand) A.add('bigShards', { x, y, r: r * 0.9, n: light ? 6 : 12, sz: light ? 0.7 : 1 * (C.big || 1), slab: C.spike === 'ice' || C.pal === 'ice' ? 'ice' : 'earth' });
   const sp = SPIKE_PAL[C.spike] || C.pal;
   if (onLand && C.spike === 'bolt') { if (!light) A.add('lightning', { x, y, r: r * 0.6 }); }
+  else if (onLand && !keepsSpike(ev.sk) && classHit(R, w, skillClass(ev.sk), x, y, r * 0.9, { tier: 5, hand: true, el: C.pal === 'ice' ? 'ice' : C.pal === 'bolt' ? 'bolt' : 'fire' })) { /* 갈래 그림 */ } // 갈래 그림 (가시는 가시 스킬만 · 2026-11-27)
   else if (onLand) A.add('bigSpikes', { x, y, r: r * 0.85, n: light ? 5 : Math.round(9 + 5 * (C.big || 1)), sz: light ? 0.6 : C.big || 1, pal: sp, kind: C.spike, max: C.spike === 'fire' ? 1.1 : 1.3 });
   if (onLand && !light) A.add('cracks', { x, y, r: r * 1.1, col: BPAL[C.pal][3], max: 2.6 });
   for (let i = 0; i < (light ? 6 : 16); i++) { const an = Math.random() * TAU, v = 80 + Math.random() * 140; R.parts.push({ x, y: y - 4, vx: Math.cos(an) * v, vy: Math.sin(an) * v * 0.6 - 60, t: 0.5 + Math.random() * 0.3, max: 0.8, color: BPAL[C.pal][i % 2 ? 3 : 5], g: 300, chunk: true, floor: y + Math.sin(an) * 10 + 4 }); }
@@ -231,10 +233,11 @@ export function bigFx(ev, w) {
   }
   if (t === 'skillAoe') { impact(this, w, ev, C); return RING_FX.has(ev.fx) || C.fall ? 'own' : false; }
   if (t === 'skillLine') { // 일직선: 끝 쪽으로 가며 차례로 터진다
-    const n = 4; for (let i = 1; i <= n; i++) { const u = i / n; impact(this, w, { x: ev.x1 + (ev.x2 - ev.x1) * u, y: ev.y1 + (ev.y2 - ev.y1) * u, r: (ev.w || 24) * 1.1 }, C, { scale: 0.55 + u * 0.3, light: i < n }); }
+    const n = 4; for (let i = 1; i <= n; i++) { const u = i / n; impact(this, w, { x: ev.x1 + (ev.x2 - ev.x1) * u, y: ev.y1 + (ev.y2 - ev.y1) * u, r: (ev.w || 24) * 1.1, sk: ev.sk }, C, { scale: 0.55 + u * 0.3, light: i < n }); }
     return false;
   }
-  if (t === 'skillSingle') { impact(this, w, { x: ev.x, y: ev.y, r: 30 }, C, { scale: 0.8 }); return false; }
+  if (t === 'skillSingle') { impact(this, w, { x: ev.x, y: ev.y, r: 30, sk: ev.sk }, C, { scale: 0.8 }); return false; }
+  if (t === 'buff' && (C.big || 1) >= 1 && !keepsSpike(ev.sk) && classHit(this, w, skillClass(ev.sk), ev.x, ev.y, 26, { tier: 5, max: 1 })) { linger(this, ev.x, ev.y, 20, C.pal, 5); return false; }
   if (t === 'buff' && (C.big || 1) >= 1) { this.anims.add('bigSpikes', { x: ev.x, y: ev.y, r: 30, n: 10, sz: 0.8, pal: SPIKE_PAL[C.spike] || C.pal, kind: C.spike === 'fire' ? 'fire' : 'x', max: 1 }); linger(this, ev.x, ev.y, 20, C.pal, 5); return false; }
   return false;
 }
