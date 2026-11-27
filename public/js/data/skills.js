@@ -102,8 +102,8 @@ export const SKILLS = {
   // ══════ 공룡 수인 · 대지 거수 ══════
   tailSwipe: { name: '꼬리 휘두르기', role: '공격', cd: 4, cost: 1, scale: 'phys', fx: 'spin', mo: 'spin',
     desc: '꼬리로 주변을 한 바퀴 쳐서 밀쳐낸다. 본능 +10.', do: [{ op: 'aoe', at: 'self', r: 54, mul: 1.1, knock: 190, fx: 'spin' }] },
-  rush: { name: '돌격', role: '이동', cd: 8, cost: 10, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'charge', hold: true,
-    desc: '누르고 있는 동안 최대 2초 달린다. 앞의 적을 밀고 가며, 오래 달릴수록 부딪히는 피해가 커진다. 본능 10.', do: [{ op: 'rush', dur: 2, speed: 230, mul: 0.8 }] },
+  rush: { name: '돌격', role: '이동', cd: 8, cost: 10, scale: 'phys', fx: 'dash', aim: 'crowd', mo: 'charge',
+    desc: '적과 부딪힐 때까지 앞으로 달린다(최대 2초). 부딪히면 들이받아 둘레를 밀어낸다 · 오래 달릴수록 피해가 커진다. 본능 10.', do: [{ op: 'rush', dur: 2, speed: 230, mul: 0.8 }] },
   headbutt: { name: '박치기', role: '공격', cd: 6, cost: 15, scale: 'phys', fx: 'smash', aim: 'near', mo: 'headbutt',
     desc: '적 하나를 멀리 날려 보낸다. 날아간 적이 부딪힌 적도 함께 기절한다. 본능 15.', do: [{ op: 'single', range: 46, mul: 1.6, knock: 460, launch: true }] },
   tremor: { name: '지축 울림', role: '제어', cd: 11, cost: 25, scale: 'phys', fx: 'quake', mo: 'stomp',

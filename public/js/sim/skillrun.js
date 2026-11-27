@@ -955,7 +955,7 @@ export const SkillMethods = {
     if (p.rush) {
       const r = p.rush;
       r.t += DT;
-      const held = r.slot == null ? r.t < 1.2 : !!this.inpHold?.['h' + (r.slot + 1)];
+      let hitFoe = false; // 적과 부딪힐 때까지 달린다 (누르고 있을 필요 없음 · 벽 · 최대 시간이면 멈춤)
       const dx = p.aimX, dy = p.aimY;
       const spd = r.speed * (0.7 + Math.min(1, r.t * 2) * 0.5);
       const bx = p.x, by = p.y;
@@ -964,13 +964,9 @@ export const SkillMethods = {
       p.walkT += DT * 2; p.moving = true;
       if (!this.motionIs('charge')) this.motion('charge', 9);
       // 앞의 적을 밀고 간다
-      for (const e of this.enemiesNear(p.x + dx * 8, p.y + dy * 8, 12)) {
-        if (e.def.ai === 'dummy') { if (!r.hit.has(e.id)) { r.hit.add(e.id); this.skillHit(e, { mul: r.mul }, r.ctx); } continue; }
-        if (!r.hit.has(e.id)) { r.hit.add(e.id); this.skillHit(e, { mul: r.mul * (1 + r.t) }, r.ctx); }
-        if (!e.def.elite) { e.kbx = dx * spd * 1.3; e.kby = dy * spd * 1.3; e.kbHot = 0.4; this.stunE(e, 0.2); }
-      }
+      if (this.enemiesNear(p.x + dx * 8, p.y + dy * 8, 12).length) hitFoe = true;
       if (Math.floor(r.t * 12) !== Math.floor((r.t - DT) * 12)) this.emit({ t: 'rushDust', x: p.x, y: p.y, dx, dy });
-      if (!held || r.t >= r.dur || stuck) {
+      if (hitFoe || r.t >= r.dur || stuck) {
         p.rush = null;
         const cx = p.x + dx * 18, cy = p.y + dy * 18;
         this.emit({ t: 'skillAoe', x: cx, y: cy, r: 44, fx: 'quake' });
