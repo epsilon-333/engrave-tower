@@ -2718,7 +2718,7 @@ export class Renderer {
     if (!(r > 0) || !Number.isFinite(x + y + r)) return; // 반지름이 없는 사건(예: r 없는 slam)이 그림판을 멈추지 않게
     g.save(); g.globalCompositeOperation = 'lighter';
     if (r >= 10 && g.ditherEllipse) { // 기본 도형 금지: 매끈한 빛 원 대신 들쭉날쭉한 가장자리의 점묘 빛 세 겹 (자리마다 모양이 다르다)
-      for (const [kr, d] of [[1, 0.22], [0.62, 0.32], [0.3, 0.5]]) g.ditherEllipse(x, y, r * kr, r * kr * 0.9, color, Math.min(1, d * a * 1.6));
+      for (const [kr, d] of [[1, 0.05], [0.62, 0.09], [0.3, 0.16]]) g.ditherEllipse(x, y, r * kr, r * kr * 0.9, color, Math.min(0.35, d * a));
       g.restore(); return;
     }
     const gr = g.createRadialGradient(x, y, 0, x, y, r);
