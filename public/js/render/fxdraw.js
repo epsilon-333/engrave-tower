@@ -370,7 +370,7 @@ export const FxMethods = {
         this.runeCircle(f.x, f.y + 3, f.r * 0.5 * (1 - k * 0.5), '#b98aff', this.world.t * 2, 0.6);
       } else if (f.k === 'path') {
         g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = hexA('#b98aff', 0.8 * k); g.lineWidth = 2; g.setLineDash([3, 3]);
-        g.beginPath(); f.pts.forEach((q, i) => (i ? g.lineTo(q.x, q.y - 6) : g.moveTo(q.x, q.y - 6))); g.stroke(); g.setLineDash([]); g.restore();
+        g.beginPath(); (f.pts || []).forEach((q, i) => (i ? g.lineTo(q.x, q.y - 6) : g.moveTo(q.x, q.y - 6))); g.stroke(); g.setLineDash([]); g.restore();
       } else if (f.k === 'chain') {
         const e1 = w.enemies.find((e) => e.id === f.a), e2 = w.enemies.find((e) => e.id === f.b);
         if (!e1 || !e2) { f.t = 0; continue; }

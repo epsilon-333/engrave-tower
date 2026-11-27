@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw
 d = sys.argv[1]; per = int(sys.argv[2]) if len(sys.argv) > 2 else 16; pre = sys.argv[3] if len(sys.argv) > 3 else 'sheet'
 rep = json.load(open(f'{d}/report.json')); import os
 if os.environ.get('CAT'): rep = [r for r in rep if r['cat'] == os.environ['CAT']]
-T = ['0.15', '0.4', '0.7', '1', '1.4']
+T = os.environ.get('TS', '0.15,0.4,0.7,1,1.4').split(',')
 W, H, LW = 192, 120, 0
 for i in range(0, len(rep), per):
     chunk = rep[i:i + per]
