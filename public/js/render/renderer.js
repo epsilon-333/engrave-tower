@@ -804,6 +804,10 @@ export class Renderer {
     drawTrainHud(this, w);
 
     g.setTransform(1, 0, 0, 1, 0, 0);
+    if (this.dim) { // 큰 기술: 하늘이 잠깐 어두워진다 (천천히 드리웠다 천천히 걷힌다 · render/bigfx.js)
+      this.dim.t -= dt; const u = 1 - this.dim.t / this.dim.max;
+      if (this.dim.t <= 0) this.dim = null; else { g.fillStyle = `rgba(8,6,22,${this.dim.a * Math.min(1, u * 3, (1 - u) * 2.2)})`; g.fillRect(0, 0, this.c.width, this.c.height); }
+    }
     if (this.flash) {
       this.flash.t -= dt;
       if (this.flash.t <= 0) this.flash = null;

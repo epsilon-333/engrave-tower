@@ -726,7 +726,7 @@ export const SkillMethods = {
       if (this.autoAim) { const tg0 = this.pickTarget(def); if (tg0 && tg0.kind !== 'none') this.faceTo(tg0.x, tg0.y); }
       this.motion(def.mo === 'castBig' ? 'castBigHold' : 'castHold', def.cast + 0.05);
       if (this.autoAim) { const tg = this.pickTarget(def); if (tg) this.emit({ t: 'lockOn', x: tg.x, y: tg.y, kind: tg.kind, dur: def.cast }); }
-      this.emit({ t: 'cast', x: p.x, y: p.y, dur: def.cast, elem: def.elem === 'current' ? p.elem : def.elem });
+      this.emit({ t: 'cast', x: p.x, y: p.y, dur: def.cast, elem: def.elem === 'current' ? p.elem : def.elem, sk: id });
       return;
     }
     this.execSkill(def, spent, id, { slot });
