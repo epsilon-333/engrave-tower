@@ -51,6 +51,7 @@ export const CLASS_LOOK = {
   ranger: { draw: 'feather', pal: 'feather', name: '깃털 · 바람결' },
   dragoon: { draw: 'scale', pal: 'scale', name: '비늘 조각 · 불 날개 그림자 · 불티' },
   dragonSage: { draw: 'word', pal: 'rune', name: '불로 쓰는 용의 글자 · 타고 남은 연기' },
+  wild: { draw: 'rubble', pal: 'dust', name: '들썩이며 기우는 깨진 땅 판 · 돌 부스러기 (야수 각인)' },
 };
 // 가시를 정말 쓰는 스킬 (가시는 이것들만) + 시공 스킬(다른 작업 중 · 그대로 둔다)
 export const KEEP_SPIKE = new Set(['glacialSpikes', 'absoluteZero', 'iceComet', 'blizzard', 'vineSnare', 'timeStop', 'singularity', 'gravityCollapse']);
@@ -59,7 +60,9 @@ const SPIKY = /thorn|spike|spine|vine|bramble|caltrop|icicle|glacier|bone/i;
 
 const CLS_OF = {};
 for (const [c, d] of Object.entries(CLASSES)) for (const s of d.skills) CLS_OF[s] = c;
-export function skillClass(sk) { const d = SKILLS[sk]; return d?.cls || CLS_OF[sk] || null; }
+const ELEM_CLS = { fire: 'elementalist', ice: 'elementalist', frost: 'elementalist', lightning: 'elementalist', shock: 'elementalist', dark: 'hexer', curse: 'hexer', poison: 'venomHunter', holy: 'guardian', nature: 'spiritcaller', wind: 'ranger', blood: 'predator' };
+// 갈래가 없는 각인 스킬(몬스터 · 장비 각인)은 성질로 · 그것도 없으면 야수(깨진 땅 판)
+export function skillClass(sk) { const d = SKILLS[sk]; if (!d) return null; return d.cls || CLS_OF[sk] || ELEM_CLS[d.elem] || 'wild'; }
 export function keepsSpike(sk) { return !sk || KEEP_SPIKE.has(sk) || SPIKY.test(sk) || HANDS_OFF.has(sk) || skillClass(sk) === 'chronomancer'; }
 const elemOf = (sk, ev) => { const e = ev?.elem || SKILLS[sk]?.elem || SKILLS[sk]?.scale; return e === 'ice' || e === 'frost' ? 'ice' : e === 'lightning' || e === 'shock' || e === 'bolt' ? 'bolt' : 'fire'; };
 // 색 이름(origfx · skfx 의 pal) → 갈래 (스킬 id 를 모를 때)
@@ -180,7 +183,7 @@ const DRAWS = {
     const rr = rnd(a.seed), al = fade(k, 0.4);
     if (a.land) { const s = 8 + a.tier * 2; g.fillStyle = hexA(P[0], 0.8 * al); poly(g, [[a.x - s, a.y - 2], [a.x - 1, a.y + 3], [a.x + s, a.y - 3], [a.x + 1, a.y + 6]]); g.fill(); g.fillStyle = hexA(P[3], 0.8 * al); g.fillRect(R0(a.x) - 1, R0(a.y + 1), 2, 2); }
     for (let i = 0; i < 4 + a.tier; i++) { const x = a.x + (rr() - 0.5) * a.r, y = a.y + (rr() - 0.5) * a.r * 0.4, h = (12 + rr() * 14) * ease(k), w = 2 + rr() * 2, sw = Math.sin(a.t * 9 + i * 2) * 4;
-      shape(g, [[x - w, y], [x + sw * 0.5 - w * 0.5, y - h * 0.5], [x + sw, y - h], [x + sw * 0.5 + w * 0.5, y - h * 0.5], [x + w, y]], P, al * 0.85, false); }
+      shape(g, [[x - w, y], [x + sw * 0.5 - w * 1.1, y - h * 0.5], [x + sw - w * 1.2, y - h * 0.9], [x + sw - w * 0.3, y - h], [x + sw + w * 0.6, y - h * 0.85], [x + sw * 0.5 + w * 1.1, y - h * 0.5], [x + w, y]], P, al * 0.85, false); } // 뭉툭한 김 덩이 (뾰족한 가시처럼 보이지 않게)
   },
   // 투척 전사: 땅이 쪼개진 틈 + 회전하며 날아가는 도끼 실루엣의 잔상
   iron(R, g, a, k, P) {
@@ -252,6 +255,16 @@ const DRAWS = {
     for (let i = 0; i < 4 + a.tier * 2; i++) { const an = rr() * TAU, d = a.r * (0.2 + rr() * 0.6) * sp, x = a.x + Math.cos(an) * d, y = a.y + Math.sin(an) * d * 0.5 - 8 + k * k * 10, flip = Math.cos(a.t * 14 + i), s = 3 + rr() * 1.5;
       shape(g, [[x - s * flip, y - s * 0.3], [x, y - s], [x + s * flip, y - s * 0.3], [x + s * 0.6 * flip, y + s * 0.6], [x, y + s * 0.9], [x - s * 0.6 * flip, y + s * 0.6]], P, al, true); }
   },
+  // 야수 각인: 땅 판이 깨져 들썩이며 기울었다 가라앉는다 (가시처럼 솟지 않고 넓적하게 · 틈은 어둡게)
+  rubble(R, g, a, k, P) {
+    const rr = rnd(a.seed), al = fade(k, 0.55), up = Math.sin(Math.min(1, k * 1.6) * Math.PI * 0.5) * (1 - Math.max(0, k - 0.6) * 1.5), n = 4 + a.tier;
+    if (a.land) { g.fillStyle = hexA('#120c06', 0.6 * al); poly(g, lumpy(a.x, a.y, a.r * 0.6, 12, a.seed + 3, 0.5)); g.fill(); }
+    const slabs = []; for (let i = 0; i < n; i++) { const an = (i / n) * TAU + rr() * 0.5, d = a.r * (0.25 + rr() * 0.35); slabs.push({ x: a.x + Math.cos(an) * d, y: a.y + Math.sin(an) * d * 0.5, an, w: 5 + rr() * 4 + a.tier, tilt: (rr() - 0.5) * 0.35, h: (4 + rr() * 5) * up }); }
+    slabs.sort((p, q) => p.y - q.y);
+    for (const b of slabs) { const ox = Math.cos(b.an) * b.h * 0.5, x = b.x + ox, y = b.y - b.h, w = b.w, t = b.tilt * w;
+      shape(g, [[x - w, y + t], [x - w * 0.3, y - 2 + t * 0.4], [x + w * 0.4, y - 1 - t * 0.3], [x + w, y - t], [x + w * 0.9, y - t + 6], [x - w * 0.8, y + t + 6]], P, al, false);
+      g.fillStyle = hexA(P[4], al); g.fillRect(R0(x - w * 0.6), R0(y + t * 0.6), R0(w * 0.8), 1); }
+  },
   // 용언 술사: 한 획씩 그려지는 용의 글자(불빛) → 타서 연기로
   word(R, g, a, k, P) {
     const rr = rnd(a.seed), al = fade(k, 0.6), s = 10 + a.tier * 2, x = a.x, y = a.y - 22, n = 5;
@@ -296,6 +309,7 @@ function burstParts(R, cls, x, y, r, tier, ang, el) {
       case 'spiritcaller': push({ x, y: y - 8, vx: dx * 0.5, vy: -20 - rnd1() * 20, t: 1.1, max: 1.1, color: i % 2 ? '#c8f08a' : '#ffd8ea', g: -6, glow: true, size: 1 }); break;
       case 'ranger': push({ x, y: y - 6, vx: Math.cos(ang) * 120 + dx * 0.3, vy: Math.sin(ang) * 60 + dy * 0.3, t: 0.35, max: 0.35, color: '#e8f4ff', line: true, g: 0 }); break;
       case 'dragoon': push({ x, y: y - 6, vx: dx, vy: dy - 60, t: 0.7, max: 0.7, color: i % 2 ? '#e86a1e' : '#ffb04a', g: -30, glow: true, size: 1 }); break;
+      case 'wild': push({ x, y: y - 3, vx: dx * 0.8, vy: -50 - rnd1() * 60, t: 0.7, max: 0.7, color: i % 2 ? '#5a4a3a' : '#8a7a62', g: 340, chunk: true, floor: y + 3 + dy * 0.05 }); if (i % 3 === 0) push({ x, y, vx: dx * 0.5, vy: -6, t: 1, max: 1, color: '#7a6e60', puff: true, size: 3, g: 0 }); break;
       case 'dragonSage': push({ x: x + (rnd1() - 0.5) * 20, y: y - 22, vx: dx * 0.2, vy: -18, t: 1.4, max: 1.4, color: i % 2 ? '#3a2a20' : '#ffb820', puff: i % 2 === 1, glow: i % 2 === 0, size: i % 2 ? 4 : 1, g: -4 }); break;
     }
   }
