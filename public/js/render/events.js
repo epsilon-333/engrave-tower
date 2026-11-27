@@ -15,6 +15,7 @@ import { sfx, tone } from '../audio.js';
 import { towerEvent } from './towerfx.js';
 import { SK_FX } from './skfx.js';
 import { bigFx } from './bigfx.js';
+import { spacetimeFx, SPACETIME } from './warpfx.js';
 import { CLASS_MAGIC, WORD_NAME, sentenceLine, WORD_COLOR, fmt } from './renderer.js';
 
 const TIER_EV = new Set(['skillAoe', 'skillCone', 'skillLine', 'skillSingle', 'skillDash', 'meleeStep', 'skillFx', 'slam', 'land']); // 등급에 맞춰 다듬는 사건
@@ -46,8 +47,9 @@ export const EventMethods = {
       if (ev.tier != null && TIER_EV.has(ev.t)) pend = { ev, parts: this.parts.length, fx: this.fx.length, al: this.anims.list.length, ag: this.anims.ground.length, px: this.anims.px.list.length, shake: this.shake, hitstop: this.hitstop, flash: this.flash };
       if (this.lifeEvent(w, ev)) continue;
       if (w.climb && towerEvent(this, w, ev)) continue; // 탑 51~100층 장치 · 보스 등장
+      if (ev.sk && !ev.foe && spacetimeFx.call(this, ev, w) === 'own') continue; // 시공 스킬은 세계가 뒤틀린다 (render/warpfx.js)
       if (ev.sk && !ev.foe && bigFx.call(this, ev, w) === 'own') continue; // 대표 기술은 화려하게 (render/bigfx.js)
-      if (ev.sk && SK_FX[ev.sk] && !ev.foe && SK_FX[ev.sk].call(this, ev, w)) continue; // 스킬마다 다른 그림 (render/skfx.js)
+      if (ev.sk && SK_FX[ev.sk] && !ev.foe && !SPACETIME.has(ev.sk) && SK_FX[ev.sk].call(this, ev, w)) continue; // 시공 스킬은 warpfx 가 맡는다 // 스킬마다 다른 그림 (render/skfx.js)
       if (ev.quiet && (ev.t === 'skillAoe' || ev.t === 'skillCone' || ev.t === 'skillLine')) { sfx(ev.t === 'skillCone' ? 'swing' : 'hitHeavy', { vol: 0.35, rate: 1.1 }); continue; } // 독창 스킬: 그림은 ofx 가 맡는다 (범용 범위 그림을 겹치지 않는다)
       switch (ev.t) {
         case 'dmg':
@@ -397,7 +399,7 @@ export const EventMethods = {
         case 'rushDust': this.parts.push({ x: ev.x - ev.dx * 6, y: ev.y + 3, vx: -ev.dx * 40 + (Math.random() - 0.5) * 30, vy: -10 - Math.random() * 20, t: 0.5, max: 0.5, color: '#a89880', g: 30 }); this.shake = Math.max(this.shake, 1.2); if (Math.random() < 0.5) sfx('step', { vol: 0.35, rate: 0.6 }); break;
         case 'soarUp': this.burst(ev.x, ev.y + 2, '#ffb066', 18, 90); this.fx.push({ k: 'ring', x: ev.x, y: ev.y + 3, r: 22, color: '#ffcf8a', t: 0.35, max: 0.35, w: 3 }); sfx('dash', { vol: 0.7, rate: 0.6 }); break;
         case 'land': this.fx.push({ k: 'ring', x: ev.x, y: ev.y + 3, r: ev.big ? 40 : 24, color: '#e8d8b8', t: 0.4, max: 0.4, w: 4 }); this.burst(ev.x, ev.y + 3, '#a89880', ev.big ? 26 : 12, 140); this.shake = Math.max(this.shake, ev.big ? 7 : 3); this.addStop(0.05); sfx('hitHeavy', { vol: 0.9, rate: 0.6 }); break;
-        case 'rewind': this.fx.push({ k: 'path', pts: ev.pts, t: 0.6, max: 0.6 }); for (const [x, y] of [[ev.x1, ev.y1], [ev.x2, ev.y2]]) { this.fx.push({ k: 'glow', x, y: y - 8, r: 26, color: '#b98aff', t: 0.5, max: 0.5 }); this.burst(x, y - 6, '#b98aff', 16, 80); } this.flash = { color: '185,138,255', t: 0.2, max: 0.2 }; sfx('reaction', { vol: 0.6, rate: 1.6 }); break;
+        case 'rewind': if (ev.pts?.length) this.fx.push({ k: 'path', pts: ev.pts, t: 0.6, max: 0.6 }); for (const [x, y] of [[ev.x1, ev.y1], [ev.x2, ev.y2]]) { this.fx.push({ k: 'glow', x, y: y - 8, r: 26, color: '#b98aff', t: 0.5, max: 0.5 }); this.burst(x, y - 6, '#b98aff', 16, 80); } this.flash = { color: '185,138,255', t: 0.2, max: 0.2 }; sfx('reaction', { vol: 0.6, rate: 1.6 }); break;
         case 'echoMark': this.fx.push({ k: 'echo', x: ev.x, y: ev.y, r: ev.r, t: ev.dur, max: ev.dur }); break;
         case 'stealthOn': for (let i = 0; i < 26; i++) { const a = Math.random() * Math.PI * 2, sp = 20 + Math.random() * 50; this.parts.push({ x: ev.x, y: ev.y - 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6, t: 1, max: 1, color: Math.random() < 0.5 ? '#3a3450' : '#5a5478', g: -8 }); } sfx('dash', { vol: 0.5, rate: 0.6 }); break;
         case 'stealthOff': this.sparkBurst(ev.x, ev.y - 8, '#b89aff', 8); break;
@@ -453,6 +455,7 @@ export const EventMethods = {
   tierPolish(w, m) {
     const ev = m.ev, T = ev.tier, P = this.parts, A = this.anims;
     if (T === 3) return;
+    if (T > 3 && SPACETIME.has(ev.sk) && !ev.foe) return; // 시공 스킬은 돌 조각 · 땅 금을 얹지 않는다 (세계가 뒤틀리는 것으로: render/warpfx.js)
     if (T < 3) {
       const keep = T === 1 ? 0.35 : 0.6;
       const born = P.splice(m.parts); for (const q of born) if (Math.random() < keep) P.push(q);

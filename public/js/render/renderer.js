@@ -1,6 +1,7 @@
 // 캔버스 렌더러: world 상태를 읽어서 그리기만 한다 (게임 로직 없음)
 // 화면 크기에 맞춰 정수 배율(S)로 도트를 키우고, 글씨는 실제 해상도로 따로 그린다.
 import { hexA } from './color.js';
+import { drawWarps } from './warpfx.js';
 import { WCOMBO } from '../data/wcombo.js';
 export { hexA };
 import { opts } from '../settings.js';
@@ -794,6 +795,7 @@ export class Renderer {
     if (w.mode === 'field' && !w.map.outdoor && !w.map.ship) { this.drawLight(w, cx, cy); this.drawFog(w, cx, cy); } // 바깥 세계는 화면을 가리지 않는다 (안 가 본 곳은 지도에서만)
 
     // 1배 세계 판을 화면 배율로 키워 옮긴다 (도트 그대로). 글씨 · 화면 표시는 그 위에 실제 해상도로
+    drawWarps(this); // 시공 스킬: 세계 판을 뒤튼다 (render/warpfx.js)
     this.g = g = main;
     g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false;
     g.drawImage(this.lo, 0, 0, VW * S, VH * S);
