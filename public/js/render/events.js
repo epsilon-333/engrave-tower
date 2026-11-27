@@ -104,6 +104,17 @@ export const EventMethods = {
           break;
         }
         case 'shoot': sfx(ev.type === 'mag' ? 'cast' : 'shoot', { vol: 0.4, rate: ev.type === 'mag' ? 1.6 : 1.3 }); break;
+        case 'bloodWhirl': { // 피의 회전: 도끼 잔상이 핏빛으로 돌고, 날 끝에 묻은 피가 회전 방향으로 휘날린다
+          this.trailStyle = { col: '#c0182a', reach: ev.r || 50, until: (this.world?.t || 0) + 0.35 };
+          this.fx.push({ k: 'spin', x: ev.x, y: ev.y, r: ev.r, follow: true, type: 'blood', heavy: true, a0: ev.ang, dir: 1, t: 0.28, max: 0.28 }); // 핏빛 회전 궤적
+          for (let i = 0; i < 20; i++) {
+            const a = ev.ang + Math.random() * Math.PI * 2, rr = (ev.r || 50) * (0.55 + Math.random() * 0.4), sp = 90 + Math.random() * 120;
+            const x = ev.x + Math.cos(a) * rr, y = ev.y - 6 + Math.sin(a) * rr * 0.55;
+            this.parts.push({ x, y, vx: -Math.sin(a) * sp + Math.cos(a) * 30, vy: Math.cos(a) * sp * 0.55 - 40 - Math.random() * 40, t: 0.55 + Math.random() * 0.25, max: 0.8, color: Math.random() < 0.35 ? '#ff3a3a' : Math.random() < 0.5 ? '#a80f20' : '#6a0612', g: 320, size: 1.6 + Math.random() * 1.6 });
+          }
+          if (Math.random() < 0.6) sfx('heavySwing', { vol: 0.45, rate: 1.05 + Math.random() * 0.15 });
+          break;
+        }
         case 'spin': {
           const pl = this.world?.player, own = !!pl && !ev.foe && Math.hypot(ev.x - pl.x, ev.y - pl.y) < 40; // 내가 도는 베기: 칼 잔상이 그린다
           if (own) this.trailStyle = { col: ev.heavy ? '#ffd870' : ev.type === 'mag' ? '#c9a8ff' : '#dcecff', reach: ev.r || 40, until: (this.world?.t || 0) + 0.45 };

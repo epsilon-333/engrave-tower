@@ -700,7 +700,7 @@ const MORE_SKILLS = {
   },
   berserker: {
     bloodSpin: { name: '피의 회전', role: '공격', cd: 6, cost: 1, scale: 'phys', fx: 'spin', mo: 'chop', unlock: 15,
-      desc: '도끼를 크게 돌려 둘레를 벤다. 출혈 2중첩.', do: [{ op: 'aoe', at: 'self', r: 58, mul: 1.6, status: 'bleed', stacks: 2, fx: 'spin' }] },
+      desc: '3초 동안 도끼를 휘두르며 빙빙 돈다(움직일 수 있다). 0.25초마다 둘레를 베고(공격력 16%) 출혈 1중첩 · 도끼에 묻은 피가 휘날린다.', do: [{ op: 'bloodWhirl', dur: 3, r: 58, range: 40, mul: 0.16, stacks: 1 }] },
     earthSplitter: { name: '대지 쪼개기', role: '마무리', cd: 13, cost: 30, scale: 'phys', fx: 'skyfall', mo: 'overhead', unlock: 30,
       desc: '땅을 쪼개는 일격이 앞으로 길게 뻗는다. 0.55초 기절. 분노 30.', do: [{ op: 'line', len: 200, w: 34, mul: 3.4, stun: 0.55, delay: 0.15, fx: 'skyfall' }] },
   },

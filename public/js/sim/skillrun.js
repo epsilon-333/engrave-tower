@@ -349,6 +349,7 @@ export const SkillMethods = {
         this.emit({ t: 'shake', v: 6 });
         break;
       }
+      case 'bloodWhirl': p.whirlT = op.dur; p.whirlTick = 0; p.whirlCfg = { mul: op.mul, stacks: op.stacks || 1, r: op.r, ctx, blood: true }; break; // 피의 회전: dur초 동안 돌며 둘레를 계속 벤다
       case 'rush': {
         // 대지 거수 돌격: 누르고 있는 동안 달린다 (updateSpecialMove 에서 진행)
         p.rush = { t: 0, dur: op.dur, speed: op.speed, mul: op.mul, ctx, slot: ctx.slot, hit: new Set() };
@@ -583,7 +584,7 @@ export const SkillMethods = {
         if (this.f.has('dashCrit')) p.dashCritReady = true;
         break;
       }
-      case 'whirl': p.whirlT = 1.2; p.whirlTick = 0; break;
+      case 'whirl': p.whirlT = 1.2; p.whirlTick = 0; p.whirlCfg = null; break;
       case 'volley': {
         const sp = w.projSpeed * d.projMul * 1.3;
         for (let i = -2; i <= 2; i++) {

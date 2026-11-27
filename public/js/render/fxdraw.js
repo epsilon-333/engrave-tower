@@ -537,10 +537,10 @@ export const FxMethods = {
         const bladeOn = f.own && this.trailDrawnT != null && w.t - this.trailDrawnT < 0.06;
         if (!bladeOn) {
           const prog = 1 - k, head = f.a0 + f.dir * Math.PI * 1.7 * Math.min(1, prog * 1.4), tail = head - f.dir * 1.8;
-          const cx = f.follow ? p.x : f.x, cy = (f.follow ? p.y : f.y) - 6, R = (f.r || 40) * 0.8, col = f.heavy ? '#ffd050' : f.type === 'mag' ? '#c9a8ff' : '#e8f0ff';
+          const cx = f.follow ? p.x : f.x, cy = (f.follow ? p.y : f.y) - 6, R = (f.r || 40) * 0.8, col = f.type === 'blood' ? '#b0101e' : f.heavy ? '#ffd050' : f.type === 'mag' ? '#c9a8ff' : '#e8f0ff';
           g.save(); g.translate(cx, cy); g.scale(1, 0.8);
           g.fillStyle = hexA(col, 0.4 * Math.min(1, k * 2)); smear(g, 0, 0, R, f.heavy ? 11 : 8, f.dir > 0 ? tail : head, f.dir > 0 ? head : tail);
-          g.fillStyle = hexA('#ffffff', 0.9 * Math.min(1, k * 2)); smear(g, 0, 0, R, f.heavy ? 3.5 : 2.5, f.dir > 0 ? tail : head, f.dir > 0 ? head : tail);
+          g.fillStyle = hexA(f.type === 'blood' ? '#ff4a4a' : '#ffffff', 0.9 * Math.min(1, k * 2)); smear(g, 0, 0, R, f.heavy ? 3.5 : 2.5, f.dir > 0 ? tail : head, f.dir > 0 ? head : tail);
           g.restore();
         }
       } else if (f.k === 'nova') {

@@ -2074,6 +2074,14 @@ export class World {
     const p = this.player, d = this.d, w = this.b.weapon;
     p.whirlT -= DT; p.whirlTick -= DT; p.spinT = 0.3;
     if (p.whirlTick > 0) return;
+    const C = p.whirlCfg;
+    if (C) { // 피의 회전: 0.25초마다 둘레를 베고 출혈 · 도끼에 묻은 피가 휘날린다
+      p.whirlTick = 0.25;
+      this.emit({ t: 'bloodWhirl', x: p.x, y: p.y, r: C.r, ang: this.t * 14 });
+      for (const e of this.enemiesNear(p.x, p.y, C.r)) this.skillHit(e, { mul: C.mul, status: 'bleed', stacks: C.stacks }, C.ctx);
+      if (p.whirlT <= 0) p.whirlCfg = null;
+      return;
+    }
     p.whirlTick = 0.2;
     const r = w.range + 10;
     this.emit({ t: 'spin', x: p.x, y: p.y, r, type: 'phys' });
