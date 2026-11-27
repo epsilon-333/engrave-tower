@@ -1,6 +1,7 @@
 // 렌더러 — 독창 스킬 그림 (사건 'ofx' · 탄의 겉모습 pr.oskin). Renderer.prototype 에 붙는다 (this 는 Renderer)
 // 원칙(CLAUDE.md 그래픽 취향): 짙은 외곽선 + 가운데 색 + 밝은 면 · 조각 · 잔상 · 타원 고리 없이 · 바닥 그림(ofxG)은 땅에만(clipTiles)
 // 사건: { t: 'ofx', s: 모양, pal: 색 이름, x, y, r, ang, x2, y2, n, dur, tier }
+import { classHit, skillClass, keepsSpike, palClass, CLASS_LOOK, KEEP_SPIKE } from './classfx.js';
 import { hexA } from './color.js';
 import { disc } from './renderer.js';
 import { sfx } from '../audio.js';
@@ -58,6 +59,15 @@ const GROUND = new Set(['splat', 'trap', 'sigil', 'web', 'crack', 'path']);
 export const OrigFxMethods = {
   // 사건 → fx 목록 (+ 조각)
   origFx(ev) {
+    if (ev.s === 'spikes' && ev.pal !== 'ice' && ev.pal !== 'bone') { // 가시는 가시 스킬만 (2026-11-27): 나머지는 그 갈래의 그림으로
+      const sk = ev.sk || this._evSk, cls = sk ? skillClass(sk) : null;
+      if (!(sk && keepsSpike(sk) && (KEEP_SPIKE.has(sk) || cls === 'chronomancer' || /thorn|spike|spine|vine|bramble|caltrop/i.test(sk) || !cls))) {
+        const c = CLASS_LOOK[cls] ? cls : palClass(ev.pal), w = this.world, o = { tier: ev.tier || 2, hand: true, max: Math.min(1.2, ev.dur || 0.6) };
+        if (ev.x2 != null) { const ang = Math.atan2(ev.y2 - ev.y1, ev.x2 - ev.x1); for (const u of [0.2, 0.6, 1]) classHit(this, w, c, ev.x1 + (ev.x2 - ev.x1) * u, ev.y1 + (ev.y2 - ev.y1) * u, 16, { ...o, ang, dir: ang }); }
+        else classHit(this, w, c, ev.x, ev.y, (ev.r || 16) * 1.1, o);
+        return;
+      }
+    }
     const pal = P(ev.pal), T = ev.dur || { rays: 0.32, burst: 0.4, spikes: 0.7, wall: ev.dur || 2, tether: 0.3, bolt: 0.22, beam: 0.35, cage: 1.2, star: 1, bell: 1, rock: 0.6, mark: 1, glyph: 1, blade: 1, column: 0.9, gust: 0.6, mirage: 2, pillar: 0.6, orb: 0.6, swirl: 1, slash: 0.25, splat: 1.2, trap: 3, sigil: 1.5, web: 1.6, crack: 0.9, path: 1.4, fist: 0.3, wing: 0.35, ghost: 0.4 }[ev.s] || 0.4;
     const tier = ev.tier || 2, big = tier >= 4 ? 1.25 : tier >= 3 ? 1.1 : 1;
     const f = { k: GROUND.has(ev.s) ? 'ofxG' : 'ofx', ...ev, pal, t: T, max: T, big, seed: Math.random() * 99 };

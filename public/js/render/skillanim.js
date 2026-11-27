@@ -6,6 +6,7 @@ import { hexA } from './color.js';
 import { PxFx, preload } from './pxbridge.js';
 import { sprite } from './assets.js';
 import { BIG_DRAW, BIG_DUR } from './bigfx.js';
+import { CLASS_DRAW, CLASS_DUR } from './classfx.js';
 // pixelfx로 바꿀 수 있는 것은 pixelfx로 (도트 단위 색 단계 · 빛 · 연기가 게임 그림과 맞는다). 없는 것만 아래의 직접 그린 애니메이션
 const GROUND = 0.55; // 옆에서 본 둥근 폭발을 바닥에 눕힌다 (위에서 내려다보는 게임이라 세로로 눌러야 땅에 깔린 원으로 보인다)
 export const PAL = {
@@ -588,4 +589,4 @@ const GROUND_DRAW = {
   },
 };
 // 대표 기술 연출 (render/bigfx.js): 혜성 · 운석의 낙하 · 번쩍 별꽃 · 조각난 땅 · 성질 가시 · 기 모으기
-Object.assign(DRAW, BIG_DRAW); Object.assign(DUR, BIG_DUR);
+Object.assign(DRAW, BIG_DRAW); Object.assign(DUR, BIG_DUR); Object.assign(DRAW, CLASS_DRAW); Object.assign(DUR, CLASS_DUR);
