@@ -31,7 +31,7 @@ import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
 // 바닥에 납작하게 깔린 것: 사람 · 몬스터 아래에 그린다 (아래 끝 기준으로 줄 세우면 위쪽에 선 사람의 몸을 덮었다)
 export const FLAT_PROP = new Set(['hole', 'whirlpool']), FLAT_OBJ = new Set(['dig', 'trap']);
 const GLOW_SPR = new Map(); // glow 빛 그림 모음 (렉)
-export const PART_CAP = 360; // 한 화면 알갱이 상한 (렉)
+export const PART_CAP = 200; // 한 화면 알갱이 상한 (렉)
 export const GROUND_MARKS = new Set(['ink', 'cracks', 'scorch', 'scrape', 'rageCracks', 'ofxG']); // 그 가운데 땅에 새겨지는 것 (벽 · 물 · 허공에는 안 생긴다)
 export const GROUND_FX = new Set(['ink', 'tcircle', 'tdonut', 'lineTele', 'cracks', 'scorch', 'scrape', 'castCircle', 'rune', 'glyphs', 'rageCracks', 'path', 'ofxG']); // 바닥에 그리는 이펙트
 const BOSS_MELEE = new Set(['combo', 'cleave', 'whirl', 'shove', 'charge', 'leap', 'jumps3', 'quake', 'grab', 'retreat']);
