@@ -30,6 +30,8 @@ import { BOSS_PASSIVES } from '../data/tower.js';
 import { SkillAnims, drawMiasma, RARITY_ANIM, PAL } from './skillanim.js';
 // 바닥에 납작하게 깔린 것: 사람 · 몬스터 아래에 그린다 (아래 끝 기준으로 줄 세우면 위쪽에 선 사람의 몸을 덮었다)
 export const FLAT_PROP = new Set(['hole', 'whirlpool']), FLAT_OBJ = new Set(['dig', 'trap']);
+const GLOW_SPR = new Map(); // glow 빛 그림 모음 (렉)
+export const PART_CAP = 360; // 한 화면 알갱이 상한 (렉)
 export const GROUND_MARKS = new Set(['ink', 'cracks', 'scorch', 'scrape', 'rageCracks', 'ofxG']); // 그 가운데 땅에 새겨지는 것 (벽 · 물 · 허공에는 안 생긴다)
 export const GROUND_FX = new Set(['ink', 'tcircle', 'tdonut', 'lineTele', 'cracks', 'scorch', 'scrape', 'castCircle', 'rune', 'glyphs', 'rageCracks', 'path', 'ofxG']); // 바닥에 그리는 이펙트
 const BOSS_MELEE = new Set(['combo', 'cleave', 'whirl', 'shove', 'charge', 'leap', 'jumps3', 'quake', 'grab', 'retreat']);
@@ -738,8 +740,11 @@ export class Renderer {
     this.anims.draw(this.g, dt);
 
     if (w.climb) drawTowerOver(this, w, g, cx, cy); // 회오리 · 시간 칼날 · 되감기 잔상 · 고래 그림자 · 돌풍 예고
+    if (this.parts.length > PART_CAP) this.parts.splice(0, this.parts.length - PART_CAP); // 렉 줄이기: 알갱이가 너무 많으면 오래된 것부터 버린다
+    const vx0 = cx - 24, vx1 = cx + VW + 24, vy0 = cy - 24, vy1 = cy + VH + 40;
     for (const q of this.parts) {
       q.t -= dt; q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.9; q.vy *= 0.9;
+      if (q.x < vx0 || q.x > vx1 || q.y < vy0 || q.y > vy1) continue; // 화면 밖은 그리지 않는다
       const a = Math.min(1, (q.t / q.max) * 1.6);
       if (q.flame) { // 불꽃 혀 (도트): 수명에 따라 커지며 흰빛 → 노랑 → 주황 → 붉게 식다가 연기가 된다
         const life = q.t / q.max, rr = (q.size || 1.6) * (1 + (1 - life) * 3.2);
@@ -764,8 +769,9 @@ export class Renderer {
       } else if (q.chunk) { // 돌 파편: 떨어져 바닥에서 한 번 튄다
         if (q.y > q.floor && q.vy > 0) { q.y = q.floor; q.vy *= -0.35; q.vx *= 0.6; }
         q.vx /= 0.9; q.vy /= 0.9; q.vx *= 0.985; // 공기 저항은 약하게
-        g.fillStyle = hexA('#1a1410', a * 0.5); g.fillRect(Math.round(q.x), Math.round(q.floor + 1), 2, 1);
-        g.fillStyle = hexA(q.color, a); g.fillRect(Math.round(q.x - 1), Math.round(q.y - 1), 2, 2); g.fillStyle = hexA('#c8b8a0', a); g.fillRect(Math.round(q.x - 1), Math.round(q.y - 1), 1, 1);
+        const X = Math.round(q.x), Y = Math.round(q.y); // 렉 줄이기: 색 글자를 매번 새로 만들지 않고 투명도로 (같은 그림)
+        g.globalAlpha = a * 0.5; g.fillStyle = '#1a1410'; g.fillRect(X, Math.round(q.floor + 1), 2, 1);
+        g.globalAlpha = a; g.fillStyle = q.color; g.fillRect(X - 1, Y - 1, 2, 2); g.fillStyle = '#c8b8a0'; g.fillRect(X - 1, Y - 1, 1, 1); g.globalAlpha = 1;
       } else if (q.line) {
         g.strokeStyle = hexA(q.color, a); g.lineWidth = 1;
         g.beginPath(); g.moveTo(q.x, q.y); g.lineTo(q.x - q.vx * 0.03, q.y - q.vy * 0.03); g.stroke();
@@ -786,7 +792,7 @@ export class Renderer {
       }
       else if (q.bubble) { g.strokeStyle = hexA('#e0f6ff', a * 0.9); g.lineWidth = 1; g.beginPath(); g.arc(q.x, q.y, 1.2 + (1 - q.t / q.max) * 1.4, 0, Math.PI * 2); g.stroke(); q.vx += Math.sin(q.t * 9) * 4; }
       else if (q.big) { q.v ??= (Math.random() * 4) | 0; const img = puffSprite(Math.round(1.5 + (1 - q.t / q.max) * 3), q.color, q.v); g.globalAlpha = Math.min(1, a * 0.6); g.drawImage(img, Math.round(q.x - img.width / 2), Math.round(q.y - img.height / 2)); g.globalAlpha = 1; }
-      else { g.fillStyle = hexA(q.color, a); g.fillRect(Math.round(q.x), Math.round(q.y), q.t > 0.4 ? 2 : 1, q.t > 0.4 ? 2 : 1); }
+      else { g.globalAlpha = a; g.fillStyle = q.color; g.fillRect(Math.round(q.x), Math.round(q.y), q.t > 0.4 ? 2 : 1, q.t > 0.4 ? 2 : 1); g.globalAlpha = 1; }
     }
     this.parts = this.parts.filter((q) => q.t > 0);
 
@@ -2720,7 +2726,16 @@ export class Renderer {
     if (!(r > 0) || !Number.isFinite(x + y + r)) return; // 반지름이 없는 사건(예: r 없는 slam)이 그림판을 멈추지 않게
     g.save(); g.globalCompositeOperation = 'lighter';
     if (r >= 10 && g.ditherEllipse) { // 기본 도형 금지: 매끈한 빛 원 대신 들쭉날쭉한 가장자리의 점묘 빛 세 겹 (자리마다 모양이 다르다)
-      for (const [kr, d] of [[1, 0.05], [0.62, 0.09], [0.3, 0.16]]) g.ditherEllipse(x, y, r * kr, r * kr * 0.9, color, Math.min(0.35, d * a));
+      // 렉 줄이기: 같은 크기 · 색 · 밝기 · 바둑판 자리의 빛은 한 번 그려 둔 작은 그림을 다시 쓴다 (빛 하나에 그림판 세 번 → drawImage 한 번)
+      const X = Math.round(x), Y = Math.round(y), Rq = Math.round(r), aq = Math.max(1, Math.min(8, Math.round(a * 8))), key = `${Rq}|${color}|${aq}|${X & 3}|${Y & 3}`;
+      let spr = GLOW_SPR.get(key);
+      if (!spr) {
+        const C = Rq + 6, cv = document.createElement('canvas'); cv.width = cv.height = C * 2; const pg = new PixelCtx(cv.getContext('2d'));
+        pg.globalCompositeOperation = 'lighter'; pg.translate(C - X, C - Y);
+        for (const [kr, d] of [[1, 0.05], [0.62, 0.09], [0.3, 0.16]]) pg.ditherEllipse(X, Y, Rq * kr, Rq * kr * 0.9, color, Math.min(0.35, d * aq / 8));
+        spr = { cv, C }; GLOW_SPR.set(key, spr); if (GLOW_SPR.size > 500) GLOW_SPR.delete(GLOW_SPR.keys().next().value);
+      }
+      g.drawImage(spr.cv, X - spr.C, Y - spr.C);
       g.restore(); return;
     }
     const gr = g.createRadialGradient(x, y, 0, x, y, r);

@@ -3,6 +3,7 @@
 // 어둠의 문과 촉수 · 자라났다 시드는 덩굴 · 화살비 · 하늘에서 떨어지는 벼락 · 독구름 · 모여드는 비전 문양 · 칼날 초승달
 // 평타에는 쓰지 않는다 (스킬 · 무기 기술 · 보스 기술만)
 import { hexA } from './color.js';
+import { PixelCtx } from './pixelctx.js';
 import { PxFx, preload } from './pxbridge.js';
 import { sprite } from './assets.js';
 import { BIG_DRAW, BIG_DUR } from './bigfx.js';
@@ -151,7 +152,8 @@ export class SkillAnims {
     this.ground = this.ground.filter((a) => a.t < a.max);
   }
   draw(g, dt) { // pixelfx는 렌더러가 엔티티와 함께 y 순서로 그린다 (건물 뒤로 숨게)
-    for (const a of this.list) { a.t += dt; const k = Math.min(1, a.t / a.max); const f = DRAW[a.type]; if (f) f(this.r, g, a, k, dt); }
+    const R = this.r, X0 = (R.cx ?? -1e9) - 120, X1 = (R.cx ?? -1e9) + (R.VW || 1e9) + 120, Y0 = (R.cy ?? -1e9) - 140, Y1 = (R.cy ?? -1e9) + (R.VH || 1e9) + 120;
+    for (const a of this.list) { a.t += dt; if (a.x != null && a.y != null && (a.x < X0 || a.x > X1 || a.y < Y0 || a.y > Y1)) continue; const k = Math.min(1, a.t / a.max); const f = DRAW[a.type]; if (f) f(this.r, g, a, k, dt); } // 화면 밖은 그리지 않는다 (렉)
     this.list = this.list.filter((a) => a.t < a.max);
   }
 }
@@ -364,17 +366,36 @@ const DRAW = {
     if (out && !a.sp) { a.sp = true; for (let i = 0; i < 10; i++) { const an = Math.random() * Math.PI * 2, v = 40 + Math.random() * 70; R.parts.push({ x: a.x, y: cy, vx: Math.cos(an) * v, vy: Math.sin(an) * v * 0.6 - 20, t: 0.5, max: 0.5, color: i % 2 ? '#ffffff' : col, g: 60, size: 1 }); } }
   },
   // 땅울림: 한가운데서 금이 사방으로 번지고, 금 사이로 빛이 새고, 돌판이 들썩인다
-  cracks(R, g, a, k) { // 땅 갈라짐: 가운데가 굵고 끝으로 가늘어지는 들쭉날쭉한 금 (같은 굵기 줄이 거미 다리처럼 보이지 않게) · 가운데에 깨진 돌판
-    const rr = rnd(a.seed), n = 6, spread = ease.out(Math.min(1, k / 0.25)), fade = k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1, lit = glows(a.col);
+  cracks(R, g, a, k) { // 렉 줄이기: 금 그림은 작은 그림판에 몇 장만 그려 두고 다시 쓴다 (번지는 동안 8장 · 다 번진 뒤 1장 · 옅어짐은 투명도로)
+    const step = k < 0.3 ? Math.floor((k / 0.3) * 8) : 8, kq = step < 8 ? ((step + 0.5) / 8) * 0.3 : 0.3, fade = k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1;
+    const m = g.m, intT = g.isInt?.();
+    if (!intT || fade <= 0) { if (fade > 0) DRAW.crackPaint(R, g, a, k, 0); return; }
+    const C = (a._cc ||= {}), pad = 10, x0 = Math.floor(a.x - a.r - pad), y0 = Math.floor(a.y - a.r * 0.6 - pad - 8), W = Math.ceil(a.r * 2 + pad * 2), H = Math.ceil(a.r * 1.2 + pad * 2 + 8);
+    let e = C[step];
+    if (!e) {
+      const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; const pg = new PixelCtx(c.getContext('2d')); pg.translate(-x0, -y0); return [c, pg]; };
+      const [cd, gd] = mk(); DRAW.crackPaint(R, gd, a, kq, 1);
+      let cl = null; if (glows(a.col)) { const [c2, g2] = mk(); DRAW.crackPaint(R, g2, a, kq, 2); cl = c2; }
+      e = C[step] = [cd, cl]; if (step === 8) for (let i = 0; i < 8; i++) delete C[i];
+    }
+    const ga = g.globalAlpha; g.globalAlpha = ga * fade; g.drawImage(e[0], x0, y0);
+    if (e[1]) { g.save(); g.globalCompositeOperation = 'lighter'; g.drawImage(e[1], x0, y0); g.restore(); }
+    g.globalAlpha = ga; void m;
+  },
+  // layer: 0 = 바로 (옅어짐 포함) · 1 = 어두운 금 · 돌판만 (옅어짐 없이) · 2 = 금 사이 빛만
+  crackPaint(R, g, a, k, layer) { // 땅 갈라짐: 가운데가 굵고 끝으로 가늘어지는 들쭉날쭉한 금 (같은 굵기 줄이 거미 다리처럼 보이지 않게) · 가운데에 깨진 돌판
+    const rr = rnd(a.seed), n = 6, spread = ease.out(Math.min(1, k / 0.25)), fade = layer ? 1 : k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1, lit = glows(a.col);
     g.lineCap = 'round';
     for (let i = 0; i < n; i++) {
       const an = (i / n) * Math.PI * 2 + rr() * 0.8, L = a.r * (0.4 + rr() * 0.4) * spread; let x = a.x, y = a.y, aa = an; const pts = [[x, y]];
       for (let j = 1; j <= 5; j++) { aa += (rr() - 0.5) * 0.9; x += Math.cos(aa) * L / 5; y += Math.sin(aa) * L / 5 * 0.55; pts.push([x, y]); }
       for (let j = 0; j < 5; j++) { const w = 2.6 * (1 - j / 5) + 0.6, [x0, y0] = pts[j], [x1, y1] = pts[j + 1];
-        g.strokeStyle = `rgba(36,24,14,${0.85 * fade})`; g.lineWidth = w; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
-        if (lit) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = hexA(a.col, 0.8 * fade); g.lineWidth = Math.max(0.6, w * 0.4); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.restore(); }
+        if (layer !== 2) { g.strokeStyle = `rgba(36,24,14,${0.85 * fade})`; g.lineWidth = w; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
+        if (layer === 2) { g.strokeStyle = hexA(a.col, 0.8); g.lineWidth = Math.max(0.6, w * 0.4); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
+        else if (layer === 1 && lit) { /* 빛은 layer 2 */ }
+        else if (lit) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = hexA(a.col, 0.8 * fade); g.lineWidth = Math.max(0.6, w * 0.4); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.restore(); }
         else { g.strokeStyle = `rgba(208,192,160,${0.45 * fade})`; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, y0 + w * 0.6 + 0.5); g.lineTo(x1, y1 + w * 0.6 + 0.5); g.stroke(); } }
-      if (i % 2 === 0) { const [sx, sy] = pts[1], lift = Math.sin(Math.min(1, k / 0.3) * Math.PI) * 4; // 금 사이로 들썩이는 돌판 (짙은 외곽선 · 밝은 윗면)
+      if (i % 2 === 0 && layer !== 2) { const [sx, sy] = pts[1], lift = Math.sin(Math.min(1, k / 0.3) * Math.PI) * 4; // 금 사이로 들썩이는 돌판 (짙은 외곽선 · 밝은 윗면)
         g.fillStyle = `rgba(36,24,14,${fade})`; g.fillRect(Math.round(sx - 4), Math.round(sy - 3 - lift), 8, 5); g.fillStyle = `rgba(122,106,84,${fade})`; g.fillRect(Math.round(sx - 3), Math.round(sy - 2 - lift), 6, 3); g.fillStyle = `rgba(184,168,138,${fade})`; g.fillRect(Math.round(sx - 3), Math.round(sy - 2 - lift), 6, 1); }
     }
   },

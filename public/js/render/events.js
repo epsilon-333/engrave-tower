@@ -31,6 +31,16 @@ function palOf(hex, elem) {
   const h = mx === r ? ((g - b) / (mx - mn) + 6) % 6 : mx === g ? (b - r) / (mx - mn) + 2 : (r - g) / (mx - mn) + 4;
   return h < 0.5 ? 'blood' : h < 1.2 ? 'fire' : h < 1.9 ? 'holy' : h < 2.6 ? 'poison' : h < 3.4 ? 'wind' : h < 4.2 ? 'ice' : h < 5.2 ? 'curse' : 'petal';
 }
+// 갈래 그림이 범용 그림을 대신할 때: 소리 · 흔들림 · 몸 테두리만 남긴다 (true면 범용 그림을 건너뛴다)
+function classOnly(ev, w) {
+  if (ev.wcat || ev.fx === 'ink' || ev.fx === 'breath' || ev.fx === 'spellBlade') return false; // 무기 표식 · 먹물 · 숨결 · 마법 칼날은 그 모양이 스킬 자체라 그대로
+  if (ev.t === 'skillAoe') { if (ev.lite) { sfx('hit', { vol: 0.3, rate: 1.2 }); return true; } this.shake = Math.max(this.shake, ev.ult ? 10 : 4); if (ev.ult) this.addStop(0.12); sfx('hitHeavy', { vol: 0.9, rate: ev.ult ? 0.5 : 0.8 }); return true; }
+  if (ev.t === 'skillCone') { this.shake = Math.max(this.shake, 4); sfx(ev.fx === 'claws' ? 'swing' : 'hitHeavy', { vol: 0.8, rate: ev.fx === 'claws' ? 1.4 : 0.7 }); return true; }
+  if (ev.t === 'skillSingle') { this.shake = Math.max(this.shake, ev.big ? 7 : 4); this.addStop(ev.big ? 0.1 : 0.05); sfx(ev.fx === 'stab' ? 'swing' : 'hitHeavy', { vol: 1, rate: ev.big ? 0.6 : 0.85 }); return true; }
+  if (ev.t === 'skillLine') { this.shake = Math.max(this.shake, ev.ult ? 12 : 5); this.addStop(ev.ult ? 0.14 : 0.05); sfx(ev.fx === 'spikes' ? 'freeze' : 'hitHeavy', { vol: 1, rate: ev.ult ? 0.5 : 0.8 }); return true; }
+  if (ev.t === 'buff') { if (Math.hypot(ev.x - w.player.x, ev.y - w.player.y) < 24) this.rimFlash = { color: ev.color || '#ffffff', t: 0.35, max: 0.35 * 1.8 }; sfx('echo', { vol: 0.5 }); return true; }
+  return false;
+}
 export const EventMethods = {
   // 히트스톱은 맞은 적에게: 작은 타격은 맞은 몬스터만 잠깐 굳는다(나와 세계는 그대로 움직인다 · e.hitFreeze)
   // 화면 전체가 멈추는 것은 큰 순간(0.1초 넘게 · 궁극기 · 보스 쓰러짐 등)만, 그것도 한 번 멈춘 뒤 0.5초 안엔 다시 멈추지 않는다
@@ -50,9 +60,10 @@ export const EventMethods = {
       if (w.climb && towerEvent(this, w, ev)) continue; // 탑 51~100층 장치 · 보스 등장
       this._evSk = ev.foe ? null : ev.sk; // 갈래 그림이 스킬을 알도록 (origfx 가시 → 갈래 그림)
       if (ev.sk && !ev.foe && spacetimeFx.call(this, ev, w) === 'own') continue; // 시공 스킬은 세계가 뒤틀린다 (render/warpfx.js)
-      if (ev.sk && !ev.foe && !SPACETIME.has?.(ev.sk)) classFx.call(this, ev, w, !!BIG[ev.sk]); // 갈래마다 다른 시각 언어 (render/classfx.js)
+      const clsDrew = ev.sk && !ev.foe && !SPACETIME.has?.(ev.sk) && classFx.call(this, ev, w, !!BIG[ev.sk]); // 갈래마다 다른 시각 언어 (render/classfx.js)
       if (ev.sk && !ev.foe && bigFx.call(this, ev, w) === 'own') continue; // 대표 기술은 화려하게 (render/bigfx.js)
       if (ev.sk && SK_FX[ev.sk] && !ev.foe && !SPACETIME.has(ev.sk) && SK_FX[ev.sk].call(this, ev, w)) continue; // 시공 스킬은 warpfx 가 맡는다 // 스킬마다 다른 그림 (render/skfx.js)
+      if (clsDrew && classOnly.call(this, ev, w)) continue; // 갈래 그림을 그렸으면 범용 그림(원판 · 부채꼴 · 빛줄기)은 그리지 않고 소리 · 흔들림만 (덧그리면 묻혀서 갈래가 안 보이고 렉도 난다)
       if (ev.quiet && (ev.t === 'skillAoe' || ev.t === 'skillCone' || ev.t === 'skillLine')) { sfx(ev.t === 'skillCone' ? 'swing' : 'hitHeavy', { vol: 0.35, rate: 1.1 }); continue; } // 독창 스킬: 그림은 ofx 가 맡는다 (범용 범위 그림을 겹치지 않는다)
       switch (ev.t) {
         case 'dmg':

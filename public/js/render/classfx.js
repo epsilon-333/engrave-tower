@@ -262,8 +262,13 @@ const DRAWS = {
     const slabs = []; for (let i = 0; i < n; i++) { const an = (i / n) * TAU + rr() * 0.5, d = a.r * (0.25 + rr() * 0.35); slabs.push({ x: a.x + Math.cos(an) * d, y: a.y + Math.sin(an) * d * 0.5, an, w: 5 + rr() * 4 + a.tier, tilt: (rr() - 0.5) * 0.35, h: (4 + rr() * 5) * up }); }
     slabs.sort((p, q) => p.y - q.y);
     for (const b of slabs) { const ox = Math.cos(b.an) * b.h * 0.5, x = b.x + ox, y = b.y - b.h, w = b.w, t = b.tilt * w;
-      shape(g, [[x - w, y + t], [x - w * 0.3, y - 2 + t * 0.4], [x + w * 0.4, y - 1 - t * 0.3], [x + w, y - t], [x + w * 0.9, y - t + 6], [x - w * 0.8, y + t + 6]], P, al, false);
-      g.fillStyle = hexA(P[4], al); g.fillRect(R0(x - w * 0.6), R0(y + t * 0.6), R0(w * 0.8), 1); }
+      // 두꺼운 돌판: 윗면은 거의 평평하고(뾰족한 꼭짓점 없이) 옆면이 두껍게 보인다 · 판 둘레에 돌 부스러기
+      const th = 7 + (a.tier >> 1);
+      g.fillStyle = hexA(P[0], al); poly(g, [[x - w - 1, y + t], [x - w * 0.6, y - 2 + t * 0.6], [x + w * 0.6, y - 2 - t * 0.6], [x + w + 1, y - t], [x + w + 1, y - t + th + 1], [x - w - 1, y + t + th + 1]]); g.fill();
+      g.fillStyle = hexA(P[1] || P[0], al); poly(g, [[x - w, y + t + 2], [x + w, y - t + 2], [x + w, y - t + th], [x - w, y + t + th]]); g.fill(); // 옆면 (어둡게)
+      g.fillStyle = hexA(P[2], al); poly(g, [[x - w, y + t], [x - w * 0.6, y - 1 + t * 0.6], [x + w * 0.6, y - 1 - t * 0.6], [x + w, y - t], [x + w, y - t + 2], [x - w, y + t + 2]]); g.fill(); // 윗면
+      g.fillStyle = hexA(P[4], al); g.fillRect(R0(x - w * 0.5), R0(y - 1 + t * 0.5), R0(w * 0.9), 1);
+      for (let j = 0; j < 3; j++) { const px = x + (rr() - 0.5) * w * 2.6, py = y + th + 1 + rr() * 3, s2 = rr() < 0.4 ? 2 : 1; g.fillStyle = hexA(P[0], al); g.fillRect(R0(px) - 1, R0(py) - 1, s2 + 2, s2 + 1); g.fillStyle = hexA(P[3], al); g.fillRect(R0(px), R0(py) - 1, s2, s2); } }
   },
   // 용언 술사: 한 획씩 그려지는 용의 글자(불빛) → 타서 연기로
   word(R, g, a, k, P) {
@@ -276,12 +281,14 @@ const DRAWS = {
 };
 
 // ───── 사건 → 갈래 그림 ─────
+const CLS_CAP = 12;
 function landAt(w, x, y) { return !w?.wallAt?.(x, y) && !w?.solid?.(x, y); }
 // 맞는 순간 하나 (가시 자리 대신 · 범용 사건 위에): cls 갈래 · 자리 · 크기 · 방향 · 등급
 export function classHit(R, w, cls, x, y, r, o = {}) {
   const L = CLASS_LOOK[cls]; if (!L) return false;
   const tier = Math.max(1, Math.min(5, o.tier || 2)), land = landAt(w, x, y), ang = o.ang ?? (w?.player ? Math.atan2(y - w.player.y, x - w.player.x) : 0);
   const a = { x, y, r: Math.max(12, Math.min(70, r)), draw: L.draw, pal: L.pal, tier, ang, land, el: o.el, bite: o.bite, hand: o.hand, dir: o.dir, max: o.max || 0.55 + tier * 0.06 };
+  const AL = R.anims.list; let n = 0; for (let i = AL.length - 1; i >= 0; i--) if (AL[i].type === 'clsFx' && ++n >= CLS_CAP) { AL.splice(i, 1); break; } // 렉 줄이기: 갈래 그림은 한꺼번에 CLS_CAP 개까지 (오래된 것부터 버린다)
   R.anims.add('clsFx', a);
   burstParts(R, cls, x, y, a.r, tier, ang, o.el);
   return true;
@@ -317,13 +324,14 @@ function burstParts(R, cls, x, y, r, tier, ang, el) {
 
 const CLS_EV = new Set(['skillAoe', 'skillCone', 'skillSingle', 'skillLine', 'buff']);
 // 범용 사건 위에 그 스킬 갈래의 그림을 덧그린다 (events.js consume 이 부른다)
-export function classFx(ev, w, isBig) {
-  if (!CLS_EV.has(ev.t) || isBig || HANDS_OFF.has(ev.sk)) return;
-  const cls = skillClass(ev.sk); if (!cls || !CLASS_LOOK[cls]) return;
+export function classFx(ev, w, isBig) { // 그렸으면 true (events.js 는 범용 그림을 그리지 않고 소리만 낸다)
+  if (!CLS_EV.has(ev.t) || isBig || HANDS_OFF.has(ev.sk)) return false;
+  const cls = skillClass(ev.sk); if (!cls || !CLASS_LOOK[cls]) return false;
   const tier = ev.tier || 2, el = cls === 'elementalist' ? elemOf(ev.sk, ev) : null, lite = ev.quiet || ev.lite;
-  if (ev.t === 'skillAoe') { if (lite && tier < 3) return; classHit(this, w, cls, ev.x, ev.y, (ev.r || 30) * 0.8, { tier, el, hand: true }); return; }
-  if (ev.t === 'skillSingle') { classHit(this, w, cls, ev.x, ev.y, 20, { tier, el, bite: ev.fx === 'bite' }); return; }
-  if (ev.t === 'skillCone') { const d = (ev.range || 40) * 0.6; classHit(this, w, cls, ev.x + Math.cos(ev.ang) * d, ev.y + Math.sin(ev.ang) * d * 0.8, (ev.range || 40) * 0.5, { tier, el, ang: ev.ang, dir: ev.ang }); return; }
-  if (ev.t === 'skillLine') { const ang = Math.atan2(ev.y2 - ev.y1, ev.x2 - ev.x1); for (const u of [0.45, 1]) classHit(this, w, cls, ev.x1 + (ev.x2 - ev.x1) * u, ev.y1 + (ev.y2 - ev.y1) * u, (ev.w || 20), { tier: u < 1 ? Math.max(1, tier - 1) : tier, el, ang, dir: ang }); return; }
-  if (ev.t === 'buff') classHit(this, w, cls, ev.x, ev.y, 18, { tier: Math.max(1, tier - 1), el, max: 0.8 });
+  if (ev.t === 'skillAoe') { if (lite && tier < 3) return false; return classHit(this, w, cls, ev.x, ev.y, (ev.r || 30) * 0.8, { tier, el, hand: true }); }
+  if (ev.t === 'skillSingle') return classHit(this, w, cls, ev.x, ev.y, 20, { tier, el, bite: ev.fx === 'bite' });
+  if (ev.t === 'skillCone') { const d = (ev.range || 40) * 0.6; return classHit(this, w, cls, ev.x + Math.cos(ev.ang) * d, ev.y + Math.sin(ev.ang) * d * 0.8, (ev.range || 40) * 0.5, { tier, el, ang: ev.ang, dir: ev.ang }); }
+  if (ev.t === 'skillLine') { const ang = Math.atan2(ev.y2 - ev.y1, ev.x2 - ev.x1); let ok = false; for (const u of [0.45, 1]) ok = classHit(this, w, cls, ev.x1 + (ev.x2 - ev.x1) * u, ev.y1 + (ev.y2 - ev.y1) * u, (ev.w || 20), { tier: u < 1 ? Math.max(1, tier - 1) : tier, el, ang, dir: ang }) || ok; return ok; }
+  if (ev.t === 'buff') return classHit(this, w, cls, ev.x, ev.y, 18, { tier: Math.max(1, tier - 1), el, max: 0.8 });
+  return false;
 }
